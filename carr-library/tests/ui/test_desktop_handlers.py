@@ -127,11 +127,16 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_audio_studio_actions', 'install_api_connection_actions',
+        'install_transcription_actions', 'install_translation_actions',
         'install_assistant_actions', 'install_academic_comparison_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.transcription_dialog',
+                        SimpleNamespace(install_transcription_actions=installers['install_transcription_actions']))
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.translation_dialog',
+                        SimpleNamespace(install_translation_actions=installers['install_translation_actions']))
     register = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
                         SimpleNamespace(register_menu_command=register))
@@ -794,3 +799,97 @@ def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(c
     assert app.evidence(workspace, topics[0].id) == ()
     assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()
+
+
+def test_backup_cleanup_notice_is_reported_on_the_completion_callback(classes, tmp_path):
+    env, queued = classes
+    value = frame(classes)
+    dialog = Mock()
+    dialog.ShowModal.return_value = env['wx'].ID_OK
+    dialog.GetPath.return_value = str(tmp_path)
+    env['wx'].DirDialog = Mock(return_value=dialog)
+    checksum = 'a' * 64
+    notice = 'Backup is complete. Cleanup pending at ' + str(tmp_path / '.private-backup-stage')
+
+    def backup(destination, *, cancelled, on_warning):
+        assert destination.parent == tmp_path and not cancelled()
+        on_warning(notice)
+        return checksum
+
+    value.library = SimpleNamespace(backup=backup)
+    future = Future()
+    value.executor.submit.return_value = future
+    value.backup(None)
+    operation = value.executor.submit.call_args.args[0]
+    result = operation()
+    env['show_text'].assert_not_called()
+    assert notice not in value.report.call_args.args[0]
+    future.set_result(result)
+    env['show_text'].assert_not_called()
+    queued.pop(0)()
+    assert notice in value.report.call_args.args[0]
+    text = env['show_text'].call_args.args[2]
+    assert checksum in text and notice in text
+    assert 'Pending imports' in text and 'are excluded' not in text
+    assert 'pending imports' in env['wx'].DirDialog.call_args.args[1]
+    dialog.Destroy.assert_called_once()
+
+
+def test_restore_cancel_reaches_pending_verification_before_publication(classes, tmp_path, monkeypatch):
+    from carr_library import library_backup, pending_backup
+
+    env, queued = classes
+    value = frame(classes)
+    source_app = LibraryApp(tmp_path / 'source-library')
+    workspace = source_app.create_workspace('Restoration cancellation')
+    source_app.add_text(workspace, 'Original source', 'Preserved original text.')
+    backup = tmp_path / 'backup'
+    checksum = library_backup.create_backup(source_app, backup)
+    backup_before = {path.relative_to(backup): path.read_bytes()
+                     for path in backup.rglob('*') if path.is_file()}
+    target_parent = tmp_path / 'restored-libraries'
+    target_parent.mkdir()
+    source_picker, target_picker = Mock(), Mock()
+    for picker, path in ((source_picker, backup), (target_picker, target_parent)):
+        picker.ShowModal.return_value = env['wx'].ID_OK
+        picker.GetPath.return_value = str(path)
+    env['wx'].DirDialog = Mock(side_effect=[source_picker, target_picker])
+    env['text_dialog'].return_value = checksum
+    future = Future()
+    value.executor.submit.return_value = future
+    real_restore_pending = pending_backup.restore_pending
+    pending_checks = []
+
+    def cancel_during_pending_verification(*args, **kwargs):
+        # The real restore has already started. The live event must reach its
+        # pending verifier before it can publish the destination directory.
+        assert not value.cancel_event.is_set()
+        value.cancel_event.set()
+        pending_checks.append(True)
+        return real_restore_pending(*args, **kwargs)
+
+    monkeypatch.setattr(pending_backup, 'restore_pending', cancel_during_pending_verification)
+    value.restore_backup(None)
+    assert value.working and value.busy
+    operation = value.executor.submit.call_args.args[0]
+    with pytest.raises(InterruptedError, match='Pending import backup cancelled') as error:
+        operation()
+    assert pending_checks == [True]
+    assert not list(target_parent.iterdir())
+    assert {path.relative_to(backup): path.read_bytes()
+            for path in backup.rglob('*') if path.is_file()} == backup_before
+    future.set_exception(error.value)
+    assert value.working and value.busy
+    env['show_text'].assert_not_called()
+    queued.pop(0)()
+    assert not value.working and not value.busy
+    value.cancel_button.Disable.assert_called_once()
+    value.choice.Enable.assert_called_once()
+    value.book.Enable.assert_called_once()
+    assert [call.args for call in value.menu_bar.EnableTop.call_args_list[-3:]] == [
+        (0, True), (1, True), (2, True)]
+    assert 'cancelled' in value.report.call_args.args[0]
+    env['wx'].MessageBox.assert_not_called()
+    env['show_text'].assert_not_called()
+    source_picker.Destroy.assert_called_once()
+    target_picker.Destroy.assert_called_once()

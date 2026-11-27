@@ -73,7 +73,7 @@ def test_complete_backup_preserves_reader_projects_drafts_and_shortcuts(reading_
     source_files = file_bytes(app.root)
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5 and manifest['layout'] == 'sidecars-pending-v1'
     names = {entry['filename'] for entry in manifest['sidecars']}
     assert names == {'reading-state.json', 'keybindings.json', 'ocr-language-presets.json',
                      f'narration-projects/{project.id}.json',
@@ -274,14 +274,15 @@ def test_interrupted_sidecar_publication_never_looks_complete(
 
 
 @pytest.mark.parametrize('version', [1, 2])
-def test_legacy_backups_remain_usable_without_inventing_reading_state(tmp_path, version):
+def test_legacy_backups_remain_usable_without_inventing_reading_state(tmp_path, version, legacy_layout):
     app = LibraryApp(tmp_path / 'data')
     workspace = app.create_workspace('Legacy research')
     app.add_text(workspace, 'Legacy book', 'Exact legacy text.')
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    assert manifest['version'] == 4 and manifest['sidecars'] == []
+    assert manifest['version'] == 5 and manifest['sidecars'] == []
+    legacy_layout(folder, manifest)
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']

@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -198,6 +200,38 @@ def test_tessdata_binding_preserves_explicit_pinned_staging(bundle):
     pinned = [checked.executable, 'input.png', 'output', '--tessdata-dir', '/staged/models']
     assert checked.command(pinned) == pinned
     assert checked.command([checked.executable, '--version']) == [checked.executable, '--version']
+
+
+def self_check_process(monkeypatch, report):
+    from carr_library.extract import ocr_process
+    checked = SimpleNamespace(executable='selected local engine', portable=True,
+                              manifest_sha256='a' * 64, assert_unchanged=Mock())
+    monkeypatch.setattr(runtime, 'discover_ocr_runtime', Mock(return_value=checked))
+    process = Mock(side_effect=[SimpleNamespace(stdout=output) for output in (
+        b'tesseract 5.5.0\n', report.encode('utf-8'), b'RESEARCH\n')])
+    monkeypatch.setattr(ocr_process, 'run_ocr', process)
+    return checked, process
+
+
+def test_self_check_preserves_windows_script_inventory(monkeypatch):
+    checked, process = self_check_process(monkeypatch,
+        'List of available languages in "selected models" (3):\r\n'
+        'eng\r\nscript\\EnglishFixture\r\nosd\r\n')
+    result = runtime.check_runtime()
+    assert result['languages'] == ['eng', 'script/EnglishFixture', 'osd']
+    assert result['synthetic_recognition'] == 'RESEARCH'
+    assert process.call_count == 3
+    checked.assert_unchanged.assert_called_once()
+
+
+def test_self_check_rejects_malformed_inventory_before_recognition(monkeypatch):
+    checked, process = self_check_process(monkeypatch,
+        'List of available languages in "selected models" (2):\n'
+        'eng\nscript\\..\\outside\n')
+    with pytest.raises(runtime.OcrRuntimeError, match='invalid model inventory'):
+        runtime.check_runtime()
+    assert process.call_count == 2
+    checked.assert_unchanged.assert_not_called()
 
 
 @pytest.fixture

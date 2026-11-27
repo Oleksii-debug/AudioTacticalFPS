@@ -50,6 +50,7 @@ class ConnectionsController:
         # Prove basic output access before incurring a provider request.
         fd, temporary = tempfile.mkstemp(prefix='.provider-result-', dir=output.parent)
         completed, durable = False, False
+        translation = None
         try:
             with os.fdopen(fd, 'wb') as stream:
                 result = gateway.perform(profile, request, approval=approval, operation_id=operation,
@@ -57,6 +58,13 @@ class ConnectionsController:
                 completed = True
                 if request.capability == 'llm':
                     result = json.loads(result)['choices'][0]['message']['content'].encode('utf-8')
+                elif request.capability == 'translation':
+                    from ..translation import translation_document
+                    document = translation_document(profile, request, result,
+                        operation_id=operation, estimated_micros=estimate_micros)
+                    translation = document['translation']['text']
+                    result = json.dumps(document, ensure_ascii=False, sort_keys=True,
+                                        allow_nan=False, indent=2).encode('utf-8')
                 stream.write(result)
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -70,12 +78,26 @@ class ConnectionsController:
                 state = f'Recover the complete result from {temporary}' if durable else f'A partial result may remain at {temporary}'
                 raise ProviderError(f'The provider completed but its output could not be saved. '
                     f'{state}. Operation {operation}; do not repeat the paid request.') from None
-            os.unlink(temporary)
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
             raise
         else:
-            os.unlink(temporary)
-        return {'output': str(output), 'operation': operation,
-                'estimated_micros': estimate_micros, 'billed_cost': 'unknown'}
+            # Publication is the commit point. Failure to remove the staging
+            # alias must not turn a saved paid result into a retry suggestion.
+            cleanup_pending = None
+            try:
+                os.unlink(temporary)
+            except OSError:
+                cleanup_pending = str(temporary)
+        result = {'output': str(output), 'operation': operation,
+                  'estimated_micros': estimate_micros, 'billed_cost': 'unknown'}
+        if cleanup_pending:
+            result['cleanup_pending'] = cleanup_pending
+        if translation is not None:
+            result['translation_text'] = translation
+        return result
 
 
 def show_api_connections(frame):
@@ -148,16 +170,19 @@ def show_api_connections(frame):
                 dialog.Destroy()
 
         def configure(self, previous=None):
-            provider_index = self.choose('Provider adapter', ['Local or remote OpenAI-compatible text model', 'ElevenLabs speech, music and sound effects'])
+            provider_index = self.choose('Provider adapter', ['Local or remote OpenAI-compatible text model',
+                'ElevenLabs speech, music and sound effects', 'Google Cloud Translation Basic v2'])
             if provider_index is None:
                 return
-            provider = ('openai-compatible', 'elevenlabs')[provider_index]
+            provider = ('openai-compatible', 'elevenlabs', 'google-translate-v2')[provider_index]
             fields = {}
+            same_provider = previous if previous and previous.provider == provider else None
             for key, label, default in [('name', 'Friendly account name', ''),
                     ('endpoint', 'API base URL (loopback IP for local service)',
-                     'http://127.0.0.1:8080/v1' if provider_index == 0 else 'https://api.elevenlabs.io/v1'),
-                    ('model', 'Installed model ID or provider model ID', '')]:
-                value = self.prompt('Connection profile', label, getattr(previous, key, default))
+                     ('http://127.0.0.1:8080/v1', 'https://api.elevenlabs.io/v1',
+                      'https://translation.googleapis.com')[provider_index]),
+                    ('model', 'Installed model ID or provider model ID', 'nmt' if provider_index == 2 else '')]:
+                value = self.prompt('Connection profile', label, getattr(same_provider, key, default))
                 if value is None:
                     return
                 fields[key] = value.strip()
@@ -166,11 +191,13 @@ def show_api_connections(frame):
                 if kind is None:
                     return
                 local, capabilities = kind == 0, ('llm',)
-            else:
+            elif provider_index == 1:
                 cap = self.choose('Capability for this profile and model', ['Speech synthesis', 'Music generation', 'Sound effects'])
                 if cap is None:
                     return
                 local, capabilities = False, (('tts', 'music', 'sound_effects')[cap],)
+            else:
+                local, capabilities = False, ('translation',)
             key = self.prompt('API key', 'API key (masked). Leave blank for local access or to keep an unchanged profile key.', password=True)
             if key is None:
                 return
@@ -240,12 +267,24 @@ def show_api_connections(frame):
                     if value is None:
                         return
                     duration = int(value)
-                request = ProviderRequest(capability, text, voice, duration)
+                source, target = None, None
+                if capability == 'translation':
+                    source = self.prompt('Source language', 'Google language code; leave blank for automatic detection.', '')
+                    if source is None:
+                        return
+                    target = self.prompt('Target language', 'Google language code, for example uk, en, pl or zh-TW.', 'uk')
+                    if target is None:
+                        return
+                    source, target = source.strip() or None, target.strip()
+                request = ProviderRequest(capability, text, voice, duration,
+                                          source_language=source, target_language=target)
                 value = self.prompt('Approved estimated cost', 'Enter your reviewed maximum estimate in USD. Provider billing can differ; unknown cost requires review.', '0' if profile.local else '')
                 if value is None:
                     return
                 estimate = parse_budget(value)
-                dialog = wx.FileDialog(self, 'Choose a new result file', defaultFile='result.txt' if capability == 'llm' else 'result.mp3', style=wx.FD_SAVE)
+                default_file = ('translation.json' if capability == 'translation'
+                                else 'result.txt' if capability == 'llm' else 'result.mp3')
+                dialog = wx.FileDialog(self, 'Choose a new result file', defaultFile=default_file, style=wx.FD_SAVE)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
@@ -254,6 +293,7 @@ def show_api_connections(frame):
                     dialog.Destroy()
                 notice = (f'Provider: {profile.name}\nEndpoint: {profile.endpoint}\nModel: {profile.model}\n'
                     f'Task: {capability}\nText length: {len(text)} characters.\nEstimated cost approved: USD {value}.\n'
+                    + (f'Languages: {source or "automatic detection"} to {target}.\n' if capability == 'translation' else '') +
                     f'Output: {output}\nOne request only. No automatic retry or fallback. '
                     'The provider may retain submitted text according to its terms. Send this exact task now?')
                 if wx.MessageBox(notice, 'Approve task data and estimated cost',

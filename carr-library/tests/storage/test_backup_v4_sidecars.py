@@ -45,13 +45,15 @@ def reading(tmp_path):
     return app, workspace, page, bookmark
 
 
-def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
+def test_v4_preserves_exact_historical_reader_state(reading, tmp_path, legacy_layout):
     app, workspace, page, bookmark = reading
     source_bytes = (app.root / 'reading-state.json').read_bytes()
     app.archive_workspace(workspace)
     backup = tmp_path / 'Копія'
     checksum = app.backup(backup)
     value = manifest(backup)
+    legacy_layout(backup, value)
+    checksum = resign(backup, value)
     assert value['version'] == 4 and value['generated_audio_included'] is False
     assert value['sidecars'] == [dict(filename='reading-state.json', size_bytes=len(source_bytes),
                                      sha256=sha256(source_bytes).hexdigest())]
@@ -66,11 +68,12 @@ def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
 
 
 @pytest.mark.parametrize('shape', ['reading_state', 'sidecars'])
-def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, shape):
+def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, shape, legacy_layout):
     app, workspace, page, bookmark = reading
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    legacy_layout(folder, value)
     value['version'] = 3
     del value['generated_audio_included']
     if shape == 'reading_state':
@@ -182,13 +185,14 @@ def test_sidecar_disk_full_does_not_publish_partial_destination(reading, tmp_pat
 
 @pytest.mark.parametrize('change', ['mixed', 'extra', 'traversal', 'absolute', 'duplicate',
                                   'boolean-size', 'generated-number', 'reserved'])
-def test_invalid_manifest_never_reaches_writable_storage(reading, tmp_path, monkeypatch, change):
+def test_invalid_manifest_never_reaches_writable_storage(reading, tmp_path, monkeypatch, change, legacy_layout):
     app, *_ = reading
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     value = manifest(folder)
     entry = value['sidecars'][0]
     if change == 'mixed':
+        legacy_layout(folder, value)
         value.update(version=3, state=[])
     elif change == 'extra':
         value['allow_unsafe_state'] = True
@@ -233,6 +237,59 @@ def test_sidecar_change_during_snapshot_prevents_publication(reading, tmp_path, 
     monkeypatch.setattr(backup_sidecars, '_write', changed)
     with pytest.raises(ValueError, match='changed during backup'):
         create_backup(app, tmp_path / 'rejected')
+    assert not (tmp_path / 'rejected').exists()
+
+
+def test_snapshot_rejects_equal_size_source_change_with_preserved_metadata(
+        reading, tmp_path, monkeypatch):
+    """A copied sidecar must still match source bytes, not just timestamps."""
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    original_bytes = source.read_bytes()
+    replacement = original_bytes.replace(b'Anchor-A', b'Anchor-B')
+    assert replacement != original_bytes and len(replacement) == len(original_bytes)
+    before = source.stat()
+    original_identity = backup_sidecars._identity
+    # Windows ctime is creation time; POSIX ctime cannot be restored. Keep the
+    # real device, inode, mode, link count, size and mtime in this reproduction.
+    monkeypatch.setattr(backup_sidecars, '_identity',
+                        lambda value: original_identity(value)[:-1])
+    original_write = backup_sidecars._write
+    changed = False
+
+    def change_copied_source(stage, name, raw):
+        nonlocal changed
+        original_write(stage, name, raw)
+        if name == 'reading-state.json':
+            changed = True
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+
+    monkeypatch.setattr(backup_sidecars, '_write', change_copied_source)
+    with pytest.raises(ValueError, match='changed during backup'):
+        create_backup(app, tmp_path / 'rejected')
+    assert changed and source.read_bytes() == replacement
+    assert not (tmp_path / 'rejected').exists()
+
+
+def test_snapshot_content_revalidation_can_be_cancelled_before_publication(
+        reading, tmp_path, monkeypatch):
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    original_bytes = source.read_bytes()
+    original_read = backup_sidecars.read_regular
+    source_reads = 0
+
+    def observe_source_read(path, maximum):
+        nonlocal source_reads
+        if path == source:
+            source_reads += 1
+        return original_read(path, maximum)
+
+    monkeypatch.setattr(backup_sidecars, 'read_regular', observe_source_read)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, tmp_path / 'rejected', cancelled=lambda: source_reads >= 2)
+    assert source_reads == 2 and source.read_bytes() == original_bytes
     assert not (tmp_path / 'rejected').exists()
 
 

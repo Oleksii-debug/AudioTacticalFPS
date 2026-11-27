@@ -682,8 +682,10 @@ def main():
                     handle = yield from real_overwrite_prompt()
                     yield from answer_yes(handle)
                     job = yield from export_finished(count)
+                    receipt = job['future'].result()
                     check('real Yes replaces only the unchanged approved destination',
-                          approved.read_bytes() == job['future'].result().encode('utf-8')
+                          receipt.path == approved.resolve() and receipt.cleanup_warning is None
+                          and approved.read_bytes() == text.encode('utf-8')
                           and approved.read_text(encoding='utf-8') == formatted.bibliography
                           and dialog.status.GetValue() == f'Bibliography saved to {approved}.'
                           and focused(dialog.status))
@@ -692,11 +694,14 @@ def main():
                     check('the native new-export scenario starts with an absent destination', not fresh.exists())
                     count = yield from begin_native_export(fresh, 'html')
                     job = yield from export_finished(count)
+                    receipt = job['future'].result()
+                    published_html = fresh.read_text(encoding='utf-8')
                     check('real format selection and native export publish a fresh HTML file through the worker',
                           overwrite_prompt() is None
-                          and fresh.read_bytes() == job['future'].result().encode('utf-8')
-                          and 'Content-Security-Policy' in job['future'].result()
-                          and 'Український текст' in job['future'].result()
+                          and receipt.path == fresh.resolve() and receipt.cleanup_warning is None
+                          and fresh.read_bytes() == html.encode('utf-8')
+                          and 'Content-Security-Policy' in published_html
+                          and 'Український текст' in published_html
                           and dialog.status.GetValue() == f'Bibliography saved to {fresh}.'
                           and focused(dialog.status))
                     check('native export scenarios dispose controlled pickers without replacing real dialogs',

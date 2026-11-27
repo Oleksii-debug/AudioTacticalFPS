@@ -193,8 +193,27 @@ def _atomic_json(path, data):
         temporary.unlink(missing_ok=True)
 
 
+def _filter_file_option(ffmpeg, *, cancelled):
+    """Choose the file-graph CLI once for the exact admitted local binary.
+
+    FFmpeg 9 removed -filter_complex_script in favor of -/filter_complex.
+    Earlier supported builds still advertise the legacy option. Long help
+    includes expert CLI options without the much larger codec/filter listing.
+    """
+    help_text = _run([ffmpeg, '-hide_banner', '-nostdin', '-h', 'long'],
+                     timeout=15, cancelled=cancelled, env=offline_environment())
+    options = {fields[0] for line in help_text.splitlines()
+               if (fields := line.split()) and fields[0].startswith(b'-')}
+    if b'-filter_complex' in options and (
+            b'-/filter_complex' in help_text or b'-filter_complex_script' not in options):
+        return '-/filter_complex'
+    if b'-filter_complex_script' in options:
+        return '-filter_complex_script'
+    raise EngineUnavailable('This local FFmpeg does not advertise complex audio filtering.')
+
+
 def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total_frames, sample_rate,
-                             tempo, mood, seed, gain, ffmpeg, cancelled):
+                             tempo, mood, seed, gain, ffmpeg, cancelled, graph_file_option):
     notes = _notes_for_bars(first_bar, 4, sample_rate=sample_rate, tempo=tempo,
                             mood=mood, seed=seed, total_frames=total_frames)
     graph, labels = [], []
@@ -219,7 +238,7 @@ def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total
     try:
         script.write_text(';\n'.join(graph), encoding='ascii')
         _run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-filter_complex_threads', '1',
-              '-/filter_complex', script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
+              graph_file_option, script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
               '-c:a', 'pcm_s16le', '-rf64', 'auto', '-f', 'wav', '-n', path],
              timeout=max(120, frame_count / sample_rate * 10), cancelled=cancelled,
              env=offline_environment())
@@ -378,6 +397,7 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
     bytes_needed = frames * 4 + 8 * 1024 * 1024  # chunks plus final PCM and small metadata
     if shutil.disk_usage(target.parent).free < bytes_needed:
         raise OSError('Insufficient free disk for music chunks and the final output.')
+    graph_file_option = _filter_file_option(binary, cancelled=cancelled) if engine == 'procedural' else None
     if engine == 'procedural':
         chunk_size = sample_rate * 16 * 60 / tempo  # four bars; globally rounded boundaries
     else:
@@ -418,7 +438,8 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                 if engine == 'procedural':
                     _render_procedural_chunk(partial, first_bar=number * 4, start_frame=start,
                         frame_count=count, total_frames=frames, sample_rate=sample_rate, tempo=tempo,
-                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled)
+                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled,
+                        graph_file_option=graph_file_option)
                 else:
                     _render_musicgen_chunk(partial, frame_count=count, sample_rate=sample_rate,
                         mood=mood, tempo=tempo, seed=(seed + number) % (2**63), gain=gain, ffmpeg=binary,

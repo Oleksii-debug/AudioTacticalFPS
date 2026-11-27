@@ -50,25 +50,24 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
+    optional = {'source_commit', 'source_tree', 'bundled_native_runtime', 'bundled_audio_runtime'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'source_tree',
-                                          'bundled_native_runtime', 'bundled_audio_runtime'}
+            or value.keys() - required - optional
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
-        raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
-    if ('bundled_audio_runtime' in value and type(value['bundled_audio_runtime']) is not bool):
-        raise ValueError('The bundled_audio_runtime installation flag must be a boolean.')
-    if ('source_commit' in value and (not isinstance(value['source_commit'], str)
-            or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
-        raise ValueError('Invalid installation source commit.')
-    if ('source_tree' in value and (not isinstance(value['source_tree'], str)
-            or not re.fullmatch('[0-9a-f]{40}', value['source_tree']))):
-        raise ValueError('Invalid installation source tree.')
+    for flag in ('bundled_native_runtime', 'bundled_audio_runtime'):
+        if flag in value and type(value[flag]) is not bool:
+            raise ValueError(f'The {flag} installation flag must be a boolean.')
+    for field in ('source_commit', 'source_tree'):
+        if field in value and (not isinstance(value[field], str)
+                or not re.fullmatch('[0-9a-f]{40}', value[field])):
+            raise ValueError(f'Invalid installation {field}.')
+    if 'source_tree' in value and 'source_commit' not in value:
+        raise ValueError('An installation source tree requires its source commit.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):
@@ -90,7 +89,8 @@ def check_native_dependencies(bundle_root):
     report = {'status': 'FAIL', 'platform': sys.platform, 'machine': platform.machine(),
               'python': platform.python_version(), 'windows_execution': 'NOT_RUN',
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
-              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'}}
+              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
+              'audio': {'status': 'NOT_INCLUDED', 'native_execution': 'NOT_RUN'}}
     component = 'installation manifest'
     _runtime_handle = None
     try:
@@ -105,6 +105,17 @@ def check_native_dependencies(bundle_root):
         # Keep the shared loader's returned directory handle alive until all
         # extension loading finishes, including delayed semantic dependencies.
         _runtime_handle = native_runtime.activate_bundled_runtime(bundle_root=root)
+        component = 'bundled audio runtime'
+        report['audio']['status'] = 'FAIL'
+        audio_runtime = import_module('carr_library.audio_runtime')
+        # Reuse the reviewed byte/inventory verifier even when the flag is
+        # absent, so an unannounced runtime cannot pass installation checks.
+        tools = audio_runtime.bundled_audio_tools(bundle_root=root)
+        if tools is None:
+            report['audio']['status'] = 'NOT_INCLUDED'
+        else:
+            report['audio'] = {'status': 'PASS', 'integrity': 'sha256', 'native_execution': 'NOT_RUN'}
+            report['checks'].append(component)
         for component, module in NATIVE_MODULES:
             import_module(module)
             report['checks'].append(component)

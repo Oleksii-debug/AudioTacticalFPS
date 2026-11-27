@@ -15,7 +15,10 @@ The canonical product branch is carr-library; preserve main and unrelated projec
 The library workflows below describe the canonical implementation at the time
 of this review. Audio/agent and other additions in open integrated candidates
 require their own exact-head installed-build acceptance before being called released.
-The owner-supplied transcription implementation is [under reviewed integration](docs/TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The owner-supplied transcription implementation now has a [local desktop workflow](docs/TRANSCRIPTION_LOCAL.md)
+with verified exports and completed-result previews; its [review and remaining acceptance](docs/TRANSCRIPTION_INTEGRATION_REVIEW.md)
+remain explicit. [Google Basic v2 translation](docs/TRANSLATION_BASIC_V2.md) uses the existing
+provider credentials, reviewed transfer and budget controls, and preserves original text.
 
 ## Run the desktop
 

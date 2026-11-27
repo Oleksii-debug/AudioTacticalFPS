@@ -36,6 +36,7 @@ license-files = [
 
 [project.optional-dependencies]
 desktop = ["wxPython==4.2.4"]
+transcription = ["faster-whisper==1.2.1", "av==17.1.0"]
 semantic = [
   "fastembed==0.9.1",
   "onnxruntime==1.32.0",
@@ -61,6 +62,7 @@ test = [
 research-library = "carr_library.__main__:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 research-library-bibliography = "carr_library.bibliography_cli:main"
+research-library-transcribe = "carr_library.transcription_cli:main"
 
 [project.gui-scripts]
 research-library-desktop = "carr_library.__main__:main"
@@ -87,6 +89,7 @@ packages = [
   "carr_library.search._vendor",
   "carr_library.search._vendor.rifflux",
   "carr_library.storage",
+  "carr_library.studio",
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",

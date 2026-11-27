@@ -9,6 +9,7 @@ import wave
 
 import pytest
 
+from carr_library.audio import music as music_module
 from carr_library.audio.engines import EngineUnavailable
 from carr_library.audio.music import (_wave_frames, generate_music, music_capabilities,
                                       render_music)
@@ -84,12 +85,19 @@ def test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption(tmp_
     assert (state.parent/'part-00000000.wav').read_bytes() == original
 
 
-def test_actual_more_than_ten_minutes_has_no_total_duration_ceiling(tmp_path, ffmpeg):
+def test_actual_more_than_ten_minutes_has_no_total_duration_ceiling(tmp_path, ffmpeg, monkeypatch):
+    probes = []
+    actual_probe = music_module._filter_file_option
+    def probe_once(binary, **kwargs):
+        probes.append(binary)
+        return actual_probe(binary, **kwargs)
+    monkeypatch.setattr(music_module, '_filter_file_option', probe_once)
     result = render_music(tmp_path/'extended.wav', duration=601.125, sample_rate=8000,
                           mood='calm', tempo=30, seed=91, ffmpeg=ffmpeg)
     assert result['frames'] == 4_809_000
     assert _wave_frames(result['path'])['frames'] == 4_809_000
     assert result['provenance']['chunks'] == 19
+    assert probes == [ffmpeg]  # a multi-hour score must not probe every four bars
     assert 'neural' not in result['provenance']['kind']
 
 
@@ -179,3 +187,75 @@ def test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_
     with wave.open(str(output), 'rb') as audio:
         assert audio.getnframes() == 60000 and audio.getframerate() == 48000
     assert not list(folder.rglob('*.filters'))
+
+
+@pytest.mark.parametrize('help_text,expected', [
+    pytest.param(b'-filter_complex graph_description\n-filter_complex_script filename\n',
+                 '-filter_complex_script', id='legacy-file-option'),
+    pytest.param(b'-filter_complex graph_description\n-filter_complex_script filename  deprecated, use -/filter_complex instead\n',
+                 '-/filter_complex', id='advertised-current-replacement'),
+    pytest.param(b'  -filter_complex graph_description\n-filter_complex_threads int\n',
+                 '-/filter_complex', id='ffmpeg9-file-value-syntax'),
+])
+def test_file_graph_option_uses_advertised_binary_capabilities(monkeypatch, help_text, expected):
+    binary = Path('installed-ffmpeg')
+    cancelled = lambda: False
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        assert kwargs['timeout'] == 15
+        assert kwargs['cancelled'] is cancelled
+        assert isinstance(kwargs['env'], dict)
+        return help_text
+    monkeypatch.setattr(music_module, '_run', run)
+    assert music_module._filter_file_option(binary, cancelled=cancelled) == expected
+    assert calls == [[binary, '-hide_banner', '-nostdin', '-h', 'long']]
+
+
+def test_file_graph_capability_requires_an_actual_option_line(monkeypatch):
+    monkeypatch.setattr(music_module, '_run', lambda *a, **k:
+                        b'Example mentions -filter_complex_script only in prose\n'
+                        b'-filter_complex_threads int\n')
+    with pytest.raises(EngineUnavailable, match='does not advertise'):
+        music_module._filter_file_option(Path('installed-ffmpeg'), cancelled=lambda: False)
+
+
+@pytest.mark.parametrize('option', ['-filter_complex_script', '-/filter_complex'])
+def test_large_music_graph_stays_in_a_file_with_bounded_windows_argv(tmp_path, monkeypatch, option):
+    notes = [music_module.Note(0, 8000, 60, 50, 0) for _ in range(300)]
+    monkeypatch.setattr(music_module, '_notes_for_bars', lambda *a, **k: notes)
+    output = tmp_path / 'chunk.wav'
+    script = output.with_suffix('.filters')
+    calls = []
+    def run(command, **kwargs):
+        calls.append(command)
+        assert command[command.index(option) + 1] == script
+        graph = script.read_text(encoding='ascii')
+        assert len(graph) > 32767
+        assert 'sine=frequency=' in graph and '[music]' in graph
+        assert sum(len(str(value)) + 3 for value in command) < 4096
+        assert all('sine=frequency=' not in str(value) for value in command)
+        return b''
+    monkeypatch.setattr(music_module, '_run', run)
+    music_module._render_procedural_chunk(
+        output, first_bar=0, start_frame=0, frame_count=8000, total_frames=8000,
+        sample_rate=8000, tempo=90, mood='calm', seed=0, gain=.18,
+        ffmpeg=Path('installed-ffmpeg'), cancelled=lambda: False, graph_file_option=option)
+    assert len(calls) == 1
+    assert not script.exists()
+
+
+def test_cancelled_music_graph_render_removes_temporary_filter_file(tmp_path, monkeypatch):
+    output = tmp_path / 'cancelled.wav'
+    script = output.with_suffix('.filters')
+    def interrupted(command, **kwargs):
+        assert script.is_file()
+        raise InterruptedError('cancelled during the native render')
+    monkeypatch.setattr(music_module, '_run', interrupted)
+    with pytest.raises(InterruptedError):
+        music_module._render_procedural_chunk(
+            output, first_bar=0, start_frame=0, frame_count=8000, total_frames=8000,
+            sample_rate=8000, tempo=90, mood='calm', seed=0, gain=.18,
+            ffmpeg=Path('installed-ffmpeg'), cancelled=lambda: False,
+            graph_file_option='-/filter_complex')
+    assert not script.exists()
