@@ -274,6 +274,7 @@ def run_entry(callback, arguments, program):
     root = control_root(program, create=True)
     with installation_lease(root) as lease:
         read_fd = write_fd = process = job = None
+        spawn_attempted = False
         receipt = _record_owner(program, root)
         cleanup_confirmed = False
         try:
@@ -288,6 +289,7 @@ def run_entry(callback, arguments, program):
             command = [sys.executable, '-I', '-S', '-B', '-X', 'utf8', '-c', bootstrap,
                        str(read_handle)]
             try:
+                spawn_attempted = True
                 process = subprocess.Popen(command, cwd=program, close_fds=True,
                                            startupinfo=startup, creationflags=subprocess.CREATE_NO_WINDOW)
                 job.assign(int(process._handle))
@@ -319,7 +321,10 @@ def run_entry(callback, arguments, program):
                         job.stop_and_wait(int(process._handle) if process is not None else None)
                     if process is not None:
                         process.wait(timeout=5)
-                    cleanup_confirmed = True
+                    # Popen can raise after native creation but before returning
+                    # its exact handle. EOF blocks application admission, but
+                    # cannot certify that an unobserved runtime process exited.
+                    cleanup_confirmed = process is not None or not spawn_attempted
             finally:
                 try:
                     if job is not None:

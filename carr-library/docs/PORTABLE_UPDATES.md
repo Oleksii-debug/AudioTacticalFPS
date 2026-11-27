@@ -63,7 +63,10 @@ Before enabling site initialization or importing the application, the child:
 5. Closes its temporary Job duplicate and retains the shared lease.
 
 If the parent dies before Job assignment, the pipe reaches EOF and the child
-exits without site initialization or application work. After assignment, the
+exits without site initialization or application work. If process creation was
+attempted but the constructor did not return an exact process handle, the
+guardian keeps its receipt: EOF forbids application work but cannot by itself
+acknowledge that an unobserved runtime process has exited. After assignment, the
 existing Job owner contains the application and its ordinary import, engine,
 transcription and playback descendants.
 
@@ -133,7 +136,17 @@ origin and signed version checks. It does not call a public CLI through an
 exclusive lease. The offline installer likewise calls its fixed native
 dependency check before readiness; the ordinary native diagnostic CLI retains
 the application lease. Native installer and health children use the existing
-Windows process owner.
+Windows process owner. The external helper creates its own durable owner receipt
+under the exclusive lease before any native activation work or recovery health
+check. Each installer/health invocation acknowledges exact descendant handles
+before returning; ordinary Job close alone cannot authorize program movement.
+
+If launch or child cleanup is unconfirmed, the transaction leaves its current
+journal, program and previous-directory paths in place. It does not roll back
+through files that an unconfirmed child might still hold or modify. The helper's
+receipt remains as a veto after an exception or abrupt helper death. A clean
+health failure with acknowledged child exit still performs the ordinary checked
+rollback. Successful activation clears only that helper's own receipt.
 
 Cancellation is honored during preparation. Once activation begins, the existing
 bounded transaction completes or rolls back. A cancellation observed after the
@@ -201,19 +214,28 @@ tests/security/test_publication_integrity.py
 tests/security/test_independent_review_boundaries.py
 ```
 
-The separate actual Windows gate is
-`tests/packaging/test_portable_entry_windows.py`. It requires Windows x64 /
+The separate actual Windows gates are
+`tests/packaging/test_portable_entry_windows.py` and
+`tests/security/test_activation_lifetime_windows.py`. They require Windows x64 /
 Python 3.11 and `CARR_NATIVE_LAUNCHER_DIR` pointing to the fresh exact-source
 `build_msvc.ps1` output. Missing native prerequisites fail that gate.
 
-Its thirteen cases exercise real pre-assignment and post-assignment parent death,
+The guardian module's fourteen cases exercise real pre-assignment and post-assignment parent death,
 assignment failure, unrelated Job/lease and missing/wrong-owner receipt refusal,
 live descendant termination, normal shutdown, stdin/argument preservation, and
 the compiled launcher's shared lease. A held cleanup barrier proves exclusive
 activation remains refused after the direct entry exits while a descendant is
 still live. An injected unconfirmed cleanup failure proves its durable veto
-remains after the guardian exits. The pre-admission cases record real site initialization and require it
+remains after the guardian exits. A post-create constructor-failure barrier keeps
+the veto even after the test independently observes that unadmitted child exit.
+The pre-admission cases record real site initialization and require it
 to remain absent. An unrelated process must survive owned-tree cleanup.
+
+The activation module's four cases use the actual production owner context and
+`_run_owned` with real synthetic installer/health descendants and held files.
+They cover acknowledged normal return, unconfirmed cleanup, post-create
+constructor failure and abrupt helper death. The exclusive-lease/veto assertions
+occur before the test waits for descendant exit.
 
 Run the portable source selection separately on Linux; the Windows-only module
 is not Linux execution evidence. Source and installed Windows gates must report

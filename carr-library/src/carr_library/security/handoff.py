@@ -21,13 +21,33 @@ import zipfile
 from .. import installation_lease as leases
 from ..portable_entry import (
     PORTABLE_CONTRACT, PORTABLE_MARKER, control_root, installed_ownership, managed_layout, portable_contract,
-    require_clean_owners,
+    require_clean_owners, _record_owner, _clear_owner,
 )
 from ._files import TrustError, directory, json_value, read_bytes
 from .installation import (
-    UpdateTransaction, WindowsBundleAdapter, _central_budget, _verified_snapshot,
+    ActivationCleanupError, UpdateTransaction, WindowsBundleAdapter, _central_budget, _verified_snapshot,
 )
 from .updates import _cancel, require_verified_package
+
+
+@contextmanager
+def _activation_owner(program, control):
+    """Keep a durable veto across all native children and program movements.
+
+    Call only while holding the installation lease exclusively. Normal Python
+    unwinding can clear the receipt only when each native launch/cleanup was
+    acknowledged. Abrupt helper death leaves it, as does uncertain child exit.
+    """
+    receipt = _record_owner(program, control)
+    confirmed = True
+    try:
+        yield
+    except ActivationCleanupError:
+        confirmed = False
+        raise
+    finally:
+        if confirmed:
+            _clear_owner(receipt)
 
 
 def _digest(value):
@@ -178,27 +198,28 @@ class PortableUpdateHandoff:
             with leases.installation_lease(control, exclusive=True):
                 require_clean_owners(self.program, control)
                 _cancel(cancelled)
-                if recovering:
-                    record, before, release = transaction._record()
-                    if release != package.release:
-                        raise TrustError('The recovery journal differs from the authenticated package.')
-                    if record['phase'] == 'complete':
-                        protected = self.anchor.load()
-                        if (protected.sequence != release.build or protected.digest != release.sha256
-                                or not adapter.health(self.program, release)):
-                            raise TrustError('The completed update no longer matches its protected state and health identity.')
-                    elif record['phase'] == 'rolled-back':
+                with _activation_owner(self.program, control):
+                    if recovering:
+                        record, before, release = transaction._record()
+                        if release != package.release:
+                            raise TrustError('The recovery journal differs from the authenticated package.')
+                        if record['phase'] == 'complete':
+                            protected = self.anchor.load()
+                            if (protected.sequence != release.build or protected.digest != release.sha256
+                                    or not adapter.health(self.program, release)):
+                                raise TrustError('The completed update no longer matches its protected state and health identity.')
+                        elif record['phase'] == 'rolled-back':
+                            raw = portable_contract(self.program)
+                            if self.anchor.load() != before or sha256(raw).hexdigest() != self.before:
+                                raise TrustError('The rolled-back installation differs from its protected original identity.')
+                            self.verify_bundle(self.program, manifest_bytes=raw)
+                            installed_ownership(self.program, raw)
+                    else:
                         raw = portable_contract(self.program)
-                        if self.anchor.load() != before or sha256(raw).hexdigest() != self.before:
-                            raise TrustError('The rolled-back installation differs from its protected original identity.')
-                        self.verify_bundle(self.program, manifest_bytes=raw)
+                        if sha256(raw).hexdigest() != self.before:
+                            raise TrustError('The installed portable source differs from its configured manifest identity.')
                         installed_ownership(self.program, raw)
-                else:
-                    raw = portable_contract(self.program)
-                    if sha256(raw).hexdigest() != self.before:
-                        raise TrustError('The installed portable source differs from its configured manifest identity.')
-                    installed_ownership(self.program, raw)
-                yield
+                    yield
 
         transaction = UpdateTransaction(self.app, self.program, self.work, self.policy,
                                         self.anchor, adapter, idle_lease=idle, clock=self.clock)

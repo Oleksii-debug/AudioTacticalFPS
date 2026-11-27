@@ -579,3 +579,57 @@ def test_unclean_owner_veto_leaves_interrupted_update_and_reader_drafts_unchange
     assert helper.recover(package) == 'rolled-back'
     assert (helper.program / 'version.txt').read_bytes() == b'A'
     assert_preserved(original)
+
+
+@pytest.mark.parametrize('phase', ['activate', 'health'])
+def test_unconfirmed_activation_child_cleanup_never_rolls_back_or_clears_owner(
+        ready, monkeypatch, phase):
+    helper, package, _manifest, _calls, original = ready
+    def uncertain(adapter, root, release):
+        assert root == helper.program
+        raise installation.ActivationCleanupError('Synthetic exact-child cleanup remains unconfirmed.')
+    monkeypatch.setattr(handoff._PinnedAdapter, phase, uncertain)
+    with pytest.raises(installation.ActivationCleanupError, match='cleanup remains unconfirmed'):
+        helper.apply(package)
+    journal = helper.work / 'activation.json'
+    raw = journal.read_bytes()
+    record = json.loads(raw)
+    assert record['phase'] == 'new-active'
+    assert (helper.program / 'version.txt').read_bytes() == b'B'
+    previous = helper.program.parent / record['previous']
+    assert (previous / 'version.txt').read_bytes() == b'A'
+    assert not (helper.work / record['failed']).exists()
+    assert (helper.work / record['backup']).is_dir()
+    assert helper.anchor.load().sequence == 1 and helper._completed is None
+    control = portable_entry.control_root(helper.program)
+    receipts = list(control.glob('owner-*.json'))
+    assert len(receipts) == 1
+    retained = receipts[0].read_bytes()
+    with leases.installation_lease(control, exclusive=True):
+        with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+            portable_entry.require_clean_owners(helper.program)
+    with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+        helper.recover(package)
+    assert journal.read_bytes() == raw
+    assert receipts[0].read_bytes() == retained
+    assert (helper.program / 'version.txt').read_bytes() == b'B'
+    assert (previous / 'version.txt').read_bytes() == b'A'
+    assert_preserved(original)
+
+
+def test_acknowledged_activation_error_rolls_back_and_releases_own_receipt(ready, monkeypatch):
+    helper, package, _manifest, _calls, original = ready
+    def failed_health(adapter, root, release):
+        return False  # All owned children have already completed cleanly.
+    monkeypatch.setattr(handoff._PinnedAdapter, 'health', failed_health)
+    with pytest.raises(TrustError, match='failed its health check'):
+        helper.apply(package)
+    record = json.loads((helper.work / 'activation.json').read_bytes())
+    assert record['phase'] == 'rolled-back'
+    assert (helper.program / 'version.txt').read_bytes() == b'A'
+    assert helper.anchor.load().sequence == 1 and helper._completed is None
+    control = portable_entry.control_root(helper.program)
+    with leases.installation_lease(control, exclusive=True):
+        portable_entry.require_clean_owners(helper.program)
+    assert not list(control.glob('owner-*.json'))
+    assert_preserved(original)

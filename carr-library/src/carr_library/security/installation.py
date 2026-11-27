@@ -27,6 +27,10 @@ from .anchors import Anchor, AnchorStore
 from .updates import Release, UpdatePolicy, VerifiedPackage, _cancel, relative_path, require_verified_package
 
 
+class ActivationCleanupError(TrustError):
+    """Native activation child exit is uncertain; do not move or roll back."""
+
+
 class BundleAdapter(Protocol):
     def verify(self, root: Path) -> None: ...
     def prepare(self, root: Path, release: Release) -> None: ...
@@ -222,18 +226,50 @@ def _run_owned(command, *, cwd, env, timeout):
         return subprocess.run(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=timeout)
     from ..audio.windows_process import WindowsJobProcess
-    process = WindowsJobProcess(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        process = WindowsJobProcess(command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except BaseException as error:
+        # A constructor may fail after native creation but before returning its
+        # exact handle. The external activation owner must retain its veto.
+        raise ActivationCleanupError(
+            'Native activation launch cleanup is unconfirmed. Preserve the program, '
+            'previous installation, backup and owner receipt for recovery.') from error
     try:
         return subprocess.CompletedProcess(command, process.wait(timeout=timeout))
     finally:
+        cleanup_error = None
         try:
-            process._carr_job.close()
+            process._carr_job.stop_and_wait(int(process._handle))
+        except BaseException as error:
+            cleanup_error = error
         finally:
             try:
-                process.wait(timeout=5)
+                process._carr_job.close()
+            except BaseException as error:
+                if cleanup_error is None:
+                    cleanup_error = error
             finally:
-                process._handle.Close()
+                try:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=5)
+                except BaseException as error:
+                    if cleanup_error is None:
+                        cleanup_error = error
+                finally:
+                    try:
+                        process._handle.Close()
+                    except BaseException as error:
+                        if cleanup_error is None:
+                            cleanup_error = error
+        if cleanup_error is not None:
+            # Asynchronous fallback Job termination is safety cleanup, never
+            # permission to displace an installation or clear the owner veto.
+            raise ActivationCleanupError(
+                'Native activation child cleanup is unconfirmed. No further '
+                'program movement or rollback is safe; preserve the owner receipt '
+                'and retained installation for recovery.') from cleanup_error
 
 
 class WindowsBundleAdapter:
@@ -484,6 +520,11 @@ class UpdateTransaction:
                     self._write(record, 'health-checked')
                     replacement = Anchor(release.build, release.sha256, max(before.max_utc, now))
                     self.anchor.compare_and_set(before, replacement)
+                except ActivationCleanupError:
+                    # A descendant may still hold or modify program files.
+                    # Keep the current journal/backup/previous paths untouched.
+                    # The external owner receipt also vetoes a later recovery.
+                    raise
                 except Exception:
                     # A committed anchor must never be rolled back after a
                     # final-journal write failure. Recover() can finalize it.

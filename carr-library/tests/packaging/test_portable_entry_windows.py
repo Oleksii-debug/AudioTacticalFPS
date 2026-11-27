@@ -84,6 +84,19 @@ if __name__ == '__main__':
                 raise TimeoutError('Synthetic unconfirmed Job cleanup')
             return original_cleanup(job, handle)
         windows_process._Job.stop_and_wait = cleanup
+    if mode == 'failed-spawn':
+        from carr_library import portable_entry
+        original_popen = subprocess.Popen
+        def failed_spawn(*args, **kwargs):
+            process = original_popen(*args, **kwargs)
+            write_json(root / 'admission-child.json', {'pid': process.pid})
+            deadline = time.monotonic() + 30
+            while not (root / 'release-assignment').exists():
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('Post-create failure barrier was not released')
+                time.sleep(.01)
+            raise OSError('Synthetic failure after native creation before Popen returned')
+        portable_entry.subprocess.Popen = failed_spawn
     wrong_job = wrong_lease = None
     if mode in ('wrong-job', 'wrong-lease', 'missing-receipt', 'wrong-receipt-owner'):
         import msvcrt
@@ -423,3 +436,36 @@ def test_exclusive_activation_never_uses_direct_child_exit_as_tree_cleanup(
                 assert api.WaitForSingleObject(handle, 10000) == 0
             finally:
                 api.CloseHandle(handle)
+
+
+def test_post_create_launch_failure_keeps_uncertain_owner_receipt(owned_fixture, tmp_path):
+    root, executable = owned_fixture
+    parent = subprocess.Popen([str(executable), '-I', '-B', '-m', 'carr_library',
+                               'failed-spawn', str(tmp_path)],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
+    api = handle = None
+    try:
+        child = json.loads(wait_file(tmp_path / 'admission-child.json', parent).read_bytes())['pid']
+        api, handle = process_handle(child)
+        assert api.WaitForSingleObject(handle, 0) == 258
+        assert not (tmp_path / ('site-' + str(child))).exists()
+        (tmp_path / 'release-assignment').touch()
+        _output, errors = parent.communicate(timeout=15)
+        assert parent.returncode == 1
+        assert b'failure after native creation' in errors
+        # The test can observe this process. The failed production Popen call
+        # never returned its handle, so production must retain uncertainty.
+        assert api.WaitForSingleObject(handle, 10000) == 0
+        assert not (tmp_path / ('site-' + str(child))).exists()
+        assert not (tmp_path / 'callback.json').exists()
+        control = portable_entry.control_root(root)
+        with leases.installation_lease(control, exclusive=True):
+            with pytest.raises(RuntimeError, match='did not confirm complete cleanup'):
+                portable_entry.require_clean_owners(root)
+        assert len(list(control.glob('owner-*.json'))) == 1
+    finally:
+        (tmp_path / 'release-assignment').touch()
+        stop(parent)
+        if handle is not None:
+            api.CloseHandle(handle)
