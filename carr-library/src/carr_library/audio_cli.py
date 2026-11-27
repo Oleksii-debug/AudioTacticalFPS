@@ -52,6 +52,18 @@ def validate_audio_arguments(args, parser):
         parser.error('Supply both --piper-executable and --piper-manifest.')
 
 
+def _render_library_root(selected):
+    """Use the same selected library for headless policy and reviewed profiles."""
+    from .audio.jobs import checked_directory
+    if selected is None:
+        from .preferences import selected_directory
+        selected = selected_directory()
+        if selected is None:
+            from platformdirs import user_data_path
+            selected = user_data_path('Universal Research Library', appauthor=False, roaming=False)
+    return checked_directory(selected, create=True)
+
+
 def run_audio(args, *, trust_controller=None):
     from .audio_batch_cli import requested as batch_requested, run as run_batch
     if batch_requested(args):
@@ -85,15 +97,21 @@ def run_audio(args, *, trust_controller=None):
     if not ffmpeg:
         raise RuntimeError('Select an installed local FFmpeg executable with --ffmpeg.')
     from .audio.jobs import RenderCancelled
+    from .operations import ResourceBroker, ResourceCancelled
     stopped = Event()
     previous = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
     try:
+        from .runtime_settings import EngineProfileStore
+        library_root = _render_library_root(getattr(args, 'data_dir', None))
+        broker = ResourceBroker.for_app(library_root, cancelled=stopped.is_set)
+        profiles = EngineProfileStore(library_root)
         result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
+            broker=broker, music_manifest_resolver=profiles.music_manifest,
             cancelled=stopped.is_set,
             on_status=lambda text: print(text, file=sys.stderr, flush=True),
             **({'trust_controller': trust_controller} if trust_controller is not None else {}))
-    except (RenderCancelled, InterruptedError) as exc:
+    except (RenderCancelled, ResourceCancelled, InterruptedError) as exc:
         print(json.dumps({'status': 'cancelled', 'message': str(exc),
             'resume': 'Run the same command; verified completed chunks will be reused.'},
             ensure_ascii=False, indent=2))

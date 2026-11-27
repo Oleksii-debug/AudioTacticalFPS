@@ -2243,6 +2243,28 @@
       "test_import_cannot_follow_a_replaced_library_root": 1,
       "test_native_review_rejects_a_hard_linked_export": 1,
       "test_native_review_refuses_invalid_inputs_before_any_import": 2
+    },
+    "tests.storage.test_provider_recovery": {
+      "test_complete_roundtrip_rebackup_keeps_history_without_restoring_active_authority": 4,
+      "test_changed_live_source_after_capture_refuses_complete_manifest": 2,
+      "test_appearing_previously_absent_source_is_not_silently_omitted": 2,
+      "test_rehashed_untrusted_recovery_data_never_becomes_valid_typed_state": 12,
+      "test_outer_manifest_rehash_cannot_hide_changed_snapshot_identity": 1,
+      "test_unreadable_existing_namespace_fails_instead_of_being_dropped": 3,
+      "test_active_or_orphan_journal_is_visible_refusal": 3,
+      "test_foreign_or_corrupt_live_ledger_never_runs_a_recovery_path": 4,
+      "test_historical_ledger_without_decoded_receipt_column_is_captured_read_only": 1,
+      "test_recovery_resource_limits_refuse_complete_backup": 5,
+      "test_cancelled_capture_never_publishes_a_complete_backup": 1,
+      "test_explicit_recovery_import_and_approved_history_export_use_existing_services": 1
+    },
+    "tests.e2e.test_audio_cli_resources": {
+      "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy": 2,
+      "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease": 1,
+      "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
+      "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
+      "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
+      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
     }
   },
   "installed": {
@@ -4418,6 +4440,28 @@
       "test_import_cannot_follow_a_replaced_library_root": 1,
       "test_native_review_rejects_a_hard_linked_export": 1,
       "test_native_review_refuses_invalid_inputs_before_any_import": 2
+    },
+    "tests.storage.test_provider_recovery": {
+      "test_complete_roundtrip_rebackup_keeps_history_without_restoring_active_authority": 4,
+      "test_changed_live_source_after_capture_refuses_complete_manifest": 2,
+      "test_appearing_previously_absent_source_is_not_silently_omitted": 2,
+      "test_rehashed_untrusted_recovery_data_never_becomes_valid_typed_state": 12,
+      "test_outer_manifest_rehash_cannot_hide_changed_snapshot_identity": 1,
+      "test_unreadable_existing_namespace_fails_instead_of_being_dropped": 3,
+      "test_active_or_orphan_journal_is_visible_refusal": 3,
+      "test_foreign_or_corrupt_live_ledger_never_runs_a_recovery_path": 4,
+      "test_historical_ledger_without_decoded_receipt_column_is_captured_read_only": 1,
+      "test_recovery_resource_limits_refuse_complete_backup": 5,
+      "test_cancelled_capture_never_publishes_a_complete_backup": 1,
+      "test_explicit_recovery_import_and_approved_history_export_use_existing_services": 1
+    },
+    "tests.e2e.test_audio_cli_resources": {
+      "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy": 2,
+      "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease": 1,
+      "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
+      "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
+      "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
+      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
     }
   },
   "native_trust": [

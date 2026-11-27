@@ -69,6 +69,7 @@ def test_real_completed_audio_replay_remains_accessible_and_fresh_work_is_denied
         add_audio_arguments(parser)
         args = parser.parse_args(['--audio-plan', str(plan_path), '--audio-output', str(root),
                                   '--ffmpeg', str(binary)])
+        args.data_dir = app.root
         def invoke(changed=False):
             selected = parse_script(plan.original_script + ('\nNew material.' if changed else ''),
                                     title=plan.title)

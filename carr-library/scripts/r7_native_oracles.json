@@ -846,5 +846,71 @@
         "measured_duration.source_pcm_sha256"
       ]
     ]
+  },
+  "provider-recovery": {
+    "probe": "scripts/windows_provider_recovery_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-provider-recovery-fixture"
+    ],
+    "subprocess_timeout_seconds": 180,
+    "modules": [
+      "carr_library.providers",
+      "carr_library.provider_recovery",
+      "carr_library.library_backup",
+      "carr_library.ui.api_connections",
+      "carr_library.ui.export_destination",
+      "carr_library.research.export_file"
+    ],
+    "probe_modules": [
+      "carr_library.providers",
+      "carr_library.provider_recovery",
+      "carr_library.library_backup",
+      "carr_library.ui.api_connections",
+      "carr_library.ui.export_destination",
+      "carr_library.research.export_file"
+    ],
+    "checks": {
+      "actual_complete_backup_retains_provider_record": 1,
+      "actual_complete_backup_verifies": 1,
+      "actual_restore_keeps_profiles_and_ledger_inactive": 1,
+      "actual_recovery_binds_exact_disconnected_settings": 1,
+      "actual_recovery_retains_exact_usage_states": 1,
+      "actual_recovery_contains_no_credential_reference": 1,
+      "native_import_action_named_and_available": 1,
+      "native_recovery_action_named_and_available": 1,
+      "native_import_keyboard_focus": 1,
+      "native_explicit_profile_import_completes": 1,
+      "native_duplicate_import_keeps_existing_accounts": 1,
+      "native_recovery_summary_is_readonly": 1,
+      "native_recovery_history_counts": 1,
+      "native_recovery_import_requires_confirmation": 1,
+      "native_recovered_settings_import_disconnected": 1,
+      "native_recovery_keeps_history_inactive": 1,
+      "native_history_export_preserves_exact_bytes": 1,
+      "native_all_storage_workers_settled": 1,
+      "actual_rebackup_preserves_prior_recovery_record": 1,
+      "actual_original_catalog_is_unchanged": 1,
+      "no_vault_or_provider_request_during_recovery": 1,
+      "native_selected_recovery_record_remains_immutable": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "actual_credential_vault": "NOT_USED",
+      "actual_remote_provider": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.disconnected_profiles": 2,
+      "metrics.recovered_history_operations": 2,
+      "metrics.recovery_records_after_rebackup": 2,
+      "metrics.provider_requests": 0,
+      "metrics.vault_calls": 0,
+      "metrics.explicit_import_confirmations": 4
+    }
   }
 }

@@ -620,7 +620,9 @@ jobs:
             'tests/ingest/test_import_publication_point.py',
             'tests/ui/test_operations_policy.py',
             'tests/e2e/test_provider_credential_echo.py',
-            'tests/e2e/test_provider_profile_import.py'
+            'tests/e2e/test_provider_profile_import.py',
+            'tests/storage/test_provider_recovery.py',
+            'tests/e2e/test_audio_cli_resources.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1227,6 +1229,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/r7_native_gate.py book-duration --report ci-results/full-bundle-book-duration-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py provider-recovery --report ci-results/full-bundle-provider-recovery-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $runInstalledTests = @'
           import ctypes, hashlib, json, os, pathlib, sys
           from ctypes import wintypes
@@ -1603,7 +1607,9 @@ jobs:
               'tests/ingest/test_import_publication_point.py',
               'tests/ui/test_operations_policy.py',
               'tests/e2e/test_provider_credential_echo.py',
-              'tests/e2e/test_provider_profile_import.py'
+              'tests/e2e/test_provider_profile_import.py',
+              'tests/storage/test_provider_recovery.py',
+              'tests/e2e/test_audio_cli_resources.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

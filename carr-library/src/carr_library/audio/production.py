@@ -455,6 +455,15 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
         from ..operations.admission import production_request
         if not isinstance(broker, ResourceBroker):
             raise TypeError('Use the shared typed local resource coordinator.')
+        if os.path.lexists(root / 'renders'):
+            # Recompute the exact current plan/input/runtime identity and verify
+            # every completed artifact before asking for fresh-work capacity.
+            previous = _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg,
+                cancelled=cancelled, on_status=on_status,
+                music_manifest_resolver=music_manifest_resolver,
+                trust_controller=trust_controller, existing_only=True)
+            if previous is not None:
+                return previous
         models, devices, sounds = {}, [], {}
         for scene in plan.scenes:
             cue = scene.music
@@ -497,10 +506,12 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
 
 
 def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None,
-                   trust_controller=None):
-    cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
-                       budget_root=root)
-    cache.reserve(0)
+                   trust_controller=None, existing_only=False):
+    cache = None
+    if not existing_only:
+        cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
+                           budget_root=root)
+        cache.reserve(0)
     requested_cancelled, last_budget_check = cancelled, 0.0
 
     def guarded_cancelled():
@@ -513,7 +524,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
             cache.reserve(0)
         return False
 
-    cancelled = guarded_cancelled
+    if not existing_only:
+        cancelled = guarded_cancelled
     roles = {role.name: role for role in plan.roles}
     identities = {}
     used_roles = {event.role for scene in plan.scenes for event in scene.events if isinstance(event, Line)}
@@ -565,7 +577,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
         from .mastering import MASTER_REVISION
         run_settings['master_revision'] = MASTER_REVISION
     run_key = digest(run_settings)
-    renders = checked_directory(root / 'renders', create=True)
+    renders = checked_directory(root / 'renders', create=not existing_only)
     output_dir = renders / run_key
     if output_dir.is_symlink():
         raise ValueError('Unsafe existing output directory.')
@@ -590,6 +602,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 'message': 'Verified previously published production.'})
             on_status('This exact production is already complete; verified its output checksums.')
             return _public_result(previous, output_dir)
+    if existing_only:
+        return None
     from ..security.admission import admit_new_operation
     authorization = admit_new_operation(trust_controller, 'audio.render')
     # Exact completed outputs above remain readable without a new grant. Keep

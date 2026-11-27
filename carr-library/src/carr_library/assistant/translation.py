@@ -38,7 +38,7 @@ def _cache_schema(profile):
 def translation_approval(profile, value, source, target, budget_micros, *, glossary=''):
     """Only call after the user reviews these exact data and integer USD bound."""
     if not isinstance(profile, ProviderProfile) or profile.provider not in TRANSLATION_PROVIDERS:
-        raise ValueError('Choose an installed translation adapter and an explicit connection profile.')
+        raise ValueError('Choose an installed translation adapter and an explicit translation profile.')
     local = profile.provider == LOCAL_TRANSLATION_PROVIDER
     if local and (type(budget_micros) is not int or budget_micros != 0):
         raise ValueError('The local translator requires an explicit zero remote reservation.')
@@ -113,7 +113,7 @@ class TranslationService:
 
     def _current_profile(self, profile):
         if not isinstance(profile, ProviderProfile) or profile.provider not in TRANSLATION_PROVIDERS:
-            raise ValueError('Choose an installed translation adapter and an explicit connection profile.')
+            raise ValueError('Choose an installed translation adapter and an explicit translation profile.')
         current = next((item for item in self.available_profiles() if item.id == profile.id), None)
         if (current is None or current.fingerprint != profile.fingerprint
                 or (not current.local and not current.credential_ref)):

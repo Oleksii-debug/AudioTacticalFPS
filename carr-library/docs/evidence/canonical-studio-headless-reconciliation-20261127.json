@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "status": "BOUNDED_SOURCE_REVIEW_WITH_REQUIRED_HEADLESS_REPAIR_NOT_RUN",
+  "canonical": {
+    "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "tree": "5fc67a0d9a0ab18fb0662bb01e027d29d83af72f",
+    "source_blobs": {
+      "studio/project.py": "1acf68727fdaadd14055d357e28f2eb140ab2a52",
+      "studio/render.py": "0c05eebaa029d43bf83bdd35ec0de36a93edd198",
+      "studio/cli.py": "714af31ab62055f24ecbd04b0c8c95a202195d98",
+      "audio/dsp.py": "d33bc8d32751794fa24b7cf2ffa9c7e26b38e351",
+      "audio/process.py": "c05538de93ec0b5a85f2955ca0d2b58670d7a186",
+      "audio_runtime.py": "23b08b9f4d50f67c7216156869a4e41b3dde65cb"
+    }
+  },
+  "current": {
+    "commit": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
+    "tree": "b630c0289e6d5579ea76a585db0e8e6bec28b73f",
+    "reviewed_source_blobs": {
+      "audio/production.py": "e5a86cbb95076356d16c3dd51823e8b10e47611c",
+      "audio/models.py": "9f57f54b1596dd532f7d1cacfea374003eb33579",
+      "audio/ffmpeg.py": "18f517b994cd96c876f0d3f57f484038de75cd86",
+      "audio/recording_process.py": "d1f78ee864868f6d12cc9d19b567744ee22f745e",
+      "audio/runtime.py": "4b8dd520d74375e3d9e43303fe971d5236ed44e6",
+      "audio/legacy_project.py": "eb7d5a5858c63273e629461e40441a2f243d34d2",
+      "audio/mastering.py": "b9fc49a299cb85616f255d7bd5fbbc30558a5fc5",
+      "audio/effect_editing.py": "2697282ccd4beb36414c52202d51c795af2fbdb4",
+      "audio_cli.py": "a3f7507f8b6952b260a2896f3933ab2d2d654aef"
+    }
+  },
+  "feature_mapping": [
+    {
+      "canonical": "studio/project.py typed roles/scenes/lines/cues/minimum duration, immutable original, revision",
+      "current": "audio.models ProductionPlan/Role/Line/Pause/MusicCue/Clip/Scene plus reader.narration saved projects and audio.legacy_project explicit reviewed import",
+      "finding": "Current product carries independent immutable originals and saved revisions; reviewed canonical JSON fields are mapped and independently retained. Unsupported old installed-music selections require explicit current profile selection; old executable paths do not become authority."
+    },
+    {
+      "canonical": "studio/render.py durable nodes, runtime identity, reusable completed chunks, measured chapter/stem/subtitle output, cancel/resume",
+      "current": "audio.production render_project, ChunkCache, render-journal, immutable run key, measured timeline, typed current audio batch queue",
+      "finding": "Current implementation already provides these behaviors with exact source/runtime/artifact verification. State names/locations are represented by the current journal and batch queue, without copying the alternative job store or treating old active jobs as current approvals."
+    },
+    {
+      "canonical": "audio/dsp.py typed FFmpeg controls, mixing, ducking, measurement, conversion and music",
+      "current": "audio.models/effect_editing/ffmpeg/mastering/clip_audio/clip_consolidation/media_conversion/music/publishing/book_duration",
+      "finding": "All 21 named canonical effect kinds are present; current parameter defaults/ranges and validated timing rules remain. Current retained clips, explicit music profiles, sample intervals, 10 output formats and typed publication cover the required operations. No alternative DSP runtime is required."
+    },
+    {
+      "canonical": "audio/process.py bounded child and no-overwrite publication",
+      "current": "audio.engines/recording_process/windows_process/cleanup plus audio.jobs and no-replace publishers",
+      "finding": "Preserve the current descendant ownership and retained cleanup/reservation family, including the new expected copied SHA256 publication contract. Do not replace it with the older process supervisor."
+    },
+    {
+      "canonical": "audio_runtime.py reviewed optional sealed runtime",
+      "current": "audio.runtime fixed reviewed FFmpeg archive/inventory and current bundle build/source-wheel gate",
+      "finding": "Both provide explicit or sealed local runtime selection without product downloads. Preserve the current archive provenance, exact inventory and source-bound gate; no alternate runtime tree or PATH activation is introduced."
+    },
+    {
+      "canonical": "studio/cli.py uses the same shared policy and machine music settings as GUI",
+      "current": "audio_cli previously called render_project without broker or music profile resolver",
+      "finding": "Concrete required gap repaired by passing ResourceBroker.for_app for the explicitly selected/remembered/default library and the same EngineProfileStore.music_manifest resolver used by the desktop."
+    }
+  ],
+  "repair": {
+    "paths": [
+      "src/carr_library/audio_cli.py",
+      "src/carr_library/audio/production.py"
+    ],
+    "behavior": [
+      "Preview and voice inventory return before creating application resource/profile state.",
+      "Fresh headless production uses the exact selected library's existing resource policy; cancellation still returns 130 and restores the prior SIGINT handler.",
+      "Music model references are registered profile IDs in that library, reverified after resource waiting; project paths and PATH lookups cannot select a music installation.",
+      "When a completed render directory exists, recompute the full current run identity and verify all artifact hashes under the existing project lock before requesting fresh capacity. This read/replay path creates no ChunkCache and cannot reach rendering/quarantine/new-job code.",
+      "A changed or absent completed result falls through to the existing resource reservation and actual renderer; completed replay is permitted while other CPU/RAM capacity is occupied."
+    ],
+    "new_tests": "tests.e2e.test_audio_cli_resources",
+    "new_cases": 9,
+    "oracle": {
+      "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy": 2,
+      "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease": 1,
+      "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
+      "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
+      "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
+      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+    },
+    "existing_fixture_changes": "Existing audio CLI render/signal/security fixtures now use explicit temporary data-dir; their cases and assertions are retained.",
+    "runtime_status": "NOT_RUN"
+  },
+  "limits": [
+    "This is a bounded source comparison of six canonical modules, not a claim that every historical canonical API or file path is identical.",
+    "New production and CLI behavior requires exact source/installed CI execution.",
+    "Actual native device, voice quality and paid services are not established by this source review."
+  ]
+}

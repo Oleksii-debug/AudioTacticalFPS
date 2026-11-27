@@ -51,6 +51,12 @@ from .legacy_transcription import (
     snapshot_guard as _legacy_asr_guard, capture_live as _capture_legacy_asr,
     check_live as _check_legacy_asr, snapshot_entries as _legacy_asr_entries,
 )
+from .provider_recovery import (
+    is_state_path as _provider_recovery_path, state_limit as _provider_recovery_limit,
+    state_paths as _provider_recovery_files, validate_state_tree as _validate_provider_recovery,
+    capture_live as _capture_provider_recovery, snapshot_entries as _provider_recovery_entries,
+    check_live as _check_provider_recovery,
+)
 from .operations.policy_backup import (
     MAX_BYTES as MAX_RESOURCE_POLICY,
     is_state_path as _resource_policy_path, state_paths as _resource_policy_files,
@@ -397,7 +403,8 @@ def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value) or _legacy_asr_path(value)
             or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
-            or _recording_path(value) or _audio_batch_path(value) or _playback_queue_path(value)):
+            or _recording_path(value) or _audio_batch_path(value) or _playback_queue_path(value)
+            or _provider_recovery_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -480,6 +487,7 @@ def _sidecar_info(root, relative):
              _recording_adapter().state_limit(relative) if _recording_path(relative) else
              _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else
              _playback_queue_adapter().state_limit(relative) if _playback_queue_path(relative) else
+             _provider_recovery_limit(relative) if _provider_recovery_path(relative) else
              _legacy_asr_limit(relative) if _legacy_asr_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
@@ -786,6 +794,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         add(path)
     for path in _playback_queue_files(root, cancelled=cancelled):
         add(path)
+    for path in _provider_recovery_files(root, cancelled=cancelled):
+        add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
             add(path)
@@ -967,18 +977,24 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_recordings(app.root, cancelled=cancelled)
                 _validate_audio_batches(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_playback_queue(app.root, cancelled=cancelled)
+                _validate_provider_recovery(app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)
+            provider_recovery = _capture_provider_recovery(app.root, stage / SIDECARS, cancelled=cancelled)
             retained = {row['path']: row for row in sidecars}
             for row in _legacy_asr_entries(stage / SIDECARS, legacy_asr):
                 previous = retained.setdefault(row['path'], row)
                 if previous != row:
                     raise RestoreError('Conflicting historical transcription archive.')
+            for row in _provider_recovery_entries(provider_recovery):
+                previous = retained.setdefault(row['path'], row)
+                if previous != row:
+                    raise RestoreError('Conflicting passive provider recovery snapshot.')
             sidecars = list(retained.values())
             if (len(sidecars) > max_sidecar_files
                     or sum(row['size_bytes'] for row in sidecars) > max_sidecar_bytes):
-                raise RestoreError('Historical transcription exceeds the complete-backup budget.')
+                raise RestoreError('Retained recovery state exceeds the complete-backup budget.')
             with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 _validate_legacy_asr(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
             # Bind the copied ASR state to this exact catalog before publishing
@@ -993,6 +1009,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                     _validate_audio_batches(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
             if any(_playback_queue_path(entry['path']) for entry in sidecars):
                 _validate_playback_queue(stage / SIDECARS, cancelled=cancelled)
+            if any(_provider_recovery_path(entry['path']) for entry in sidecars):
+                _validate_provider_recovery(stage / SIDECARS, cancelled=cancelled)
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
             check_projects()
@@ -1029,6 +1047,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 raise RestoreError('Reading/audio state changed during final backup verification.')
             check_projects()
             _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)
+            _check_provider_recovery(app.root, provider_recovery, cancelled=cancelled)
             managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
             manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
@@ -1372,6 +1391,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_recordings(checked_root, cancelled=cancelled)
             _validate_audio_batches(storage.db, checked_root, cancelled=cancelled)
             _validate_playback_queue(checked_root, cancelled=cancelled)
+            _validate_provider_recovery(checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,

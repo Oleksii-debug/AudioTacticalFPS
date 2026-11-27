@@ -60,6 +60,21 @@ class ConnectionsController:
             raise ProviderError('The selected library changed. Reopen connection settings before importing.')
         return self.store.import_profiles(raw)
 
+    def review_recovery(self, path, *, cancelled=lambda: False):
+        from ..provider_recovery import read_record
+        return read_record(Path(path).absolute(), cancelled=cancelled)
+
+    def import_recovery(self, raw, *, approved=False):
+        from ..provider_recovery import decode, profile_export
+        return self.import_profiles(profile_export(decode(raw)), approved=approved)
+
+    def export_recovery(self, raw, path, *, approval=None, cancelled=lambda: False):
+        from ..provider_recovery import decode
+        from ..research.export_file import write_export
+        decode(raw)
+        return write_export(path, raw.decode('utf-8'), private_root=self.root,
+                            approval=approval, require_absent=approval is None, cancelled=cancelled)
+
     def run(self, profile, request, output, *, approved=False, estimate_micros=None,
             cancelled=lambda: False):
         if approved is not True:
@@ -127,7 +142,8 @@ def show_api_connections(frame):
                     (('&Add profile', self.add), ('&Edit profile', self.edit),
                      ('&Remove profile and key', self.remove)),
                     (('&Export profiles', self.export), ('&Import profiles', self.import_profiles),
-                     ('Run a re&viewed task', self.run))):
+                     ('Run a re&viewed task', self.run)),
+                    (('Reco&ver saved provider settings', self.recover_profiles),)):
                 buttons = wx.BoxSizer(wx.HORIZONTAL)
                 for label, action in actions:
                     button = wx.Button(self, label=label)
@@ -334,6 +350,22 @@ def show_api_connections(frame):
                 self.status.SetValue(str(exc))
                 self.status.SetFocus()
 
+        def recover_profiles(self, event):
+            from ..provider_recovery import DIRECTORY
+            dialog = wx.FileDialog(self, 'Select passive provider recovery record',
+                defaultDir=str(controller.root / DIRECTORY),
+                wildcard='JSON files (*.json)|*.json', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+            try:
+                if dialog.ShowModal() != wx.ID_OK:
+                    return
+                path = Path(dialog.GetPath())
+            finally:
+                dialog.Destroy()
+            self.EndModal(wx.ID_OK)
+            frame.run_job('Reviewing saved provider settings and usage history',
+                lambda: controller.review_recovery(path, cancelled=frame.cancel_event.is_set),
+                done=lambda result: show_provider_recovery(frame, controller, result, library=library))
+
         def export(self, event):
             dialog = wx.FileDialog(self, 'Export profiles without API keys', wildcard='JSON files (*.json)|*.json', style=wx.FD_SAVE)
             try:
@@ -402,6 +434,98 @@ def show_api_connections(frame):
                 self.status.SetFocus()
 
     dialog = Dialog()
+    try:
+        dialog.ShowModal()
+    finally:
+        dialog.Destroy()
+
+
+def show_provider_recovery(frame, controller, captured, *, library):
+    """Inspect inert recovery data; importing still needs a new explicit review."""
+    if getattr(frame, '_closing', False) or frame.library is not library:
+        frame.report('The selected library changed. Reopen connection settings to review recovered data.')
+        return
+    import wx
+    from ..provider_recovery import describe, profile_export
+    from ..research.export_file import export_completion
+    from .export_destination import approve_export_destination
+    raw, value = captured
+    settings = profile_export(value)
+    selected = decode_profile_import(settings)
+
+    class RecoveryDialog(wx.Dialog):
+        def __init__(self):
+            super().__init__(frame, title='Recovered provider settings and usage history', size=(760, 540))
+            layout = wx.BoxSizer(wx.VERTICAL)
+            text = describe(value)
+            if selected:
+                text += '\n\nAccounts:\n' + '\n'.join(
+                    row.name + ' — ' + row.provider for row in selected[:20])
+                if len(selected) > 20:
+                    text += '\n... and ' + str(len(selected) - 20) + ' more.'
+            self.status = wx.TextCtrl(self, value=text, style=wx.TE_MULTILINE | wx.TE_READONLY)
+            self.status.SetName('Passive provider settings and usage history; no restored authority')
+            layout.Add(self.status, 1, wx.EXPAND | wx.ALL, 8)
+            actions = wx.BoxSizer(wx.HORIZONTAL)
+            for label, action in (('&Import recovered settings', self.import_settings),
+                                  ('&Export recovery history', self.export_history)):
+                button = wx.Button(self, label=label)
+                button.SetName(label.replace('&', ''))
+                button.Bind(wx.EVT_BUTTON, action)
+                button.Enable(bool(selected) if action == self.import_settings else True)
+                actions.Add(button, 0, wx.ALL, 4)
+            layout.Add(actions, 0, wx.EXPAND)
+            layout.Add(self.CreateButtonSizer(wx.CLOSE), 0, wx.ALL, 8)
+            self.Bind(wx.EVT_BUTTON, lambda event: self.EndModal(wx.ID_CLOSE), id=wx.ID_CLOSE)
+            self.SetSizer(layout)
+
+        def current(self):
+            if getattr(frame, '_closing', False) or frame.library is not library:
+                raise ProviderError('The selected library changed. Review recovery again in the current library.')
+
+        def import_settings(self, event):
+            try:
+                self.current()
+                if wx.MessageBox('Import ' + str(len(selected)) + ' disconnected account settings? '
+                        'Existing accounts are never replaced. Keys and prior approvals are not restored. '
+                        'No request will be sent.',
+                        'Review recovered provider settings', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
+                    return
+                self.current()
+                imported = controller.import_recovery(raw, approved=True)
+                self.status.AppendText('\n\nImported ' + str(len(imported)) +
+                    ' disconnected account settings. Reconnect remote accounts and review new tasks separately.')
+            except Exception as exc:
+                self.status.AppendText('\n\n' + str(exc))
+                self.status.SetFocus()
+
+        def export_history(self, event):
+            try:
+                self.current()
+                dialog = wx.FileDialog(self, 'Export passive provider recovery history',
+                    defaultFile='provider-recovery.json', wildcard='JSON files (*.json)|*.json',
+                    style=wx.FD_SAVE)
+                try:
+                    if dialog.ShowModal() != wx.ID_OK:
+                        return
+                    target = Path(dialog.GetPath())
+                finally:
+                    dialog.Destroy()
+                approval = approve_export_destination(self, target, private_root=controller.root)
+                if approval is None:
+                    return
+                self.current()
+                self.EndModal(wx.ID_OK)
+                frame.run_job('Exporting passive provider recovery history',
+                    lambda: controller.export_recovery(raw, target, approval=approval,
+                        cancelled=frame.cancel_event.is_set),
+                    done=lambda receipt: frame.report(export_completion(
+                        'Passive provider recovery history exported.', receipt)))
+            except Exception as exc:
+                self.status.AppendText('\n\n' + str(exc))
+                self.status.SetFocus()
+
+    dialog = RecoveryDialog()
     try:
         dialog.ShowModal()
     finally:

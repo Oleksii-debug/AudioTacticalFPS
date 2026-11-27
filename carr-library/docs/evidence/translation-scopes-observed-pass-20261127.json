@@ -39,8 +39,8 @@
       "installed_cases": 268,
       "native_flows": 4
     },
-    "individual_case_gate_and_module_origin_hashes": "Present in the retained artifact and required by the successful strict helper; not exposed by the decoded console summary, so individual values are not reproduced here.",
-    "independent_zip_readback": "PENDING_FIXED_PROVENANCE_DIAGNOSTIC"
+    "individual_case_gate_and_module_origin_hashes": "Read and retained below from the exact artifact; per-function counts independently equal the frozen eight-suite oracle.",
+    "independent_zip_readback": "PASS_FIXED_PROVENANCE_INERT_READER"
   },
   "preserved_requirements": {
     "existing_cases": 215,
@@ -50,5 +50,620 @@
     "no_quotation_attestation": true,
     "vault_and_runtime_cleanup_required": true
   },
-  "limits": "This observes the exact f0cb candidate only. It is not evidence for later added local-translation behavior or a later composed head. Historical a68 timeout and ac477 fixture/approval failures remain documented."
+  "limits": "This observes the exact f0cb candidate only. It is not evidence for later added local-translation behavior or a later composed head. Historical a68 timeout and ac477 fixture/approval failures remain documented.",
+  "independent_readback": {
+    "reader_commit": "af4873668f15189b8f8c0a99387e3cd776de8927",
+    "run_id": 46016045250,
+    "job_id": 140563306141,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46016045250/job/140563306141",
+    "status": "PASS",
+    "method": "Existing bounded inert ZIP reader checked fixed source run/head/artifact SHA256 and printed bounded JSON plus parsed XML. No archive content was executed.",
+    "artifact": {
+      "run": 46009379630,
+      "commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
+      "id": 15205168290,
+      "sha256": "d97b44b8fbd128e4e530b598a637f30b15f41817e39be0bd1c97ab8d97a0ecb7",
+      "kind": "translation-qualified",
+      "bytes": 4507548,
+      "name": "carr-translation-scopes-f0cbcca8200fcb0a3ab438e00337ee1583c6d48f"
+    },
+    "selected_member_hashes": [
+      {
+        "name": "before-execution.json",
+        "bytes": 39377,
+        "sha256": "fa29fcc5921a4ddb775175b3b9cf8555e099a02a7663dca0cd13176abadc7b95"
+      },
+      {
+        "name": "installed-junit.xml",
+        "bytes": 40559,
+        "sha256": "c76d7fdf62797eb80cafa5ff9bb1fdbb3f4322cb4a1ab4456d450fb7d0281713"
+      },
+      {
+        "name": "installed-origins.json",
+        "bytes": 466,
+        "sha256": "bd0413c84b95ce3075634e723ed08fca1545cbf845e5abf836df6bf51e42529c"
+      },
+      {
+        "name": "native-batch.json",
+        "bytes": 3874,
+        "sha256": "fa63f7c44260b9e6d362bf1d7bf8a906a38b7b54e13b5f38c6e8eb2ac0983cd6"
+      },
+      {
+        "name": "native-chapter.json",
+        "bytes": 3876,
+        "sha256": "e3c07d54aa6b0fbea7b27ad1390dbb52b69d452ad05619760acb42704da4eb9a"
+      },
+      {
+        "name": "native-document.json",
+        "bytes": 3877,
+        "sha256": "89bd9de518b1b452928c2766c42381e865b71bcd8453c81b6ac6c3d5e1fae4d2"
+      },
+      {
+        "name": "native-selected-advanced.json",
+        "bytes": 1155,
+        "sha256": "cd895fe4bb41378404006629aca468e236ff24cdb28cd013f99f4f85fccdf38c"
+      },
+      {
+        "name": "source-junit.xml",
+        "bytes": 40559,
+        "sha256": "c3075f951a4e5ea5fa2983cd665a66c152daede07b7f6b80fbba324416edfaa3"
+      },
+      {
+        "name": "source-origins.json",
+        "bytes": 418,
+        "sha256": "9cf0c6f98f68730018062b2bbaf0b69792aa4938b81958555927f6f14c759dcc"
+      },
+      {
+        "name": "source-provenance.json",
+        "bytes": 445,
+        "sha256": "e530b8e571c9742d88297bcdc3bc18090dd7a38df909828aee54ff17487b0aab"
+      },
+      {
+        "name": "translation-scope-gate.json",
+        "bytes": 74846,
+        "sha256": "ad98267c030ba473c5931e9ebbdec3c96fc2f7d93ea36856f71903d3f6e857a9"
+      }
+    ],
+    "junit": [
+      {
+        "artifact": 15205168290,
+        "file": "installed-junit.xml",
+        "cases": 268,
+        "failures": 0,
+        "errors": 0,
+        "skips": 0,
+        "function_counter": {
+          "tests.assistant.test_translation::test_accepted_chunks_survive_restart_and_never_rebill": 1,
+          "tests.assistant.test_translation::test_chunking_and_integer_allocations_preserve_all_unicode": 1,
+          "tests.assistant.test_translation::test_complete_restored_derivative_exports_offline_without_rebinding": 1,
+          "tests.assistant.test_translation::test_completed_translation_requires_independent_decoded_ledger_evidence": 5,
+          "tests.assistant.test_translation::test_export_is_new_source_pinned_narration_derivative": 1,
+          "tests.assistant.test_translation::test_export_restores_source_chunk_separators_without_rewriting_receipts": 4,
+          "tests.assistant.test_translation::test_failed_intent_publication_sends_no_request": 1,
+          "tests.assistant.test_translation::test_forged_state_is_rejected_before_resume_or_backup": 8,
+          "tests.assistant.test_translation::test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof": 1,
+          "tests.assistant.test_translation::test_known_unsent_pause_can_resume_exact_call": 1,
+          "tests.assistant.test_translation::test_live_binding_changes_revoke_saved_remote_permission": 4,
+          "tests.assistant.test_translation::test_lost_paid_output_checkpoint_blocks_rebilling": 1,
+          "tests.assistant.test_translation::test_opening_preview_and_submit_never_send_selected_text": 1,
+          "tests.assistant.test_translation::test_preview_requires_exact_profile_language_inventory": 1,
+          "tests.assistant.test_translation::test_pure_snapshot_validation_and_same_owner_lock_reuse": 1,
+          "tests.assistant.test_translation::test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls": 1,
+          "tests.assistant.test_translation::test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history": 1,
+          "tests.assistant.test_translation::test_snapshot_cannot_borrow_another_threads_live_job_guard": 1,
+          "tests.assistant.test_translation::test_snapshot_rejects_unknown_files_and_traversal": 1,
+          "tests.assistant.test_translation::test_submit_cannot_expand_reviewed_authority": 7,
+          "tests.assistant.test_translation::test_supported_pair_is_required_before_job_creation": 3,
+          "tests.assistant.test_translation::test_translation_connection_paths_use_the_same_safe_canonical_library": 2,
+          "tests.assistant.test_translation::test_translation_safe_path_binding_refuses_foreign_and_linked_connections": 8,
+          "tests.assistant.test_translation::test_typed_translation_never_writes_generic_assistant_checkpoint": 1,
+          "tests.assistant.test_translation::test_typed_translation_rejects_invalid_decoded_receipt_before_backup": 2,
+          "tests.assistant.test_translation::test_uncertain_charge_survives_restart_without_automatic_retry": 1,
+          "tests.assistant.test_translation::test_unknown_pending_intent_without_ledger_never_restarts_silently": 1,
+          "tests.assistant.test_translation::test_whitespace_chunks_are_preserved_without_billable_requests": 1,
+          "tests.assistant.test_translation::test_windows_native_short_path_connections_bind_the_same_real_library": 1,
+          "tests.assistant.test_translation_advanced::test_advanced_decoded_result_cannot_diverge_from_live_ledger": 4,
+          "tests.assistant.test_translation_advanced::test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace": 1,
+          "tests.assistant.test_translation_advanced::test_cache_cannot_keep_old_fingerprint_but_change_project": 1,
+          "tests.assistant.test_translation_advanced::test_complete_backup_restore_exports_offline_and_pending_permission_stays_old": 1,
+          "tests.assistant.test_translation_advanced::test_directional_inventory_is_not_expanded_by_preview": 3,
+          "tests.assistant.test_translation_advanced::test_job_versions_cannot_smuggle_or_rebind_accepted_advanced_results": 6,
+          "tests.assistant.test_translation_advanced::test_new_schema_preserves_immutable_source_and_old_namespace": 1,
+          "tests.assistant.test_translation_advanced::test_paused_accepted_chunks_survive_exact_token_renewal_without_rebilling": 1,
+          "tests.assistant.test_translation_advanced::test_replacing_account_cannot_reuse_a_queued_remote_approval": 1,
+          "tests.assistant.test_translation_advanced::test_uncertain_request_is_attention_and_never_resubmitted": 1,
+          "tests.assistant.test_translation_advanced::test_whitespace_has_no_false_model_or_glossary_receipt": 1,
+          "tests.assistant.test_translation_scopes::test_actual_epub_chapter_keeps_declared_headings_and_excludes_unselected_chapter": 1,
+          "tests.assistant.test_translation_scopes::test_archived_scope_revokes_saved_remote_transfer_before_send": 1,
+          "tests.assistant.test_translation_scopes::test_batch_preview_has_exact_per_document_and_block_prices_without_network": 1,
+          "tests.assistant.test_translation_scopes::test_cancelled_capture_never_opens_an_original": 1,
+          "tests.assistant.test_translation_scopes::test_character_preflight_refuses_before_materializing_source_pages": 1,
+          "tests.assistant.test_translation_scopes::test_child_rebinding_is_rejected_by_typed_backup_and_resume": 4,
+          "tests.assistant.test_translation_scopes::test_complete_derivative_preserves_bilingual_blocks_headings_and_safe_html": 1,
+          "tests.assistant.test_translation_scopes::test_destination_is_rejected_before_reading_derived_source": 1,
+          "tests.assistant.test_translation_scopes::test_document_selection_retains_empty_sections_unicode_locators_and_source_order": 1,
+          "tests.assistant.test_translation_scopes::test_foreign_workspace_is_refused_before_original_access": 1,
+          "tests.assistant.test_translation_scopes::test_incomplete_or_cancelled_export_has_no_complete_marker": 1,
+          "tests.assistant.test_translation_scopes::test_no_inferred_chapter_from_an_unstructured_text_page": 3,
+          "tests.assistant.test_translation_scopes::test_original_drift_invalidates_review_before_any_provider_request": 1,
+          "tests.assistant.test_translation_scopes::test_overlapping_batch_documents_are_rejected_before_any_approval": 1,
+          "tests.assistant.test_translation_scopes::test_partial_child_preparation_is_durable_but_cannot_recreate_missing_jobs": 1,
+          "tests.assistant.test_translation_scopes::test_preview_cost_above_an_item_reservation_blocks_approval": 1,
+          "tests.assistant.test_translation_scopes::test_removed_approved_child_is_not_recreated_or_rebilled": 1,
+          "tests.assistant.test_translation_scopes::test_reviewed_manifest_cannot_expand_transfer_or_price_authority": 5,
+          "tests.assistant.test_translation_scopes::test_saved_scope_pause_restart_and_complete_resume_never_rebill_accepted_children": 1,
+          "tests.assistant.test_translation_scopes::test_scope_and_child_native_locks_share_existing_snapshot_protocol": 1,
+          "tests.assistant.test_translation_scopes::test_scope_reuses_both_existing_google_job_versions": 2,
+          "tests.assistant.test_translation_scopes::test_typed_backup_restores_passive_structure_without_rebinding_remote_permission": 1,
+          "tests.assistant.test_translation_scopes::test_typed_selection_rejects_source_or_structure_forgery": 8,
+          "tests.assistant.test_translation_scopes::test_uncertain_paid_child_blocks_every_later_item_and_never_retries": 1,
+          "tests.e2e.test_google_translation_gateway::test_changed_request_cannot_borrow_prior_approval": 3,
+          "tests.e2e.test_google_translation_gateway::test_default_local_only_rejects_before_vault_or_transport": 1,
+          "tests.e2e.test_google_translation_gateway::test_direct_get_route_is_not_general_url_capability": 3,
+          "tests.e2e.test_google_translation_gateway::test_direct_language_transport_keeps_tls_and_exact_get_authority": 1,
+          "tests.e2e.test_google_translation_gateway::test_existing_provider_request_hash_is_backward_compatible": 1,
+          "tests.e2e.test_google_translation_gateway::test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_proof": 1,
+          "tests.e2e.test_google_translation_gateway::test_gateway_binds_decoded_translation_and_language_in_live_ledger": 2,
+          "tests.e2e.test_google_translation_gateway::test_known_unsent_cancellation_reuses_only_exact_original_reservation": 1,
+          "tests.e2e.test_google_translation_gateway::test_language_query_sends_no_selected_text_and_key_is_header_only": 1,
+          "tests.e2e.test_google_translation_gateway::test_malformed_responses_are_uncertain_and_not_displayed": 6,
+          "tests.e2e.test_google_translation_gateway::test_profile_pins_official_v2_authority": 10,
+          "tests.e2e.test_google_translation_gateway::test_reflected_credentials_never_become_results_or_receipts": 10,
+          "tests.e2e.test_google_translation_gateway::test_request_rejects_unbounded_or_ambiguous_inputs": 7,
+          "tests.e2e.test_google_translation_gateway::test_translation_uses_exact_plaintext_pair_and_model": 1,
+          "tests.e2e.test_google_translation_v3::test_basic_v2_request_and_profile_hash_contract_stays_exact": 1,
+          "tests.e2e.test_google_translation_v3::test_changed_account_or_profile_requires_new_authority": 1,
+          "tests.e2e.test_google_translation_v3::test_changed_or_wrong_version_requests_stop_before_credentials_and_ledger": 4,
+          "tests.e2e.test_google_translation_v3::test_credentials_are_explicit_bounded_and_unexpired": 10,
+          "tests.e2e.test_google_translation_v3::test_direct_transport_cannot_be_a_general_url_route": 3,
+          "tests.e2e.test_google_translation_v3::test_expired_before_send_is_unsent_and_exact_renewal_can_resume": 1,
+          "tests.e2e.test_google_translation_v3::test_expiry_after_vault_read_is_rechecked_before_transport": 1,
+          "tests.e2e.test_google_translation_v3::test_expiry_offset_and_exact_endpoint_record": 1,
+          "tests.e2e.test_google_translation_v3::test_glossary_cannot_borrow_a_different_scope": 5,
+          "tests.e2e.test_google_translation_v3::test_language_query_has_no_source_text_and_preserves_directional_support": 1,
+          "tests.e2e.test_google_translation_v3::test_native_transport_boundary_keeps_tls_and_accepts_already_sent_response": 2,
+          "tests.e2e.test_google_translation_v3::test_profile_pins_explicit_google_project_location_and_nmt": 12,
+          "tests.e2e.test_google_translation_v3::test_reflected_oauth_material_is_never_accepted": 4,
+          "tests.e2e.test_google_translation_v3::test_same_account_token_renewal_preserves_exact_approval_reference": 1,
+          "tests.e2e.test_google_translation_v3::test_text_uses_exact_model_glossary_and_literal_entities": 1,
+          "tests.e2e.test_google_translation_v3::test_unverified_result_is_uncertain_and_never_retried": 8,
+          "tests.e2e.test_google_translation_v3::test_v3_store_rejects_raw_key_without_mutating_profiles": 1,
+          "tests.ui.test_translation_advanced::test_controller_binds_glossary_to_preview_approval_and_submission": 1,
+          "tests.ui.test_translation_advanced::test_native_approval_does_not_launch_after_modal_selection_changes": 4,
+          "tests.ui.test_translation_advanced::test_native_profile_form_keeps_token_only_in_vault_and_renewal_explicit": 5,
+          "tests.ui.test_translation_dialog::test_changed_ui_selection_requires_new_preview": 7,
+          "tests.ui.test_translation_dialog::test_close_is_idempotent_and_late_worker_callbacks_do_not_touch_widgets": 1,
+          "tests.ui.test_translation_dialog::test_controller_rejects_service_for_another_library": 1,
+          "tests.ui.test_translation_dialog::test_estimated_cost_over_budget_revokes_prior_preview": 1,
+          "tests.ui.test_translation_dialog::test_failed_worker_submission_releases_dialog_controls": 1,
+          "tests.ui.test_translation_dialog::test_preview_and_approval_are_distinct_and_bind_exact_data": 1,
+          "tests.ui.test_translation_dialog::test_translation_cannot_start_beside_another_shared_operation": 2,
+          "tests.ui.test_translation_dialog::test_translation_installer_registers_one_semantic_command_and_keeps_overrides": 2,
+          "tests.ui.test_translation_scopes::test_failed_preview_revokes_prior_scope_review": 1,
+          "tests.ui.test_translation_scopes::test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts": 2,
+          "tests.ui.test_translation_scopes::test_scope_ui_change_revokes_review_before_child_creation": 8,
+          "tests.ui.test_translation_scopes::test_scope_ui_requires_separate_exact_approval_and_never_sends_on_preview": 1
+        }
+      },
+      {
+        "artifact": 15205168290,
+        "file": "source-junit.xml",
+        "cases": 268,
+        "failures": 0,
+        "errors": 0,
+        "skips": 0,
+        "function_counter": {
+          "tests.assistant.test_translation::test_accepted_chunks_survive_restart_and_never_rebill": 1,
+          "tests.assistant.test_translation::test_chunking_and_integer_allocations_preserve_all_unicode": 1,
+          "tests.assistant.test_translation::test_complete_restored_derivative_exports_offline_without_rebinding": 1,
+          "tests.assistant.test_translation::test_completed_translation_requires_independent_decoded_ledger_evidence": 5,
+          "tests.assistant.test_translation::test_export_is_new_source_pinned_narration_derivative": 1,
+          "tests.assistant.test_translation::test_export_restores_source_chunk_separators_without_rewriting_receipts": 4,
+          "tests.assistant.test_translation::test_failed_intent_publication_sends_no_request": 1,
+          "tests.assistant.test_translation::test_forged_state_is_rejected_before_resume_or_backup": 8,
+          "tests.assistant.test_translation::test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof": 1,
+          "tests.assistant.test_translation::test_known_unsent_pause_can_resume_exact_call": 1,
+          "tests.assistant.test_translation::test_live_binding_changes_revoke_saved_remote_permission": 4,
+          "tests.assistant.test_translation::test_lost_paid_output_checkpoint_blocks_rebilling": 1,
+          "tests.assistant.test_translation::test_opening_preview_and_submit_never_send_selected_text": 1,
+          "tests.assistant.test_translation::test_preview_requires_exact_profile_language_inventory": 1,
+          "tests.assistant.test_translation::test_pure_snapshot_validation_and_same_owner_lock_reuse": 1,
+          "tests.assistant.test_translation::test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls": 1,
+          "tests.assistant.test_translation::test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history": 1,
+          "tests.assistant.test_translation::test_snapshot_cannot_borrow_another_threads_live_job_guard": 1,
+          "tests.assistant.test_translation::test_snapshot_rejects_unknown_files_and_traversal": 1,
+          "tests.assistant.test_translation::test_submit_cannot_expand_reviewed_authority": 7,
+          "tests.assistant.test_translation::test_supported_pair_is_required_before_job_creation": 3,
+          "tests.assistant.test_translation::test_translation_connection_paths_use_the_same_safe_canonical_library": 2,
+          "tests.assistant.test_translation::test_translation_safe_path_binding_refuses_foreign_and_linked_connections": 8,
+          "tests.assistant.test_translation::test_typed_translation_never_writes_generic_assistant_checkpoint": 1,
+          "tests.assistant.test_translation::test_typed_translation_rejects_invalid_decoded_receipt_before_backup": 2,
+          "tests.assistant.test_translation::test_uncertain_charge_survives_restart_without_automatic_retry": 1,
+          "tests.assistant.test_translation::test_unknown_pending_intent_without_ledger_never_restarts_silently": 1,
+          "tests.assistant.test_translation::test_whitespace_chunks_are_preserved_without_billable_requests": 1,
+          "tests.assistant.test_translation::test_windows_native_short_path_connections_bind_the_same_real_library": 1,
+          "tests.assistant.test_translation_advanced::test_advanced_decoded_result_cannot_diverge_from_live_ledger": 4,
+          "tests.assistant.test_translation_advanced::test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace": 1,
+          "tests.assistant.test_translation_advanced::test_cache_cannot_keep_old_fingerprint_but_change_project": 1,
+          "tests.assistant.test_translation_advanced::test_complete_backup_restore_exports_offline_and_pending_permission_stays_old": 1,
+          "tests.assistant.test_translation_advanced::test_directional_inventory_is_not_expanded_by_preview": 3,
+          "tests.assistant.test_translation_advanced::test_job_versions_cannot_smuggle_or_rebind_accepted_advanced_results": 6,
+          "tests.assistant.test_translation_advanced::test_new_schema_preserves_immutable_source_and_old_namespace": 1,
+          "tests.assistant.test_translation_advanced::test_paused_accepted_chunks_survive_exact_token_renewal_without_rebilling": 1,
+          "tests.assistant.test_translation_advanced::test_replacing_account_cannot_reuse_a_queued_remote_approval": 1,
+          "tests.assistant.test_translation_advanced::test_uncertain_request_is_attention_and_never_resubmitted": 1,
+          "tests.assistant.test_translation_advanced::test_whitespace_has_no_false_model_or_glossary_receipt": 1,
+          "tests.assistant.test_translation_scopes::test_actual_epub_chapter_keeps_declared_headings_and_excludes_unselected_chapter": 1,
+          "tests.assistant.test_translation_scopes::test_archived_scope_revokes_saved_remote_transfer_before_send": 1,
+          "tests.assistant.test_translation_scopes::test_batch_preview_has_exact_per_document_and_block_prices_without_network": 1,
+          "tests.assistant.test_translation_scopes::test_cancelled_capture_never_opens_an_original": 1,
+          "tests.assistant.test_translation_scopes::test_character_preflight_refuses_before_materializing_source_pages": 1,
+          "tests.assistant.test_translation_scopes::test_child_rebinding_is_rejected_by_typed_backup_and_resume": 4,
+          "tests.assistant.test_translation_scopes::test_complete_derivative_preserves_bilingual_blocks_headings_and_safe_html": 1,
+          "tests.assistant.test_translation_scopes::test_destination_is_rejected_before_reading_derived_source": 1,
+          "tests.assistant.test_translation_scopes::test_document_selection_retains_empty_sections_unicode_locators_and_source_order": 1,
+          "tests.assistant.test_translation_scopes::test_foreign_workspace_is_refused_before_original_access": 1,
+          "tests.assistant.test_translation_scopes::test_incomplete_or_cancelled_export_has_no_complete_marker": 1,
+          "tests.assistant.test_translation_scopes::test_no_inferred_chapter_from_an_unstructured_text_page": 3,
+          "tests.assistant.test_translation_scopes::test_original_drift_invalidates_review_before_any_provider_request": 1,
+          "tests.assistant.test_translation_scopes::test_overlapping_batch_documents_are_rejected_before_any_approval": 1,
+          "tests.assistant.test_translation_scopes::test_partial_child_preparation_is_durable_but_cannot_recreate_missing_jobs": 1,
+          "tests.assistant.test_translation_scopes::test_preview_cost_above_an_item_reservation_blocks_approval": 1,
+          "tests.assistant.test_translation_scopes::test_removed_approved_child_is_not_recreated_or_rebilled": 1,
+          "tests.assistant.test_translation_scopes::test_reviewed_manifest_cannot_expand_transfer_or_price_authority": 5,
+          "tests.assistant.test_translation_scopes::test_saved_scope_pause_restart_and_complete_resume_never_rebill_accepted_children": 1,
+          "tests.assistant.test_translation_scopes::test_scope_and_child_native_locks_share_existing_snapshot_protocol": 1,
+          "tests.assistant.test_translation_scopes::test_scope_reuses_both_existing_google_job_versions": 2,
+          "tests.assistant.test_translation_scopes::test_typed_backup_restores_passive_structure_without_rebinding_remote_permission": 1,
+          "tests.assistant.test_translation_scopes::test_typed_selection_rejects_source_or_structure_forgery": 8,
+          "tests.assistant.test_translation_scopes::test_uncertain_paid_child_blocks_every_later_item_and_never_retries": 1,
+          "tests.e2e.test_google_translation_gateway::test_changed_request_cannot_borrow_prior_approval": 3,
+          "tests.e2e.test_google_translation_gateway::test_default_local_only_rejects_before_vault_or_transport": 1,
+          "tests.e2e.test_google_translation_gateway::test_direct_get_route_is_not_general_url_capability": 3,
+          "tests.e2e.test_google_translation_gateway::test_direct_language_transport_keeps_tls_and_exact_get_authority": 1,
+          "tests.e2e.test_google_translation_gateway::test_existing_provider_request_hash_is_backward_compatible": 1,
+          "tests.e2e.test_google_translation_gateway::test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_proof": 1,
+          "tests.e2e.test_google_translation_gateway::test_gateway_binds_decoded_translation_and_language_in_live_ledger": 2,
+          "tests.e2e.test_google_translation_gateway::test_known_unsent_cancellation_reuses_only_exact_original_reservation": 1,
+          "tests.e2e.test_google_translation_gateway::test_language_query_sends_no_selected_text_and_key_is_header_only": 1,
+          "tests.e2e.test_google_translation_gateway::test_malformed_responses_are_uncertain_and_not_displayed": 6,
+          "tests.e2e.test_google_translation_gateway::test_profile_pins_official_v2_authority": 10,
+          "tests.e2e.test_google_translation_gateway::test_reflected_credentials_never_become_results_or_receipts": 10,
+          "tests.e2e.test_google_translation_gateway::test_request_rejects_unbounded_or_ambiguous_inputs": 7,
+          "tests.e2e.test_google_translation_gateway::test_translation_uses_exact_plaintext_pair_and_model": 1,
+          "tests.e2e.test_google_translation_v3::test_basic_v2_request_and_profile_hash_contract_stays_exact": 1,
+          "tests.e2e.test_google_translation_v3::test_changed_account_or_profile_requires_new_authority": 1,
+          "tests.e2e.test_google_translation_v3::test_changed_or_wrong_version_requests_stop_before_credentials_and_ledger": 4,
+          "tests.e2e.test_google_translation_v3::test_credentials_are_explicit_bounded_and_unexpired": 10,
+          "tests.e2e.test_google_translation_v3::test_direct_transport_cannot_be_a_general_url_route": 3,
+          "tests.e2e.test_google_translation_v3::test_expired_before_send_is_unsent_and_exact_renewal_can_resume": 1,
+          "tests.e2e.test_google_translation_v3::test_expiry_after_vault_read_is_rechecked_before_transport": 1,
+          "tests.e2e.test_google_translation_v3::test_expiry_offset_and_exact_endpoint_record": 1,
+          "tests.e2e.test_google_translation_v3::test_glossary_cannot_borrow_a_different_scope": 5,
+          "tests.e2e.test_google_translation_v3::test_language_query_has_no_source_text_and_preserves_directional_support": 1,
+          "tests.e2e.test_google_translation_v3::test_native_transport_boundary_keeps_tls_and_accepts_already_sent_response": 2,
+          "tests.e2e.test_google_translation_v3::test_profile_pins_explicit_google_project_location_and_nmt": 12,
+          "tests.e2e.test_google_translation_v3::test_reflected_oauth_material_is_never_accepted": 4,
+          "tests.e2e.test_google_translation_v3::test_same_account_token_renewal_preserves_exact_approval_reference": 1,
+          "tests.e2e.test_google_translation_v3::test_text_uses_exact_model_glossary_and_literal_entities": 1,
+          "tests.e2e.test_google_translation_v3::test_unverified_result_is_uncertain_and_never_retried": 8,
+          "tests.e2e.test_google_translation_v3::test_v3_store_rejects_raw_key_without_mutating_profiles": 1,
+          "tests.ui.test_translation_advanced::test_controller_binds_glossary_to_preview_approval_and_submission": 1,
+          "tests.ui.test_translation_advanced::test_native_approval_does_not_launch_after_modal_selection_changes": 4,
+          "tests.ui.test_translation_advanced::test_native_profile_form_keeps_token_only_in_vault_and_renewal_explicit": 5,
+          "tests.ui.test_translation_dialog::test_changed_ui_selection_requires_new_preview": 7,
+          "tests.ui.test_translation_dialog::test_close_is_idempotent_and_late_worker_callbacks_do_not_touch_widgets": 1,
+          "tests.ui.test_translation_dialog::test_controller_rejects_service_for_another_library": 1,
+          "tests.ui.test_translation_dialog::test_estimated_cost_over_budget_revokes_prior_preview": 1,
+          "tests.ui.test_translation_dialog::test_failed_worker_submission_releases_dialog_controls": 1,
+          "tests.ui.test_translation_dialog::test_preview_and_approval_are_distinct_and_bind_exact_data": 1,
+          "tests.ui.test_translation_dialog::test_translation_cannot_start_beside_another_shared_operation": 2,
+          "tests.ui.test_translation_dialog::test_translation_installer_registers_one_semantic_command_and_keeps_overrides": 2,
+          "tests.ui.test_translation_scopes::test_failed_preview_revokes_prior_scope_review": 1,
+          "tests.ui.test_translation_scopes::test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts": 2,
+          "tests.ui.test_translation_scopes::test_scope_ui_change_revokes_review_before_child_creation": 8,
+          "tests.ui.test_translation_scopes::test_scope_ui_requires_separate_exact_approval_and_never_sends_on_preview": 1
+        }
+      }
+    ],
+    "installed_origins": {
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+        }
+      }
+    },
+    "source_origins": {
+      "isolated": false,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "92af4b25990d9f3dc0bacd2625e4629be1b94ad86d31244972592b7dad151dbf"
+        }
+      }
+    },
+    "fixture_and_harness_sha256": {
+      "packaging/source_wheel.py": "7a65579d14bde1de0a1bf4392150faa6111a741ca4c5fa39ecadb1ffb106e28b",
+      "scripts/ci_check.py": "0d11b234ae4fdcfcffdb17f51d899496140693350192d7549740a89fea50bc1e",
+      "scripts/translation_scope_acceptance.py": "d478750d85bd1f0d9fa71e75130b4a8b52b847746b9fab6557345fd2b8d31833",
+      "scripts/translation_scope_oracles.json": "e46753a125fe106799dbe1b55d200f154e4e3ff369de40fff01111de34397f25",
+      "scripts/windows_translation_scope_smoke.py": "38921ed1b0c0beeb40550f30dffe484ae2907a493f83f1c0b25f63dcf6931927",
+      "scripts/windows_translation_v3_smoke.py": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+      "tests/assistant/test_translation.py": "6864db8fd261f6a5674e7234ca6cdaaf99383da29a29aa3b18099827ed21ed19",
+      "tests/assistant/test_translation_advanced.py": "b4d91de42abe609a0d68a8e86a092c7e224e02f045989ff40a96f79391deeb3b",
+      "tests/assistant/test_translation_scopes.py": "545fd8c4c19029a05b6d754c2aae6cd59bb0f73222705069fa833297bb009f92",
+      "tests/e2e/test_google_translation_gateway.py": "2ab531699d6b62586799e5043b9a0f8f83035a64ce43cf411e8922436126f071",
+      "tests/e2e/test_google_translation_v3.py": "474c372b0749617079ae2945e171c0f8f4f0bddb44138b66664b1b3df6c65e3c",
+      "tests/reader/test_ebook_reader.py": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+      "tests/ui/test_translation_advanced.py": "ccb2182486d5c41691303180b9bf2fd88dea649c1b6f6de3f80f90467727f13f",
+      "tests/ui/test_translation_dialog.py": "ba1a092cbf769c7721c1f5003dfcc8786d4092e5f39fe1cfc29f01305da100a6",
+      "tests/ui/test_translation_scopes.py": "a97ac36d4bff2356f1e802652dc42b6aa1fef150c67fa98858640bd344d547c7"
+    },
+    "native": {
+      "native-batch.json": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.html": "a344a2683b2387c2f866134524555454ab8482c4ef7cc262654dddc163ef915f",
+          "bilingual.txt": "61fbd9d039ea004a026ece11660fd14adb63107f1f85c1e4a40ad0496b041226",
+          "original-selected.json": "8c3c5385613afd909aeb4abcf0fb734fa6129db5ccd1c1be227a8f9c6b86dffb",
+          "translated.txt": "f767224722855198d0e10b54c5076e4b0d3f3e8f757662aa5d86f1c5cf8e32c4",
+          "translation-structure.json": "43fc3fc23254e976a35880c7c660b035077a5bd58feefae7cc63ef99686509d1"
+        },
+        "documents": 2,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "mode": "batch",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "ae5af8eff074d29f0c5526366e0ee7072c87f8aafc36e39c2ddbf54dcd8e025b"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "9a2d81a9706f9d5014f09c79b03921a8941ba3f0f68a7d577bec06d03cc3a0b1"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "c5a17744e29bbed04cc664ecb676da180ba8a521b4770f5378d32701cf8b25e7"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "dd42763582095ccd5b9af3c991e1153733bc402e55b66362ca84ed4079fd657e"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "7b337599283e75f4185208482c5a2efcbeac9a63207adbbbb547cc39f85c99f7"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "5f2671fd239785bd6d2dcb32751758247ef143cd25364949fac437d21717a20b"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "2b3125099d725706ecd56955abb93f64d1bea8398625794e6007240c4b8cf288"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 5,
+        "translated_blocks": 4,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true
+      },
+      "native-chapter.json": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.html": "fb45b23e81c9aa71a7eb1b64f9328fcb6109e7410a22a499d4b48af54d8eb0b0",
+          "bilingual.txt": "38ab81c9377a171a8baa2fb0b302d5ae07caacba41bc9a42c5cfc0a28ac11caa",
+          "original-selected.json": "ee5f4a085d59b28872e87270d2627a3a723d7b71afab1cd188971aca2304c718",
+          "translated.txt": "761bee642d049695378514524c546d92ba5d9949a72097a7608f8b9725b7bf2f",
+          "translation-structure.json": "6a65b3e40dcf8332a83ce2f4365dea6477b9cfd275676f5436052d26669ed3f9"
+        },
+        "documents": 1,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "mode": "chapter",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "ae5af8eff074d29f0c5526366e0ee7072c87f8aafc36e39c2ddbf54dcd8e025b"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "9a2d81a9706f9d5014f09c79b03921a8941ba3f0f68a7d577bec06d03cc3a0b1"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "c5a17744e29bbed04cc664ecb676da180ba8a521b4770f5378d32701cf8b25e7"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "dd42763582095ccd5b9af3c991e1153733bc402e55b66362ca84ed4079fd657e"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "7b337599283e75f4185208482c5a2efcbeac9a63207adbbbb547cc39f85c99f7"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "5f2671fd239785bd6d2dcb32751758247ef143cd25364949fac437d21717a20b"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "2b3125099d725706ecd56955abb93f64d1bea8398625794e6007240c4b8cf288"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 2,
+        "translated_blocks": 1,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true
+      },
+      "native-document.json": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.html": "1829019761bac8e0716e7c0b73663c33a1782998b1e0cf05898a42e3c37d69df",
+          "bilingual.txt": "013f9c9f2bff7fe66111d37f2842a983f4da5bf1269c399655a86a8ce7510ec3",
+          "original-selected.json": "6a290331905e4710e8b086d560df3aab65b831e877de4a0940ee22899ccf356f",
+          "translated.txt": "51a5e107eb9e777704953276bdf572e65c6a18ccac5d04c8964470d90a5d20ae",
+          "translation-structure.json": "ec1aefa3799c5305e7385fc026842c5cdc88ad32dcbd05e2039234a8b3aced4f"
+        },
+        "documents": 1,
+        "fixture_helper_sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+        "isolated": true,
+        "keyboard_focus": true,
+        "mode": "document",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.assistant.translation": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation.py",
+            "sha256": "ae5af8eff074d29f0c5526366e0ee7072c87f8aafc36e39c2ddbf54dcd8e025b"
+          },
+          "carr_library.assistant.translation_scope": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope.py",
+            "sha256": "9a2d81a9706f9d5014f09c79b03921a8941ba3f0f68a7d577bec06d03cc3a0b1"
+          },
+          "carr_library.assistant.translation_scope_state": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_scope_state.py",
+            "sha256": "c5a17744e29bbed04cc664ecb676da180ba8a521b4770f5378d32701cf8b25e7"
+          },
+          "carr_library.assistant.translation_selection": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_selection.py",
+            "sha256": "2f17542de61ea6b88ae185ffc91daaa2ab3d1e7ef5609266d2361f36c2ddafe8"
+          },
+          "carr_library.assistant.translation_state": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\translation_state.py",
+            "sha256": "dd42763582095ccd5b9af3c991e1153733bc402e55b66362ca84ed4079fd657e"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "sha256": "7b337599283e75f4185208482c5a2efcbeac9a63207adbbbb547cc39f85c99f7"
+          },
+          "carr_library.providers": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+            "sha256": "5f2671fd239785bd6d2dcb32751758247ef143cd25364949fac437d21717a20b"
+          },
+          "carr_library.ui.translation_scope_dialog": {
+            "path": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\ui\\translation_scope_dialog.py",
+            "sha256": "2b3125099d725706ecd56955abb93f64d1bea8398625794e6007240c4b8cf288"
+          }
+        },
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "per_item_approval": true,
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-scoped-translation/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "structure_preserved": true,
+        "synthetic_provider_requests": 3,
+        "translated_blocks": 2,
+        "translation_quality": "NOT_QUALIFIED",
+        "vault_cleanup": "PASS",
+        "windows": true
+      },
+      "native-selected-advanced.json": {
+        "actual_credential_vault": "PASS",
+        "actual_google_api": "NOT_RUN",
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "derivative_hashes": {
+          "bilingual.txt": "09efa672e7712ea19ea58eaf538d836d047c0ec339c0e5eac6925bf6ef708d3d",
+          "original.txt": "b44b2e3d845324b0316d94bb43e1d968c00f63f1971106211e012cebecab7bf1",
+          "translated.txt": "117baa0a361e452b5ecd7f0324c3747038b202ca53f07111c43d84c851eb2af2",
+          "translation.narration.json": "57d2239b23a1947401b14fec3ad9b7bc84aefc51f18c880994bb52d915f709b0"
+        },
+        "directional_languages": true,
+        "exact_reviewed_pair": "en->uk",
+        "explicit_advanced_model": true,
+        "glossary_verified": true,
+        "installed_module": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+        "native_controls": true,
+        "native_event_loop": "owned-modal-unwound",
+        "nvda": "NOT_RUN",
+        "quotation_authority": false,
+        "runtime_cleanup": "PASS",
+        "schema": "carr-native-translation-v3-smoke/1",
+        "source_immutable": true,
+        "status": "PASS",
+        "synthetic_provider_requests": 2,
+        "vault_cleanup": "PASS"
+      }
+    },
+    "wheel_source": {
+      "payload_files": 409,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev1",
+      "required_runtime_files": 341,
+      "source_commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
+      "wheel_sha256": "3982424d2e5cb93c599d89769087b134260ce8bcef006680d0c4cf50aab30718"
+    },
+    "installed_identity": {
+      "files": 2,
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+        "carr_library": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+      },
+      "prefix": "D:\\a\\_temp\\carr-translation-scopes-46009379630-1\\installed",
+      "wheel_sha256": "3982424d2e5cb93c599d89769087b134260ce8bcef006680d0c4cf50aab30718"
+    }
+  }
 }

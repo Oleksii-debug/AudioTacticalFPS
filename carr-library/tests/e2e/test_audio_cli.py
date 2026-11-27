@@ -104,7 +104,9 @@ def test_actual_cli_plan_render_resume_preserves_source_and_exact_duration(tmp_p
     plan_file, output = tmp_path / 'План.json', tmp_path / 'Output folder'
     _pause_plan(plan_file)
     original = plan_file.read_bytes()
-    command = [sys.executable, '-m', 'carr_library', '--audio-plan', str(plan_file),
+    library = tmp_path / 'selected-library'
+    library.mkdir()
+    command = [sys.executable, '-m', 'carr_library', '--data-dir', str(library), '--audio-plan', str(plan_file),
                '--audio-output', str(output), '--ffmpeg', _ffmpeg()]
     completed = subprocess.run(command, env=_environment(), capture_output=True,
                                text=True, encoding='utf-8', timeout=30)

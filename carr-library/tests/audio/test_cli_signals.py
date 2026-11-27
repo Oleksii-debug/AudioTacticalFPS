@@ -38,7 +38,9 @@ def _pause_plan(path, *, long=False):
 def test_actual_cli_sigint_preserves_completed_chunks_and_returns_resume_status(tmp_path):
     plan_file, output = tmp_path / 'plan.json', tmp_path / 'output'
     _pause_plan(plan_file, long=True)
-    process = subprocess.Popen([sys.executable, '-m', 'carr_library', '--audio-plan', str(plan_file),
+    library = tmp_path / 'selected-library'
+    library.mkdir()
+    process = subprocess.Popen([sys.executable, '-m', 'carr_library', '--data-dir', str(library), '--audio-plan', str(plan_file),
         '--audio-output', str(output), '--ffmpeg', _ffmpeg()], env=_environment(),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8')
     try:

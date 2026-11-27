@@ -9,7 +9,7 @@ import pytest
 
 from carr_library import providers
 from carr_library.providers import (ProfileStore, ProviderProfile, GOOGLE_TRANSLATION_ENDPOINT,
-    GOOGLE_TRANSLATION_PROVIDERS, google_v3_parent)
+    GOOGLE_TRANSLATION_PROVIDERS, TRANSLATION_PROVIDERS, LOCAL_TRANSLATION_PROVIDER, google_v3_parent)
 from carr_library.ui import api_connections, translation_dialog
 from carr_library.ui.translation_dialog import TranslationController
 
@@ -57,6 +57,8 @@ def _configure_method(store):
     namespace = {'ProviderProfile': ProviderProfile, 'uuid': uuid, 'google_v3_parent': google_v3_parent,
                  'GOOGLE_TRANSLATION_ENDPOINT': GOOGLE_TRANSLATION_ENDPOINT,
                  'GOOGLE_TRANSLATION_PROVIDERS': GOOGLE_TRANSLATION_PROVIDERS,
+                 'TRANSLATION_PROVIDERS': TRANSLATION_PROVIDERS,
+                 'LOCAL_TRANSLATION_PROVIDER': LOCAL_TRANSLATION_PROVIDER,
                  'controller': SimpleNamespace(store=store)}
     exec(compile(ast.fix_missing_locations(ast.Module(body=[configure], type_ignores=[])), str(source), 'exec'), namespace)
     return namespace['configure']
