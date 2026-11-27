@@ -804,3 +804,20 @@ def test_pending_inventory_shared_budget_for_nested_and_outer_scans(tmp_path, mo
     monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 4)
     with pytest.raises(ValueError, match='directory entries'):
         pending._inventory(root)
+
+
+
+def test_full_backup_rejects_transient_scan_overrun_without_publication(
+        app, tmp_path, monkeypatch):
+    """Real library backup path: ignored journals still consume a bounded scan."""
+    from carr_library.library_backup import create_backup
+
+    request_dir = app.root / 'import-requests'
+    request_dir.mkdir()
+    for index in range(4):
+        (request_dir / (f'{index:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 3)
+    destination = tmp_path / 'must-not-publish'
+    with pytest.raises(ValueError, match='Too many pending import directory entries'):
+        create_backup(app, destination)
+    assert not destination.exists()
