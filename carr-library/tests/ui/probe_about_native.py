@@ -45,6 +45,7 @@ def main(argv=None):
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Actual Windows required.', 'nvda': 'NOT_RUN'}))
         return 77
     import wx
+    from ctypes import windll
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
     import carr_library.component_notices as inventory
@@ -145,6 +146,7 @@ def main(argv=None):
                    'Actual About modal did not open.')
             dialog = modal('About Resonance and component notices')
             windows['about'] = dialog
+            about_hwnd = int(dialog.GetHandle())
             check(EXPECTED_CHECKS[2], dialog.IsModal() and dialog.GetParent() is frame)
             check(EXPECTED_CHECKS[3],
                   dialog.about.GetName() == 'About Resonance, version and notice availability'
@@ -210,8 +212,15 @@ def main(argv=None):
                       'Read selected upstream notice', 'Read installed component inventory']
                   and all(identity != main_thread for _, identity in workers))
             press(dialog.close_button, wx.WXK_ESCAPE)
-            yield (lambda: dialog.destroyed and modal('About Resonance and component notices') is None,
-                   8, 'About did not actually destroy after native Escape.')
+            # Native handle destruction is the actual lifetime evidence;
+            # wx may deliver its Python destroy observer after the modal unwinds.
+            yield (lambda: not windll.user32.IsWindow(about_hwnd)
+                   and modal('About Resonance and component notices') is None,
+                   8, lambda: 'About close did not settle: hwnd='
+                   + str(bool(windll.user32.IsWindow(about_hwnd)))
+                   + ', alive=' + str(dialog.alive) + ', closed=' + str(dialog.session.closed)
+                   + ', destroyed_observer=' + str(dialog.destroyed)
+                   + ', parent_closing=' + str(frame._closing))
             check(EXPECTED_CHECKS[17], dialog.session.closed and dialog.session.cancelled.is_set()
                   and frame and frame.IsShown() and not frame._closing)
             check(EXPECTED_CHECKS[18], frame.library is library and not frame.working
@@ -291,7 +300,7 @@ def main(argv=None):
         return 1
     print(json.dumps({'status': 'PASS', 'checks': checks, 'check_count': len(checks),
         'actual_native_keys': True, 'actual_installed_metadata': True,
-        'actual_background_workers': True, 'component': 'pypdf', 'component_version': expected_version,
+        'actual_background_workers': True, 'actual_window_destroyed': True, 'component': 'pypdf', 'component_version': expected_version,
         'notice_sha256': sha256(expected_text.encode('utf-8')).hexdigest(),
         'module_origins': origins, 'nvda': 'NOT_RUN', 'redistribution_clearance': 'NOT_ASSESSED'}), flush=True)
     return 0

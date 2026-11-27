@@ -25,7 +25,8 @@
   "required_true": [
     "actual_native_keys",
     "actual_installed_metadata",
-    "actual_background_workers"
+    "actual_background_workers",
+    "actual_window_destroyed"
   ],
   "statuses": {
     "nvda": "NOT_RUN",
