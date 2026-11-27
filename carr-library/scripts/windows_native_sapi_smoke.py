@@ -41,6 +41,38 @@ def identity():
     return result
 
 
+def private_entry_diagnostic(reply):
+    """Only the worker's fixed failure fields may escape its private directory."""
+    from carr_library.audio.jobs import file_identity, regular_file, verified_reader
+    phases = {'validating-request', 'loading-com-client', 'creating-speaker',
+              'enumerating-voices', 'selecting-voice', 'creating-audio-stream',
+              'opening-audio-stream', 'synthesizing', 'closing-audio-stream'}
+    diagnostic = {'worker_reply': 'absent-or-invalid'}
+    try:
+        info = regular_file(reply)
+        if not 0 < info.st_size <= 4096:
+            return diagnostic
+        with verified_reader(reply, expected_identity=file_identity(info)) as stream:
+            raw = stream.read(4097)
+        from carr_library.audio.engines import _sapi_json
+        value = _sapi_json(raw)
+        if (type(value) is not dict
+                or set(value) not in ({'version', 'status', 'phase'},
+                                      {'version', 'status', 'phase', 'hresult'})
+                or type(value.get('version')) is not int or value['version'] != 1
+                or value.get('status') != 'failed' or value.get('phase') not in phases):
+            return diagnostic
+        diagnostic = {'worker_reply': 'validated-failure', 'worker_version': 1,
+                      'worker_status': 'failed', 'worker_phase': value['phase']}
+        code = value.get('hresult')
+        if type(code) is int and 0 <= code <= 0xffffffff:
+            diagnostic['worker_hresult'] = f'0x{code:08X}'
+    except Exception:
+        # No exception text, local path, token catalogue or source text is public.
+        pass
+    return diagnostic
+
+
 def run_native():
     import wx
     from carr_library.application import LibraryApp
@@ -103,8 +135,19 @@ def run_native():
             dispatch.mkdir()
             request, reply = dispatch / 'request.json', dispatch / 'reply.json'
             request.write_text('{"version":1,"operation":"voices"}', encoding='utf-8')
-            engines._run([sys.executable, '-I', '-B', '-X', 'utf8', '-m', 'carr_library',
-                          '--carr-sapi-native-worker', request, reply], timeout=45, output=reply)
+            command = [sys.executable, '-I', '-B', '-X', 'utf8', '-m', 'carr_library',
+                       '--carr-sapi-native-worker', request, reply]
+            launch = {'argv': ['<installed-python>', *command[1:-2],
+                               request.name, reply.name],
+                      'argument_count': len(command), 'isolated_parent': bool(sys.flags.isolated),
+                      'request_sha256': sha256(request.read_bytes()).hexdigest()}
+            print('NATIVE_SAPI_PRIVATE_ENTRY ' + json.dumps(launch, sort_keys=True), flush=True)
+            try:
+                engines._run(command, timeout=45, output=reply)
+            except engines.EngineUnavailable:
+                print('NATIVE_SAPI_DIAGNOSTIC ' + json.dumps(
+                    {**launch, **private_entry_diagnostic(reply)}, sort_keys=True), flush=True)
+                raise
             entry = json.loads(reply.read_bytes())
             check('installed private entrypoint returns actual bounded COM inventory',
                   reply.stat().st_size <= 2_000_000 and entry.get('adapter') == 'native-pywin32'

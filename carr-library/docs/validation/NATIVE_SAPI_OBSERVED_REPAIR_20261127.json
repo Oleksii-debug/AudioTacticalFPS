@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "kind": "native-sapi-observed-failure-repair",
+  "date_utc": "2026-11-27",
+  "candidate_base": "207c4083fd307f38869b5086b5e4d80f0992725c",
+  "actual_prior_execution": {
+    "source_commit": "ecfc054b13bb3d44859021d9da12e644e0a12fb7",
+    "source_tree": "79862d573c29130bda8d3d64426659afa4a34ad8",
+    "run": 46025111819,
+    "job": 140594387108,
+    "conclusion": "FAIL",
+    "source": {
+      "passed": 69,
+      "failed": 2
+    },
+    "installed": {
+      "passed": 69,
+      "failed": 2
+    },
+    "failed_test": "tests/storage/test_speech_punctuation_backup.py::test_complete_backup_preserves_original_state_bytes_and_explicit_new_option",
+    "failed_parameters": [
+      false,
+      true
+    ],
+    "native": {
+      "expected_checks": 35,
+      "completed_check_count": 2,
+      "status": "FAIL",
+      "operation": "installed isolated private entrypoint inventory",
+      "error": "Local engine failed with exit code 1.",
+      "structured_worker_reply_preserved": false
+    },
+    "artifact": {
+      "id": 15219520688,
+      "bytes": 388233,
+      "github_sha256": "6a18fdd195aa0f2ec580073f8dbe8a0b5e2c5b213b3ebe48a182dc7bb4dc6715",
+      "archive_download_and_rehash": "NOT_PERFORMED"
+    },
+    "evidence": "Actual job logs, job status and GitHub artifact metadata. No qualification is transferred from this failed execution."
+  },
+  "findings": [
+    {
+      "kind": "fixture",
+      "path": "carr-library/tests/storage/test_speech_punctuation_backup.py",
+      "finding": "The independently written old-state fixture used an offset timestamp rejected by the existing six-fraction-digit UTC-Z validator.",
+      "repair": "Use 2026-11-27T00:00:00.000000Z in the fixture. Production decoding and strict timestamp validation remain unchanged."
+    },
+    {
+      "kind": "product",
+      "path": "carr-library/src/carr_library/audio/sapi_native_worker.py",
+      "finding": "The worker called pythoncom.CLSIDFromProgID, which the pinned pywin32 b312 extension does not export.",
+      "repair": "Pass the already allowlisted ProgID directly to CoCreateInstance. The pinned PyWinObject_AsIID implementation resolves it; CLSCTX_INPROC_SERVER and IID_IDispatch are unchanged.",
+      "inference": "This source-confirmed unsupported call explains a creating-speaker failure; the original run did not retain the structured reply, so its exact worker phase is not asserted."
+    },
+    {
+      "kind": "diagnostic",
+      "path": "carr-library/scripts/windows_native_sapi_smoke.py",
+      "repair": "Print the actual fixed redacted argv form and request digest before the installed private entrypoint, and copy only validated fixed worker version/status/phase/HRESULT fields before private stage cleanup when it fails. No arbitrary stderr, source text, token inventory or private paths are emitted."
+    }
+  ],
+  "primary_sources": [
+    {
+      "repository": "mhammond/pywin32",
+      "ref": "b312",
+      "path": "com/win32com/src/PythonCOM.cpp",
+      "git_blob": "0666dff863866e02f68939fae5a7d3b96190041c",
+      "url": "https://github.com/mhammond/pywin32/blob/b312/com/win32com/src/PythonCOM.cpp",
+      "evidence": "CoCreateInstance parses its class argument with PyWinObject_AsIID; pythoncom.new passes its ProgID argument directly to the same converter. No exported CLSIDFromProgID entry exists."
+    },
+    {
+      "repository": "mhammond/pywin32",
+      "ref": "b312",
+      "path": "win32/src/PyIID.cpp",
+      "git_blob": "b87bd57a9963d121406219565615d731b0fd4c84",
+      "url": "https://github.com/mhammond/pywin32/blob/b312/win32/src/PyIID.cpp",
+      "evidence": "PyWinObject_AsIID accepts a string; myCLSIDFromString first parses an IID and then invokes the native Windows CLSIDFromProgID resolver."
+    }
+  ],
+  "candidate_validation": {
+    "status": "NOT_RUN",
+    "source_cases": 75,
+    "installed_cases": 75,
+    "native_expected_checks": 35,
+    "native_label_counter": "UNCHANGED",
+    "new_regressions": {
+      "test_fixed_factory_uses_supported_pywin32_progid_contract": 3,
+      "test_fixed_factory_rejects_foreign_class_before_com_admission": 1
+    },
+    "previous_71_cases": "RETAINED, including the two repaired backup/restore/rebackup fixture variants",
+    "compilation": "NOT_RUN",
+    "actual_COM": "NOT_RUN",
+    "physical_playback": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "voice_quality": "NOT_RUN",
+    "requirements": "The existing strict source/installed collection and JUnit Counters, native label Counter, source/wheel/module hashes, firewall readback and cleanup-before-aggregate gates must all pass in a new frozen run."
+  },
+  "unchanged_boundaries": [
+    "Fixed three-class COM allowlist",
+    "In-process-only COM activation",
+    "Current process/job ownership and cancellation",
+    "Exact token/leaf/name selection and no substitute voice",
+    "Literal text and explicit punctuation flags",
+    "22050 Hz mono PCM16 format",
+    "Legacy saved identities and omitted default punctuation wire",
+    "Current 56-package reviewed runtime and installed-source qualification"
+  ]
+}

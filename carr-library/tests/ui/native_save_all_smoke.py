@@ -205,6 +205,7 @@ def run(work):
                                     if not item.IsSeparator() and
                                     item.GetItemLabel().replace('&', '') == 'Recover research-note draft...')
                 recovery_choice = {'seen': False}
+                recovery_owner = panel.displayed
                 recovery_deadline = monotonic() + 12
 
                 def choose_recovery():
@@ -212,12 +213,21 @@ def run(work):
                         if monotonic() >= recovery_deadline:
                             raise TimeoutError('The existing recovery chooser did not open.')
                         rows = [window for window in wx.GetTopLevelWindows()
-                                if isinstance(window, wx.SingleChoiceDialog)
+                                if bool(window) and isinstance(window, wx.SingleChoiceDialog)
+                                and not window.IsBeingDeleted() and window.IsShown()
+                                and window.IsModal()
                                 and window.GetTitle() == 'Recover research note']
                         if not rows:
                             timers.append(wx.CallLater(25, choose_recovery))
                             return
-                        if len(rows) != 1 or rows[0].GetParent() is not panel:
+                        # wxAnyChoiceDialog uses GetParentForModalDialog: it
+                        # promotes the supplied evidence panel to its top-level
+                        # frame. Require that exact owner and the unchanged
+                        # current evidence, never an arbitrary titled dialog.
+                        if (len(rows) != 1 or frame.evidence is not panel
+                                or panel.displayed != recovery_owner
+                                or wx.GetTopLevelParent(panel) is not frame
+                                or rows[0].GetParent() is not frame):
                             raise AssertionError('Recovery did not use the current evidence owner.')
                         check('native_file_recovery_requires_explicit_choice', rows[0].GetSelection() == 2)
                         recovery_choice['seen'] = True

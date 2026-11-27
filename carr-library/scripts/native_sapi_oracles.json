@@ -3,7 +3,7 @@
   "feature": "Native SAPI through current audio engine, explicit punctuation and preserved saved identities",
   "base": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
   "core_checkpoint": "5cd1ed9501cb9e14c302ea460d417b6e8b84c0ec",
-  "total_cases": 71,
+  "total_cases": 75,
   "fixture_multipliers": 1,
   "tests": {
     "tests/audio/test_native_sapi.py": {
@@ -25,7 +25,9 @@
       "test_untyped_punctuation_cannot_reach_an_engine": 3,
       "test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection": 1,
       "test_invalid_saved_32_bit_identity_never_constructs_a_compatibility_host": 2,
-      "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice": 1
+      "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice": 1,
+      "test_fixed_factory_uses_supported_pywin32_progid_contract": 3,
+      "test_fixed_factory_rejects_foreign_class_before_com_admission": 1
     },
     "tests/reader/test_speech_punctuation.py": {
       "test_false_default_keeps_legacy_engine_options_and_project_models": 1,
@@ -100,5 +102,13 @@
       "carr_library.__main__"
     ]
   },
-  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION"
+  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION",
+  "observed_failure_repair": {
+    "base": "207c4083fd307f38869b5086b5e4d80f0992725c",
+    "prior_source": "ecfc054b13bb3d44859021d9da12e644e0a12fb7",
+    "prior_run": 46025111819,
+    "previous_total_cases": 71,
+    "new_factory_cases": 4,
+    "native_total_checks_unchanged": 35
+  }
 }

@@ -374,7 +374,7 @@ def office_records(source, data, suffix, budget, deadline, selection):
         output = output_dir / ('source.' + output_suffix)
         _progress(source.parent, 'native-conversion-start')
         _, warnings = _run([*base, '--infilter=' + input_filter,
-            '--convert-to', output_suffix + ':' + export_filter, '--outdir', output_dir, source],
+            '--convert-to', output_suffix + ':' + export_filter, '--outdir', output_dir.name, source.name],
             source.parent, deadline, output=output, output_limit=budget.max_source_bytes,
             stage_limit=stage_limit)
         _progress(source.parent, 'native-conversion-complete')

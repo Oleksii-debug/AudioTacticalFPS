@@ -15,7 +15,7 @@ def original_state(text):
                            sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     row = {'key': key, 'text_sha256': digest, 'characters': len(text), 'cursor': 3,
            'location': None, 'settings': {'voice': 'sapi5:historical-leaf-hash', 'language': 'en',
-             'rate': 0, 'pitch': 0, 'volume': .8}, 'updated_at': '2026-11-27T00:00:00+00:00'}
+             'rate': 0, 'pitch': 0, 'volume': .8}, 'updated_at': '2026-11-27T00:00:00.000000Z'}
     return json.dumps({'schema': 'carr-live-reading/1', 'positions': [row]},
                       ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()
 

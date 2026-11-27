@@ -104,20 +104,29 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
     assert len(list(destination.iterdir())) == 2
 
 
-def test_selected_office_cancellation_settles_family_before_private_profile_cleanup(tmp_path):
+def test_selected_office_cancellation_settles_family_before_private_profile_cleanup(tmp_path, monkeypatch):
     source = legacy_office(tmp_path, 'doc', 'The original must survive cancellation.')
     before = source.read_bytes()
     output = tmp_path / 'output'
     output.mkdir()
-    observed = []
+    from carr_library.conversion import service as service_module
+    actual_invoke = service_module._invoke
+    stages, observed = [], []
+    def invoke(message, **options):
+        stages.append(Path(message['source']).parent)
+        return actual_invoke(message, **options)
+    monkeypatch.setattr(service_module, '_invoke', invoke)
     def cancelled():
-        profiles = list(output.glob('.carr-conversion-*/libreoffice-profile/user/registrymodifications.xcu'))
-        if profiles:
-            observed.append(profiles[0])
+        profiles = [stage / 'libreoffice-profile/user/registrymodifications.xcu'
+                    for stage in stages]
+        present = [path for path in profiles if path.is_file()]
+        if present:
+            observed.append(present[0])
         return bool(observed)
     with pytest.raises(InterruptedError):
         ConversionService(output, input_roots=(source,), office=office()).extract(source, 'reading.txt', cancelled=cancelled)
     assert observed and not observed[0].exists()
+    assert stages and all(not stage.exists() for stage in stages)
     assert list(output.iterdir()) == [] and source.read_bytes() == before
 
 
