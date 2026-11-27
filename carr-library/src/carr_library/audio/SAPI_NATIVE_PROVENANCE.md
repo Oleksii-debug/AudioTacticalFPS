@@ -50,3 +50,8 @@ Discovery uses the application's real interpreter architecture. An unrelated
 PowerShell compatibility API; include_powershell=True additionally discovers
 the existing sapi5-32 host. Unsupported SAPI4 remains explicitly unavailable.
 No automatic fallback substitutes a different voice or engine.
+
+The normal registry also retains a passive sapi5-32 compatibility entry. It
+starts the old PowerShell host only when a caller explicitly selects that saved
+32-bit voice ID for identity review or rendering; ordinary catalogue refreshes
+do not execute it. Missing or ambiguous selections never become another voice.

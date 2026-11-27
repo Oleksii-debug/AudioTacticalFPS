@@ -999,6 +999,46 @@ class DordiaiVoicesEngine:
                     process.stdout.close()
 
 
+class _LazySAPI32Engine:
+    """Resolve an explicitly selected saved 32-bit voice without eager discovery."""
+    id = 'sapi5-32'
+
+    def __init__(self):
+        self._adapter = None
+
+    def _selected(self, voice):
+        if not isinstance(voice, str) or re.fullmatch(r'sapi5-32:(?:[0-9a-f]{24}|default)', voice) is None:
+            raise EngineUnavailable('Choose an exact saved 32-bit SAPI voice identifier.')
+        if self._adapter is None:
+            root = Path(os.environ.get('SystemRoot', r'C:\Windows'))
+            binary = root / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+            self._adapter = SAPI5Engine(binary, engine_id=self.id)
+        return self._adapter
+
+    def voices(self, *, cancelled=lambda: False):
+        _cancelled(cancelled)
+        return () if self._adapter is None else self._adapter.voices(cancelled=cancelled)
+
+    def selected_voice(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
+        adapter = self._selected(voice)
+        rows = adapter.voices(cancelled=cancelled)
+        requested = adapter._default if voice == self.id + ':default' else voice
+        selected = next((row for row in rows if row.id == requested), None)
+        if selected is None:
+            raise EngineUnavailable('The exact selected 32-bit SAPI voice is unavailable. No substitute was used.')
+        return selected
+
+    def cache_identity(self, voice, *, cancelled=lambda: False):
+        _cancelled(cancelled)
+        return self._selected(voice).cache_identity(voice, cancelled=cancelled)
+
+    def synthesize(self, text, output, *, voice, cancelled=lambda: False, **settings):
+        _cancelled(cancelled)
+        return self._selected(voice).synthesize(text, output, voice=voice,
+                                                cancelled=cancelled, **settings)
+
+
 class VoiceRegistry:
     def __init__(self, engines=(), *, notices=()):
         self.engines = {}
@@ -1038,8 +1078,22 @@ class VoiceRegistry:
             raise EngineUnavailable(f'The local {key} engine is not installed or configured. No substitute was used.')
         return self.engines[key]
 
+    def selected_voice(self, voice, *, cancelled=lambda: False):
+        """Ordinary catalogues stay passive for unselected compatibility hosts."""
+        selected = next((row for row in self.voices(cancelled=cancelled) if row.id == voice), None)
+        if selected is None:
+            engine = self._engine(voice)
+            if isinstance(engine, _LazySAPI32Engine):
+                selected = engine.selected_voice(voice, cancelled=cancelled)
+                self._voices = None
+        return selected
+
     def cache_identity(self, voice, *, cancelled=lambda: False):
-        return _invoke(self._engine(voice).cache_identity, voice, cancelled=cancelled)
+        engine = self._engine(voice)
+        value = _invoke(engine.cache_identity, voice, cancelled=cancelled)
+        if isinstance(engine, _LazySAPI32Engine):
+            self._voices = None
+        return value
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    punctuation=False, cancelled=lambda: False):
@@ -1071,6 +1125,8 @@ def default_registry(*, dordiai_manifest=None, piper_executable=None, piper_mani
             binary = root / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
             if binary.is_file():
                 engines.append(SAPI5Engine(binary, engine_id='sapi5-32'))
+        else:
+            engines.append(_LazySAPI32Engine())
     else:
         notices.append({'engine': 'sapi5', 'available': False, 'reason': 'SAPI 5 requires Windows.'})
     espeak = shutil.which('espeak-ng')

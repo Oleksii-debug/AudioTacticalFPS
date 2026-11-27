@@ -120,20 +120,36 @@ class SpeechSettings:
     rate: float = 0
     pitch: float = 0
     volume: float = .8
+    punctuation: bool = False
 
     def __post_init__(self):
         if (not isinstance(self.voice, str) or ':' not in self.voice or len(self.voice) > 2048
                 or any(ord(char) < 32 for char in self.voice)):
             raise ValueError('Explicitly choose an enumerated local voice.')
         _request('Selected reading text', self.language, self.rate, self.pitch, self.volume)
+        if type(self.punctuation) is not bool:
+            raise ValueError('Punctuation reading must be boolean.')
 
     def check_voice(self, voice):
         if type(voice) is not Voice or voice.id != self.voice or not voice.available:
             raise ValueError('The selected local voice is unavailable; refresh and choose it explicitly.')
         for control, value, default in (('rate', self.rate, 0), ('pitch', self.pitch, 0),
-                                        ('volume', self.volume, 1)):
+                                        ('volume', self.volume, 1), ('punctuation', self.punctuation, False)):
             if control not in voice.controls and value != default:
                 raise ValueError('The selected voice does not support ' + control + '.')
+
+    def engine_options(self):
+        """Keep historical default options and saved schema-1 rows byte-shaped."""
+        value = asdict(self)
+        if not self.punctuation:
+            value.pop('punctuation')
+        return value
+
+
+def _positions_document(rows):
+    rows = list(rows)
+    schema = 'carr-live-reading/2' if any('punctuation' in row['settings'] for row in rows) else 'carr-live-reading/1'
+    return {'schema': schema, 'positions': rows}
 
 
 def _key(digest, location):
@@ -153,9 +169,13 @@ def decode_positions(raw):
     except (UnicodeError, RecursionError) as exc:
         raise ValueError('Live reading state must be bounded UTF-8 JSON.') from exc
     if (type(value) is not dict or set(value) != {'schema', 'positions'}
-            or value['schema'] != 'carr-live-reading/1' or type(value['positions']) is not list
+            or value['schema'] not in ('carr-live-reading/1', 'carr-live-reading/2')
+            or type(value['positions']) is not list
             or len(value['positions']) > MAX_POSITIONS):
         raise ValueError('Unsupported live reading state.')
+    settings_fields = ({'voice', 'language', 'rate', 'pitch', 'volume'},)
+    if value['schema'] == 'carr-live-reading/2':
+        settings_fields += ({'voice', 'language', 'rate', 'pitch', 'volume', 'punctuation'},)
     rows = {}
     for row in value['positions']:
         if (type(row) is not dict or set(row) != {'key', 'text_sha256', 'characters', 'cursor',
@@ -164,8 +184,8 @@ def decode_positions(raw):
                 or not re.fullmatch('[0-9a-f]{64}', row['text_sha256'])
                 or type(row['characters']) is not int or not 1 <= row['characters'] <= MAX_TEXT_CHARACTERS
                 or type(row['cursor']) is not int or not 0 <= row['cursor'] <= row['characters']
-                or type(row['settings']) is not dict or set(row['settings']) != {
-                    'voice', 'language', 'rate', 'pitch', 'volume'}):
+                or type(row['settings']) is not dict
+                or set(row['settings']) not in settings_fields):
             raise ValueError('Invalid live reading position.')
         location = None if row['location'] is None else _location(row['location'])
         SpeechSettings(**row['settings'])
@@ -214,13 +234,13 @@ class SpeechPositionStore:
         digest = text_hash(text)
         row = dict(key=_key(digest, location), text_sha256=digest, characters=len(text), cursor=cursor,
                    location=asdict(location) if location is not None else None,
-                   settings=asdict(settings), updated_at=_now())
-        decode_positions(json.dumps({'schema': 'carr-live-reading/1', 'positions': [row]}).encode())
+                   settings=settings.engine_options(), updated_at=_now())
+        decode_positions(json.dumps(_positions_document([row])).encode())
         with exclusive_writer(self.root):
             guard()
             rows = self._read()
             rows[row['key']] = row
-            value = {'schema': 'carr-live-reading/1', 'positions': list(rows.values())}
+            value = _positions_document(rows.values())
             decode_positions(json.dumps(value, ensure_ascii=False).encode('utf-8'))
             guard()
             atomic_json(self.path, value)
@@ -353,6 +373,10 @@ class SpeechSession:
                 self.registry = configured_voice_registry(self.root)
             voices = self.registry.voices(cancelled=self._check)
             voice = next((voice for voice in voices if voice.id == self.settings.voice), None)
+            if voice is None and self.settings.voice.startswith('sapi5-32:'):
+                resolve = getattr(self.registry, 'selected_voice', None)
+                if callable(resolve):
+                    voice = resolve(self.settings.voice, cancelled=self._check)
             self.settings.check_voice(voice)
             identity = self.registry.cache_identity(self.settings.voice, cancelled=self._check)
             if self._voice_identity is not None and self._voice_identity != identity:
@@ -373,7 +397,7 @@ class SpeechSession:
                         self._check()
                         lease.checkpoint()
                         return False
-                    self.registry.synthesize(value, synthesized, **asdict(self.settings), cancelled=stopped)
+                    self.registry.synthesize(value, synthesized, **self.settings.engine_options(), cancelled=stopped)
                     stopped()
                     synthesis_identity = file_identity(regular_file(synthesized))
                     synthesis_info = wav_info(synthesized)

@@ -157,6 +157,7 @@ def _perform(data, phase, pythoncom, dynamic):
         phase[0] = 'opening-audio-stream'
         stream.Open(data['output'], 3, False)
         opened = True
+        speaker.AllowAudioOutputFormatChangesOnNextSet = False
         speaker.AudioOutputStream = stream
         phase[0] = 'synthesizing'
         # SVSFIsNotXML=16; optional SVSFNLPSpeakPunc=64. No filenames or SSML.
