@@ -560,3 +560,56 @@ class BookAudioService:
                     # advances to another part. A new explicit Run resumes it.
                     break
             return tuple(results)
+
+    def _measured_publication(self, plan_id, index, output, *, maximum_ms, name_template,
+                              publish, approval, budget, cancelled, guard, progress):
+        from time import monotonic
+        from ..audio import AudioBudget, AudioCancelled
+        from .publishing import PublicationService
+        selected_budget = budget or AudioBudget()
+        if not isinstance(selected_budget, AudioBudget):
+            raise TypeError('Use the existing AudioBudget for measured publication.')
+        deadline = monotonic() + selected_budget.timeout
+        def stopped():
+            return (self._closed.is_set() or self.production._closed.is_set()
+                    or bool(cancelled()) or monotonic() >= deadline)
+        try:
+            with state_lock(self.plans, 'book-' + _identity(plan_id)):
+                plan = self.load(plan_id)
+                def original_source():
+                    self._validate(plan, stopped, guard)
+                    if self.load(plan.id).fingerprint != plan.fingerprint:
+                        raise ValueError('The saved Book plan changed during measured publication.')
+                    state = self._job(plan, index)
+                    if (state is None or state['status'] != 'complete'
+                            or state.get('recovery', {}).get('requires_output_directory') is True):
+                        raise ValueError('Run and verify this exact Book part before measured audio splitting.')
+                    return plan.provenance(index)
+                original_source()
+                publisher = PublicationService(self.production, budget=selected_budget)
+                options = dict(maximum_ms=maximum_ms, name_template=name_template,
+                    source_guard=original_source, cancelled=stopped, progress=progress)
+                if publish:
+                    return publisher.export_pcm_parts(plan.job_id(index), output,
+                                                      review_sha256=approval, **options)
+                return publisher.review_pcm_parts(plan.job_id(index), output, **options)
+        except (InterruptedError, AudioCancelled) as exc:
+            if monotonic() >= deadline and not cancelled():
+                raise TimeoutError('Measured audio publication exceeded its selected time budget.') from exc
+            raise
+
+    def review_duration(self, plan_id, index, output, *, maximum_ms,
+                        name_template='{index:04d} - {book} - {part}', budget=None,
+                        cancelled=lambda: False, guard=lambda: None, progress=None):
+        """Review a post-render PCM split without another speech call."""
+        return self._measured_publication(plan_id, index, output, maximum_ms=maximum_ms,
+            name_template=name_template, publish=False, approval=None, budget=budget,
+            cancelled=cancelled, guard=guard, progress=progress)
+
+    def publish_duration(self, plan_id, index, output, *, maximum_ms, approval,
+                         name_template='{index:04d} - {book} - {part}', budget=None,
+                         cancelled=lambda: False, guard=lambda: None, progress=None):
+        """Publish only the exact separately approved completed PCM ranges."""
+        return self._measured_publication(plan_id, index, output, maximum_ms=maximum_ms,
+            name_template=name_template, publish=True, approval=approval, budget=budget,
+            cancelled=cancelled, guard=guard, progress=progress)

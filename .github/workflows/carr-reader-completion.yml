@@ -1,0 +1,61 @@
+name: CARR reader completion source acceptance
+
+on:
+  push:
+    branches: [carr/canonical-completion-2aa-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-reader-completion.yml']
+  pull_request:
+    branches: [carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-reader-completion.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-reader-completion-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  reading-composition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the package and actual local conversion tools
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Require reader, listening ownership and measured publication composition
+        run: |
+          set -euo pipefail
+          python -m compileall -q src scripts
+          python scripts/ci_check.py --jobs 2 \
+            tests/speech/test_reading_marks.py tests/ui/test_reading_tools.py \
+            tests/ui/test_reader_listening_hook.py tests/speech/test_listening.py \
+            tests/speech/test_reading_tabs.py tests/ui/test_reader_tabs.py \
+            tests/ui/test_reader_voice_recovery.py tests/ui/test_reader_playback.py \
+            tests/studio/test_measured_audio.py tests/ui/test_book_duration_dialog.py \
+            tests/studio/test_book_cli.py tests/storage/test_backup_publications.py \
+            tests/reader/test_export_reconciliation.py 2>&1 | tee reader-completion.txt

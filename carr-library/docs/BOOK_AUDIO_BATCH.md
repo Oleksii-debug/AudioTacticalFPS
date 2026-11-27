@@ -53,8 +53,9 @@ retained document bytes are never changed.
 
 Limits are **2,000,000 selected source characters and 256 parts**. Choose a
 smaller source range or larger parts when the plan exceeds a limit. Duration
-estimates and automatic duration-based splitting are unavailable. Actual line
-and chapter timing comes from the existing renderer after synthesis.
+estimates from text are unavailable. Actual line and chapter timing comes from
+the existing renderer after synthesis. The post-render workflow below splits
+that measured PCM without another speech call.
 
 For bookmark splitting, choose **Choose reading bookmarks...**, then select
 the desired existing bookmarks. The picker identifies stale source revisions;
@@ -111,6 +112,73 @@ Prepare it. The existing Studio restore transaction assigns fresh destination
 names. Read those names and confirm Run separately. The old output folder and
 its contents remain unchanged. Rebuildable audio cache is optional in canonical
 backups; missing cache is regenerated only after the new explicit Run.
+
+Publication receipts are also retained as typed historical metadata. External
+EPUB, DAISY and measured-PCM archives are not copied into the library backup.
+After restore, select the existing external publication explicitly to verify
+its exact bytes through Studio. Missing external files do not prevent backing
+up their historical receipts. A restored Book job still requires its own new
+output review and explicit Run before it can supply a new measured publication.
+
+## Split completed audio by measured duration
+
+After a saved Book part has completed, choose **Measured duration parts...**.
+Select the exact completed part, the maximum interval in **milliseconds**, the
+part naming template and a new **.zip** file. **Preview measured parts** reads
+the actual retained PCM frames and exact completed Project/timeline receipts.
+It starts no speech and creates no new Studio job. The preview lists every
+sample-frame range, duration and final archive member name.
+
+Read the preview, then choose **Publish reviewed parts** and confirm. The
+existing publication transaction reserves shared resources, stages a verified
+snapshot, rechecks the original Book source and reviewed destination, and
+publishes one new archive without overwriting an existing file. Changing the
+source, source job, interval, naming template or destination requires a fresh
+review. The accepted render and original library source remain unchanged.
+
+The archive contains integer PCM **WAV** parts, the original completed part
+Project, measured timeline, Book source receipt and a checked manifest. Joining
+the decoded PCM frame bytes of every part in order reproduces the captured
+master exactly. Splitting does not run TTS, resample, add codec padding or
+predict duration from words. Each part has the same sample rate, channels and
+sample width as its source.
+
+Text provenance remains at the producer's **whole measured line** scope.
+When a boundary crosses a line, that reference is explicitly marked as partial
+and approximate. No character or word alignment is manufactured, even though
+the audio boundaries themselves are exact sample frames. Literal source text
+is retained once in the original Project; an excerpt of audio is not presented
+as an exact character selection.
+
+This bounded format supports uncompressed integer **RIFF WAV**, mono or
+stereo, up to **256 parts**. RF64/compressed WAV inputs and automatic encoded
+duration-part output are unavailable. Choose ordinary Book chapter/text parts
+first when a completed master would exceed RIFF capacity. Maximum selected
+intervals range from 1 millisecond to one day; total bytes, available disk and
+operation time retain the existing AudioBudget and resource-policy limits.
+
+Cancel/Close stops pending work and removes temporary files. A cancellation
+after atomic publication does not relabel a saved archive as unpublished.
+The existing prepared receipt supports explicit verification after a crash;
+verification does not render or partition again.
+
+The headless equivalents use the same saved plan and approval:
+
+1. `duration-review PLAN_ID --part INDEX --output new-parts.zip --milliseconds 600000`
+   returns exact ranges and `approval_sha256`.
+2. `duration-publish PLAN_ID --part INDEX --output new-parts.zip --milliseconds 600000 --approval REVIEW_HASH`
+   publishes only that current review.
+3. Both accept the same explicit `--name-template`, `--timeout` and
+   `--max-bytes`; changing a reviewed name or interval requires another review.
+   Prefix these commands with the existing
+   `python -m carr_library studio book --data-dir DIRECTORY --workspace LIBRARY_ID`
+   and its exact `--topic`, if applicable.
+
+Use the existing Studio `publications` and
+`verify-publication RECEIPT_ID --file EXISTING_ZIP` commands to inspect or
+verify the retained receipt, including after restoring elsewhere. Verification
+checks archive structure, original metadata, checksums and the concatenated PCM;
+it does not grant a restored Book job permission to reuse an old output folder.
 
 ## Multiple books and independent settings
 

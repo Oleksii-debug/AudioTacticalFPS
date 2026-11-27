@@ -5,7 +5,7 @@ numeric values; it creates no player, worker, engine or playback loop.
 """
 
 
-def show_reader_playback(parent, player, *, execute, stop, pause, subscribe):
+def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, prepare_listening=None):
     import wx
 
     dialog = wx.Dialog(parent, title='Reader playback controls', size=(700, 740),
@@ -35,6 +35,26 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe):
         row.Add(apply_output, 0, wx.ALL, 4)
         layout.Add(row, 0, wx.EXPAND)
     fields = {}
+    listening_button = listening_cancel = None
+    if prepare_listening is not None:
+        from ..speech.listening import ListeningSettings
+        settings = player.listening_settings
+        for name, label, initial in (
+                ('speed', 'Listening speed, 0.25 to 4; synthesis rate is unchanged', settings.speed),
+                ('pitch', 'Listening pitch, minus 12 to 12 semitones; speed is independent', settings.pitch_semitones)):
+            layout.Add(wx.StaticText(panel, label=label), 0, wx.ALL, 4)
+            control = wx.TextCtrl(panel, value=format(initial, '.12g'))
+            control.SetName(label)
+            layout.Add(control, 0, wx.EXPAND | wx.ALL, 4)
+            fields[name] = control
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        listening_button = wx.Button(panel, label='Stop and prepare listening settings')
+        listening_button.SetName('Stop and prepare listening speed and pitch without autoplay')
+        listening_cancel = wx.Button(panel, label='Cancel listening preparation')
+        listening_cancel.SetName('Cancel private listening-copy preparation')
+        row.Add(listening_button, 0, wx.ALL, 4)
+        row.Add(listening_cancel, 0, wx.ALL, 4)
+        layout.Add(row, 0, wx.EXPAND)
     first, last = player.ab_loop or (0, player.duration_seconds)
     backward, forward = player.skip_intervals
     for name, label, initial in (
@@ -72,7 +92,7 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe):
     outer.Add(close, 0, wx.ALL | wx.ALIGN_RIGHT, 6)
     dialog.SetSizer(outer)
     dialog.SetEscapeId(wx.ID_CANCEL)
-    alive = True
+    alive, preparing, cancel_preparation, listening_note = True, False, None, ''
 
     def refresh():
         if not alive:
@@ -89,6 +109,21 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe):
             selected = player.output_device
             text += (' Output: ' + (selected.name if selected is not None else 'automatic')
                      + '. ' + output_note)
+        if listening_button is not None:
+            settings = player.listening_settings
+            text += (f' Listening: {settings.speed:g} times speed; {settings.pitch_semitones:g} semitones; '
+                     f'{player.listening_duration_seconds:.2f} seconds of output. '
+                     'Position and repeat use the original timeline; transformed positions are linear estimates. '
+                     + listening_note)
+            listening_button.Enable(not preparing)
+            listening_cancel.Enable(preparing)
+            for name in ('speed', 'pitch'):
+                fields[name].Enable(not preparing)
+            for name, button in buttons.items():
+                button.Enable(not preparing or name == 'stop')
+            if output is not None:
+                reload_outputs.Enable(not preparing)
+                apply_output.Enable(not preparing)
         if status.GetValue() != text:
             status.ChangeValue(text)
 
@@ -176,9 +211,57 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe):
             output_note = 'Playback stopped. Start audio explicitly to use this output; repeat and sleep were cleared.'
         return apply
 
+    def prepare_settings():
+        nonlocal preparing, cancel_preparation, listening_note
+        if preparing:
+            raise ValueError('Wait for or cancel the current listening preparation.')
+        settings = ListeningSettings(float(fields['speed'].GetValue()), float(fields['pitch'].GetValue()))
+        position = player.position_seconds
+        stop()
+        request = player.listening_request(settings.speed, settings.pitch_semitones, position_seconds=position)
+        preparing = True
+        listening_note = 'Preparing a private listening copy on the reader worker; originals are unchanged.'
+        refresh()
+        def completed():
+            nonlocal preparing, cancel_preparation, listening_note
+            if not alive:
+                return
+            preparing, cancel_preparation = False, None
+            listening_note = 'Listening copy verified and selected. Start audio explicitly; repeat and sleep were cleared.'
+            refresh()
+        def failed(exc):
+            nonlocal preparing, cancel_preparation, listening_note
+            if not alive:
+                return
+            preparing, cancel_preparation = False, None
+            listening_note = 'Listening preparation did not change the original recording. ' + str(exc)
+            refresh()
+            report_error(exc)
+        try:
+            # The existing reader owns worker execution, cancellation, current
+            # tab/source generation, result adoption and unused-result cleanup.
+            cancel_preparation = prepare_listening(request, completed, failed, active=lambda: alive)
+            if preparing and not callable(cancel_preparation):
+                raise RuntimeError('Listening preparation did not start.')
+        except Exception as exc:
+            failed(exc)
+
+    def cancel_settings(event=None):
+        nonlocal listening_note
+        if not alive or not preparing:
+            return
+        if callable(cancel_preparation):
+            cancel_preparation()
+        stop()
+        listening_note = 'Cancellation requested; waiting for private conversion cleanup.'
+        refresh()
+
     if output is not None:
         reload_outputs.Bind(wx.EVT_BUTTON, run(lambda: load_outputs))
         apply_output.Bind(wx.EVT_BUTTON, run(output_action))
+    if listening_button is not None:
+        listening_button.Bind(wx.EVT_BUTTON, run(lambda: prepare_settings))
+        listening_cancel.Bind(wx.EVT_BUTTON, cancel_settings)
 
     buttons['play'].Bind(wx.EVT_BUTTON, run(lambda: player.play_current, audible=True))
     buttons['pause'].Bind(wx.EVT_BUTTON, run(lambda: pause))
@@ -198,5 +281,11 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe):
         dialog.ShowModal()
     finally:
         alive = False
-        subscribe(None)
-        dialog.Destroy()
+        try:
+            if preparing and callable(cancel_preparation):
+                cancel_preparation()
+        finally:
+            try:
+                subscribe(None)
+            finally:
+                dialog.Destroy()

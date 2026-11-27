@@ -38,13 +38,14 @@ class Widget:
     def Bind(self, event, handler, *args): self.native(); self.handlers[event] = handler
     def EndModal(self, result): self.native()
     def Destroy(self): self.native(); self.destroyed = True
+    def Enable(self, value): self.native(); self.enabled = value
 
 
 @pytest.fixture
 def dialog(monkeypatch):
     widgets, deferred, subscriptions, actions = [], [], [], []
     Widget.widgets = widgets
-    fixture = SimpleNamespace(driver=lambda _dialog: None)
+    fixture = SimpleNamespace(driver=lambda _dialog: None, prepare_listening=None)
     class Dialog(Widget):
         def ShowModal(self):
             self.native()
@@ -81,6 +82,7 @@ def dialog(monkeypatch):
     player.clear_ab_loop = lambda: actions.append(('clear-ab',))
     fixture.player, fixture.actions, fixture.deferred = player, actions, deferred
     fixture.widgets, fixture.subscriptions = widgets, subscriptions
+    fixture.subscribe = subscriptions.append
     def execute(action, *, audible=False):
         if audible:
             deferred.append(action)
@@ -89,7 +91,7 @@ def dialog(monkeypatch):
     def show():
         return show_reader_playback(object(), player, execute=execute,
             stop=lambda: actions.append(('stop',)), pause=lambda: actions.append(('pause',)),
-            subscribe=subscriptions.append)
+            subscribe=fixture.subscribe, prepare_listening=fixture.prepare_listening)
     fixture.show = show
     def find(name):
         # A StaticText label and its explicitly named TextCtrl are distinct
@@ -286,3 +288,140 @@ def test_output_without_stable_interface_is_unavailable_before_stop(output_dialo
         assert 'no stable interface identity' in view.find('Current reader playback status').GetValue()
     view.driver = drive
     view.show()
+
+
+@pytest.fixture
+def listening_dialog(dialog):
+    from carr_library.speech.listening import ListeningSettings
+    from threading import Event
+    dialog.player.listening_settings = ListeningSettings()
+    dialog.player.listening_duration_seconds = 3
+    dialog.requests, dialog.cancellations = [], []
+    def request(speed, pitch, *, position_seconds):
+        return SimpleNamespace(settings=ListeningSettings(speed, pitch),
+                               position_seconds=position_seconds, token=object())
+    dialog.player.listening_request = request
+    def prepare(request, completed, failed, *, active):
+        cancelled = Event()
+        dialog.requests.append((request, completed, failed, active, cancelled))
+        def stop():
+            dialog.cancellations.append(request.token)
+            cancelled.set()
+        return stop
+    dialog.prepare_listening = prepare
+    return dialog
+
+
+def test_listening_fields_are_frozen_for_worker_and_apply_does_not_play(listening_dialog):
+    from threading import Thread
+    dialog = listening_dialog
+    values = []
+    def drive(_window):
+        speed = dialog.find('Listening speed, 0.25 to 4; synthesis rate is unchanged')
+        pitch = dialog.find('Listening pitch, minus 12 to 12 semitones; speed is independent')
+        speed.ChangeValue('2')
+        pitch.ChangeValue('7')
+        dialog.player.position_seconds = .75
+        dialog.press('Stop and prepare listening speed and pitch without autoplay')
+        assert dialog.actions == [('stop',)] and len(dialog.requests) == 1
+        request, completed, failed, active, cancelled = dialog.requests[0]
+        assert not speed.enabled and not pitch.enabled and active() and not cancelled.is_set()
+        speed.ChangeValue('.5')
+        pitch.ChangeValue('-12')
+        worker = Thread(target=lambda: values.append((
+            request.settings.speed, request.settings.pitch_semitones, request.position_seconds)))
+        worker.start()
+        worker.join(2)
+        assert not worker.is_alive() and values == [(2, 7, .75)]
+        # The parent owns actual conversion/adoption; this callback only updates
+        # native controls after that owner reports completion on the UI thread.
+        dialog.player.listening_settings = request.settings
+        dialog.player.listening_duration_seconds = 1.5
+        completed()
+        assert speed.enabled and pitch.enabled
+        assert 'Start audio explicitly' in dialog.find('Current reader playback status').value
+        assert dialog.actions == [('stop',)] and not dialog.deferred
+    dialog.driver = drive
+    dialog.show()
+    assert not dialog.cancellations
+
+
+def test_closed_listening_controls_cancel_owner_and_ignore_all_late_ui_callbacks(listening_dialog):
+    dialog = listening_dialog
+    def drive(_window):
+        dialog.press('Stop and prepare listening speed and pitch without autoplay')
+    dialog.driver = drive
+    dialog.show()
+    request, completed, failed, active, cancelled = dialog.requests[0]
+    assert not active() and cancelled.is_set() and dialog.cancellations == [request.token]
+    for widget in dialog.widgets:
+        widget.destroyed = True
+    completed()
+    failed(RuntimeError('Late worker result'))
+    assert dialog.actions == [('stop',)]
+
+
+def test_explicit_listening_cancel_uses_same_owner_and_remains_stopped(listening_dialog):
+    dialog = listening_dialog
+    def drive(_window):
+        dialog.press('Stop and prepare listening speed and pitch without autoplay')
+        request, completed, failed, active, cancelled = dialog.requests[0]
+        dialog.press('Cancel private listening-copy preparation')
+        assert cancelled.is_set() and active()
+        assert dialog.actions == [('stop',), ('stop',)]
+        failed(InterruptedError('Explicit preparation cancelled'))
+        assert dialog.find('Stop and prepare listening speed and pitch without autoplay').enabled
+        assert 'cancelled' in dialog.find('Current reader playback status').value
+    dialog.driver = drive
+    dialog.show()
+    assert len(dialog.cancellations) == 1
+
+
+@pytest.mark.parametrize('value', ['nan', 'inf', '0', '4.1', 'invalid'])
+def test_invalid_listening_speed_is_rejected_before_stop_or_worker_submission(listening_dialog, value):
+    dialog = listening_dialog
+    def drive(_window):
+        dialog.find('Listening speed, 0.25 to 4; synthesis rate is unchanged').ChangeValue(value)
+        dialog.press('Stop and prepare listening speed and pitch without autoplay')
+        assert dialog.find('Current reader playback status').value
+    dialog.driver = drive
+    dialog.show()
+    assert not dialog.actions and not dialog.requests
+
+
+
+@pytest.mark.parametrize('boundary', ['cancel', 'unsubscribe'])
+def test_listening_close_destroys_native_dialog_when_cleanup_callback_raises(listening_dialog, boundary):
+    view = listening_dialog
+    prepare = view.prepare_listening
+    subscribed = view.subscribe
+
+    def prepare_with_failure(request, completed, failed, *, active):
+        cancel = prepare(request, completed, failed, active=active)
+        def cancelled():
+            cancel()
+            if boundary == 'cancel':
+                raise RuntimeError('Cancellation callback failed after signalling.')
+        return cancelled
+
+    def subscribe(callback):
+        subscribed(callback)
+        if callback is None and boundary == 'unsubscribe':
+            raise RuntimeError('Unsubscribe callback failed after detaching.')
+
+    view.prepare_listening, view.subscribe = prepare_with_failure, subscribe
+    view.driver = lambda _window: view.press('Stop and prepare listening speed and pitch without autoplay')
+    with pytest.raises(RuntimeError, match='callback failed'):
+        view.show()
+    request, completed, failed, active, cancelled = view.requests[0]
+    assert cancelled.is_set() and not active()
+    assert view.cancellations == [request.token]
+    assert callable(view.subscriptions[0]) and view.subscriptions[-1] is None
+    native_dialogs = [widget for widget in view.widgets if hasattr(widget, 'ShowModal')]
+    assert len(native_dialogs) == 1 and native_dialogs[0].destroyed
+    for widget in view.widgets:
+        widget.destroyed = True
+    view.subscriptions[0]()
+    completed()
+    failed(RuntimeError('Late completion after cleanup failure.'))
+    assert view.actions == [('stop',)] and not view.deferred

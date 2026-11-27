@@ -245,3 +245,30 @@ def test_actual_cli_restore_prepares_new_outputs_without_old_external_review(act
     result = cli(restored_root, workspace, 'run', original['batch'], *mappings, '--approval', rebound['approval'])
     assert result.returncode == 0 and json.loads(result.stdout)['status'] == 'complete', result.stderr
 
+
+
+def test_actual_cli_duration_review_publish_and_existing_receipt_verification(batch):
+    from carr_library.studio.measured_audio import inspect
+    e = batch
+    _, prepared = _fixtures.prepare(e)
+    assert e.groups.run(e.selected.id, e.outputs, approval=prepared.fingerprint)['status'] == 'complete'
+    output = e.outputs[0].parent / 'cli-measured-parts.zip'
+    plan = e.plans[0]
+    args = (plan.id, '--part', '1', '--output', str(output), '--milliseconds', '70')
+    result = cli(e.app.root, e.workspace, 'duration-review', *args)
+    assert result.returncode == 0, result.stderr
+    reviewed = json.loads(result.stdout)
+    assert reviewed['content']['pcm']['frames'] == 4800 and not output.exists()
+    refused = cli(e.app.root, e.workspace, 'duration-publish', *args, '--approval', '0' * 64)
+    assert refused.returncode == 1 and not output.exists()
+    result = cli(e.app.root, e.workspace, 'duration-publish', *args,
+                 '--approval', reviewed['approval_sha256'])
+    assert result.returncode == 0, result.stderr
+    receipt = json.loads(result.stdout)
+    assert receipt['format'] == 'pcm-parts' and receipt['status'] == 'complete'
+    assert inspect(output)['content'] == reviewed['content']
+    before = (sha256(output.read_bytes()).hexdigest(), output.stat().st_mtime_ns)
+    repeated = cli(e.app.root, e.workspace, 'duration-publish', *args,
+                   '--approval', reviewed['approval_sha256'])
+    assert repeated.returncode == 1
+    assert (sha256(output.read_bytes()).hexdigest(), output.stat().st_mtime_ns) == before

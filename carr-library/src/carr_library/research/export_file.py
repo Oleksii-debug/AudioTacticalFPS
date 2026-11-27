@@ -204,13 +204,17 @@ def _recheck_scope(path, private_root, snapshot):
         raise ValueError('The export destination changed. Choose the destination again.')
 
 
-def _destination(path, private_root, *, cancelled=lambda: False):
+def _destination(path, private_root, *, cancelled=lambda: False, reject_existing=None):
     if cancelled():
         raise TimeoutError('Export cancelled; the destination was not changed.')
     snapshot = _inspect_destination(path, private_root)
     target, parent_identity, state = snapshot
     if state is None:
         return snapshot
+    # Create-only admission permits metadata checks, never reading a competing
+    # file's content. Retain the same scope checks for approved replacement.
+    if reject_existing is not None:
+        raise reject_existing
     info = target.lstat()
     if _file_state(info) != state or _linked(info):
         raise ValueError('The export destination changed. Choose the destination again.')
@@ -310,12 +314,18 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
 
     check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, previous = _destination(requested, private, cancelled=cancelled)
+    if approval is not None and type(approval) is not ExportDestination:
+        raise ValueError('A captured export destination approval is required.')
+    reject_existing = None
+    if approval is not None and approval.require_absent:
+        reject_existing = ValueError('The export destination changed. Choose the destination again.')
+    elif require_absent:
+        reject_existing = FileExistsError('The export destination already exists; replacement was not authorized.')
+    target, parent_identity, previous = _destination(requested, private, cancelled=cancelled,
+                                                     reject_existing=reject_existing)
     # Absence cannot authorize replacement of a competitor created later.
     require_absent = require_absent or previous is None
     if approval is not None:
-        if type(approval) is not ExportDestination:
-            raise ValueError('A captured export destination approval is required.')
         if (approval.requested != requested or approval.private_root != private
                 or approval.target != target or approval.parent_identity != parent_identity
                 or approval.state != previous):
@@ -335,7 +345,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             os.fsync(output.fileno())
 
         check_cancelled()
-        checked_target, checked_parent, current = _destination(requested, private, cancelled=cancelled)
+        reject_existing = (ValueError('The export destination changed. Choose the destination again.')
+                           if require_absent else None)
+        checked_target, checked_parent, current = _destination(requested, private, cancelled=cancelled,
+                                                               reject_existing=reject_existing)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')

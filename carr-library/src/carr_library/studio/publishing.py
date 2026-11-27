@@ -4,6 +4,7 @@ Only measured line intervals are synchronized. Audio between scripted lines is
 retained with explicit interval labels, never presented as an invented transcript.
 The existing local audio runtime supplies MP3, an EPUB core audio media type.
 """
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
@@ -134,34 +135,20 @@ def _clock(value):
     return f'{0.0 if value == 0 else value:.6f}s'
 
 
-def validate_publication_receipt(value, identity=None):
-    """Validate historical receipt data without following its external paths."""
-    required = {'schema', 'id', 'status', 'studio_root', 'output', 'artifact', 'source', 'created', 'notice'}
-    if (type(value) is not dict or not required <= set(value) <= required | {'format'}
-            or value['schema'] != 'resonance-publication/1'
-            or type(value['id']) is not str or re.fullmatch('[0-9a-f]{32}', value['id']) is None
-            or identity is not None and value['id'] != identity
-            or value['status'] not in ('prepared', 'complete')
-            or value.get('format', 'epub') not in ('epub', 'daisy-2.02')):
-        raise ValueError('Invalid saved publication receipt.')
-    for key, maximum in (('studio_root', 32768), ('output', 32768), ('notice', 8192)):
-        _text(value[key], 'Publication ' + key, maximum=maximum)
-    if (type(value['created']) is not str or not re.fullmatch(
-            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', value['created'])):
-        raise ValueError('Invalid publication creation time.')
-    datetime.strptime(value['created'], '%Y-%m-%dT%H:%M:%SZ')
-    def digest(value):
-        if type(value) is not str or not _HASH.fullmatch(value):
-            raise ValueError('Invalid publication content digest.')
-    def artifact(value):
-        if (type(value) is not dict or set(value) != {'sha256', 'size'}
-                or type(value['size']) is not int or not 0 <= value['size'] <= 2**63 - 1):
-            raise ValueError('Invalid publication artifact receipt.')
-        digest(value['sha256'])
-    artifact(value['artifact'])
-    if value['artifact']['size'] == 0:
-        raise ValueError('A publication receipt cannot describe an empty archive.')
-    source = value['source']
+def _receipt_digest(value):
+    if type(value) is not str or not _HASH.fullmatch(value):
+        raise ValueError('Invalid publication content digest.')
+
+
+def _receipt_artifact(value):
+    if (type(value) is not dict or set(value) != {'sha256', 'size'}
+            or type(value['size']) is not int or not 0 <= value['size'] <= 2**63 - 1):
+        raise ValueError('Invalid publication artifact receipt.')
+    _receipt_digest(value['sha256'])
+
+
+def validate_publication_source(source):
+    """Validate the existing immutable source receipt, never its external paths."""
     if (type(source) is not dict or set(source) != {
             'job_id', 'job_sha256', 'project_id', 'project_sha256', 'source_script_sha256', 'artifacts'}
             or type(source['artifacts']) is not list or not 3 <= len(source['artifacts']) <= 100000):
@@ -169,7 +156,7 @@ def validate_publication_receipt(value, identity=None):
     _id(source['job_id'])
     _id(source['project_id'])
     for key in ('job_sha256', 'project_sha256', 'source_script_sha256'):
-        digest(source[key])
+        _receipt_digest(source[key])
     from ..state_backup import relative_name
     names = set()
     for row in source['artifacts']:
@@ -179,9 +166,35 @@ def validate_publication_receipt(value, identity=None):
         if name.casefold() in names:
             raise ValueError('Duplicate publication source artifact.')
         names.add(name.casefold())
-        artifact({'size': row['size'], 'sha256': row['sha256']})
+        _receipt_artifact({'size': row['size'], 'sha256': row['sha256']})
     if not {'master.wav', 'project.json', 'timeline.json'} <= names:
         raise ValueError('Publication source receipts lack the original measured master graph.')
+    return source
+
+
+def validate_publication_receipt(value, identity=None):
+    """Validate historical receipt data without following its external paths."""
+    required = {'schema', 'id', 'status', 'studio_root', 'output', 'artifact', 'source', 'created', 'notice'}
+    if (type(value) is not dict or not required <= set(value) <= required | {'format'}
+            or value['schema'] != 'resonance-publication/1'
+            or type(value['id']) is not str or re.fullmatch('[0-9a-f]{32}', value['id']) is None
+            or identity is not None and value['id'] != identity
+            or value['status'] not in ('prepared', 'complete')
+            or value.get('format', 'epub') not in ('epub', 'daisy-2.02', 'pcm-parts')):
+        raise ValueError('Invalid saved publication receipt.')
+    for key, maximum in (('studio_root', 32768), ('output', 32768), ('notice', 8192)):
+        _text(value[key], 'Publication ' + key, maximum=maximum)
+    if (type(value['created']) is not str or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', value['created'])):
+        raise ValueError('Invalid publication creation time.')
+    datetime.strptime(value['created'], '%Y-%m-%dT%H:%M:%SZ')
+    _receipt_artifact(value['artifact'])
+    if value['artifact']['size'] == 0:
+        raise ValueError('A publication receipt cannot describe an empty archive.')
+    validate_publication_source(value['source'])
+    if value.get('format') == 'pcm-parts' and not any(
+            row['name'] == 'book-source.json' for row in value['source']['artifacts']):
+        raise ValueError('A measured publication receipt requires its original Book provenance.')
     return value
 
 
@@ -570,6 +583,87 @@ class PublicationService:
         _segments(project, documents['timeline.json'], check)
         return project, documents['timeline.json'], paths
 
+    @staticmethod
+    def _source_record(job_id, state_digest, project, timeline, paths):
+        return {'job_id': job_id, 'job_sha256': state_digest, 'project_id': project.id,
+            'project_sha256': project.fingerprint, 'source_script_sha256': timeline['source_sha256'],
+            'artifacts': [{'name': name, 'size': receipt['size'], 'sha256': receipt['sha256']}
+                          for name, (_, receipt) in sorted(paths.items())]}
+
+    def _measured_book_source(self, project, timeline, paths, source_guard, check):
+        from .measured_audio import validate_book_source
+        if not callable(source_guard) or 'book-source.json' not in paths:
+            raise ValueError('Open measured audio splitting from the original completed Book plan.')
+        check()
+        try:
+            current = source_guard()
+        except InterruptedError:
+            check()
+            raise
+        check()
+        path, receipt = paths['book-source.json']
+        original = _json(_read(path, receipt, check, collect=True))
+        if current != original:
+            raise ValueError('The original Book source changed before measured publication.')
+        return validate_book_source(project, timeline, original)
+
+    def review_pcm_parts(self, job_id, output, *, maximum_ms,
+                         name_template='{index:04d} - {book} - {part}',
+                         source_guard=None, cancelled=lambda: False, progress=None):
+        """Review exact completed frames/names; never create a new render job."""
+        from . import measured_audio
+        measured_audio.options(maximum_ms, name_template)
+        if not callable(source_guard):
+            raise ValueError('Open measured audio splitting from the original completed Book plan.')
+        self.production._check_open()
+        started = monotonic()
+        def check():
+            if cancelled():
+                raise AudioCancelled('Measured audio review cancelled.')
+            if monotonic() - started > self.budget.timeout:
+                raise TimeoutError('Measured audio review exceeded its selected time budget.')
+        def notify(message):
+            if progress is not None:
+                try:
+                    progress(message)
+                except Exception:
+                    pass
+        check()
+        source_guard()
+        check()
+        selected = capture_export_destination(output, private_root=self.private_root, cancelled=cancelled)
+        job_id = _id(job_id)
+        self.production.get(job_id)
+        with state_lock(self.production.jobs_root / job_id, 'render'):
+            state = self.production.get(job_id)
+            state_digest = sha256(encode(state)).hexdigest()
+            project, timeline, paths = self._source(state, check, notify)
+            if selected.target.is_relative_to(local_path(state['destination'], exists=True)):
+                raise ValueError('Choose a measured publication outside the completed production folder.')
+            source_book = self._measured_book_source(project, timeline, paths, source_guard, check)
+            pcm = measured_audio.pcm_info(paths['master.wav'][0], timeline, check)
+            content = measured_audio.content_review(project, timeline,
+                self._source_record(job_id, state_digest, project, timeline, paths),
+                pcm, maximum_ms, name_template, check)
+            # A retained header or metadata change during review grants no
+            # publication authority. Export repeats all of these checks.
+            self._source(state, check, lambda message: None)
+            if (sha256(encode(self.production.get(job_id))).hexdigest() != state_digest
+                    or self._measured_book_source(project, timeline, paths, source_guard, check) != source_book
+                    or capture_export_destination(selected.requested,
+                        private_root=self.private_root, cancelled=cancelled) != selected):
+                raise ValueError('The measured source or selected output changed during review.')
+            check()
+            return measured_audio.review_document(content, selected)
+
+    def export_pcm_parts(self, job_id, output, *, maximum_ms, review_sha256,
+                         name_template='{index:04d} - {book} - {part}',
+                         source_guard=None, cancelled=lambda: False, progress=None):
+        return self._export(job_id, output, book_format='pcm-parts', language='und', creator='',
+            cancelled=cancelled, progress=progress, approval=None,
+            duration_options=(maximum_ms, name_template), review_sha256=review_sha256,
+            source_guard=source_guard)
+
     def export_epub(self, job_id, output, *, language='und', creator='', cancelled=lambda: False,
                     progress=None, approval=None):
         return self._export(job_id, output, book_format='epub', language=language, creator=creator,
@@ -581,7 +675,7 @@ class PublicationService:
                             publisher=publisher, cancelled=cancelled, progress=progress, approval=approval)
 
     def _export(self, job_id, output, *, book_format, language, creator, publisher='',
-                cancelled, progress, approval):
+                cancelled, progress, approval, duration_options=None, review_sha256=None, source_guard=None):
         if book_format == 'epub':
             label, suffix, notice, inspect = 'EPUB', '.epub', NOTICE, inspect_epub
             schema, member_name, archive_limit = 'resonance-epub/1', 'EPUB/audio/master.mp3', self.budget.max_output_bytes
@@ -592,8 +686,17 @@ class PublicationService:
             schema, member_name = 'resonance-daisy-2.02/1', 'master.mp3'
             archive_limit = self.budget.max_output_bytes
             publisher = _text(publisher, 'DAISY publisher', maximum=512)
+        elif book_format == 'pcm-parts':
+            from . import measured_audio
+            if (type(duration_options) is not tuple or len(duration_options) != 2
+                    or type(review_sha256) is not str or not _HASH.fullmatch(review_sha256)
+                    or not callable(source_guard)):
+                raise ValueError('Review the exact completed Book audio ranges and output before publication.')
+            measured_audio.options(*duration_options)
+            label, suffix, notice, inspect = 'Measured PCM', '.zip', measured_audio.NOTICE, measured_audio.inspect
+            schema, member_name, archive_limit = measured_audio.SCHEMA, None, self.budget.max_output_bytes
         else:
-            raise ValueError('Choose the existing EPUB3 or DAISY 2.02 publication format.')
+            raise ValueError('Choose an existing supported local publication format.')
         language = language_tag(language)
         creator = _text(creator, 'Creator', maximum=512, empty=True)
         job_id = _id(job_id)
@@ -608,6 +711,7 @@ class PublicationService:
             raise FileExistsError(f'The selected {label} already exists; it will not be overwritten.')
         self.production.get(job_id)  # Unknown IDs must not create a job directory.
         started = monotonic()
+        lease = None
         observer = progress
         def progress(message):
             if observer is not None:
@@ -622,24 +726,61 @@ class PublicationService:
                 raise AudioCancelled(f'{label} publication cancelled; previous completed files are retained.')
             if monotonic() - started > self.budget.timeout:
                 raise TimeoutError(f'{label} publication exceeded its selected time budget.')
+            if lease is not None:
+                lease.checkpoint()
         def stopping():
             return cancelled() or monotonic() - started > self.budget.timeout
-        def scope():
+        def scope(*, recheck_source=False):
             check()
             current = capture_export_destination(approval.requested, private_root=self.private_root)
             if current.state is not None:
                 raise FileExistsError(f'The selected {label} became occupied; nothing will be overwritten.')
             if current != approval:
                 raise ValueError('The selected output directory changed during publication.')
+            if book_format == 'pcm-parts':
+                if recheck_source:
+                    self._source(state, check, lambda message: None)
+                if (self._measured_book_source(project, timeline, paths, source_guard, check) != source_book
+                        or sha256(encode(self.production.get(job_id))).hexdigest() != state_digest):
+                    raise ValueError('The reviewed Book source changed before measured publication.')
 
-        with state_lock(self.production.jobs_root / job_id, 'render'):
+        if book_format == 'pcm-parts':
+            check()
+            source_guard()
+            check()
+        with state_lock(self.production.jobs_root / job_id, 'render'), ExitStack() as reservations:
             state = self.production.get(job_id)
             state_digest = sha256(encode(state)).hexdigest()
             project, timeline, paths = self._source(state, check, progress)
             if output.is_relative_to(local_path(state['destination'], exists=True)):
                 raise ValueError('Choose a publication destination outside the completed production folder.')
-            source_name = 'audiobook.mp3' if state.get('format') == 'mp3' and 'audiobook.mp3' in paths else 'master.wav'
+            source_name = ('audiobook.mp3' if book_format != 'pcm-parts' and state.get('format') == 'mp3'
+                           and 'audiobook.mp3' in paths else 'master.wav')
             source_path, source_receipt = paths[source_name]
+            if book_format == 'pcm-parts':
+                from ..operations import ResourceRequest
+                source_book = self._measured_book_source(project, timeline, paths, source_guard, check)
+                check()
+                source_pcm = measured_audio.pcm_info(source_path, timeline, check)
+                source_record = self._source_record(job_id, state_digest, project, timeline, paths)
+                measured_content = measured_audio.content_review(project, timeline, source_record,
+                    source_pcm, *duration_options, check=check)
+                if measured_audio.review_document(measured_content, approval)['approval_sha256'] != review_sha256:
+                    raise ValueError('The measured audio ranges, names, source or output changed. Review them again.')
+                metadata_bytes = sum(paths[name][1]['size'] for name in
+                                     ('project.json', 'timeline.json', 'book-source.json'))
+                request = ResourceRequest(cpu_slots=1, memory_bytes=256 * 1024**2,
+                    disk_bytes=source_receipt['size'] * 2 + metadata_bytes
+                        + len(encode(measured_content)) * 2 + 512 * 1024 + self.budget.reserve_disk_bytes,
+                    disk_path=parent)
+                progress('Waiting for shared measured-publication resources')
+                lease = reservations.enter_context(self.production.broker.reserve(request,
+                    operation_id='publication:' + job_id, cancelled=stopping,
+                    timeout=min(60, max(0, self.budget.timeout - (monotonic() - started)))))
+                check()
+                self._source(state, check, lambda message: None)
+                if sha256(encode(self.production.get(job_id))).hexdigest() != state_digest:
+                    raise ValueError('The completed job changed while waiting for publication resources.')
             if shutil.disk_usage(parent).free < source_receipt['size'] * 2 + self.budget.reserve_disk_bytes:
                 raise OSError('Not enough free disk for verified audio staging and the selected reserve.')
             scope()
@@ -661,55 +802,73 @@ class PublicationService:
                         or (source_name.endswith('.mp3') and observed.codec != 'mp3')
                         or (source_name.endswith('.wav') and not observed.codec.startswith('pcm_'))):
                     raise ValueError('The actual audio format/duration does not match the completed timeline.')
-                if source_name.endswith('.mp3'):
-                    audio = selected_audio
+                if book_format == 'pcm-parts':
+                    actual_pcm = measured_audio.pcm_info(selected_audio, timeline, check)
+                    if actual_pcm != source_pcm:
+                        raise ValueError('The staged master frames differ from the exact measured review.')
+                    identity = uuid4().hex
+                    provenance = {'schema': measured_audio.SCHEMA, 'publication_id': identity,
+                        'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                        'source': source_record}
+                    metadata = {'source/' + name: _read(paths[name][0], paths[name][1], check, collect=True)
+                                for name in ('project.json', 'timeline.json', 'book-source.json')}
+                    staged = staging / 'publication.zip'
+                    progress('Packaging exact measured PCM frame ranges and whole-line source scope')
+                    remaining_bytes = min(archive_limit, self.budget.max_output_bytes - source_receipt['size'])
+                    if remaining_bytes <= 0:
+                        raise ValueError('The source snapshot leaves no byte budget for measured publication.')
+                    measured_audio.package(staged, selected_audio, measured_content, provenance, metadata,
+                                           check=check, max_bytes=remaining_bytes)
                 else:
-                    progress('Encoding MP3 with the configured local audio runtime')
-                    audio = staging / 'master.mp3'
-                    runtime.convert(selected_audio, audio, sample_rate=observed.sample_rate,
-                                    channels=observed.channels, cancelled=stopping)
-                    observed = runtime.inspect(audio, cancelled=stopping)
-                check()
-                if observed.codec != 'mp3' or observed.duration + 1e-6 < timeline['duration']:
-                    raise ValueError('The packaged MP3 does not cover the measured master duration.')
-                if book_format == 'daisy-2.02' and (observed.sample_rate not in (16000, 22050, 24000, 32000, 44100, 48000)
-                        or observed.channels not in (1, 2)):
-                    raise ValueError('DAISY requires supported MPEG-1/2 mono or stereo audio.')
-                audio_identity = _digest(audio, check, self.budget.max_output_bytes)
-                identity = uuid4().hex
-                provenance = {'schema': schema, 'publication_id': identity,
-                    'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
-                    'source': {'job_id': job_id, 'job_sha256': state_digest, 'project_id': project.id,
-                        'project_sha256': project.fingerprint, 'source_script_sha256': timeline['source_sha256'],
-                        'artifacts': [{'name': name, 'size': receipt['size'], 'sha256': receipt['sha256']}
-                                      for name, (_, receipt) in sorted(paths.items())]},
-                    'audio': {'identity': audio_identity, 'media_type': 'audio/mpeg', 'codec': observed.codec,
-                        'duration': observed.duration, 'sample_rate': observed.sample_rate, 'channels': observed.channels,
-                        'source_artifact': source_name, 'reused': source_name.endswith('.mp3')},
-                    'validation': {'zip_xml_graph': 'verified on export',
-                                   'epubcheck' if book_format == 'epub' else 'independent_daisy_validator': 'NOT_RUN',
-                                   'reader_interoperability': 'NOT_RUN'}}
-                parts = (_parts(project, timeline, provenance, language, creator, check) if book_format == 'epub'
-                         else daisy.parts(project, timeline, provenance, language, creator, publisher, check))
-                raw_size = sum(len(raw) for raw in parts.values()) + audio_identity['size'] + 20
-                if (raw_size > archive_limit
-                        or raw_size + sum(path.stat().st_size for path in staging.iterdir()) > self.budget.max_output_bytes):
-                    raise ValueError(f'{label} metadata/audio staging exceeds the selected byte budget.')
-                staged = staging / ('publication' + suffix)
-                progress(f'Packaging {label} text, navigation and measured media overlays')
-                with ZipFile(staged, 'x', compression=ZIP_DEFLATED, allowZip64=True) as archive:
-                    if book_format == 'epub':
-                        mimetype = ZipInfo('mimetype'); mimetype.compress_type = ZIP_STORED
-                        archive.writestr(mimetype, b'application/epub+zip')
-                    for name, raw in parts.items():
-                        check(); archive.writestr(name, raw)
-                    member = ZipInfo(member_name); member.compress_type = ZIP_STORED
-                    digest, count = sha256(), 0
-                    with audio.open('rb') as source, archive.open(member, 'w', force_zip64=True) as target:
-                        while block := source.read(1024 * 1024):
-                            check(); count += len(block); digest.update(block); target.write(block)
-                    if {'size': count, 'sha256': digest.hexdigest()} != audio_identity:
-                        raise ValueError(f'The staged MP3 changed during {label} packaging.')
+                    if source_name.endswith('.mp3'):
+                        audio = selected_audio
+                    else:
+                        progress('Encoding MP3 with the configured local audio runtime')
+                        audio = staging / 'master.mp3'
+                        runtime.convert(selected_audio, audio, sample_rate=observed.sample_rate,
+                                        channels=observed.channels, cancelled=stopping)
+                        observed = runtime.inspect(audio, cancelled=stopping)
+                    check()
+                    if observed.codec != 'mp3' or observed.duration + 1e-6 < timeline['duration']:
+                        raise ValueError('The packaged MP3 does not cover the measured master duration.')
+                    if book_format == 'daisy-2.02' and (observed.sample_rate not in (16000, 22050, 24000, 32000, 44100, 48000)
+                            or observed.channels not in (1, 2)):
+                        raise ValueError('DAISY requires supported MPEG-1/2 mono or stereo audio.')
+                    audio_identity = _digest(audio, check, self.budget.max_output_bytes)
+                    identity = uuid4().hex
+                    provenance = {'schema': schema, 'publication_id': identity,
+                        'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                        'source': {'job_id': job_id, 'job_sha256': state_digest, 'project_id': project.id,
+                            'project_sha256': project.fingerprint, 'source_script_sha256': timeline['source_sha256'],
+                            'artifacts': [{'name': name, 'size': receipt['size'], 'sha256': receipt['sha256']}
+                                          for name, (_, receipt) in sorted(paths.items())]},
+                        'audio': {'identity': audio_identity, 'media_type': 'audio/mpeg', 'codec': observed.codec,
+                            'duration': observed.duration, 'sample_rate': observed.sample_rate, 'channels': observed.channels,
+                            'source_artifact': source_name, 'reused': source_name.endswith('.mp3')},
+                        'validation': {'zip_xml_graph': 'verified on export',
+                                       'epubcheck' if book_format == 'epub' else 'independent_daisy_validator': 'NOT_RUN',
+                                       'reader_interoperability': 'NOT_RUN'}}
+                    parts = (_parts(project, timeline, provenance, language, creator, check) if book_format == 'epub'
+                             else daisy.parts(project, timeline, provenance, language, creator, publisher, check))
+                    raw_size = sum(len(raw) for raw in parts.values()) + audio_identity['size'] + 20
+                    if (raw_size > archive_limit
+                            or raw_size + sum(path.stat().st_size for path in staging.iterdir()) > self.budget.max_output_bytes):
+                        raise ValueError(f'{label} metadata/audio staging exceeds the selected byte budget.')
+                    staged = staging / ('publication' + suffix)
+                    progress(f'Packaging {label} text, navigation and measured media overlays')
+                    with ZipFile(staged, 'x', compression=ZIP_DEFLATED, allowZip64=True) as archive:
+                        if book_format == 'epub':
+                            mimetype = ZipInfo('mimetype'); mimetype.compress_type = ZIP_STORED
+                            archive.writestr(mimetype, b'application/epub+zip')
+                        for name, raw in parts.items():
+                            check(); archive.writestr(name, raw)
+                        member = ZipInfo(member_name); member.compress_type = ZIP_STORED
+                        digest, count = sha256(), 0
+                        with audio.open('rb') as source, archive.open(member, 'w', force_zip64=True) as target:
+                            while block := source.read(1024 * 1024):
+                                check(); count += len(block); digest.update(block); target.write(block)
+                        if {'size': count, 'sha256': digest.hexdigest()} != audio_identity:
+                            raise ValueError(f'The staged MP3 changed during {label} packaging.')
                 inspect(staged, cancelled=stopping, max_bytes=archive_limit)
                 archive_identity = _digest(staged, check, archive_limit)
                 progress('Rechecking source receipts and selected destination before publication')
@@ -728,7 +887,7 @@ class PublicationService:
                 progress('Prepared publication receipt: ' + identity)
                 published = False
                 try:
-                    scope()
+                    scope(recheck_source=book_format == 'pcm-parts')
                     publish_file(staged, output, cancelled=stopping)
                     published = True
                     staged.unlink()
@@ -763,6 +922,9 @@ class PublicationService:
         if record.get('format', 'epub') == 'daisy-2.02':
             from .daisy import inspect_daisy
             inspect = inspect_daisy
+        elif record.get('format') == 'pcm-parts':
+            from .measured_audio import inspect as inspect_pcm_parts
+            inspect = inspect_pcm_parts
         if record.get('studio_root') != str(self.root) and output is None:
             raise ValueError('This receipt was restored elsewhere; explicitly select its existing publication file to verify.')
         selected = local_path(output if output is not None else record['output'], exists=True)

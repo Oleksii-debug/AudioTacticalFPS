@@ -291,3 +291,74 @@ def test_explicit_text_preserves_pre_tabs_manual_recovery(view):
     assert fresh.current.resume.document.source_text == 'New explicit text.'
     assert fresh.states[0].store.path.read_bytes() == before
     fresh.close()
+
+
+
+def _save_clean_first_copy(view):
+    state = view.tabs.current
+    state.resume.document.save(view.root / 'saved-reading-copy.json')
+    view.tabs.save_current()
+    assert not state.resume.document.dirty
+    return state
+
+
+def test_clean_close_flushes_latest_voice_cursor_and_numeric_audio_before_autosave(view):
+    state = _save_clean_first_copy(view)
+    view.current.voice, view.current.rate, view.current.volume = 'voice:chosen-later', -1, 62
+    view.current.cursor, view.current.seconds = 11, 6.75
+    assert view.tabs.confirm_all_close()
+    assert view.context.confirmations == []
+    restored = NativeReaderTabs(view.parent, view.root, ReaderResume(ReadingDocument('ignored')),
+                                wx_module=view.wx)
+    resume = restored.current.resume
+    assert (resume.voice_id, resume.rate, resume.volume, resume.cursor, resume.audio_seconds) == (
+        'voice:chosen-later', -1, 62, 11, 6.75)
+    assert resume.document.source_text == state.resume.document.source_text
+    assert resume.document.text == state.resume.document.text
+    restored.close()
+
+
+def test_dirty_discard_does_not_flush_rejected_edits_or_replace_prior_recovery(view):
+    first = _save_clean_first_copy(view)
+    view.tabs.on_new()
+    second = view.tabs.current
+    before = second.store.path.read_bytes()
+    first_before = first.store.path.read_bytes()
+    second.editor.ChangeValue('Changes explicitly not saved on close.')
+    view.context.accepted = True  # Confirm returns true without invoking Save.
+    assert view.tabs.confirm_all_close()
+    assert view.context.confirmations == [second.entry.id]
+    assert second.resume.document.dirty
+    assert second.store.path.read_bytes() == before
+    assert first.store.path.read_bytes() == first_before
+
+
+def test_cancel_other_dirty_copy_does_not_flush_active_clean_copy(view):
+    first = _save_clean_first_copy(view)
+    view.tabs.on_new()
+    second = view.tabs.current
+    second.editor.ChangeValue('Another copy still needs a close decision.')
+    assert not view.tabs.notebook.select(0).vetoed
+    assert view.tabs.current is first
+    before = first.store.path.read_bytes()
+    view.current.cursor = 12
+    view.context.accepted = False
+    assert not view.tabs.confirm_all_close()
+    assert view.context.confirmations == [second.entry.id]
+    assert first.store.path.read_bytes() == before
+    assert view.tabs.current is second
+
+
+def test_clean_close_cas_conflict_preserves_other_writer_and_prevents_completion(view):
+    state = _save_clean_first_copy(view)
+    index_before = view.tabs.store.path.read_bytes()
+    other = view.tabs.store.draft(state.entry)
+    other.save(ReaderResume(ReadingDocument('Another window saved these exact bytes.'),
+                            'voice:other-window'))
+    retained = other.path.read_bytes()
+    view.current.cursor = 12
+    with pytest.raises(ValueError, match='Another window changed'):
+        view.tabs.confirm_all_close()
+    assert other.path.read_bytes() == retained
+    assert view.tabs.store.path.read_bytes() == index_before
+    assert view.context.confirmations == []

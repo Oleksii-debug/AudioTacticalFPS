@@ -546,12 +546,26 @@ def _ignored(name):
     return False
 
 
+def _optional_present(path):
+    """Only genuine absence is optional; denied or invalid lookup is not."""
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
 def _capture(root, *, include_generated=False, cancelled=lambda: False):
     files, directories = {}, {}
     for name in _SIMPLE:
-        if os.path.lexists(root / name):
+        _check_cancelled(cancelled)
+        if _optional_present(root / name):
             files[name] = _identity(_regular(root / name))
-    pending = [name for name in _DIRECTORIES if os.path.lexists(root / name)]
+    pending = []
+    for name in _DIRECTORIES:
+        _check_cancelled(cancelled)
+        if _optional_present(root / name):
+            pending.append(name)
     while pending:
         _check_cancelled(cancelled)
         name = pending.pop()

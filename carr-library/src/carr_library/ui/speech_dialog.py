@@ -59,6 +59,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     registry = None
     owned_registries = set()
     owned_progress_voices = set()
+    owned_listening = set()
     voices = ()
     alive = True
     busy = False
@@ -212,12 +213,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     cleanup = wx.Button(dialog, label='Normalize s&paces')
     find_button = wx.Button(dialog, label='Find and replace... (Ctrl+F)')
     find_button.SetName('Find and replace')
+    text_tools_button = wx.Button(dialog, label='Bookmarks and paragraphs...')
+    text_tools_button.SetName('Reading bookmarks and paragraph tools')
     spelling_button = wx.Button(dialog, label='Spelling review...')
     spelling_button.SetName('Spelling review with Hunspell')
     pronunciation = wx.Button(dialog, label='Pronunciatio&n rules')
     pronunciation.SetName('Pronunciation rules')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (cleanup, find_button, spelling_button, pronunciation, close):
+    for control in (cleanup, find_button, spelling_button, pronunciation, text_tools_button, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -244,6 +247,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         voice_preferences_button.Enable(reader_root is not None and source_loaded and bool(voices) and not busy)
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
+        text_tools_button.Enable(source_loaded and not busy)
         appearance_button.Enable(source_loaded and not busy and presentation_store is not None)
         spelling_button.Enable(source_loaded and not busy)
         playback_controls.Enable(not busy and last_audio is not None and getattr(player, 'path', None) is not None)
@@ -275,6 +279,55 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             editor.SetFocus()
         except Exception as exc:
             report(str(exc), focus=True)
+
+
+    def choose_reading_tools(event=None):
+        from .reading_tools import ReadingToolSnapshot, show_reading_tools
+        from ..speech.marks import split_paragraph, join_next_break
+        def guard():
+            if busy or not source_loaded or getattr(parent, '_closing', False):
+                raise ValueError('Wait for the current reader operation before editing bookmarks or paragraphs.')
+            playback_scope()
+        def capture():
+            guard()
+            sync_document()
+            return ReadingToolSnapshot.capture(document, native_insertion_offset(editor, document.text))
+        def reviewed(snapshot):
+            current = capture()
+            if snapshot.document is not document or current.signature != snapshot.signature:
+                raise ValueError('The reading copy changed. Close and reopen these reading tools.')
+            return current
+        def mutate(action, value, snapshot):
+            reviewed(snapshot)
+            target = snapshot.cursor
+            if action == 'add':
+                document.add_bookmark(value, target)
+            elif action == 'remove':
+                document.remove_bookmark(value)
+            elif action in ('split', 'join'):
+                stop_for_reading_tab()
+                target = (split_paragraph(document, target) if action == 'split'
+                          else join_next_break(document, target))
+                editor.ChangeValue(document.text)
+                editor.SetInsertionPoint(native_cursor_position(editor, document.text, target))
+            else:
+                raise ValueError('Choose an available reading tool.')
+            sync_document()
+            save_recovery(force=True)
+        def goto(identity, snapshot):
+            reviewed(snapshot)
+            target = document.bookmark_position(identity)
+            editor.SetInsertionPoint(native_cursor_position(editor, document.text, target))
+            save_recovery(force=True)
+        try:
+            guard()
+            show_reading_tools(dialog, capture=capture, mutate=mutate, goto=goto, guard=guard)
+        except Exception as exc:
+            report(str(exc), focus=True)
+        finally:
+            if alive:
+                capabilities()
+                editor.SetFocus()
 
     def run(work, on_done, *, on_failed=None):
         nonlocal busy
@@ -419,6 +472,67 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if progress is not None:
                 progress.refresh_audio_state()
 
+
+    def prepare_listening(request, completed, failed, *, active):
+        """Prepare on the existing serial worker; adopt only on the native UI."""
+        from ..audio.models import AudioCancelled
+        generation = playback_generation
+        request_cancel = threading.Event()
+        def stopped():
+            return (request_cancel.is_set() or cancel.is_set() or not alive
+                    or not active() or generation != playback_generation)
+        def check():
+            if stopped():
+                raise AudioCancelled('Listening preparation was cancelled or the reader changed.')
+            playback_scope()
+        def release(value):
+            value.close()
+            owned_listening.discard(value)
+        def discard(value):
+            # Keep ownership until cleanup succeeds, including a dropped native
+            # callback or an executor shutdown racing the modal's close.
+            def observed(future):
+                try:
+                    future.result()
+                except Exception as exc:
+                    message = f'The unused listening copy is retained until cleanup succeeds: {exc}'
+                    try:
+                        wx.CallAfter(lambda: report(message) if alive else None)
+                    except Exception:
+                        pass
+            try:
+                executor.submit(release, value).add_done_callback(observed)
+            except Exception as exc:
+                report(f'The unused listening copy still needs cleanup: {exc}')
+        def work():
+            check()
+            value = player.prepare_listening(request, audio_files.name,
+                state_root=reader_root / 'state' if reader_root is not None else None,
+                cancelled=stopped)
+            owned_listening.add(value)
+            try:
+                check()
+            except BaseException:
+                release(value)
+                raise
+            return value
+        def adopted(value):
+            try:
+                check()
+                player.apply_listening(value)
+            except BaseException:
+                discard(value)
+                raise
+            owned_listening.discard(value)
+            completed()
+        failure_delivered = [False]
+        def failure(exc):
+            failure_delivered[0] = True
+            failed(exc)
+        if not run(work, adopted, on_failed=failure) and not failure_delivered[0]:
+            failure(ValueError('Finish or stop the current reader operation before preparing listening speed.'))
+        return request_cancel.set
+
     def show_playback(event=None):
         nonlocal playback_refresh, playback_generation
         try:
@@ -432,7 +546,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 nonlocal playback_refresh
                 playback_refresh = callback
             show_reader_playback(dialog, player, execute=playback_control,
-                                 stop=stop_audio, pause=pause_audio, subscribe=subscribe)
+                                 stop=stop_audio, pause=pause_audio, subscribe=subscribe,
+                                 prepare_listening=prepare_listening)
         except Exception as exc:
             report(str(exc), focus=True)
         finally:
@@ -1069,6 +1184,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (playback_controls, show_playback),
         (appearance_button, choose_reading_appearance),
+        (text_tools_button, choose_reading_tools),
         (cleanup, clean), (find_button, find_replace),
         (pronunciation, pronunciations), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
@@ -1172,7 +1288,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         owned.close()
                     except Exception as exc:
                         errors.append(str(exc))
-                if silence_confirmed:
+                for owned in tuple(owned_listening):
+                    try:
+                        owned.close()
+                        owned_listening.discard(owned)
+                    except Exception as exc:
+                        errors.append(str(exc))
+                if silence_confirmed and not errors:
                     audio_files.cleanup()
                 if errors:
                     raise RuntimeError('; '.join(errors))

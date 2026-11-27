@@ -38,6 +38,8 @@ class WavePlayer:
         self._ended = False
         self._sleep_deadline = None
         self._skip_intervals = (10.0, 30.0)
+        self._listening = None
+        self._listening_request = None
         self.backend = 'Windows MCI' if os.name == 'nt' else 'ffplay'
         self.position_is_approximate = os.name != 'nt'
         self._executable = shutil.which('ffplay') if os.name != 'nt' else None
@@ -51,6 +53,70 @@ class WavePlayer:
         """Explicit session choice; None retains the backend's automatic output."""
         return self._output_device
 
+    @property
+    def listening_settings(self):
+        from .listening import ListeningSettings
+        return self._listening.request.settings if self._listening is not None else ListeningSettings()
+
+    @property
+    def listening_duration_seconds(self):
+        return self._listening.mapping.output_duration if self._listening is not None else self.duration_seconds
+
+    @property
+    def listening_path(self):
+        return self._listening.path if self._listening is not None else self.path
+
+    def listening_request(self, speed, pitch_semitones=0, *, position_seconds=0):
+        """Freeze this stopped recording's identity; preparation belongs to its worker."""
+        from .listening import ListeningRequest, ListeningSettings
+        settings = ListeningSettings(speed, pitch_semitones)
+        if self.path is None or self.state in ('playing', 'paused'):
+            raise ValueError('Stop the current recording before preparing listening settings.')
+        if self._identity is None or self._stamp(self.path) != self._identity:
+            raise ValueError('The current original recording changed; render or select it again.')
+        if (type(position_seconds) not in (float, int) or not 0 <= position_seconds <= self.duration_seconds):
+            raise ValueError('Choose a resume position within the original recording.')
+        request = ListeningRequest(self.path, self._identity, settings, float(position_seconds), object())
+        self._listening_request = request
+        return request
+
+    def prepare_listening(self, request, directory, *, state_root=None, cancelled=lambda: False,
+                          runtime_factory=None):
+        """Heavy work only: no native transport call and no playback admission."""
+        from .listening import prepare_listening
+        return prepare_listening(request, directory, state_root=state_root,
+            cancelled=lambda: cancelled() or self._listening_request is not request,
+            runtime_factory=runtime_factory)
+
+    def apply_listening(self, prepared):
+        """Adopt a worker result on the transport owner; never autoplay."""
+        from .listening import PreparedListening
+        if (not isinstance(prepared, PreparedListening)
+                or self._listening_request is not prepared.request
+                or self.path != prepared.request.source or self._identity != prepared.request.identity
+                or self.state in ('playing', 'paused')):
+            raise ValueError('The listening request is stale or playback resumed; prepare it again.')
+        prepared.check_live()
+        self._close_transport()
+        if self._listening is not None:
+            self._listening.release(self)
+            self._listening = None
+        prepared.claim(self)
+        self._listening = prepared
+        self._offset = prepared.request.position_seconds
+        self._state, self._started = 'stopped', None
+        self._ab, self._end_seconds = None, None
+
+    def _to_transport(self, seconds):
+        return self._listening.mapping.to_output(seconds) if self._listening is not None else seconds
+
+    def _from_transport(self, seconds):
+        return self._listening.mapping.to_source(seconds) if self._listening is not None else seconds
+
+    def _check_listening(self):
+        if self._listening is not None:
+            self._listening.check_live()
+
     def output_devices(self, *, cancelled=lambda: False):
         from .playback_devices import output_devices
         return output_devices(cancelled=cancelled)
@@ -63,7 +129,7 @@ class WavePlayer:
             from .playback_devices import resolve_output
             device = resolve_output(device)
         # Preserve the old choice and retry authority if native Close fails.
-        self.close()
+        self._close_transport()
         self._output_device = device
 
     def _confirm_output(self, output):
@@ -92,8 +158,9 @@ class WavePlayer:
             if os.name == 'nt' and self._open:
                 mode = self._mci(f'status {self._alias} mode')
                 if mode == 'stopped':
-                    position = int(self._mci(f'status {self._alias} position')) / 1000
-                    self._ended = self._play_start < end and position >= end - .002
+                    position = self._from_transport(int(self._mci(f'status {self._alias} position')) / 1000)
+                    precision = self._from_transport(.002)
+                    self._ended = self._play_start < end and position >= end - precision
                     self._state = 'stopped'
                     self._offset = min(self.duration_seconds, max(0, position))
                     self._started = None
@@ -112,10 +179,10 @@ class WavePlayer:
     @property
     def position_seconds(self):
         if os.name == 'nt' and self._open:
-            return int(self._mci(f'status {self._alias} position')) / 1000
+            return self._from_transport(int(self._mci(f'status {self._alias} position')) / 1000)
         if self.state == 'playing' and self._started is not None:
             end = self.duration_seconds if self._end_seconds is None else self._end_seconds
-            return min(end, self._offset + time.monotonic() - self._started)
+            return min(end, self._offset + self._from_transport(time.monotonic() - self._started))
         return self._offset
 
     @staticmethod
@@ -124,20 +191,22 @@ class WavePlayer:
         return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
     def _play_command(self, seconds):
-        command = f'play {self._alias} from {round(seconds * 1000)}'
+        command = f'play {self._alias} from {round(self._to_transport(seconds) * 1000)}'
         if self._end_seconds is not None:
-            command += f' to {round(self._end_seconds * 1000)}'
+            command += f' to {round(self._to_transport(self._end_seconds) * 1000)}'
         return command
 
     def play(self, path, *, start_seconds=0, end_seconds=None):
         """Explicitly play a new recording; prior repeat/sleep choices are reset."""
-        return self._play(path, start_seconds=start_seconds, end_seconds=end_seconds)
+        return self._play(path, start_seconds=start_seconds, end_seconds=end_seconds, new_recording=True)
 
-    def _play(self, path, *, start_seconds=0, end_seconds=None, expected=None):
+    def _play(self, path, *, start_seconds=0, end_seconds=None, expected=None, new_recording=False):
         target = local_file(path)
         identity = self._stamp(target)
         if expected is not None and identity != expected:
             raise ValueError('The opened recording changed. Select its current version explicitly.')
+        if not new_recording:
+            self._check_listening()
         with wave.open(str(target), 'rb') as audio:
             if audio.getcomptype() != 'NONE' or audio.getnframes() <= 0:
                 raise ValueError('Playback requires nonempty PCM WAV audio.')
@@ -155,15 +224,20 @@ class WavePlayer:
         if self._output_device is not None:
             from .playback_devices import resolve_output
             output = resolve_output(self._output_device)
-        self.close()
+        if new_recording:
+            self.close()
+        else:
+            self._close_transport()
         if self._stamp(target) != identity:
             raise ValueError('The recording changed before native playback.')
+        self._check_listening()
         self.path, self.duration_seconds, self._identity = target, duration, identity
         self._offset = self._play_start = float(start_seconds)
         self._end_seconds = None if end_seconds is None else float(end_seconds)
         self._ended = False
+        actual = target if self._listening is None else self._listening.path
         if os.name == 'nt':
-            self._mci(f'open "{target}" type waveaudio alias {self._alias}')
+            self._mci(f'open "{actual}" type waveaudio alias {self._alias}')
             self._open = True
             try:
                 if output is not None:
@@ -173,13 +247,13 @@ class WavePlayer:
                 self._mci(f'set {self._alias} time format milliseconds')
                 self._mci(self._play_command(start_seconds))
             except Exception:
-                self.close()
+                self._close_transport()
                 raise
         else:
-            limit = [] if end_seconds is None else ['-t', str(float(end_seconds - start_seconds))]
+            limit = [] if end_seconds is None else ['-t', str(float(self._to_transport(end_seconds - start_seconds)))]
             self._process = subprocess.Popen([self._executable, '-hide_banner', '-loglevel', 'error',
-                '-nodisp', '-autoexit', '-nostats', '-ss', str(float(start_seconds)),
-                '-protocol_whitelist', 'file,pipe', '-i', str(target), *limit],
+                '-nodisp', '-autoexit', '-nostats', '-ss', str(float(self._to_transport(start_seconds))),
+                '-protocol_whitelist', 'file,pipe', '-i', str(actual), *limit],
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 start_new_session=True, shell=False, env=native_audio_environment())
         self._started = time.monotonic()
@@ -223,7 +297,7 @@ class WavePlayer:
 
     def _silent_position(self, seconds, *, paused):
         if os.name == 'nt' and self._open:
-            self._mci(f'seek {self._alias} to {round(seconds * 1000)} wait')
+            self._mci(f'seek {self._alias} to {round(self._to_transport(seconds) * 1000)} wait')
         elif self._process is not None:
             # A POSIX paused seek must not play then SIGSTOP a fresh child.
             stop_process(self._process)
@@ -262,6 +336,7 @@ class WavePlayer:
         if self._identity is not None and self._stamp(self.path) != self._identity:
             self.stop()
             raise ValueError('The opened recording changed. Select its current version explicitly.')
+        self._check_listening()
         if os.name == 'nt':
             if self._output_device is not None:
                 try:
@@ -399,6 +474,7 @@ class WavePlayer:
 
     def stop(self):
         # Invalidate automatic work before touching a possibly failing device.
+        self._listening_request = None
         self._repeat_armed = self._ended = False
         self._sleep_deadline = None
         if os.name == 'nt' and self._open:
@@ -409,7 +485,7 @@ class WavePlayer:
         self._state, self._offset, self._started = 'stopped', 0.0, None
         self._resume_from_seek = False
 
-    def close(self):
+    def _close_transport(self):
         stop_error = None
         try:
             self.stop()
@@ -426,3 +502,9 @@ class WavePlayer:
         elif stop_error is not None:
             raise stop_error
         self._ab, self._end_seconds = None, None
+
+    def close(self):
+        self._close_transport()
+        if self._listening is not None:
+            self._listening.release(self)
+            self._listening = None

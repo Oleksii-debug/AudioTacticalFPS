@@ -160,7 +160,7 @@ jobs:
       - name: Verify bibliography import and publication boundaries
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/reader/test_export_reconciliation.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed BibTeX import and real overwrite confirmation
@@ -700,6 +700,7 @@ jobs:
               'tests/ui/test_trust_lifetime.py',
               'tests/speech/test_player_controls.py',
               'tests/ui/test_reader_playback.py',
+              'tests/speech/test_listening.py',
               'tests/ui/test_reader_playback_actions.py',
               'tests/studio/test_publishing.py',
               'tests/studio/test_publishing_boundaries.py',
@@ -807,6 +808,7 @@ jobs:
               'tests/catalog/test_ris_apply.py',
               'tests/research/test_bibtex_import.py',
               'tests/reader/test_export_no_clobber.py',
+              'tests/reader/test_export_reconciliation.py',
               'tests/ui/test_export_destination.py',
               'tests/storage/test_durable_state_publication.py',
               'tests/storage/test_durable_state_read.py',
@@ -827,6 +829,11 @@ jobs:
               'tests/speech/test_reading_presentation_reader_hook.py',
               'tests/storage/test_reader_preferences_backup.py',
               'tests/speech/test_reading_tabs.py',
+              'tests/speech/test_reading_marks.py',
+              'tests/ui/test_reading_tools.py',
+              'tests/ui/test_reader_listening_hook.py',
+              'tests/studio/test_measured_audio.py',
+              'tests/ui/test_book_duration_dialog.py',
               'tests/ui/test_reader_tabs.py',
               'tests/ui/test_reader_voice_recovery.py',
               'tests/audio/test_recording_controls.py',
@@ -1086,6 +1093,11 @@ jobs:
             'tests/speech/test_reading_presentation_reader_hook.py',
             'tests/storage/test_reader_preferences_backup.py',
             'tests/speech/test_reading_tabs.py',
+            'tests/speech/test_reading_marks.py',
+            'tests/ui/test_reading_tools.py',
+            'tests/ui/test_reader_listening_hook.py',
+            'tests/studio/test_measured_audio.py',
+            'tests/ui/test_book_duration_dialog.py',
             'tests/ui/test_reader_tabs.py',
             'tests/ui/test_reader_voice_recovery.py',
             'tests/audio/test_recording_controls.py',
@@ -1278,6 +1290,7 @@ jobs:
             'tests/ingest/test_import_publication_point.py',
             'tests/ingest/test_import_replay_identity.py',
             'tests/reader/test_export_no_clobber.py',
+            'tests/reader/test_export_reconciliation.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/research/test_bibtex_import.py',
             'tests/ui/test_progress_job_results.py',

@@ -55,6 +55,8 @@ def _native():
     import carr_library.speech.reading as reading_module
     import carr_library.ui.reader_tabs as native_tabs_module
     import carr_library.ui.speech_dialog as reader_module
+    import carr_library.speech.marks as marks_module
+    import carr_library.ui.reading_tools as tools_module
 
     checks, errors, identities, evidence = [], [], {}, {}
     held, loop, reentry, aborting, cycles = [None], [None], [False], [False], [0]
@@ -110,7 +112,7 @@ def _native():
     checkout = Path(__file__).resolve().parents[1]
     installed = (Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR')
                  else Path(sysconfig.get_path('purelib')).resolve())
-    for module in (tabs_module, session_module, reading_module, native_tabs_module, reader_module):
+    for module in (tabs_module, session_module, reading_module, native_tabs_module, reader_module, marks_module, tools_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -157,18 +159,63 @@ def _native():
             if stage[0] in ('starting', 'reopening') and not named('New reading tab', reader).IsEnabled():
                 return
             if stage[0] == 'starting':
-                check('first native tab contains exact Unicode source', notebook.GetPageCount() == 1 and editor.GetValue() == source)
+                evidence['initial_display'] = editor.GetValue()
+                check('first native tab contains exact Unicode source with native line endings',
+                      notebook.GetPageCount() == 1 and editor.GetValue().replace('\r\n', '\n') == source.replace('\r\n', '\n'))
                 editor.SetInsertionPointEnd()
                 key(editor, wx.WXK_SPACE, 'first_edited')
             elif stage[0] == 'first_edited':
-                check('first native keyboard edit is retained', editor.GetValue() == source + ' ' and editor.CanUndo())
+                check('first native keyboard edit is retained', editor.GetValue() == evidence['initial_display'] + ' ' and editor.CanUndo())
                 key(editor, ord('S'), 'first_saved', wx.MOD_CONTROL)
             elif stage[0] == 'first_saved':
                 index, saved = drafts()
                 if not saved: return
                 check('first copy saves original and independent undo', saved[0].document.source_text == source
-                      and saved[0].document.text == source + ' ' and saved[0].document.can_undo)
+                      and saved[0].document.text == evidence['initial_display'] + ' ' and saved[0].document.can_undo)
                 evidence['first_id'] = index.tabs[0].id
+                editor.SetInsertionPoint(5)
+                evidence['bookmark_cursor'] = reader_module.native_insertion_offset(editor, evidence['initial_display'] + ' ')
+                key(named('Reading bookmarks and paragraph tools', reader), wx.WXK_SPACE, 'tools_open')
+            elif stage[0] in ('tools_open', 'bookmark_added', 'split_tools_open', 'paragraph_split'):
+                tools_dialog = next((item for item in wx.GetTopLevelWindows()
+                    if item and isinstance(item, wx.Dialog) and item.IsShown()
+                    and item.GetTitle() == 'Reading bookmarks and paragraph tools'), None)
+                if tools_dialog is None: return
+                if stage[0] == 'tools_open':
+                    check('actual native bookmark name and list controls are available',
+                          isinstance(named('Reading bookmark name', tools_dialog), wx.TextCtrl)
+                          and isinstance(named('Saved bookmarks in this reading copy', tools_dialog), wx.ListBox))
+                    key(named('Add bookmark at current cursor', tools_dialog), wx.WXK_SPACE, 'bookmark_added')
+                elif stage[0] == 'bookmark_added':
+                    index, saved = drafts()
+                    marks = saved[0].document.bookmarks
+                    check('native bookmark action persists exact text and cursor', len(marks) == 1
+                          and marks[0].offset == evidence['bookmark_cursor']
+                          and saved[0].document.bookmark_position(marks[0].id) == evidence['bookmark_cursor'])
+                    evidence['bookmark_id'] = marks[0].id
+                    named('Saved bookmarks in this reading copy', tools_dialog).SetSelection(0)
+                    key(named('Go to bookmark and close', tools_dialog), wx.WXK_SPACE, 'bookmark_returned')
+                elif stage[0] == 'split_tools_open':
+                    key(named('Split paragraph at current cursor', tools_dialog), wx.WXK_SPACE, 'paragraph_split')
+                else:
+                    index, saved = drafts()
+                    check('native paragraph split is undoable and preserves the original',
+                          saved[0].document.source_text == source and saved[0].document.can_undo
+                          and saved[0].document.text != evidence['initial_display'] + ' ' and '\n\n' in saved[0].document.text.replace('\r\n', '\n'))
+                    key(named('Close reading text tools', tools_dialog), wx.WXK_SPACE, 'paragraph_closed')
+            elif stage[0] == 'bookmark_returned':
+                check('native bookmark navigation restores cursor and reader focus',
+                      reader_module.native_insertion_offset(editor, editor.GetValue()) == evidence['bookmark_cursor']
+                      and wx.Window.FindFocus() is editor)
+                key(named('Reading bookmarks and paragraph tools', reader), wx.WXK_SPACE, 'split_tools_open')
+            elif stage[0] == 'paragraph_closed':
+                undo = next(item for item in reader.GetChildren() if isinstance(item, wx.Button)
+                            and item.GetLabel() == '&Undo reading edit')
+                key(undo, wx.WXK_SPACE, 'paragraph_undone')
+            elif stage[0] == 'paragraph_undone':
+                check('native paragraph Undo restores the bookmarked text version', editor.GetValue() == evidence['initial_display'] + ' ')
+                key(editor, ord('S'), 'bookmark_saved', wx.MOD_CONTROL)
+            elif stage[0] == 'bookmark_saved':
                 key(editor, ord('T'), 'second_created', wx.MOD_CONTROL)
             elif stage[0] == 'second_created':
                 check('Control T creates and focuses a separate native page', notebook.GetPageCount() == 2
@@ -186,7 +233,7 @@ def _native():
                 key(editor, wx.WXK_TAB, 'first_selected', wx.MOD_CONTROL)
             elif stage[0] == 'first_selected':
                 check('Control Tab restores the first native editor and text', notebook.GetSelection() == 0
-                      and editor.GetValue() == source + ' ' and wx.Window.FindFocus() is editor)
+                      and editor.GetValue() == evidence['initial_display'] + ' ' and wx.Window.FindFocus() is editor)
                 key(editor, wx.WXK_TAB, 'second_selected', wx.MOD_CONTROL)
             elif stage[0] == 'second_selected':
                 check('Control Tab restores the second text and cursor', notebook.GetSelection() == 1
@@ -201,17 +248,21 @@ def _native():
             elif stage[0] == 'restart_second_saved':
                 key(editor, wx.WXK_TAB, 'restart_first', wx.MOD_CONTROL)
             elif stage[0] == 'restart_first':
-                check('restart retains first edited Unicode text', notebook.GetSelection() == 0 and editor.GetValue() == source + ' ')
+                check('restart retains first edited Unicode text', notebook.GetSelection() == 0 and editor.GetValue() == evidence['initial_display'] + ' ')
+                index, saved = drafts()
+                check('restart retains the native-created bookmark and exact version',
+                      saved[0].document.bookmarks[0].id == evidence['bookmark_id']
+                      and saved[0].document.bookmark_position(evidence['bookmark_id']) == evidence['bookmark_cursor'])
                 undo = next(item for item in reader.GetChildren() if isinstance(item, wx.Button)
                             and item.GetLabel() == '&Undo reading edit')
                 key(undo, wx.WXK_SPACE, 'first_undone')
             elif stage[0] == 'first_undone':
-                check('first undo is independent after actual reader restart', editor.GetValue() == source)
+                check('first undo is independent after actual reader restart', editor.GetValue() == evidence['initial_display'])
                 key(editor, ord('S'), 'restart_first_saved', wx.MOD_CONTROL)
             elif stage[0] == 'restart_first_saved':
                 index, saved = drafts()
                 check('first undo preserves second history and original source', saved[0].document.source_text == source
-                      and saved[0].document.text == source and saved[1].document.text == 'b' and saved[1].document.can_undo)
+                      and saved[0].document.text == evidence['initial_display'] and saved[1].document.text == 'b' and saved[1].document.can_undo)
                 evidence['complete'] = True
                 key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'finished')
         def tick(event=None):

@@ -24,8 +24,9 @@ HELP = (
     'Run is a separate explicit action. Resume verifies every completed artifact and reuses existing accepted nodes. '
     'The source and active scope are rechecked before work and publication. '
     'After restoring a backup, choose a new output folder, Prepare, and review the new names before Run.\n\n'
-    'Limits: two million source characters and 256 parts. Duration-based splitting and linguistic sentence detection '
-    'are unavailable. Unverified extraction remains unverified; narration creates no quotation approval. '
+    'Limits: two million source characters and 256 parts. Duration estimates from text and linguistic sentence '
+    'detection are unavailable. After rendering, Measured duration parts splits the actual completed PCM. '
+    'Unverified extraction remains unverified; narration creates no quotation approval. '
     'Pause or closing this window requests cancellation and keeps saved Studio work. '
     'Tab/Shift+Tab move through named controls; Escape closes the dialog.'
 )
@@ -136,7 +137,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         [('bookmarks', 'Choose reading &bookmarks...')],
         [('prepare', '&Prepare saved items'), ('run', '&Run or resume saved items'),
          ('pause', 'Pa&use'), ('saved', 'Saved &book plans'), ('help', '&Help'), ('close', '&Close')],
-        *([[('batch', '&Multiple books...')]] if on_reviewed is None else []),
+        *([[('batch', '&Multiple books...'), ('duration', 'Measured &duration parts...')]]
+          if on_reviewed is None else []),
     ]:
         row = wx.BoxSizer(wx.HORIZONTAL)
         for key, label in row_items:
@@ -182,6 +184,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         buttons['run'].Enable(not busy and review is not None and review.prepared)
         buttons['voices'].Enable(not busy and not locked_plan)
         buttons['bookmarks'].Enable(not busy and not locked_plan and selected_source is not None)
+        if 'duration' in buttons:
+            buttons['duration'].Enable(not busy and plan is not None)
         if on_reviewed is not None:
             buttons['run'].Enable(False)
             buttons['saved'].Enable(False)
@@ -582,6 +586,18 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         except Exception as exc:
             report(exc)
 
+    def measured_duration(event=None):
+        try:
+            guard()
+            if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+                raise ValueError('Finish the current operation before reviewing measured audio.')
+            if plan is None:
+                raise ValueError('Choose the existing saved Book plan first.')
+            from .book_duration_dialog import show_book_duration
+            show_book_duration(frame, service=service, plan=plan)
+        except Exception as exc:
+            report(exc)
+
     def close(event=None):
         nonlocal alive
         if not alive:
@@ -604,6 +620,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         buttons[key].Bind(wx.EVT_BUTTON, callback)
     if 'batch' in buttons:
         buttons['batch'].Bind(wx.EVT_BUTTON, multiple)
+    if 'duration' in buttons:
+        buttons['duration'].Bind(wx.EVT_BUTTON, measured_duration)
     for widget in plan_controls + (output,):
         if widget is not profile:
             widget.Bind(wx.EVT_CHOICE if widget in (modes, ignore_case, voice, formats) else wx.EVT_TEXT, invalidate)
