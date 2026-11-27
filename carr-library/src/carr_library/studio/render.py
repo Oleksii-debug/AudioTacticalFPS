@@ -541,11 +541,11 @@ class ProductionService:
                     atomic_bytes(source, raw, replace=source.exists())
                     publish(source, name)
                 state['result'] = metadata
+                state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
                 self._verify_artifacts(state)
                 # Native execution and verification finished before releasing.
                 # Deferred disposable metadata cleanup is not a render failure.
                 lease.release()
-                state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
                 if lease.cleanup_pending:
                     state['progress'] += ' Resource reservation metadata cleanup is pending.'
                 self._save(state)
