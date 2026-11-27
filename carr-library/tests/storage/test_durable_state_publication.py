@@ -188,3 +188,110 @@ publish()
     assert durable_state.atomic_bytes(target, published, replace=True) == target
     assert target.read_bytes() == published and target.stat().st_nlink == 1
     assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('exists', [False, True])
+def test_local_path_checks_each_real_ancestor_without_a_duplicate_existence_probe(
+        tmp_path, monkeypatch, exists):
+    target = tmp_path.resolve() / 'nested' / 'state.json'
+    target.parent.mkdir()
+    target.write_bytes(b'{"action":"run"}')
+    checked, existence = [], []
+    actual_regular, actual_lexists = durable_state.regular, os.path.lexists
+
+    def observe_regular(path, *, directory=False):
+        checked.append((Path(path), directory))
+        return actual_regular(path, directory=directory)
+
+    def observe_exists(path):
+        existence.append(Path(path))
+        return actual_lexists(path)
+
+    monkeypatch.setattr(durable_state, 'regular', observe_regular)
+    monkeypatch.setattr(os.path, 'lexists', observe_exists)
+    assert durable_state.local_path(target, exists=exists) == target
+    assert checked == [(parent, True) for parent in reversed(target.parents)] + [(target, False)]
+    assert existence == [target], 'Ancestor validation must not precede its lstat with another lstat.'
+    assert target.read_bytes() == b'{"action":"run"}'
+
+
+@pytest.mark.parametrize('exists', [False, True])
+def test_local_path_preserves_missing_ancestor_and_leaf_policy(tmp_path, exists):
+    target = tmp_path.resolve() / 'missing' / 'nested' / 'state.json'
+    if exists:
+        with pytest.raises(FileNotFoundError):
+            durable_state.local_path(target, exists=True)
+    else:
+        assert durable_state.local_path(target) == target
+    assert not (tmp_path / 'missing').exists()
+    leaf = tmp_path.resolve() / 'absent.json'
+    with pytest.raises(FileNotFoundError):
+        durable_state.local_path(leaf, exists=True)
+    assert durable_state.local_path(leaf) == leaf and not leaf.exists()
+
+
+def test_local_path_rejects_an_actual_file_in_the_ancestor_chain(tmp_path):
+    parent = tmp_path / 'ordinary-file'
+    parent.write_bytes(b'An authored ordinary file, not a directory.')
+    with pytest.raises(ValueError, match='regular local files'):
+        durable_state.local_path(parent / 'state.json')
+    assert parent.read_bytes() == b'An authored ordinary file, not a directory.'
+
+
+def test_local_path_retains_actual_multiple_link_refusal(tmp_path):
+    source, target = tmp_path / 'original.json', tmp_path / 'linked.json'
+    source.write_bytes(b'{"action":"run"}')
+    os.link(source, target)
+    try:
+        assert source.stat().st_nlink == target.stat().st_nlink == 2
+        with pytest.raises(ValueError, match='without links'):
+            durable_state.local_path(target, exists=True)
+        assert source.read_bytes() == target.read_bytes() == b'{"action":"run"}'
+    finally:
+        target.unlink()
+
+
+def test_local_path_does_not_hide_an_ancestor_read_error(tmp_path, monkeypatch):
+    target = tmp_path.resolve() / 'nested' / 'state.json'
+    target.parent.mkdir()
+    target.write_bytes(b'{"action":"run"}')
+    original = Path.lstat
+    observed = []
+
+    def denied(path, *args, **kwargs):
+        if path == target.parent:
+            observed.append(path)
+            raise PermissionError('Authored ancestor denial')
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'lstat', denied)
+    with pytest.raises(PermissionError, match='Authored ancestor denial'):
+        durable_state.local_path(target, exists=True)
+    assert observed == [target.parent]
+
+
+def test_each_control_snapshot_still_reopens_and_checks_all_ancestors_twice(
+        tmp_path, monkeypatch):
+    target = tmp_path.resolve() / 'nested' / 'control.json'
+    target.parent.mkdir()
+    target.write_bytes(b'{"action":"run"}')
+    original_regular, original_open = durable_state.regular, durable_state._open_json_file
+    checked, opened = [], []
+
+    def observe_regular(path, *, directory=False):
+        checked.append((Path(path), directory))
+        return original_regular(path, directory=directory)
+
+    def observe_open(path):
+        opened.append(Path(path))
+        return original_open(path)
+
+    monkeypatch.setattr(durable_state, 'regular', observe_regular)
+    monkeypatch.setattr(durable_state, '_open_json_file', observe_open)
+    assert durable_state.read_json(target, maximum=4096) == {'action': 'run'}
+    target.write_bytes(b'{"action":"pause"}')
+    assert durable_state.read_json(target, maximum=4096) == {'action': 'pause'}
+    assert opened == [target, target]
+    for parent in target.parents:
+        assert checked.count((parent, True)) == 4
+    assert target.read_bytes() == b'{"action":"pause"}'

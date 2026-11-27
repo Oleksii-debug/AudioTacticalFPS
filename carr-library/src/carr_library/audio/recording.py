@@ -276,7 +276,7 @@ def validate_recording_receipt(value, *, recording_id=None):
     version = value.get('schema')
     if version == 'carr-recording/2':
         fields |= {'segments', 'monitoring', 'timeline'}
-    if (set(value) not in (fields, fields | {'status'})
+    if (set(value) - {'status', 'retake_of'} != fields
             or value.get('status', 'complete') not in ('prepared', 'complete')
             or version not in ('carr-recording/1', 'carr-recording/2')
             or value['filename'] != identity + '.wav'
@@ -286,6 +286,13 @@ def validate_recording_receipt(value, *, recording_id=None):
             or _HASH.fullmatch(value['ffmpeg_sha256']) is None
             or value['completion'] not in ('stopped', 'duration-limit', 'device-ended')):
         raise ValueError('Invalid recording receipt.')
+    if 'retake_of' in value:
+        previous = value['retake_of']
+        if (type(previous) is not dict or set(previous) != {'id', 'audio_sha256'}
+                or type(previous['id']) is not str or _ID.fullmatch(previous['id']) is None
+                or previous['id'] == identity or type(previous['audio_sha256']) is not str
+                or _HASH.fullmatch(previous['audio_sha256']) is None):
+            raise ValueError('Invalid prior recording identity for this take.')
     _text(value['title'], 'recording title')
     source = value['source']
     if (type(source) is not dict or set(source) != {'kind', 'backend', 'device_id', 'name'}
@@ -567,7 +574,7 @@ class RecordingService:
 
     def capture(self, device_id, *, title='Microphone recording', options=None,
                 stop_requested=lambda: False, cancelled=lambda: False, progress=None,
-                pause_requested=None, state_changed=None, monitor_output=None):
+                pause_requested=None, state_changed=None, monitor_output=None, retake_of=None):
         options = options or RecordingOptions()
         if not isinstance(options, RecordingOptions):
             raise ValueError('Validated recording options are required.')
@@ -588,6 +595,9 @@ class RecordingService:
             raise ValueError('Refresh microphones and explicitly select a current device before Start.')
         if cancelled() or stop_requested():
             raise AudioCancelled('Recording stopped before opening the microphone.')
+        # A retake is a new capture. Verify the explicitly selected completed
+        # original before acquiring the capture lock; get() owns that same lock.
+        previous_take = self._prepare_retake(retake_of, cancelled=cancelled)
         completed = {}
         reservation = _CaptureReservation(self.root, completed)
         from ..operations import ResourceCancelled, ResourceRequest
@@ -612,7 +622,7 @@ class RecordingService:
                     waiting = False  # Stop now finalizes PCM; cancellation still discards.
                     self._capture(device, title, options, stop_requested,
                                   lease.cancelled, progress, reservation, completed,
-                                  pause_requested, state_changed, monitor_output)
+                                  pause_requested, state_changed, monitor_output, previous_take)
                 except AudioCleanupPending as exc:
                     reservation.retain(exc.cleanup_owner)
                     exc.recording_reservation = reservation
@@ -644,8 +654,49 @@ class RecordingService:
                         'metadata awaits normal cleanup.')
         return completed
 
+    def _prepare_retake(self, identity, *, cancelled):
+        if identity is None:
+            return None
+        value = self._receipt(identity)
+        if value.get('status', 'complete') != 'complete':
+            raise ValueError('Open and finish recovery of the prior recording before making another take.')
+        receipt = self.root / (identity + '.json')
+        output = self.root / value['filename']
+        # Ordinary single-link originals only: taking another recording must not
+        # finalize an old intent or clean any old staging alias as a side effect.
+        receipt_stamp = _audio_stamp(regular(receipt))
+        audio_stamp = _audio_stamp(regular(output))
+        verified = self.get(identity, cancelled=cancelled)
+        if (not verified.get('output_verified') or not verified.get('receipt_finalized')
+                or self._receipt(identity) != value
+                or _audio_stamp(regular(receipt)) != receipt_stamp
+                or _audio_stamp(regular(output)) != audio_stamp):
+            raise ValueError('The selected prior recording changed before the new take.')
+        return value, receipt_stamp, audio_stamp
+
+    def _check_retake(self, previous, *, cancelled):
+        if previous is None:
+            return None
+        value, receipt_stamp, audio_stamp = previous
+        identity = value['id']
+        receipt, output = self.root / (identity + '.json'), self.root / value['filename']
+        def unchanged():
+            if cancelled():
+                raise AudioCancelled('New take cancelled while checking the prior recording.')
+            if (self._receipt(identity) != value
+                    or _audio_stamp(regular(receipt)) != receipt_stamp
+                    or _audio_stamp(regular(output)) != audio_stamp):
+                raise ValueError('The selected prior recording changed; no new take was published.')
+        unchanged()
+        # The capture reservation already owns studio-recording. Reuse the
+        # read-only PCM validators here, never recursively acquire get()'s lock.
+        _read_recording(output, value['audio'], value['limits']['max_bytes'], cancelled)
+        verify_recording_segments(output, value, cancelled=cancelled)
+        unchanged()
+        return {'id': identity, 'audio_sha256': value['audio']['sha256']}
+
     def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, completed,
-                 pause_requested=None, state_changed=None, monitor_output=None):
+                 pause_requested=None, state_changed=None, monitor_output=None, previous_take=None):
         identity = uuid4().hex
         output, receipt = self.root / (identity + '.wav'), self.root / (identity + '.json')
         if os.path.lexists(output) or os.path.lexists(receipt):
@@ -667,6 +718,7 @@ class RecordingService:
                 except Exception:
                     progress = None  # An observer cannot destroy captured audio.
 
+        self._check_retake(previous_take, cancelled=cancelled)
         parent_owner = regular(self.root, directory=True)
         temporary = reservation.staging(identity)
         staged = temporary / 'capture.wav'
@@ -689,6 +741,9 @@ class RecordingService:
             'source': {'kind': 'microphone', 'backend': 'dshow', 'device_id': device.id, 'name': device.name},
             'ffmpeg_sha256': self._engine_hash, 'audio': audio, 'limits': asdict(options),
             'completion': completion, 'status': 'prepared', **extra}
+        if previous_take is not None:
+            previous = previous_take[0]
+            value['retake_of'] = {'id': previous['id'], 'audio_sha256': previous['audio']['sha256']}
         # Prepared metadata precedes the create-only publication. Process
         # death can leave it prepared, but never invents a completed WAV.
         validate_recording_receipt(value, recording_id=identity)
@@ -698,6 +753,7 @@ class RecordingService:
         observed_parent = regular(local_path(self.root, exists=True), directory=True)
         if (observed_parent.st_dev, observed_parent.st_ino) != (parent_owner.st_dev, parent_owner.st_ino):
             raise ValueError('The recording directory changed before publication.')
+        self._check_retake(previous_take, cancelled=cancelled)
         publication_error = None
         try:
             publish_file(staged, output, cancelled=cancelled)

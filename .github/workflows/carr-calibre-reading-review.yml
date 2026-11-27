@@ -2,7 +2,7 @@ name: Selected Calibre reading review
 
 on:
   push:
-    branches: [carr/calibre-reading-review-20261127, carr/canonical-complete-20261127, carr-library]
+    branches: [carr/calibre-reading-review-20261127, carr/canonical-complete-20261127, carr/canonical-integrity-finish-20261127, carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-calibre-reading-review.yml']
   workflow_dispatch:
 

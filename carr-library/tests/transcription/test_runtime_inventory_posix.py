@@ -83,3 +83,20 @@ def test_real_child_never_blocks_on_post_selection_fifo(tmp_path, api, replaceme
     result = json.loads(completed.stdout)
     assert result == {'status': 'PASS', 'api': api, 'replacement': replacement,
                       'module': expected['path'], 'entered_real_open': True}
+
+def test_recorded_symlink_inside_selected_root_is_not_hidden_by_resolution(synthetic_asr_runtime):
+    assert os.name == 'posix'
+    runtime = synthetic_asr_runtime
+    selected = runtime.site / 'tqdm.py'
+    target = runtime.site / 'unselected-tqdm-payload.py'
+    target.write_bytes(b'# Authored inert optional package\n')
+    selected.symlink_to(target)
+    info = runtime.site / 'tqdm-0.1.dist-info'
+    info.mkdir()
+    (info / 'METADATA').write_text('Metadata-Version: 2.1\nName: tqdm\nVersion: 0.1\n', encoding='utf-8')
+    (info / 'RECORD').write_text('tqdm.py,,\ntqdm-0.1.dist-info/METADATA,,\ntqdm-0.1.dist-info/RECORD,,\n',
+                                encoding='utf-8')
+    before = target.read_bytes()
+    with pytest.raises(ValueError, match='without links'):
+        module.inspect_runtime(runtime.python, runtime.worker, runtime.model)
+    assert selected.is_symlink() and target.read_bytes() == before

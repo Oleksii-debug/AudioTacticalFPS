@@ -1,7 +1,9 @@
-"""Installed native EPUB recorded-overlay acceptance with actual local playback.
+"""Installed native EPUB recorded-overlay acceptance with an explicit output mode.
 
-The source audio is an explicit synthetic tone, not a qualified voice/model.
-This exercises owned native keys and WavePlayer, not NVDA or listening quality.
+Default: actual WavePlayer and Windows output. --controlled-output explicitly
+uses the existing disclosed PCM test device when qualifying native workflows
+without an audio endpoint. Both modes use real production, import and transport.
+Synthetic tones never qualify NVDA, listening quality or a voice/model.
 """
 import argparse
 import faulthandler
@@ -27,6 +29,67 @@ def _acceptance_bindings():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+
+def _controlled_output_fixture():
+    """Adapt the existing disclosed PCM fixture to recorded-overlay transport."""
+    import importlib.util
+    path = Path(__file__).with_name('windows_live_reading_smoke.py')
+    expected = sha256(path.read_bytes()).hexdigest()
+    spec = importlib.util.spec_from_file_location('_epub_controlled_pcm_fixture', path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    created, openings = [], []
+
+    class ControlledRecordedOutput:
+        def __init__(self):
+            self.device = helper.ControlledPCMPlayer()
+            created.append(self)
+
+        @property
+        def state(self):
+            state = self.device.state
+            return 'stopped' if state in ('closed', 'ended') else state
+
+        @property
+        def position_seconds(self):
+            return self.device.position
+
+        @property
+        def position_is_approximate(self):
+            return False  # A controlled fixture coordinate, never an audible clock.
+
+        def play(self, source):
+            self.device.open(source)
+            with wave.open(str(source)) as audio:
+                openings.append({'sha256': sha256(Path(source).read_bytes()).hexdigest(),
+                                 'frames': audio.getnframes(),
+                                 'rate': audio.getframerate(),
+                                 'channels': audio.getnchannels()})
+            self.device.play()
+
+        def pause(self):
+            return self.device.pause()
+
+        def resume(self):
+            return self.device.resume()
+
+        def close(self):
+            # The existing fixture proves the WAV still exists when its owned
+            # handle closes; the real transport releases the file afterwards.
+            self.device.close()
+            return True
+
+    def proof():
+        assert sha256(path.read_bytes()).hexdigest() == expected
+        assert len(created) == 1 and len(openings) == 2, (len(created), openings)
+        assert all(item.device.stream is None for item in created)
+        assert all(item['frames'] == 96000 for item in openings), openings
+        return {'backend': 'CONTROLLED_PCM_TEST_FIXTURE', 'fixture_sha256': expected,
+                'openings': openings, 'owned_handles_closed': True,
+                'physical_audio_device': 'NOT_RUN', 'actual_WavePlayer': 'NOT_RUN'}
+    return ControlledRecordedOutput, proof
 
 
 class _OwnedModalAbort:
@@ -162,7 +225,8 @@ def _run_owned_native(options):
 
     result = run_process(
         [sys.executable, '-I', '-B', '-X', 'utf8', str(Path(__file__).resolve()),
-         '--audio-evidence', str(options.audio_evidence.resolve()), '--native-child'],
+         '--audio-evidence', str(options.audio_evidence.resolve()), '--native-child']
+        + (['--controlled-output'] if options.controlled_output else []),
         budget=AudioBudget(timeout=210, max_log_bytes=1024 * 1024),
         owned_tree=True, allow_failure=True)
     # The child must execute every assertion. A zero process status alone does
@@ -177,6 +241,8 @@ def _run_owned_native(options):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--audio-evidence', type=Path, required=True)
+    parser.add_argument('--controlled-output', action='store_true',
+                        help='Explicit disclosed PCM device for native UI/source checks; physical output remains NOT_RUN.')
     parser.add_argument('--native-child', action='store_true', help=argparse.SUPPRESS)
     options = parser.parse_args()
     if os.name != 'nt':
@@ -218,6 +284,14 @@ def _run_native(options):
     stage, key_pending, finished = 0, False, False
     frame = reader = overlay = service = None
     failure_handler = None
+    playback_errors = []
+    last_playback = [None, 0.0]
+    actual_audio_dialog = ebook_audio_dialog.EbookAudioDialog
+    output_proof = {'backend': 'WavePlayer', 'physical_audio_device': 'PENDING',
+                    'actual_WavePlayer': 'PENDING'}
+    controlled_factory = controlled_proof = None
+    if options.controlled_output:
+        controlled_factory, controlled_proof = _controlled_output_fixture()
 
     def check(name, condition):
         if not condition:
@@ -246,6 +320,23 @@ def _run_native(options):
         errors.append(detail)
         print('FAIL: native recorded EPUB at stage ' + str(stage) + '\n' + detail,
               file=sys.stderr, flush=True)
+
+    def playback_snapshot():
+        if overlay is None or overlay.closed:
+            return {'overlay': 'absent' if overlay is None else 'closed'}
+        transport = overlay.transport
+        return {
+            'stage': stage, 'busy': overlay.busy,
+            'cancelled': overlay.cancelled.is_set(),
+            'status': overlay.status.GetValue()[:2000],
+            'player': None if overlay.player is None else overlay.player.state,
+            'ticket': None if transport is None else transport.ticket,
+            'active': None if transport is None else transport.active,
+            'interrupted': None if transport is None else transport.interrupted,
+            'prepared': transport is not None and transport.prepared is not None,
+            'pending': overlay._pending is not None,
+            'reported_errors': list(playback_errors),
+        }
 
     def current_owners():
         child = getattr(reader, '_audio_dialog', None) if reader is not None else None
@@ -341,6 +432,10 @@ def _run_native(options):
     with TemporaryDirectory(prefix='resonance-native-epub-reading-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
         try:
+            if controlled_factory is not None:
+                def controlled_dialog(*args, **kwargs):
+                    return actual_audio_dialog(*args, player_factory=controlled_factory, **kwargs)
+                ebook_audio_dialog.EbookAudioDialog = controlled_dialog
             source_identity = binding.verify_installed_sources(ebook_audio, ebook_audio_dialog, ebook_model,
                 reading_desk, live_reading, progress_panel, progress_media)
             check('exact installed source and native reader modules', bool(source_identity))
@@ -374,8 +469,18 @@ def _run_native(options):
                 if errors or finished:
                     return
                 if monotonic() >= deadline:
-                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
+                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline: '
+                                       + json.dumps(playback_snapshot(), ensure_ascii=False))
                 try:
+                    if 2 <= stage <= 9:
+                        observed = playback_snapshot()
+                        now = monotonic()
+                        if observed != last_playback[0] or now - last_playback[1] >= 5:
+                            print('OBSERVED: actual playback ' + json.dumps(observed, ensure_ascii=False), flush=True)
+                            last_playback[:] = [observed, now]
+                        if playback_errors and stage < 9:
+                            raise AssertionError('The real recorded-audio owner reported: '
+                                                 + json.dumps(observed, ensure_ascii=False))
                     if key_pending:
                         return
                     if stage == 0 and reader.controller.current is not None and not reader.busy:
@@ -402,10 +507,22 @@ def _run_native(options):
                               in frame.progress_panel.media.players
                               and overlay.progress is frame.operation_progress
                               and frame.operation_progress.panel is frame.progress_panel)
+                        actual_error = overlay._error
+                        def observed_error(error):
+                            # Observe the existing error path; its real cleanup and
+                            # user-visible report still run without substituted results.
+                            playback_errors.append(type(error).__name__ + ': ' + str(error))
+                            actual_error(error)
+                        overlay._error = observed_error
                         stage = 2
                         press(named(overlay.dialog, 'Play from selected segment'))
                     elif stage == 2 and overlay.player.state == 'playing':
-                        check('real WavePlayer opens the exact measured PCM interval', overlay.transport.prepared.frames == 96000)
+                        check(('controlled PCM device' if options.controlled_output else 'real WavePlayer')
+                              + ' opens the exact measured PCM interval', overlay.transport.prepared.frames == 96000)
+                        if options.controlled_output:
+                            check('controlled device retains the real prepared WAV handle',
+                                  overlay.player.device.stream is not None
+                                  and overlay.player.device.path == overlay.transport.prepared.path)
                         stage = 3
                         press(named(overlay.dialog, 'Pause recorded audio'))
                     elif stage == 3 and overlay.player.state == 'paused':
@@ -477,6 +594,7 @@ def _run_native(options):
             wx.CallAfter(guarded(open_reader))
             gui.MainLoop()
         finally:
+            ebook_audio_dialog.EbookAudioDialog = actual_audio_dialog
             abort.stop()
             for key in tuple(pressed):
                 simulator.KeyUp(key)
@@ -498,9 +616,15 @@ def _run_native(options):
             gui.Yield()
         if errors:
             raise RuntimeError('\n'.join(errors))
+        if controlled_proof is not None:
+            output_proof = controlled_proof()
+        else:
+            output_proof.update(physical_audio_device='PASS', actual_WavePlayer='PASS')
     print(json.dumps({'result': 'PASS', 'checks': checks, 'audio_runtime': audio_proof,
         'source_identity': source_identity,
-        'audio': 'Actual local FFmpeg and Windows playback of synthetic PCM tones',
+        'audio': ('Actual local FFmpeg with disclosed controlled PCM output'
+                  if options.controlled_output else 'Actual local FFmpeg and Windows playback of synthetic PCM tones'),
+        'output_mode': output_proof, 'listening_quality': 'NOT_RUN',
         'native_keyboard': 'PASS', 'epubcheck': 'NOT_RUN', 'third_party_reader': 'NOT_RUN',
         'manual_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN'}, indent=2))
     return 0

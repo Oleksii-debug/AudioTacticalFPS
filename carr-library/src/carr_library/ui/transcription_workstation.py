@@ -811,10 +811,20 @@ def build_profile_page(parent, frame, *, controller=None, close_window=lambda: N
             self.timer.Start(250)
             self.runtime.SetFocus()
 
+        def _stop_timer(self):
+            # wx.Timer is a separate native event handler, not a child window.
+            # Pending work can retain it after its Panel is deleted. Stop it
+            # and remove the raw owner pointer without calling the Panel.
+            timer = getattr(self, 'timer', None)
+            if timer is not None:
+                timer.Stop()
+                timer.SetOwner(None)
+
         def dispose(self):
-            # Native parent destruction may precede Python wrapper invalidation.
-            # Only Python state is touched; another host task is not cancelled.
+            # Mark callbacks detached before releasing the independently owned
+            # timer. Native parent destruction may already invalidate the Panel.
             self.closed = True
+            self._stop_timer()
             self._epoch += 1
             self.cancel_event.set()
             with self._progress_lock:
@@ -865,10 +875,7 @@ def build_profile_page(parent, frame, *, controller=None, close_window=lambda: N
                 'Check its process before allowing another worker for this job.', 'Review interrupted worker')
 
         def finish_close(self):
-            # Normal close is still on the live wx thread; parent destruction
-            # uses pure dispose and leaves timer ownership to native deletion.
-            if self:
-                self.timer.Stop()
+            self._stop_timer()
             close_window()
 
         def _show_sources(self):

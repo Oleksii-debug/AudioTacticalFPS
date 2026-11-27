@@ -11,13 +11,53 @@ import time
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
+
+def _regular_rejection_diagnostic(path, observed, *, check, directory):
+    """Diagnostic branch only: describe the rejected original stat, without I/O."""
+    import sys
+
+    frames = []
+    frame = sys._getframe(1)
+    try:
+        for _ in range(6):
+            if frame is None:
+                break
+            frames.append({'function': frame.f_code.co_name[:48], 'line': frame.f_lineno})
+            frame = frame.f_back
+    finally:
+        del frame
+    text = str(path)
+    detail = {
+        'check': check, 'directory_expected': bool(directory),
+        'path_tail': text[-512:], 'path_truncated': len(text) > 512,
+        'mode': observed.st_mode, 'file_type': stat.S_IFMT(observed.st_mode),
+        'nlink': observed.st_nlink,
+        'file_attributes': getattr(observed, 'st_file_attributes', 0),
+        'reparse': bool(getattr(observed, 'st_file_attributes', 0) & 0x400),
+        'device': observed.st_dev, 'inode': observed.st_ino, 'size': observed.st_size,
+        'mtime_ns': observed.st_mtime_ns, 'ctime_ns': observed.st_ctime_ns,
+        'frames': frames,
+        'resampled': False,
+    }
+    raw = json.dumps(detail, ensure_ascii=False, separators=(',', ':'))
+    while len(raw) > 1700 and detail['frames']:
+        detail['frames'].pop()
+        raw = json.dumps(detail, ensure_ascii=False, separators=(',', ':'))
+    while len(raw) > 1700 and detail['path_tail']:
+        detail['path_tail'] = detail['path_tail'][len(detail['path_tail']) // 2 + 1:]
+        detail['path_truncated'] = True
+        raw = json.dumps(detail, ensure_ascii=False, separators=(',', ':'))
+    return ' diagnostic_regular=' + raw
+
+
 def regular(path, *, directory=False):
     path = Path(path)
     value = path.lstat()
     if (stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400
             or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))
             or (not directory and value.st_nlink != 1)):
-        raise ValueError('State must use regular local files, without links.')
+        raise ValueError('State must use regular local files, without links.'
+            + _regular_rejection_diagnostic(path, value, check='regular.lstat', directory=directory))
     return value
 
 
@@ -25,12 +65,15 @@ def local_path(value, *, root=None, exists=False):
     path = Path(value).absolute()
     if str(value).startswith(('//', '\\\\')) or '\x00' in str(value):
         raise ValueError('Choose a local path.')
-    for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
-            if parent != path or parent.is_dir():
-                regular(parent, directory=True)
-            else:
-                regular(parent)
+    for parent in reversed(path.parents):
+        try:
+            regular(parent, directory=True)
+        except FileNotFoundError:
+            # Preserve the existing missing-ancestor policy; strict resolution
+            # below still rejects an absent requested path when exists=True.
+            continue
+    if os.path.lexists(path):
+        regular(path, directory=path.is_dir())
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('The path is outside the selected directory.')
@@ -130,7 +173,8 @@ def read_json(path, *, maximum=MAX_JSON_BYTES):
             if (not stat.S_ISREG(opened.st_mode)
                     or getattr(opened, 'st_file_attributes', 0) & 0x400
                     or opened.st_nlink > 1):
-                raise ValueError('State must use regular local files, without links.')
+                raise ValueError('State must use regular local files, without links.'
+                    + _regular_rejection_diagnostic(path, opened, check='read_json.fstat', directory=False))
             if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
                 continue
             # Recheck ancestors after opening, before consuming the bound handle.

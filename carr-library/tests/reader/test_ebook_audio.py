@@ -763,10 +763,20 @@ def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
     permitted, released = Event(), Event()
     attempts, files = [], []
     target, name = ((JobProcess, 'close') if stage == 'parser' and os.name == 'nt'
+                    else (process, '_wait_posix_group') if stage == 'parser'
                     else (process, '_terminate'))
     actual = getattr(target, name)
+    launched = {}
+    if stage == 'parser' and os.name != 'nt':
+        original_popen = process.subprocess.Popen
+        def observe_start(*args, **kwargs):
+            child = original_popen(*args, **kwargs)
+            launched[child.pid] = child
+            return child
+        monkeypatch.setattr(process.subprocess, 'Popen', observe_start)
 
-    def uncertain(child):
+    def uncertain(first, *args_after_child, **kwargs):
+        child = launched[first] if stage == 'parser' and os.name != 'nt' else first
         args = child.args
         selected = (stage == 'parser' and len(args) >= 3 and Path(args[-3]).name == 'source.epub'
                     or stage == 'inspection' and Path(args[-1]).name == 'recording.mp3'
@@ -777,7 +787,7 @@ def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
             files.append(Path(args[-3] if stage == 'parser' else args[-1]))
             if not permitted.is_set():
                 raise OSError('Synthetic refusal after the actual native worker ran')
-        return actual(child)
+        return actual(first, *args_after_child, **kwargs)
 
     monkeypatch.setattr(target, name, uncertain)
     owner = None
@@ -789,7 +799,15 @@ def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
                 session.prepare(0)
         owner = failure.value.cleanup_owner
         owner.add_quiescent_callback(released.set)
-        assert attempts and files and all(child.returncode == 0 for child in attempts)
+        def exited_successfully(child):
+            if child.returncode == 0:
+                return True
+            if stage == 'parser' and os.name != 'nt':
+                observed = os.waitid(os.P_PID, child.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
+                return (observed is not None and observed.si_code == os.CLD_EXITED
+                        and observed.si_status == 0)
+            return False
+        assert attempts and files and all(exited_successfully(child) for child in attempts)
         retained = files[0]
         assert retained.is_file(), 'Native-owned input/output was removed before shutdown confirmation.'
         assert owner.close() is False and not owner.quiescent
@@ -877,3 +895,137 @@ def test_close_at_preparation_unlock_cannot_leave_source_snapshot_retained(impor
         if prepared is not None:
             prepared.close()
         session.close()
+
+
+@pytest.mark.parametrize('failure', ['native-open', 'archived-source'])
+def test_dialog_reports_start_failure_after_transport_invalidates_its_ticket(
+        imported, failure):
+    from concurrent.futures import ThreadPoolExecutor
+    from queue import Queue
+    from carr_library.ui.progress_media import ProgressMedia
+
+    app, workspace, original, _book, desk = imported
+    original_bytes = original.read_bytes()
+    session = EbookAudioSession(desk, 1)
+    player = TrackedPlayer()
+    native_attempts = []
+
+    def rejected_native_open(path):
+        native_attempts.append(path)
+        raise RuntimeError('Authored native-open refusal')
+
+    if failure == 'native-open':
+        player.play = rejected_native_open
+
+    callbacks = Queue()
+    feedback = SimpleNamespace(quiescent=True, suspend=Mock())
+    panel = SimpleNamespace(closed=False, preferences=SimpleNamespace(quiet_during_media=True),
+        feedback=feedback, active_task=None, _flag=lambda _name: False,
+        wx=SimpleNamespace(CallAfter=lambda callback: callbacks.put(callback)))
+    media = ProgressMedia(panel)
+    class Progress:
+        def hold_audio(self):
+            return media.hold_audio()
+        def refresh_audio_state(self):
+            return media.refresh()
+    progress = Progress()
+
+    dialog = object.__new__(EbookAudioDialog)
+    dialog.closed, dialog.busy = False, False
+    dialog.cancelled = Event()
+    dialog.session, dialog.player = session, player
+    dialog.transport = OverlayPlayback(session, player)
+    media.register_player(dialog.transport.observed)
+    dialog.progress, dialog.guard = progress, lambda: None
+    dialog._pending = None
+    dialog.cleanup_warning, dialog._cleanup_owners = '', []
+    dialog.timer, dialog._enable, dialog._highlight = Mock(), Mock(), Mock()
+    messages = []
+    dialog.status = SimpleNamespace(ChangeValue=messages.append, SetFocus=Mock())
+    dialog.wx = SimpleNamespace(
+        CallAfter=lambda callback: callbacks.put(callback),
+        CallLater=lambda *_args: pytest.fail('A silent real progress owner unexpectedly deferred start.'))
+    dialog.executor = ThreadPoolExecutor(max_workers=1)
+    actual_prepare, prepared_results = session.prepare, []
+
+    def prepare(index, *, cancelled):
+        result = actual_prepare(index, cancelled=cancelled)
+        prepared_results.append(result)
+        return result
+
+    session.prepare = prepare
+    try:
+        # Actual owned executor prepares a real source-bound PCM segment. The
+        # GUI completion alone is held so the final admission can change.
+        dialog.play()
+        apply = callbacks.get(timeout=30)
+        assert len(prepared_results) == 1 and prepared_results[0].path.is_file()
+        ticket = dialog.transport.ticket
+        if failure == 'archived-source':
+            app.archive_workspace(workspace)
+        apply()
+        assert dialog.transport.ticket != ticket and not dialog.transport.active
+        assert not dialog.busy and dialog._pending is None
+        assert dialog.cancelled.is_set() and not prepared_results[0].path.exists()
+        assert not media.hold_snapshot(), 'Failed start leaked a shared audio quiet hold.'
+        assert not callbacks.qsize()
+        assert messages[-1] and 'Preparing the exact' not in messages[-1]
+        if failure == 'native-open':
+            assert 'Authored native-open refusal' in messages[-1]
+            assert native_attempts == [prepared_results[0].path]
+        else:
+            assert 'archived' in messages[-1].casefold()
+            assert not player.played and not native_attempts
+        dialog._highlight.assert_not_called()
+        assert original.read_bytes() == original_bytes
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+        dialog.transport.close()
+        if dialog._pending is not None:
+            dialog._pending.close()
+
+
+def test_cancelled_pending_dialog_start_never_reports_or_plays_a_late_result(imported):
+    from concurrent.futures import ThreadPoolExecutor
+    from queue import Queue
+
+    session = EbookAudioSession(imported[-1], 1)
+    player = TrackedPlayer()
+    callbacks, prepared_results = Queue(), []
+    dialog = object.__new__(EbookAudioDialog)
+    dialog.closed, dialog.busy = False, False
+    dialog.cancelled = Event()
+    dialog.session, dialog.player = session, player
+    dialog.transport = OverlayPlayback(session, player)
+    dialog.progress, dialog.guard = None, lambda: None
+    dialog._pending = None
+    dialog.cleanup_warning, dialog._cleanup_owners = '', []
+    dialog.timer, dialog._enable, dialog._highlight = Mock(), Mock(), Mock()
+    messages = []
+    dialog.status = SimpleNamespace(ChangeValue=messages.append, SetFocus=Mock())
+    dialog.wx = SimpleNamespace(
+        CallAfter=lambda callback: callbacks.put(callback),
+        CallLater=lambda *_args: pytest.fail('A cancelled start scheduled native work.'))
+    dialog.executor = ThreadPoolExecutor(max_workers=1)
+    actual_prepare = session.prepare
+
+    def prepare(index, *, cancelled):
+        result = actual_prepare(index, cancelled=cancelled)
+        prepared_results.append(result)
+        return result
+
+    session.prepare = prepare
+    try:
+        dialog.play()
+        apply = callbacks.get(timeout=30)
+        assert len(prepared_results) == 1 and prepared_results[0].path.is_file()
+        dialog.stop()
+        stopped_messages = list(messages)
+        apply()
+        assert messages == stopped_messages and not player.played
+        assert not prepared_results[0].path.exists()
+        assert dialog._pending is None and not dialog.busy
+        dialog._highlight.assert_not_called()
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+        dialog.transport.close()

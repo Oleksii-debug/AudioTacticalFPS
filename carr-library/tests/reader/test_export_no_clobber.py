@@ -533,6 +533,14 @@ def test_full_existing_content_is_streamed_and_unsampled_tail_changes_are_detect
     original_bytes = b'A' * size
     target.write_bytes(original_bytes)
     before = _keep_windows_creation_time(monkeypatch, target)
+    if os.name == 'nt':
+        # This case qualifies the full-byte fallback when metadata collides.
+        # Native ChangeTime refusal has its own actual Windows tests.
+        actual_change_time = export_file._windows_change_time
+        selected_target = target.resolve(strict=True)
+        captured_change_time = actual_change_time(selected_target)
+        monkeypatch.setattr(export_file, '_windows_change_time',
+            lambda path: captured_change_time if Path(path) == selected_target else actual_change_time(path))
     sessions = _observe_destination_reads(monkeypatch)
     approval = export_file.capture_export_destination(target,
         private_root=target.parent / 'private')

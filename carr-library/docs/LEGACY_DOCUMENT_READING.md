@@ -79,13 +79,64 @@ and refusal of ambiguous roots, archive traversal, duplicate names, active code
 and expansion excess. Existing conversion and publication suites remain required.
 New checkpoint qualification is NOT_RUN until the exact CI evidence exists.
 
-AZW/AZW3, CHM, DjVu, LIT, MOBI, PRC, TCR and non-ZIP generic archives retain
-their separate converter/sample requirements. No renamed-file compatibility,
-decryption, DRM bypass, arbitrary external decoder or unverified universal-format
-claim is added. BXD/REX/DIC pronunciation interchange and verified SAPI4 driver
-combinations remain separate reader/runtime qualifications.
+AZW/AZW3, CHM, DjVu, LIT, MOBI, PRC and TCR use the separately selected
+[Calibre reading adapter](CALIBRE_READING.md), with its own actual eight-format
+gate and explicit fidelity boundaries. Non-ZIP generic archives remain outside
+this adapter. No renamed-file compatibility, decryption, DRM bypass, arbitrary
+external decoder or unverified universal-format claim is added. Pronunciation
+dictionary interchange and verified SAPI4 driver combinations retain their own
+reader/runtime acceptance.
 
 Primary interface references:
 
 - [LibreOffice fixed conversion filters](https://help.libreoffice.org/latest/en-US/text/shared/guide/convertfilters.html)
 - [MHTML aggregate MIME contract, RFC2557](https://www.rfc-editor.org/rfc/rfc2557)
+
+
+## Reviewed Office completion boundary
+
+The current gate selects LibreOffice 26.8.3 on both operating systems. Linux uses
+the official archive, checked at 221377373 bytes and SHA-256
+`e7cd3538e85818ff9dd9bb65386769fde927011242aace5a144989f4000dcabf`.
+The older distro 24.2.7 runtime was correctly refused because it lacked a required
+macro/OLE control; no control was removed to admit it.
+
+Actual conversion identified an empty static PPT geometry leaf. The reader
+checks its exact declarative attributes and finite numeric bounds without
+evaluating drawing formulae. Its sequential path lexer and actual owned-child
+malformed-input regression retain bounded execution. Conversion reports that
+drawing geometry is not rendered.
+
+The complete XLS diagnostic inspected both `content.xml` and `styles.xml`.
+At `a2f6645dd32366a106212ec545b33a26f4ee84f8`,
+[run46053244449](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46053244449)
+completed 20 Windows and six Linux observations. All 18 captured header/footer
+subtrees were identical across operating systems, without truncation. Eight
+inactive slots were empty; four contained the generated default sheet/page
+templates; the remaining six slots were visible layout metadata.
+
+The nonempty exception is restricted to direct master-page children in ODS
+`styles.xml`: inactive `header-left` and `header-first` with the recorded
+`sheet-name` placeholder `???`, and inactive `footer-left` and `footer-first`
+with the exact `Page ` caption and `page-number` value `1`. It checks the
+complete paragraph/span/field structure, bounded style identifiers, matching
+footer styles and absence of additional attributes, children or authored text.
+It emits `inactive_sheet_page_fields_not_read`; cached layout fields never
+become source records or invented page labels. Body lookalikes, other formats,
+wrong style contexts and other hidden content retain their refusal behavior.
+The [OASIS OpenDocument 1.3 schema](https://docs.oasis-open.org/office/OpenDocument/v1.3/os/part3-schema/OpenDocument-v1.3-os-part3-schema.html),
+sections 7.3.11 and 19.475, describes the sheet field and inactive header/footer
+semantics; the accepted shapes are narrower than the complete schema.
+
+The WRI fixture now includes the mandatory character and paragraph FOD records.
+Both operating systems read the corrected 512-byte fixture through the direct
+converter and actual isolated worker, with matching source/text hashes. The
+old 256-byte header-only negative control still fails. This fixture correction
+does not expand the accepted WRI header families.
+
+The earlier [all-nine acceptance attempt](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46044193352)
+retains its XLS and WRI failures. Successful diagnostic observations identify
+their causes; they do not replace the final acceptance gate. The final PR commit
+must execute all nine native cases from source and the installed package on both
+operating systems, alongside the complete structured-parser, workspace,
+source-preservation, cancellation and publication regressions.

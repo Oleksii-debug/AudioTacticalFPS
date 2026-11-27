@@ -1,118 +1,23 @@
-name: Selected Office environment and handle observations
+name: Selected Office regular-file diagnostics
+
 on:
   push:
     branches: [carr/office-native-diagnostics-20261127]
     paths: ['carr-library/**', '.github/workflows/carr-office-native-diagnostics.yml']
   workflow_dispatch:
+
 permissions:
   contents: read
+
 concurrency:
   group: office-native-diagnostics-${{ github.ref_name }}
   cancel-in-progress: true
-jobs:
-  windows:
-    runs-on: windows-2022
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: carr-library
-        shell: pwsh
-    env:
-      PYTHONUTF8: '1'
-      PYTHONDONTWRITEBYTECODE: '1'
-      HF_HUB_OFFLINE: '1'
-      TRANSFORMERS_OFFLINE: '1'
-      DO_NOT_TRACK: '1'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.11'
-      - name: Install exact conversion source and test fixtures
-        run: python -m pip install ".[test]"
-      - name: Prepare explicitly selected Office runtime
-        run: |
-          New-Item -ItemType Directory -Force 'ci-office-observations' | Out-Null
-          $officeProvisioned = $false
-          for ($officeAttempt = 1; $officeAttempt -le 3; $officeAttempt++) {
-            $officeAttemptOutput = @()
-            & choco install libreoffice-fresh --version=26.8.3 --yes --no-progress --limit-output 2>&1 |
-              Tee-Object -Variable officeAttemptOutput |
-              Tee-Object -FilePath ('ci-office-observations/provision-' + $officeAttempt + '.txt')
-            $officeInstallExit = $LASTEXITCODE
-            if ($officeInstallExit -in @(0, 1641, 3010)) {
-              $officeProvisioned = $true
-              break
-            }
-            $officeTransient503 = @($officeAttemptOutput | Where-Object {
-              $officeFeedLine = $_.ToString()
-              $officeFeedLine.Contains("Failed to fetch results from V2 feed at 'https://community.chocolatey.org/api/v2/Packages(Id='libreoffice-fresh',Version='26.8.3')'") -and
-                $officeFeedLine.Contains('Response status code does not indicate success: 503 (Service Unavailable)')
-            }).Count -gt 0
-            if (-not $officeTransient503 -or $officeAttempt -eq 3) { exit $officeInstallExit }
-            Write-Output ('Selected Office feed returned HTTP 503; retrying the same version after ' + (5 * $officeAttempt) + ' seconds.')
-            Start-Sleep -Seconds (5 * $officeAttempt)
-          }
-          if (-not $officeProvisioned) { throw 'The selected Office runtime was not installed.' }
-          $office = Join-Path $env:ProgramFiles 'LibreOffice/program/soffice.com'
-          if (-not (Test-Path -LiteralPath $office -PathType Leaf)) { throw 'Selected Office executable is missing.' }
-          "CARR_SOFFICE=$office" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Observe unchanged and single-factor Office variants with selected runtime egress blocked
-        run: |
-          $ErrorActionPreference = 'Stop'
-          New-Item -ItemType Directory -Force 'ci-office-observations' | Out-Null
-          $python = (Get-Command python.exe).Source
-          $base = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $officePrograms = @(Get-ChildItem -LiteralPath (Split-Path $env:CARR_SOFFICE) -File -Recurse | Where-Object { $_.Extension.ToLowerInvariant() -in @('.exe', '.com', '.bin') } | Select-Object -ExpandProperty FullName)
-          if ($officePrograms.Count -lt 2 -or $officePrograms.Count -gt 256) { throw 'Selected Office executable inventory is outside the diagnostic bound.' }
-          $programs = @($python, $base, (Get-Process -Id $PID).Path,
-            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
-            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) + $officePrograms |
-              Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
-              ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
-          $prefix = 'CARR-office-observation-' + [guid]::NewGuid().ToString('N')
-          $rules = @()
-          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
-          try {
-            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
-            foreach ($program in $programs) {
-              $name = $prefix + '-' + $rules.Count
-              $rules += $name
-              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
-            }
-            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules -ErrorAction Stop)
-            if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0 -or $active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Runtime denial is not active.' }
-            $filters = @($active | Get-NetFirewallApplicationFilter | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
-            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Runtime denial does not cover the selected processes.' }
-            @{ status='PASS'; blocked_programs=$filters; scope='selected runtime executables' } | ConvertTo-Json -Depth 3 | Set-Content 'ci-office-observations/firewall.json'
-            & $python -I -B -X utf8 -X faulthandler scripts/observe_office_native.py 2>&1 | Tee-Object 'ci-office-observations/observations.txt'
-            $observedExit = $LASTEXITCODE
-            Write-Output ('Office observation owner exit: ' + $observedExit)
-            if ($observedExit -ne 0) { throw ('Office observations did not complete: ' + $observedExit) }
-          } finally {
-            foreach ($name in $rules) { Remove-NetFirewallRule -Name $name -ErrorAction SilentlyContinue }
-            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
-            if (@(Get-NetFirewallRule -Name ($prefix + '*') -ErrorAction SilentlyContinue).Count -ne 0) { throw 'Owned runtime firewall cleanup remained pending.' }
-          }
-      - name: Preserve exact identity
-        if: always()
-        run: |
-          New-Item -ItemType Directory -Force 'ci-office-observations' | Out-Null
-          git rev-parse HEAD | Out-File 'ci-office-observations/commit.txt'
-          python -m pip freeze | Out-File 'ci-office-observations/packages.txt'
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always()
-        with:
-          name: office-observations-${{ github.sha }}
-          path: carr-library/ci-office-observations
-          if-no-files-found: error
 
-  linux-formats:
+jobs:
+  linux-regular:
+    name: Linux actual Office rejection diagnosis
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: carr-library
@@ -130,8 +35,20 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
-      - name: Install exact conversion source and authored fixtures
+      - name: Install exact source and declared tests
         run: python -m pip install ".[test]"
+      - name: Prepare actual Linux regression audio runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg tesseract-ocr tesseract-ocr-eng
+      - name: Require current publication and archive boundaries
+        run: |
+          mkdir -p ci-legacy-reading
+          python scripts/ci_check.py --diagnostics --jobs 3 tests/conversion/test_conversion.py tests/conversion/test_conversion_publication.py tests/conversion/test_office_selection.py tests/conversion/test_office_workspace.py tests/extract/test_document_formats_xml.py tests/conversion/test_archive_reading.py tests/ui/test_audio_conversion_controls.py tests/audio/test_process_scratch.py 2>&1 | tee ci-legacy-reading/boundaries.txt
+      - name: Require selected POSIX registry link identity
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: python scripts/ci_check.py --diagnostics tests/conversion/test_office_registry_posix.py 2>&1 | tee ci-legacy-reading/registry-posix.txt
       - name: Prepare pinned official Linux office runtime
         if: "!cancelled() && runner.os == 'Linux'"
         run: |
@@ -220,7 +137,7 @@ jobs:
           version = subprocess.check_output([str(executable), '--version'], text=True, timeout=30)
           if re.fullmatch(r'LibreOffice 26\.8\.3(?:\.\d+)? [0-9a-f]{40}\s*', version) is None:
               raise RuntimeError('The installed Office version differs from the reviewed release.')
-          report = Path('ci-office-observations')
+          report = Path('ci-legacy-reading')
           report.mkdir(exist_ok=True)
           (report / 'office-version.txt').write_text(version, encoding='utf-8')
           (report / 'packages.json').write_text(json.dumps({
@@ -232,19 +149,92 @@ jobs:
           with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as environment:
               environment.write('CARR_SOFFICE=' + str(executable) + '\n')
           PY
-      - name: Observe six bounded actual XLS and Write routes on Linux
+      - name: Prepare exact installed native Office verification
         run: |
-          mkdir -p ci-office-observations
-          python -I -B -X utf8 -X faulthandler scripts/observe_office_native.py --formats-only 2>&1 | tee ci-office-observations/observations.txt
-      - name: Preserve exact identity
+          mkdir -p ci-legacy-reading
+          cat > ci-legacy-reading/verify_installed_office.py <<'PY'
+          """Require actual installed Office routes with exact source identities."""
+          import hashlib
+          import importlib
+          import json
+          from pathlib import Path
+          import sys
+          import xml.etree.ElementTree as ET
+          
+          import pytest
+          
+          checkout = Path.cwd().resolve()
+          names = (
+              'carr_library.conversion.office',
+              'carr_library.conversion.service',
+              'carr_library.conversion.worker',
+              'carr_library.extract.document_formats',
+              'carr_library.extract.document_formats_xml',
+              'carr_library.audio.process',
+              'carr_library.durable_state',
+          )
+          
+          def identities():
+              result = {}
+              for name in names:
+                  module = importlib.import_module(name)
+                  actual = Path(module.__file__).resolve()
+                  expected = checkout / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  assert not actual.is_relative_to(checkout), (name, str(actual))
+                  digest = hashlib.sha256(actual.read_bytes()).hexdigest()
+                  assert digest == hashlib.sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = dict(path=str(actual), sha256=digest)
+              return result
+          
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          
+          before = identities()
+          policy = RejectExpectedFailures()
+          report = checkout / 'ci-legacy-reading' / 'installed-office.xml'
+          status = pytest.main([
+              '-v', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+              '--import-mode=importlib', '--junitxml=' + str(report),
+              'tests/conversion/test_office_workspace.py',
+              'tests/audio/test_process_scratch.py',
+              'tests/conversion/office_native_acceptance.py',
+          ], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
+          skipped = sum(c.find('skipped') is not None for c in cases)
+          after = identities()
+          ok = (status == 0 and len(cases) >= 25 and failed == skipped == 0
+                and not policy.seen and after == before)
+          result = dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
+                        failed=failed, skipped=skipped, expected_failures=policy.seen,
+                        installed_source_identity=after, source_unchanged=after == before)
+          print(json.dumps(result, sort_keys=True), flush=True)
+          (checkout / 'ci-legacy-reading' / 'installed-office.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          raise SystemExit(0 if ok else 1)
+          PY
+      - name: Require all actual selected legacy filters and cancellation on Linux
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: python scripts/ci_check.py --diagnostics tests/conversion/office_native_acceptance.py 2>&1 | tee ci-legacy-reading/actual-office.txt
+      - name: Require actual installed Linux Office routes
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: python -I -B -X utf8 ci-legacy-reading/verify_installed_office.py 2>&1 | tee ci-legacy-reading/installed-office.txt
+      - name: Observe twelve independent actual DOC conversions and original stat controls
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: |
+          python scripts/ci_check.py --diagnostics --suite-timeout tests/conversion/office_regular_diagnostic.py=300 tests/conversion/office_regular_diagnostic.py 2>&1 | tee ci-legacy-reading/regular-diagnostic.txt
+      - name: Preserve source identity
         if: always()
         run: |
-          mkdir -p ci-office-observations
-          git rev-parse HEAD > ci-office-observations/commit.txt
-          python -m pip freeze > ci-office-observations/packages.txt
+          mkdir -p ci-legacy-reading
+          git rev-parse HEAD > ci-legacy-reading/commit.txt
+          python -m pip freeze > ci-legacy-reading/python-packages.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
-          name: office-linux-format-observations-${{ github.sha }}
-          path: carr-library/ci-office-observations
+          name: office-regular-diagnostic-Linux-${{ github.sha }}
+          path: carr-library/ci-legacy-reading
           if-no-files-found: error

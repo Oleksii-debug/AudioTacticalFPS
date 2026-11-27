@@ -51,6 +51,31 @@ input retention API, binding the returned `audio.sha256`; they do not grant
 authority to an arbitrary saved path. Recordings are inputs, so generated-audio
 exclusion does not discard them. This adds no second backup format or DSP engine.
 
+## Another take of a selected recording
+
+Select a completed saved recording and a current microphone, then choose
+**Record another take of selected recording**. This uses the same capture,
+Pause, Resume, Stop, Cancel and cleanup owner as an ordinary recording. Enabled
+monitoring still requires an explicit output selection. Choosing the retake
+action never selects a microphone, monitoring output or prior recording for you.
+
+A new take receives a new UUID and a new create-only WAV/receipt pair. Its
+optional `retake_of` receipt field records only the prior recording's ID and
+verified whole-WAV SHA-256. The original PCM and receipt are never replaced.
+The service verifies that original before admission, again before opening the
+microphone after any resource wait, and immediately before publishing the new
+take. A changed original, malformed identity, unfinished prior receipt or
+extra-link original blocks the new take. Open a prior recording separately to
+finish any necessary recovery; a retake does not perform that recovery.
+
+Cancelling an unfinished new take preserves the old recording. A late stop or
+cleanup warning cannot revoke a new WAV that was already published and verified.
+The new recording appears separately in the saved list; the existing Studio
+asset is unchanged until you explicitly choose **Use selected recording**.
+Old v1/v2 receipts without this optional relationship keep their original bytes
+and schema. Backup retains both WAVs and their receipts through the existing
+recording validator, without opening a microphone or reselecting a device.
+
 ## Pause, resume and explicit monitoring
 
 **Pause microphone recording** requests graceful completion of the current
@@ -114,7 +139,7 @@ until performed on a selected Windows device.
 
 `scripts/windows_recording_smoke.py` must run with the installed interpreter,
 `-I -B`, real wx MainLoop and a staged FFmpeg build. It dispatches native keys
-for explicit source selection, Start, Pause, Resume, Stop, Cancel and Escape, checks actual
+for explicit source selection, Start, Pause, Resume, Stop, Cancel, an explicit new take and Escape, checks actual
 retained PCM, and confirms cleanup. The probe's fixed synthetic source never
 discovers or opens physical microphone hardware. Its existence is not a native
 PASS claim; the platform job must execute it.
@@ -133,3 +158,12 @@ New source checkpoints are NOT_RUN until their recorded CI run has completed.
 
 Native buffer release contract:
 <https://learn.microsoft.com/windows/win32/api/mmeapi/nf-mmeapi-waveoutunprepareheader>.
+
+
+The retake additions to `test_recording_controls.py` exercise actual synthetic
+FFmpeg for new v1/v2 takes, cancellation, prior-file mutation before opening and
+before publication, foreign equal-byte replacement, late cancellation, and both
+takes surviving passive backup/restore. Native retake acceptance uses the real
+named button and foreground keyboard dispatch, then verifies the old receipt and
+PCM identity plus the new receipt. These additions are source-only until the
+specific CI run executes them; earlier recording passes do not qualify retakes.

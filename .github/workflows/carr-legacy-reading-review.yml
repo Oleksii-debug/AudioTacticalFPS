@@ -2,7 +2,7 @@ name: Selected legacy document and archive conversion review
 
 on:
   push:
-    branches: [carr/legacy-reading-review-20261127, carr/canonical-complete-20261127, carr-library]
+    branches: [carr/legacy-reading-review-20261127, carr/canonical-complete-20261127, carr/canonical-integrity-finish-20261127, carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-legacy-reading-review.yml']
   workflow_dispatch:
 
@@ -57,19 +57,110 @@ jobs:
       - name: Require current publication and archive boundaries
         run: |
           mkdir -p ci-legacy-reading
-          python scripts/ci_check.py --diagnostics --jobs 3 tests/conversion/test_conversion.py tests/conversion/test_conversion_publication.py tests/conversion/test_office_selection.py tests/conversion/test_archive_reading.py tests/ui/test_audio_conversion_controls.py 2>&1 | tee ci-legacy-reading/boundaries.txt
+          python scripts/ci_check.py --diagnostics --jobs 3 tests/conversion/test_conversion.py tests/conversion/test_conversion_publication.py tests/conversion/test_office_selection.py tests/conversion/test_office_workspace.py tests/extract/test_document_formats_xml.py tests/conversion/test_archive_reading.py tests/ui/test_audio_conversion_controls.py tests/audio/test_process_scratch.py 2>&1 | tee ci-legacy-reading/boundaries.txt
       - name: Require selected POSIX registry link identity
         if: "!cancelled() && runner.os == 'Linux'"
         run: python scripts/ci_check.py --diagnostics tests/conversion/test_office_registry_posix.py 2>&1 | tee ci-legacy-reading/registry-posix.txt
-      - name: Prepare selected Linux office runtime
+      - name: Prepare pinned official Linux office runtime
         if: "!cancelled() && runner.os == 'Linux'"
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libreoffice-writer libreoffice-calc libreoffice-impress
-          test -f /usr/lib/libreoffice/program/soffice
-          echo "CARR_SOFFICE=/usr/lib/libreoffice/program/soffice" >> "$GITHUB_ENV"
-          /usr/lib/libreoffice/program/soffice --version > ci-legacy-reading/office-version.txt
-          dpkg-query -W libreoffice-core libreoffice-writer libreoffice-calc libreoffice-impress > ci-legacy-reading/packages.txt
+          office_stage="$(mktemp -d "$RUNNER_TEMP/carr-office-26.8.3-XXXXXX")"
+          export CARR_OFFICE_PROVISION="$office_stage"
+          curl --fail --location --proto '=https' --proto-redir '=https' --retry 3 --connect-timeout 30 --max-time 180 --max-filesize 221377373 \
+            'https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz' \
+            --output "$office_stage/office.tar.gz"
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import subprocess
+          import tarfile
+          
+          root = Path(os.environ['CARR_OFFICE_PROVISION'])
+          archive = root / 'office.tar.gz'
+          expected_size = 221377373
+          expected_hash = 'e7cd3538e85818ff9dd9bb65386769fde927011242aace5a144989f4000dcabf'
+          if archive.stat().st_size != expected_size:
+              raise RuntimeError('The official Office archive has a different length.')
+          digest = sha256()
+          with archive.open('rb') as stream:
+              for block in iter(lambda: stream.read(1024 * 1024), b''):
+                  digest.update(block)
+          if digest.hexdigest() != expected_hash:
+              raise RuntimeError('The official Office archive differs from its pinned SHA256.')
+          packages = root / 'packages'
+          packages.mkdir()
+          names, debs, total, count = set(), [], 0, 0
+          with tarfile.open(archive, 'r:gz') as bundle:
+              for member in bundle:
+                  count += 1
+                  name = PurePosixPath(member.name)
+                  total += member.size
+                  if (count > 2048 or total > 512 * 1024**2 or name.is_absolute()
+                          or '..' in name.parts or '\\' in member.name or len(member.name) > 1024
+                          or not (member.isdir() or member.isfile()) or member.name in names):
+                      raise RuntimeError('The pinned Office archive has an unexpected extraction shape.')
+                  names.add(member.name)
+                  if not member.isfile() or len(name.parts) != 3 or name.parts[1] != 'DEBS':
+                      continue
+                  if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.+_:-]*\.deb', name.name):
+                      raise RuntimeError('The official Office package name is invalid.')
+                  target = packages / name.name
+                  with bundle.extractfile(member) as source, target.open('xb') as output:
+                      remaining = member.size
+                      while remaining:
+                          block = source.read(min(1024 * 1024, remaining))
+                          if not block:
+                              raise RuntimeError('The official Office package is truncated.')
+                          output.write(block)
+                          remaining -= len(block)
+                      if source.read(1):
+                          raise RuntimeError('The official Office package exceeds its declared length.')
+                  debs.append(target)
+          if not 3 <= len(debs) <= 128:
+              raise RuntimeError('The pinned Office archive lacks its bounded package set.')
+          selected = []
+          for deb in sorted(debs):
+              package = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Package'], text=True).strip()
+              version = subprocess.check_output(['dpkg-deb', '-f', str(deb), 'Version'], text=True).strip()
+              if (re.fullmatch(r'[a-z0-9][a-z0-9+.-]{0,127}', package) is None
+                      or not version or len(version) > 128):
+                  raise RuntimeError('The selected Office package metadata is invalid.')
+              selected.append({'package': package, 'version': version})
+          subprocess.run(['sudo', 'apt-get', 'install', '--no-install-recommends', '-y',
+                          *(str(path) for path in sorted(debs))], check=True, timeout=240)
+          executables = set()
+          for row in selected:
+              installed = subprocess.check_output(
+                  ['dpkg-query', '-W', '-f=' + '$' + '{Version}', row['package']], text=True).strip()
+              if installed != row['version']:
+                  raise RuntimeError('An installed Office package differs from the pinned archive.')
+              for value in subprocess.check_output(['dpkg-query', '-L', row['package']], text=True).splitlines():
+                  candidate = Path(value)
+                  if candidate.name == 'soffice' and candidate.parent.name == 'program':
+                      if candidate.is_symlink() or not candidate.is_file():
+                          raise RuntimeError('The selected Office launcher is not an ordinary installed file.')
+                      executables.add(candidate)
+          if len(executables) != 1:
+              raise RuntimeError('The pinned Office packages must declare exactly one launcher.')
+          executable = executables.pop()
+          version = subprocess.check_output([str(executable), '--version'], text=True, timeout=30)
+          if re.fullmatch(r'LibreOffice 26\.8\.3(?:\.\d+)? [0-9a-f]{40}\s*', version) is None:
+              raise RuntimeError('The installed Office version differs from the reviewed release.')
+          report = Path('ci-legacy-reading')
+          report.mkdir(exist_ok=True)
+          (report / 'office-version.txt').write_text(version, encoding='utf-8')
+          (report / 'packages.json').write_text(json.dumps({
+              'archive_url': 'https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz',
+              'checksum_source': 'https://download.documentfoundation.org/libreoffice/stable/26.8.3/deb/x86_64/LibreOffice_26.8.3_Linux_x86-64_deb.tar.gz.sha256',
+              'archive_bytes': expected_size, 'archive_sha256': expected_hash,
+              'packages': selected, 'executable': str(executable),
+          }, indent=2) + '\n', encoding='utf-8')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as environment:
+              environment.write('CARR_SOFFICE=' + str(executable) + '\n')
+          PY
       - name: Prepare explicitly versioned Windows office runtime
         if: "!cancelled() && runner.os == 'Windows'"
         shell: pwsh
@@ -82,9 +173,118 @@ jobs:
           & $office --version | Out-File 'ci-legacy-reading/office-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-FileHash -LiteralPath $office -Algorithm SHA256 | Format-List | Out-File 'ci-legacy-reading/office-launcher-sha256.txt'
-      - name: Require all actual selected legacy filters and cancellation
-        if: "!cancelled()"
+      - name: Prepare exact installed native Office verification
+        run: |
+          mkdir -p ci-legacy-reading
+          cat > ci-legacy-reading/verify_installed_office.py <<'PY'
+          """Require actual installed Office routes with exact source identities."""
+          import hashlib
+          import importlib
+          import json
+          from pathlib import Path
+          import sys
+          import xml.etree.ElementTree as ET
+          
+          import pytest
+          
+          checkout = Path.cwd().resolve()
+          names = (
+              'carr_library.conversion.office',
+              'carr_library.conversion.service',
+              'carr_library.conversion.worker',
+              'carr_library.extract.document_formats',
+              'carr_library.extract.document_formats_xml',
+              'carr_library.audio.process',
+          )
+          
+          def identities():
+              result = {}
+              for name in names:
+                  module = importlib.import_module(name)
+                  actual = Path(module.__file__).resolve()
+                  expected = checkout / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  assert not actual.is_relative_to(checkout), (name, str(actual))
+                  digest = hashlib.sha256(actual.read_bytes()).hexdigest()
+                  assert digest == hashlib.sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = dict(path=str(actual), sha256=digest)
+              return result
+          
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          
+          before = identities()
+          policy = RejectExpectedFailures()
+          report = checkout / 'ci-legacy-reading' / 'installed-office.xml'
+          status = pytest.main([
+              '-v', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+              '--import-mode=importlib', '--junitxml=' + str(report),
+              'tests/conversion/test_office_workspace.py',
+              'tests/audio/test_process_scratch.py',
+              'tests/conversion/office_native_acceptance.py',
+          ], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
+          skipped = sum(c.find('skipped') is not None for c in cases)
+          after = identities()
+          ok = (status == 0 and len(cases) >= 25 and failed == skipped == 0
+                and not policy.seen and after == before)
+          result = dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
+                        failed=failed, skipped=skipped, expected_failures=policy.seen,
+                        installed_source_identity=after, source_unchanged=after == before)
+          print(json.dumps(result, sort_keys=True), flush=True)
+          (checkout / 'ci-legacy-reading' / 'installed-office.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+          raise SystemExit(0 if ok else 1)
+          PY
+      - name: Require all actual selected legacy filters and cancellation on Linux
+        if: "!cancelled() && runner.os == 'Linux'"
         run: python scripts/ci_check.py --diagnostics tests/conversion/office_native_acceptance.py 2>&1 | tee ci-legacy-reading/actual-office.txt
+      - name: Require actual installed Linux Office routes
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: python -I -B -X utf8 ci-legacy-reading/verify_installed_office.py 2>&1 | tee ci-legacy-reading/installed-office.txt
+      - name: Require actual Windows legacy filters with verified runtime egress denial
+        if: "!cancelled() && runner.os == 'Windows'"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force 'ci-legacy-reading' | Out-Null
+          $python = (Get-Command python.exe).Source
+          $base = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $officePrograms = @(Get-ChildItem -LiteralPath (Split-Path $env:CARR_SOFFICE) -File -Recurse | Where-Object { $_.Extension.ToLowerInvariant() -in @('.exe', '.com', '.bin') } | Select-Object -ExpandProperty FullName)
+          if ($officePrograms.Count -lt 2 -or $officePrograms.Count -gt 256) { throw 'Selected Office executable inventory is outside the acceptance bound.' }
+          $programs = @($python, $base, (Get-Process -Id $PID).Path,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) + $officePrograms |
+              Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+              ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $prefix = 'CARR-office-acceptance-' + [guid]::NewGuid().ToString('N')
+          $rules = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $name = $prefix + '-' + $rules.Count
+              $rules += $name
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules -ErrorAction Stop)
+            if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0 -or $active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Runtime denial is not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Runtime denial does not cover the selected processes.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='selected runtime executables' } | ConvertTo-Json -Depth 3 | Set-Content 'ci-legacy-reading/firewall.json'
+            & $python -I -B -X utf8 scripts/ci_check.py --diagnostics tests/conversion/office_native_acceptance.py 2>&1 | Tee-Object 'ci-legacy-reading/actual-office.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual selected Office source acceptance failed.' }
+            & $python -I -B -X utf8 ci-legacy-reading/verify_installed_office.py 2>&1 | Tee-Object 'ci-legacy-reading/installed-office.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual installed Office acceptance failed.' }
+          } finally {
+            foreach ($name in $rules) { Remove-NetFirewallRule -Name $name -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+            if (@(Get-NetFirewallRule -Name ($prefix + '*') -ErrorAction SilentlyContinue).Count -ne 0) { throw 'Owned runtime firewall cleanup remained pending.' }
+          }
       - name: Preserve source identity
         if: always()
         run: |

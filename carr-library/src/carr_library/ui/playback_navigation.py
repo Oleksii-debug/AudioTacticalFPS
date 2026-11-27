@@ -1,7 +1,7 @@
 """Bounded navigation over one borrowed WavePlayer and playback generation.
 
-No audio backend, output-device selection or live speed conversion is added.
-The native host supplies its existing quiet-start and Stop lifecycle.
+The native host supplies its existing worker, quiet-start and Stop lifecycle.
+Independent listening controls borrow that same player and worker.
 """
 from dataclasses import dataclass
 import math
@@ -285,13 +285,17 @@ class PlaybackNavigation:
 class PlaybackNavigationHost:
     """An owner-local timer; its optional controls window only borrows it."""
     def __init__(self, owner, player, *, generation, alive, stop_current, progress=(),
-                 report=lambda message: None, wx_module=None):
+                 report=lambda message: None, wx_module=None, prepare=None, on_play=lambda: None):
         if wx_module is None:
             import wx as wx_module
         from ..speech.progress_speech import play_when_quiet
         self.owner, self.wx, self.closed, self.view = owner, wx_module, False, None
         self._native_id = owner.GetId()
         self._close_error = None
+        self.prepare, self.on_play = prepare, on_play
+        self._preparation_cancel = None
+        self._retained_listening = set()
+        self._listening_error = None
         def dispatch(action, *, alive, on_error):
             play_when_quiet(progress, action, schedule=self.wx.CallLater, alive=alive, on_error=on_error)
         self.controller = PlaybackNavigation(player, generation=generation, alive=alive,
@@ -310,6 +314,8 @@ class PlaybackNavigationHost:
             # wx may supply a different wrapper for the same deleted peer.
             # Listener callbacks must detach before controller invalidation.
             self.closed = True
+            if self._preparation_cancel is not None:
+                self._preparation_cancel.set()
             self.controller.listeners.clear()
             self.controller.close()
             try:
@@ -329,7 +335,8 @@ class PlaybackNavigationHost:
             return
         if self.view is not None and self.view and self.view.alive:
             self.view.Raise(); return
-        view = self.view = create_navigation_dialog(self.owner, self.controller, wx_module=self.wx)
+        view = self.view = create_navigation_dialog(self.owner, self.controller, wx_module=self.wx,
+            settings=self.show_settings if self.prepare is not None else None)
         try:
             view.ShowModal()
         finally:
@@ -338,7 +345,101 @@ class PlaybackNavigationHost:
             if view:
                 view.Destroy()
 
+    def _discard_listening(self, prepared):
+        self._retained_listening.add(prepared)
+        if prepared.close() is False:
+            raise RuntimeError('The unused listening copy has not confirmed cleanup.')
+        self._retained_listening.discard(prepared)
+
+    def _prepare_settings(self, selected, completed, failed, *, active):
+        import threading
+        if self.closed or not self.controller.alive() or not active() or self.prepare is None:
+            raise ValueError('This playback owner is no longer available.')
+        player = self.controller.player
+        source, identity, position = player.path, player._identity, player.position_seconds
+        if source is None or identity is None or player._stamp(source) != identity:
+            raise ValueError('Select the current checked recording before preparing playback.')
+        self.controller.stop_current()
+        if self.closed or not self.controller.alive() or not active():
+            raise ValueError('Playback changed while stopping the previous preview.')
+        if player._stamp(source) != identity:
+            raise ValueError('The original recording changed while stopping playback.')
+        if player.path is None:
+            player.open(source)  # Clip Stop closes transport; selection stays silent.
+        if player.path != source or player._identity != identity:
+            raise ValueError('The stopped recording no longer matches the selected preview.')
+        request = player.listening_request(selected.speed, selected.pitch_semitones,
+                                           position_seconds=position)
+        generation = self.controller.generation()
+        cancellation = self._preparation_cancel = threading.Event()
+        def stopped():
+            return (cancellation.is_set() or self.closed or not self.controller.alive()
+                    or not active() or self.controller.generation() != generation)
+        def finish(prepared):
+            try:
+                if stopped():
+                    self._discard_listening(prepared)
+                    if active() and not self.closed:
+                        failed(InterruptedError('Listening preparation belongs to a stopped preview.'))
+                    return
+                self._retained_listening.add(prepared)
+                player.apply_listening(prepared)
+                self._retained_listening.discard(prepared)
+                self._preparation_cancel = None
+                completed('Listening copy verified and selected. Start playback explicitly. '
+                          'Position uses the original recording; transformed alignment is approximate.')
+            except (Exception, KeyboardInterrupt) as exc:
+                if getattr(prepared, '_owner', None) is None and not prepared.closed:
+                    try:
+                        self._discard_listening(prepared)
+                    except (Exception, KeyboardInterrupt) as cleanup:
+                        self._listening_error = cleanup
+                if active() and not self.closed:
+                    failed(exc)
+        def error(exc):
+            self._preparation_cancel = None
+            if active() and not self.closed:
+                failed(exc)
+        accepted = self.prepare(request, finish, error, cancelled=stopped)
+        if accepted is False:
+            cancellation.set()
+            raise RuntimeError('The existing audio worker did not admit listening preparation.')
+        return cancellation.set
+
+    def _play_current(self):
+        if self.closed or not self.controller.alive():
+            return
+        generation = self.controller.generation()
+        def current():
+            return (not self.closed and self.controller.alive()
+                    and self.controller.generation() == generation)
+        def begin():
+            if current():
+                self.on_play()
+                self.controller.player.play_current()
+                self.bind()
+        self.controller.dispatch(begin, alive=current,
+                                 on_error=lambda error: self.controller._notice(str(error)))
+
+    def show_settings(self):
+        if self.closed or not self.controller.alive() or not self.owner:
+            return
+        from .playback_settings import show_playback_settings
+        player = self.controller.player
+        parent = self.view if self.view is not None and self.view and self.view.alive else self.owner
+        show_playback_settings(parent, settings=player.listening_settings, levels=player.levels,
+            prepare=self._prepare_settings, apply_levels=lambda value: player.set_levels(
+                value.volume, muted=value.muted, balance=value.balance),
+            mix_available=player.live_mix_available,
+            alive=lambda: not self.closed and self.controller.alive(),
+            play=self._play_current, stop=self.controller.stop_current, wx_module=self.wx)
+
     def close(self):
+        if self._preparation_cancel is not None:
+            self._preparation_cancel.set()
+        for prepared in tuple(self._retained_listening):
+            self._discard_listening(prepared)
+        self._listening_error = None
         if self.closed:
             if self._close_error is not None:
                 raise self._close_error
@@ -356,7 +457,7 @@ class PlaybackNavigationHost:
                 self.view.EndModal(self.wx.ID_CANCEL)
 
 
-def create_navigation_dialog(owner, controller, *, wx_module=None):
+def create_navigation_dialog(owner, controller, *, wx_module=None, settings=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
@@ -385,6 +486,8 @@ def create_navigation_dialog(owner, controller, *, wx_module=None):
                     button.Bind(wx.EVT_BUTTON, lambda event, action=callback: self.perform(action))
                     self.buttons[key] = button; box.Add(button, 0, wx.ALL, 4)
                 layout.Add(box, 0, wx.EXPAND)
+            if settings is not None:
+                row((('settings', 'Independent playback settings...', settings),))
             self.skip = field('&Skip interval in seconds, 1 to 3600', f'{controller.skip_seconds:g}')
             def move(direction):
                 controller.set_skip(float(self.skip.GetValue())); controller.skip(direction)
@@ -452,6 +555,9 @@ def create_navigation_dialog(owner, controller, *, wx_module=None):
             self.range.SetLabel('A: ' + ('not set' if value['a'] is None else f'{value["a"]:.2f} s')
                 + '; B: ' + ('not set' if value['b'] is None else f'{value["b"]:.2f} s'))
             for key, button in self.buttons.items():
+                if key == 'settings':
+                    button.Enable(not controller.closed and controller.alive() and controller.player.path is not None)
+                    continue
                 button.Enable(value['active'] if key not in ('clear', 'cancel_sleep') else
                     value['a'] is not None if key == 'clear' else value['sleep_remaining'] is not None)
             self.repeat.SetValue(value['repeat'])

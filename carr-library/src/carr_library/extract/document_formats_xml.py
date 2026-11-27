@@ -264,6 +264,43 @@ def _empty_disabled_header(element):
             and not (element.tail and element.tail.strip()))
 
 
+def _inactive_calc_page_fields(element):
+    """Recognize only the observed inactive Calc sheet/page placeholder shapes."""
+    headers = {STYLE + 'header-left', STYLE + 'header-first'}
+    footers = {STYLE + 'footer-left', STYLE + 'footer-first'}
+    if (element.tag not in headers | footers
+            or element.attrib != {STYLE + 'display': 'false'} or len(element) != 1
+            or (element.text and element.text.strip())
+            or (element.tail and element.tail.strip())):
+        return False
+    paragraph = element[0]
+    if (paragraph.tag != TEXT + 'p' or paragraph.attrib
+            or (paragraph.text and paragraph.text.strip())
+            or (paragraph.tail and paragraph.tail.strip())
+            or len(paragraph) != (1 if element.tag in headers else 2)):
+        return False
+    spans = list(paragraph)
+    for span in spans:
+        if (span.tag != TEXT + 'span' or set(span.attrib) != {TEXT + 'style-name'}
+                or re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]{0,127}',
+                                span.get(TEXT + 'style-name', '')) is None
+                or (span.tail and span.tail.strip())):
+            return False
+    if element.tag in footers:
+        # The recorded English default caption is not a general text exception.
+        if (len(spans[0]) or spans[0].text != 'Page '
+                or spans[0].attrib != spans[1].attrib):
+            return False
+    span = spans[-1]
+    if len(span) != 1 or (span.text and span.text.strip()):
+        return False
+    field = span[0]
+    return (field.tag == TEXT + ('sheet-name' if element.tag in headers else 'page-number')
+            and not field.attrib and not len(field)
+            and field.text == ('???' if element.tag in headers else '1')
+            and not (field.tail and field.tail.strip()))
+
+
 def _static_shape_geometry(element):
     """Accept only an empty declarative geometry leaf; never evaluate formulae."""
     allowed = {SVG + 'viewBox', DRAW + 'type', DRAW + 'enhanced-path'}
@@ -301,7 +338,19 @@ def _static_shape_geometry(element):
         index = token.end()
 
 
-def _check_odf_visibility(root, budget):
+def _check_odf_visibility(root, budget, *, spreadsheet_styles=False):
+    # Only direct master-page slots in the ODS styles member can qualify.
+    # A lookalike placed in document body content or another format still fails.
+    page_slots = set()
+    if spreadsheet_styles and root.tag == OFFICE + 'document-styles':
+        for master_styles in root.findall(OFFICE + 'master-styles'):
+            budget.check()
+            for master in master_styles:
+                budget.check()
+                if master.tag == STYLE + 'master-page':
+                    for slot in master:
+                        budget.check()
+                        page_slots.add(slot)
     blocked = {TEXT + name for name in ('tracked-changes', 'change', 'change-start',
         'change-end', 'hidden-text', 'hidden-paragraph', 'conditional-text',
         'script', 'execute-macro')}
@@ -319,7 +368,12 @@ def _check_odf_visibility(root, budget):
             raise ValueError('Conditional, changed or active document text requires review.')
         if (element.get(TEXT + 'display') in ('none', 'false')
                 or element.get(FO + 'visibility') in ('hidden', 'collapse')
-                or element.get(STYLE + 'display') == 'false') and not _empty_disabled_header(element):
+                or element.get(STYLE + 'display') == 'false'):
+            if _empty_disabled_header(element):
+                continue
+            if element in page_slots and _inactive_calc_page_fields(element):
+                budget.warnings.add('inactive_sheet_page_fields_not_read')
+                continue
             raise ValueError('Hidden document text requires review.')
 
 
@@ -500,7 +554,7 @@ def _odf(archive, suffix, budget):
     _check_odf_visibility(root, budget)
     if 'styles.xml' in archive.namelist():
         styles = _member(archive, 'styles.xml', budget)
-        _check_odf_visibility(styles, budget)
+        _check_odf_visibility(styles, budget, spreadsheet_styles=suffix == '.ods')
         if any(e.get(TABLE + 'display') == 'false' or
                e.get(TABLE + 'visibility', 'visible') != 'visible'
                for e in styles.iter()):

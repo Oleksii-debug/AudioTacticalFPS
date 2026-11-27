@@ -70,7 +70,11 @@ jobs:
       - name: Require the exact integrated source and current producer regressions
         run: |
           mkdir -p ci-feature-review
-          python scripts/ci_check.py --diagnostics --jobs 3 \
+          suite_deadline=()
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            suite_deadline=(--suite-timeout tests/transcription/test_admission_boundaries.py=900)
+          fi
+          python scripts/ci_check.py --diagnostics --jobs 3 "${suite_deadline[@]}" \
             tests/assistant/test_workflow_templates.py \
             tests/assistant/test_workflow_templates_cli.py \
             tests/ui/test_workflow_templates.py \
@@ -135,13 +139,63 @@ jobs:
             tests/packaging/test_native_launcher_bundle.py \
             tests/packaging/test_local_audio_setup.py \
             tests/ui/test_reader_command_dispatch.py \
-            tests/security/test_updates.py 2>&1 | tee ci-feature-review/boundaries.txt
+            tests/reader/test_export_reconciliation.py \
+            tests/reader/test_export_publication_boundary.py \
+            tests/reader/test_export_no_clobber.py \
+            tests/reader/test_export_change_time.py \
+            tests/reader/test_file_export.py \
+            tests/reader/test_binary_file_export.py \
+            tests/ui/test_export_confirmation.py \
+            tests/security/test_updates.py \
+            tests/storage/test_transcription_backup.py \
+            tests/transcription/test_admission_boundaries.py \
+            tests/transcription/test_runtime_inventory.py \
+            tests/audio/test_process_deadline.py \
+            tests/studio/test_clip_editing.py \
+            tests/studio/test_clip_dialog.py \
+            tests/studio/test_project_effects.py \
+            tests/studio/test_clip_timeline.py \
+            tests/studio/test_clip_timeline_dialog.py \
+            tests/audio/test_cleanup_ownership.py \
+            tests/reader/test_ebook_audio.py \
+            tests/speech/test_pronunciation_formats.py \
+            tests/speech/test_pronunciation_formats_handlers.py \
+            tests/extract/test_document_formats_xml.py \
+            tests/speech/test_pronunciation_review.py \
+            tests/speech/test_pronunciation_handlers.py \
+            tests/assistant/test_local_tools.py \
+            tests/assistant/test_player_tools.py \
+            tests/assistant/test_state_publication.py \
+            tests/audio/test_conversion_batch.py \
+            tests/assistant/test_local_planning.py \
+            tests/assistant/test_supplied_transcription.py \
+            tests/assistant/test_backup_receipt.py \
+            tests/audio/test_dsp.py \
+            tests/reader/test_live_reading.py \
+            tests/reader/test_live_player.py \
+            tests/ui/test_live_reading_controls.py \
+            tests/ui/test_keyboard_convergence.py \
+            tests/audio/test_process_scratch.py \
+            tests/speech/test_listening.py \
+            tests/speech/test_wave_output.py \
+            tests/reader/test_live_listening.py \
+            tests/ui/test_playback_settings.py \
+            tests/ui/test_playback_navigation.py \
+            tests/ui/test_studio_playback_actions.py \
+            tests/speech/test_output_device_playback.py \
+            tests/ui/test_studio_progress_isolation.py \
+            tests/conversion/test_office_workspace.py \
+            tests/security/test_update_resume.py \
+            tests/security/test_update_resume_https.py \
+            tests/storage/test_durable_state_publication.py \
+            tests/studio/test_production.py \
+            tests/ui/test_save_all.py 2>&1 | tee ci-feature-review/boundaries.txt
       - name: Require Windows acquisition and actual native lookup
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success'"
         run: python scripts/ci_check.py --jobs 3 tests/ui/test_native_acquisition.py tests/transcription/test_protocol_fixture_windows.py tests/e2e/test_export_destination.py tests/audio/test_recording_process_windows.py 2>&1 | tee ci-feature-review/native-acquisition-boundaries.txt
       - name: Require real POSIX snapshot race refusal
         if: "!cancelled() && runner.os == 'Linux' && steps.source-runtime.outcome == 'success'"
-        run: python scripts/ci_check.py --jobs 3 tests/storage/test_json_snapshot_posix.py tests/operations/test_resources_posix.py tests/conversion/test_document_batches_posix.py tests/transcription/test_runtime_inventory_posix.py tests/conversion/test_office_registry_posix.py tests/speech/test_dictionary_import_boundary_posix.py 2>&1 | tee ci-feature-review/posix-snapshots.txt
+        run: python scripts/ci_check.py --jobs 3 tests/storage/test_json_snapshot_posix.py tests/operations/test_resources_posix.py tests/conversion/test_document_batches_posix.py tests/transcription/test_runtime_inventory_posix.py tests/conversion/test_office_registry_posix.py tests/speech/test_dictionary_import_boundary_posix.py tests/audio/test_process_group_cleanup.py tests/speech/test_listening_posix.py 2>&1 | tee ci-feature-review/posix-snapshots.txt
       - name: Require installed native feature workflows with egress blocked
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success'"
         shell: pwsh
@@ -184,8 +238,13 @@ jobs:
               @{ name='native-translation-batch'; script='scripts/windows_translation_batch_smoke.py'; arguments=@() },
               @{ name='native-transcription'; script='tests/ui/native_transcription_smoke.py'; arguments=@() },
               @{ name='native-platform-tools'; script='scripts/windows_platform_tools_smoke.py'; arguments=@() },
-              @{ name='native-epub-reading'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') },
-              @{ name='native-recording'; script='scripts/windows_recording_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') }
+              @{ name='native-epub-reading'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json', '--controlled-output') },
+              @{ name='native-recording'; script='scripts/windows_recording_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') },
+              @{ name='native-clip-editor'; script='scripts/windows_clip_editor_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') },
+              @{ name='native-pronunciation'; script='scripts/windows_pronunciation_smoke.py'; arguments=@() },
+              @{ name='native-assistant-player'; script='scripts/windows_assistant_player_smoke.py'; arguments=@() },
+              @{ name='native-playback-settings'; script='scripts/windows_playback_settings_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') },
+              @{ name='native-output-inventory'; script='scripts/windows_audio_output_inventory.py'; arguments=@() }
             )
             $failures = @()
             foreach ($probe in $probes) {

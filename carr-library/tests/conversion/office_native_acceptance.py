@@ -82,17 +82,29 @@ def wordperfect(text):
 
 
 def microsoft_write(text):
-    # A synthetic BE31 text-only FIB; no objects, macros or external content.
+    # Authored BE31 text with one default CHP and PAP run. libwps readStructures
+    # requires both FOD lists; a header+text-only file is deliberately malformed.
+    # Field layout: MSWrite.cpp readFIB/readFOD at immutable upstream-code mirror
+    # deepin-community/libwps a5ad3a399e52ff174e188edfca170a7689232d0b.
     body = text.encode('cp1252') + b'\r\n'
+    assert 0 < len(body) <= 1024
     end = 128 + len(body)
-    pages = (end + 127) // 128
+    character_page = (end + 127) // 128
+    paragraph_page = character_page + 1
+    page_count = paragraph_page + 1
     header = bytearray(128)
     header[:6] = b'\x31\xbe\x00\x00\x00\xab'
     struct.pack_into('<I', header, 14, end)
-    for offset in (18, 20, 22, 24, 26, 28, 96):
-        struct.pack_into('<H', header, offset, pages)
-    return (bytes(header) + body).ljust(pages * 128, b'\0')
-
+    struct.pack_into('<H', header, 18, paragraph_page)
+    for offset in (20, 22, 24, 26, 28, 96):
+        struct.pack_into('<H', header, offset, page_count)
+    fod = bytearray(128)
+    struct.pack_into('<IIH', fod, 0, 128, end, 0xffff)
+    fod[127] = 1
+    result = (bytes(header) + body).ljust(character_page * 128, b'\0')
+    result += bytes(fod) + bytes(fod)
+    assert len(result) == page_count * 128
+    return result
 
 @pytest.mark.parametrize('kind', ['doc', 'ppt', 'xls', 'wpd', 'pdb', 'wri'])
 def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_path, kind):

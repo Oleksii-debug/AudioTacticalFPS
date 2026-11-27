@@ -6,6 +6,7 @@ release authority. Every request runs under the existing owned process deadline.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from hashlib import sha256
 import math
@@ -103,11 +104,11 @@ def _stamp(value):
     return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns, value.st_nlink
 
 
-def _fetcher(source, cache, cancelled, target_limit):
+def _fetcher(source, cache, cancelled, target_limit, *, transfer=None):
     from tuf.api.exceptions import DownloadHTTPError
     from tuf.ngclient.fetcher import FetcherInterface
     from ..audio.cleanup import retained_temporary_directory
-    from ..audio.models import AudioBudget, AudioCancelled
+    from ..audio.models import AudioBudget, AudioCancelled, AudioCleanupPending, AudioError
     from ..audio.process import run_process
     from ..durable_state import _open_json_file
 
@@ -120,6 +121,120 @@ def _fetcher(source, cache, cancelled, target_limit):
             raise TrustError('The update network operation exceeded its total deadline.')
 
     class ReviewedHTTPSFetcher(FetcherInterface):
+        @contextmanager
+        def download_file(self, url, max_length):
+            if transfer is not None and transfer.release is not None:
+                with transfer.target_file(url, max_length, self._target_chunks) as stream:
+                    yield stream
+            else:
+                with super().download_file(url, max_length) as stream:
+                    yield stream
+
+        def _target_chunks(self, url, offset, total, owner):
+            nonlocal requests
+            from .download_state import PauseRequested, TransferInterrupted, _read_record
+            check()
+            requests += 1
+            if requests > 40 or total > source.object_limit(url, target_limit):
+                raise TrustError('The resumed target exceeds its reviewed request or byte budget.')
+            remaining = total - offset
+            if not 0 <= offset < total or shutil.disk_usage(cache).free < remaining + 16 * 1024**2:
+                raise TrustError('Not enough free space for the exact target remainder.')
+            with retained_temporary_directory(prefix='.https-', dir=cache) as name:
+                root = Path(name)
+                request = dict(url=url, maximum=remaining,
+                    timeout=max(.001, deadline - time.monotonic()),
+                    ca_pem=None if source.ca_pem is None else source.ca_pem.decode('ascii'),
+                    resume=dict(offset=offset, total=total))
+                atomic_write(root / 'request.json', json_bytes(request))
+                path = root / 'response.bin'
+                interrupted, result = False, None
+                last_observation = 0.0
+
+                def stopped():
+                    nonlocal last_observation
+                    # Observe only bounded actual bytes; no widget access occurs
+                    # in this existing process-owner callback.
+                    now = time.monotonic()
+                    if now - last_observation >= .25:
+                        last_observation = now
+                        try:
+                            size = file_info(path).st_size
+                            if 0 <= size <= remaining:
+                                owner.report(offset + size)
+                        except (FileNotFoundError, TrustError, OSError):
+                            pass
+                    return cancelled() or owner.paused() or time.monotonic() >= deadline
+
+                try:
+                    result = run_process(_worker_command(root), cwd=root,
+                        env={k: v for k, v in os.environ.items() if not k.upper().startswith(
+                            ('PYTHON', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY'))},
+                        owned_tree=True, allow_failure=True, cancelled=stopped,
+                        budget=AudioBudget(timeout=max(.05, deadline - time.monotonic()), max_log_bytes=8192))
+                except AudioCleanupPending:
+                    raise
+                except AudioError:
+                    _cancel(cancelled)
+                    interrupted = True
+                # AudioCleanupPending is deliberately not caught: no fragment
+                # read occurs until the retained native owner confirms exit.
+                _cancel(cancelled)
+                reply = None if result is None else json_value(result.stdout, maximum=8192)
+                if reply == {'status': 'range-refused'}:
+                    raise TrustError('This source did not honor the retained byte range. Cancel this download before starting again.')
+                if type(reply) is dict and set(reply) == {'status', 'code'} and reply['status'] == 'http':
+                    code = reply['code']
+                    if type(code) is not int or not 100 <= code <= 599:
+                        raise TrustError('Invalid resumed HTTPS status.')
+                    raise DownloadHTTPError('The reviewed HTTPS source refused this target range.', code)
+                complete = (result is not None and result.returncode == 0 and not result.stderr
+                    and type(reply) is dict and set(reply) == {'status', 'bytes', 'sha256'}
+                    and reply['status'] == 'complete' and type(reply['bytes']) is int
+                    and reply['bytes'] == remaining and isinstance(reply['sha256'], str)
+                    and re.fullmatch('[0-9a-f]{64}', reply['sha256']) is not None)
+                marker = root / 'response-headers.json'
+                if not os.path.lexists(marker) or not os.path.lexists(path):
+                    if owner.paused():
+                        raise PauseRequested()
+                    raise TrustError('The reviewed HTTPS target did not establish a resumable response.')
+                expected = dict(schema='carr-update-response/1', url=url, offset=offset, total=total)
+                if _read_record(marker) != expected:
+                    raise TrustError('The owned target response lost its exact range identity.')
+                before = file_info(path)
+                if not 0 <= before.st_size <= remaining:
+                    raise TrustError('The target remainder exceeded its signed length.')
+                with _open_json_file(path) as stream:
+                    opened = os.fstat(stream.fileno())
+                    if (_stamp(opened) != _stamp(before) or not stat.S_ISREG(opened.st_mode)
+                            or opened.st_nlink != 1 or getattr(opened, 'st_file_attributes', 0) & 0x400):
+                        raise TrustError('The owned target remainder changed before reading.')
+                    digest, used = sha256(), 0
+                    capture_expired = False
+                    while used < before.st_size:
+                        _cancel(cancelled)
+                        if time.monotonic() >= deadline:
+                            capture_expired = True
+                            break
+                        block = stream.read(min(65536, before.st_size - used))
+                        if not block:
+                            raise TrustError('The owned target remainder was truncated.')
+                        used += len(block)
+                        if used > before.st_size:
+                            raise TrustError('The owned target remainder grew while reading.')
+                        digest.update(block)
+                        yield block
+                    if ((not capture_expired and used != before.st_size)
+                            or _stamp(os.fstat(stream.fileno())) != _stamp(before)
+                            or _stamp(file_info(path)) != _stamp(before)):
+                        raise TrustError('The owned target remainder changed while reading.')
+                if complete and not capture_expired and (used != reply['bytes'] or digest.hexdigest() != reply['sha256']):
+                    raise TrustError('The completed target remainder differs from the owned child receipt.')
+                if owner.paused():
+                    raise PauseRequested()
+                if interrupted or capture_expired or not complete:
+                    raise TransferInterrupted('The target transfer was interrupted. Resume only after a fresh signed check.')
+
         def _fetch(self, url):
             nonlocal requests
             check()
@@ -190,7 +305,15 @@ class HTTPSRepositoryClient(LocalRepositoryClient):
         self.repository = repository
         super().__init__(cache, policy)
 
-    def _updater(self, repository, cancelled):
+    def _download_binding(self, repository, target):
+        if repository != self.repository or type(repository) is not HTTPSRepository:
+            raise TrustError('The requested source differs from the configured HTTPS repository.')
+        return {'source': {'kind': 'https', 'url': repository.url, 'ca_sha256': repository.ca_sha256},
+                'target': target, 'bootstrap_sha256': self.policy.bootstrap_sha256,
+                'product': self.policy.product, 'channel': self.policy.channel,
+                'current_build': self.policy.current_build, 'data_schema': self.policy.data_schema}
+
+    def _updater(self, repository, cancelled, *, transfer=None):
         from tuf.ngclient import Updater
         from tuf.ngclient.config import UpdaterConfig
         if repository != self.repository or type(repository) is not HTTPSRepository:
@@ -209,7 +332,7 @@ class HTTPSRepositoryClient(LocalRepositoryClient):
         _metadata_cache(self.metadata)
         return Updater(str(self.metadata), repository.url + 'metadata/',
             str(self.downloads), repository.url + 'targets/',
-            fetcher=_fetcher(repository, self.cache, cancelled, self.policy.max_package_bytes),
+            fetcher=_fetcher(repository, self.cache, cancelled, self.policy.max_package_bytes, transfer=transfer),
             config=UpdaterConfig(max_root_rotations=32, max_delegations=0,
                 snapshot_max_length=2_000_000, targets_max_length=5_000_000),
             bootstrap=self.policy.bootstrap)
