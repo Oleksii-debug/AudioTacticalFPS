@@ -202,7 +202,7 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
         worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
 
 
-@pytest.mark.parametrize('binding', ('job', 'configuration'))
+@pytest.mark.parametrize('binding', ('job', 'configuration', 'missing_job'))
 def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, binding):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('PDF request binding')
@@ -212,8 +212,41 @@ def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, bi
     request = worker.load_request(app.root, result['request_id'])
     if binding == 'job':
         request['job'] = 'f' * 64
+    elif binding == 'missing_job':
+        request.pop('job')
     else:
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
     with pytest.raises(ValueError):
         worker._reconcile_publication(app.root, result['request_id'], request['attempt'])
+
+
+def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Concurrent replay boundary')
+    source = source_file(tmp_path, 'docx')
+    work_id, edition_id = uuid4().hex, uuid4().hex
+    marker = tmp_path / 'replay-before-commit'
+    processes = publication_barrier(monkeypatch, marker, before=True)
+    launch = worker.subprocess.Popen
+    published = []
+
+    def intervening_import(command, *args, **kwargs):
+        if not published:
+            # The parent read snapshot is already released, while this worker
+            # has not acquired the shared writer guard. Another real import
+            # completes the same source/edition before our child can replay it.
+            published.append(app._import_file(workspace, source,
+                work_id=work_id, edition_id=edition_id))
+        return launch(command, *args, **kwargs)
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
+    result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
+                            cancelled=marker.exists, timeout=30)
+    assert published[0]['state'] == 'complete'
+    assert marker.is_file() and len(processes) == 1
+    assert result['state'] == 'cancelled', result
+    assert 'recovered_publication' not in result
+    assert app.browse(workspace)
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1

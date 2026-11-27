@@ -292,6 +292,16 @@ def _identity(info):
     return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
 
 
+class _LivePCM:
+    """One bounded producer queue; native buffers remain owned by PCMPlayer."""
+    def __init__(self, info, block_frames, buffer_count):
+        self.info, self.block_bytes = info, block_frames * info.channels * 2
+        self.queue = queue.Queue(maxsize=buffer_count)
+        self.ready, self.finished = threading.Event(), threading.Event()
+        self.producer = threading.Lock()
+        self.received, self.carry = 0, b""
+
+
 class PCMPlayer:
     """Threaded local player; callbacks may run on the worker thread.
 
@@ -315,6 +325,7 @@ class PCMPlayer:
         self._cleanup_error = None
         self._retained_backend = None
         self._range_end = 0
+        self._live_pcm = None
 
     def status(self) -> PlaybackStatus:
         with self._lock:
@@ -349,6 +360,7 @@ class PCMPlayer:
         if end < start:
             raise ValueError("The playback end must not precede the starting position.")
         self.stop()
+        self._live_pcm = None
         self._range_end = end
         self._commands = queue.Queue(maxsize=32)
         self._cancel.clear()
@@ -360,6 +372,149 @@ class PCMPlayer:
                                         name="CARR native PCM playback", daemon=True)
         self._thread.start()
 
+    def start_monitor(self, *, sample_rate, channels, max_frames, device_id,
+                      cancelled=lambda: False, timeout=3):
+        """Open an explicitly selected output for actual incoming PCM16.
+
+        This path has no source file, seek or pause. The existing immutable WAV
+        player keeps its original source/path validation unchanged.
+        """
+        if self._closed or self._thread is threading.current_thread():
+            raise PlaybackError("The player is unavailable for a new monitor.")
+        if (type(sample_rate) is not int or not 8000 <= sample_rate <= 192000
+                or type(channels) is not int or channels not in (1, 2)
+                or type(max_frames) is not int or not 0 < max_frames <= sample_rate * 21600
+                or type(device_id) is not int or not 0 <= device_id <= 4095):
+            raise ValueError("Choose a bounded PCM format and an installed output device.")
+        if (type(timeout) not in (int, float) or not math.isfinite(timeout)
+                or not .05 <= timeout <= 30 or not callable(cancelled)):
+            raise ValueError("Use a bounded monitor startup deadline and cancellation callback.")
+        if self._native and sys.platform != "win32":
+            raise PlaybackUnavailable("Live monitoring requires the installed Windows PCM output.")
+        if cancelled():
+            raise PlaybackError("Live monitor startup was cancelled.")
+        self.stop()
+        info = WaveInfo(sample_rate, channels, max_frames, 0, max_frames * channels * 2)
+        live = _LivePCM(info, max(1, sample_rate * self.buffer_ms // 1000), self.buffer_count)
+        self._live_pcm = live
+        self._commands = queue.Queue(maxsize=32)
+        self._cancel.clear()
+        self._wake.clear()
+        self._update(state="starting", path=None, position_frames=0, total_frames=0,
+            sample_rate=sample_rate, channels=channels, device_id=device_id,
+            device_name="", buffered_bytes=0, error=None, position_accuracy="not_started")
+        self._thread = threading.Thread(target=self._run,
+            args=(None, None, info, 0, max_frames, device_id),
+            name="CARR native PCM monitor", daemon=True)
+        self._thread.start()
+        deadline = time.monotonic() + timeout
+        while not live.ready.wait(.02):
+            if cancelled():
+                self._cancel.set()
+                self._wake.set()
+                raise PlaybackError("Live monitor startup was cancelled.")
+            if time.monotonic() >= deadline:
+                self._cancel.set()
+                self._wake.set()
+                raise PlaybackError("The selected output did not open within its time allowance.")
+        status = self.status()
+        if status.state in ("error", "unavailable"):
+            error = PlaybackUnavailable if status.state == "unavailable" else PlaybackError
+            raise error(status.error or "Live monitoring could not start.")
+        if cancelled():
+            self._cancel.set()
+            self._wake.set()
+            raise PlaybackError("Live monitor startup was cancelled.")
+        return status
+
+    def feed_pcm(self, data, *, cancelled=lambda: False):
+        """Queue a bounded pipe chunk, preserving split PCM frames."""
+        live = self._live_pcm
+        if live is None or type(data) is not bytes or len(data) > 65536:
+            raise ValueError("Live monitoring accepts bounded PCM byte chunks only.")
+        if not callable(cancelled):
+            raise ValueError("Live monitoring requires a cancellation callback.")
+        with live.producer:
+            if live.finished.is_set() or self._cancel.is_set():
+                raise PlaybackError("Live monitoring is already stopping.")
+            if live.received + len(data) > live.info.data_size:
+                raise PlaybackError("Live PCM exceeded the selected recording duration.")
+            live.received += len(data)
+            combined = live.carry + data
+            align = live.info.channels * 2
+            whole = len(combined) - len(combined) % align
+            live.carry = combined[whole:]
+            for offset in range(0, whole, live.block_bytes):
+                block = combined[offset:min(whole, offset + live.block_bytes)]
+                deadline = time.monotonic() + 2
+                while True:
+                    status = self.status()
+                    if cancelled() or self._cancel.is_set():
+                        raise PlaybackError("Live monitoring was cancelled.")
+                    if status.state in ("error", "unavailable", "stopped", "closed"):
+                        raise PlaybackError(status.error or "Live monitoring stopped unexpectedly.")
+                    try:
+                        live.queue.put(block, timeout=.02)
+                        self._wake.set()
+                        break
+                    except queue.Full:
+                        if time.monotonic() >= deadline:
+                            raise PlaybackError("The output device did not consume the bounded live PCM queue.")
+
+    def finish_monitor(self, *, timeout=3):
+        """Drain only the bounded queued tail and confirm native output release."""
+        live = self._live_pcm
+        if live is None:
+            raise PlaybackError("No live monitor is active.")
+        if type(timeout) not in (int, float) or not math.isfinite(timeout) or not .05 <= timeout <= 30:
+            raise ValueError("Use a bounded monitor completion deadline.")
+        with live.producer:
+            if live.carry:
+                raise PlaybackError("The live PCM pipe ended inside a sample frame.")
+            live.finished.set()
+        self._wake.set()
+        self._thread.join(timeout)
+        if self._thread.is_alive():
+            self.stop(timeout=timeout)
+            raise PlaybackError("The output did not drain within its time allowance.")
+        status = self.status()
+        if status.state != "completed":
+            raise PlaybackError(status.error or "Live monitoring ended before its queued samples completed.")
+        if not self.monitor_quiescent:
+            raise PlaybackError("The live output has not confirmed native release.")
+
+    @property
+    def monitor_quiescent(self):
+        """Observed ownership only; this property never calls a native API."""
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            return False
+        with self._lock:
+            retained = self._retained_backend
+        return retained is None or not retained.handle.value
+
+    def confirm_monitor_shutdown(self):
+        """Retry one exact retained stream owner after its worker has exited.
+
+        A cleanup daemon may use this method; ordinary file playback keeps its
+        existing restart-required error policy. No device is rediscovered.
+        """
+        if self._live_pcm is None:
+            raise PlaybackError("Only an owned live monitor may transfer cleanup.")
+        self._cancel.set()
+        self._wake.set()
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            return False
+        with self._lock:
+            retained = self._retained_backend
+        if retained is not None and retained.handle.value:
+            retained.close()
+        with self._lock:
+            self._retained_backend = None
+            self._cleanup_error = None
+        return True
+
     @staticmethod
     def _frame(seconds, rate, total):
         if type(seconds) not in (int, float) or not math.isfinite(seconds) or not 0 <= seconds <= total / rate:
@@ -367,6 +522,8 @@ class PCMPlayer:
         return min(total, round(seconds * rate))
 
     def _command(self, operation, value=None):
+        if self._live_pcm is not None:
+            raise PlaybackError("Live monitoring supports Stop; positioning controls require a saved audio file.")
         if self._closed:
             raise PlaybackError("The audio player is closed.")
         if self._thread is None or not self._thread.is_alive():
@@ -427,12 +584,79 @@ class PCMPlayer:
         activity = self._progress_hub.media_activity() if self._progress_hub is not None else nullcontext()
         activity.__enter__()
         try:
-            self._run_device(path, expected_identity, info, start, end, device_id)
+            if path is None:
+                self._run_stream_device(info, device_id)
+            else:
+                self._run_device(path, expected_identity, info, start, end, device_id)
         finally:
             with self._lock:
                 retained = self._retained_backend
             if retained is None or not retained.retain_media_activity(activity):
                 activity.__exit__(None, None, None)
+
+    def _run_stream_device(self, info, device_id):
+        live = self._live_pcm
+        backend, retained, pending = None, None, deque()
+        state, failure, cleanup_error = "stopped", None, None
+        completed, submitted, native_paused = 0, 0, True
+        align = info.channels * 2
+        try:
+            if self._cancel.is_set():
+                return
+            backend = self._factory(info, device_id)
+            if backend.device.id != device_id:
+                raise PlaybackUnavailable("The opened output differs from the explicitly reserved device.")
+            self._update(state="playing", device_id=backend.device.id, device_name=backend.device.name)
+            live.ready.set()
+            while not self._cancel.is_set():
+                while pending and backend.completed(pending[0][0]):
+                    token, frames = pending.popleft()
+                    backend.release(token)
+                    completed += frames
+                while len(pending) < self.buffer_count and not self._cancel.is_set():
+                    try:
+                        data = live.queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    frames = len(data) // align
+                    pending.append((backend.submit(data), frames))
+                    submitted += frames
+                if live.finished.is_set() and live.queue.empty() and not pending:
+                    state = "completed"
+                    self._update(state=state, position_frames=completed,
+                                 total_frames=live.received // align, buffered_bytes=0)
+                    break
+                if pending and native_paused:
+                    backend.resume()
+                    native_paused = False
+                position = backend.position() if submitted else 0
+                precise = position is not None
+                position = max(completed, position if precise else completed)
+                self._update(state="playing", position_frames=min(submitted, position),
+                    total_frames=live.received // align,
+                    buffered_bytes=sum(frames * align for _, frames in pending),
+                    position_accuracy="driver_reported" if precise else "completed_buffers")
+                self._wake.wait(.02)
+                self._wake.clear()
+        except Exception as exc:
+            state = "unavailable" if isinstance(exc, PlaybackUnavailable) else "error"
+            failure = str(exc)
+            if isinstance(exc, _PlaybackCleanupError):
+                cleanup_error, retained = failure, exc.backend
+        finally:
+            if backend is not None:
+                try:
+                    backend.close()
+                except Exception as exc:
+                    state, failure, cleanup_error = "error", str(exc), str(exc)
+                    if isinstance(backend, _WinMMBackend) and backend in _UNRELEASED_DEVICES:
+                        retained = backend
+            with self._lock:
+                self._cleanup_error = cleanup_error
+                self._retained_backend = retained
+            self._update(state=state, buffered_bytes=0, error=failure,
+                         **({"position_frames": 0} if state == "stopped" else {}))
+            live.ready.set()
 
     def _run_device(self, path, expected_identity, info, start, end, device_id):
         backend, retained, pending = None, None, deque()

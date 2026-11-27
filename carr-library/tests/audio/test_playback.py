@@ -645,3 +645,114 @@ def test_quarantined_native_handle_owns_media_until_its_actual_release(tmp_path,
             backend.close()
     assert not hub.media_active
     assert all(not backend.handle.value for backend in retained)
+
+
+
+def test_live_pcm_input_preserves_split_frames_and_uses_existing_native_worker():
+    from carr_library.progress import ProgressHub
+    hub, received, devices = ProgressHub(), [], []
+
+    class Advancing(SyntheticDevice):
+        def submit(self, data):
+            received.append(data)
+            return super().submit(data)
+        def position(self):
+            self.advance()
+            return super().position()
+
+    def factory(info, identity):
+        value = Advancing(info, identity)
+        devices.append(value)
+        return value
+
+    player = PCMPlayer(buffer_ms=20, buffer_count=2, _backend_factory=factory, progress_hub=hub)
+    try:
+        player.start_monitor(sample_rate=8000, channels=2, max_frames=8000, device_id=0)
+        assert hub.media_active
+        raw = b"\x01\x00\x02\x00\x03\x00\x04\x00"
+        player.feed_pcm(raw[:1])
+        player.feed_pcm(raw[1:3])
+        player.feed_pcm(raw[3:])
+        player.finish_monitor()
+        assert b"".join(received) == raw
+        assert player.status().state == "completed"
+        assert player.status().position_frames == player.status().total_frames == 2
+        assert player.monitor_quiescent and not hub.media_active
+        assert devices[0].closed and len(devices[0].threads) == 1
+    finally:
+        player.close()
+
+
+def test_live_pcm_incomplete_frame_cannot_be_declared_complete():
+    player, devices = player_fixture(buffer_ms=20, buffer_count=2)
+    try:
+        player.start_monitor(sample_rate=8000, channels=2, max_frames=8000, device_id=0)
+        player.feed_pcm(b"\x01\x00\x02")
+        with pytest.raises(PlaybackError, match="inside a sample frame"):
+            player.finish_monitor()
+        with pytest.raises(PlaybackError, match="positioning"):
+            player.seek(0)
+    finally:
+        player.close()
+    assert player.monitor_quiescent and devices[0].closed
+
+
+def test_live_pcm_backpressure_is_bounded_and_stop_releases_the_same_output():
+    player, devices = player_fixture(buffer_ms=20, buffer_count=2)
+    try:
+        player.start_monitor(sample_rate=8000, channels=1, max_frames=8000, device_id=0)
+        started = time.monotonic()
+        with pytest.raises(PlaybackError, match="bounded live PCM queue"):
+            player.feed_pcm(b"\x01\x00" * 8000)
+        assert time.monotonic() - started < 5
+        assert player._live_pcm.queue.qsize() <= 2
+        assert devices[0].maximum_queued <= 2 * 160 * 2
+        player.stop()
+        assert player.monitor_quiescent and devices[0].closed
+    finally:
+        player.close()
+
+
+@pytest.mark.parametrize("when", ["opening", "closing"])
+def test_live_monitor_retains_actual_backend_owner_until_confirmed_close(monkeypatch, when):
+    import carr_library.audio.playback as playback
+    from carr_library.progress import ProgressHub
+    api, retained, hub = SyntheticWinMM(), [], ProgressHub()
+
+    def position(handle, pointer, size):
+        value = ctypes.cast(pointer, ctypes.POINTER(_MMTIME)).contents
+        value.kind, value.time.value = 2, 0
+        return 0
+
+    monkeypatch.setattr(api, "waveOutGetPosition", position, raising=False)
+    monkeypatch.setattr(playback, "_api", lambda: api)
+    monkeypatch.setattr(playback, "_UNRELEASED_DEVICES", retained)
+    player = PCMPlayer(_backend_factory=playback._WinMMBackend, progress_hub=hub)
+    if when == "opening":
+        monkeypatch.setattr(api, "waveOutGetDevCapsW", lambda *_: 6)
+        api.reset_error = 6
+    try:
+        if when == "opening":
+            with pytest.raises(PlaybackError):
+                player.start_monitor(sample_rate=8000, channels=1, max_frames=8000, device_id=0)
+        else:
+            player.start_monitor(sample_rate=8000, channels=1, max_frames=8000, device_id=0)
+            player.feed_pcm(b"\x01\x00" * 100)
+            wait(player, lambda status: status.buffered_bytes > 0)
+            api.reset_error = 6
+            with pytest.raises(PlaybackError, match="did not release"):
+                player.stop()
+        player._thread.join(3)
+        assert not player.monitor_quiescent and hub.media_active
+        assert len(retained) == 1 and retained[0].handle.value
+        with pytest.raises(PlaybackError):
+            player.confirm_monitor_shutdown()
+        assert not player.monitor_quiescent and hub.media_active
+        api.reset_error = 0
+        assert player.confirm_monitor_shutdown() is True
+        assert player.monitor_quiescent and not hub.media_active
+        assert not retained[0].handle.value
+    finally:
+        api.reset_error = 0
+        for backend in retained:
+            backend.close()

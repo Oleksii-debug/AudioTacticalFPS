@@ -16,6 +16,7 @@ import stat
 from typing import Any
 
 from .paths import filename_component
+from .jobs import _open_json_file
 
 
 # A normal reviewed CPU Torch wheel already contains more than 10,000 files.
@@ -118,7 +119,7 @@ def _read_json_snapshot(path, *, max_bytes=1024 * 1024):
     before = path.stat()
     if not stat.S_ISREG(before.st_mode) or before.st_size > max_bytes:
         raise ModelManifestError('The local manifest is not a bounded regular file.')
-    with path.open('rb') as stream:
+    with _open_json_file(path) as stream:
         if _identity(os.fstat(stream.fileno())) != _identity(before):
             raise ModelManifestError('The local manifest changed before reading.')
         data = stream.read(max_bytes + 1)

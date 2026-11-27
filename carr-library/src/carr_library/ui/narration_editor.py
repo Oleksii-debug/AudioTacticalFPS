@@ -6,15 +6,69 @@ the dialog. Background autosave never steals keyboard or screen-reader focus.
 """
 from dataclasses import replace
 from hashlib import sha256
+import threading
 
-from ..research.export_file import capture_export_destination
+from ..research.export_file import capture_export_destination, write_export
 from ..reader.narration import (
     NarrationStore, PronunciationRule, comparison_text, encode_project, export_text,
     import_text, new_project, normalization_preview, pronunciation_preview, redo,
+    decode_pronunciation_dictionary, encode_pronunciation_dictionary, load_pronunciation_dictionary,
+    protect_original_path,
     revise, save_as, undo,
 )
 from .research_actions import NativeDialogs
 from .export_destination import approve_export_destination
+
+
+class PronunciationPreviewTask:
+    """One cancellable preview; late callbacks cannot change a closed editor."""
+    def __init__(self, *, dispatch, completed):
+        self.dispatch, self.completed = dispatch, completed
+        self.cancel = threading.Event()
+        self.busy = self.closed = False
+        self.generation = 0
+
+    def start(self, text, rules, *, language='', voice_id='', timeout=1.0):
+        if self.closed or self.busy:
+            raise ValueError('Finish or cancel the active pronunciation preview first.')
+        rules = tuple(rules)
+        self.cancel.clear()
+        self.busy = True
+        self.generation += 1
+        generation = self.generation
+        def work():
+            result = error = None
+            try:
+                result = pronunciation_preview(text, rules, language=language, voice_id=voice_id,
+                                               timeout=timeout, cancelled=self.cancel.is_set)
+            except Exception as exc:
+                error = exc
+            try:
+                self.dispatch(self._finish, generation, result, error)
+            except RuntimeError:
+                self.cancel.set()
+        try:
+            threading.Thread(target=work, name='pronunciation-preview', daemon=True).start()
+        except Exception:
+            self.busy = False
+            self.cancel.set()
+            raise
+
+    def _finish(self, generation, result, error):
+        if self.closed or generation != self.generation:
+            return
+        self.busy = False
+        if self.cancel.is_set() and error is None:
+            result, error = None, InterruptedError('Pronunciation preview cancelled. The reading text is unchanged.')
+        self.completed(result, error)
+
+    def stop(self):
+        self.cancel.set()
+
+    def dispose(self):
+        self.closed = True
+        self.generation += 1
+        self.cancel.set()
 
 
 class NarrationController:
@@ -88,6 +142,22 @@ class NarrationController:
                     approval=approval)
         return 'UTF-8 reading text exported. The project remains separate from its original source.'
 
+    def import_dictionary(self, path):
+        self.guard()
+        rules = load_pronunciation_dictionary(path)
+        self.set_rules(rules)
+        return 'Pronunciation dictionary imported. Preview before applying it.'
+
+    def export_dictionary(self, path, *, overwrite=False, approval=None):
+        if approval is None:
+            approval = capture_export_destination(path, private_root=self.store.root)
+        candidate = self.candidate()
+        protect_original_path(candidate.original_path, path)
+        raw = encode_pronunciation_dictionary(candidate.rules)
+        write_export(path, raw.decode('utf-8'), private_root=self.store.root,
+                     require_absent=not overwrite, approval=approval)
+        return 'Pronunciation dictionary exported without runtime paths or voice resources.'
+
     def prepare_audio_studio(self, *, controller_factory=None):
         """Explicitly save, then hand off a separate literal-narration snapshot."""
         self.save()
@@ -101,28 +171,11 @@ class NarrationController:
 
 
 def _dictionary_text(rules):
-    # JSON interchange makes newlines, tabs and literal arrows unambiguous.
-    import json
-    return json.dumps([{'written': rule.written, 'spoken': rule.spoken, 'language': rule.language}
-                       for rule in rules], ensure_ascii=False, indent=2)
+    return encode_pronunciation_dictionary(rules).decode('utf-8')
 
 
 def _parse_rules(value):
-    import json
-    from ..reader.narration import MAX_RULES
-    from ..reader.reading_state import _unique
-    if not isinstance(value, str) or len(value.encode('utf-8')) > 1024 * 1024:
-        raise ValueError('The pronunciation dictionary exceeds its editing budget.')
-    try:
-        items = json.loads(value, object_pairs_hook=_unique)
-        if type(items) is not list or len(items) > MAX_RULES:
-            raise ValueError('Expected a list of pronunciation entries.')
-        rules = tuple(PronunciationRule(**item) for item in items)
-        if len({item.written for item in rules}) != len(rules):
-            raise ValueError('Each written phrase must occur only once.')
-        return rules
-    except (ValueError, TypeError, RecursionError) as exc:
-        raise ValueError(f'Invalid pronunciation dictionary: {exc}') from exc
+    return decode_pronunciation_dictionary(value)
 
 
 def open_narration_editor(parent, store, project, *, expected_digest=None, draft_digest=None,
@@ -164,7 +217,9 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                           readonly=True, height=70)
     buttons = wx.WrapSizer(wx.HORIZONTAL)
     layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
-    state = {'closed': False, 'refreshing': False, 'last_autosaved': None, 'text_dirty': False}
+    state = {'closed': False, 'refreshing': False, 'last_autosaved': None, 'text_dirty': False,
+             'close_after_preview': False, 'preview_snapshot': None,
+             'pronunciation_language': '', 'pronunciation_voice': ''}
     timer = wx.Timer(dialog)
     coordinator = coordinator_for(parent) or SaveCoordinator()
     dialog._save_coordinator = coordinator
@@ -197,6 +252,12 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         if state['closed']:
             if completed is not None:
                 completed(SaveResult(False, 'The reading editor is closed.'))
+            return
+        if preview.busy:
+            outcome = SaveResult(False, 'Cancel or finish the pronunciation preview before saving.')
+            say(outcome.message, focus=focus)
+            if completed is not None:
+                completed(outcome)
             return
         try:
             capture()
@@ -231,7 +292,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             run(lambda: controller.save_as(title))
 
     def open_audio_studio(event=None):
-        if state['closed']:
+        if state['closed'] or preview.busy:
             return
         timer.Stop()
         try:
@@ -277,20 +338,90 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         except Exception as exc:
             say(str(exc))
 
+    def preview_controls():
+        if state['closed']:
+            return
+        editor.Enable(not preview.busy)
+        for button in native_buttons:
+            button.Enable(not preview.busy)
+        native_buttons[-1].Enable(True)  # Close waits for cancellation to settle.
+        native_buttons[-2].Enable(preview.busy and not preview.cancel.is_set())
+
+    def completed_preview(result, error):
+        if state['closed']:
+            return
+        try:
+            preview_controls()
+            if state['close_after_preview']:
+                state['close_after_preview'] = False
+                close()
+                return
+            if error is not None:
+                say(str(error))
+                return
+            controller.guard()
+            current = (controller.pending_text, controller.project.rules, controller.project.id)
+            if current != state['preview_snapshot']:
+                raise ValueError('The reading copy changed during preview. Run the preview again.')
+            text, count = result
+            preview_transform('Apply pronunciation dictionary', text,
+                f'{count} replacements for the selected context; one non-cascading pass. '
+                'Original sources and unselected language/voice rules remain unchanged.')
+        except Exception as exc:
+            say(str(exc))
+        finally:
+            # Preview stops the owned autosave timer before launching. Every
+            # settled outcome must restore recovery, including Cancel, failure,
+            # a declined proposal, and a cancelled close confirmation.
+            if not state['closed'] and not preview.busy:
+                timer.StartOnce(1200)
+
+    preview = PronunciationPreviewTask(dispatch=wx.CallAfter, completed=completed_preview)
+
+    def cancel_preview(event=None):
+        if preview.busy:
+            preview.stop()
+            preview_controls()
+            say('Cancelling pronunciation preview; waiting for its isolated worker.', focus=False)
+
     def pronunciation(event=None):
+        if preview.busy or state['closed']:
+            return
         try:
             capture()
-            text, count = pronunciation_preview(controller.pending_text, controller.project.rules)
-            preview_transform('Apply pronunciation dictionary', text,
-                              f'{count} case-sensitive literal replacements; no cascading substitutions.')
+            rules = controller.project.rules
+            if any(rule.language_scope or rule.voice_id for rule in rules):
+                context = dialogs.fields(dialog, 'Pronunciation context', (
+                    ('language', 'Exact language identifier (empty uses only unscoped rules)',
+                     state['pronunciation_language'], False),
+                    ('voice_id', 'Exact installed voice ID (empty uses only rules without a voice scope)',
+                     state['pronunciation_voice'], False),
+                ))
+                if context is None:
+                    return
+                state['pronunciation_language'], state['pronunciation_voice'] = context['language'], context['voice_id']
+            controller.guard()
+            state['preview_snapshot'] = (controller.pending_text, rules, controller.project.id)
+            timer.Stop()
+            preview.start(controller.pending_text, rules, language=state['pronunciation_language'],
+                          voice_id=state['pronunciation_voice'])
+            preview_controls()
+            say('Preparing pronunciation preview. Cancel preview or Close stops it without applying partial edits.',
+                focus=False)
         except Exception as exc:
+            preview_controls()
+            if not state['closed'] and not preview.busy:
+                timer.StartOnce(1200)
             say(str(exc))
 
     def dictionary(event=None):
+        if preview.busy:
+            return
         try:
             value = dialogs.text(dialog, 'Pronunciation dictionary',
-                                 'JSON entries: written phrase, spoken replacement, optional language label',
-                                 _dictionary_text(controller.project.rules), multiline=True)
+                'Versioned JSON dictionary; explicit language_scope, voice_id, regex and ignore_case. '
+                'Old language labels remain descriptive unless language_scope is true.',
+                _dictionary_text(controller.project.rules), multiline=True)
             if value is not None:
                 run(lambda: (controller.set_rules(_parse_rules(value)) or
                              'Pronunciation dictionary updated. Use Preview pronunciation to apply it.'))
@@ -298,14 +429,55 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             say(str(exc))
 
     def add_rule(event=None):
+        if preview.busy:
+            return
+        mode = dialogs.choose(dialog, 'Pronunciation match mode', 'Choose how the written phrase is matched.',
+                              ('Literal, case sensitive', 'Literal, ignore case',
+                               'Regular expression, case sensitive', 'Regular expression, ignore case'))
+        if mode is None:
+            return
+        if type(mode) is not int or not 0 <= mode < 4:
+            say('Choose a pronunciation match mode.')
+            return
         values = dialogs.fields(dialog, 'Add pronunciation replacement', (
-            ('written', 'Written phrase (exact case)', '', False),
-            ('spoken', 'Read this replacement instead (empty removes the phrase)', '', False),
-            ('language', 'Language label (optional description, not automatic detection)', '', False),
+            ('written', 'Written phrase or regular-expression pattern', '', False),
+            ('spoken', 'Replacement (regex mode supports captured groups; empty removes a match)', '', False),
+            ('language', 'Only this exact language identifier (empty means any)', '', False),
+            ('voice_id', 'Only this exact voice ID (empty means any)', '', False),
         ))
         if values is not None:
-            run(lambda: (controller.set_rules(controller.project.rules + (PronunciationRule(**values),))
-                         or 'Literal pronunciation replacement added. Preview before applying.'))
+            run(lambda: (controller.set_rules(controller.project.rules + (
+                PronunciationRule(**values, regex=mode >= 2, ignore_case=bool(mode % 2),
+                                  language_scope=bool(values['language'])),))
+                or 'Pronunciation replacement added. Preview before applying.'))
+
+    def import_dictionary(event=None):
+        if preview.busy:
+            return
+        picker = wx.FileDialog(dialog, 'Import pronunciation dictionary',
+                               wildcard='JSON dictionaries (*.json)|*.json',
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        try:
+            if picker.ShowModal() == wx.ID_OK:
+                run(lambda: controller.import_dictionary(picker.GetPath()))
+        finally:
+            picker.Destroy()
+
+    def export_dictionary(event=None):
+        if preview.busy:
+            return
+        picker = wx.FileDialog(dialog, 'Export pronunciation dictionary',
+                               wildcard='JSON dictionaries (*.json)|*.json', style=wx.FD_SAVE)
+        try:
+            if picker.ShowModal() == wx.ID_OK:
+                path = picker.GetPath()
+                approval = approve_export_destination(dialog, path, private_root=controller.store.root)
+                if approval is not None:
+                    run(lambda: controller.export_dictionary(path, overwrite=True, approval=approval))
+        except Exception as exc:
+            say(str(exc))
+        finally:
+            picker.Destroy()
 
     def compare(event=None):
         try:
@@ -315,6 +487,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             say(str(exc))
 
     def replace_text(event=None):
+        if preview.busy:
+            return
         fields = dialogs.fields(dialog, 'Find and replace literal text', (
             ('written', 'Find exact text (case sensitive)', '', False),
             ('spoken', 'Replace with', '', False),
@@ -345,6 +519,12 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     def close(event=None):
         if state['closed']:
             return
+        if preview.busy:
+            state['close_after_preview'] = True
+            cancel_preview()
+            if event is not None and callable(getattr(event, 'CanVeto', None)) and event.CanVeto():
+                event.Veto()
+            return
         if defer_close(dialog, coordinator, close=close, report=say,
                        alive=lambda: not state['closed'], post=wx.CallAfter, event=event):
             return
@@ -374,7 +554,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         event.Skip()
 
     def auto(event):
-        if state['closed']:
+        if state['closed'] or preview.busy:
             return
         try:
             capture()
@@ -397,7 +577,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Pronunciation &dictionary', dictionary), ('Preview pro&nunciation', pronunciation),
         ('&Find and replace', replace_text), ('Compare &original', compare),
         ('&Export UTF-8 text', export), ('Save and open Audio S&tudio', open_audio_studio),
-        ('Save all open drafts', save_all_open), ('C&lose', close),
+        ('Save all open drafts', save_all_open), ('Import dictionary...', import_dictionary),
+        ('Export dictionary...', export_dictionary), ('Cancel preview', cancel_preview), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -418,6 +599,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     editor.Bind(wx.EVT_TEXT, edited)
     dialog.SetSizer(layout)
     dialog.SetEscapeId(ids[-1])
+    preview_controls()
     editor.SetFocus()
     editor.SetInsertionPoint(0)
     unregister = coordinator.register(
@@ -431,11 +613,14 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             save=native_buttons[0], save_as=native_buttons[1],
                             normalize=native_buttons[4], pronunciation=native_buttons[7],
                             compare=native_buttons[9], audio_studio=native_buttons[11],
-                            save_all=native_buttons[-2], close=native_buttons[-1])
+                            save_all=native_buttons[12], cancel_preview=native_buttons[-2],
+                            import_dictionary=native_buttons[13], export_dictionary=native_buttons[14],
+                            close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
     finally:
         state['closed'] = True
+        preview.dispose()
         unregister()
         timer.Stop()
         dialog.Destroy()
@@ -448,7 +633,7 @@ def show_narration_projects(parent, store, *, workspace=None, guard=lambda: None
     guard()
     rows = store.list_projects(workspace)
     if workspace is None:
-        rows = tuple(row for row in rows if row['project'].source_location is None)
+        rows = tuple(row for row in rows if row['project'].workspace is None)
     if not rows:
         dialogs.show(parent, 'Reading copies', 'There are no saved reading copies or recovery drafts.')
         return None
@@ -465,8 +650,8 @@ def show_narration_projects(parent, store, *, workspace=None, guard=lambda: None
     project, saved_digest = store.load(project_id) if row['saved'] else (row['project'], None)
     def authorize(loaded):
         guard()
-        if (loaded.source_location is not None
-                and (workspace is None or loaded.source_location.workspace != workspace)):
+        if (loaded.workspace is not None
+                and (workspace is None or loaded.workspace != workspace)):
             raise ValueError('The reading project belongs to a different library. Open it in that library.')
     # Re-read identities after the selection dialog. A file or recovery draft
     # may have changed since the initial list was constructed.

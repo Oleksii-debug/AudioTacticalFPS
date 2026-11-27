@@ -42,6 +42,11 @@ from .backup_historical import (
     state_paths as _historical_files, validate_state_tree as _validate_historical,
     retain_state as _retain_historical,
 )
+from .operations.policy_backup import (
+    MAX_BYTES as MAX_RESOURCE_POLICY,
+    is_state_path as _resource_policy_path, state_paths as _resource_policy_files,
+    validate_state_tree as _validate_resource_policy, snapshot_guard as _resource_policy_guard,
+)
 from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
@@ -52,6 +57,12 @@ from .reader.narration import (
     DIRECTORY as NARRATION_DIRECTORY, MAX_PROJECT_BYTES, MAX_PROJECTS,
     MAX_SNAPSHOT_BYTES as MAX_NARRATION_BYTES,
     snapshot_narration_files, validate_narration_payload,
+)
+from .reader.legacy_reading import (
+    DIRECTORY as READING_IMPORTS, MAX_ARCHIVE_BYTES, MAX_ARCHIVES,
+    MAX_SNAPSHOT_BYTES as MAX_READING_IMPORT_BYTES, snapshot_import_files,
+    is_archive_path, validate_archive_payload, origin_archive, decode_origin,
+    validate_anchor_database, LegacyReadingStore,
 )
 from .keybindings import FILENAME as KEYBINDINGS, MAX_BYTES as MAX_KEYBINDINGS, decode_preferences
 from .keyboard_preferences import MAX_BYTES as MAX_KEYMAP_BYTES, validate_keymap
@@ -92,7 +103,8 @@ _SIMPLE_SIDECARS = {
     PROGRESS_PREFERENCES: (MAX_PROGRESS_PREFERENCES, decode_progress_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
 }
-MAX_READER_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + sum(row[0] for row in _SIMPLE_SIDECARS.values())
+MAX_READER_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_READING_IMPORT_BYTES
+                    + sum(row[0] for row in _SIMPLE_SIDECARS.values()))
 
 
 def _reader_limit(name):
@@ -103,13 +115,15 @@ def _reader_limit(name):
         return MAX_READING_STATE
     if name in _SIMPLE_SIDECARS:
         return _SIMPLE_SIDECARS[name][0]
+    if is_archive_path(name):
+        return MAX_ARCHIVE_BYTES
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return MAX_PROJECT_BYTES
     raise RestoreError('unsupported backup sidecar')
 
 
 def _reader_path(name):
-    return (name == READING_STATE or name in _SIMPLE_SIDECARS
+    return (name == READING_STATE or name in _SIMPLE_SIDECARS or is_archive_path(name)
             or re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name))
 
 def _optional_sidecar(path, maximum):
@@ -132,10 +146,11 @@ def _optional_sidecar(path, maximum):
         raise RestoreError('backup sidecar changed while reading')
     return raw
 
-def _snapshot_readers(root):
+def _snapshot_readers(root, *, cancelled=lambda: False):
     raw = ReadingState(root).snapshot()
     sidecars = {} if raw is None else {READING_STATE: raw}
     sidecars.update(snapshot_narration_files(root))
+    sidecars.update(snapshot_import_files(root, cancelled=cancelled))
     for name, (maximum, validate) in _SIMPLE_SIDECARS.items():
         raw = _optional_sidecar(Path(root) / name, maximum)
         if raw is not None:
@@ -165,8 +180,11 @@ def _validate_reading_locations(db, locations):
             raise RestoreError('reading-state location disagrees with the backup database, '
                                'or narration copy does not match its exact saved source')
 
-def _validate_readers(db, sidecars):
+def _validate_readers(db, sidecars, *, cancelled=lambda: False):
+    archives = {name: raw for name, raw in sidecars.items() if is_archive_path(name)}
     for name, raw in sidecars.items():
+        if cancelled():
+            raise InterruptedError('Reading state validation cancelled.')
         _reader_limit(name)
         try:
             if name == READING_STATE:
@@ -176,8 +194,16 @@ def _validate_readers(db, sidecars):
             elif name in _SIMPLE_SIDECARS:
                 _SIMPLE_SIDECARS[name][1](raw)
                 locations = set()
+            elif is_archive_path(name):
+                snapshot = validate_archive_payload(name, raw, cancelled=cancelled)
+                validate_anchor_database(db, snapshot.source_anchor, cancelled=cancelled)
+                locations = set()
             else:
                 project = validate_narration_payload(name, raw)
+                if project.legacy_origin is not None:
+                    snapshot = origin_archive(project.legacy_origin, project.original_text, archives,
+                                              cancelled=cancelled)
+                    validate_anchor_database(db, snapshot.source_anchor, cancelled=cancelled)
                 locations = {project.source_location} if project.source_location is not None else set()
         except (UnicodeError, ValueError) as exc:
             raise RestoreError('invalid reading state, narration copy or preferences in backup') from exc
@@ -275,10 +301,28 @@ def _transcription_link_path(value):
             and _transcription_adapter(value).link_path(value))
 
 
+def _recording_adapter():
+    from . import recording_backup
+    return recording_backup
+
+
+def _recording_path(value):
+    return _recording_adapter().state_path(value)
+
+
+def _recording_files(root, *, cancelled=lambda: False):
+    return _recording_adapter().state_paths(root, cancelled=cancelled)
+
+
+def _validate_recordings(root, *, cancelled=lambda: False):
+    return _recording_adapter().validate_state_tree(root, cancelled=cancelled)
+
+
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
-            or _translation_path(value) or _transcription_path(value)):
+            or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
+            or _recording_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -358,8 +402,11 @@ def _sidecar_info(root, relative):
              _assistant_limit(relative) if _assistant_path(relative) else
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter(relative).state_limit(relative) if _transcription_path(relative) else
+             _recording_adapter().state_limit(relative) if _recording_path(relative) else
+             MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if (_historical_path(relative) or _transcription_allows_empty(relative)
+                    or _recording_path(relative)
                     or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))) else 1
     if not minimum <= info.st_size <= limit:
         raise RestoreError('sidecar file exceeds its size limit')
@@ -411,7 +458,7 @@ def _assistant_documents(root, max_files=MAX_SIDECAR_FILES):
 
 
 @contextmanager
-def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
+def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: False):
     from filelock import FileLock, Timeout
     from .audio.jobs import project_lock
     from .assistant.state import snapshot_job_guard, state_write_guard
@@ -419,7 +466,14 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
     assistant = _assistant_documents(root, max_files)
     translation = _translation_files(root)
     transcription = ()
+    resource_policy = _resource_policy_files(root, cancelled=cancelled)
     with ExitStack() as stack:
+        if os.path.lexists(root / _recording_adapter().DIRECTORY):
+            try:
+                stack.enter_context(_recording_adapter().snapshot_guard(root))
+            except RuntimeError as exc:
+                raise RestoreError('A microphone recording or cleanup is active; retry the backup after it stops.') from exc
+        recordings = _recording_files(root, cancelled=cancelled)
         directory = root / 'state' / 'assistant'
         if os.path.lexists(directory):
             _plain(directory, directory=True)
@@ -451,6 +505,9 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
         # Each typed producer holds its complete lock set before its inventory
         # is read. The outer app writer prevents a new supplied-job namespace.
         transcription = _transcription_files(root)
+        stack.enter_context(_resource_policy_guard(root, cancelled=cancelled))
+        if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
+            raise RestoreError('Resource allowances changed before backup; retry after the update.')
         keymap_lock = root / 'keyboard-shortcuts.json.lock'
         _regular_if_present(keymap_lock, empty=True)
         try:
@@ -474,7 +531,9 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
         def verify():
             if (_projects(root) != projects or _assistant_documents(root, max_files) != assistant
                     or _translation_files(root) != translation
-                    or _transcription_files(root) != transcription):
+                    or _transcription_files(root) != transcription
+                    or _resource_policy_files(root, cancelled=cancelled) != resource_policy
+                    or _recording_files(root, cancelled=cancelled) != recordings):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -509,12 +568,25 @@ def _studio_files(project, max_files):
                         yield item
 
 
-def _validate_studio_source(db, payload):
+def _validate_studio_source(db, payload, *, root=None):
     from .audio.backup import _studio
     from .reader.narration_text import NarrationDraft
     _studio(payload)
     reference = payload['source_reference']
     if reference is not None and reference['kind'] == 'saved-reading-copy':
+        if 'legacy_origin' in reference:
+            if root is None:
+                raise RestoreError('Imported reading audio requires its retained compact history')
+            original = NarrationDraft.from_dict(payload['draft']).source_text
+            try:
+                origin = decode_origin(reference['legacy_origin'], original)
+                snapshot = LegacyReadingStore(root).load(origin.archive_sha256,
+                                                         revision=origin.selected_revision)
+                if snapshot.source_text != original or snapshot.origin != origin:
+                    raise ValueError('Imported audio source history does not match')
+                validate_anchor_database(db, snapshot.source_anchor)
+            except ValueError as exc:
+                raise RestoreError('Invalid retained source history for the audio reading copy') from exc
         where = reference['source_location']
         if where is not None:
             try:
@@ -564,7 +636,7 @@ def _validate_studios(db, root, *, strict_assets=False):
                 raise RestoreError('archived sound inputs require their saved Studio project')
             continue
         payload = _audio_document(saved)
-        _validate_studio_source(db, payload)
+        _validate_studio_source(db, payload, root=root)
         if payload['project_id'] != project.name:
             raise RestoreError('saved audio project identity differs from its managed folder')
         recovery = saved.with_name(saved.name + '.recovery.json')
@@ -576,7 +648,7 @@ def _validate_studios(db, root, *, strict_assets=False):
                     or not isinstance(value['base_sha256'], str)
                     or not re.fullmatch('[0-9a-f]{64}', value['base_sha256'])):
                 raise RestoreError('invalid audio recovery draft')
-            _validate_studio_source(db, value['project'])
+            _validate_studio_source(db, value['project'], root=root)
             if value['project']['project_id'] != payload['project_id']:
                 raise RestoreError('audio recovery draft belongs to another project')
         input_assets(saved, project / 'audio', strict=strict_assets)
@@ -596,7 +668,7 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         if len(files) >= max_files or total > max_bytes:
             raise RestoreError('reading/audio sidecars exceed the backup file or byte budget')
         files[relative] = _identity(info)
-    for name in _snapshot_readers(root):
+    for name in _snapshot_readers(root, cancelled=cancelled):
         add(root / name)
     for path in _assistant_files(root, cancelled=cancelled):
         add(path)
@@ -605,6 +677,10 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
     for path in _translation_files(root, cancelled=cancelled):
         add(path)
     for path in _transcription_files(root, cancelled=cancelled):
+        add(path)
+    for path in _resource_policy_files(root, cancelled=cancelled):
+        add(path)
+    for path in _recording_files(root, cancelled=cancelled):
         add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
@@ -627,7 +703,8 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
     with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, (target.open('xb') if target is not None else nullcontext()) as output:
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed before copying')
-        if relative.lower().endswith('.wav') and not relative.startswith('transcription-jobs/'):
+        if (relative.lower().endswith('.wav') and not relative.startswith('transcription-jobs/')
+                and not _recording_path(relative)):
             header = incoming.read(12)
             if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
                 raise RestoreError('project audio artifact is not a WAV or RF64 file')
@@ -756,7 +833,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     """
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files) as check_projects:
+    with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files, cancelled=cancelled) as check_projects:
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
@@ -773,12 +850,15 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-                _validate_readers(snapshot_storage.db, _snapshot_readers(app.root))
+                _validate_readers(snapshot_storage.db, _snapshot_readers(app.root, cancelled=cancelled),
+                                  cancelled=cancelled)
                 _validate_studios(snapshot_storage.db, app.root)
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_historical(app.root, cancelled=cancelled)
                 _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_recordings(app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             # Bind the copied ASR state to this exact catalog before publishing
@@ -786,6 +866,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if any(_transcription_path(entry['path']) for entry in sidecars):
                 with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                     _validate_transcriptions(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
+            if any(_recording_path(entry['path']) for entry in sidecars):
+                _validate_recordings(stage / SIDECARS, cancelled=cancelled)
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
             check_projects()
@@ -994,6 +1076,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         if type(entries) is not list or not minimum <= len(entries) <= max_sidecar_files:
             raise RestoreError('invalid sidecar manifest count')
         names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
+        reading_import_total, reading_import_count = 0, 0
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         supplied_total, supplied_files, supplied_jobs = 0, 0, set()
@@ -1011,6 +1094,8 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             total += entry['size_bytes']
             if total > max_sidecar_bytes:
                 raise RestoreError('sidecar manifest byte limit')
+            if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:
+                raise RestoreError('resource policy sidecar byte limit')
             if _reader_path(entry[field]):
                 reader_total += entry['size_bytes']
                 reader_count += 1
@@ -1018,8 +1103,13 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     raise RestoreError('reader sidecar byte limit')
                 if entry[field].startswith(NARRATION_DIRECTORY + '/'):
                     narration_total += entry['size_bytes']
+                if is_archive_path(entry[field]):
+                    reading_import_total += entry['size_bytes']
+                    reading_import_count += 1
+                    if reading_import_total > MAX_READING_IMPORT_BYTES or reading_import_count > MAX_ARCHIVES:
+                        raise RestoreError('Retained reading-history count or byte limit')
             if (reader_total > MAX_READER_BYTES or narration_total > MAX_NARRATION_BYTES
-                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2):
+                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2 + MAX_ARCHIVES):
                 raise RestoreError('reader sidecar count or byte limit')
             if _assistant_path(entry[field]):
                 assistant_total += entry['size_bytes']
@@ -1111,12 +1201,15 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
         storage.check()
         if sidecars:
             checked_root = stage / SIDECARS if copy_files else sidecar_source
-            _validate_readers(storage.db, _snapshot_readers(checked_root))
+            _validate_readers(storage.db, _snapshot_readers(checked_root, cancelled=cancelled),
+                              cancelled=cancelled)
             _validate_studios(storage.db, checked_root, strict_assets=True)
             _validate_assistants(storage.db, checked_root, cancelled=cancelled)
             _validate_historical(checked_root, cancelled=cancelled)
             _validate_translations(storage.db, checked_root, cancelled=cancelled)
+            _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
+            _validate_recordings(checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)

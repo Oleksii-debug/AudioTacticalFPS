@@ -1,6 +1,103 @@
 # Resonance integration checkpoint — 27 November 2026
 
-## Current composition and evidence boundaries
+## Reconciliation through owner535 — source candidate, 05:38 UTC
+
+The current technical entry point remains `UNIVERSAL_SCOPE_V3_FINALIZATION.md`;
+its canonical bytes at `1eff701fe848a3bd9eb088c85e5372a7c0a73861` were rechecked
+and are unchanged. This development candidate composes the owner branch through
+`5355942a230b23458d96c195a8b0d85253d7b32a`. Its new components are **NOT_RUN**
+until the exact composed source and installed package pass their gates. The
+older successful results below do not certify this composition.
+
+| Component source | Included behavior | Current evidence |
+| --- | --- | --- |
+| `e02a9cba0ad9088246ababc9f997ebf107931a15` | Shared resource admission/facade, saved runtime profiles, native coherent state publication, immutable import-attempt boundary, legacy reading history and typed backup | Independently source reviewed; execution pending |
+| `9bceefb69e22e24d4b6cc651eab5930aae468c30` | Scoped pronunciation, engine settings, Tasks view with stable displayed selection, retained historical reading import and existing Save All/three-profile entry | Independently source reviewed; execution pending |
+| `7e4ce3d7f3da56fe8cc5bee7c2b0f187c1a5d047` | Reused native EXE source, paired bounded source/PE evidence capture, immutable offline bundle hook, actual installed-app flag compatibility, two semantic native fixture corrections and bounded OCR fixture | Capture/bundle source reviewed; dedicated MSVC/native run pending |
+| `9396e49209e5730150cde7f94a1b23da8daed9aa` | Retained microphone recordings/retakes, managed project sound assets, typed passive backup, bounded live PCM input on the existing player/backend | Recording foundation source reviewed; monitor review and actual execution pending |
+
+The single complete-backup producer combines both existing ASR namespaces,
+the supplied V43 namespace, resource policy, compact reading histories and
+recordings. Recording integration is eleven narrow changes to the current
+producer; current aggregate budgets, supplied-job counters, hard-link rules,
+source/staged validation, final source rehash and no-replace publication remain.
+Unreceipted final microphone files are retained as inert originals; only a
+receipt-bound validated WAV is exposed as a completed recording.
+
+Native launcher admission checks current source identities and the exact
+bounded executable/build-report snapshots. Both captured files are sealed into
+the bundle manifest. The application native checker now accepts only the actual
+typed `bundled_audio_runtime` and `bundled_native_launcher` fields in addition
+to its prior allowlist. A new regression reads the assembler's actual manifest
+through both installer and application validators. No executable, model, private
+worker, recording or transcript is committed or uploaded as a public artifact.
+The build report remains provenance, not a signing or execution certificate.
+
+The composed workflow currently selects 255 source suites and
+108 installed content suites plus fourteen explicit installed
+workflows. It retains all ten named ASR/UI oracles (466 expected cases, including
+47 supplied-service and42 supplied-view cases), the native13/39/44 probes, and
+adds exact native Tasks, reading-history28, state-sharing25 and launcher9
+invariant gates. The state matrix includes expected failed publication controls;
+25 is not a claim that all sharing combinations permit replacement. The
+recording/process/monitor/playback selection has98 source-derived expected
+cases; it has no runtime verdict yet. Capture UI integration and the narrow
+shared-state/translation follow-ups remain in progress.
+
+### Executed Windows evidence for the earlier ecf source only
+
+Exact source: `ecf3b5511a0df34642317c55b96da3f604d0c67b`,
+tree `e82b567de83d481c780d8174ff784d814b3a0efd`. Counts from different suites
+and native probes are separate evidence and must not be added as unique cases.
+
+- Sync run45942148745:320 source cases,154 isolated installed cases,44 native
+  checks passed, including actual publish/restore TaskDialog closure.
+  Artifact15172718236, SHA256
+  `bf2442078fe19ff0d33d6f6d209398ae0c55693d961083fbe1a81204eae17ecc`.
+- Audio run45942148646:691 cases passed,7 explicit platform/device/FluidSynth
+  skips and22 subtests. Native16, effects109 and the Windows ownership tests
+  passed; actual1/3/10-hour streamed PCM completed. Physical playback was
+  unavailable on that runner and NVDA was NOT_RUN.
+  Artifact15173591906, SHA256
+  `bf9386c311b50070ce7962e7a733780f1498811d55782ed4031b82fcfebc5740`.
+- Bibliography run45942148640: all28 strict suites passed,1018 cases with
+  zero failures/skips; installed-wheel native108 checks passed.
+  Artifact15173701798, SHA256
+  `0cea30d473cb112d6a4e3ce798d13a59a7141d11f7b25637b33a0064e09a8287`.
+- Frozen r3 keyboard job140318636358:10 strict suites,270 cases, zero
+  failures/skips; native main35, reader23, evidence-draft15 and Save All27
+  checks passed. Artifact15174351370, SHA256
+  `b124fe8e2b179f4df90adc8de213ef0d859a80914f8da6a4b272bd2d5910e9fe`.
+- Frozen r3 main run45942146599 failed the forty-line orientation fixture after
+  its30-second deadline (44 passed/1 failed in that suite). This candidate
+  retains one explicit90-second fixture deadline and bounded failure-class
+  diagnostics; production remains30 seconds and the real Windows script-model
+  inventory regression is retained. Broad source/installed downstream gates did
+  not run in that failed attempt. Its separately running PR attempt is not yet
+  a final verdict here.
+
+### Private supplied-worker boundary and remaining qualification
+
+The unchanged supplied receipt adapter previously passed22 actual private
+contract cases against the model-bound host source; the actual hardened V43
+checkpoint passed its original38 private tests. Those use controlled decoder
+fixtures and do not claim real acoustic inference. The new current-host
+interoperability run reached verified three-input/twelve-output execution but
+passive reopening rejected an output-owner record. The exact private owner
+construction must be inspected and reconciled; no scope/owner check has been
+weakened and this gap is not marked complete. Local execution and access to the
+private extracted source are temporarily unavailable. Existing private inputs
+remain separate; a new private checkpoint could not be saved during that outage.
+
+Actual owner voice engines/models, authorized listening samples, physical input
+and output devices, NVDA operation, declared hardware/corpus capacity,
+Authenticode/signing authority, entitlement/update service configuration and
+per-artifact distribution clearance remain separate requirements. Neither this
+candidate nor its pending synthetic/native gates is a complete qualified or
+distributable Resonance platform.
+
+## Prior ecf composition and historical evidence
+
 
 This continuation reconciles the owner branch through
 `8a8249342e5b48f67d83cd957b3c33bf752a7ce3` with the supplied-worker profiles,

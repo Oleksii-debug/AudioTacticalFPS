@@ -187,11 +187,9 @@ def _manifest(value):
 
 
 def _config(value):
-    if not isinstance(value, dict) or set(value) != set(asdict(Config())):
-        raise ValueError('Invalid pending extraction configuration.')
-    if any(type(value[key]) is not int for key in ('dpi', 'timeout', 'max_pixels')):
-        raise ValueError('Invalid pending extraction resource limits.')
-    Config(**value)
+    # Preserve exact released seven-field and current verified-pack identities.
+    from .ingest.publication_identity import validate_configuration
+    validate_configuration(value)
 
 
 def _catalog(path):

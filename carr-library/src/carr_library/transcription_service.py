@@ -6,6 +6,7 @@ exact runtime, input hashes and completion receipt before accepting success.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -141,9 +142,47 @@ def selected_inputs(sources, *, cancelled=lambda: False):
 
 
 class TranscriptionService:
-    def __init__(self, library_root):
+    def __init__(self, library_root, *, broker=None):
         self.library_root = checked_directory(library_root)
         self.root = self.library_root / DIRECTORY
+        self._broker = broker
+
+    @contextmanager
+    def _admission(self, identity, *, cancelled):
+        from .operations import ResourceBroker, ResourceCancelled, ResourceStateError
+        from .operations.admission import transcription_request
+        job = self._job(identity)
+        # The caller holds both existing project locks. A new Run clears only
+        # old empty protocol controls; controls arriving during admission remain.
+        for name in ('pause.flag', 'stop.flag'):
+            path = job / name
+            if os.path.lexists(path):
+                if regular(path).st_size != 0:
+                    raise ValueError('A transcription control must be an empty owned file.')
+                path.unlink()
+        def admission_cancelled():
+            if cancelled():
+                return True
+            path = job / 'stop.flag'
+            if os.path.lexists(path):
+                if regular(path).st_size != 0:
+                    raise ValueError('A transcription stop control is invalid.')
+                return True
+            return False
+        try:
+            broker = self._broker or ResourceBroker.for_app(self.library_root, cancelled=admission_cancelled)
+            if (broker.root != self.library_root / 'runtime' / 'resources'
+                    or broker.policy_path != self.library_root / 'state' / 'operations' / 'resources.json'):
+                raise ResourceStateError('The resource coordinator belongs to another library directory.')
+            self._broker = broker
+            definition = self.definition(identity, verify_inputs=False, cancelled=cancelled)
+            request = transcription_request(definition, job, broker.limits)
+            with broker.reserve(request, operation_id='asr:' + identity,
+                                cancelled=admission_cancelled, timeout=60) as lease:
+                yield lease
+        except ResourceCancelled as exc:
+            raise InterruptedError('Transcription stopped while waiting for shared resources.') from exc
+
 
     def _job(self, identity):
         if type(identity) is not str or not JOB_ID.fullmatch(identity):
@@ -167,7 +206,7 @@ class TranscriptionService:
             for count, _ in enumerate(self.root.iterdir(), 1):
                 if count > MAX_INPUTS:
                     raise ValueError('The retained transcription job-count budget is full.')
-            if shutil.disk_usage(self.root).free < sum(row[3] for row in selected) + max(row[3] for row in selected) + 32 * 1024**2:
+            if shutil.disk_usage(self.root).free < sum(row[3] for row in selected) + sum(sorted((row[3] for row in selected), reverse=True)[:runtime.settings['parallel_files']]) + 32 * 1024**2:
                 raise OSError('Not enough space to retain the selected transcription inputs.')
             stage = Path(tempfile.mkdtemp(prefix='.prepare-', dir=self.root))
             try:
@@ -244,107 +283,111 @@ class TranscriptionService:
         if type(timeout) not in (int, float) or not 1 <= timeout <= 7 * 24 * 3600:
             raise ValueError('Choose a transcription deadline between one second and seven days.')
         job = self._job(identity)
-        with project_lock(self.root), project_lock(job):
-            definition = read_definition(job, cancelled=cancelled)
-            runtime = review_runtime(runtime_manifest, definition['settings'],
-                                     expected_sha256=definition['runtime_manifest_sha256'], cancelled=cancelled)
-            if runtime.model_sha256 != definition['model_sha256']:
-                raise ValueError('The selected transcription model no longer matches the job.')
-            check_cancelled(cancelled)
-            if shutil.disk_usage(job).free < max(row['bytes'] for row in definition['inputs']) + 32 * 1024**2:
-                raise OSError('Not enough space for the worker to capture one immutable input and its results.')
-            self._archive_execution(job)
-            run_id = uuid4().hex
-            self._state(job, 'verifying', run_id)
-            inputs = [dict(row, path=str(job / row['path']), root=str(job / row['root']))
-                      for row in definition['inputs']]
-            results = checked_directory(job / 'results', create=True)
-            checked_directory(job / 'logs', create=True)
-            config = dict(run_id=run_id, job_name=definition['title'],
-                          folders=list(dict.fromkeys(row['root'] for row in inputs)), inputs=inputs,
-                          source_provenance=definition['source_provenance'], settings=definition['settings'],
-                          results_root=str(results), models_dir=str(runtime.models),
-                          runtime_manifest=str(runtime.manifest.path),
-                          runtime_manifest_sha256=runtime.manifest.manifest_sha256)
-            atomic_json(job / 'job_config.json', config)
-            config_sha = digest_file(job / 'job_config.json', max_bytes=MAX_JSON_BYTES)
-            for name in ('pause.flag', 'stop.flag'):
-                path = job / name
-                if path.exists() or path.is_symlink():
-                    regular(path)
-                    path.unlink()
-            check_cancelled(cancelled)
-            environment = offline_environment()
-            for name in ('PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP', 'PYTHONINSPECT'):
-                environment.pop(name, None)
-            process, started, last_status = None, time.monotonic(), None
-            observer_available = progress is not None
-            self._state(job, 'running', run_id)
-            try:
-                with tempfile.TemporaryFile() as output:
-                    # The shared launcher owns the exact Windows Job Object
-                    # and POSIX process group, including exited-helper descendants.
-                    process = _start_process([str(runtime.interpreter), '-B', '-I', '-c',
-                                              _SUPPLIED_WORKER_BOOTSTRAP, str(runtime.worker), str(job)],
-                                             stdin=subprocess.DEVNULL,
-                                             stdout=output, stderr=output, cwd=job, env=environment,
-                                             shell=False)
-                    while True:
-                        check_cancelled(cancelled)
-                        if time.monotonic() - started >= timeout:
-                            raise TimeoutError('The local transcription exceeded its selected time budget.')
-                        if os.fstat(output.fileno()).st_size > MAX_LOG_BYTES:
-                            raise RuntimeError('The transcription worker exceeded its diagnostic byte budget.')
-                        status_path = job / 'job_status.json'
-                        if status_path.exists():
-                            # Progress is observational. An atomic status replacement
-                            # can race its snapshot; the final completion read below
-                            # remains strict and must validate the complete receipt.
-                            try:
-                                status = read_worker_status(status_path, max_bytes=1024 * 1024)
-                            except (OSError, ValueError):
-                                status = None
-                            if (type(status) is dict and status.get('run_id') == run_id
-                                    and status.get('protocol') == PROTOCOL):
-                                pair = status.get('done'), status.get('total'), status.get('state')
-                                if (pair != last_status and type(pair[0]) is int and type(pair[1]) is int
-                                        and 0 <= pair[0] <= pair[1] == len(inputs)):
-                                    if observer_available:
-                                        try:
-                                            progress(pair[0], pair[1], str(pair[2])[:100])
-                                        except Exception:
-                                            # A detached observer cannot stop,
-                                            # retry or reclassify real inference.
-                                            observer_available = False
-                                    last_status = pair
-                        exit_code = process.poll()
-                        if exit_code is not None:
-                            break
-                        time.sleep(.05)
-                    if exit_code == 130 and (job / 'stop.flag').exists():
-                        if regular(job / 'stop.flag').st_size == 0:
-                            raise InterruptedError('The supplied transcription worker acknowledged the requested stop.')
-                    if exit_code != 0:
-                        raise RuntimeError('The supplied transcription worker failed with exit code ' + str(exit_code) + '.')
-                    status, _ = _read_json_snapshot(job / 'job_status.json', max_bytes=1024 * 1024)
-                    verified = verify_completion(job, config, status, expected_config_sha256=config_sha,
-                                                 expected_runtime_sha256=runtime.manifest.manifest_sha256,
-                                                 expected_model_sha256=runtime.model_sha256, cancelled=cancelled)
-                    if read_definition(job, cancelled=cancelled) != definition:
-                        raise ValueError('The transcription job changed during execution.')
-                    self._state(job, 'complete', run_id)
-                    return verified
-            except BaseException as error:
+        with project_lock(self.root), project_lock(job), ExitStack() as preparation:
+            # A separately launched supplied worker does not hold our render
+            # locks. Protect its controls and execution records before any
+            # preparation/admission mutation, using its existing byte-zero lock.
+            logs = checked_directory(job / 'logs', create=True)
+            preparation.enter_context(project_lock(logs, lock_name='.worker-v5.lock'))
+            with self._admission(identity, cancelled=cancelled):
+                definition = read_definition(job, cancelled=cancelled)
+                runtime = review_runtime(runtime_manifest, definition['settings'],
+                                         expected_sha256=definition['runtime_manifest_sha256'], cancelled=cancelled)
+                if runtime.model_sha256 != definition['model_sha256']:
+                    raise ValueError('The selected transcription model no longer matches the job.')
+                check_cancelled(cancelled)
+                if shutil.disk_usage(job).free < sum(sorted((row['bytes'] for row in definition['inputs']), reverse=True)[:definition['settings']['parallel_files']]) + 32 * 1024**2:
+                    raise OSError('Not enough space for the worker to capture the selected concurrent inputs and their results.')
+                self._archive_execution(job)
+                run_id = uuid4().hex
+                self._state(job, 'verifying', run_id)
+                inputs = [dict(row, path=str(job / row['path']), root=str(job / row['root']))
+                          for row in definition['inputs']]
+                results = checked_directory(job / 'results', create=True)
+                checked_directory(job / 'logs', create=True)
+                config = dict(run_id=run_id, job_name=definition['title'],
+                              folders=list(dict.fromkeys(row['root'] for row in inputs)), inputs=inputs,
+                              source_provenance=definition['source_provenance'], settings=definition['settings'],
+                              results_root=str(results), models_dir=str(runtime.models),
+                              runtime_manifest=str(runtime.manifest.path),
+                              runtime_manifest_sha256=runtime.manifest.manifest_sha256)
+                atomic_json(job / 'job_config.json', config)
+                config_sha = digest_file(job / 'job_config.json', max_bytes=MAX_JSON_BYTES)
+                check_cancelled(cancelled)
+                environment = offline_environment()
+                for name in ('PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP', 'PYTHONINSPECT'):
+                    environment.pop(name, None)
+                process, started, last_status = None, time.monotonic(), None
+                observer_available = progress is not None
+                self._state(job, 'running', run_id)
                 try:
-                    if process is not None and process.poll() is None:
-                        self.control(identity, 'stop')
+                    with tempfile.TemporaryFile() as output:
+                        # Preparation and the supplied worker share its exact native lock.
+                        # Release only at the launch boundary; the child owns execution.
+                        preparation.close()
+                        # The shared launcher owns the exact Windows Job Object
+                        # and POSIX process group, including exited-helper descendants.
+                        process = _start_process([str(runtime.interpreter), '-B', '-I', '-c',
+                                                  _SUPPLIED_WORKER_BOOTSTRAP, str(runtime.worker), str(job)],
+                                                 stdin=subprocess.DEVNULL,
+                                                 stdout=output, stderr=output, cwd=job, env=environment,
+                                                 shell=False)
+                        while True:
+                            check_cancelled(cancelled)
+                            if time.monotonic() - started >= timeout:
+                                raise TimeoutError('The local transcription exceeded its selected time budget.')
+                            if os.fstat(output.fileno()).st_size > MAX_LOG_BYTES:
+                                raise RuntimeError('The transcription worker exceeded its diagnostic byte budget.')
+                            status_path = job / 'job_status.json'
+                            if status_path.exists():
+                                # Progress is observational. An atomic status replacement
+                                # can race its snapshot; the final completion read below
+                                # remains strict and must validate the complete receipt.
+                                try:
+                                    status = read_worker_status(status_path, max_bytes=1024 * 1024)
+                                except (OSError, ValueError):
+                                    status = None
+                                if (type(status) is dict and status.get('run_id') == run_id
+                                        and status.get('protocol') == PROTOCOL):
+                                    pair = status.get('done'), status.get('total'), status.get('state')
+                                    if (pair != last_status and type(pair[0]) is int and type(pair[1]) is int
+                                            and 0 <= pair[0] <= pair[1] == len(inputs)):
+                                        if observer_available:
+                                            try:
+                                                progress(pair[0], pair[1], str(pair[2])[:100])
+                                            except Exception:
+                                                # A detached observer cannot stop,
+                                                # retry or reclassify real inference.
+                                                observer_available = False
+                                        last_status = pair
+                            exit_code = process.poll()
+                            if exit_code is not None:
+                                break
+                            time.sleep(.05)
+                        if exit_code == 130 and (job / 'stop.flag').exists():
+                            if regular(job / 'stop.flag').st_size == 0:
+                                raise InterruptedError('The supplied transcription worker acknowledged the requested stop.')
+                        if exit_code != 0:
+                            raise RuntimeError('The supplied transcription worker failed with exit code ' + str(exit_code) + '.')
+                        status, _ = _read_json_snapshot(job / 'job_status.json', max_bytes=1024 * 1024)
+                        verified = verify_completion(job, config, status, expected_config_sha256=config_sha,
+                                                     expected_runtime_sha256=runtime.manifest.manifest_sha256,
+                                                     expected_model_sha256=runtime.model_sha256, cancelled=cancelled)
+                        if read_definition(job, cancelled=cancelled) != definition:
+                            raise ValueError('The transcription job changed during execution.')
+                        self._state(job, 'complete', run_id)
+                        return verified
+                except BaseException as error:
+                    try:
+                        if process is not None and process.poll() is None:
+                            self.control(identity, 'stop')
+                    finally:
+                        self._state(job, 'cancelled' if isinstance(error, InterruptedError) else 'failed', run_id)
+                    raise
                 finally:
-                    self._state(job, 'cancelled' if isinstance(error, InterruptedError) else 'failed', run_id)
-                raise
-            finally:
-                if process is not None:
-                    from .audio.engines import _stop
-                    _stop(process)
+                    if process is not None:
+                        from .audio.engines import _stop
+                        _stop(process)
 
     def completed(self, identity, *, cancelled=lambda: False):
         """Read a saved accepted execution without activating its external runtime.

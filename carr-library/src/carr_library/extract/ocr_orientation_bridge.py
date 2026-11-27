@@ -94,6 +94,8 @@ def orientation_candidate(image, config, exe, remaining, run, recognize, *, nati
             result['traineddata_sha256_observed'] = _model_observations(exe, config.languages, remaining, run)
     except ImportError:
         result['status'] = 'wrapper_missing'
-    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, UnicodeError):
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, UnicodeError) as exc:
         result['status'] = 'orientation_failed_or_timed_out'
+        # Classify failure without retaining exception text, paths or input text.
+        result['failure_type'] = type(exc).__name__
     return result

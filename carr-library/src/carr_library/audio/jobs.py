@@ -134,16 +134,81 @@ def sha256_file(path, *, cancelled=lambda: False, expected_identity=None):
     return result.hexdigest()
 
 
+def _open_json_file(path):
+    """Read one snapshot without blocking another process's atomic replacement."""
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        os.set_inheritable(descriptor, False)
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path, *, limit=65536):
     """Read at most the declared budget, rejecting ambiguous JSON objects."""
     if type(limit) is not int or limit < 1:
         raise ValueError('Invalid checkpoint size limit.')
-    with verified_reader(path) as stream:
-        if os.fstat(stream.fileno()).st_size > limit:
+    path = Path(path)
+    # Atomic state writers may replace the name while this reader retains a
+    # complete prior snapshot. Audio payload readers keep their stricter
+    # verified_reader path/identity contract.
+    for _ in range(8):
+        before = regular_file(path)
+        if before.st_nlink != 1:
+            raise ValueError('JSON state cannot have hard-link aliases.')
+        if before.st_size > limit:
             raise ValueError('Audio project manifest is too large.')
-        data = stream.read(limit + 1)
-        if len(data) > limit:
-            raise ValueError('Audio project manifest is too large.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink > 1
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400):
+                raise ValueError('JSON state must be a regular local file without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck all path components before consuming the bound handle;
+            # a normal atomic replacement may now have a different inode.
+            if regular_file(path).st_nlink != 1:
+                raise ValueError('JSON state cannot have hard-link aliases.')
+            if opened.st_size > limit:
+                raise ValueError('Audio project manifest is too large.')
+            data = stream.read(limit + 1)
+            if len(data) > limit:
+                raise ValueError('Audio project manifest is too large.')
+            after = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(after.st_mode) or after.st_nlink > 1
+                    or getattr(after, 'st_file_attributes', 0) & 0x400):
+                raise ValueError('JSON state must be a regular local file without links.')
+            if (len(data) != opened.st_size
+                    or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+                    != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
+                    or (after.st_nlink == opened.st_nlink and after.st_ctime_ns != opened.st_ctime_ns)):
+                raise ValueError('JSON state changed in place while reading; retry the operation.')
+        break
+    else:
+        raise ValueError('JSON state changed repeatedly while opening; retry the operation.')
 
     def unique(pairs):
         result = {}
@@ -175,6 +240,120 @@ def _json_bytes(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False).encode('utf-8')
 
 
+def _replace_state_file(source, destination):
+    """Publish a flushed sibling file while delete-sharing readers retain it.
+
+    Preserve ordinary os.replace and use the reviewed PR163 fallback only
+    for Windows sharing/access errors. Legacy MoveFileExW cannot replace
+    an open destination. FileRenameInfoEx
+    flags 1|2 keep old handles valid and direct new opens to the new file.
+    See Microsoft's FILE_RENAME_INFORMATION and FILE_RENAME_INFO contracts.
+    """
+    try:
+        os.replace(source, destination)
+        return
+    except OSError as error:
+        if os.name != 'nt' or getattr(error, 'winerror', None) not in (5, 32, 33):
+            raise
+    # Preserve any installed audit policy before the native sharing fallback.
+    sys.audit('os.rename', os.fspath(source), os.fspath(destination), -1, -1)
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    def checked_state(value, *, exists=False):
+        value = Path(value)
+        parent = checked_directory(value.parent)
+        filename_component(value.name)
+        value = parent / value.name
+        if exists or os.path.lexists(value):
+            if regular_file(value).st_nlink != 1:
+                raise ValueError('State must not have hard-link aliases.')
+        return value
+
+    source = checked_state(source, exists=True)
+    destination = checked_state(destination)
+    if source.parent != destination.parent:
+        raise ValueError('State replacement must use a sibling staging file.')
+    before = regular_file(source)
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('flags', wintypes.DWORD), ('root', wintypes.HANDLE),
+                    ('length', wintypes.DWORD), ('name', wintypes.WCHAR * 1)]
+
+    # GENERIC_READ | DELETE; shared read/write/delete; OPEN_EXISTING;
+    # OPEN_REPARSE_POINT. The native operation is bound to our staged file.
+    handle = create(str(source), 0x80010000, 7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    unsupported = False
+    published = False
+    try:
+        os.set_inheritable(descriptor, False)
+        opened = os.fstat(descriptor)
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino)):
+            raise ValueError('State staging identity changed before publication.')
+        # Revalidate the owned namespace without following substituted links.
+        checked_state(source, exists=True)
+        observed = regular_file(source)
+        if (observed.st_dev, observed.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ValueError('State staging identity changed before publication.')
+        checked_state(destination)
+
+        encoded = str(destination).encode('utf-16-le')
+        buffer = ctypes.create_string_buffer(ctypes.sizeof(RenameInfo) + len(encoded))
+        info = RenameInfo.from_buffer(buffer)
+        # REPLACE_IF_EXISTS | POSIX_SEMANTICS; do not override read-only flags.
+        info.flags, info.root, info.length = 3, None, len(encoded)
+        ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.name.offset,
+                       encoded, len(encoded))
+        if not rename(handle, 22, buffer, len(buffer)):  # FileRenameInfoEx
+            error = ctypes.get_last_error()  # capture before closing the handle
+            if error not in (1, 50, 87):  # unsupported OS/filesystem/class only
+                raise ctypes.WinError(error)
+            unsupported = True
+        else:
+            published = True
+    except BaseException:
+        # Preserve the publication error if descriptor cleanup also fails.
+        # Never retry a descriptor: close may have released it before raising.
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        raise
+    else:
+        try:
+            # open_osfhandle transferred ownership; do not close the raw handle.
+            os.close(descriptor)
+        except OSError:
+            if not published:
+                raise
+            # Native success already committed the new file. A close error
+            # cannot turn that durable outcome into a failed/retryable save.
+    if unsupported:
+        # Preserve the prior failure behavior on unsupported filesystems. This
+        # has no copy/delete fallback, target unlink, attribute change or retry.
+        os.replace(source, destination)
+
+
 def atomic_json(path, value):
     path = Path(path)
     parent = checked_directory(path.parent)
@@ -187,7 +366,7 @@ def atomic_json(path, value):
             stream.write(encoded)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(name, path)
+        _replace_state_file(name, path)
         _sync_directory(parent)
     finally:
         if os.path.exists(name):
