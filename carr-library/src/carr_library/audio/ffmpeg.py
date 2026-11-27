@@ -42,12 +42,14 @@ class WaveInfo:
         return self.frames / self.rate
 
 
-def wav_info(path):
+def wav_info(path, *, allow_empty=False):
     """Validate a complete PCM16 RIFF/RF64 container with bounded header reads.
 
     Inspect trailing chunks too: FFmpeg can select a later data/fmt chunk,
     which must never disagree with the duration accepted during preflight.
     """
+    if type(allow_empty) is not bool:
+        raise ValueError('Choose explicitly whether an unfinished empty PCM part is admissible.')
     with verified_reader(path) as stream:
         total = os.fstat(stream.fileno()).st_size
         head = stream.read(12)
@@ -98,7 +100,8 @@ def wav_info(path):
             elif name == b'data':
                 if rf64 and declared_chunk_size != 0xffffffff:
                     raise ValueError('RF64 data requires its 64-bit size sentinel.')
-                if result is not None or format_info is None or size <= 0 or (rf64 and data64 is None):
+                if (result is not None or format_info is None or (size == 0 and not allow_empty)
+                        or (rf64 and data64 is None)):
                     raise ValueError('Duplicate, empty or invalid WAV audio data.')
                 rate, channels, align = format_info
                 if size % align:

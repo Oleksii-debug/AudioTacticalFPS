@@ -104,7 +104,7 @@ def handlers(values):
     names = {'current', 'cancellation', 'controls', 'release_holds', 'release_when_stopped',
              'settled', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
              'refresh_outputs', 'start', 'retake', 'preview', 'use', 'close', 'stop_playback',
-             'stop_recording', 'cancel_recording'}
+             'stop_recording', 'cancel_recording', 'pause_recording', 'resume_recording'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names))
@@ -148,13 +148,14 @@ def view(tmp_path):
         retain=Mock(return_value=dict(asset='a' * 64 + '.wav', sha256='a' * 64,
                                      recording_id='retained', project_id='managed')))
     buttons = {name: Control() for name in (
-        'refresh', 'outputs', 'start', 'retake', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
-    values = dict(busy=False, alive=True, closing=False, recording=False, generation=0,
+        'refresh', 'outputs', 'start', 'retake', 'pause', 'resume', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
+    values = dict(busy=False, alive=True, closing=False, recording=False, generation=0, capture_state='idle',
         devices=(), output_devices=(), records=(), holds=[], cleanup_owner=None,
         cleanup_saved=None, cleanup_retry=None, preview_request=None, hold_guard=threading.RLock(),
         active_started=threading.Event(), active_finished=threading.Event(),
         frame=frame, library=frame.library, progress=progress, player=Mock(),
         selected_result=None, service=service, cancelled=threading.Event(), stopped=threading.Event(),
+        pause_requested=threading.Event(),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
         sample_rate=Control('24000'), channels=Control(selection=0),
         monitor=Control(False), output=Control(selection=-1), saved=Control(selection=-1),
@@ -618,3 +619,88 @@ def test_saved_recording_can_be_previewed_with_real_wave_and_pcm_players_after_c
             assert b''.join(submitted) == stream.readframes(240) * 2
     finally:
         player.close()
+
+
+def test_pause_controls_wait_for_actual_shutdown_acknowledgment(view):
+    ready(view)
+    original, observed = view.service.capture, []
+    def capture(device, **kwargs):
+        kwargs['state_changed']('recording', .25)
+        view.pump()
+        buttons = view.values['buttons']
+        assert buttons['pause'].enabled and not buttons['resume'].enabled
+        view.handlers.pause_recording()
+        assert kwargs['pause_requested']()
+        assert not buttons['pause'].enabled and not buttons['resume'].enabled
+        assert view.values['status'].value.startswith('Pause requested.')
+        view.handlers.resume_recording()
+        assert kwargs['pause_requested']()  # No resume before native closure.
+        kwargs['state_changed']('paused', .3)
+        view.pump()
+        assert buttons['resume'].enabled and not buttons['pause'].enabled
+        assert 'microphone is closed' in view.values['status'].value
+        view.handlers.resume_recording()
+        assert not kwargs['pause_requested']()
+        assert not buttons['resume'].enabled
+        kwargs['state_changed']('recording', .3)
+        view.pump()
+        assert buttons['pause'].enabled
+        observed.append(True)
+        return original(device, **kwargs)
+    view.service.capture = capture
+    view.handlers.start()
+    view.finish()
+    assert observed == [True] and view.path.exists()
+    assert view.values['status'].value.startswith('Saved and verified.')
+    assert not view.values['buttons']['pause'].enabled and not view.values['buttons']['resume'].enabled
+
+
+@pytest.mark.parametrize('action', ['stop', 'cancel', 'close'])
+def test_paused_ui_stop_cancel_and_close_never_issue_resume(view, action):
+    ready(view)
+    observed = []
+    def capture(device, **kwargs):
+        kwargs['state_changed']('recording', .2)
+        view.pump()
+        view.handlers.pause_recording()
+        kwargs['state_changed']('paused', .2)
+        view.pump()
+        getattr(view.handlers, {'stop': 'stop_recording', 'cancel': 'cancel_recording',
+                                'close': 'close'}[action])()
+        view.handlers.resume_recording()
+        observed.append((kwargs['pause_requested'](), kwargs['stop_requested'](), kwargs['cancelled']()))
+        raise AudioCancelled('Synthetic paused close')
+    view.service.capture = capture
+    view.handlers.start()
+    view.finish()
+    assert observed == [(True, action == 'stop', action != 'stop')]
+    assert not view.path.exists()
+
+
+def test_idle_pause_and_resume_never_start_or_schedule_capture(view):
+    ready(view)
+    view.handlers.pause_recording()
+    view.handlers.resume_recording()
+    assert not view.frame.executor.pending and not view.captures
+    assert not view.values['pause_requested'].is_set()
+
+
+@pytest.mark.parametrize('change', ['finished', 'library', 'closed'])
+def test_late_recording_state_callback_cannot_change_another_ui_context(view, change):
+    ready(view)
+    original, callbacks = view.service.capture, []
+    def capture(device, **kwargs):
+        callbacks.append(kwargs['state_changed'])
+        return original(device, **kwargs)
+    view.service.capture = capture
+    view.handlers.start()
+    view.finish()
+    before = view.values['status'].value
+    if change == 'library':
+        view.frame.library = SimpleNamespace(root='another-library')
+    elif change == 'closed':
+        view.handlers.detach()
+    callbacks[0]('paused', 999)
+    view.pump()
+    assert view.values['status'].value == before
+    assert not view.values['buttons']['resume'].enabled

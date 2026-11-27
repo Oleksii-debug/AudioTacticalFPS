@@ -282,3 +282,39 @@ def test_monitor_output_inventory_never_opens_or_selects_a_device(monitored, mon
     with pytest.raises(AudioCancelled):
         monitored.service.monitor_devices(cancelled=lambda: True)
     assert monitored.service._outputs == {}
+
+
+def test_actual_monitor_stream_stays_bounded_across_device_pause_and_resume(monitored):
+    pause, requested, snapshots, errors = threading.Event(), [False], [], []
+    def progress(seconds):
+        if not requested[0] and seconds >= .15:
+            requested[0] = True
+            pause.set()
+    def changed(state, seconds):
+        if state != 'paused':
+            return
+        try:
+            import time
+            time.sleep(.06)  # Drain only the existing two bounded output buffers.
+            boundary, = monitored.boundaries
+            before = b''.join(boundary.samples)
+            time.sleep(.06)
+            snapshots.append((before, b''.join(boundary.samples)))
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            pause.clear()
+    result = monitored.service.capture(monitored.device.id, options=monitored.options,
+        monitor=True, monitor_device_id=3, pause_requested=pause.is_set,
+        state_changed=changed, progress=progress)
+    assert not errors and len(snapshots) == 1
+    assert snapshots[0][0] == snapshots[0][1] and snapshots[0][0]
+    boundary, = monitored.boundaries
+    with wave.open(result['path'], 'rb') as source:
+        pcm = source.readframes(source.getnframes())
+    assert b''.join(boundary.samples) == pcm
+    assert len(result['capture']['parts']) == 2
+    assert result['monitor']['pcm_matches_original'] and result['monitor']['error'] is None
+    assert result['monitor']['stream_frames'] == 24000
+    assert boundary.maximum_bytes <= 2 * (24000 * 20 // 1000) * 2
+    assert boundary.closed and not boundary.active

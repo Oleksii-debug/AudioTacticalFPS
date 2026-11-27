@@ -36,6 +36,7 @@ def main():
 
     checks, errors, captures, completed, cancelled_captures = [], [], [], [], []
     audio_proof = {}
+    part_runs, pause_observation = [], []
     deadline = monotonic() + 80
     stage, dialog, frame, finished = 0, None, None, False
     dialog_id, dialog_destroyed = None, False
@@ -70,6 +71,16 @@ def main():
     app = ProbeApp(False)
     simulator = wx.UIActionSimulator()
     original_factory = dialog_module.RecordingService
+    original_run_process = recording_module.run_process
+
+    def observed_process(*args, **kwargs):
+        part = {'active': True, 'owned_tree': kwargs.get('owned_tree')}
+        part_runs.append(part)
+        try:
+            return original_run_process(*args, **kwargs)
+        finally:
+            part['active'] = False
+    recording_module.run_process = observed_process
 
     with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
@@ -96,13 +107,18 @@ def main():
         real_capture = service.capture
 
         def capture(device_id, **kwargs):
-            item = {'seconds': 0, 'active': True}
+            item = {'seconds': 0, 'active': True, 'state': 'starting'}
             captures.append(item)
             observe = kwargs['progress']
             def report(seconds):
                 item['seconds'] = seconds
                 observe(seconds)
             kwargs['progress'] = report
+            observe_state = kwargs['state_changed']
+            def changed(state, seconds):
+                item['state'], item['seconds'] = state, seconds
+                observe_state(state, seconds)
+            kwargs['state_changed'] = changed
             try:
                 result = real_capture(device_id, **kwargs)
                 completed.append(result)
@@ -172,6 +188,8 @@ def main():
             refresh = control('Refresh microphones')
             start = control('Start recording')
             retake = control('Record retake of selected recording')
+            pause = control('Pause recording')
+            resume = control('Resume recording')
             stop = control('Stop and save recording')
             cancel = control('Cancel unfinished recording')
             selection = control('Microphone device (explicit selection required)')
@@ -186,6 +204,8 @@ def main():
                       and not control('Live monitoring through selected output').GetValue()
                       and control('Monitoring output device (explicit selection required)').GetSelection() == wx.NOT_FOUND)
                 check('native retake waits for a selected original', not retake.IsEnabled())
+                check('native Pause and Resume wait for an active capture',
+                      not pause.IsEnabled() and not resume.IsEnabled())
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -200,12 +220,35 @@ def main():
                 press(start)
             elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
                 check('actual FFmpeg reports recorded PCM while UI remains responsive', captures[0]['active'])
+                stage = 31
+                press(pause)
+            elif stage == 31 and captures[0]['state'] == 'paused' and resume.IsEnabled():
+                if not pause_observation:
+                    pause_observation.append((monotonic(), captures[0]['seconds']))
+                elif monotonic() - pause_observation[0][0] >= .15:
+                    check('Pause confirms the exact owned capture tree has closed',
+                          len(part_runs) == 1 and part_runs[0]['owned_tree']
+                          and not any(part['active'] for part in part_runs))
+                    check('paused native capture does not advance recorded samples',
+                          captures[0]['seconds'] == pause_observation[0][1] and not pause.IsEnabled())
+                    stage = 32
+                    press(resume)
+            elif (stage == 32 and captures[0]['state'] == 'recording' and pause.IsEnabled()
+                  and captures[0]['seconds'] >= pause_observation[0][1] + .1):
+                check('Resume opens another owned part while the native dialog remains responsive',
+                      len(part_runs) == 2 and part_runs[-1]['active'])
                 stage = 4
                 press(stop)
             elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
                 check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
                     and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
                 check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                check('paused native recording retains both verified PCM parts without inserted silence',
+                      completed[0]['schema'] == 'carr-recording/3'
+                      and completed[0]['capture']['pause_count'] == 1
+                      and len(completed[0]['capture']['parts']) == 2
+                      and sum(part['frames'] for part in completed[0]['capture']['parts'])
+                          == completed[0]['audio']['frames'])
                 check('native retake targets the displayed saved original', retake.IsEnabled()
                       and saved.GetSelection() == 0)
                 stage = 5
@@ -267,6 +310,7 @@ def main():
                 raise AssertionError('\n'.join(errors))
         finally:
             dialog_module.RecordingService = original_factory
+            recording_module.run_process = original_run_process
             if frame is not None:
                 frame.cancel_event.set()
                 frame.executor.shutdown(wait=True, cancel_futures=True)

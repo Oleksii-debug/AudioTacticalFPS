@@ -92,16 +92,17 @@ def validate_state_tree(library_root, *, cancelled=lambda: False):
             raise ValueError('A recording receipt lost its retained original WAV.')
         if RecordingService._audio(output, RecordingOptions(**value['limits']), cancelled) != value['audio']:
             raise ValueError('A recording receipt differs from its retained original PCM.')
+        RecordingService._verify_capture_parts(output, value, cancelled)
         receipts[value['id']] = value
     # Validate each edge once, then walk the parent graph with a shared memo.
     parents = {}
     for identity, value in receipts.items():
-        if value['schema'] != 'carr-recording/2':
+        if value.get('retake') is None:
             continue
         relation = value['retake']
         previous = receipts.get(relation['previous_id'])
         if (previous is None or previous['audio']['sha256'] != relation['previous_sha256']
-                or relation['origin_id'] != previous.get('retake', {}).get('origin_id', previous['id'])):
+                or relation['origin_id'] != (previous.get('retake') or {}).get('origin_id', previous['id'])):
             raise ValueError('A recording retake lost its retained original identity.')
         parents[identity] = previous['id']
     checked = set()
