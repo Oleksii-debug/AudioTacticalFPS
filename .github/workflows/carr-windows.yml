@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/release-candidate-ce034-20261127]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/release-candidate-ce034-20261127, carr/release-candidate-backup-ce034-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -207,10 +207,14 @@ jobs:
           $font | & $env:CARR_PYTHON -I -B - | Tee-Object 'ci-results/ocr-test-font.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise the installed native OCR model manager before long suites
+      - name: Exercise native OCR, document navigation and backup revalidation before long suites
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/installed-ocr-models.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-results/early-document-formats.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON scripts/ci_check.py tests/storage/test_backup_v4_sidecars.py 2>&1 | Tee-Object 'ci-results/early-backup-content.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check observed FFmpeg and OCR inventory compatibility

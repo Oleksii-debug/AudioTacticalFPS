@@ -236,6 +236,57 @@ def test_sidecar_change_during_snapshot_prevents_publication(reading, tmp_path, 
     assert not (tmp_path / 'rejected').exists()
 
 
+def test_same_metadata_sidecar_change_prevents_publication(reading, tmp_path, monkeypatch):
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    original = source.read_bytes()
+    replacement = original.replace(b'Anchor-A', b'Anchor-B')
+    assert replacement != original and len(replacement) == len(original)
+    before = source.stat()
+    identity = backup_sidecars._identity
+    # Windows ctime is creation time. Omit POSIX's changing ctime while keeping
+    # real file identity, mode, link count, size and the restored mtime.
+    monkeypatch.setattr(backup_sidecars, '_identity', lambda info: identity(info)[:-1])
+    write = backup_sidecars._write
+    modified = False
+
+    def changed(stage, name, raw):
+        nonlocal modified
+        write(stage, name, raw)
+        if name == 'reading-state.json':
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+            assert backup_sidecars._identity(source.stat()) == backup_sidecars._identity(before)
+            modified = True
+
+    monkeypatch.setattr(backup_sidecars, '_write', changed)
+    destination = tmp_path / 'rejected'
+    with pytest.raises(ValueError, match='changed during backup'):
+        create_backup(app, destination)
+    assert modified and source.read_bytes() == replacement
+    assert not destination.exists()
+
+
+def test_sidecar_revalidation_cancellation_prevents_publication(reading, tmp_path, monkeypatch):
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    source_reads = 0
+    open_file = os.open
+
+    def observe_source_open(path, flags, *args, **kwargs):
+        nonlocal source_reads
+        if path == source:
+            source_reads += 1
+        return open_file(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'open', observe_source_open)
+    destination = tmp_path / 'rejected'
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, destination, cancelled=lambda: source_reads >= 2)
+    assert source_reads == 2
+    assert not destination.exists()
+
+
 @pytest.mark.parametrize('operation', ['backup', 'restore'])
 def test_real_process_exit_during_sidecar_publication(reading, tmp_path, operation):
     app, workspace, page, bookmark = reading

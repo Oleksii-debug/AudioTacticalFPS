@@ -345,6 +345,35 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
         entries.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
     if _capture(root, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
+    # Equal-size writes can retain Windows timestamps. Verify source content
+    # against the staged bytes before publishing, not only its metadata.
+    for entry in entries:
+        _check_cancelled(cancelled)
+        source = root / entry['filename']
+        expected = before[0][entry['filename']]
+        if _identity(_regular(source)) != expected:
+            raise RestoreError('application state changed during backup; pause its producer and retry')
+        digest, count = sha256(), 0
+        flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+        with os.fdopen(os.open(source, flags), 'rb') as stream:
+            if _identity(os.fstat(stream.fileno())) != expected:
+                raise RestoreError('application state changed during backup; pause its producer and retry')
+            while True:
+                _check_cancelled(cancelled)
+                block = stream.read(min(1024 * 1024, entry['size_bytes'] + 1 - count))
+                if not block:
+                    break
+                count += len(block)
+                if count > entry['size_bytes']:
+                    raise RestoreError('application state grew during backup; pause its producer and retry')
+                digest.update(block)
+            if _identity(os.fstat(stream.fileno())) != expected:
+                raise RestoreError('application state changed during backup; pause its producer and retry')
+        if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
+                or _identity(_regular(source)) != expected):
+            raise RestoreError('application state changed during backup; pause its producer and retry')
+    if _capture(root, cancelled=cancelled) != before:
+        raise RestoreError('application state changed during backup; pause its producer and retry')
     _check_cancelled(cancelled)
     return entries
 
