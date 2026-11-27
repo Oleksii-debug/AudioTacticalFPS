@@ -53,10 +53,17 @@ def load_request(root, request_id):
             or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError('Invalid import request file.')
     record = json.loads(path.read_text(encoding='utf-8'))
-    if (not isinstance(record, dict) or record.get('version') != 1
+    if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] not in (1, 2)
             or record.get('request_id') != request_id
             or record.get('data_dir') != str(Path(root).resolve())):
         raise ValueError('Import request identity changed.')
+    if record['version'] == 2:
+        from .streamed_text import profile_from_value
+        profile_from_value(record.get('source_profile'))
+        if 'pdf_max_bytes' in record:
+            raise ValueError('Streamed text cannot acquire a PDF byte allowance.')
+    elif 'source_profile' in record:
+        raise ValueError('Legacy import cannot acquire a streamed source profile.')
     return record
 
 
@@ -100,6 +107,8 @@ def _request_identity(record):
         'metadata', 'config', 'expected_manifest')}
     if 'pdf_max_bytes' in record:
         result['pdf_max_bytes'] = record['pdf_max_bytes']
+    if record['version'] == 2:
+        result['source_profile'] = record['source_profile']
     return result
 
 
@@ -121,6 +130,10 @@ def _publication_state(db, record, revision, *, allow_superseded=False):
                      (revision,)).fetchone()
     if row is None:
         return None
+    if record['version'] == 2:
+        from .streamed_text import profile_from_value
+        if row[3] != canonical(profile_from_value(record['source_profile']).configuration()):
+            raise ValueError('Streamed publication configuration changed.')
     active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
                         (workspace, metadata['edition_id'])).fetchone()
     historical = active is not None and active[0] != revision and allow_superseded
@@ -214,6 +227,7 @@ def record_publication_candidate(root, request_id, db, workspace, revision, *,
                    ('version', 'request_id', 'data_dir', 'source', 'workspace',
                     'metadata', 'config', 'expected_manifest'))
             or record.get('pdf_max_bytes') != expected.get('pdf_max_bytes')
+            or record.get('source_profile') != expected.get('source_profile')
             or config is None
             or asdict(config) != asdict(validate_configuration(expected['config']))
             or expected['pinned_asset'] not in (None, record.get('asset_sha256'))
@@ -528,7 +542,7 @@ def _posix_group_quiescent(group):
 def _stop(process):
     """Keep parser streams and admission until the exact native family stops."""
     from ..audio.recording_process import _stop_owned
-    from ..audio.cleanup import pending_cleanup
+    from ..audio.cleanup import pending_cleanup, wait_for_cleanup
 
     def settle():
         if getattr(process, '_carr_ingest_quiescent', False):
@@ -548,23 +562,14 @@ def _stop(process):
     except (Exception, KeyboardInterrupt, SystemExit) as exc:
         error = pending_cleanup(settle,
             message='Import cleanup is pending; streams and resource admission remain reserved.')
-        owner = error.cleanup_owner
-        interrupted = exc if isinstance(exc, (KeyboardInterrupt, SystemExit)) else None
-        while not owner.quiescent:
-            try:
-                owner.close()
-                if not owner.quiescent:
-                    owner.quiescent_event.wait(.25)
-            except (KeyboardInterrupt, SystemExit) as interruption:
-                if interrupted is None:
-                    interrupted = interruption
-        if interrupted is not None:
-            raise interrupted
+        wait_for_cleanup(error)
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
         return True
 
 
 def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None,
-                    pdf_max_bytes=None):
+                    pdf_max_bytes=None, source_profile=None):
     metadata = dict(metadata)
     if metadata.get('title') in (None, ''):
         metadata['title'] = Path(source).stem
@@ -573,6 +578,13 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=asdict(config), state='pending')
+    profile = None
+    if source_profile is not None:
+        from .streamed_text import profile_from_value
+        profile = profile_from_value(source_profile)
+        if Path(source).suffix.casefold() != '.txt' or pdf_max_bytes is not None:
+            raise ValueError('Streamed text requests require .txt and an independent byte allowance.')
+        record.update(version=2, source_profile=profile.to_dict())
     from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget, valid_original_size
     if pdf_max_bytes is not None:
         record['pdf_max_bytes'] = pdf_budget(pdf_max_bytes)
@@ -583,8 +595,11 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not valid_original_size(expected_manifest['mime'], expected_manifest['size'],
-                                           pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES))):
+                or (profile is None and not valid_original_size(
+                    expected_manifest['mime'], expected_manifest['size'],
+                    pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES)))
+                or (profile is not None and (expected_manifest['mime'] != 'text/plain'
+                    or not 0 < expected_manifest['size'] <= profile.maximum_bytes))):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -592,7 +607,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None, pdf_max_bytes=None):
+                    expected_manifest=None, pdf_max_bytes=None, source_profile=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
@@ -601,7 +616,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
-                                  request_id, expected_manifest, pdf_max_bytes)
+                                  request_id, expected_manifest, pdf_max_bytes, source_profile)
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:
@@ -610,20 +625,22 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
         identity = set(planned) - {'state'}
         if (any(existing.get(key) != planned[key] for key in identity)
                 or existing.get('expected_manifest') != planned.get('expected_manifest')
-                or existing.get('pdf_max_bytes') != planned.get('pdf_max_bytes')):
+                or existing.get('pdf_max_bytes') != planned.get('pdf_max_bytes')
+                or existing.get('source_profile') != planned.get('source_profile')):
             raise ValueError('Persisted import request differs from its planned identity.')
         return existing
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None, broker=None, pdf_max_bytes=None):
+                timeout=120.0, request_id=None, broker=None, pdf_max_bytes=None, source_profile=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new, broker=broker, pdf_max_bytes=pdf_max_bytes)
+                            request_id=request_id, new=new, broker=broker, pdf_max_bytes=pdf_max_bytes,
+                            source_profile=source_profile)
 
 
 def _published_after_stop(app, initial, attempt_id):
@@ -636,13 +653,13 @@ def _published_after_stop(app, initial, attempt_id):
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new, broker=None, pdf_max_bytes=None):
+                 timeout, request_id, new, broker=None, pdf_max_bytes=None, source_profile=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
     if new:
         record = _request_record(root, workspace, source, metadata, config, request_id,
-                                 pdf_max_bytes=pdf_max_bytes)
+                                 pdf_max_bytes=pdf_max_bytes, source_profile=source_profile)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
@@ -650,6 +667,10 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if pdf_max_bytes is not None and record.get('pdf_max_bytes') != pdf_max_bytes:
             raise ValueError('Import PDF byte budget changed; prepare a new request.')
+        if source_profile is not None:
+            from .streamed_text import profile_from_value
+            if record.get('source_profile') != profile_from_value(source_profile).to_dict():
+                raise ValueError('Import source profile changed; prepare a new request.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
     from ..audio.jobs import checked_directory
@@ -676,20 +697,33 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ResourceStateError('The resource coordinator belongs to another library directory.')
         from ..catalog.streaming_pdf import MAX_PDF_BYTES, valid_original_size
         from ..audio.jobs import regular_file
+        profile = None
+        if record['version'] == 2:
+            from .streamed_text import profile_from_value
+            profile = profile_from_value(record['source_profile'])
         source_path = Path(record['source'])
         if record.get('asset_sha256'):
             from .retained_assets import RetainedAssets
-            source_path = RetainedAssets(library / 'originals').resolve(record['asset_sha256'], cancelled=cancelled)
+            source_path = RetainedAssets(library / 'originals').resolve(
+                record['asset_sha256'], profile=profile, cancelled=cancelled)
         source_info = regular_file(source_path)
         source_mime = 'application/pdf' if source_path.suffix.casefold() == '.pdf' else ''
-        if (source_info.st_nlink != 1 or not valid_original_size(source_mime, source_info.st_size,
-                pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES))):
+        if (source_info.st_nlink != 1
+                or (profile is None and not valid_original_size(source_mime, source_info.st_size,
+                    pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES)))
+                or (profile is not None and (source_path.suffix.casefold() != '.txt'
+                    or not 0 < source_info.st_size <= profile.maximum_bytes))):
             raise ValueError('Document original exceeds its declared format byte budget.')
         from ..catalog.intake import MAX_BYTES
         pdf_limit = (min(record.get('pdf_max_bytes', MAX_PDF_BYTES),
                          max(MAX_BYTES, source_info.st_size)) if source_mime == 'application/pdf' else None)
         request = document_request(library, Path(gettempdir()), selected.limits,
                                    original_bytes=pdf_limit or source_info.st_size)
+        if profile is not None:
+            from dataclasses import replace
+            # Original, escaped checkpoints, authoritative pages and index scratch.
+            request = replace(request, disk_bytes=max(request.disk_bytes,
+                                profile.maximum_bytes * 10 + 128 * 1024**2))
         admission = selected.reserve(request, operation_id='document:' + request_id,
                                      cancelled=cancelled, timeout=60)
         return _execute_request(root, workspace, record, request_id,
@@ -946,6 +980,8 @@ def main():
         from ..extract.page_ocr import Config
         from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget
         pdf_limit = record.get('pdf_max_bytes', MAX_PDF_BYTES)
+        if record['version'] == 2 and 'pdf_max_bytes' in message:
+            raise ValueError('Streamed text cannot use a PDF launch allowance.')
         if 'pdf_max_bytes' in message:
             admitted = pdf_budget(message['pdf_max_bytes'])
             if admitted > pdf_limit:
@@ -960,13 +996,14 @@ def main():
             app = LibraryApp(message['data_dir'])
             source = record['source']
             if record.get('asset_sha256'):
-                source = app.assets.resolve(record['asset_sha256'])
+                source = app.assets.resolve(record['asset_sha256'], profile=record.get('source_profile'))
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
                                       _expected_manifest=record.get('expected_manifest'),
                                       _publication_attempt=attempt,
-                                      pdf_max_bytes=pdf_limit)
+                                      pdf_max_bytes=pdf_limit if record['version'] == 1 else None,
+                                      _source_profile=record.get('source_profile'))
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

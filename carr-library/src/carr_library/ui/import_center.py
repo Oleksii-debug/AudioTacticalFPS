@@ -270,6 +270,55 @@ class ImportCenterActions:
             except Exception as exc:
                 self.report(str(exc))
 
+    def import_streamed_text(self, path):
+        """Explicit single-source action; the ordinary batch defaults stay put."""
+        from dataclasses import replace
+        from ..ingest.streamed_text import TextProfile
+        self._bound()
+        maximum = self.stream_mib.GetValue()
+        if type(maximum) is not int or not 1 <= maximum <= 128:
+            raise ValueError('Choose a streamed source allowance from 1 through 128 MiB.')
+        index = self.collection.GetSelection()
+        if not 0 <= index < len(self.collection_ids):
+            raise ValueError('Choose the destination for this source.')
+        collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
+        profile, config = TextProfile(maximum * 1024**2), replace(self.ocr_config)
+        library, workspace = self.library, self.workspace
+        def operation():
+            self._bound()
+            return library.import_file(workspace, path, source_profile=profile,
+                collections=collections, config=config, timeout=180,
+                cancelled=self.frame.cancel_event.is_set)
+        def done(result):
+            if result.get('state') == 'complete':
+                if self.frame.book is not None:
+                    self.frame.book.GetPage(1).refresh()
+                self.report(f'Streamed text imported: {result["completed"]} exact logical fragments. '
+                            'Original bytes are retained; these locations are unpaginated.')
+            else:
+                self.report('Streamed text request: ' + readable(result.get('state', 'failed')) + '. '
+                    + readable(result.get('message', '')) +
+                    ' Close Import Center and choose Library, Resume interrupted import. '
+                    'The saved request keeps its original byte allowance.')
+        self._job('Importing selected streamed UTF-8 text', operation, done)
+
+    def choose_streamed_text(self, event=None):
+        import wx
+        try:
+            self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait or cancel the current operation before selecting another source.')
+            dialog = wx.FileDialog(self, 'Import a selected large UTF-8 text',
+                wildcard='UTF-8 text (*.txt)|*.txt', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+            try:
+                path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
+            finally:
+                dialog.Destroy()
+            if path:
+                self.import_streamed_text(path)
+        except Exception as exc:
+            self.report(str(exc))
+
     def add_folder(self, event=None):
         import wx
         dialog = wx.DirDialog(self, 'Select a folder of books', style=wx.DD_DIR_MUST_EXIST)
@@ -431,6 +480,18 @@ def show_import_center(frame, workspace):
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
+            streamed = wx.BoxSizer(wx.HORIZONTAL)
+            self.stream_mib = wx.SpinCtrl(self, min=1, max=128, initial=128)
+            self.stream_mib.SetName('Maximum bytes for one streamed UTF-8 text, in MiB')
+            streamed.Add(wx.StaticText(self, label='Streamed UTF-8 source limit (MiB)'),
+                         0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            streamed.Add(self.stream_mib, 0, wx.RIGHT, 8)
+            large_text = wx.Button(self, label='Import large UTF-8 te&xt...')
+            large_text.SetName('Import selected UTF-8 text in bounded logical fragments')
+            large_text.Bind(wx.EVT_BUTTON, self.choose_streamed_text)
+            streamed.Add(large_text, 0)
+            self.mutable.extend((self.stream_mib, large_text))
+            layout.Add(streamed, 0, wx.ALL, 8)
             layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
             self.batches = wx.ListBox(self, size=(-1, 65))
             self.batches.SetName('Saved import batches')

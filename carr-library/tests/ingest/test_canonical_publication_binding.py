@@ -5,6 +5,7 @@ import runpy
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.audio import engines
 from carr_library.ingest import worker
 
 
@@ -53,7 +54,7 @@ def test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar(tmp_p
     source = source_file(tmp_path, 'docx')
     original = source.read_bytes()
     marker = tmp_path / 'before-receipt'
-    popen, children = worker.subprocess.Popen, []
+    popen, children = engines._start_process, []
 
     def launch(command, *args, **kwargs):
         if isinstance(command, list) and '-c' in command:
@@ -80,7 +81,7 @@ def test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar(tmp_p
                 return process
         return popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(engines, '_start_process', launch)
     result = app.import_file(workspace, source)
     assert marker.exists() and len(children) == 1 and children[0].poll() is not None
     assert result['state'] == 'failed' and not result.get('publication_recovered')

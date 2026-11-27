@@ -28,12 +28,14 @@ def _hex(value, length):
     return value
 
 
-def _manifest(value):
+def _manifest(value, profile=None):
     from ..ingest.retained_assets import SUFFIXES
     from ..catalog.streaming_pdf import valid_original_size
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or value['mime'] not in SUFFIXES or type(value['size']) is not int
-            or not valid_original_size(value['mime'], value['size'])):
+            or (profile is None and not valid_original_size(value['mime'], value['size']))
+            or (profile is not None and (value['mime'] != 'text/plain'
+                or not 0 < value['size'] <= profile.maximum_bytes))):
         raise ValueError('Invalid publication source manifest.')
     _hex(value['sha256'], 64)
     return dict(value)
@@ -78,10 +80,17 @@ def validate_configuration(value):
 
 
 def _request(value):
-    if (not isinstance(value, dict) or set(value) not in (REQUEST_FIELDS, REQUEST_FIELDS | {'pdf_max_bytes'})
-            or type(value['version']) is not int or value['version'] != 1):
+    if (not isinstance(value, dict) or type(value.get('version')) is not int
+            or value['version'] not in (1, 2)
+            or (value['version'] == 1 and set(value) not in (REQUEST_FIELDS, REQUEST_FIELDS | {'pdf_max_bytes'}))
+            or (value['version'] == 2 and set(value) != REQUEST_FIELDS | {'source_profile'})):
         raise ValueError('Invalid publication request schema.')
     result = dict(value)
+    profile = None
+    if value['version'] == 2:
+        from .streamed_text import profile_from_value
+        profile = profile_from_value(value['source_profile'])
+        result['source_profile'] = profile.to_dict()
     if 'pdf_max_bytes' in value:
         from ..catalog.streaming_pdf import pdf_budget
         pdf_budget(value['pdf_max_bytes'])
@@ -94,7 +103,7 @@ def _request(value):
     validate_configuration(value['config'])
     result['config'] = dict(value['config'])
     if value['expected_manifest'] is not None:
-        result['expected_manifest'] = _manifest(value['expected_manifest'])
+        result['expected_manifest'] = _manifest(value['expected_manifest'], profile)
         if 'pdf_max_bytes' in value:
             from ..catalog.streaming_pdf import valid_original_size
             manifest = result['expected_manifest']
@@ -113,6 +122,8 @@ def request_identity(record):
                  workspace=record['workspace'], metadata=record['metadata'],
                  config=record['config'], expected_manifest=record.get('expected_manifest'),
                  pinned_asset=record.get('asset_sha256'), resume_job=record.get('job'))
+    if record['version'] == 2:
+        value['source_profile'] = record.get('source_profile')
     if 'pdf_max_bytes' in record:
         value['pdf_max_bytes'] = record['pdf_max_bytes']
     result = _canonical(_request(value))

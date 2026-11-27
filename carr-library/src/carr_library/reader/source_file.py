@@ -6,6 +6,7 @@ printed page labels or citations. Private local directories must remain stable;
 it is not a sandbox against other programs running as the same user.
 """
 from dataclasses import dataclass
+from hashlib import sha256
 import os
 from pathlib import Path
 import stat
@@ -15,6 +16,7 @@ from ..catalog.intake import IntakeError
 from ..catalog.streaming_pdf import FileAsset, snapshot_original
 from ..citations.anchors import Identity, Locator
 from ..ingest.retained_assets import RetainedAssets, SUFFIXES
+from ..ingest.streamed_text import TextSnapshot, catalog_profile, inspect_text
 from ..ingest.writer_guard import exclusive_writer
 from ..research.topic_tree import TopicTree
 from ..extract.document_formats import EXTENDED_MIMES
@@ -62,10 +64,12 @@ def _original(app, db, workspace, ref, revision, cancelled=lambda: False):
     assets = _directory(app.assets_dir)
     if assets != root / 'originals':
         raise ValueError('The original source directory changed.')
-    path = RetainedAssets(assets).resolve(identity.asset_sha256, cancelled=cancelled)
+    profile = catalog_profile(db, identity.asset_sha256, row[0], row[1])
+    path = RetainedAssets(assets).resolve(identity.asset_sha256, profile=profile, cancelled=cancelled)
     if path.suffix != SUFFIXES[row[0]]:
         raise ValueError('The original source format changed.')
-    original = snapshot_original(assets, path.name, cancelled=cancelled)
+    original = (inspect_text(path, profile, cancelled=cancelled) if profile is not None else
+                snapshot_original(assets, path.name, cancelled=cancelled))
     _regular(path)
     if (original.digest, original.mime, original.size) != (identity.asset_sha256, row[0], row[1]):
         raise ValueError('The original source differs from its catalog record.')
@@ -87,8 +91,12 @@ def _view_matches(directory, path, original, cancelled=lambda: False):
         raise ValueError('Invalid source viewing path.')
     _regular(path)
     try:
-        copied = snapshot_original(directory, path.name, cancelled=cancelled)
-    except IntakeError:
+        copied = (inspect_text(path, original.profile, cancelled=cancelled)
+                  if isinstance(original, TextSnapshot) else
+                  snapshot_original(directory, path.name, cancelled=cancelled))
+    except (IntakeError, ValueError) as error:
+        if not isinstance(original, TextSnapshot) and not isinstance(error, IntakeError):
+            raise
         # A viewer may have saved a different format. Preserve that regular file
         # and allow prepare_source_file to create a fresh exact copy elsewhere.
         _regular(path)
@@ -129,6 +137,29 @@ def prepare_source_file(app, workspace, ref, revision, *, authorized_topic=None,
                 if isinstance(original, FileAsset):
                     owned = original.copy_to(path, cancelled=cancelled)
                     created = True
+                elif isinstance(original, TextSnapshot):
+                    from ..audio.jobs import verified_reader
+                    source = app.assets_dir / (original.digest + SUFFIXES[original.mime])
+                    copied, hashed = 0, sha256()
+                    with verified_reader(source, expected_identity=original.identity) as incoming, path.open('xb') as stream:
+                        created = True
+                        owned = os.fstat(stream.fileno())
+                        while True:
+                            if cancelled():
+                                raise InterruptedError('Opening the original was cancelled.')
+                            block = incoming.read(min(1024 * 1024, original.size + 1 - copied))
+                            if not block:
+                                break
+                            copied += len(block)
+                            if copied > original.size:
+                                raise ValueError('The original grew during source viewing.')
+                            hashed.update(block)
+                            stream.write(block)
+                        if (copied != original.size or hashed.hexdigest() != original.digest
+                                or os.fstat(incoming.fileno()).st_nlink != 1):
+                            raise ValueError('The original changed during source viewing.')
+                        stream.flush()
+                        os.fsync(stream.fileno())
                 else:
                     with path.open('xb') as stream:
                         created = True
