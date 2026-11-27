@@ -551,9 +551,9 @@
         "stack_scope": "Current observed Python path: durable JSON controls, source attestation and guarded publication; no core or native C stack available."
       },
       "diagnostic_instrumentation": {
-        "periodic_c_stack_dump_seconds": 90,
         "fatal_after_child_header_seconds": 540.236,
-        "interpretation": "Failure coincides with the sixth asynchronous diagnostic timer interval. Instrumentation is a possible cause, not a proven attribution. The successor replaces only the periodic observer with bounded owned Python frame references."
+        "interpretation": "Failure coincides with the sixth asynchronous diagnostic timer interval. Instrumentation is a possible cause, not a proven attribution. The successor replaces only the periodic observer with bounded owned Python frame references.",
+        "periodic_traceback_dump_seconds": 90
       },
       "artifact": {
         "id": 15235020903,

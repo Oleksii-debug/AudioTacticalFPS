@@ -648,8 +648,8 @@ book 2 of 2. Its worker stack showed repeated durable cancellation, retained-fil
 accounting and guarded publication. The focused CLI suite completed 11 passes and
 two 90-second child timeouts. Batch emitted ten completed passing call records,
 then a Windows access violation while its next case was active; it produced no
-final JUnit report. The fatal event coincided with the sixth periodic diagnostic
-C-stack timer. That coincidence and the observed Python stack do not prove a
+final JUnit report. The fatal event coincided with the sixth asynchronous
+faulthandler timer. That coincidence and the observed Python stack do not prove a
 product defect or a diagnostic cause. The next diagnostic uses bounded normal
 Python frame sampling through an owned output descriptor, leaving the actual
 strict runner and all deadlines unchanged.
