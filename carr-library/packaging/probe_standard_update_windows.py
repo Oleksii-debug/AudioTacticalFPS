@@ -47,16 +47,17 @@ def module(path, name):
     return value
 
 
-def build_inputs(path, source, setup_sha, manifest_sha, delivery):
+def build_inputs(path, source, setup_sha, manifest_sha, delivery, *, bundle=None):
     from carr_library.security._files import directory, json_value, read_bytes
     from carr_library.security.standard_windows import _file_digest
     path = directory(path)
     report_raw = read_bytes(path / 'installer-build.json', 65536)
     report = json_value(report_raw)
-    raw = read_bytes(path / 'payload' / 'bundle-manifest.json', 16 * 1024**2)
+    payload = directory(bundle) if bundle is not None else directory(path / 'payload')
+    raw = read_bytes(payload / 'bundle-manifest.json', 16 * 1024**2)
     manifest = delivery._manifest(raw, source)
     delivery._require_transferable_audio_inventory(manifest)
-    delivery._trusted_verify(path / 'payload', manifest_bytes=raw)
+    delivery._trusted_verify(payload, manifest_bytes=raw)
     relative = 'dist/Resonance-Setup-' + source[:12] + '.exe'
     if (report.get('source_commit') != source or report.get('status') != 'compiled'
             or report.get('managed_update_protocol') != 'resonance-standard-update/1'
@@ -141,9 +142,9 @@ def inspect(args):
     if existing is not None or os.path.lexists(host.shortcut()):
         raise RuntimeError('An existing registered installation or shortcut must not be changed by this disposable proof.')
     previous, a_report, a_manifest = build_inputs(args.previous_build, args.previous_source,
-        args.previous_setup_sha256, args.previous_manifest_sha256, delivery)
+        args.previous_setup_sha256, args.previous_manifest_sha256, delivery, bundle=args.previous_bundle)
     candidate, b_report, b_manifest = build_inputs(args.candidate_build, args.candidate_source,
-        args.candidate_setup_sha256, args.candidate_manifest_sha256, delivery)
+        args.candidate_setup_sha256, args.candidate_manifest_sha256, delivery, bundle=args.candidate_bundle)
     checks.append(CHECKS[1])
     work = Path(args.work).absolute()
     directory(work.parent)
@@ -300,14 +301,23 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for prefix in ('previous', 'candidate'):
         parser.add_argument('--' + prefix + '-build', type=Path, required=True)
+        parser.add_argument('--' + prefix + '-bundle', type=Path,
+            help='Exact separately retained sealed payload, after removing a verified builder copy.')
         parser.add_argument('--' + prefix + '-source', required=True)
         parser.add_argument('--' + prefix + '-setup-sha256', required=True)
         parser.add_argument('--' + prefix + '-manifest-sha256', required=True)
     parser.add_argument('--candidate-version', required=True)
     parser.add_argument('--work', type=Path, required=True)
+    parser.add_argument('--report', type=Path,
+        help='Write the exact native JSON result to a new file after every check passes.')
     parser.add_argument('--disposable-ci', action='store_true')
     args = parser.parse_args(argv)
-    print(json.dumps(inspect(args), ensure_ascii=False, indent=2))
+    value = inspect(args)
+    if args.report is not None:
+        with args.report.open('x', encoding='utf-8') as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2)
+            stream.write('\n')
+    print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':

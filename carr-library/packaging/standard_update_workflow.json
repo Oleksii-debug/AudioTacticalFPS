@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "anchor_workflow": ".github/workflows/carr-windows.yml",
+  "anchor_job": "integrated-desktop",
+  "source_checkout_placement": "After the main event checkout, before any source build or installed firewall phase",
+  "source_checkout_step": {
+    "name": "Check out the distinct reviewed previous standard generation",
+    "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "with": {
+      "ref": "f26c7eeef2ad3090ab531d1b8bca72ba68eb5991",
+      "path": "carr-standard-source-a",
+      "fetch-depth": 0,
+      "persist-credentials": false
+    }
+  },
+  "native_step_placement": "Immediately after the existing successful ci_standard_installer.ps1 step",
+  "native_step": {
+    "name": "Verify two distinct signed standard generations and native rollback",
+    "timeout-minutes": 90,
+    "run": "& ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource 'f26c7eeef2ad3090ab531d1b8bca72ba68eb5991'\n"
+  },
+  "job_budget": "Retain every parent gate; allow the additional bounded 90-minute step in the overall job timeout",
+  "existing_artifact_upload": "carr-library/ci-results/",
+  "public_artifacts": "standard-update fixed proof/log files and the exact source-verified public application A wheel only",
+  "native_result": "NOT_RUN until the exact two-setup Windows proof succeeds"
+}

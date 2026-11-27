@@ -229,3 +229,38 @@ two-build native probe. Only an actual Windows probe result establishes native
 A→B execution. Passing previous repair/uninstall or portable update tests does
 not transfer such a result. Production trust, signing and accessibility
 qualification remain separate from synthetic test authority.
+
+## Exact two-generation CI integration
+
+`scripts/ci_standard_update.ps1` runs after the existing successful standard
+installation/repair/uninstall gate in `.github/workflows/carr-windows.yml`.
+That gate writes a private, hash-bound `CARR_STANDARD_B_HANDOFF` only after its
+native checks pass. The update driver rechecks that proof, the compiled B,
+complete sealed bundle, installed interpreter and compiler; it does not rebuild
+or relabel B as A.
+
+The machine-readable insertion steps are
+`packaging/standard_update_workflow.json`. The additional checkout must run
+before source builds and firewall-protected installed checks. Its exact A
+commit is `f26c7eeef2ad3090ab531d1b8bca72ba68eb5991`; the executing B must be a
+distinct real descendant, checked from the complete public Git graph. The
+existing runtime/model/OCR/native inputs are reused only after A's dependency
+lock, SBOM and native-source validator accept them. No package, compiler,
+runtime, model or publisher configuration is downloaded by this driver.
+
+The driver builds A's actual wheel from its own checkout with offline installed
+build tools, verifies every wheel member against A's committed source, builds
+A's own sealed payload and current standard setup, and checks both source
+identities and different wheel digests. The public A wheel artifact includes
+its source commit, tree recorded in the companion inputs proof, wheel digest,
+size and source inventory receipt. Runtime/model payloads and setups remain
+private on the disposable runner.
+
+The current probe accepts `--previous-bundle` and `--candidate-bundle` for exact
+separate sealed inputs after verified builder copies have been removed. It
+still checks their complete inventories and exact report/manifest/setup hashes.
+`--report` writes a new native JSON proof only after all 15 checks pass. The
+driver requires the exact check multiset, typed qualification flags and both
+source/setup/manifest identities, then rechecks A, B and the untouched original
+full-bundle seal. The actual native execution is still a separate Windows gate;
+source syntax and fixture tests alone do not qualify either compiled setup.
