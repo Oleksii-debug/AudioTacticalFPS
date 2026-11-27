@@ -204,11 +204,19 @@ def main():
         class RecordedTransport(DirectTransport):
             def post(self, profile, route, payload, headers, *, cancelled=lambda: False):
                 sent = time.monotonic()
-                output = super().post(profile, route, payload, headers, cancelled=cancelled)
-                report['actual_transport'].append({
-                    'route': route, 'request': json.loads(payload), 'response': json.loads(output),
-                    'response_sha256': sha256(output).hexdigest(),
-                    'elapsed_seconds': round(time.monotonic() - sent, 3)})
+                record = {'route': route, 'request': json.loads(payload), 'outcome': 'entered-transport'}
+                # Count entry before delegated I/O: a failed duplicate send must
+                # never look like no transmission merely because it returned no bytes.
+                report['actual_transport'].append(record)
+                try:
+                    output = super().post(profile, route, payload, headers, cancelled=cancelled)
+                except Exception as exc:
+                    record.update(outcome='transport-failed', error_type=type(exc).__name__)
+                    raise
+                record.update(outcome='received-response', response=json.loads(output),
+                    response_utf8=output.decode('utf-8', errors='strict'),
+                    response_sha256=sha256(output).hexdigest(),
+                    elapsed_seconds=round(time.monotonic() - sent, 3))
                 return output
 
         def forbidden(*unused, **unused_keywords):
