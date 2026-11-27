@@ -284,7 +284,8 @@ def prepare(args):
     subprocess.run(["git", "init", str(upstream)], check=True, timeout=15)
     subprocess.run(["git", "-C", str(upstream), "-c", "credential.helper=", "fetch", "--depth=1",
                     "https://github.com/facebookresearch/audiocraft.git", AUDIOCRAFT_REVISION], check=True, timeout=120)
-    subprocess.run(["git", "-C", str(upstream), "checkout", "--detach", "FETCH_HEAD"], check=True, timeout=30)
+    subprocess.run(["git", "-C", str(upstream), "-c", "core.autocrlf=false", "-c", "core.eol=lf",
+                    "checkout", "--detach", "FETCH_HEAD"], check=True, timeout=30)
     if subprocess.check_output(["git", "-C", str(upstream), "rev-parse", "HEAD"], text=True).strip() != AUDIOCRAFT_REVISION:
         raise ValueError("The upstream AudioCraft source identity changed.")
     subprocess.run(pip + ["--index-url", "https://pypi.org/simple", "--no-build-isolation", "-c", str(pin_file),
