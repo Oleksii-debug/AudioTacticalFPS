@@ -79,9 +79,10 @@ HOLDER = r'''
 from pathlib import Path
 import sys
 import time
+sys.path.insert(0, sys.argv[1])
 from carr_library.operations import ResourceBroker, ResourceRequest
 
-root, device, ready, release = sys.argv[1:]
+root, device, ready, release = sys.argv[2:]
 broker = ResourceBroker.for_app(Path(root))
 with broker.reserve(ResourceRequest(cpu_slots=0, devices=('microphone:' + device,)),
                     operation_id='fixture-recording-device', timeout=5):
@@ -101,6 +102,7 @@ def test_actual_process_device_contention_and_wait_stop(capture, tmp_path, monke
     script = tmp_path / 'holder.py'
     script.write_text(HOLDER, encoding='utf-8')
     child = subprocess.Popen([sys.executable, '-I', '-B', str(script),
+        str(Path(recording.__file__).resolve().parents[2]),
         str(service.library_root), device.id, str(ready), str(release)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stop, cancel = threading.Event(), threading.Event()

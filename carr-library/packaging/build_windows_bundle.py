@@ -32,6 +32,8 @@ USER_GUIDES = (
     "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
     "TRANSCRIPTION.md", "ACADEMIC_CATALOG_INSIGHTS.md", "V3_RELEASE_READINESS.md",
+    "MICROPHONE_RECORDING.md", "STUDIO_CLIP_EDITING.md",
+    "STUDIO_EPUB_PUBLISHING.md", "BACKUP_FORMAT_V6.md",
 )
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))

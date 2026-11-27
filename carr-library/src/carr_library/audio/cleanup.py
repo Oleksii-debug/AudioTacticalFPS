@@ -7,7 +7,6 @@ Retries use a daemon, so an uncertain child never blocks interpreter shutdown.
 from __future__ import annotations
 
 from contextlib import contextmanager
-import os
 from tempfile import TemporaryDirectory
 import threading
 
@@ -109,8 +108,12 @@ def retained_state_lock(root, name='state'):
     root = local_path(root)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     path = root / ('.' + name + '.lock')
-    if os.path.lexists(path):
+    try:
         regular(path)
+    except FileNotFoundError:
+        # A prior owner may remove the lock after releasing it on Windows.
+        # Acquisition below arbitrates ownership; absence is not a conflict.
+        pass
     lock = FileLock(path, timeout=0, mode=0o600, thread_local=False)
     try:
         lock.acquire()

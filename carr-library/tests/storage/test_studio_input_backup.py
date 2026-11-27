@@ -394,6 +394,11 @@ def test_deduplicated_inputs_count_once_in_the_existing_state_budget(tmp_path):
     # Permit one asset and metadata, but not a second copy of the same PCM.
     target.mkdir()
     entries = snapshot_state(state, target, max_bytes=source.stat().st_size + 10000)
+    # The explicit v6 envelope extends the canonical state snapshot only at
+    # the full-library backup boundary; old state-only formats stay unchanged.
+    from carr_library.studio.backup_inputs import snapshot_inputs
+    entries = snapshot_inputs(target, entries, max_bytes=source.stat().st_size + 10000,
+                              max_files=100000, cancelled=lambda: False)
     assets = [entry for entry in entries if entry['filename'].startswith('studio/inputs/')]
     assert len(assets) == 1 and assets[0]['size_bytes'] == source.stat().st_size
     receipt = read_json(target / RECEIPT)

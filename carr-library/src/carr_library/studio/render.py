@@ -366,7 +366,10 @@ class ProductionService:
                         cancelled=admission_cancelled, timeout=60))
                     for scene in project.scenes:
                         for cue in scene.cues:
-                            info = runtime.inspect(sources[(scene.id, cue.id)], cancelled=probe.cancelled)
+                            selected_source = self._cue_source(cue, cancelled=probe.cancelled)
+                            if selected_source != sources[(scene.id, cue.id)]:
+                                raise ValueError('The selected clip changed while waiting for input inspection.')
+                            info = runtime.inspect(selected_source, cancelled=probe.cancelled)
                             available = info.duration - cue.trim_start
                             selected = available if cue.duration is None else cue.duration
                             if (available <= 0 or selected <= 0 or selected > available + 1 / info.sample_rate
@@ -388,10 +391,11 @@ class ProductionService:
                 retain_cleanup(exc)
                 raise
             except Exception as exc:
-                from ..operations import ResourceCancelled
+                from ..operations import ResourceCancelled, ResourceError
                 action = read_json(control).get('action') if control.exists() else None
-                state['status'] = ('cancelled' if action == 'cancel' else 'paused'
-                                   if admission_cancelled() or isinstance(exc, ResourceCancelled) else 'attention')
+                interrupted = isinstance(exc, (InterruptedError, AudioCancelled, ResourceCancelled))
+                state['status'] = (('cancelled' if action == 'cancel' else 'paused') if interrupted
+                                   else 'attention' if isinstance(exc, ResourceError) else 'failed')
                 state['error'] = str(exc)[:2000]
                 self._save(state)
                 if isinstance(exc, ResourceCancelled):
@@ -404,6 +408,15 @@ class ProductionService:
                 # No diagnostic I/O may replace the pending exception: the
                 # outer job lock must transfer to this same cleanup owner.
                 retain_cleanup(exc)
+                raise
+            except (InterruptedError, AudioCancelled) as exc:
+                try:
+                    action = read_json(control).get('action') if control.exists() else None
+                except (ValueError, OSError):
+                    action = None
+                state['status'] = 'cancelled' if action == 'cancel' else 'paused'
+                state['error'] = str(exc)[:2000]
+                self._save(state)
                 raise
             except BaseException as exc:
                 state['status'], state['error'] = 'failed', str(exc)[:2000]
@@ -662,6 +675,9 @@ class ProductionService:
                                 os.fsync(write.fileno())
                             if digest_file(temporary) != identity:
                                 raise ValueError('Audio changed during publication.')
+                            # Hashing and flushing large outputs can take time.
+                            # Stop before publication, never after the link commits.
+                            check()
                             os.link(temporary, target)
                         finally:
                             temporary.unlink(missing_ok=True)

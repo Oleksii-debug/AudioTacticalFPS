@@ -144,6 +144,8 @@ class ClipEditor:
         source = self.service._cue_source(cue, cancelled=cancelled)
         runtime = self.service._runtime(reviewed_roots=(source.parent,))
         with self._admission(runtime, cancelled=cancelled) as (lease, _):
+            if self.service._cue_source(cue, cancelled=lease.cancelled) != source:
+                raise ValueError('The selected clip changed while waiting for resources.')
             info = runtime.inspect(source, cancelled=lease.cancelled)
         available = info.duration - cue.trim_start
         selected = available if cue.duration is None else cue.duration
@@ -229,8 +231,11 @@ class ClipEditor:
         with self._admission(runtime, cancelled=cancelled,
                 disk_bytes=estimate + runtime.budget.reserve_disk_bytes,
                 disk_path=self.service.cache) as (lease, _):
+            if self.service._cue_source(cue, cancelled=lease.cancelled) != source:
+                raise ValueError('The selected clip changed while waiting for resources.')
             runtime.mix((Track(source, gain_db=cue.gain_db, pan=cue.pan, role=cue.role,
                 trim_start=cue.trim_start, duration=cue.duration,
                 fade_in=cue.fade_in, fade_out=cue.fade_out),), output,
                 sample_rate=project.sample_rate, cancelled=lease.cancelled)
+            self.service._cue_source(cue, cancelled=lease.cancelled)
         return output

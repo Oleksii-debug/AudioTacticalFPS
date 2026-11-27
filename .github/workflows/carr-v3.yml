@@ -206,6 +206,14 @@ jobs:
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
             & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-operations.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed shared-resource and canonical operation acceptance failed.' }
+            & $python -I -B scripts/verify_media_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-media.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed recording, clip, EPUB and media recovery acceptance failed.' }
+            & $python -I -B scripts/windows_recording_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native recording lifetime acceptance failed.' }
+            & $python -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-clip-editor.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native clip editor lifetime acceptance failed.' }
+            & $python -I -B scripts/windows_publishing_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native EPUB publishing lifetime acceptance failed.' }
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
             & $python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'

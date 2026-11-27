@@ -108,6 +108,58 @@ def test_retained_state_lock_releases_only_after_cross_thread_quiescence(tmp_pat
         pass
 
 
+def test_retained_state_lock_accepts_a_previous_owners_completed_release(tmp_path, monkeypatch):
+    from filelock import FileLock
+    from carr_library import durable_state
+
+    path = tmp_path / '.runtime.lock'
+    previous = FileLock(path, timeout=0)
+    previous.acquire()
+    actual = durable_state.regular
+    observed = []
+
+    def release_before_regular(candidate, **options):
+        if Path(candidate) == path and not observed:
+            observed.append(previous.is_locked)
+            previous.release()
+            # Unix FileLock may retain its inode after release; Windows can
+            # remove it. Exercise that completed release on both platforms.
+            path.unlink(missing_ok=True)
+        return actual(candidate, **options)
+
+    monkeypatch.setattr(durable_state, 'regular', release_before_regular)
+    try:
+        with retained_state_lock(tmp_path, 'runtime'):
+            assert path.is_file() and not previous.is_locked
+        assert observed == [True]
+        with previous:
+            pass
+    finally:
+        previous.release()
+
+
+def test_retained_state_lock_keeps_non_missing_preflight_errors(tmp_path, monkeypatch):
+    from carr_library import durable_state
+
+    actual = durable_state.regular
+    def denied(path, **options):
+        if Path(path).name == '.runtime.lock':
+            raise PermissionError('Selected lock remains inaccessible.')
+        return actual(path, **options)
+
+    monkeypatch.setattr(durable_state, 'regular', denied)
+    with pytest.raises(PermissionError, match='remains inaccessible'):
+        with retained_state_lock(tmp_path, 'runtime'):
+            pytest.fail('An inaccessible lock must not be treated as absent.')
+
+
+def test_retained_state_lock_rejects_a_directory_at_the_lock_path(tmp_path):
+    (tmp_path / '.runtime.lock').mkdir()
+    with pytest.raises((ValueError, OSError)):
+        with retained_state_lock(tmp_path, 'runtime'):
+            pytest.fail('A directory must not be accepted as a lock file.')
+
+
 class Kernel:
     def __init__(self, failure):
         self.failure, self.active, self.closed = failure, 1, []

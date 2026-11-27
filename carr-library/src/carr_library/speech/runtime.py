@@ -83,8 +83,11 @@ class SpeechResult:
 
 def _wave_info(path, *, cancelled=lambda: False, max_output_bytes=None):
     check_cancelled(cancelled)
-    if max_output_bytes is not None and Path(path).stat().st_size > max_output_bytes:
-        raise ValueError('Speech exceeds the selected audio-output budget.')
+    if max_output_bytes is not None:
+        if type(max_output_bytes) is not int or max_output_bytes < 44:
+            raise ValueError('Use a positive PCM audio-output byte budget.')
+        if Path(path).stat().st_size > max_output_bytes:
+            raise ValueError('Speech exceeds the selected audio-output budget.')
     with wave.open(str(path), 'rb') as audio:
         if (audio.getcomptype() != 'NONE' or audio.getsampwidth() not in (1, 2, 3, 4)
                 or audio.getnchannels() not in (1, 2) or not 8000 <= audio.getframerate() <= 192000
@@ -92,10 +95,14 @@ def _wave_info(path, *, cancelled=lambda: False, max_output_bytes=None):
             raise ValueError('The voice did not produce supported, nonempty PCM audio.')
         rate, channels, frames, width = (audio.getframerate(), audio.getnchannels(),
                                        audio.getnframes(), audio.getsampwidth())
+        if max_output_bytes is not None and 44 + frames * channels * width > max_output_bytes:
+            raise ValueError('Declared PCM exceeds the selected audio-output budget.')
         total = 0
         while block := audio.readframes(65536):
             check_cancelled(cancelled)
             total += len(block)
+            if max_output_bytes is not None and 44 + total > max_output_bytes:
+                raise ValueError('PCM grew beyond the selected audio-output budget.')
         if total != frames * channels * width:
             raise ValueError('The voice produced truncated audio.')
         return rate, channels, frames, width

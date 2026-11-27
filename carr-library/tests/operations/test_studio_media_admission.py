@@ -96,6 +96,16 @@ def test_pcm_inspection_preserves_old_call_and_enforces_optional_budget_and_canc
     assert _wave_info(source, max_output_bytes=source.stat().st_size) == expected
     with pytest.raises(ValueError, match='audio-output budget'):
         _wave_info(source, max_output_bytes=source.stat().st_size - 1)
+    # A short current file can declare a larger or concurrently growing data
+    # chunk. Its PCM header must not bypass the caller's read allowance.
+    import struct
+    declared = tmp_path / 'oversized-header.wav'
+    raw = bytearray(source.read_bytes())
+    struct.pack_into('<I', raw, 40, len(raw) + 4096)
+    declared.write_bytes(raw)
+    with pytest.raises(ValueError, match='Declared PCM.*audio-output budget'):
+        _wave_info(declared, max_output_bytes=len(raw))
+    assert declared.read_bytes() == raw
     calls = []
     def cancelled():
         calls.append(True)
@@ -113,7 +123,7 @@ def test_clip_probe_is_admitted_and_measured_end_sizes_render_reservation(tmp_pa
     project = Project('measured-clips', 'Measured resource plan', (),
         (Scene('scene-1', 'Clip only', (), cues=(Cue('cue-1', str(source),
              start=12, trim_start=.25, duration=.5, role='microphone'),)),),
-        original_script='Explicit media without synthetic narration.')
+        original_script='Explicit media without synthetic narration.', schema=2)
     observed = []
     inspect = AudioRuntime.inspect
     def inspect_admitted(runtime, path, **options):
@@ -215,3 +225,174 @@ def test_real_pending_child_retains_studio_lease_and_job_lock_despite_failed_dia
     assert broker.snapshot()['leases'] == []
     with competitor:
         pass
+
+
+@pytest.mark.parametrize('operation', ['retain', 'edit', 'preview'])
+def test_clip_native_owner_keeps_admission_and_never_publishes_a_project_early(
+        tmp_path, monkeypatch, operation):
+    from filelock import FileLock, Timeout
+    from carr_library.studio.clips import ClipEditor
+
+    selected = tmp_path / 'selected'
+    selected.mkdir()
+    source = pcm(selected / 'exact-original.wav')
+    original = source.read_bytes()
+    service, broker, _, _ = service_at(tmp_path, inputs=(selected,))
+    editor = ClipEditor(tmp_path, service=service)
+    project = editor.create('Native clip ownership')
+    if operation != 'retain':
+        project = editor.add(project, project.scenes[0].id, source, duration=.25)
+    expected = project.to_dict()
+    ready, allowed, attempts = tmp_path / 'clip-child-ready', threading.Event(), []
+    target, name = (JobProcess, 'close') if os.name == 'nt' else (process, '_terminate')
+    actual = getattr(target, name)
+    def denied(child):
+        if not allowed.is_set():
+            attempts.append(child)
+            raise OSError('injected clip native cleanup failure')
+        return actual(child)
+    monkeypatch.setattr(target, name, denied)
+    def pending(*args, **options):
+        return process.run_process([str(Path(sys.executable).resolve()), '-I', '-c',
+            'import pathlib,time;pathlib.Path(' + repr(str(ready)) + ').write_text("ready");time.sleep(30)'],
+            budget=AudioBudget(timeout=20, reserve_disk_bytes=0),
+            owned_tree=True, cancelled=ready.exists)
+    if operation == 'preview':
+        # The read-only range probe finishes before the preview worker is held.
+        original_inspect = AudioRuntime.inspect
+        def inspected_without_fault(runtime, path, **options):
+            allowed.set()
+            try:
+                return original_inspect(runtime, path, **options)
+            finally:
+                allowed.clear()
+        monkeypatch.setattr(AudioRuntime, 'inspect', inspected_without_fault)
+        monkeypatch.setattr(AudioRuntime, 'mix', pending)
+    else:
+        monkeypatch.setattr(AudioRuntime, 'inspect', pending)
+    owner, stages = None, []
+    released = threading.Event()
+    competitor = FileLock(service.inputs / '.selected-clip.lock', timeout=0)
+    try:
+        with pytest.raises(AudioCleanupPending) as failure:
+            if operation == 'retain':
+                editor.add(project, project.scenes[0].id, source)
+            elif operation == 'edit':
+                editor.edit(project, project.scenes[0].id, project.scenes[0].cues[0].id, gain_db=2)
+            else:
+                editor.preview(project, project.scenes[0].id, project.scenes[0].cues[0].id)
+        owner = failure.value.cleanup_owner
+        owner.add_quiescent_callback(released.set)
+        assert ready.exists() and attempts and attempts[0].poll() is None
+        assert not owner.quiescent
+        leases = broker.snapshot()['leases']
+        assert len(leases) == 1 and leases[0]['operation_id'].startswith('studio-clip:')
+        if operation == 'retain':
+            stages = list(service.inputs.glob('.pending-*.audio'))
+            assert len(stages) == 1 and stages[0].read_bytes() == original
+            with pytest.raises(Timeout):
+                competitor.acquire()
+        with pytest.raises(ResourceTimeout):
+            with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='blocked-clip-competitor', timeout=0):
+                pytest.fail('Clip cleanup released shared native admission prematurely.')
+        assert service.projects.load(project.id).to_dict() == expected
+        assert source.read_bytes() == original
+    finally:
+        allowed.set()
+        if owner is not None:
+            owner.close()
+            assert released.wait(10) and owner.quiescent
+    assert all(not path.exists() for path in stages)
+    assert broker.snapshot()['leases'] == []
+    assert service.projects.load(project.id).to_dict() == expected
+    if operation == 'retain':
+        with competitor:
+            pass
+
+
+@pytest.mark.parametrize('operation', ['edit', 'preview', 'render'])
+@pytest.mark.parametrize('change', ['retained-bytes', 'approval-revoked'])
+def test_queued_clip_rechecks_existing_source_guard_before_native_work(
+        tmp_path, monkeypatch, operation, change):
+    from contextlib import contextmanager
+    from carr_library.studio.backup_inputs import register_pending_inputs
+    from carr_library.studio.clips import ClipEditor
+
+    selected = tmp_path / 'selected'
+    selected.mkdir()
+    original = pcm(selected / 'original.wav')
+    service, broker, outputs, _ = service_at(tmp_path, inputs=(selected,))
+    editor = ClipEditor(tmp_path, service=service)
+    project = editor.create('Fresh admission binding')
+    project = editor.add(project, project.scenes[0].id, original, duration=.25)
+    scene, cue = project.scenes[0], project.scenes[0].cues[0]
+    retained = Path(cue.path)
+    before = project.to_dict()
+    job_id = service.submit(project, outputs, stems=False) if operation == 'render' else None
+    waiting, proceed, blocked = threading.Event(), threading.Event(), threading.Event()
+    count, mutations, outcomes = [], [], []
+    target = 2 if operation == 'preview' else 1
+    reserve, reason = broker.reserve, broker._reason
+    @contextmanager
+    def queued(request, **options):
+        count.append(options['operation_id'])
+        if len(count) == target:
+            waiting.set()
+            assert proceed.wait(10), 'The competing reservation did not start.'
+        with reserve(request, **options) as lease:
+            yield lease
+    def observed_reason(request, volumes, active, limits):
+        result = reason(request, volumes, active, limits)
+        if result and any(row['operation_id'] == 'queued-clip-holder' for row in active):
+            blocked.set()
+        return result
+    monkeypatch.setattr(broker, 'reserve', queued)
+    monkeypatch.setattr(broker, '_reason', observed_reason)
+    inspect, mix = AudioRuntime.inspect, AudioRuntime.mix
+    def current_inspect(runtime, path, **options):
+        if mutations:
+            pytest.fail('The queued clip reached a decoder without its current source approval/hash.')
+        return inspect(runtime, path, **options)
+    def current_mix(runtime, *args, **options):
+        if mutations:
+            pytest.fail('The queued preview rendered changed or revoked source bytes.')
+        return mix(runtime, *args, **options)
+    monkeypatch.setattr(AudioRuntime, 'inspect', current_inspect)
+    monkeypatch.setattr(AudioRuntime, 'mix', current_mix)
+    def worker():
+        try:
+            if operation == 'edit':
+                editor.edit(project, scene.id, cue.id, gain_db=3)
+            elif operation == 'preview':
+                editor.preview(project, scene.id, cue.id)
+            else:
+                service.run(job_id)
+        except BaseException as exc:
+            outcomes.append(exc)
+        else:
+            outcomes.append('accepted')
+    thread = threading.Thread(target=worker)
+    thread.start()
+    try:
+        assert waiting.wait(10)
+        with reserve(ResourceRequest(cpu_slots=1), operation_id='queued-clip-holder', timeout=0):
+            proceed.set()
+            assert blocked.wait(10), 'The actual broker did not observe held capacity.'
+            if change == 'retained-bytes':
+                raw = bytearray(retained.read_bytes())
+                raw[-1] ^= 1
+                retained.write_bytes(raw)
+            else:
+                register_pending_inputs(service.root, [str(retained)])
+            mutations.append(change)
+        thread.join(20)
+        assert not thread.is_alive()
+        assert len(outcomes) == 1 and isinstance(outcomes[0], ValueError), outcomes
+        assert service.projects.load(project.id).to_dict() == before
+        if job_id is not None:
+            assert service.get(job_id)['status'] == 'failed'
+            assert not Path(service.get(job_id)['destination']).exists()
+        assert broker.snapshot()['leases'] == []
+    finally:
+        proceed.set()
+        thread.join(20)

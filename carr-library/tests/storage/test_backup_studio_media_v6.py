@@ -174,8 +174,12 @@ def test_v6_keeps_exact_reading_and_immutable_import_receipts_with_retained_medi
     from carr_library.studio.project import Cue, Project, ProjectStore, Scene
 
     app, workspace, audio, orphan, publication, _ = media_library(tmp_path)
-    source = tmp_path / 'actual-import.txt'
-    source.write_text('Exact imported railway wording.\fSecond retained segment.', encoding='utf-8')
+    from docx import Document
+    source = tmp_path / 'actual-import.docx'
+    document = Document()
+    document.add_paragraph('Exact imported railway wording.')
+    document.add_paragraph('Second retained segment.')
+    document.save(source)
     imported = app.import_file(workspace, source, title='Import receipt and bookmark')
     assert imported['state'] == 'complete'
     page = ReadingDesk(app, workspace, imported['edition']).page(1)
