@@ -1,5 +1,6 @@
 """Real service/export boundaries with headless desktop action protocols."""
 import threading
+import sys
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -131,8 +132,8 @@ def test_export_cannot_replace_private_database(research):
     frame, actions, _ = make_actions(research, save_path=research[0].database)
     before = research[0].database.read_bytes()
     actions.outline()
-    with pytest.raises(ValueError, match='private library'):
-        frame.complete()
+    assert frame.jobs == []
+    assert 'private library' in frame.report.call_args.args[0]
     assert research[0].database.read_bytes() == before
     assert research[0].search(research[1], 'Exact original quotation.')
 
@@ -213,3 +214,74 @@ def test_declined_scope_change_does_not_replace_the_existing_note_editor(researc
     actions.open_evidence(AcademicScope(frame.library, *frame.active), selected)
     frame._open_workspace.assert_called_once_with(research[1], research[4])
     frame.evidence.refresh.assert_not_called()
+
+
+@pytest.fixture(autouse=True)
+def export_question(monkeypatch):
+    wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4,
+                         ID_YES=10, ID_NO=11, ID_CANCEL=12)
+    question = Mock()
+    question.ShowModal.return_value = wx.ID_YES
+    wx.MessageDialog = Mock(return_value=question)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    return wx, question
+
+
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_selected_academic_export_preserves_competing_file_during_real_render(
+        research, tmp_path, monkeypatch, kind, existing):
+    from carr_library.ui import academic_tools as ui
+    target = tmp_path / 'academic-export.md'
+    if existing:
+        target.write_bytes(b'Previously approved output')
+    frame, actions, _ = make_actions(research, save_path=target)
+    scope = AcademicScope(frame.library, *frame.active)
+    name = 'export_outline' if kind == 'outline' else 'export_matrix'
+    render = getattr(ui, name)
+
+    def concurrent_save(*args, **kwargs):
+        result = render(*args, **kwargs)
+        target.write_bytes(b'Newer academic work saved during actual rendering')
+        return result
+
+    monkeypatch.setattr(ui, name, concurrent_save)
+    actions._export(scope, kind=kind, format='markdown',
+                    include_descendants=True, tag_filter=None)
+    assert len(frame.jobs) == 1
+    with pytest.raises(ValueError, match='destination changed'):
+        frame.complete()
+    assert target.read_bytes() == b'Newer academic work saved during actual rendering'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('answer', ['ID_NO', 'ID_CANCEL'])
+def test_selected_academic_export_decline_never_queues_or_writes(
+        research, tmp_path, export_question, answer):
+    target = tmp_path / 'declined.md'
+    target.write_bytes(b'Preserved academic work')
+    wx, question = export_question
+    question.ShowModal.return_value = getattr(wx, answer)
+    frame, actions, _ = make_actions(research, save_path=target)
+    actions.outline()
+    assert frame.jobs == []
+    question.Destroy.assert_called_once()
+    assert target.read_bytes() == b'Preserved academic work'
+
+
+def test_selected_academic_export_rechecks_scope_after_overwrite_question(
+        research, tmp_path, export_question):
+    target = tmp_path / 'scope.md'
+    target.write_bytes(b'Preserved academic work')
+    frame, actions, _ = make_actions(research, save_path=target)
+    wx, question = export_question
+
+    def switch_library():
+        frame.active = research[2], None
+        return wx.ID_YES
+
+    question.ShowModal.side_effect = switch_library
+    actions.outline()
+    assert frame.jobs == []
+    assert target.read_bytes() == b'Preserved academic work'
+    assert 'changed' in frame.report.call_args.args[0]

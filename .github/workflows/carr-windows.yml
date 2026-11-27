@@ -359,6 +359,8 @@ jobs:
             'tests/integrations/test_dordiai_convergence.py',
             'tests/integrations/test_dordiai_probe_cancellation.py',
             'tests/ui/test_studio_progress_results.py',
+            'tests/ui/test_export_destination.py',
+            'tests/ui/test_profile_project_exports.py',
             'tests/ui/test_worker_cleanup.py',
             'tests/assistant/test_local_assistant.py',
             'tests/speech/test_native_sapi_protocol.py',
@@ -692,6 +694,8 @@ jobs:
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/reader/test_ebook_contents.py',
                             'tests/ui/test_studio_progress_results.py',
+                            'tests/ui/test_export_destination.py',
+                            'tests/ui/test_profile_project_exports.py',
                             'tests/ui/test_worker_cleanup.py',
                             'tests/integrations/test_dordiai_convergence.py',
                             'tests/integrations/test_dordiai_probe_cancellation.py',
