@@ -44,19 +44,45 @@ compatibility or PR125 convergence.
 `carr_library.studio` is listed explicitly in the installed package inventory
 so the typed validator is available from a wheel, not just a source checkout.
 
+## Source-change verification
+
+The host also adopts the demonstrated boundary from canonical
+`9ed89d6255457ac5fdbf923f4512fc42aae99a38`: a same-length JSON sidecar edit
+can retain the observed Windows metadata after its earlier copy. Before
+publication, the host now rereads each copied non-audio source through its
+existing regular-file reader, bounded by the lesser of the format limit and
+the captured byte count, then compares its SHA256. Cancellation is checked
+before and after each bounded reread. Existing final inventories and media
+validation remain in place; this does not install the canonical state copier.
+
 ## Focused verification
 
-`tests/storage/test_backup_studio_project_schema.py` covers host v4, host v5
-and canonical state+pending v4 project/revision round trips, exact original bytes
-and revision fingerprints, re-signed semantic corruption, unsupported runtime
-state, unchanged cache exclusion, and external-cue rejection before publication.
+`tests/storage/test_backup_studio_project_schema.py` contains 15 cases covering
+host v4, host v5 and canonical state+pending v4 project/revision round trips,
+exact original bytes and revision fingerprints, re-signed semantic corruption,
+unsupported runtime state, unchanged cache exclusion, and external-cue rejection
+without opening separate source media.
 
-The existing Linux/Windows backup workflow includes these tests and an isolated
-installed-wheel check. That check imports both studio modules and the host
-sidecar adapter from site-packages, verifies their exact Git blobs, and performs
-an actual project/revision backup, verification and restoration. Its record is
+The baseline component `d1e007a5b7bfef31288969a6eb48d6fc49a23adb` passed those
+15 cases through the strict gate on Linux/CPython 3.12.14. A freshly built wheel
+then passed the exact isolated installed probe with both revisions preserved.
+Its wheel SHA256 was
+`44bfade0e56622563bfd2d7bb677abcd65fd4e0b2aae05d1ff79661cc106f47a`.
+At that same baseline, GitHub Actions run `45931552856` completed the Linux
+aggregate and all 20 strict per-suite gates: 375 cases, zero failures/skips.
+The Windows installed-wheel probe passed as well. These are baseline results
+and are not attributed to the later source-change repair.
+
+The source-change and cancellation regressions failed against the unchanged
+baseline. Local repair commit `83726cd647f2bcd0158632f3be7d26aff0c7efbc`, tree
+`4bfe77e71f55993aaf8a6135ee2b30eadd806193`, passed all 66 directly relevant
+sidecar, studio-schema and audio-composition cases with zero skips. Independent
+reviews accepted the exact source delta. After another executor interruption,
+GitHub reconstructed that exact tested tree before this documentation-only update.
+
+The complete 377-case selection and installed probe with the repaired adapter
+remain pending the new draft candidate's Linux/Windows Actions run. The installed
+check imports both studio modules and the host sidecar adapter from site-packages
+under Python isolated mode, verifies their exact Git blobs, and performs an
+actual two-revision backup, verification and restoration. Its record is
 `ci-results/studio-installed.json` in the workflow artifacts.
-
-The executor was unavailable during preparation, so local tests were not run.
-The component is published as a draft for GitHub Actions qualification. Neither
-source preparation nor a queued CI run counts as a test pass.

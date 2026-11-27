@@ -240,6 +240,59 @@ def test_sidecar_change_during_snapshot_prevents_publication(reading, tmp_path, 
     assert not (tmp_path / 'rejected').exists()
 
 
+def test_snapshot_rejects_equal_size_source_change_with_preserved_metadata(
+        reading, tmp_path, monkeypatch):
+    """A copied sidecar must still match source bytes, not just timestamps."""
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    original_bytes = source.read_bytes()
+    replacement = original_bytes.replace(b'Anchor-A', b'Anchor-B')
+    assert replacement != original_bytes and len(replacement) == len(original_bytes)
+    before = source.stat()
+    original_identity = backup_sidecars._identity
+    # Windows ctime is creation time; POSIX ctime cannot be restored. Keep the
+    # real device, inode, mode, link count, size and mtime in this reproduction.
+    monkeypatch.setattr(backup_sidecars, '_identity',
+                        lambda value: original_identity(value)[:-1])
+    original_write = backup_sidecars._write
+    changed = False
+
+    def change_copied_source(stage, name, raw):
+        nonlocal changed
+        original_write(stage, name, raw)
+        if name == 'reading-state.json':
+            changed = True
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
+
+    monkeypatch.setattr(backup_sidecars, '_write', change_copied_source)
+    with pytest.raises(ValueError, match='changed during backup'):
+        create_backup(app, tmp_path / 'rejected')
+    assert changed and source.read_bytes() == replacement
+    assert not (tmp_path / 'rejected').exists()
+
+
+def test_snapshot_content_revalidation_can_be_cancelled_before_publication(
+        reading, tmp_path, monkeypatch):
+    app, *_ = reading
+    source = app.root / 'reading-state.json'
+    original_bytes = source.read_bytes()
+    original_read = backup_sidecars.read_regular
+    source_reads = 0
+
+    def observe_source_read(path, maximum):
+        nonlocal source_reads
+        if path == source:
+            source_reads += 1
+        return original_read(path, maximum)
+
+    monkeypatch.setattr(backup_sidecars, 'read_regular', observe_source_read)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, tmp_path / 'rejected', cancelled=lambda: source_reads >= 2)
+    assert source_reads == 2 and source.read_bytes() == original_bytes
+    assert not (tmp_path / 'rejected').exists()
+
+
 @pytest.mark.parametrize('operation', ['backup', 'restore'])
 def test_real_process_exit_during_sidecar_publication(reading, tmp_path, operation):
     app, workspace, page, bookmark = reading

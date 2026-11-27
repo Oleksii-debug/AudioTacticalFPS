@@ -75,7 +75,7 @@ jobs:
           expected = {
               "carr_library.studio": "7e38d3875a79e43e24321e4a14f613a0bb7b5064",
               "carr_library.studio.project": "1acf68727fdaadd14055d357e28f2eb140ab2a52",
-              "carr_library.backup_sidecars": "9f55cb0f18c3f1fe100902cfbe935be3a742946d",
+              "carr_library.backup_sidecars": "ebdc371d74f7fb54145980b6dba90351f3901ec8",
           }
           origins = {}
           for name, expected_blob in expected.items():
