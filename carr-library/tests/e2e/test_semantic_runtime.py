@@ -112,6 +112,30 @@ def test_linked_model_directory_is_rejected(ranker, tmp_path):
         verify_model_bundle(link)
 
 
+def test_actual_persistent_embeddings_reopen_without_reinference(ranker, tmp_path):
+    app = LibraryApp(tmp_path / 'cache-library', semantic_ranker=ranker)
+    workspace = app.create_workspace('Persistent semantic cache')
+    collection = app.create_collection(workspace, 'Authorized sources')
+    raw = 'Залізниця з’єднувала промислові міста.'
+    imported = app.add_text(workspace, 'Railway history', raw, collections=(collection,))
+    query = 'How did trains link manufacturing towns?'
+    first = app.search(workspace, query, mode='semantic', collection=collection)
+    assert len(first) == 1 and first[0].quote == raw
+    assert ranker.cache_statistics['embedded_texts'] >= 2
+    reopened = LibraryApp(app.root, semantic_ranker=ranker)
+    with patch.object(ranker.engine, 'embed', side_effect=AssertionError('Cache hit must not repeat inference')):
+        again = reopened.search(workspace, query, mode='semantic', collection=collection)
+        assert len(again) == 1 and again[0].quote == raw and again[0].verified
+        assert ranker.cache_statistics['embedded_texts'] == 0
+        assert ranker.cache_statistics['hits'] >= 2
+        with reopened.catalog_transaction(workspace) as catalog:
+            catalog.remove(collection, imported['edition'])
+        assert reopened.search(workspace, query, mode='semantic', collection=collection) == ()
+        with pytest.raises(ValueError):
+            reopened.copy(workspace, again[0].ref, again[0].revision, 'quote')
+
+
+
 def test_actual_semantic_snapshot_survives_concurrent_membership_revocation(ranker, tmp_path):
     """A committed writer during inference must not mix search snapshots.
 

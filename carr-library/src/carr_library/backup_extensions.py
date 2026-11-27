@@ -2,8 +2,9 @@
 
 The original V1--V4 formats and their producers remain authoritative. This
 module binds exact source positions, typed reading sessions, and inert legacy
-archives to that snapshot. Recorded engine and audio paths are declarations;
-backup and restore never inspect or execute those external inputs.
+archives to that snapshot. Selected Studio inputs are copied under an exact
+receipt; engine and publication paths remain declarations. Restore reads only
+verified staged media and never probes or executes recorded external inputs.
 """
 from contextlib import closing
 from hashlib import sha256
@@ -20,6 +21,8 @@ from .reader.reading_state import FILENAME as READING, MAX_BYTES as MAX_READING,
 from .reader.live_state import FILENAME as LIVE, MAX_BYTES as MAX_LIVE, validate_live_state
 from .speech.dordiai_settings import (FILENAME as DORDIAI, MAX_BYTES as MAX_DORDIAI,
     validate_settings_bytes, restored_settings_bytes)
+from .audio.transcription_settings import (FILENAME as ASR_SETTINGS, MAX_BYTES as MAX_ASR_SETTINGS,
+    validate_settings_bytes as validate_asr_settings, restored_settings_bytes as restored_asr_settings)
 from .state_backup import relative_name, validate_portable_paths
 
 DIRECTORY = 'extensions'
@@ -27,10 +30,14 @@ LEGACY = 'legacy-backups'
 MAX_FILES = 100_000
 MAX_BYTES = 80 * 1024**3
 MAX_JSON = 64 * 1024**2
-SIDECARS = {READING: MAX_READING, LIVE: MAX_LIVE, DORDIAI: MAX_DORDIAI}
+SIDECARS = {READING: MAX_READING, LIVE: MAX_LIVE, DORDIAI: MAX_DORDIAI, ASR_SETTINGS: MAX_ASR_SETTINGS}
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _READER = re.compile(r'speech/[0-9a-f]{64}\.reader\.json\Z')
 _PROJECT = re.compile(r'studio/projects/[a-zA-Z0-9_-]{1,80}/(?:project\.json|revisions/[0-9]{8,}-[0-9a-f]{64}\.json)\Z')
+_TRANSCRIPTION = re.compile(r'transcription/[0-9a-f]{64}/job\.json\Z')
+_PUBLICATION = re.compile(r'studio/publications/[0-9a-f]{32}\.json\Z')
+_RECORDING = re.compile(r'studio/recordings/[0-9a-f]{32}\.json\Z')
+_RECORDING_WAV = re.compile(r'studio/recordings/[0-9a-f]{32}\.wav\Z')
 
 
 def _check(cancelled):
@@ -120,6 +127,8 @@ def validate_sidecars(database, values, allowed):
                         raise RestoreError('Live-reading position does not match its exact source length or scope.')
             elif name == DORDIAI:
                 validate_settings_bytes(raw)
+            elif name == ASR_SETTINGS:
+                validate_asr_settings(raw)
             else:
                 raise RestoreError('Unsupported typed backup sidecar.')
 
@@ -136,16 +145,92 @@ def _ordered_inputs(values):
     return [unique[key] for key in sorted(unique)]
 
 
-def inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False):
+def inspect_media_state(root, entries, *, independent, cancelled=lambda: False):
+    """Validate copied media state without following recorded external paths."""
+    from .studio.backup_inputs import inspect_snapshot_inputs, _record
+
+    root = Path(root)
+    by_name = {entry['filename']: entry for entry in entries}
+    receipt = inspect_snapshot_inputs(root, entries, cancelled=cancelled)
+    media = dict(studio_input_receipt=receipt is not None, studio_publications=[],
+                 studio_recordings=[], studio_unverified_recordings=[])
+    required = []
+    if receipt is not None:
+        # Completed or queued jobs can outlive the current editor project.
+        # Keep their voice/music dependencies explicit as well.
+        for binding in receipt['projects']:
+            _check(cancelled)
+            found = _record(root, binding['filename'])
+            if found is None:
+                raise RestoreError('A verified Studio project binding disappeared.')
+            project = found[2]
+            component = 'state/' + binding['filename']
+            for role in project.roles:
+                if role.voice_id:
+                    required.append(_required(component, 'local-voice', role.voice_id))
+            for scene in project.scenes:
+                if scene.music is not None and scene.music.engine != 'procedural':
+                    required.append(_required(component, 'music-engine', scene.music.engine))
+    for name in sorted(by_name):
+        _check(cancelled)
+        if name.casefold().startswith('studio/publications/'):
+            if not _PUBLICATION.fullmatch(name):
+                raise RestoreError('Invalid typed Studio publication filename.')
+            from .studio.publishing import validate_publication_receipt
+            record = validate_publication_receipt(
+                _json(read_bytes(root / name, MAX_JSON)),
+                publication_id=Path(name).stem)
+            media['studio_publications'].append(name)
+            required.append(_required('state/' + name, 'publication-output', record['output']))
+        elif name.casefold().startswith('studio/recordings/'):
+            if _RECORDING.fullmatch(name):
+                from .audio.recording import validate_recording_receipt
+                record = validate_recording_receipt(
+                    _json(read_bytes(root / name, MAX_JSON)),
+                    recording_id=Path(name).stem)
+                audio = by_name.get(name.removesuffix('.json') + '.wav')
+                if (audio is None or audio['size_bytes'] != record['audio']['size_bytes']
+                        or audio['sha256'] != record['audio']['sha256']):
+                    raise RestoreError('A recording receipt differs from its retained original.')
+                from .speech.runtime import _wave_info
+                expected_pcm = tuple(record['audio'][key] for key in
+                    ('sample_rate', 'channels', 'frames', 'sample_width'))
+                if _wave_info(root / audio['filename'], cancelled=cancelled,
+                        max_output_bytes=record['limits']['max_bytes']) != expected_pcm:
+                    raise RestoreError('A recording receipt differs from its retained PCM header.')
+                media['studio_recordings'].append(name)
+            elif _RECORDING_WAV.fullmatch(name):
+                if name.removesuffix('.wav') + '.json' not in by_name:
+                    media['studio_unverified_recordings'].append(name)
+            else:
+                raise RestoreError('Invalid typed Studio recording filename.')
+    if not independent and any(media.values()):
+        raise RestoreError('Independent Studio media is outside the workspace backup scope.')
+    retained = frozenset(receipt['inputs']) if receipt is not None else frozenset()
+    return media, required, retained
+
+
+def _has_media(media):
+    return any(media.values())
+
+
+def inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,
+                  retained_inputs=frozenset()):
     """Authenticate typed producers without interpreting unrelated V3 state."""
     from .speech.session import decode_reader_resume
     from .studio.project import Project
-    sessions, projects, required = [], [], []
+    sessions, projects, transcriptions, required = [], [], [], []
+    saved_names = {entry['filename'] for entry in entries}
     with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
         db.execute('PRAGMA trusted_schema=OFF')
         for entry in entries:
             _check(cancelled)
             name = entry['filename']
+            if name.startswith('transcription/'):
+                parts = name.split('/')
+                if (len(parts) < 3 or not _HASH.fullmatch(parts[1])
+                        or '/'.join(parts[:2]) + '/job.json' not in saved_names):
+                    raise RestoreError('A transcription state file has no typed owning job.')
             if _READER.fullmatch(name):
                 raw = read_bytes(Path(root) / name, MAX_JSON)
                 record = decode_reader_resume(_json(raw))
@@ -172,12 +257,21 @@ def inspect_state(root, entries, database, allowed, *, independent, cancelled=la
                         required.append(_required('state/' + name, 'local-voice', role.voice_id))
                 for scene in project.scenes:
                     for cue in scene.cues:
-                        required.append(_required('state/' + name, 'audio-file', cue.path))
+                        if cue.path not in retained_inputs:
+                            required.append(_required('state/' + name, 'audio-file', cue.path))
                     if scene.music is not None and scene.music.engine != 'procedural':
                         required.append(_required('state/' + name, 'music-engine', scene.music.engine))
+            elif _TRANSCRIPTION.fullmatch(name):
+                if not independent:
+                    raise RestoreError('Independent transcription jobs cannot enter a workspace-scoped backup.')
+                from .audio.transcription import validate_saved_snapshot
+                record = _json(read_bytes(Path(root) / name, MAX_JSON))
+                validate_saved_snapshot((Path(root) / name).parent, record, cancelled=cancelled)
+                transcriptions.append(name)
+                required.append(_required('state/' + name, 'local-asr-runtime', record['request']['runtime']))
             elif not independent:
                 raise RestoreError('Only explicitly source-bound reading drafts are supported in a scoped state snapshot.')
-    return sorted(sessions), sorted(projects), _ordered_inputs(required)
+    return sorted(sessions), sorted(projects), sorted(transcriptions), _ordered_inputs(required)
 
 
 def scoped_state_selection(root, database, allowed):
@@ -211,20 +305,24 @@ def snapshot(root, target, database, state_entries, *, independent=True, cancell
     sidecars = {}
     for name, maximum in SIDECARS.items():
         _check(cancelled)
-        if name == DORDIAI and not independent:
+        if name in (DORDIAI, ASR_SETTINGS) and not independent:
             continue
         raw = read_bytes(root / name, maximum, optional=True)
         if raw is not None:
             sidecars[name] = raw
     validate_sidecars(database, sidecars, allowed)
-    sessions, projects, required = inspect_state(target.parent / 'state', state_entries,
-        database, allowed, independent=independent, cancelled=cancelled)
+    media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,
+        independent=independent, cancelled=cancelled)
+    sessions, projects, transcriptions, required = inspect_state(target.parent / 'state', state_entries,
+        database, allowed, independent=independent, cancelled=cancelled, retained_inputs=retained)
+    required.extend(media_inputs)
     archives = []
     if independent and os.path.lexists(root / LEGACY):
         from .backup_compat.archive import snapshot_archives
         archives, archive_inputs = snapshot_archives(root / LEGACY, target / LEGACY, cancelled=cancelled)
         required.extend(archive_inputs)
-    if not sidecars and not archives and not sessions and not projects and independent:
+    if (not sidecars and not archives and not sessions and not projects and not transcriptions
+            and not _has_media(media) and independent):
         return None
     target.mkdir(exist_ok=True, mode=0o700)
     for name, raw in sidecars.items():
@@ -233,12 +331,20 @@ def snapshot(root, target, database, state_entries, *, independent=True, cancell
         settings = validate_settings_bytes(sidecars[DORDIAI])
         for field in ('runtime_directory', 'python_executable'):
             required.append(_required(DORDIAI, 'dordiai-runtime', settings[field]))
+    if ASR_SETTINGS in sidecars:
+        settings = validate_asr_settings(sidecars[ASR_SETTINGS])
+        if settings['manifest_path']:
+            required.append(_required(ASR_SETTINGS, 'local-asr-manifest', settings['manifest_path']))
     for item in validate_live_state(sidecars[LIVE]) if LIVE in sidecars else ():
         required.append(_required(LIVE, 'local-voice', item.voice_id))
     files = inventory(target, cancelled=cancelled)
     manifest = dict(version=1, workspaces=allowed, independent_state=independent,
         files=files, reader_sessions=sessions, studio_projects=projects,
         legacy_archives=archives, required_inputs=_ordered_inputs(required))
+    if transcriptions or ASR_SETTINGS in sidecars:
+        manifest.update(version=2, transcription_jobs=transcriptions)
+    if _has_media(media):
+        manifest.update(version=3, transcription_jobs=transcriptions, **media)
     validate_manifest(manifest)
     return manifest
 
@@ -314,8 +420,13 @@ def inventory(root, *, cancelled=lambda: False):
 def validate_manifest(value):
     fields = {'version', 'workspaces', 'independent_state', 'files', 'reader_sessions',
               'studio_projects', 'legacy_archives', 'required_inputs'}
+    if type(value) is dict and value.get('version') in (2, 3):
+        fields.add('transcription_jobs')
+    if type(value) is dict and value.get('version') == 3:
+        fields.update(('studio_input_receipt', 'studio_publications', 'studio_recordings',
+                       'studio_unverified_recordings'))
     if (type(value) is not dict or set(value) != fields or type(value['version']) is not int
-            or value['version'] != 1 or type(value['independent_state']) is not bool
+or value['version'] not in (1, 2, 3) or type(value['independent_state']) is not bool
             or type(value['workspaces']) is not list or len(value['workspaces']) > 10000
             or any(not isinstance(item, str) or not item or len(item) > 512 for item in value['workspaces'])
             or value['workspaces'] != sorted(set(value['workspaces']))):
@@ -341,8 +452,12 @@ def validate_manifest(value):
     if [item['filename'] for item in files] != sorted(item['filename'] for item in files):
         raise RestoreError('Typed backup files must be ordered.')
     validate_portable_paths(item['filename'] for item in files)
-    for field, pattern in (('reader_sessions', _READER), ('studio_projects', _PROJECT)):
-        values = value[field]
+    if value['version'] == 3 and type(value['studio_input_receipt']) is not bool:
+        raise RestoreError('Invalid typed Studio input receipt declaration.')
+    for field, pattern in (('reader_sessions', _READER), ('studio_projects', _PROJECT),
+            ('transcription_jobs', _TRANSCRIPTION), ('studio_publications', _PUBLICATION),
+            ('studio_recordings', _RECORDING), ('studio_unverified_recordings', _RECORDING_WAV)):
+        values = value.get(field, [])
         if (type(values) is not list or len(values) > MAX_FILES
                 or any(not isinstance(name, str) or not pattern.fullmatch(name) for name in values)
                 or values != sorted(set(values))):
@@ -365,14 +480,20 @@ def validate_manifest(value):
     for item in inputs:
         if (type(item) is not dict or set(item) != {'component', 'kind', 'reference', 'included'}
                 or item['included'] is not False or item['kind'] not in
-                ('local-voice', 'audio-file', 'music-engine', 'dordiai-runtime', 'source-file')
+('local-voice', 'audio-file', 'music-engine', 'dordiai-runtime', 'source-file',
+                 'local-asr-runtime', 'local-asr-manifest', 'publication-output')
                 or not isinstance(item['component'], str)):
             raise RestoreError('Invalid required-input declaration.')
         relative_name(item['component'])
         _required(item['component'], item['kind'], item['reference'])
     if inputs != _ordered_inputs(inputs):
         raise RestoreError('Required inputs must be unique and ordered.')
-    if not value['independent_state'] and (archives or DORDIAI in names or value['studio_projects']):
+    if ASR_SETTINGS in names and value['version'] not in (2, 3):
+        raise RestoreError('Transcription settings require the typed ASR extension version.')
+    if not value['independent_state'] and (archives or DORDIAI in names or ASR_SETTINGS in names
+            or value['studio_projects'] or value.get('transcription_jobs')
+            or value.get('studio_input_receipt') or value.get('studio_publications')
+            or value.get('studio_recordings') or value.get('studio_unverified_recordings')):
         raise RestoreError('Independent private state is outside the workspace backup scope.')
     return value
 
@@ -392,9 +513,20 @@ def restore(source, stage, manifest, state_entries, *, cancelled=lambda: False):
     sidecars = {name: read_bytes(temporary / name, maximum) for name, maximum in SIDECARS.items()
                 if (temporary / name).exists()}
     validate_sidecars(Path(stage) / 'library.sqlite', sidecars, value['workspaces'])
-    sessions, projects, required = inspect_state(Path(stage) / 'state', state_entries,
-        Path(stage) / 'library.sqlite', value['workspaces'], independent=value['independent_state'], cancelled=cancelled)
-    if sessions != value['reader_sessions'] or projects != value['studio_projects']:
+    media, media_inputs, retained = inspect_media_state(Path(stage) / 'state', state_entries,
+        independent=value['independent_state'], cancelled=cancelled)
+    expected_media = dict(studio_input_receipt=value.get('studio_input_receipt', False),
+        studio_publications=value.get('studio_publications', []),
+        studio_recordings=value.get('studio_recordings', []),
+        studio_unverified_recordings=value.get('studio_unverified_recordings', []))
+    if media != expected_media:
+        raise RestoreError('Typed Studio media inventory differs from the snapshot.')
+    sessions, projects, transcriptions, required = inspect_state(Path(stage) / 'state', state_entries,
+        Path(stage) / 'library.sqlite', value['workspaces'], independent=value['independent_state'],
+        cancelled=cancelled, retained_inputs=retained)
+    required.extend(media_inputs)
+    if (sessions != value['reader_sessions'] or projects != value['studio_projects']
+            or transcriptions != value.get('transcription_jobs', [])):
         raise RestoreError('Typed state producer inventory differs from the snapshot.')
     paths = []
     if value['legacy_archives']:
@@ -409,12 +541,28 @@ def restore(source, stage, manifest, state_entries, *, cancelled=lambda: False):
         settings = validate_settings_bytes(sidecars[DORDIAI])
         for field in ('runtime_directory', 'python_executable'):
             required.append(_required(DORDIAI, 'dordiai-runtime', settings[field]))
+    if ASR_SETTINGS in sidecars:
+        settings = validate_asr_settings(sidecars[ASR_SETTINGS])
+        if settings['manifest_path']:
+            required.append(_required(ASR_SETTINGS, 'local-asr-manifest', settings['manifest_path']))
     for item in validate_live_state(sidecars[LIVE]) if LIVE in sidecars else ():
         required.append(_required(LIVE, 'local-voice', item.voice_id))
     if _ordered_inputs(required) != value['required_inputs']:
         raise RestoreError('Required external inputs differ from the typed saved state.')
+    if transcriptions:
+        from .audio.transcription import restored_job
+        from .durable_state import atomic_json
+        for name in transcriptions:
+            path = Path(stage) / 'state' / name
+            record = _json(read_bytes(path, MAX_JSON))
+            atomic_json(path, restored_job(record), replace=True)
+            atomic_json(path.parent / 'control.json', {'command': 'pause'}, replace=True)
     for name, raw in sidecars.items():
-        write_bytes(Path(stage) / name, restored_settings_bytes(raw) if name == DORDIAI else raw)
+        if name == DORDIAI:
+            raw = restored_settings_bytes(raw)
+        elif name == ASR_SETTINGS:
+            raw = restored_asr_settings(raw)
+        write_bytes(Path(stage) / name, raw)
         paths.append(name)
     return paths
 

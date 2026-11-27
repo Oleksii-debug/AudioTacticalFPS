@@ -34,8 +34,10 @@ class RetainedAssets:
             raise RetentionError('invalid asset digest')
         return [self.root / (digest + suffix) for suffix in SUFFIXES.values()]
 
-    def resolve(self, digest):
+    def resolve(self, digest, *, cancelled=lambda: False):
         """Internal verified lookup; never expose directly to unscoped UI."""
+        if cancelled():
+            raise InterruptedError('Original verification cancelled.')
         paths = [p for p in self._paths(digest) if os.path.lexists(p)]
         if len(paths) != 1:
             raise RetentionError('missing or ambiguous retained asset')
@@ -45,7 +47,22 @@ class RetainedAssets:
                 getattr(info, 'st_file_attributes', 0) & 0x400 or
                 not 0 < info.st_size <= MAX_BYTES):
             raise RetentionError('invalid retained asset file')
-        if hash_file(path) != digest:
+        hashed, count = sha256(), 0
+        stamp = lambda item: (item.st_dev, item.st_ino, item.st_mode, item.st_nlink,
+                              item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+        with path.open('rb') as stream:
+            if stamp(os.fstat(stream.fileno())) != stamp(info):
+                raise RetentionError('retained asset changed while opening')
+            while block := stream.read(1024 * 1024):
+                if cancelled():
+                    raise InterruptedError('Original verification cancelled.')
+                count += len(block)
+                if count > info.st_size:
+                    raise RetentionError('retained asset grew during verification')
+                hashed.update(block)
+        if count != info.st_size or stamp(path.lstat()) != stamp(info):
+            raise RetentionError('retained asset changed during verification')
+        if hashed.hexdigest() != digest:
             raise RetentionError('retained asset digest mismatch')
         return path
 

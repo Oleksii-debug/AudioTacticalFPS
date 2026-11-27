@@ -18,6 +18,7 @@ from time import monotonic
 from .search.semantic_windows import TOKEN_LIMIT, search_windowed
 from .search.thematic import Passage, search_active
 
+_DEFAULT_CACHE = object()
 MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 APPROVED_MANIFEST = {
     'repo': 'Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q',
@@ -107,11 +108,34 @@ class OfflineSemanticRanker:
         verify_model_bundle(root, manifest)
         self.minimum_similarity = float(minimum_similarity)
         self.directory = root
+        self.cache = None
+        self.cache_statistics = {}
+
+    def bind_cache(self, library_directory, *, budget=None):
+        """Bind a cache for a dedicated direct ranker, outside LibraryApp."""
+        self.cache = None
+        self.cache = self.cache_for(library_directory, budget=budget)
+
+    def cache_for(self, library_directory, *, budget=None):
+        """Create a private per-library cache without mutating a shared engine.
+
+        Binding creates no files and changes no source authorization. Each rank
+        still checks the current token coverage and only returns supplied keys.
+        """
+        from .semantic_cache import CacheBudget, EmbeddingCache, model_identity
+        if budget is not None and type(budget) is not CacheBudget:
+            raise ValueError('An explicit validated embedding cache budget is required.')
+        try:
+            return EmbeddingCache(Path(library_directory) / 'semantic-cache',
+                                  model_identity(APPROVED_MANIFEST), budget=budget)
+        except (OSError, ValueError):
+            # A disposable cache must not prevent authorized offline inference.
+            return None
 
     def __call__(self, query, candidates):
         return self.rank(query, candidates)
 
-    def rank(self, query, candidates, *, cancelled=lambda: False, timeout=60.0):
+    def rank(self, query, candidates, *, cancelled=lambda: False, timeout=60.0, cache=_DEFAULT_CACHE):
         if not callable(cancelled) or type(timeout) not in (int, float) or not 0 < timeout <= 60:
             raise ValueError('Invalid semantic runtime budget.')
         deadline = monotonic() + timeout
@@ -147,16 +171,40 @@ class OfflineSemanticRanker:
             ids = [token for token, active in zip(actual.ids, actual.attention_mask) if active]
             if actual.overflowing or ids != complete.ids:
                 raise ValueError('Runtime tokenizer changed or truncated source text.')
+        # Cache keys include the exact model/preprocessor, current source text
+        # and workspace/revision/window. Authorization and complete token checks
+        # above are never replaced by cache membership.
+        cache = getattr(self, 'cache', None) if cache is _DEFAULT_CACHE else cache
+        identities = []
+        cached = {}
+        if cache is not None:
+            from .semantic_cache import content_identity
+            identities = [content_identity(cache.model, query)]
+            identities.extend(content_identity(cache.model, text, key) for key, text in candidates)
+            check()
+            cached = cache.get_many(identities)
+            check()
+        embeddings = [cached.get(identity) for identity in identities] if identities else [None] * len(texts)
+        missing = [i for i, vector in enumerate(embeddings) if vector is None]
+        self.cache_statistics = {'hits': len(texts) - len(missing), 'misses': len(missing),
+                                 'embedded_texts': 0, 'available': bool(cache and cache.available)}
         # Native embedding batches remain bounded. Cancellation is checked on
         # both sides of each native batch; an in-flight CPU call is cooperative.
-        embeddings = []
-        for start in range(0, len(texts), 16):
+        for start in range(0, len(missing), 16):
+            indices = missing[start:start + 16]
             check()
-            batch = tuple(self.engine.embed(texts[start:start + 16], batch_size=16))
+            batch = tuple(self.engine.embed([texts[i] for i in indices], batch_size=16))
             check()
-            if len(batch) != len(texts[start:start + 16]):
+            if len(batch) != len(indices):
                 raise ValueError('Semantic embedding count mismatch.')
-            embeddings.extend(_unit(vector) for vector in batch)
+            normalized = tuple(_unit(vector) for vector in batch)
+            for i, vector in zip(indices, normalized):
+                embeddings[i] = vector
+            self.cache_statistics['embedded_texts'] += len(indices)
+            if cache is not None:
+                cache.put_many({identities[i]: vector for i, vector in zip(indices, normalized)})
+                check()
+                self.cache_statistics['available'] = cache.available
         query_vector, *document_vectors = embeddings
         scored = [(key, math.fsum(a * b for a, b in zip(query_vector, vector)))
                   for key, vector in zip(keys, document_vectors)]
@@ -168,7 +216,7 @@ class OfflineSemanticRanker:
 
 
 def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
-                    timeout=60.0, cancelled=lambda: False, on_status=None):
+                    timeout=60.0, cancelled=lambda: False, on_status=None, cache=_DEFAULT_CACHE):
     """Read active pages and rank windows inside the caller's authorized snapshot."""
     if (not db.in_transaction or db.execute('PRAGMA read_uncommitted').fetchone()[0]
             or not isinstance(workspace, str) or not workspace
@@ -245,7 +293,8 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
 
     def rank(query, candidates):
         check()
-        return ranker.rank(query, candidates, cancelled=stopped, timeout=remaining())
+        options = {'cache': cache} if cache is not _DEFAULT_CACHE and isinstance(ranker, OfflineSemanticRanker) else {}
+        return ranker.rank(query, candidates, cancelled=stopped, timeout=remaining(), **options)
 
     try:
         hits = search_windowed(workspace, passages, query, tokenizer=ranker.tokenizer,

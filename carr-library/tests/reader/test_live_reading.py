@@ -269,6 +269,43 @@ def test_pause_keeps_measured_position_and_resume_does_not_rewind(source, make_r
     assert reader.status().state == 'complete' and player.resume_count == 1
 
 
+@pytest.mark.parametrize('stop_fails', [False, True])
+def test_failed_native_close_retains_owned_pcm_and_reports_unconfirmed_silence(source, make_reader, stop_fails):
+    from carr_library.reader.live_reading import _RETAINED_MEDIA
+
+    class FailingPlayer(SyntheticPlayer):
+        failed = True
+        def stop(self):
+            if self.failed and stop_fails:
+                raise RuntimeError('Native stop failed.')
+            return super().stop()
+        def close(self):
+            if self.failed and self.handle is not None:
+                raise RuntimeError('Native close failed.')
+            return super().close()
+
+    player = FailingPlayer(automatic=False)
+    reader, _render, _player = make_reader(SourceSequence(source[3]), player=player)
+    future = reader.start(1, VOICE.id, end=15)
+    until(lambda: reader.status().state == 'playing')
+    reader.close()
+    future.result(5)
+    try:
+        assert player.handle is not None and player.paths[-1].is_file()
+        assert reader._retained_resources in _RETAINED_MEDIA
+        assert reader.quiescent is not stop_fails
+        assert reader.silence_uncertain is stop_fails
+        assert 'retained' in reader.status().warning and 'Native close failed' in reader.status().warning
+    finally:
+        player.failed = False
+        player.close()
+        retained = reader._retained_resources
+        retained[1].cleanup()
+        _RETAINED_MEDIA.remove(retained)
+        reader._retained_resources = None
+        reader._possibly_audible = False
+
+
 def test_stop_and_explicit_resume_restarts_exact_chunk_without_auto_play(source, make_reader):
     app, workspace, book, desk, pages = source
     reader, render, player = make_reader(SourceSequence(desk), player=SyntheticPlayer(automatic=False))

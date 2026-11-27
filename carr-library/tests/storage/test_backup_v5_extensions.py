@@ -23,7 +23,7 @@ from carr_library.storage.revisions import Storage
 
 
 def source_location(app, workspace):
-    with closing(Storage(app.database, schema_version=4)) as storage:
+    with closing(Storage(app.database)) as storage:
         row = storage.db.execute(
             'SELECT r.edition,r.id,r.asset,p.ordinal,p.digest,p.raw FROM revision r '
             'JOIN page p ON p.revision=r.id WHERE r.workspace=? ORDER BY p.ordinal LIMIT 1',

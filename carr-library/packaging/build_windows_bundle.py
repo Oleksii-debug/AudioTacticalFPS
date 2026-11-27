@@ -317,6 +317,18 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         optional.copy_admitted(citations, staged)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        # Keep the full-source application's actual user guides alongside the
+        # installed entry. A minimal core-only source fixture may omit them.
+        for name in ("START_V3_UK.txt", "LIVE_READING.md", "DORDIAI_LOCAL_SPEECH.md",
+                     "TRANSCRIPTION_SUPPLIED_WORKER.md", "BACKUP_FORMAT_V5.md",
+                     "ADVANCED_SEARCH.md", "ACADEMIC_ACQUISITION.md", "UPSTREAM_BIBTEX.md",
+                     "translation_workstation.md", "SEMANTIC_CACHE.md",
+                     "MICROPHONE_RECORDING.md", "STUDIO_CLIP_EDITING.md", "STUDIO_EPUB_PUBLISHING.md"):
+            guide = HERE.parent / "docs" / name
+            if guide.exists():
+                target = staged / "guides" / name
+                target.parent.mkdir(exist_ok=True)
+                shutil.copyfile(regular(guide), target)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)

@@ -93,12 +93,18 @@ def _path(value):
     return value
 
 
-def _walk(root, *, temporary=False, allow_links=False):
+def _check(cancelled):
+    if cancelled():
+        raise InterruptedError('Legacy recovery verification cancelled.')
+
+
+def _walk(root, *, temporary=False, allow_links=False, cancelled=lambda: False):
     _plain(root, directory=True)
     pending, files, visited = [root], {}, 0
     while pending:
         parent = pending.pop()
         for path in parent.iterdir():
+            _check(cancelled)
             visited += 1
             relative = path.relative_to(root).as_posix()
             if visited > MAX_FILES * 3 or len(relative.split('/')) > 8:
@@ -117,7 +123,8 @@ def _walk(root, *, temporary=False, allow_links=False):
     return files
 
 
-def _record(path, relative):
+def _record(path, relative, *, cancelled=lambda: False):
+    _check(cancelled)
     before = _plain(path)
     limit = MAX_DATABASE if relative in _DATABASES else MAX_FILE_BYTES
     if not 0 < before.st_size <= limit:
@@ -127,6 +134,7 @@ def _record(path, relative):
         if _identity(os.fstat(stream.fileno())) != _identity(before):
             raise RestoreError('Recovery file changed while opening.')
         while block := stream.read(1024**2):
+            _check(cancelled)
             count += len(block)
             if count > before.st_size:
                 raise RestoreError('Recovery file grew during verification.')
@@ -180,13 +188,15 @@ def _text(value, *, maximum=MAX_JSON, empty=False):
     return type(value) is str and (empty or bool(value)) and len(value) <= maximum and '\0' not in value
 
 
-def _providers(path, *, restoring=False):
+def _providers(path, *, restoring=False, cancelled=lambda: False):
     from .profiles import ProviderProfile
     with closing(sqlite3.connect(path.as_uri() + ('?mode=rw' if restoring else '?mode=ro&immutable=1'), uri=True)) as db:
+        db.set_progress_handler(lambda: int(cancelled()), 10_000)
         _schema(db, 'providers')
         if db.execute('SELECT id,mode FROM policy').fetchall() not in ([(1, 'LOCAL_ONLY')], [(1, 'HYBRID')]):
             raise RestoreError('Invalid provider policy snapshot.')
         for identity, raw, spent, reference in db.execute('SELECT id,document,spent_cents,credential_ref FROM profiles'):
+            _check(cancelled)
             if not _text(raw) or type(spent) is not int or spent < 0:
                 raise RestoreError('Invalid provider budget snapshot.')
             profile = ProviderProfile(**json.loads(raw, object_pairs_hook=_unique_object))
@@ -197,6 +207,7 @@ def _providers(path, *, restoring=False):
                 db.execute('UPDATE profiles SET document=?,credential_ref=NULL WHERE id=?',
                     (json.dumps(asdict(replace(profile, enabled=False)), sort_keys=True, ensure_ascii=False), identity))
         for digest, identity, state, reserved, response, updated in db.execute('SELECT * FROM requests'):
+            _check(cancelled)
             if (not isinstance(digest, str) or not re.fullmatch(_HASH, digest)
                     or not isinstance(identity, str) or not re.fullmatch(_PROFILE, identity)
                     or state not in ('reserved', 'complete', 'uncertain')
@@ -210,11 +221,13 @@ def _providers(path, *, restoring=False):
             db.commit()
 
 
-def _agent(path, *, restoring=False):
+def _agent(path, *, restoring=False, cancelled=lambda: False):
     from .schemas import TOOLS
     with closing(sqlite3.connect(path.as_uri() + ('?mode=rw' if restoring else '?mode=ro&immutable=1'), uri=True)) as db:
+        db.set_progress_handler(lambda: int(cancelled()), 10_000)
         _schema(db, 'agent')
         for plan, step, tool, state, result, error, updated in db.execute('SELECT * FROM receipts'):
+            _check(cancelled)
             if (not isinstance(plan, str) or not re.fullmatch(_HASH, plan) or not _text(step, maximum=80)
                     or tool not in TOOLS or state not in ('running', 'complete', 'needs_review')
                     or not isinstance(updated, (int, float)) or not math.isfinite(updated)
@@ -229,11 +242,13 @@ def _agent(path, *, restoring=False):
             db.commit()
 
 
-def _journal(path, workspaces):
+def _journal(path, workspaces, *, cancelled=lambda: False):
     with closing(sqlite3.connect(path.as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
+        db.set_progress_handler(lambda: int(cancelled()), 10_000)
         _schema(db, 'imports')
         assets, jobs = set(), {}
         for identity, workspace, edition, asset, config, count, active, state, error in db.execute('SELECT * FROM job'):
+            _check(cancelled)
             if (not isinstance(identity, str) or not re.fullmatch(_HASH, identity)
                     or workspace not in workspaces or not _text(edition, maximum=200)
                     or not isinstance(asset, str) or not re.fullmatch(_HASH, asset)
@@ -251,6 +266,7 @@ def _journal(path, workspaces):
                 raise RestoreError('Import journal exceeds its job budget.')
         ordinals = {}
         for job, ordinal, payload, digest in db.execute('SELECT * FROM checkpoint ORDER BY job,ordinal'):
+            _check(cancelled)
             if job not in jobs or type(ordinal) is not int or ordinal != ordinals.get(job, 0) + 1:
                 raise RestoreError('Invalid import checkpoint sequence.')
             asset, count, kind = jobs[job]
@@ -270,18 +286,8 @@ def _import_json(relative, value, source_root, workspaces):
     from .ocr_config import Config
     from ..ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
     if relative.startswith('import-batches/'):
-        from ..ingest.batches import ImportBatchStore
-        # The current queue engine requires native absolute external paths.
-        # Do not publish a seemingly usable queue by silently reinterpreting a
-        # Windows path as a POSIX relative filename, or vice versa.
-        for row in value.get('rows', []) if type(value) is dict else []:
-            if type(row) is dict and not Path(str(row.get('source', ''))).is_absolute():
-                raise RestoreError('Import-batch source paths require a compatible operating system; no restored folder was published.')
-        Config(**value['config'])
-        # The legacy profile is retained only as data. The common batch schema
-        # can be checked without interpreting that profile as an active engine.
-        shared = dict(value, config={key: item for key, item in value['config'].items() if key != 'model_profile'})
-        ImportBatchStore(SimpleNamespace(root=source_root))._validate(shared, PurePosixPath(relative).stem)
+        from .batches import validate_batch
+        validate_batch(value, PurePosixPath(relative).stem, source_root)
         if value['workspace'] not in workspaces:
             raise RestoreError('Import batch is outside the saved library scope.')
     elif relative.startswith('import-requests/reviews/'):
@@ -335,22 +341,22 @@ def validate_manifest(value):
     return value
 
 
-def _verify(root, manifest, workspaces, registered_assets):
+def _verify(root, manifest, workspaces, registered_assets, *, cancelled=lambda: False):
     validate_manifest(manifest)
-    files = _walk(root)
+    files = _walk(root, cancelled=cancelled)
     if set(files) != {row['path'] for row in manifest['files']}:
         raise RestoreError('Recovery file inventory mismatch.')
     pending, available, retained = set(), set(registered_assets), set()
     for row in manifest['files']:
         path, relative = files[row['path']], row['path']
-        if _record(path, relative) != row:
+        if _record(path, relative, cancelled=cancelled) != row:
             raise RestoreError('Recovery file digest mismatch.')
         if relative == 'provider-settings/providers.sqlite':
-            _providers(path)
+            _providers(path, cancelled=cancelled)
         elif relative == 'agent-jobs/agent.sqlite':
-            _agent(path)
+            _agent(path, cancelled=cancelled)
         elif relative == 'imports.sqlite':
-            pending.update(_journal(path, workspaces))
+            pending.update(_journal(path, workspaces, cancelled=cancelled))
         elif relative.startswith(('import-requests/', 'import-batches/')):
             value = _json(path)
             _import_json(relative, value, manifest['source_root'], workspaces)

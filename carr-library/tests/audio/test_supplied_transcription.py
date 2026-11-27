@@ -142,6 +142,46 @@ def output(service, job_id, format='txt'):
     return service.root/job_id/'outputs'/record['request']['inputs'][0]['file']/('transcript.'+format)
 
 
+
+
+def test_pending_native_cleanup_retains_staging_and_exact_runtime_and_job_locks(service, tmp_path, monkeypatch):
+    from filelock import FileLock, Timeout
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.audio.models import AudioCleanupPending
+    ready = threading.Event()
+    owner = CleanupOwner(lambda: ready.is_set())
+    pending = AudioCleanupPending('Injected uncertain native shutdown.', cleanup_owner=owner)
+    stages = []
+
+    def uncertain_process(*args, **kwargs):
+        stage = Path(kwargs['cwd'])
+        stages.append(stage)
+        assert (stage / 'worker.py').is_file()
+        raise pending
+
+    job = service.create([audio(tmp_path)])
+    runtime_id = service.load(job)['request']['runtime']
+    monkeypatch.setattr(asr, 'run_process', uncertain_process)
+    with pytest.raises(AudioCleanupPending) as raised:
+        service.run(job)
+    assert raised.value is pending
+    assert service.load(job)['status'] == 'failed'
+    assert len(stages) == 1 and stages[0].is_dir()
+    locks = [FileLock(service.root / job / '.job.lock', timeout=0),
+             FileLock(service.root / ('.runtime-' + runtime_id + '.lock'), timeout=0)]
+    for lock in locks:
+        with pytest.raises(Timeout):
+            lock.acquire()
+    ready.set()
+    thread = threading.Thread(target=owner.close)
+    thread.start()
+    thread.join(3)
+    assert not thread.is_alive() and owner.quiescent and not stages[0].exists()
+    for lock in locks:
+        with lock:
+            pass
+
+
 def test_actual_isolated_worker_imports_reviewed_site_and_commits_all_formats(service, tmp_path):
     source = audio(tmp_path)
     original = source.read_bytes()
@@ -508,4 +548,157 @@ def test_settings_fail_closed(options):
 def test_prepare_refuses_unreviewed_source():
     with pytest.raises(ValueError, match='reviewed source'):
         supplied_whisper.prepare(b'print("unreviewed")')
+
+
+
+def test_saved_job_view_keeps_basename_outside_identity_and_verifies_results(service, tmp_path):
+    source = audio(tmp_path, name='first name.wav')
+    job_id = service.create([source])
+    assert service.load(job_id)['source_labels'] == {
+        service.load(job_id)['request']['inputs'][0]['file']: 'first name.wav'}
+    renamed = audio(tmp_path, name='renamed.wav')
+    assert service.create([renamed]) == job_id
+    assert service.jobs()[0]['status'] == 'queued'
+    service.run(job_id)
+    detail = service.details(job_id)
+    assert detail['record']['status'] == 'complete'
+    assert detail['outputs'][0]['verified']
+    assert detail['outputs'][0]['label'] == 'first name.wav'
+    assert service.transcript_text(job_id, detail['outputs'][0]['file']) == (
+        'Синтетичний запис\n', 'first name.wav')
+
+
+def test_damaged_results_are_visible_for_review_but_never_verified(service, tmp_path):
+    job_id = service.create([audio(tmp_path)])
+    service.run(job_id)
+    target = output(service, job_id)
+    target.write_text('User-edited generated transcript', encoding='utf-8')
+    before = target.read_bytes()
+    assert service.jobs()[0]['status'] == 'invalid'
+    detail = service.details(job_id)
+    assert detail['record']['status'] == 'invalid'
+    assert not detail['outputs'][0]['verified']
+    with pytest.raises(ValueError):
+        service.transcript_text(job_id, detail['outputs'][0]['file'])
+    assert target.read_bytes() == before
+    with pytest.raises(ValueError):
+        service.load(job_id)
+
+
+def test_existing_reader_draft_reopens_after_generated_transcript_was_deleted(service, tmp_path):
+    from carr_library.ui.transcription_dialog import prepare_reading_copy
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
+    job_id = service.create([audio(tmp_path)])
+    service.run(job_id)
+    target = output(service, job_id)
+    source_file = service.load(job_id)['request']['inputs'][0]['file']
+    prepared = prepare_reading_copy(tmp_path, service, job_id, source_file)
+    store = ReaderDraftStore(tmp_path, slot=prepared['slot'])
+    saved = store.load()
+    saved.document.set_text('User correction retained independently.')
+    store.save(ReaderResume(saved.document))
+    target.unlink()
+    recovered = prepare_reading_copy(tmp_path, service, job_id, source_file)
+    assert recovered['recovered'] is True
+    assert store.load().document.text == 'User correction retained independently.'
+    assert service.details(job_id)['record']['status'] == 'invalid'
+    with pytest.raises((ValueError, FileNotFoundError)):
+        service.load(job_id)
+
+
+def test_old_jobs_without_display_names_remain_readable(service, tmp_path):
+    job_id = service.create([audio(tmp_path)])
+    service.run(job_id)
+    record = service.load(job_id)
+    record.pop('source_labels')
+    atomic_json(service.root/job_id/'job.json', record, replace=True)
+    assert service.details(job_id)['outputs'][0]['label'] == 'Audio 1'
+
+
+def test_partial_failed_job_exposes_only_committed_verified_transcript(service, tmp_path):
+    job_id = service.create([audio(tmp_path, 'first', 'one.wav'),
+                             audio(tmp_path, 'fail', 'two.wav')])
+    with pytest.raises(AudioError):
+        service.run(job_id)
+    detail = service.details(job_id)
+    assert detail['record']['status'] == 'failed'
+    assert len(detail['outputs']) == 1 and detail['outputs'][0]['verified']
+    assert service.transcript_text(job_id, detail['outputs'][0]['file'])[0] == 'first\n'
+
+
+def test_reading_copy_requires_selected_txt_format(service, tmp_path):
+    job_id = service.create([audio(tmp_path)], formats=('srt',))
+    service.run(job_id)
+    detail = service.details(job_id)
+    with pytest.raises(ValueError, match='completed TXT'):
+        service.transcript_text(job_id, detail['outputs'][0]['file'])
+
+
+def test_worker_callback_flushes_pause_before_command_read(service, tmp_path):
+    job_id = service.create([audio(tmp_path, 'sleep')])
+    flushed = []
+    def requested():
+        if not flushed:
+            service.control(job_id, 'pause')
+            flushed.append(True)
+        return False
+    with pytest.raises(AudioCancelled):
+        service.run(job_id, cancelled=requested)
+    assert service.load(job_id)['status'] == 'paused'
+
+
+def test_saved_job_inspection_can_cancel_during_receipt_hashing(service, tmp_path):
+    job_id = service.create([audio(tmp_path)])
+    service.run(job_id)
+    with pytest.raises(AudioCancelled):
+        service.load(job_id, cancelled=lambda: True)
+    with pytest.raises(AudioCancelled):
+        service.jobs(cancelled=lambda: True)
+
+
+def test_folder_selection_is_direct_bounded_and_preserves_existing_choice(service, tmp_path):
+    folder = tmp_path/'selected folder'
+    first = audio(folder, 'one', 'ONE.WAV')
+    second = audio(folder, 'two', 'two.mp3')
+    audio(folder/'subfolder', 'nested', 'nested.wav')
+    (folder/'ignored.txt').write_text('not audio', encoding='utf-8')
+    existing = audio(tmp_path, 'separate', 'selected.wav')
+    selected = service.folder_inputs(folder, existing=[str(existing)])
+    assert set(selected) == {str(first), str(second), str(existing)}
+    with pytest.raises(ValueError, match='file-count'):
+        service.folder_inputs(folder, max_files=1)
+    with pytest.raises(AudioCancelled):
+        service.folder_inputs(folder, cancelled=lambda: True)
+
+
+def test_folder_selection_reuses_input_byte_budget(service, tmp_path):
+    folder = tmp_path/'bounded folder'
+    audio(folder, 'x' * 8192, 'too-large.wav')
+    service.budget = AudioBudget(timeout=10, reserve_disk_bytes=0, max_output_bytes=4096)
+    with pytest.raises(AudioError, match='disk allowance'):
+        service.folder_inputs(folder)
+
+
+
+def test_resume_completed_job_polls_stop_while_rechecking_receipts(service, tmp_path, monkeypatch):
+    job_id = service.create([audio(tmp_path)])
+    service.run(job_id)
+    target = output(service, job_id)
+    before = target.read_bytes()
+    real = asr._file_digest
+    def paused_digest(path, cancelled=lambda: False):
+        if Path(path).name == 'transcript.txt':
+            service.control(job_id, 'pause')
+            assert cancelled(), 'Completed-job validation did not receive the stop predicate.'
+            raise AudioCancelled('Receipt recheck paused.')
+        return real(path, cancelled)
+    monkeypatch.setattr(asr, '_file_digest', paused_digest)
+    with pytest.raises(AudioCancelled):
+        service.run(job_id)
+    record = read_json(service.root/job_id/'job.json')
+    assert record['status'] == 'complete'
+    interrupted = service.interrupted_details(job_id)
+    assert interrupted['record']['status'] == 'unverified'
+    assert interrupted['outputs'] == [] and interrupted['validation_cancelled']
+    assert target.read_bytes() == before
 

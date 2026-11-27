@@ -139,6 +139,34 @@ def run_native(source=None):
             if errors:
                 raise AssertionError('\n'.join(errors))
 
+            def inspect_backup_options():
+                dialog = None
+                try:
+                    dialog, = [window for window in wx.GetTopLevelWindows()
+                               if window.GetTitle() == 'Backup options']
+                    audio, = [child for child in dialog.GetChildren() if isinstance(child, wx.CheckBox)]
+                    check('backup audio option has an explicit native accessible name and safe default',
+                        audio.GetName() == 'Include generated audio stored inside this library'
+                        and audio.GetValue() is True)
+                    audio.SetFocus()
+                    check('backup audio option receives native keyboard focus',
+                        pump(lambda: wx.Window.FindFocus() is audio))
+                    audio.SetValue(False)
+                    check('backup audio inclusion is a real optional control', audio.GetValue() is False)
+                    state['backup_options_cancelled'] = True
+                except BaseException:
+                    errors.append(traceback.format_exc())
+                finally:
+                    if dialog is not None:
+                        dialog.EndModal(wx.ID_CANCEL)
+            wx.CallAfter(inspect_backup_options)
+            frame.backup(None)
+            if errors:
+                raise AssertionError('\n'.join(errors))
+            check('cancelling backup options returns without publishing a backup',
+                state.get('backup_options_cancelled') is True
+                and not list(root.glob('ResearchLibrary-backup-*')))
+
             def fail():
                 errors.append(traceback.format_exc())
                 frame.cancel_event.set()

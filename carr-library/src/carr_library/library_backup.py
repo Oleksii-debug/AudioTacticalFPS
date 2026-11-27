@@ -5,8 +5,8 @@ Version 4 includes resumable import journals and their pinned unpublished source
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Legacy version 1 backups and version 2 backups are accepted only for an exact
-supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
-restored library performs the normal checked upgrade to V4.
+supported V3, V4 or V5 schema. Older snapshots are restored unchanged; opening
+the restored library performs the normal checked upgrade to the current schema.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing
@@ -26,7 +26,7 @@ from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
 from .durable_state import local_path
-from .storage.revisions import Storage
+from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 
 DATABASE = 'library.sqlite'
@@ -38,6 +38,11 @@ MAX_EXTENDED_MANIFEST = 64 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
+
+
+def _check_cancelled(cancelled):
+    if cancelled():
+        raise InterruptedError('Restore cancelled; no completed destination was published.')
 
 
 def _destination(value, source):
@@ -99,19 +104,19 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=4)) as storage:
+            with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.backup(snapshot)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
-            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 included = {row[0] for row in snapshot_storage.db.execute('SELECT id FROM workspace')}
                 if authorized_workspaces is not None and not included <= authorized_workspaces:
                     raise RestoreError('Complete backup contains a library outside the authorized workspace scope.')
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
-                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-            manifest = dict(version=2, kind='carr-library', schema_version=4,
+            manifest = dict(version=2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
@@ -159,11 +164,11 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             if manifest['version'] >= 3:
                 from .state_backup import publish_state
-                publish_state(stage / 'state', destination / 'state')
+                publish_state(stage / 'state', destination / 'state', cancelled=cancelled)
                 if 'pending' in manifest:
-                    publish_state(stage / 'pending', destination / 'pending')
+                    publish_state(stage / 'pending', destination / 'pending', cancelled=cancelled)
                 if manifest['version'] == 5:
-                    publish_state(stage / 'extensions', destination / 'extensions')
+                    publish_state(stage / 'extensions', destination / 'extensions', cancelled=cancelled)
             _sync_directory(destination / ORIGINALS)
             if cancelled():
                 raise InterruptedError('Backup cancelled before publication. The incomplete folder has no manifest.')
@@ -173,7 +178,8 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
     return sha256(raw).hexdigest()
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):
+    _check_cancelled(cancelled)
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
@@ -181,13 +187,19 @@ def _read_manifest(directory, expected_manifest_sha256):
     if not 0 < size <= MAX_EXTENDED_MANIFEST:
         raise RestoreError('manifest size limit')
     with (directory / MANIFEST).open('rb') as stream:
-        raw = stream.read(MAX_EXTENDED_MANIFEST + 1)
+        chunks, count = [], 0
+        while block := stream.read(min(1024 * 1024, size + 1 - count)):
+            _check_cancelled(cancelled)
+            chunks.append(block)
+            count += len(block)
+        raw = b''.join(chunks)
     if len(raw) != size or sha256(raw).hexdigest() != expected_manifest_sha256:
         raise RestoreError('manifest digest mismatch')
     try:
         manifest = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
+    _check_cancelled(cancelled)
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
             or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
@@ -234,7 +246,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         validate_extensions(manifest.get('extensions'))
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:
@@ -268,7 +280,8 @@ def _read_manifest(directory, expected_manifest_sha256):
     return manifest
 
 
-def _copy_database(source, target, library_manifest):
+def _copy_database(source, target, library_manifest, *, cancelled=lambda: False):
+    _check_cancelled(cancelled)
     manifest = library_manifest['database']
     if _plain(source).st_size != manifest['size_bytes']:
         raise RestoreError('database size mismatch')
@@ -276,6 +289,7 @@ def _copy_database(source, target, library_manifest):
     digest = sha256()
     with source.open('rb') as incoming, target.open('xb') as output:
         while block := incoming.read(min(1024 * 1024, manifest['size_bytes'] + 1 - count)):
+            _check_cancelled(cancelled)
             count += len(block)
             if count > manifest['size_bytes']:
                 raise RestoreError('database grew during restore')
@@ -296,74 +310,105 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def restore_backup(source, destination, expected_manifest_sha256):
+def _restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
     opened writable. A failed/terminated publication retains .restore-incomplete;
     the application must reject such a root instead of opening partial data.
     """
+    if not callable(cancelled):
+        raise ValueError('A restore cancellation callback is required.')
+    _check_cancelled(cancelled)
     # Validate the original lexical path before resolving it, otherwise an
     # ancestor symlink/junction would be hidden from the component verifiers.
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     if 'sidecars' in manifest:
         from .backup_compat.archive import restore_archive
-        return restore_archive(source, destination, expected_manifest_sha256)
+        return restore_archive(source, destination, expected_manifest_sha256, cancelled=cancelled)
     _plain(source / ORIGINALS, directory=True)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        _copy_database(source / DATABASE, snapshot, manifest)
+        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
         with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
-            storage.check()
+            storage.db.set_progress_handler(lambda: int(cancelled()), 10_000)
+            try:
+                storage.check()
+            except sqlite3.OperationalError:
+                _check_cancelled(cancelled)
+                raise
             original_store = RetainedAssets(source / ORIGINALS)
             entries = verify_catalog_assets(storage.db, original_store,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)
             if _asset_manifest(entries) != manifest['assets']:
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)
         pending = {'assets': [], 'paths': []}
         if manifest['version'] >= 3:
             from .state_backup import restore_state
-            restore_state(source / 'state', stage / 'state', manifest['state'])
+            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
         if 'pending' in manifest:
             from .pending_backup import restore_pending
-            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'])
+            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'], cancelled=cancelled)
         extension_paths = []
         if manifest['version'] == 5:
             from .backup_extensions import restore as restore_extensions
-            extension_paths = restore_extensions(source / 'extensions', stage, manifest['extensions'], manifest['state'])
+            extension_paths = restore_extensions(source / 'extensions', stage, manifest['extensions'], manifest['state'], cancelled=cancelled)
+        if manifest['version'] >= 3:
+            from .studio.backup_inputs import restore_inputs
+            restore_inputs(stage / 'state', destination / 'state', manifest['state'], cancelled=cancelled)
+        _check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
         (destination / ORIGINALS).mkdir(mode=0o700)
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
+            _check_cancelled(cancelled)
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         for entry in pending['assets']:
+            _check_cancelled(cancelled)
             os.link(stage / ORIGINALS / entry['filename'], destination / ORIGINALS / entry['filename'])
         if manifest['version'] >= 3:
             from .state_backup import publish_state
-            publish_state(stage / 'state', destination / 'state')
+            publish_state(stage / 'state', destination / 'state', cancelled=cancelled)
             for name in pending['paths']:
                 if (stage / name).is_dir():
-                    publish_state(stage / name, destination / name)
+                    publish_state(stage / name, destination / name, cancelled=cancelled)
                 else:
                     os.link(stage / name, destination / name)
             for name in extension_paths:
                 if (stage / name).is_dir():
-                    publish_state(stage / name, destination / name)
+                    publish_state(stage / name, destination / name, cancelled=cancelled)
                 else:
                     os.link(stage / name, destination / name)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
+    _check_cancelled(cancelled)
     (destination / INCOMPLETE).unlink()
     _sync_directory(destination)
     _sync_directory(destination.parent)
     return destination
+
+
+def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
+    """Restore to a new root with cancellable copying, checks and publication.
+
+    Cancellation before publication leaves no destination. Cancellation during
+    publication keeps its incomplete marker; normal application open rejects
+    that root. After the marker is durably removed, the completed result wins.
+    """
+    if not callable(cancelled):
+        raise ValueError('A restore cancellation callback is required.')
+    try:
+        return _restore_backup(source, destination, expected_manifest_sha256, cancelled=cancelled)
+    except sqlite3.Error:
+        _check_cancelled(cancelled)
+        raise

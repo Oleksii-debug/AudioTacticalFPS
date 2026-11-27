@@ -11,6 +11,16 @@ from ._io import text_value
 from ..reader.reading_state import ReadingLocation, _location
 
 
+def document_source_locations(document):
+    """Derive the compatibility view from canonical reading-copy lineage."""
+    anchor = document.source_anchor
+    if anchor is None:
+        return ()
+    return tuple(ReadingLocation(anchor['workspace'], anchor['edition'], anchor['revision'],
+        row['kind'], row['index'], row['text_sha256'], anchor['asset_sha256'])
+        for row in anchor['positions'])
+
+
 @dataclass(frozen=True)
 class ReaderResume:
     document: ReadingDocument
@@ -34,6 +44,11 @@ class ReaderResume:
         if (type(self.source_locations) is not tuple or len(self.source_locations) > 10000
                 or any(type(item) is not ReadingLocation for item in self.source_locations)):
             raise ValueError('Invalid authenticated reading-source locations.')
+        anchored = document_source_locations(self.document)
+        if anchored:
+            if self.source_locations and self.source_locations != anchored:
+                raise ValueError('The legacy source envelope differs from canonical reading-copy lineage.')
+            object.__setattr__(self, 'source_locations', anchored)
         if self.source_locations:
             first = self.source_locations[0]
             identity = first.workspace, first.edition, first.revision, first.asset_sha256, first.kind
@@ -48,8 +63,9 @@ class ReaderResume:
 def decode_reader_resume(record):
     """Typed v1/v2 recovery parsing; callers authenticate v2 source references.
 
-    A legacy v1 draft has no workspace authority. Its hashed slot filename must
-    never be interpreted as a source binding or used to guess backup scope.
+    Source locations come from canonical ReadingDocument.source_anchor, or from
+    the strictly checked interim v2 envelope when no anchor exists. A hashed
+    slot filename never grants authority or implies workspace scope.
     """
     fields = {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}
     if not isinstance(record, dict):
@@ -78,18 +94,39 @@ class ReaderDraftStore:
         self.key = sha256(slot.encode('utf-8')).hexdigest()
         self.path = self.root / (self.key + '.reader.json')
 
-    def save(self, resume):
+    @staticmethod
+    def _record(resume):
         if not isinstance(resume, ReaderResume):
             raise ValueError('A validated reader recovery snapshot is required.')
         record = {'schema': 'carr.reader-session.v1', 'document': resume.document.to_dict(),
                   'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
                   'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
-        if resume.source_locations:
+        if resume.source_locations and resume.document.source_anchor is None:
             record.update(schema='carr.reader-session.v2',
                           source_locations=[asdict(item) for item in resume.source_locations])
+        return record
+
+    def save(self, resume):
+        record = self._record(resume)
         with state_lock(self.root, self.key):
+            if resume.document.format_notice and self.path.exists():
+                raise ValueError('Use Save As to preserve the original pre-release reading draft.')
             atomic_json(self.path, record, replace=True)
         return self.path
+
+    def save_if_absent(self, resume):
+        """Seed a draft without replacing another reader's saved work.
+
+        Returning the original candidate identifies a newly created draft;
+        returning the validated existing snapshot identifies recovery.
+        """
+        record = self._record(resume)
+        with state_lock(self.root, self.key):
+            existing = self.load()
+            if existing is not None:
+                return existing
+            atomic_json(self.path, record, replace=False)
+        return resume
 
     def load(self):
         if not self.path.exists():

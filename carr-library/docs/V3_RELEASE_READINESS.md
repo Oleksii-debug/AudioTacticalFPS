@@ -12,14 +12,15 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
-| Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
+| Reading and voices | Shared continuous reader with pause/resume/seek, source-bound draft recovery, independently saved WAV, pronunciation edits, local voice discovery and SAPI5 native COM worker | Focused controller and source-authorization tests; installed Windows gates exercise SAPI PCM with a clearly labelled controlled transport. Actual audio-device and human listening acceptance remain distinct |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and playback suppression | Automated native/contract tests; human NVDA listening remains required; speech-mode progress is not implemented |
+| Recovery | Manifest-bound canonical backups through v5 include typed reader/ASR state, pending input bytes, identities, settings and project state; authentic legacy v3/v4 archives are preserved and compatible imports rebound | Actual backup/restore, old-format fixtures, resumed import, portable namespaces and cancellation tests. External model/engine packs, exported audio and OS credential secrets remain separate; restored runtime connections are disabled |
+| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
+| Transcription | The supplied-worker adapter uses one canonical job service; native files/folders, saved jobs, pause/cancel/resume, TXT/SRT/VTT/JSON exports and separate ReaderDraftStore editing | Actual isolated synthetic-worker protocol tests and an explicit native Windows gate. The private hardened worker is reviewed/executed separately; synthetic SDK output does not establish recognition quality or a portable Windows engine pack |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
@@ -47,12 +48,15 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper Transcribe V4.3 implementation is integrated through the
+existing isolated worker boundary and shared native application. Its protocol,
+runtime pack, recognition quality and language coverage are separate acceptance
+dimensions. The main application does not contain an unreviewed model, private
+worker source or competing ASR stack. See the current
+[adapter and execution record](TRANSCRIPTION_SUPPLIED_WORKER.md) and
+[backup compatibility contract](BACKUP_FORMAT_V5.md). A workflow definition is
+not a passing run; the final delivery record must identify the exact tested Git
+commit and installed application wheel.
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,

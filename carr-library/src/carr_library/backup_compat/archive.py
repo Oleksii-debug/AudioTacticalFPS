@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 from tempfile import TemporaryDirectory
 
 from ..backup_extensions import (LEGACY, SIDECARS, DORDIAI, READING, LIVE,
@@ -62,7 +63,7 @@ def _studio_inputs(directory, manifest, digest, component, cancelled):
     # checks authenticate the inner commitments too, including the database.
     for item in [value['database'], *value['files']]:
         path = directory / item['path']
-        row = recovery._record(path, item['path'])
+        row = recovery._record(path, item['path'], cancelled=cancelled)
         if row['size_bytes'] != item['size_bytes'] or row['sha256'] != item['sha256']:
             raise RestoreError('Legacy Studio inner manifest digest differs from its recovery bytes.')
     studio._validate_assets(directory, productions, records[1], value['include_audio'], value['original_root'])
@@ -114,11 +115,12 @@ def _validate_stage(source, manifest, digest, cancelled):
     # The preserved original database is never opened writable or upgraded.
     with TemporaryDirectory(prefix='.legacy-catalog-check-', dir=source.parent) as tmp:
         database = Path(tmp) / 'library.sqlite'
-        _copy_database(source / 'library.sqlite', database, manifest)
+        _copy_database(source / 'library.sqlite', database, manifest, cancelled=cancelled)
         with closing(Storage(database, schema_version=manifest['schema_version'])) as storage:
+            storage.db.set_progress_handler(lambda: int(cancelled()), 10_000)
             storage.check()
             entries = verify_catalog_assets(storage.db, RetainedAssets(source / 'originals'),
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)
             if _asset_manifest(entries) != manifest['assets']:
                 raise RestoreError('Legacy asset manifest differs from its catalog.')
             sidecars = {item['filename']: read_bytes(source / item['filename'],
@@ -138,7 +140,9 @@ def _validate_stage(source, manifest, digest, cancelled):
                         for item in validate_live_state(sidecars[LIVE]))
     if 'recovery' in manifest:
         value = manifest['recovery']
-        recovery._verify(source / 'recovery', value, allowed, {item['sha256'] for item in manifest['assets']})
+        available = {item['sha256'] for item in manifest['assets']} | {
+            item['sha256'] for item in value['files'] if item['path'].startswith('pending-originals/')}
+        recovery._verify(source / 'recovery', value, allowed, {item['sha256'] for item in manifest['assets']}, cancelled=cancelled)
         for item in value['projects']:
             component = 'recovery/projects/' + item['id']
             required.extend(_studio_inputs(source / component, manifest, item['manifest_sha256'],
@@ -149,8 +153,16 @@ def _validate_stage(source, manifest, digest, cancelled):
                 request = recovery._json(source / 'recovery' / name)
                 # Pinned originals are already present in the authenticated
                 # archive. An unretained external selection is only declared.
-                if not request.get('asset_sha256'):
+                retained = request.get('asset_sha256') or (request.get('expected_manifest') or {}).get('sha256')
+                if retained not in available:
                     required.append(_required(prefix + 'recovery/' + name, 'source-file', request['source']))
+            elif name.startswith('import-batches/'):
+                batch = recovery._json(source / 'recovery' / name)
+                for row in batch['rows']:
+                    if row['manifest'] is not None and row['manifest']['sha256'] not in available:
+                        required.append(_required(prefix + 'recovery/' + name, 'source-file', row['source']))
+                        if len(required) > 100000:
+                            raise RestoreError('Legacy required inputs exceed their declaration budget.')
     return _notice(manifest, digest, required)
 
 
@@ -171,7 +183,11 @@ def stage_archive(source, target, digest, *, cancelled=lambda: False):
     (target / 'originals').mkdir(exist_ok=True, mode=0o700)
     if _namespace(source, entries, cancelled) != before:
         raise RestoreError('Legacy archive changed during copy.')
-    notice = _validate_stage(target, manifest, digest, cancelled)
+    try:
+        notice = _validate_stage(target, manifest, digest, cancelled)
+    except (sqlite3.Error, ValueError):
+        _check(cancelled)
+        raise
     return manifest, entries, notice
 
 
@@ -180,37 +196,56 @@ def verify_archive(source, digest, *, cancelled=lambda: False):
         return stage_archive(source, Path(tmp) / 'archive', digest, cancelled=cancelled)[2]
 
 
-def restore_archive(source, destination, digest):
+def restore_archive(source, destination, digest, *, cancelled=lambda: False):
     from ..library_backup import (_destination, _copy_database, _sync_directory,
                                   _sync_file, INCOMPLETE)
     from ..state_backup import publish_state
     source = Path(source)
+    _check(cancelled)
     destination = _destination(destination, source)
     with TemporaryDirectory(prefix='.legacy-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         archive = stage / LEGACY / digest
-        manifest, _, notice = stage_archive(source, archive, digest)
+        manifest, _, notice = stage_archive(source, archive, digest, cancelled=cancelled)
         write_bytes(stage / LEGACY / (digest + '.json'), _encoded(notice))
-        _copy_database(archive / 'library.sqlite', stage / 'library.sqlite', manifest)
+        _copy_database(archive / 'library.sqlite', stage / 'library.sqlite', manifest, cancelled=cancelled)
         original_entries = [dict(filename=item['filename'], size_bytes=item['size_bytes'], sha256=item['sha256'])
                             for item in manifest['assets']]
-        copy_files(archive / 'originals', stage / 'originals', original_entries)
+        copy_files(archive / 'originals', stage / 'originals', original_entries, cancelled=cancelled)
+        from .pending import prepare_import, NOTICE as IMPORT_NOTICE
+        imported = prepare_import(archive, stage, destination, manifest, cancelled=cancelled)
+        if imported is not None:
+            notice['components'] = sorted([*notice['components'], dict(IMPORT_NOTICE)],
+                                          key=lambda item: item['component'])
+            # The notice is private staging and is written only after the
+            # complete canonical importer produced a verified rebound queue.
+            (stage / LEGACY / (digest + '.json')).unlink()
+            write_bytes(stage / LEGACY / (digest + '.json'), _encoded(notice))
         active = []
         for name in (READING, LIVE, DORDIAI):
+            _check(cancelled)
             if not (archive / name).exists():
                 continue
             raw = read_bytes(archive / name, SIDECARS[name])
             write_bytes(stage / name, restored_settings_bytes(raw) if name == DORDIAI else raw)
             active.append(name)
+        _check(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
         os.link(stage / 'library.sqlite', destination / 'library.sqlite')
-        publish_state(stage / 'originals', destination / 'originals')
-        publish_state(stage / LEGACY, destination / LEGACY)
+        publish_state(stage / 'originals', destination / 'originals', cancelled=cancelled)
+        publish_state(stage / LEGACY, destination / LEGACY, cancelled=cancelled)
+        for name in imported['paths'] if imported is not None else ():
+            if (stage / name).is_dir():
+                publish_state(stage / name, destination / name, cancelled=cancelled)
+            else:
+                os.link(stage / name, destination / name)
         for name in active:
+            _check(cancelled)
             os.link(stage / name, destination / name)
         _sync_directory(destination)
+    _check(cancelled)
     (destination / INCOMPLETE).unlink()
     _sync_directory(destination)
     _sync_directory(destination.parent)
@@ -233,9 +268,15 @@ def snapshot_archives(source, target, *, cancelled=lambda: False):
     for key in keys:
         _check(cancelled)
         notice_raw = read_bytes(source / (key + '.json'), MAX_JSON)
-        _, _, notice = stage_archive(source / key, target / key, key, cancelled=cancelled)
-        if _json(notice_raw) != notice:
-            raise RestoreError('Legacy recovery notice differs from its authenticated archive.')
+        manifest, _, notice = stage_archive(source / key, target / key, key, cancelled=cancelled)
+        actual_notice = _json(notice_raw)
+        if actual_notice != notice:
+            from .pending import validate_import_notice, NOTICE as IMPORT_NOTICE
+            imported_notice = dict(notice, components=sorted([*notice['components'], dict(IMPORT_NOTICE)],
+                                                            key=lambda item: item['component']))
+            if actual_notice != imported_notice:
+                raise RestoreError('Legacy recovery notice differs from its authenticated archive.')
+            validate_import_notice(target / key, manifest, cancelled=cancelled)
         write_bytes(target / (key + '.json'), notice_raw)
         records.append(dict(manifest_sha256=key, format=notice['format'], status='inert'))
         required.extend(notice['required_inputs'])

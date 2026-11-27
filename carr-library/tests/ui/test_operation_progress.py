@@ -205,7 +205,7 @@ def test_preferences_default_off_persist_and_reject_invalid_or_linked_state(tmp_
         load_preferences(tmp_path)
 
 
-@pytest.mark.parametrize('changes', [{'mode': 'speech'}, {'interval_seconds': 0}, {'interval_seconds': float('nan')},
+@pytest.mark.parametrize('changes', [{'mode': 'cloud'}, {'interval_seconds': 0}, {'interval_seconds': float('nan')},
     {'volume': float('inf')}, {'volume': -1}, {'quiet': 1}, {'background': 'yes'}, {'mute_during_audio': None}])
 def test_preferences_require_valid_explicit_options(changes):
     with pytest.raises(ValueError):
@@ -546,6 +546,28 @@ def test_unknown_media_state_stays_quiet_and_explicit_overlap_policy_is_respecte
     assert not native.sound.muted
 
 
+@pytest.mark.parametrize('broken_property', [False, True])
+def test_uncertain_native_silence_blocks_new_content_even_when_cue_overlap_is_allowed(native, broken_property):
+    class UnconfirmedDevice:
+        def __call__(self):
+            return True
+
+        @property
+        def silence_uncertain(self):
+            if broken_property:
+                raise RuntimeError('Device close status could not be read')
+            return True
+
+    controller = native.controller
+    controller.configure(ProgressPreferences(mode='beep', mute_during_audio=False))
+    bridge = controller.live_media_feedback
+    assert bridge.quiescent
+    release = bridge.hold(UnconfirmedDevice())
+    assert bridge.busy and not bridge.quiescent
+    release()
+    assert bridge.quiescent
+
+
 def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch):
     from carr_library.ui.keyboard_settings import KeyboardSettings
     items = []
@@ -591,3 +613,21 @@ def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcut
     skipped = []
     destroy(SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
     assert controller.closed and skipped == [True]
+
+
+def test_recording_progress_custom_name_remains_stable_through_real_controller_states(native):
+    native.controller.close()
+    gauge, label = Gauge(), Label()
+    controller = OperationProgress(native.frame, gauge, label, wx_module=native.controller.wx,
+        clock=native.clock, sound=Sound(), accessible_name='Recording operation progress')
+    token = controller.start('Recording microphone', 10)
+    native.clock.advance()
+    controller.update(5, 10, token=token)
+    controller.pause(token=token)
+    controller.resume(token=token)
+    controller.succeed('PCM verified and committed', token=token)
+    assert set(gauge.names) == {'Recording operation progress'}
+    assert gauge.values[-1] == 100
+    assert any('Paused' in value for value in label.labels)
+    assert 'Completed' in label.labels[-1]
+    controller.close()

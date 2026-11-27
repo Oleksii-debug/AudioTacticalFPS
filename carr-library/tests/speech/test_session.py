@@ -121,3 +121,91 @@ def test_unbound_legacy_v1_remains_explicitly_unbound(tmp_path):
     record = json.loads(store.path.read_bytes())
     assert record['schema'] == 'carr.reader-session.v1' and 'source_locations' not in record
     assert decode_reader_resume(record).source_locations == ()
+
+
+def test_canonical_anchor_is_the_only_saved_source_lineage(bound_session):
+    store, source, _legacy = bound_session
+    document = source.reading_document()
+    document.replace(0, 5, 'Edited')
+    resume = ReaderResume(document, cursor=6)
+    assert resume.source_locations == source.locations
+    store.save(resume)
+    record = json.loads(store.path.read_bytes())
+    assert record['schema'] == 'carr.reader-session.v1'
+    assert record['document']['schema'] == 'carr.reading-copy.v2'
+    assert 'source_locations' not in record
+    recovered = store.load()
+    assert recovered.source_locations == source.locations
+    assert recovered.document.to_dict() == document.to_dict()
+    assert recovered.document.undo() and recovered.document.text == source.text
+
+
+def test_interim_envelope_cannot_override_canonical_anchor(bound_session):
+    from dataclasses import asdict
+    store, source, _legacy = bound_session
+    store.save(ReaderResume(source.reading_document()))
+    record = json.loads(store.path.read_bytes())
+    record.update(schema='carr.reader-session.v2',
+                  source_locations=[asdict(item) for item in source.locations])
+    assert decode_reader_resume(record).source_locations == source.locations
+    for location in record['source_locations']:
+        location['workspace'] = 'unrelated-workspace'
+    before = store.path.read_bytes()
+    with pytest.raises(ValueError, match='canonical reading-copy lineage'):
+        decode_reader_resume(record)
+    assert store.path.read_bytes() == before
+
+
+def test_seed_draft_keeps_existing_authored_copy_and_candidate_identity(tmp_path):
+    store = ReaderDraftStore(tmp_path, slot='one-transcript')
+    candidate = ReaderResume(ReadingDocument('First transcript'))
+    assert store.save_if_absent(candidate) is candidate
+    edited = store.load()
+    edited.document.replace(0, 5, 'Authored')
+    store.save(edited)
+    before = store.path.read_bytes()
+    other = ReaderResume(ReadingDocument('A different transcription attempt'))
+    recovered = ReaderDraftStore(tmp_path, slot='one-transcript').save_if_absent(other)
+    assert recovered is not other
+    assert recovered.document.text == 'Authored transcript'
+    assert store.path.read_bytes() == before
+
+
+def test_seed_draft_preserves_malformed_existing_state(tmp_path):
+    store = ReaderDraftStore(tmp_path)
+    store.path.write_bytes(b'{invalid state kept for diagnosis')
+    before = store.path.read_bytes()
+    with pytest.raises(ValueError):
+        store.save_if_absent(ReaderResume(ReadingDocument('New transcript')))
+    assert store.path.read_bytes() == before
+
+
+def test_bound_reading_draft_retains_exact_lineage_through_complete_backup(tmp_path):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import restore_backup
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech.source import read_source_range
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Bound reading recovery')
+    original = 'First original.\r\nОригінал.\fSecond original.'
+    imported = app.add_text(workspace, 'Source', original)
+    source = read_source_range(ReadingDesk(app, workspace, imported['edition']), 1, 2)
+    document = source.reading_document()
+    document.replace(0, 5, 'Narrated')
+    store = ReaderDraftStore(app.root, slot='source-fixture')
+    store.save(ReaderResume(document, 'fixture:voice', volume=60, cursor=3))
+    checksum = app.backup(tmp_path / 'backup')
+    restored_root = tmp_path / 'restored'
+    restore_backup(tmp_path / 'backup', restored_root, expected_manifest_sha256=checksum)
+    restored_app = LibraryApp(restored_root)
+    recovered = ReaderDraftStore(restored_root, slot='source-fixture').load()
+    current = read_source_range(ReadingDesk(restored_app, workspace, imported['edition']), 1, 2)
+    assert recovered.document.source_anchor == document.source_anchor == current.reading_document().source_anchor
+    assert recovered.document.source_text == source.text
+    assert recovered.document.text == document.text and recovered.document.can_undo
+    assert restored_app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
+    first, second = recovered.document.source_anchor['positions']
+    # Undo restores exact source text but never turns the inserted join into evidence.
+    assert recovered.document.undo()
+    assert not recovered.document.source_span(first['end'], second['start']).exact
+    assert recovered.document.source_anchor['quotation_authority'] is False

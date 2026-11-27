@@ -38,6 +38,11 @@ limited to seconds within the current synthesized chunk; a stale seek dialog
 cannot move a later chunk. On Windows, seeking while paused keeps audio stopped
 until explicit resume.
 
+**Use voice for progress** explicitly prepares the selected local voice for the
+canonical progress settings. Discovery does not select a voice or turn on spoken
+progress. The existing progress mode remains the user's choice; cancelled or
+closed dialogs release an unused prepared provider.
+
 ## Exact source and position meaning
 
 Native selection positions are resolved through `TextCtrl.GetRange` prefixes,
@@ -66,11 +71,18 @@ the saved position only after playback actually ends. Edited-copy live chunk
 positions remain session-only, so they cannot be mistaken for original-source
 positions.
 
-Canonical `.reader.json` drafts remain version 1 when independent. Version 2
-adds explicit ordered source locations. A version-1 filename never implies
+Canonical `.reader.json` sessions use version 1 with the canonical document
+inside: independent documents remain `reading-copy.v1`, and source-bound
+documents use `reading-copy.v2` with an explicit `source_anchor`. The compatibility
+view of ordered source locations is derived from that anchor. Strict interim
+`reader-session.v2` envelopes remain readable; an envelope cannot override a
+different canonical anchor. Neither a filename nor an imported anchor grants
 workspace authority. The complete-backup adapter authenticates bound drafts;
-workspace-scoped backups omit independent drafts. Exported `.reading.json`
-documents retain the existing canonical format and edit history.
+workspace-scoped backups omit independent drafts. A recovered draft with missing
+or different lineage is retained unchanged instead of attaching it to the
+currently selected source. Exported `.reading.json` documents retain canonical
+lineage and edit history. Seeding a transcript draft never replaces an existing
+authored copy.
 
 **Save WAV** uses the same canonical renderer and atomic writer as other speech
 operations. Its output remains private until a final complete source check.
@@ -87,9 +99,12 @@ canonical registry's cancellation and timeouts.
 
 One worker owns playback and temporary files. Closing the window requests
 cancellation without waiting on the native GUI thread. The progress-media lease
-is released only when the worker has stopped and closed its player. Each WAV is
-removed after the device releases it. Progress cues are suspended immediately;
-playback waits for actual cue quiescence rather than relying on a later timer.
+is released only after silence is confirmed. Each WAV is removed after the device
+releases it. A failed stop or close retains its owned player and WAV for diagnosis;
+unconfirmed silence retains the media lease and blocks another playback attempt.
+This admission check also applies when optional cue muting is off. Progress cues
+are suspended immediately; playback waits for actual cue quiescence rather than
+relying on a later timer.
 
 ## Acceptance boundaries
 

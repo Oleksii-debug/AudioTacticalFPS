@@ -5,7 +5,9 @@ search phrase. The reader presents one complete source page or logical segment
 in a native, read-only text control. It supports previous/next, direct navigation,
 named page bookmarks, session back/forward, and resuming the last opened page.
 The Where am I action describes the source, its actual location, reading order,
-and current verification status as ordinary text.
+and current verification status as ordinary text. The same window includes the
+shared continuous voice reader; its controls, saved voice position and bounded
+playback behavior are described in [Live reading](LIVE_READING.md).
 
 ## Keyboard commands
 

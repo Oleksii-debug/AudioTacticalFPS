@@ -78,8 +78,12 @@ class _MediaActivity:
     def __call__(self):
         previous = self.previous() if callable(self.previous) else self.previous
         core = self.core
-        return bool(previous or (core is not None and core.busy
-                                 and core.status().state != "discovering"))
+        return bool(previous or (core is not None and
+            (not getattr(core, 'quiescent', True) or core.busy and core.status().state != "discovering")))
+
+    @property
+    def silence_uncertain(self):
+        return bool(self.core is not None and getattr(self.core, 'silence_uncertain', False))
 
     def finished(self, future=None):
         self.core = None
@@ -206,10 +210,10 @@ class LiveReadingControls:
 
     def _quiet_ready(self):
         bridge = self._bridge
-        if bridge is None or not bridge.quiet_during_media or bridge.quiescent:
+        if bridge is None or bridge.quiescent:
             return True
         if self._feedback_wait_since is not None and time.monotonic() - self._feedback_wait_since >= 5:
-            self.core.stop("Playback did not start because a progress notification has not stopped. Try again.")
+            self.core.stop("Playback did not start because audio silence is not confirmed. Check the playback device before trying again.")
         return False
 
     def start(self, mode):
@@ -332,12 +336,18 @@ class LiveReadingControls:
         if self.closed:
             return
         self.closed = True
-        self.timer.Stop()
+        try:
+            self.timer.Stop()
+        except (OSError, RuntimeError):
+            # A detached native timer does not prevent worker cancellation.
+            pass
         completion = self.core.close()
         # The last worker owns the player and its WAV until cleanup completes.
         # Its callback touches only a plain flag, never a native window.
         activity, release = self._media_indicator, self._release_media
         def finished(future=None):
+            if activity.core is not None and not getattr(activity.core, 'quiescent', True):
+                return  # Uncertain native sound retains its plain mute lease.
             activity.finished()
             if release is not None:
                 release()

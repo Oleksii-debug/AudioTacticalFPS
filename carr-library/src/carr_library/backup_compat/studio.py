@@ -173,6 +173,7 @@ def _readonly(path):
 def _records(snapshot, canonical, cancelled):
     try:
         with closing(_readonly(snapshot)) as db:
+            db.set_progress_handler(lambda: int(bool(cancelled and cancelled())), 10_000)
             if _schema(db) != canonical:
                 raise BackupError('Unsupported studio backup schema; exact layout differs.')
             if db.execute('PRAGMA integrity_check').fetchall() != [('ok',)]:

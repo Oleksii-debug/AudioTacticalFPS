@@ -102,8 +102,12 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # PR141: equal-size Windows writes can retain the observed timestamps.
-    # Reauthenticate every selected source byte before successful publication.
+    from .studio.backup_inputs import snapshot_inputs
+    retained_entries = snapshot_inputs(target, entries, max_bytes=max_bytes,
+        max_files=MAX_STATE_FILES, cancelled=cancelled)
+    # File metadata is not a content identity: on Windows an equal-size write
+    # can retain the observed timestamps. Recheck every copied source against
+    # its manifest hash before the caller can publish this snapshot.
     for entry in entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
@@ -131,8 +135,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
     # PR145: the writer must obey the same portable namespace as its reader.
-    validate_state(entries)
-    return sorted(entries, key=lambda entry: entry['filename'])
+    validate_state(retained_entries)
+    return sorted(retained_entries, key=lambda entry: entry['filename'])
 
 
 def validate_portable_paths(values):
@@ -178,12 +182,16 @@ def validate_state(entries):
     validate_portable_paths(item['filename'] for item in entries)
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, cancelled=lambda: False):
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
     found = []
     for directory, dirs, files in os.walk(source, followlinks=False):
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         for name in dirs:
             regular(Path(directory) / name, directory=True)
         for name in files:
@@ -195,6 +203,8 @@ def restore_state(source, target, entries):
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         incoming = local_path(source / item['filename'], root=source, exists=True)
         if regular(incoming).st_size != item['size_bytes']:
             raise ValueError('Application state size mismatch.')
@@ -203,6 +213,8 @@ def restore_state(source, target, entries):
         digest, size = sha256(), 0
         with incoming.open('rb') as read, destination.open('xb') as write:
             while block := read.read(1024 * 1024):
+                if cancelled():
+                    raise InterruptedError('Restore cancelled.')
                 size += len(block)
                 if size > item['size_bytes']:
                     raise ValueError('Application state changed during restore.')
@@ -215,10 +227,12 @@ def restore_state(source, target, entries):
     sync_directory(target)
 
 
-def publish_state(source, target):
+def publish_state(source, target, *, cancelled=lambda: False):
     target = Path(target)
     target.mkdir(mode=0o700)
     for path in sorted(Path(source).rglob('*')):
+        if cancelled():
+            raise InterruptedError('Publication cancelled; the destination remains incomplete.')
         relative = path.relative_to(source)
         if path.is_dir():
             (target / relative).mkdir(exist_ok=True)

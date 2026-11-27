@@ -439,7 +439,7 @@ class NativeSapiProvider(SapiProvider):
             request.write_bytes(raw)
             helper = Path(__file__).with_name('sapi_native_worker.py')
             command = ([self.executable, '--carr-sapi-native-worker', request, reply]
-                       if getattr(sys, 'frozen', False) else [self.executable, '-I', helper, request, reply])
+                       if getattr(sys, 'frozen', False) else [self.executable, '-I', '-B', helper, request, reply])
             _, _, returncode = run_process(command, cancelled=cancelled, timeout=timeout,
                 output_file=temporary / 'speech.wav' if output is not None else reply,
                 max_output=budget if output is not None else 2_000_000, allow_failure=True)

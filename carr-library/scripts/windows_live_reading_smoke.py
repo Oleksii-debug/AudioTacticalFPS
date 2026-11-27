@@ -177,7 +177,7 @@ def canonical_copy_probe(wx, library, desk, discover, render):
     assert context['stage'] == 3 and fixture.stream is None
     return dict(canonical_reading_copy='PASS', shared_live_controller='PASS',
                 unchanged_native_crlf_revision='PASS', edited_copy_source_binding='PASS',
-                canonical_v2_draft_and_undo='PASS')
+                canonical_source_lineage_and_draft_undo='PASS')
 
 
 def main():

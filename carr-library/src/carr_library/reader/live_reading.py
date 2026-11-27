@@ -23,6 +23,11 @@ from .live_player import CanonicalPlayer as LocalPlayer
 from .live_state import LiveState
 
 
+# A failed native close can leave a device using its private WAV. These plain
+# owned resources outlive the dialog; they are never replayed or exported.
+_RETAINED_MEDIA = []
+
+
 def _normalized(text):
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
@@ -249,6 +254,8 @@ class LiveReader:
         self._future = None
         self._closed = self._pause = False
         self._pending_seek = None
+        self._possibly_audible = False
+        self._retained_resources = None
         self._stop_message = "Live reading stopped. Resume restarts the current verified chunk."
         self._status = LiveStatus()
 
@@ -256,6 +263,16 @@ class LiveReader:
     def busy(self):
         with self._lock:
             return self._future is not None and not self._future.done()
+
+    @property
+    def quiescent(self):
+        with self._lock:
+            return not self._possibly_audible
+
+    @property
+    def silence_uncertain(self):
+        with self._lock:
+            return self._possibly_audible and (self._closed or not self.busy)
 
     def status(self):
         with self._lock:
@@ -298,6 +315,8 @@ class LiveReader:
         with self._lock:
             if self._closed:
                 raise ValueError("This live reader is closed.")
+            if self._retained_resources is not None:
+                raise ValueError('The previous playback device did not release its resources. Reopen the application before reading again.')
             if self.busy:
                 raise ValueError("Stop the current reading operation and wait for it to finish.")
             self._cancel = threading.Event()
@@ -388,7 +407,13 @@ class LiveReader:
             self._cancel.set()
             self._wake.set()
             self._status = replace(self._status, state="closed", sequence=self._status.sequence + 1)
-        self._executor.shutdown(wait=False, cancel_futures=True)
+        try:
+            self._executor.shutdown(wait=False, cancel_futures=True)
+        except Exception as exc:
+            # Cancellation was already requested. The worker still owns its
+            # files and the media lease until its actual completion.
+            with self._lock:
+                self._status = replace(self._status, warning='Worker shutdown needs attention: ' + str(exc))
         return self._future
 
     def _remember(self, section, offset, end, voice, rate, volume):
@@ -508,6 +533,8 @@ class LiveReader:
                             if seek[:3] != (section, chunk_start, chunk_end):
                                 self._emit(warning='The previous speech chunk ended before seeking; the new chunk was not moved.')
                             else:
+                                with self._lock:
+                                    self._possibly_audible = True
                                 player.seek(seek[3])
                         if paused:
                             status = player.pause() if started else player.status()
@@ -515,11 +542,17 @@ class LiveReader:
                         else:
                             status = player.status()
                             if not started:
+                                with self._lock:
+                                    self._possibly_audible = True
                                 status = player.play()
                                 started = True
                             elif status["state"] == "paused":
+                                with self._lock:
+                                    self._possibly_audible = True
                                 status = player.resume()
                             state = status["state"]
+                        with self._lock:
+                            self._possibly_audible = status['state'] not in ('paused', 'stopped', 'ended', 'closed', 'unavailable')
                         approximate = bool(status.get('position_is_approximate', False))
                         self._emit(state="paused" if paused else "playing", audio_seconds=status["position_seconds"],
                                    duration_seconds=status["duration_seconds"],
@@ -549,19 +582,38 @@ class LiveReader:
                 start, end = 0, len(section.text)
         finally:
             cleanup_errors = []
+            silence_confirmed, device_closed = False, False
             try:
                 if player.status().get("state") not in ("closed", "unavailable"):
                     player.stop()
+                silence_confirmed = player.status().get('state') in ('closed', 'unavailable', 'stopped', 'paused', 'ended')
             except Exception as exc:
                 cleanup_errors.append(str(exc))
             try:
                 player.close()
+                silence_confirmed = device_closed = True
             except Exception as exc:
                 cleanup_errors.append(str(exc))
+                try:
+                    silence_confirmed = player.status().get('state') in ('closed', 'unavailable', 'stopped', 'paused', 'ended')
+                except Exception:
+                    pass
+            with self._lock:
+                self._possibly_audible = not silence_confirmed
+            if not device_closed:
+                self._retained_resources = (player, directory)
+                _RETAINED_MEDIA.append(self._retained_resources)
+                directory = None
+                cleanup_errors.append('The owned audio and device are retained until shutdown; playback silence is '
+                                      + ('confirmed.' if silence_confirmed else 'not confirmed.'))
             if directory is not None:
                 try:
                     directory.cleanup()
                 except OSError as exc:
                     cleanup_errors.append("Temporary speech could not be removed: " + str(exc))
+                    self._retained_resources = (player, directory)
+                    _RETAINED_MEDIA.append(self._retained_resources)
             if cleanup_errors:
-                self._emit(warning="Playback cleanup needs attention: " + "; ".join(cleanup_errors))
+                warning = "Playback cleanup needs attention: " + "; ".join(cleanup_errors)
+                with self._lock:
+                    self._status = replace(self._status, warning=warning, sequence=self._status.sequence + 1)

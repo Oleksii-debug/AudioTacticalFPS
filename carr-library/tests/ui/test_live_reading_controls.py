@@ -289,6 +289,20 @@ def test_close_is_nonblocking_and_retains_bridge_lease_until_cleanup_future():
     assert releases == ['released'] and owner._media_indicator() is False
 
 
+def test_uncertain_native_silence_retains_lease_after_worker_completion_even_if_optional_muting_is_off():
+    owner = controls()
+    owner.core.quiescent, owner.core.silence_uncertain = False, True
+    owner.core.completion = Future()
+    owner.core.completion.set_result(None)
+    releases = []
+    owner._release_media = lambda: releases.append('released')
+    owner._bridge = SimpleNamespace(quiet_during_media=False, quiescent=False)
+    assert owner._quiet_ready() is False
+    indicator = owner._media_indicator
+    owner.close()
+    assert indicator() is True and indicator.silence_uncertain is True and not releases
+
+
 def test_display_rejection_stops_playback_and_preserves_specific_error():
     owner = controls()
     owner.core.view = LiveStatus(sequence=3, state='loading', section=LiveSection('Text', 'Source', 2, 2))

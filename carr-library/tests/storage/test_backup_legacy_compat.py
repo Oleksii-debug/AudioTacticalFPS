@@ -1,6 +1,7 @@
 """Authentic frozen-writer fixtures, exact retention and transactional restore."""
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import sqlite3
 from zipfile import ZipFile
@@ -44,13 +45,14 @@ def test_authentic_legacy_restores_core_and_preserves_every_original_component_i
     assert (retained / 'originals').is_dir()
     assert all(path.stat().st_nlink == 1 for path in retained.rglob('*') if path.is_file())
     assert not any((destination / name).exists() for name in
-                   ('audio-projects', 'provider-settings', 'agent-jobs', 'import-requests', 'import-batches'))
+                   ('audio-projects', 'provider-settings', 'agent-jobs', 'import-batches'))
     notice, = recovery_notices(destination)
     assert notice['archive_status'] == 'inert'
     if version == 'v4':
         statuses = {item['component']: item['status'] for item in notice['components']}
         assert statuses['pending-imports'] == statuses['provider-settings'] == statuses['agent-jobs'] == 'inert'
         assert statuses['audio-projects/' + data['project_id']] == 'inert'
+        assert statuses['canonical-pending-imports'] == 'restored'
         assert any(item['reference'] == data['required_audio'] and item['included'] is False
                    for item in notice['required_inputs'])
         with sqlite3.connect(retained / 'recovery/provider-settings/providers.sqlite') as db:
@@ -59,6 +61,8 @@ def test_authentic_legacy_restores_core_and_preserves_every_original_component_i
         # Those exact historical declarations remain under the inert archive;
         # no active provider settings or OS credential lookups were created.
         assert not (destination / 'provider-settings').exists()
+    else:
+        assert not (destination / 'import-requests').exists()
     restored = LibraryApp(destination)
     assert restored.workspaces()[0].id == data['workspace']
     if version != 'v3-empty':
@@ -143,3 +147,101 @@ def test_legacy_external_audio_path_is_declared_without_any_probe(tmp_path, monk
     destination = restore_backup(source, tmp_path / 'restored', data['manifest_sha256'])
     notice, = recovery_notices(destination)
     assert any(item['kind'] == 'audio-file' for item in notice['required_inputs'])
+
+
+def test_compatible_retained_legacy_text_queue_resumes_through_the_canonical_service(tmp_path):
+    from carr_library.ingest.worker import load_request
+    source, data = archive(tmp_path, 'v4')
+    destination = restore_backup(source, tmp_path / 'restored', data['manifest_sha256'])
+    request = load_request(destination, data['request_id'])
+    assert request['data_dir'] == str(destination)
+    assert Path(request['source']).is_relative_to(destination / 'originals')
+    original = json.loads((source / 'recovery/import-requests' / (data['request_id'] + '.json')).read_text())
+    assert request['config'] == original['config']
+    assert request['job'] == original['job']
+    assert request['metadata'] == original['metadata']
+    app = LibraryApp(destination)
+    result = app.resume_import(data['workspace'], data['request_id'])
+    assert result['state'] == 'complete'
+    assert result['id'] == original['job'] and result['edition'] == original['metadata']['edition_id']
+    assert app.search(data['workspace'], 'Pending preserved source.')[0].quote == 'Pending preserved source.'
+
+
+def test_unmapped_managed_ocr_profile_stays_inert_with_original_queue_bytes_preserved(tmp_path):
+    source, data = archive(tmp_path, 'v4')
+    path = source / 'recovery/import-requests' / (data['request_id'] + '.json')
+    record = json.loads(path.read_text())
+    record['config']['model_profile'] = 'best'
+    path.write_text(json.dumps(record), encoding='utf-8')
+    digest = reseal(source)
+    destination = restore_backup(source, tmp_path / 'restored', digest)
+    assert not (destination / 'import-requests').exists()
+    assert (destination / 'legacy-backups' / digest / path.relative_to(source)).read_bytes() == path.read_bytes()
+    notice, = recovery_notices(destination)
+    assert not any(item['component'] == 'canonical-pending-imports' for item in notice['components'])
+    assert next(item for item in notice['components'] if item['component'] == 'pending-imports')['status'] == 'inert'
+
+
+def add_inert_batch(source, data, selected_source):
+    """Add an authored batch to an authentic fixture, then bind its exact bytes."""
+    from carr_library.backup_compat.batches import STATES
+    manifest = json.loads((source / 'manifest.json').read_text())
+    request = json.loads((source / 'recovery/import-requests' / (data['request_id'] + '.json')).read_text())
+    identity = 'a' * 32
+    row = dict(row_id='1' * 32, work_id='2' * 32, edition_id='3' * 32,
+               request_id='4' * 32, source=selected_source, file='original.txt',
+               title='Retained declaration', state='queued', message='',
+               manifest=dict(sha256='e' * 64, mime='text/plain', size=9),
+               duplicate_of=None, result=None)
+    counts = dict.fromkeys(STATES, 0)
+    counts['queued'] = 1
+    batch = dict(version=1, batch_id=identity, data_dir=manifest['recovery']['source_root'],
+                 workspace=data['workspace'], created='2026-01-01T00:00:00Z',
+                 updated='2026-01-01T00:00:00Z', state='queued', collections=[],
+                 recursive=False, config=request['config'], rows=[row], counts=counts, total=1)
+    relative = 'import-batches/' + identity + '.json'
+    path = source / 'recovery' / relative
+    path.parent.mkdir()
+    raw = json.dumps(batch).encode('utf-8')
+    path.write_bytes(raw)
+    manifest['recovery']['files'].append(dict(path=relative, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
+    manifest['recovery']['files'].sort(key=lambda item: item['path'])
+    (source / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    return reseal(source), path
+
+
+def test_other_platform_batch_is_preserved_inert_and_declares_unretained_input_without_probing(tmp_path, monkeypatch):
+    source, data = archive(tmp_path, 'v4')
+    external = '/never-open-legacy-source/original.txt' if os.name == 'nt' else r'Z:\never-open-legacy-source\original.txt'
+    digest, batch_path = add_inert_batch(source, data, external)
+    before = file_bytes(source)
+    original_stat = Path.stat
+    def guarded(path, *args, **kwargs):
+        assert str(path) != external, 'inert batch declaration was used as a filesystem path'
+        return original_stat(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'stat', guarded)
+    destination = restore_backup(source, tmp_path / 'restored', digest)
+    assert file_bytes(source) == before
+    assert file_bytes(destination / 'legacy-backups' / digest) == before
+    assert not (destination / 'import-batches').exists()
+    assert not (destination / 'import-requests').exists()
+    notice, = recovery_notices(destination)
+    assert not any(item['component'] == 'canonical-pending-imports' for item in notice['components'])
+    assert next(item for item in notice['components'] if item['component'] == 'pending-imports')['status'] == 'inert'
+    required, = [item for item in notice['required_inputs'] if item['reference'] == external]
+    assert required == dict(component='legacy-backups/' + digest + '/' + batch_path.relative_to(source).as_posix(),
+                            kind='source-file', reference=external, included=False)
+    backup = tmp_path / 'complete'
+    next_digest = create_backup(LibraryApp(destination), backup)
+    restored = restore_backup(backup, tmp_path / 'again', next_digest)
+    assert recovery_notices(restored) == (notice,)
+
+
+@pytest.mark.parametrize('source_name', ['relative/original.txt', r'Z:\safe\..\outside.txt'])
+def test_inert_batch_still_rejects_relative_or_traversing_source_declarations(tmp_path, source_name):
+    source, data = archive(tmp_path, 'v4')
+    digest, _ = add_inert_batch(source, data, source_name)
+    destination = tmp_path / 'rejected'
+    with pytest.raises(ValueError):
+        restore_backup(source, destination, digest)
+    assert not destination.exists()

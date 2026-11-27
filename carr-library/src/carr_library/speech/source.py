@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 from hashlib import sha256
 import copy
-from ..reader.reading_state import ReadingLocation
 
 from ._io import check_cancelled
 
@@ -16,7 +15,20 @@ class NarrationSource:
     revision: str
     positions: tuple[dict, ...]
     warnings: tuple[str, ...]
-    locations: tuple[ReadingLocation, ...] = ()
+    asset_sha256: str
+
+    @property
+    def locations(self):
+        from .session import document_source_locations
+        return document_source_locations(self.reading_document())
+
+    def reading_document(self):
+        """Build the existing editable document with explicit, non-authorizing lineage."""
+        from .reading import ReadingDocument
+        return ReadingDocument(self.text, title=self.title, source_anchor={
+            'workspace': self.workspace, 'edition': self.edition, 'revision': self.revision,
+            'asset_sha256': self.asset_sha256, 'positions': list(self.positions),
+            'quotation_authority': False})
 
 
 def read_source_range(desk, first, last, *, guard=lambda: None,
@@ -31,12 +43,10 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
         raise ValueError('Choose a valid first and last source reading position.')
     if type(max_characters) is not int or not 1 <= max_characters <= 2_000_000:
         raise ValueError('Choose a positive bounded narration-copy character budget.')
-    # Verification may hash a retained source before returning a page. Carry
-    # this operation's cancellation into that work as well as the page loop.
     desk = copy.copy(desk)
     desk.cancelled = cancelled
     desk.timeout = min(30.0, desk.timeout)
-    pieces, positions, warnings, locations, offset = [], [], [], [], 0
+    pieces, positions, warnings, offset = [], [], [], 0
     for ordinal in range(first, last + 1):
         guard()
         check_cancelled(cancelled)
@@ -51,11 +61,11 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
         offset += len(page.raw_text)
         positions.append({'ordinal': page.ordinal, 'kind': page.location.kind,
                           'index': page.location.index, 'start': start, 'end': offset,
-                          'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest()})
-        locations.append(page.location)
+                          'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest(),
+                          'text_verified_at_capture': page.verified})
         if not page.verified:
             warnings.append(f'Reading position {ordinal}: extracted text has not been independently approved.')
     guard()
     check_cancelled(cancelled)
     return NarrationSource(''.join(pieces), desk.title, desk.workspace, desk.edition,
-                           desk.revision, tuple(positions), tuple(warnings), tuple(locations))
+                           desk.revision, tuple(positions), tuple(warnings), desk.identity.asset_sha256)
