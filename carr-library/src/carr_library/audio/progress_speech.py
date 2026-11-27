@@ -9,7 +9,6 @@ from contextlib import nullcontext
 import math
 import os
 from pathlib import Path
-import stat
 from tempfile import TemporaryDirectory
 import threading
 import time
@@ -47,23 +46,23 @@ def _language(value):
 
 def _staging_size(root):
     """Cooperative inventory check inside this notification's private directory."""
-    pending, count, total, seen = [Path(root)], 0, 0, set()
+    pending, count, total = [Path(root)], 0, 0
     while pending:
         with os.scandir(pending.pop()) as entries:
             for entry in entries:
                 count += 1
                 if count > 32:
                     raise ValueError('The progress voice exceeded its private file budget.')
-                info = entry.stat(follow_symlinks=False)
-                if stat.S_ISDIR(info.st_mode):
-                    pending.append(Path(entry.path))
-                elif stat.S_ISREG(info.st_mode):
-                    identity = (info.st_dev, info.st_ino)
-                    if identity not in seen:
-                        total += info.st_size
-                        seen.add(identity)
+                path = Path(entry.path)
+                directory = entry.is_dir(follow_symlinks=False)
+                # DirEntry identities are zero on Windows. Use the existing
+                # lstat-based primitive to reject links/reparse points and count
+                # every delivered regular file instead of deduplicating zeros.
+                info = regular(path, directory=directory)
+                if directory:
+                    pending.append(path)
                 else:
-                    raise ValueError('A progress voice produced an unsupported private file.')
+                    total += info.st_size
                 if total > MAX_STAGING_BYTES:
                     raise ValueError('The progress voice exceeded its private byte budget.')
     return total

@@ -1,6 +1,8 @@
 """Bounded real PCM through the selected registry; native device doubles are explicit."""
 from dataclasses import replace
+from contextlib import contextmanager
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -384,3 +386,59 @@ def test_actual_library_backup_retains_mode_without_restoring_voice_authority(tm
     assert set(payload) == {'kind', 'version', 'mode', 'volume', 'interval_seconds', 'muted', 'background'}
     assert 'voice' not in json.dumps(payload)
     assert not (restored / 'state/progress').exists()
+
+
+def test_windows_direntry_zero_identities_cannot_collapse_private_byte_inventory(tmp_path, monkeypatch):
+    from carr_library.audio import progress_speech as speech
+    first, second = tmp_path / 'first.wav', tmp_path / 'second.wav'
+    first.write_bytes(b'first!')
+    second.write_bytes(b'second')
+    native_scandir = os.scandir
+
+    @contextmanager
+    def windows_entries(root):
+        with native_scandir(root) as entries:
+            wrapped = []
+            for entry in entries:
+                info = entry.stat(follow_symlinks=False)
+                wrapped.append(SimpleNamespace(path=entry.path, is_dir=entry.is_dir,
+                    stat=lambda **kwargs: SimpleNamespace(st_mode=info.st_mode,
+                        st_size=info.st_size, st_dev=0, st_ino=0, st_nlink=0)))
+            yield iter(wrapped)
+
+    monkeypatch.setattr(speech.os, 'scandir', windows_entries)
+    monkeypatch.setattr(speech, 'MAX_STAGING_BYTES', 10)
+    with pytest.raises(ValueError, match='byte budget'):
+        speech._staging_size(tmp_path)
+    assert first.read_bytes() == b'first!' and second.read_bytes() == b'second'
+
+
+def test_private_inventory_rejects_hardlinks_instead_of_deduplicating_them(tmp_path):
+    from carr_library.audio import progress_speech as speech
+    original = tmp_path / 'original.wav'
+    original.write_bytes(b'unchanged fixture')
+    os.link(original, tmp_path / 'linked.wav')
+    with pytest.raises(ValueError, match='without links'):
+        speech._staging_size(tmp_path)
+    assert original.read_bytes() == b'unchanged fixture'
+
+
+def test_private_inventory_rejects_reparse_directory_before_descending(tmp_path, monkeypatch):
+    from carr_library.audio import progress_speech as speech
+    junction = tmp_path / 'junction'
+    junction.mkdir()
+    native_lstat = Path.lstat
+    calls = []
+
+    def with_windows_attribute(path, *args, **kwargs):
+        info = native_lstat(path, *args, **kwargs)
+        if path == junction:
+            calls.append(path)
+            return SimpleNamespace(st_mode=info.st_mode, st_nlink=info.st_nlink,
+                                   st_size=info.st_size, st_file_attributes=0x400)
+        return info
+
+    monkeypatch.setattr(Path, 'lstat', with_windows_attribute)
+    with pytest.raises(ValueError, match='without links'):
+        speech._staging_size(tmp_path)
+    assert calls == [junction]
