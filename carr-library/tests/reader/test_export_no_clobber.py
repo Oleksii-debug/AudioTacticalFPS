@@ -224,3 +224,23 @@ def test_destination_approval_cannot_be_reused_for_another_path(export):
         publish(approval=approval)
     assert not target.exists()
     assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_default_new_destination_never_replaces_a_last_moment_competing_file(export, monkeypatch):
+    target, _, publish = export
+    inspect = export_file._destination
+    checks = 0
+
+    def create_after_final_check(*args):
+        nonlocal checks
+        state = inspect(*args)
+        checks += 1
+        if checks == 2:
+            target.write_bytes(b'Concurrent writer after the final default-policy check')
+        return state
+
+    monkeypatch.setattr(export_file, '_destination', create_after_final_check)
+    with pytest.raises(FileExistsError):
+        publish()
+    assert target.read_bytes() == b'Concurrent writer after the final default-policy check'
+    assert not list(target.parent.glob('.research-export-*'))
