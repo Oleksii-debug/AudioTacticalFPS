@@ -89,15 +89,27 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Reproduce the observed stopped-worker failure with bounded synthetic diagnostics
+      - name: Capture actual child exceptions in the original complete transcription suite
         if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
-        timeout-minutes: 4
+        timeout-minutes: 5
         run: |
-          for ($attempt = 1; $attempt -le 12; $attempt++) {
-            Write-Output "Observed stop-workflow reproduction attempt $attempt of 12"
-            & $env:CARR_PYTHON -I -B -m pytest -q -s -o addopts= -o xfail_strict=true "--junitxml=ci-results/stopped-worker-$attempt.xml" tests/transcription/test_supplied_worker_bridge.py::test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs 2>&1 | Tee-Object "ci-results/stopped-worker-$attempt.txt"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $caseRoot = Join-Path $env:RUNNER_TEMP "carr-asr-observed-suite-$attempt"
+            Write-Output "Original transcription suite reproduction attempt $attempt of 3"
+            & $env:CARR_PYTHON -I -B -m pytest -q -x -o addopts= -o xfail_strict=true "--basetemp=$caseRoot" "--junitxml=ci-results/transcription-observed-$attempt.xml" tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_pr99_host.py 2>&1 | Tee-Object "ci-results/transcription-observed-$attempt.txt"
+            $caseExit = $LASTEXITCODE
+            Get-ChildItem -LiteralPath $caseRoot -Recurse -File -Filter 'synthetic-worker-failure.json' | ForEach-Object {
+              if ($_.Length -le 8192) { Get-Content -LiteralPath $_.FullName -Raw | Tee-Object -FilePath "ci-results/synthetic-exceptions-$attempt.txt" -Append }
+            }
+            if ($caseExit -ne 0) { exit $caseExit }
           }
+
+      - name: Exercise actual status publication while a brief Windows reader is open
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -m pytest -q -o addopts= -o xfail_strict=true --junitxml=ci-results/held-status-reader.xml tests/transcription/probe_windows_status_reader.py 2>&1 | Tee-Object 'ci-results/held-status-reader.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve exact-commit runtime and test evidence
         if: always()
