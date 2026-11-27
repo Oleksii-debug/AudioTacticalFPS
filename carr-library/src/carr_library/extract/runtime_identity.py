@@ -11,6 +11,7 @@ import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
 from . import ocr_languages, ocr_runtime
+from .ocr_process import run_ocr
 
 
 class IdentityError(ValueError):
@@ -38,7 +39,8 @@ def _source_hashes():
     root = Path(__file__).parent
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py', 'model_catalog.py',
-             'ocr_model_store.py', 'managed_ocr.py', 'ocr_model_catalog.py', 'ocr-model-catalog.json')
+             'ocr_model_store.py', 'managed_ocr.py', 'ocr_model_catalog.py', 'ocr-model-catalog.json',
+             'ocr_process.py')
     return {**{name: _hash(root / name) for name in names},
             'ocr_runtime.py': _hash(ocr_runtime.__file__),
             'language_manager.py': _hash(language_manager.__file__)}
@@ -82,9 +84,7 @@ def runtime_identity(config):
         exe = runtime.executable
 
         def run(arg):
-            return subprocess.run(runtime.command([exe, arg]), check=True, capture_output=True,
-                                  timeout=remaining(), cwd=runtime.root,
-                                  creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout.decode('utf-8')
+            return run_ocr(runtime, [exe, arg], remaining=remaining).stdout.decode('utf-8')
 
         before = _hash(exe, remaining=remaining)
         version = run('--version').splitlines()[0]
