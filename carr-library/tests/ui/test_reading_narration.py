@@ -46,14 +46,13 @@ class Worker:
         future, done, failed = self.pending.pop(0)
         try:
             value = future.result(timeout=5)
+            done(value)
+            return value
         except BaseException as exc:
             if failed is not None:
                 failed(exc)
             else:
                 raise
-        else:
-            done(value)
-            return value
     def close(self):
         self.pool.shutdown(wait=True, cancel_futures=True)
 
@@ -100,13 +99,18 @@ class Widget:
     def GetSelection(self): self.native(); return self.selection
     def SetSelection(self, value): self.native(); self.selection = value
     def EndModal(self, result): self.native()
-    def Destroy(self): self.native(); self.dead = True
+    def __bool__(self): return not self.dead
+    def Destroy(self):
+        self.native()
+        self.dead = True
+        if 'destroy' in self.handlers:
+            self.handlers['destroy'](SimpleNamespace(GetEventObject=lambda: self, Skip=lambda: None))
 
 
 def wx_module():
     value = SimpleNamespace(Dialog=Widget, TextCtrl=Widget, StaticText=Widget, ListBox=Widget,
         Choice=Widget, BoxSizer=Widget, Button=Widget, EVT_BUTTON='press', EVT_CLOSE='close',
-        EVT_CHOICE='choice', ID_CANCEL=2)
+        EVT_CHOICE='choice', EVT_WINDOW_DESTROY='destroy', ID_CANCEL=2)
     for key in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL',
                 'ALL', 'EXPAND', 'LEFT', 'TE_READONLY', 'TE_MULTILINE'):
         setattr(value, key, 0)
@@ -355,9 +359,11 @@ def test_policy_change_after_exact_completed_render_refuses_live_adoption_withou
     result, selection = future.result(timeout=5)
     raw = output.read_bytes()
     state.document.set_narration_read('footnote', False)
-    with pytest.raises(ValueError, match='changed'):
-        done((result, selection))
+    done((result, selection))
     assert output.read_bytes() == raw and state.current()['last_audio'] is None
+    assert 'WAV was saved:' in state.reports[-1] and str(output) in state.reports[-1]
+    assert result.sha256 in state.reports[-1] and 'after publication' in state.reports[-1]
+    assert 'changed' in state.reports[-1] and 'did not complete' not in state.reports[-1]
     state.player.play.assert_not_called()
 
 
@@ -378,3 +384,90 @@ def test_actual_reader_recovery_with_skip_never_saves_unfiltered_audio_position(
     doc.set_narration_read('footnote', True)
     assert save(force=True)
     assert store.load().audio_seconds == 47.5
+
+
+def test_direct_native_destroy_after_worker_completion_revokes_queued_policy_adoption(policy_ui):
+    state, dialog = policy_ui, policy_ui.dialog
+    before = state.document.to_dict()
+    dialog.mark()
+    state.worker.pending[0][0].result(timeout=5)
+    assert state.document.narration_policy is None and not state.saves
+    dialog.Destroy()  # No EVT_CLOSE/close() call; this is the native owner-destruction seam.
+    assert not dialog.alive and dialog.dead and dialog.cancel_pending is None
+    state.worker.finish()
+    assert state.document.to_dict() == before and not state.saves and not state.store.path.exists()
+
+
+def test_child_control_destroy_does_not_revoke_policy_owner(policy_ui):
+    state, dialog = policy_ui, policy_ui.dialog
+    skipped = Mock()
+    dialog.destroyed(SimpleNamespace(GetEventObject=lambda: dialog.list, Skip=skipped))
+    assert dialog.alive and not dialog.dead
+    skipped.assert_called_once()
+    dialog.mark(); state.worker.finish()
+    assert state.document.narration_policy is not None and state.saves
+
+
+def test_policy_modal_finally_destroys_even_when_close_raises(monkeypatch):
+    events = []
+    class Modal:
+        alive = True
+        def ShowModal(self): events.append('show')
+        def close(self):
+            self.alive = False
+            events.append('close')
+            raise RuntimeError('Injected close failure')
+        def Destroy(self): events.append('destroy')
+    monkeypatch.setattr(reading_narration, 'create_reading_narration', lambda *_a, **_k: Modal())
+    with pytest.raises(RuntimeError, match='close failure'):
+        reading_narration.show_reading_narration(object())
+    assert events == ['show', 'close', 'destroy']
+
+
+def test_actual_policy_close_still_ends_and_destroys_after_cancel_callback_failure(policy_ui, monkeypatch):
+    state, dialog = policy_ui, policy_ui.dialog
+    dialog.mark()
+    state.worker.pending[0][0].result(timeout=5)
+    cancel_pending = dialog.cancel_pending
+    def broken_cancel():
+        cancel_pending()
+        raise RuntimeError('Injected cancel callback failure')
+    dialog.cancel_pending = broken_cancel
+    dialog.ShowModal = lambda: None
+    ended, real_end = Mock(), dialog.EndModal
+    def end(value):
+        ended(value)
+        real_end(value)
+    dialog.EndModal = end
+    monkeypatch.setattr(reading_narration, 'create_reading_narration', lambda *_a, **_k: dialog)
+    with pytest.raises(RuntimeError, match='cancel callback failure'):
+        reading_narration.show_reading_narration(object())
+    assert dialog.dead and not dialog.alive and dialog.cancel_pending is None
+    ended.assert_called_once()
+    state.worker.finish()
+    assert state.document.narration_policy is None and not state.saves
+
+
+@pytest.mark.parametrize('change', ['editor_text', 'policy_same_text', 'tab', 'source', 'owner_close'])
+def test_quiet_feedback_delay_rechecks_exact_projection_before_real_playback(render_ui, change):
+    state, held = render_ui, []
+    values = {**state.values, 'start_playback': lambda action: held.append(action)}
+    speak, current, change_document = closure('speak', values)
+    speak()
+    result, selection = state.worker.finish()
+    assert result.path.is_file() and len(held) == 1
+    if change == 'editor_text':
+        # The document has not synchronized this owner-only visible edit yet.
+        state.editor.ChangeValue('Visible replacement before quiet feedback finished.')
+    elif change == 'policy_same_text':
+        state.document.mark_narration_region(0, 1, 'heading', 'Another explicit review')
+    elif change == 'tab':
+        change_document(ReadingDocument(state.document.source_text))
+    elif change == 'source':
+        state.allowed[0] = False
+    else:
+        state.parent._closing = True
+    with pytest.raises((ValueError, InterruptedError), match='changed|closed'):
+        held.pop()()
+    state.player.play.assert_not_called()
+    assert result.path.is_file()  # A completed private render is still owned by normal reader cleanup.

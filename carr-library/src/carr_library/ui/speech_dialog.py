@@ -1091,10 +1091,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             def rendered(value):
                 nonlocal last_audio, last_reading_audio
                 result, selection = value
-                check_render()
-                # Native editor controls are touched only by this UI callback.
-                selected_text(from_cursor)
-                selection.check(document)
+                try:
+                    check_render()
+                    # Native editor controls are touched only by this UI callback.
+                    selected_text(from_cursor)
+                    selection.check(document)
+                except Exception as exc:
+                    if destination is None:
+                        raise
+                    report(f'WAV was saved: {result.path}. Recorded SHA-256: {result.sha256}. '
+                           f'The current reader did not adopt it after publication: {exc}', focus=True)
+                    return
                 last_audio, last_reading_audio = result.path, None
                 if destination is None and not selection.filtered and document is render_document:
                     try:
@@ -1108,6 +1115,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     if cancel.is_set():
                         return
                     def playing():
+                        check_render()
+                        selected_text(from_cursor)
+                        selection.check(document)
                         player.play(result.path)
                         capabilities()
                         report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '

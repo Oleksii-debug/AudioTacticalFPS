@@ -73,14 +73,15 @@ def create_reading_narration(parent, *, capture, execute, guard, wx_module=None)
             self.SetSizer(layout)
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.destroyed)
             try:
                 self.refresh()
                 self.category.SetFocus()
             except BaseException:
-                self.alive = False
-                if self.cancel_pending is not None:
-                    self.cancel_pending()
-                self.Destroy()
+                try:
+                    self.invalidate()
+                finally:
+                    self.Destroy()
                 raise
 
         def controls(self):
@@ -196,12 +197,25 @@ def create_reading_narration(parent, *, capture, execute, guard, wx_module=None)
             if self.alive and not self.working:
                 self.action('preview', {'scope': self.scope.GetSelection()})
 
+        def invalidate(self):
+            self.alive = False
+            cancel_pending, self.cancel_pending = self.cancel_pending, None
+            if cancel_pending is not None:
+                cancel_pending()
+
+        def destroyed(self, event):
+            try:
+                if event.GetEventObject() is self:
+                    self.invalidate()
+            finally:
+                event.Skip()
+
         def close(self, event=None):
             if self.alive:
-                self.alive = False
-                if self.cancel_pending is not None:
-                    self.cancel_pending()
-                self.EndModal(wx.ID_CANCEL)
+                try:
+                    self.invalidate()
+                finally:
+                    self.EndModal(wx.ID_CANCEL)
 
     return ReadingNarration()
 
@@ -211,6 +225,9 @@ def show_reading_narration(parent, **options):
     try:
         dialog.ShowModal()
     finally:
-        if dialog.alive:
-            dialog.close()
-        dialog.Destroy()
+        try:
+            if dialog.alive:
+                dialog.close()
+        finally:
+            if dialog:
+                dialog.Destroy()
