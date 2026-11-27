@@ -329,19 +329,36 @@ def create_assistant_dialog(frame, *, wx_module=None):
         finally:
             choice.Destroy()
 
-    def close(event=None):
+    def detach():
         nonlocal alive
+        if not alive:
+            return
+        # Direct parent destruction can bypass EVT_CLOSE. Detach plain worker
+        # state before any queued callback can reach a deleted native control.
+        cancel.set()
+        alive = False
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    def close(event=None):
         if not alive:
             return
         cancel.set()
         if busy == 'run' and job_id:
             service.pause(job_id)
-        alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
+        detach()
         if dialog.IsModal():
             dialog.EndModal(wx.ID_CLOSE)
         else:
             dialog.Hide()
+
+    owner_id = dialog.GetId()
+
+    def destroyed(event):
+        if event.GetId() == owner_id:
+            # wx may supply a different wrapper while destroying the owner.
+            # Do not query or close that dying dialog from this event.
+            detach()
+        event.Skip()
 
     def help_text(event):
         from .desktop_app import show_text
@@ -356,6 +373,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
     planning_source.Bind(wx.EVT_CHOICE, invalidate)
     full_backup.Bind(wx.EVT_CHECKBOX, invalidate)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     dialog.assistant_controls = dict(scope=scope_choice, input=input_folder, output=output_folder,
         full_backup=full_backup, instruction=instruction, planning_source=planning_source,
         review=review, buttons=buttons)

@@ -8,7 +8,7 @@ import json
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from threading import Event, Thread
+from threading import Event, Thread, enumerate as enumerate_threads
 from time import monotonic, sleep
 import traceback
 
@@ -119,7 +119,37 @@ def main():
                   and len(dialog.assistant_service.jobs()) == 1 and len(state['requests']) == 3)
             check('completion returns focus to readable result', wx.Window.FindFocus() == controls['review'])
             handlers['close'](); dialog.Destroy(); dialog = None
-            frame.Close(); frame = None; gui.Yield()
+            gui.Yield()
+
+            # Real parent destruction must detach a pending local request even
+            # when no EVT_CLOSE arrives on its owned assistant dialog.
+            workers_before = set(enumerate_threads())
+            dialog = ui.create_assistant_dialog(frame); dialog.Show(); gui.Yield()
+            controls, handlers = dialog.assistant_controls, dialog.assistant_handlers
+            buttons = controls['buttons']
+            pending_service = dialog.assistant_service
+            jobs_before = tuple(row.id for row in pending_service.jobs())
+            controls['planning_source'].SetSelection(1)
+            controls['instruction'].SetValue('A proposal whose parent is about to be destroyed.')
+            state['hold'] = Event()
+            click(buttons['preview']); until(lambda: len(state['requests']) == 4)
+            check('actual local response is pending before native parent destruction',
+                  not buttons['run'].IsEnabled())
+            workers = [thread for thread in enumerate_threads()
+                       if thread not in workers_before
+                       and thread.name.startswith('local-assistant')]
+            check('pending proposal owns an actual background thread', bool(workers))
+            frame.Destroy()
+            frame = dialog = None
+            gui.Yield()
+            state['hold'].set()
+            until(lambda: all(not thread.is_alive() for thread in workers))
+            gui.Yield()
+            gui.Yield()
+            check('native parent destruction discards the late proposal without executing it',
+                  tuple(row.id for row in pending_service.jobs()) == jobs_before
+                  and [row.name for row in app.workspaces()] == ['Explicitly reviewed library']
+                  and len(state['requests']) == 4)
         if errors:
             raise RuntimeError('\n'.join(errors))
     finally:
