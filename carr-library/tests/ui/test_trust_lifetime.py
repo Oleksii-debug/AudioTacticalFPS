@@ -33,7 +33,10 @@ def lifetime():
     frame.executor = SimpleNamespace(shutdown=lambda **options: events.append(('shutdown', options)))
     frame.report = Mock()
     frame.Bind = lambda kind, callback, source=None: bindings.append((kind, callback, source))
-    menu = SimpleNamespace(Append=lambda *args: object())
+    item = SimpleNamespace(GetId=lambda: 701,
+        GetItemLabel=lambda: 'License and signed updates',
+        GetSubMenu=lambda: None, IsSeparator=lambda: False)
+    menu = SimpleNamespace(Append=lambda *args: item, GetMenuItems=lambda: [item])
     bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabelText=lambda index: 'Help',
                           GetMenu=lambda index: menu)
     frame.GetMenuBar = lambda: bar
@@ -69,6 +72,11 @@ def lifetime():
                  '__package__': 'carr_library.ui'}
     exec(compile(ast.Module(body=[install], type_ignores=[]), str(ui / 'trust_status.py'), 'exec'), namespace)
     namespace['install_trust_actions'](frame)
+    spec, registered_item = frame._pending_keyboard_commands[0]
+    assert len(frame._pending_keyboard_commands) == 1
+    assert spec.command_id == 'trust.status' and spec.context == 'main'
+    assert spec.default_shortcut == '' and registered_item is item
+    assert next(source for kind, _, source in bindings if kind == 'menu') is item
     class CloseEvent:
         def __init__(self):
             self.vetoed = self.skipped = False
