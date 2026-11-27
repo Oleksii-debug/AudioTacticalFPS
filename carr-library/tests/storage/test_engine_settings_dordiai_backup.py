@@ -8,7 +8,7 @@ import pytest
 from carr_library import backup_sidecars, runtime_settings
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup
-from test_engine_settings_backup import NAME, configuration, resign, snapshot_files, write_settings
+from .test_engine_settings_backup import NAME, configuration, resign, snapshot_files, write_settings
 
 
 MISSING = object()

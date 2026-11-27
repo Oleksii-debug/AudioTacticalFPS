@@ -8,7 +8,7 @@ import pytest
 from carr_library.citations.anchors import Identity, Locator, Metadata, digest, make_anchor, resolve_span
 from carr_library.citations.historical import historical_loader
 from carr_library.citations.pdf_review_attestation import ReviewedPage, pdf_review_attestor, render_fingerprint
-from test_pdf_mapping_contradiction import fixture, inspect
+from .test_pdf_mapping_contradiction import fixture, inspect
 
 
 @pytest.fixture

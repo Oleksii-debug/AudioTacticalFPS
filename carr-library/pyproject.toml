@@ -127,6 +127,7 @@ bootstrap = "bootstrap"
   "ocr-language-detector.json", "PY3LANGID_LICENSE"]
 
 [tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
 markers = ["requires_loopback: requires an actual local socket; run outside the offline-network gate"]
