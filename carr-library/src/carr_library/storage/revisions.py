@@ -155,6 +155,40 @@ def _sidecars(path):
                for suffix in ('-wal', '-shm', '-journal'))
 
 
+@contextmanager
+def _sqlite_cancellation(db, checkpoint):
+    """Bound an owned SQLite operation and preserve the original interruption.
+
+    The caller owns this connection's progress handler for this scope. No
+    handler is retained after return or failure, and no callback runs after a
+    publication commit outside the scope.
+    """
+    if not callable(checkpoint):
+        raise ValueError('SQLite checkpoint must be callable')
+    interrupted = []
+    def progress():
+        if interrupted:
+            return 1
+        try:
+            checkpoint()
+        except BaseException as error:
+            interrupted.append(error)
+            return 1
+        return 0
+    checkpoint()
+    db.set_progress_handler(progress, 10000)
+    try:
+        try:
+            yield
+            checkpoint()
+        except sqlite3.Error:
+            if interrupted:
+                raise interrupted[0]
+            raise
+    finally:
+        db.set_progress_handler(None, 0)
+
+
 @dataclass(frozen=True)
 class Page:
     raw: str
@@ -331,7 +365,8 @@ class Storage:
             except ValueError as exc:
                 raise sqlite3.IntegrityError('invalid verified printed label') from exc
 
-    def _check(self):
+    def _check(self, *, checkpoint=lambda: None):
+        checkpoint()
         self._check_schema()
         if self.db.execute('PRAGMA integrity_check').fetchone()[0] != 'ok' or self.db.execute('PRAGMA foreign_key_check').fetchone():
             raise ValueError('database integrity failure')
@@ -352,6 +387,7 @@ class Storage:
             raise ValueError('missing active edition')
         self._check_locators()
         for row in self.db.execute('SELECT raw,digest FROM page'):
+            checkpoint()
             if sha256(row[0].encode()).hexdigest()!=row[1]:
                 raise ValueError('raw digest mismatch')
         if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
@@ -362,6 +398,7 @@ class Storage:
         if self.schema_version >= 4:
             from ..research.academic_library import validate_academic_database
             validate_academic_database(self.db)
+        checkpoint()
 
     def _check_research(self):
         """Check persisted research identities and source slices before backup.
@@ -442,9 +479,18 @@ class Storage:
             WHERE v.raw_sha256<>p.digest LIMIT 1''').fetchone():
             raise ValueError('page review text digest mismatch')
 
-    def check(self):
-        with self.transaction():
-            self._check()
+    def check(self, *, cancelled=None):
+        if cancelled is None:
+            with self.transaction():
+                self._check()
+            return
+        if not callable(cancelled):
+            raise ValueError('Database cancellation must be callable')
+        def checkpoint():
+            if cancelled():
+                raise InterruptedError('Database validation cancelled.')
+        with _sqlite_cancellation(self.db, checkpoint), self.transaction():
+            self._check(checkpoint=checkpoint)
 
     def rebuild(self):
         with self.transaction():
@@ -454,7 +500,7 @@ class Storage:
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
             self._check()
 
-    def backup(self, path):
+    def backup(self, path, *, cancelled=lambda: False, maximum_bytes=None):
         """Publish a checked SQLite snapshot without replacing any existing path.
 
         Requires a local filesystem supporting hard links. Interrupted processes
@@ -462,6 +508,13 @@ class Storage:
         The caller must own a stable private parent directory and exclude
         concurrent namespace writers; these checks are not a hostile-directory lock.
         """
+        if not callable(cancelled) or (maximum_bytes is not None and
+                (type(maximum_bytes) is not int or not 1 <= maximum_bytes <= 64 * 1024**3)):
+            raise ValueError('invalid backup cancellation or byte budget')
+        def check():
+            if cancelled():
+                raise InterruptedError('Database backup cancelled before publication.')
+        check()
         if self.db.in_transaction:
             raise ValueError('backup forbidden inside publication transaction')
         self._require_pragmas()
@@ -473,16 +526,25 @@ class Storage:
             staged = Path(work) / 'snapshot.db'
             dst = sqlite3.connect(staged)
             try:
-                self.db.backup(dst)
+                page_size = self.db.execute('PRAGMA page_size').fetchone()[0]
+                def progress(status, remaining, total):
+                    check()
+                    if maximum_bytes is not None and total * page_size > maximum_bytes:
+                        raise ValueError('database exceeds the selected backup byte budget')
+                self.db.backup(dst, pages=256, progress=progress)
                 # A backup of a WAL source may retain the WAL file format.
                 # Convert only the private snapshot to a standalone database.
                 if dst.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                     raise ValueError('snapshot journal mode is not DELETE')
             finally:
                 dst.close()
+            check()
+            if maximum_bytes is not None and staged.stat().st_size > maximum_bytes:
+                raise ValueError('database exceeds the selected backup byte budget')
             copy = Storage(staged)
             try:
-                copy.check()
+                copy.check(cancelled=cancelled)
+                check()
             finally:
                 copy.close()
             if _sidecars(staged):
@@ -493,6 +555,7 @@ class Storage:
             # Unsupported filesystems fail closed; no overwrite/copy fallback.
             if _sidecars(path):
                 raise FileExistsError(path)
+            check()
             os.link(staged, path)
 
 

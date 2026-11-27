@@ -19,15 +19,39 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
     'tests/packaging/test_library_scale_benchmark.py': 24,
-    'tests/packaging/test_library_capacity_measurement.py': 18,
+    'tests/packaging/test_library_capacity_measurement.py': 24,
+    'tests/storage/test_backup_capacity.py': 28,
+    'tests/storage/test_backup_capacity_cli.py': 3,
+    'tests/ui/test_backup_capacity.py': 17,
+    'tests/storage/test_library_backup.py': 9,
+    'tests/storage/test_crash_backup.py': 5,
+    'tests/storage/test_complete_pending_backup.py': 4,
+    'tests/storage/test_backup_pending_common4.py': 27,
+    'tests/storage/test_backup_schema_identity.py': 36,
 }
 PINS = {
-    'scripts/benchmark_library_scale.py': 'ee805f665bd1722f0464860ac662af6981567666',
+    'scripts/benchmark_library_scale.py': 'ec198e50daffd3d3687048e15882c3744c3c54c4',
     'scripts/benchmark_semantic_cache.py': '898b05e37b5a50c018567e35c44ef71f1393535d',
-    'tests/packaging/test_library_scale_benchmark.py': '0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17',
-    'tests/packaging/test_library_capacity_measurement.py': '422374a17ec1eb1eed78527cf86125ae0efa8858',
+    'tests/packaging/test_library_scale_benchmark.py': 'd4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411',
+    'tests/packaging/test_library_capacity_measurement.py': '5f2ab090a0baaad61d326c128dc6da453b1c4fc7',
+    'tests/storage/test_backup_capacity.py': '895aec39b689aea7101da23db0801413dac324ef',
+    'tests/storage/test_backup_capacity_cli.py': '741a005ca9f351579b9d51b464a88dda9afb52b7',
+    'tests/ui/test_backup_capacity.py': '26f03b8f46f6425460bb248f94bd3f1347787dc6',
+    'tests/storage/test_library_backup.py': 'd14b278b356bb47fe66e822125a257807f2cd895',
+    'tests/storage/test_crash_backup.py': '5e84ede7eee0b7406c687b5a6020b0fcd535ec2c',
+    'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
+    'tests/storage/test_backup_pending_common4.py': 'b7583313b0c30d57fc031832e2fd486803604f00',
+    'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
     'scripts/ci_check.py': '8a23ef36c2df93928b0aff3edd8b59a53c54684c',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
+    'src/carr_library/backup_capacity.py': '1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
+    'src/carr_library/application.py': '4544453f62a96993a2f05ed1522a563649289715',
+    'src/carr_library/__main__.py': '99b3c98d5f60cfa6ba1074d74c32acc14250fd16',
+    'src/carr_library/library_backup.py': 'd36d2ab93043bff46048bb6146769a1a19f29db8',
+    'src/carr_library/pending_backup.py': 'b2c3fc3a52e9d2fef5c019196ef239381c519fc7',
+    'src/carr_library/backup_sidecars.py': '5c2ec87913e8ad252dce9aa8cff7ccc22dca3525',
+    'src/carr_library/storage/revisions.py': '417a9920d4c25eacd36cc81f7441ea321c18d632',
+    'src/carr_library/ui/backup_capacity.py': '66555889648ec8b76ac11e7ffe5bd54ece6c29e9',
 }
 COMPANIONS = ('scripts/benchmark_library_scale.py', 'scripts/benchmark_semantic_cache.py')
 
@@ -168,13 +192,15 @@ def main():
     benchmark = load('capacity_existing_harness', ROOT / COMPANIONS[0])
     proof_module = load('capacity_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
+    # Five two-suite waves retain 600 s plus the existing 30 s tree cleanup
+    # and 0.2 s report retries; 3200 s also covers aggregate setup/reporting.
     code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
-                  '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=1250)
+                  '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=3200)
     lines = source_log.read_text(encoding='utf-8').splitlines()
     expected = [f'PASS: {suite}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0'
                 for suite, count in SUITES.items()]
     require(code == 0 and all(lines.count(line) == 1 for line in expected)
-            and lines[-1] == 'Required suites complete: 2; passed=2; failed=0',
+            and lines[-1] == f'Required suites complete: {len(SUITES)}; passed={len(SUITES)}; failed=0',
             'Every source whole suite must pass without skips or expected failures.')
     write(evidence / 'source-summary.json', dict(status='PASS', suites=SUITES,
           passed=sum(SUITES.values()), failed=0, skipped=0, expected_failures=False,
@@ -213,8 +239,10 @@ def main():
         wrapper = work / 'installed_child.py'
         wrapper.write_text(INSTALLED_CHILD, encoding='utf-8')
         contract = work / 'child-contract.json'
-        write(contract, dict(pytest_child=ci.PYTEST_CHILD,
-                            modules=list(benchmark.MODULES + benchmark.CAPACITY_MODULES)))
+        modules = list(benchmark.MODULES + benchmark.CAPACITY_MODULES)
+        require(len(modules) == len(set(modules)) == 20,
+                'The explicit backup-profile harness requires all 20 installed origins.')
+        write(contract, dict(pytest_child=ci.PYTEST_CHILD, modules=modules))
         installed = []
         for number, (suite, expected_count) in enumerate(SUITES.items(), 1):
             xml = evidence / f'installed-{number}.xml'

@@ -128,6 +128,35 @@ def actual_cli(output, *extra):
 def test_actual_capacity_cli_keeps_separate_setup_public_receipts_restart_and_backup(tmp_path):
     output = tmp_path / 'capacity'
     completed = actual_cli(output, '--public-samples', '3', '--complete-backup')
+    if completed.returncode:
+        # Preserve the failing exit assertion, but expose this synthetic child's
+        # retained phase evidence instead of losing it with pytest's temp root.
+        try:
+            retained = benchmark.read_json(output / 'library-corpus-scale.json')
+            diagnostic = {'status': retained.get('status'), 'cases': []}
+            for item in retained.get('cases', [])[:1]:
+                row = {'requested_books': item.get('requested_books'),
+                       'status': item.get('status'), 'phases': []}
+                for phase in item.get('phases', [])[:5]:
+                    detail = {key: phase.get(key) for key in (
+                        'phase', 'status', 'reason', 'diagnostic', 'progress',
+                        'pid', 'exit_code', 'process_reaped', 'process_wall_seconds')}
+                    if (phase.get('status') != 'PASS' and phase.get('phase') in
+                            ('build', 'measure', 'restart', 'operations', 'backup')):
+                        error_path = output / '2' / (phase['phase'] + '.stderr.txt')
+                        try:
+                            with error_path.open('rb') as stream:
+                                detail['stderr_prefix'] = stream.read(8192).decode('utf-8', 'replace')
+                        except OSError as error:
+                            detail['stderr_error'] = type(error).__name__
+                    row['phases'].append(detail)
+                diagnostic['cases'].append(row)
+        except Exception as error:
+            # A diagnostic read must never replace the original nonzero exit.
+            diagnostic = {'diagnostic_error': type(error).__name__,
+                          'message': str(error)[:2000]}
+        print('CAPACITY_FAILURE_DIAGNOSTIC ' +
+              json.dumps(diagnostic, ensure_ascii=True)[:65536], flush=True)
     assert completed.returncode == 0, (completed.stdout.decode('utf-8'), completed.stderr.decode('utf-8'))
     report = benchmark.read_json(output / 'library-corpus-scale.json')
     assert report['status'] == 'PASS' and report['schema'] == benchmark.SCHEMA
@@ -286,3 +315,84 @@ def test_fixture_entry_cancellation_creates_no_library_or_ready_receipt(tmp_path
     with pytest.raises(InterruptedError):
         benchmark.build_retained_fixture(tmp_path, case(), cancelled=lambda: True)
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize('profile,complete', [
+    (None, True), (True, True), ('auto', True), ('large-source-v1', False),
+])
+def test_backup_profile_requires_an_explicit_supported_name_and_backup_phase(tmp_path, profile, complete):
+    settings = case()
+    settings.pop('books')
+    output = tmp_path / 'must-not-exist'
+    options = dict(construction='retained-fixture', public_samples=0,
+                   complete_backup=complete, backup_capacity_profile=profile)
+    with pytest.raises(benchmark.BenchmarkFailure, match='backup capacity profile'):
+        benchmark.run_benchmark(output, [3], settings, capacity=options)
+    assert not output.exists()
+
+
+def test_explicit_backup_profile_reaches_actual_isolated_phase_and_report(tmp_path):
+    from carr_library.backup_capacity import LARGE_SOURCE_PROFILE, capacity
+    output = tmp_path / 'explicit-profile'
+    completed = actual_cli(output, '--public-samples', '0', '--complete-backup',
+                           '--backup-capacity-profile', LARGE_SOURCE_PROFILE)
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    report = benchmark.read_json(output / 'library-corpus-scale.json')
+    assert report['status'] == 'PASS' and report['schema'] == benchmark.SCHEMA
+    assert report['capacity'] == dict(construction='retained-fixture', public_samples=0,
+        complete_backup=True, backup_capacity_profile=LARGE_SOURCE_PROFILE)
+    phases = report['cases'][0]['phases']
+    assert [row['phase'] for row in phases] == ['build', 'measure', 'restart', 'backup']
+    assert len({row['pid'] for row in phases}) == 4
+    assert all(row['status'] == 'PASS' and row['process_reaped'] and row['exit_code'] == 0
+               and row['books'] == 2 and row['segments'] == 4 for row in phases)
+    assert len({row['corpus_sha256'] for row in phases}) == 1
+    actual = phases[-1]
+    assert actual['admission']['status'] == 'ADMITTED'
+    assert actual['admission']['capacity_profile'] == LARGE_SOURCE_PROFILE
+    assert actual['admission']['allowances'] == capacity(LARGE_SOURCE_PROFILE)
+    assert actual['all_manifest_files_verified'] and actual['old_absolute_root_absent']
+    assert actual['retired_baseline_preserved'] and actual['restored_root_differs']
+    assert 'carr_library.backup_capacity' in report['origins']
+    assert set(report['origins']) == set(benchmark.MODULES + benchmark.CAPACITY_MODULES)
+    assert all(row['origins'] == report['origins'] for row in phases)
+    manifest = benchmark.read_json(output / '2/complete-backup/manifest.json')
+    assert manifest['version'] == 4 and manifest['pending']['version'] == 1
+    assert 'capacity_profile' not in manifest and 'capacity_profile' not in manifest['pending']
+    assert not (output / '2/library').exists()
+    assert (output / '2/restored-library/library.sqlite').is_file()
+    assert not list(output.rglob('*.pyc'))
+
+
+def test_selected_profile_is_forwarded_to_each_real_backup_api_without_wire_authority(tmp_path, monkeypatch):
+    from carr_library import library_backup
+    from carr_library.backup_capacity import LARGE_SOURCE_PROFILE, capacity
+    root = tmp_path / 'forwarded-profile'
+    settings, built, _ = setup(root)
+    actual_create = library_backup.create_backup
+    actual_verify = library_backup.verify_backup
+    actual_restore = library_backup.restore_backup
+    calls = []
+    def recording(name, actual):
+        def checked(*args, **kwargs):
+            assert kwargs.get('capacity_profile') == LARGE_SOURCE_PROFILE
+            calls.append(name)
+            return actual(*args, **kwargs)
+        return checked
+    monkeypatch.setattr(library_backup, 'create_backup', recording('create', actual_create))
+    monkeypatch.setattr(library_backup, 'verify_backup', recording('verify', actual_verify))
+    monkeypatch.setattr(library_backup, 'restore_backup', recording('restore', actual_restore))
+    result = benchmark.measure_complete_backup(root, settings, capacity_profile=LARGE_SOURCE_PROFILE)
+    assert calls == ['create', 'verify', 'restore']
+    assert result['status'] == 'PASS' and result['corpus_sha256'] == built['corpus_sha256']
+    assert result['admission']['allowances'] == capacity(LARGE_SOURCE_PROFILE)
+    assert result['source_root_retired'] and result['restored_root_differs']
+    # A small backup made with a larger caller allowance has unchanged bytes
+    # and remains verifiable under the default admission; no profile is trusted
+    # from its manifest or needed to interpret its format.
+    manifest = actual_verify(root / 'complete-backup', result['manifest_sha256'])
+    assert manifest['version'] == 4 and manifest['pending']['version'] == 1
+    assert 'capacity_profile' not in manifest and 'capacity_profile' not in manifest['pending']
+    assert not (root / 'library').exists()
+    assert (root / 'retained-baseline-library/library.sqlite').is_file()
+    assert (root / 'restored-library/library.sqlite').is_file()

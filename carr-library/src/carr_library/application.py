@@ -1340,8 +1340,10 @@ class LibraryApp:
         from .transcription import TranscriptionService
         return TranscriptionService(self, workspace)
 
-    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
+    def backup(self, destination, *, max_bytes=None, include_generated=False,
+               capacity_profile=None, cancelled=lambda: False):
         from .library_backup import create_backup
         return create_backup(self, destination, max_bytes=max_bytes,
-                             include_generated=include_generated, cancelled=cancelled)
+                             include_generated=include_generated, capacity_profile=capacity_profile,
+                             cancelled=cancelled)
 

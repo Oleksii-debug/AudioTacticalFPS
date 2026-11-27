@@ -125,7 +125,8 @@ def test_backup_failed_check_never_publishes(tmp_path, monkeypatch):
     source, target = tmp_path / 'library.db', tmp_path / 'backup.db'
     seed(source)
 
-    def fail_check(self):
+    def fail_check(self, *, cancelled=None):
+        assert callable(cancelled)
         raise ValueError('synthetic integrity failure')
 
     monkeypatch.setattr(Storage, 'check', fail_check)

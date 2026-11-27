@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -132,7 +133,9 @@ def test_budget_rejects_same_path_directory_replacement_before_action(tmp_path):
 def test_real_elapsed_deadline_and_measured_disk_refuse_more_work(tmp_path):
     root = tmp_path / 'corpus'
     root.mkdir()
-    budget = benchmark.Budget(root, case(phase_timeout=1e-12))
+    budget = benchmark.Budget(root, case(phase_timeout=0.001))
+    # Let real time pass; adjacent counter reads can be equal on Windows runners.
+    time.sleep(0.02)
     with pytest.raises(benchmark.BudgetExceeded, match='time budget'):
         budget.check()
     (root / 'actual.bin').write_bytes(b'xx')

@@ -378,8 +378,10 @@ def _collection_budgets(entries):
             raise RestoreError('narration producer snapshot budget exceeded')
 
 
-def normalize_manifest(manifest):
+def normalize_manifest(manifest, *, capacity_profile=None):
     """Discriminate exact v3 shapes without changing the signed source manifest."""
+    from .backup_capacity import capacity
+    capacity(capacity_profile)
     version = manifest.get('version')
     fields = {'version', 'kind', 'schema_version', 'database', 'assets'}
     if type(version) is not int or version not in (1, 2, 3, 4, 5):
@@ -469,7 +471,7 @@ def normalize_manifest(manifest):
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
     if pending is not None:
         from .pending_backup import validate_pending
-        validate_pending(pending)
+        validate_pending(pending, capacity_profile=capacity_profile)
     return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
 
 
@@ -742,7 +744,8 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
     return entries
 
 
-def check_namespace(directory, inventory):
+def check_namespace(directory, inventory, *, cancelled=lambda: False):
+    _check_cancelled(cancelled)
     names = {entry['filename'] for entry in inventory.entries}
     expected_dirs = set(inventory.empty_roots)
     if inventory.pending is not None:
@@ -759,6 +762,7 @@ def check_namespace(directory, inventory):
         changed = ', '.join(sorted(actual_roots ^ expected_roots)[:10])
         raise RestoreError('incomplete backup or unexpected files: ' + changed)
     for name in expected_dirs:
+        _check_cancelled(cancelled)
         _plain(directory / name, directory=True)
         actual = {path.relative_to(directory).as_posix() for path in (directory / name).iterdir()}
         expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}
@@ -766,6 +770,7 @@ def check_namespace(directory, inventory):
             changed = ', '.join(sorted(actual ^ expected)[:10])
             raise RestoreError('incomplete sidecar backup or unexpected files: ' + changed)
     for name in names:
+        _check_cancelled(cancelled)
         _regular(directory / name)
 
 

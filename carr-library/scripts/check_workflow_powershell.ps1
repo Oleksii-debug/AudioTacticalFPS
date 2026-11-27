@@ -14,6 +14,29 @@ require 'yaml'
 require 'json'
 require 'digest'
 
+MAX_WORKFLOW_BYTES = 500_000
+def checked_workflow_bytes(raw, identity)
+  count = raw.bytesize
+  raise RangeError, "Workflow exceeds the conservative #{MAX_WORKFLOW_BYTES}-byte limit: #{identity} (#{count} bytes)." if count > MAX_WORKFLOW_BYTES
+  count
+end
+size_controls = [
+  ['ascii-at-limit', 'a' * MAX_WORKFLOW_BYTES, false],
+  ['ascii-over-limit', 'a' * (MAX_WORKFLOW_BYTES + 1), true],
+  ['utf8-at-byte-limit', "\u00e9" * (MAX_WORKFLOW_BYTES / 2), false],
+  ['utf8-over-byte-limit-with-fewer-characters', "\u00e9" * (MAX_WORKFLOW_BYTES / 2 + 1), true]
+].map do |name, raw, expected|
+  actual = false
+  begin
+    checked_workflow_bytes(raw, "control/#{name}")
+  rescue RangeError
+    actual = true
+  end
+  raise "Workflow byte-limit control failed: #{name}" unless actual == expected
+  {'name' => name, 'bytes' => raw.bytesize, 'characters' => raw.length,
+   'expected_error' => expected, 'actual_error' => actual}
+end
+
 root = File.realpath(ARGV.fetch(0))
 paths = Dir.glob(File.join(root, '.github', 'workflows', '*.{yml,yaml}')).sort
 raise 'No committed workflow YAML files were found.' if paths.empty?
@@ -28,7 +51,9 @@ def default_shell(value)
   run.is_a?(Hash) ? run['shell'] : nil
 end
 paths.each do |path|
-  raw = File.read(path, encoding: 'UTF-8')
+  raw = File.binread(path)
+  raw_bytes = checked_workflow_bytes(raw, path)
+  raw.force_encoding(Encoding::UTF_8)
   value = YAML.safe_load(raw, permitted_classes: [], permitted_symbols: [], aliases: true, filename: path)
   raise "Workflow root is not a mapping: #{path}" unless value.is_a?(Hash)
   jobs = value['jobs']
@@ -69,7 +94,7 @@ paths.each do |path|
       end
     end
   end
-  files << {'path' => relative, 'sha256' => Digest::SHA256.hexdigest(raw), 'powershell_steps' => count}
+  files << {'path' => relative, 'bytes' => raw_bytes, 'sha256' => Digest::SHA256.hexdigest(raw), 'powershell_steps' => count}
 end
 %w[carr-windows.yml carr-v3.yml carr-transcription-bridge.yml].each do |name|
   match = files.find { |item| item['path'] == ".github/workflows/#{name}" }
@@ -79,6 +104,7 @@ puts JSON.generate({
   'schema' => 'resonance-workflow-powershell-input/1',
   'ruby' => RUBY_VERSION, 'psych' => Psych::VERSION,
   'libyaml' => Psych.libyaml_version, 'files' => files, 'steps' => steps,
+  'workflow_size_limit_bytes' => MAX_WORKFLOW_BYTES, 'workflow_size_controls' => size_controls,
   'other_shell_steps' => skipped
 })
 '@
@@ -87,6 +113,15 @@ if ($LASTEXITCODE -ne 0) { throw 'The real YAML parser could not extract the com
 $inventory = ($yamlOutput -join [Environment]::NewLine) | ConvertFrom-Json -AsHashtable -Depth 100
 if ($inventory['schema'] -cne 'resonance-workflow-powershell-input/1' -or @($inventory['steps']).Count -eq 0) {
     throw 'The extracted PowerShell inventory is empty or invalid.'
+}
+if ($inventory['workflow_size_limit_bytes'] -ne 500000 -or @($inventory['workflow_size_controls']).Count -ne 4) {
+    throw 'The workflow byte-limit controls are missing or incomplete.'
+}
+foreach ($control in $inventory['workflow_size_controls']) {
+    if ($control['expected_error'] -ne $control['actual_error']) { throw 'A workflow byte-limit boundary control failed.' }
+}
+foreach ($workflow in $inventory['files']) {
+    if ($workflow['bytes'] -gt $inventory['workflow_size_limit_bytes']) { throw 'An oversized workflow reached syntax validation.' }
 }
 
 function Get-NativeParseResult([string]$Text, [string]$Identity) {
@@ -176,6 +211,8 @@ try {
         powershell = $PSVersionTable.PSVersion.ToString()
         ruby = $inventory['ruby']; psych = $inventory['psych']; libyaml = $inventory['libyaml']
         workflows = $inventory['files']
+        workflow_size_limit_bytes = $inventory['workflow_size_limit_bytes']
+        workflow_size_controls = $inventory['workflow_size_controls']
         controls = $controlReports.ToArray(); control_failures = $controlFailures.ToArray()
         parsed_bodies = $results.Count; failed_bodies = $failedBodies; bodies = $results.ToArray()
         other_shell_steps = $inventory['other_shell_steps']
@@ -189,6 +226,8 @@ try {
     [ordered]@{
         status = $report.status; source_commit = $head; parsed_bodies = $results.Count
         failed_bodies = $failedBodies; controls = $controls.Count; control_failures = $controlFailures.Count
+        workflow_size_limit_bytes = $inventory['workflow_size_limit_bytes']
+        workflow_size_controls = @($inventory['workflow_size_controls']).Count
         report = $destination; runtime_qualification = 'NOT_RUN'
     } | ConvertTo-Json -Compress
     if ($failedBodies -ne 0 -or $controlFailures.Count -ne 0) {

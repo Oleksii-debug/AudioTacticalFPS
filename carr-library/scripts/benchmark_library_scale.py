@@ -414,7 +414,9 @@ CAPACITY_MODULES = (
     'carr_library.ingest.publication', 'carr_library.ingest.batches',
     'carr_library.ingest.writer_guard', 'carr_library.operations.broker',
     'carr_library.library_backup', 'carr_library.pending_backup',
+    'carr_library.backup_capacity',
 )
+BACKUP_CAPACITY_PROFILES = ('large-source-v1',)
 CAPACITY_DEFAULTS = {'construction': 'ordinary-import', 'public_samples': 0,
                      'complete_backup': False}
 SEED_BATCH_BOOKS = 250
@@ -428,14 +430,21 @@ class CapacityNotAdmitted(BudgetExceeded):
 def capacity_options(value=None):
     if value is None:
         return dict(CAPACITY_DEFAULTS)
-    require(type(value) is dict and set(value) == set(CAPACITY_DEFAULTS),
-            'Invalid capacity measurement options.')
+    require(type(value) is dict and set(value) in (
+        set(CAPACITY_DEFAULTS), set(CAPACITY_DEFAULTS) | {'backup_capacity_profile'}),
+        'Invalid capacity measurement options.')
     require(value['construction'] in ('ordinary-import', 'retained-fixture')
             and type(value['construction']) is str, 'Choose an explicit construction method.')
     require(type(value['public_samples']) is int and
             (value['public_samples'] == 0 or 3 <= value['public_samples'] <= 20),
             'Choose zero or 3 through 20 actual public import samples.')
     require(type(value['complete_backup']) is bool, 'Backup measurement must be explicit.')
+    if 'backup_capacity_profile' in value:
+        require(type(value['backup_capacity_profile']) is str
+                and value['backup_capacity_profile'] in BACKUP_CAPACITY_PROFILES,
+                'Choose an explicit supported backup capacity profile.')
+        require(value['complete_backup'],
+                'A backup capacity profile requires explicit complete-backup measurement.')
     return dict(value)
 
 
@@ -812,9 +821,13 @@ def catalog_receipt(app, budget):
     return {'editions': count, 'ordered_identity_sha256': digest.hexdigest()}
 
 
-def measure_complete_backup(directory, spec, *, cancelled=lambda: False, progress=None):
+def measure_complete_backup(directory, spec, *, capacity_profile=None,
+                            cancelled=lambda: False, progress=None):
     from carr_library.application import LibraryApp
     from carr_library import library_backup
+    from carr_library.backup_capacity import capacity as backup_capacity
+    limits = backup_capacity(capacity_profile)
+    profile_options = {} if capacity_profile is None else {'capacity_profile': capacity_profile}
     spec = validate_case(spec)
     directory = local(directory, exists=True)
     metadata = read_json(directory / 'corpus.json')
@@ -835,15 +848,20 @@ def measure_complete_backup(directory, spec, *, cancelled=lambda: False, progres
     database_bytes = plain(app.database).st_size
     admission = {'status': 'ADMITTED', 'observed_assets': count, 'observed_database_bytes': database_bytes,
                  'observed_catalog_asset_bytes': asset_bytes,
-                 'max_assets': library_backup.MAX_ASSETS,
-                 'max_database_bytes': library_backup.MAX_DATABASE,
-                 'max_catalog_asset_bytes': library_backup.MAX_ASSET_BYTES,
+                 'max_assets': limits['asset_count'],
+                 'max_database_bytes': limits['database'],
+                 'max_catalog_asset_bytes': limits['assets'],
                  'profile': 'Current supported complete-backup defaults; no limit overrides.'}
+    if capacity_profile is not None:
+        admission.update(capacity_profile=capacity_profile, allowances=dict(limits),
+                         profile='Explicit supported complete-backup capacity selected by the caller.')
     progress['backup_admission'] = admission
-    if (count > library_backup.MAX_ASSETS or database_bytes > library_backup.MAX_DATABASE
-            or asset_bytes > library_backup.MAX_ASSET_BYTES):
+    if (count > limits['asset_count'] or database_bytes > limits['database']
+            or asset_bytes > limits['assets']):
         admission['status'] = 'NOT_ADMITTED'
-        raise CapacityNotAdmitted('Current complete-backup limits do not admit this populated corpus.')
+        if capacity_profile is None:
+            raise CapacityNotAdmitted('Current complete-backup limits do not admit this populated corpus.')
+        raise CapacityNotAdmitted('Selected complete-backup limits do not admit this populated corpus.')
     disk = budget.disk()
     allowance = (spec['max_disk_bytes'] - disk['bytes']) // 3
     if allowance < database_bytes + asset_bytes:
@@ -861,9 +879,9 @@ def measure_complete_backup(directory, spec, *, cancelled=lambda: False, progres
         budget.disk()
         return value
     identity = measured('create', lambda: app.backup(backup, max_bytes=allowance,
-                                                      cancelled=budget.stopped))
+                                                      cancelled=budget.stopped, **profile_options))
     manifest = measured('verify', lambda: library_backup.verify_backup(
-        backup, identity, cancelled=budget.stopped))
+        backup, identity, cancelled=budget.stopped, **profile_options))
     require(type(manifest) is dict, 'Complete-backup verification returned no manifest.')
     # Preserve the baseline files but remove their old absolute path before the
     # independent restore. Never prune another library or the user's input.
@@ -874,7 +892,7 @@ def measure_complete_backup(directory, spec, *, cancelled=lambda: False, progres
     require(not os.path.lexists(retired), 'Retired baseline path already exists.')
     app.root.rename(retired)
     root = measured('restore', lambda: library_backup.restore_backup(
-        backup, target, identity, cancelled=budget.stopped))
+        backup, target, identity, cancelled=budget.stopped, **profile_options))
     restored = LibraryApp(root)
     require(not os.path.lexists(app.root) and catalog_receipt(restored, budget) == expected,
             'Independent restore changed catalog/source identity or reused the old root.')
@@ -1096,7 +1114,8 @@ def child_main(config_path, expected_digest, phase, case_dir):
         elif phase == 'operations':
             result = measure_public_operations(directory, spec, options['public_samples'], progress=progress)
         elif phase == 'backup':
-            result = measure_complete_backup(directory, spec, progress=progress)
+            result = measure_complete_backup(directory, spec,
+                capacity_profile=options.get('backup_capacity_profile'), progress=progress)
         else:
             result = measure_corpus(directory, spec, restart=phase == 'restart', progress=progress)
         check_origins(origins)
@@ -1272,6 +1291,8 @@ def main(argv=None):
                         help='Zero or 3 through 20 measured public imports; defaults to 12 for retained fixtures.')
     parser.add_argument('--complete-backup', action='store_true',
                         help='Explicit actual complete backup/restore; unsupported product bounds yield PARTIAL.')
+    parser.add_argument('--backup-capacity-profile', choices=BACKUP_CAPACITY_PROFILES,
+                        help='Explicit supported backup allowance; requires --complete-backup.')
     parser.add_argument('--phase-timeout', type=float, default=3600)
     parser.add_argument('--max-disk-bytes', type=int, default=24 * 1024 ** 3,
                         help='Measured per-case checkpoint budget; not a filesystem quota.')
@@ -1290,6 +1311,8 @@ def main(argv=None):
                'public_samples': (12 if args.construction == 'retained-fixture' else 0)
                                   if args.public_samples is None else args.public_samples,
                'complete_backup': args.complete_backup}
+    if args.backup_capacity_profile is not None:
+        options['backup_capacity_profile'] = args.backup_capacity_profile
     report = run_benchmark(args.output_dir, args.sizes, case, source_root=root,
                            expected_application=args.expected_application_origin, capacity=options)
     print(json.dumps({'status': report['status'],

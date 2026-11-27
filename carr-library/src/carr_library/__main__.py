@@ -101,6 +101,7 @@ def main(argv=None):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
     from . import __version__
+    from .backup_capacity import LARGE_SOURCE_PROFILE
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
@@ -110,6 +111,8 @@ def main(argv=None):
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    parser.add_argument('--backup-capacity', choices=(LARGE_SOURCE_PROFILE,),
+                        help='Explicit larger full-backup allowance; default remains ordinary. Required again when restoring a larger backup.')
     ocr = parser.add_mutually_exclusive_group()
     ocr.add_argument('--list-ocr-models', action='store_true',
                      help='List the pinned official OCR catalogue; never downloads models')
@@ -158,6 +161,8 @@ def main(argv=None):
                         help='Cooperative search allowance in seconds, at most 86400')
     args = parser.parse_args(argv)
     validate_arguments(parser, args)
+    if args.backup_capacity is not None and not (args.backup or args.restore):
+        parser.error('--backup-capacity requires --backup or --restore.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
@@ -219,7 +224,8 @@ def main(argv=None):
             if not args.data_dir or not args.manifest_sha256:
                 parser.error('--restore requires a new --data-dir and --manifest-sha256')
             from .library_backup import restore_backup
-            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256)
+            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256,
+                           capacity_profile=args.backup_capacity)
             print('Backup restored. Open the new data directory to continue.')
             return 0
         location_notice = ''
@@ -285,7 +291,7 @@ def main(argv=None):
                               for group in session.groups]}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            checksum = app.backup(args.backup, capacity_profile=args.backup_capacity)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
         try:

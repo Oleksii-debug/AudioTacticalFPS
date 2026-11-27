@@ -33,6 +33,8 @@ from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
+from .storage.revisions import _sqlite_cancellation
+from .backup_capacity import capacity
 
 MAX_JOURNAL = 512 * 1024**2
 MAX_FILES = 25_000
@@ -199,9 +201,10 @@ def _config(value):
     Config(**value)
 
 
-def _catalog(path):
+def _catalog(path, *, capacity_profile=None):
+    limits = capacity(capacity_profile)
     path = local_path(path, exists=True)
-    if not 0 < regular(path).st_size <= MAX_JOURNAL:
+    if not 0 < regular(path).st_size <= limits['database']:
         raise ValueError('Invalid catalog for pending import recovery.')
     db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, isolation_level=None)
     try:
@@ -389,87 +392,93 @@ def _journal_schema(db):
         raise ValueError('Pending import journal integrity failed.')
 
 
-def _journal(path, catalog, cancelled):
+def _journal(path, catalog, cancelled, *, capacity_profile=None):
     """Read-only validation; never CREATE tables in an imported database."""
+    limits = capacity(capacity_profile)
     path = local_path(path, exists=True)
-    if not 0 < regular(path).st_size <= MAX_JOURNAL:
+    if not 0 < regular(path).st_size <= limits['journal']:
         raise ValueError('Pending import journal exceeds its byte budget.')
     db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, isolation_level=None)
-    deadline = time.monotonic() + 60
-    db.set_progress_handler(lambda: int(cancelled() or time.monotonic() > deadline), 10_000)
+    deadline = time.monotonic() + limits['journal_seconds']
+    def validate_checkpoint():
+        _check(cancelled)
+        if time.monotonic() > deadline:
+            raise TimeoutError('Pending journal validation exceeded its time allowance.')
     try:
-        db.execute('PRAGMA trusted_schema=OFF')
-        db.execute('PRAGMA query_only=ON')
-        db.execute('BEGIN')
-        _journal_schema(db)
-        if (db.execute('SELECT count(*) FROM job').fetchone()[0] > MAX_JOBS
-                or db.execute('SELECT count(*) FROM checkpoint').fetchone()[0] > MAX_CHECKPOINTS):
-            raise ValueError('Pending import journal exceeds its row budget.')
-        db.row_factory = sqlite3.Row
-        jobs = {}
-        for item in db.execute('SELECT * FROM job ORDER BY id'):
-            _check(cancelled)
-            row = dict(item)
-            if (not _hash(row['id']) or not _hash(row['asset']) or not _text(row['edition'], 200)
-                    or not _text(row['config'], 128_000) or type(row['count']) is not int
-                    or not 1 <= row['count'] <= 1000 or row['state'] not in _JOB_STATES
-                    or (row['error'] is not None and not _text(row['error'], 4000, empty=True))):
-                raise ValueError('Invalid pending journal job.')
-            _workspace(catalog, row['workspace'])
-            settings = _decode(row['config'].encode('utf-8'), newline=False)
-            if not isinstance(settings, dict) or settings.get('kind') not in ('logical_segment', 'physical_page'):
-                raise ValueError('Invalid pending journal extraction identity.')
-            if settings['kind'] == 'logical_segment':
-                if settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
-                    raise ValueError('Unsupported pending text extraction identity.')
-            else:
-                if settings.get('adapter') == 'raster_ocr-v1':
-                    required = {'adapter', 'kind', 'config', 'format', 'pillow',
-                                'normalization', 'frame_inventory_sha256'}
-                    if (set(settings) not in (required, required | {'runtime_identity'})
-                            or settings.get('format') not in ('JPEG', 'PNG', 'TIFF')
-                            or not _text(settings.get('pillow'), 128)
-                            or settings.get('normalization') != 'pillow-exif-rgb-white-v1'
-                            or not _hash(settings.get('frame_inventory_sha256'))):
-                        raise ValueError('Unsupported pending raster extraction identity.')
+        with _sqlite_cancellation(db, validate_checkpoint):
+            db.execute('PRAGMA trusted_schema=OFF')
+            db.execute('PRAGMA query_only=ON')
+            db.execute('BEGIN')
+            _journal_schema(db)
+            if (db.execute('SELECT count(*) FROM job').fetchone()[0] > limits['jobs']
+                    or db.execute('SELECT count(*) FROM checkpoint').fetchone()[0] > limits['checkpoints']):
+                raise ValueError('Pending import journal exceeds its row budget.')
+            db.row_factory = sqlite3.Row
+            jobs = {}
+            for item in db.execute('SELECT * FROM job ORDER BY id'):
+                validate_checkpoint()
+                row = dict(item)
+                if (not _hash(row['id']) or not _hash(row['asset']) or not _text(row['edition'], 200)
+                        or not _text(row['config'], 128_000) or type(row['count']) is not int
+                        or not 1 <= row['count'] <= 1000 or row['state'] not in _JOB_STATES
+                        or (row['error'] is not None and not _text(row['error'], 4000, empty=True))):
+                    raise ValueError('Invalid pending journal job.')
+                _workspace(catalog, row['workspace'])
+                settings = _decode(row['config'].encode('utf-8'), newline=False)
+                if not isinstance(settings, dict) or settings.get('kind') not in ('logical_segment', 'physical_page'):
+                    raise ValueError('Invalid pending journal extraction identity.')
+                if settings['kind'] == 'logical_segment':
+                    if settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
+                        raise ValueError('Unsupported pending text extraction identity.')
                 else:
-                    required = {'adapter', 'kind', 'config', 'pypdf', 'pdfium'}
-                    if (set(settings) not in (required, required | {'runtime_identity'})
-                            or settings['adapter'] != 'page_ocr-v1'
-                            or not _text(settings['pypdf'], 128) or not _text(settings['pdfium'], 128)):
-                        raise ValueError('Unsupported pending PDF extraction identity.')
-                _config(settings['config'])
-                if 'runtime_identity' in settings and not isinstance(settings['runtime_identity'], dict):
-                    raise ValueError('Invalid pending physical-page runtime identity.')
-            if row['id'] != digest(canonical([row['workspace'], row['edition'], row['asset'], row['config']])):
-                raise ValueError('Pending journal job identity mismatch.')
-            if row['expected_active'] is not None and (not _hash(row['expected_active']) or catalog.execute(
-                    'SELECT 1 FROM revision WHERE id=? AND workspace=? AND edition=?',
-                    (row['expected_active'], row['workspace'], row['edition'])).fetchone() is None):
-                raise ValueError('Pending job expected revision has a foreign identity.')
-            publication = catalog.execute('SELECT * FROM revision WHERE id=?', (row['id'],)).fetchone()
-            if publication is not None and (publication['workspace'], publication['edition'], publication['asset'], publication['config']) != (
-                    row['workspace'], row['edition'], row['asset'], row['config']):
-                raise ValueError('Pending job differs from its published identity.')
-            completed = 0
-            for completed, checkpoint in enumerate(db.execute('SELECT * FROM checkpoint WHERE job=? ORDER BY ordinal', (row['id'],)), 1):
-                _checkpoint(checkpoint, row, completed, settings['kind'])
-                if publication is not None:
-                    payload = _decode(checkpoint['payload'].encode('utf-8'), newline=False)
-                    stored = catalog.execute('SELECT * FROM page WHERE revision=? AND ordinal=?', (row['id'], completed)).fetchone()
-                    if stored is None or (stored['raw'], stored['digest'], stored['physical'], stored['printed'], stored['verified']) != (
-                            payload['raw_text'], digest(payload['raw_text']), payload['physical_index'], None, 0):
-                        raise ValueError('Pending checkpoint differs from the immutable published page.')
-            if completed > row['count']:
-                raise ValueError('Pending checkpoint count exceeds the planned source.')
-            if row['state'] in ('complete', 'superseded') and publication is None:
-                raise ValueError('Completed import journal has no publication.')
-            if publication is not None and (completed != row['count'] or catalog.execute(
-                    'SELECT 1 FROM sealed WHERE revision=?', (row['id'],)).fetchone() is None
-                    or catalog.execute('SELECT count(*) FROM page WHERE revision=?', (row['id'],)).fetchone()[0] != completed):
-                raise ValueError('Published pending import has incomplete checkpoints.')
-            jobs[row['id']] = row
-        return db, jobs
+                    if settings.get('adapter') == 'raster_ocr-v1':
+                        required = {'adapter', 'kind', 'config', 'format', 'pillow',
+                                    'normalization', 'frame_inventory_sha256'}
+                        if (set(settings) not in (required, required | {'runtime_identity'})
+                                or settings.get('format') not in ('JPEG', 'PNG', 'TIFF')
+                                or not _text(settings.get('pillow'), 128)
+                                or settings.get('normalization') != 'pillow-exif-rgb-white-v1'
+                                or not _hash(settings.get('frame_inventory_sha256'))):
+                            raise ValueError('Unsupported pending raster extraction identity.')
+                    else:
+                        required = {'adapter', 'kind', 'config', 'pypdf', 'pdfium'}
+                        if (set(settings) not in (required, required | {'runtime_identity'})
+                                or settings['adapter'] != 'page_ocr-v1'
+                                or not _text(settings['pypdf'], 128) or not _text(settings['pdfium'], 128)):
+                            raise ValueError('Unsupported pending PDF extraction identity.')
+                    _config(settings['config'])
+                    if 'runtime_identity' in settings and not isinstance(settings['runtime_identity'], dict):
+                        raise ValueError('Invalid pending physical-page runtime identity.')
+                if row['id'] != digest(canonical([row['workspace'], row['edition'], row['asset'], row['config']])):
+                    raise ValueError('Pending journal job identity mismatch.')
+                if row['expected_active'] is not None and (not _hash(row['expected_active']) or catalog.execute(
+                        'SELECT 1 FROM revision WHERE id=? AND workspace=? AND edition=?',
+                        (row['expected_active'], row['workspace'], row['edition'])).fetchone() is None):
+                    raise ValueError('Pending job expected revision has a foreign identity.')
+                publication = catalog.execute('SELECT * FROM revision WHERE id=?', (row['id'],)).fetchone()
+                if publication is not None and (publication['workspace'], publication['edition'], publication['asset'], publication['config']) != (
+                        row['workspace'], row['edition'], row['asset'], row['config']):
+                    raise ValueError('Pending job differs from its published identity.')
+                completed = 0
+                for completed, checkpoint in enumerate(db.execute('SELECT * FROM checkpoint WHERE job=? ORDER BY ordinal', (row['id'],)), 1):
+                    validate_checkpoint()
+                    _checkpoint(checkpoint, row, completed, settings['kind'])
+                    if publication is not None:
+                        payload = _decode(checkpoint['payload'].encode('utf-8'), newline=False)
+                        stored = catalog.execute('SELECT * FROM page WHERE revision=? AND ordinal=?', (row['id'], completed)).fetchone()
+                        if stored is None or (stored['raw'], stored['digest'], stored['physical'], stored['printed'], stored['verified']) != (
+                                payload['raw_text'], digest(payload['raw_text']), payload['physical_index'], None, 0):
+                            raise ValueError('Pending checkpoint differs from the immutable published page.')
+                if completed > row['count']:
+                    raise ValueError('Pending checkpoint count exceeds the planned source.')
+                if row['state'] in ('complete', 'superseded') and publication is None:
+                    raise ValueError('Completed import journal has no publication.')
+                if publication is not None and (completed != row['count'] or catalog.execute(
+                        'SELECT 1 FROM sealed WHERE revision=?', (row['id'],)).fetchone() is None
+                        or catalog.execute('SELECT count(*) FROM page WHERE revision=?', (row['id'],)).fetchone()[0] != completed):
+                    raise ValueError('Published pending import has incomplete checkpoints.')
+                jobs[row['id']] = row
+            return db, jobs
     except BaseException:
         db.close()
         raise
@@ -514,8 +523,9 @@ def pending_roots(root):
                  if _present(Path(root) / name))
 
 
-def _inventory(root):
+def _inventory(root, *, capacity_profile=None, cancelled=lambda: False):
     """Recognize canonical committed sidecars; ignore only known transient names."""
+    limits = capacity(capacity_profile)
     found = {}
     for name in ('import-requests', 'import-batches'):
         directory = root / name
@@ -524,16 +534,18 @@ def _inventory(root):
         local_path(directory, exists=True)
         regular(directory, directory=True)
         for path in directory.iterdir():
+            _check(cancelled)
             if path.name == 'reviews' and name == 'import-requests':
                 regular(path, directory=True)
                 for review in path.iterdir():
+                    _check(cancelled)
                     info = regular(review)
                     if re.fullmatch('[0-9a-f]{32}\\.tmp', review.name):
                         continue
                     if not re.fullmatch('[0-9a-f]{32}\\.json', review.name):
                         raise ValueError('Unrecognized pending review journal file.')
                     found[review.relative_to(root).as_posix()] = _stamp(info)
-                    if len(found) > MAX_FILES:
+                    if len(found) > limits['files']:
                         raise ValueError('Too many pending import sidecars.')
                 continue
             info = regular(path)
@@ -542,14 +554,15 @@ def _inventory(root):
             if not re.fullmatch('[0-9a-f]{32}\\.json', path.name):
                 raise ValueError('Unrecognized pending import journal file.')
             found[path.relative_to(root).as_posix()] = _stamp(info)
-            if len(found) > MAX_FILES:
+            if len(found) > limits['files']:
                 raise ValueError('Too many pending import sidecars.')
     return found
 
 
-def _records(root, data_dir, db, names):
+def _records(root, data_dir, db, names, *, cancelled=lambda: False):
     requests, batches, reviews = {}, {}, {}
     for name in sorted(names):
+        _check(cancelled)
         if name == 'imports.sqlite' or name.startswith('originals/'):
             continue
         path = root / name
@@ -626,6 +639,15 @@ def _references(requests, batches):
                 yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None
 
 
+def _group_jobs(jobs, cancelled):
+    """Index the already fully validated jobs once; retain every original row."""
+    grouped = {}
+    for identity, job in jobs.items():
+        _check(cancelled)
+        grouped.setdefault(job['asset'], {})[identity] = job
+    return grouped
+
+
 def _source_checkpoints(asset, raw, jobs, journal, *, cancelled=lambda: False):
     """Verify real logical segments against retained bytes without loading a whole TXT."""
     original = raw if isinstance(raw, (AssetSnapshot, FileSnapshot)) else AssetSnapshot(
@@ -663,19 +685,22 @@ def _source_checkpoints(asset, raw, jobs, journal, *, cancelled=lambda: False):
             if count != job['count'] or not nonempty or checkpoint is not None:
                 raise ValueError('Pending text source count differs from its journal.')
 
-def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: False, expected_roots=None):
+def snapshot_pending(app, target, *, max_bytes=None, capacity_profile=None,
+                     cancelled=lambda: False, expected_roots=None):
     """Create a self-contained component under the caller's root writer guard."""
+    limits = capacity(capacity_profile)
     _check(cancelled)
+    max_bytes = limits['pending'] if max_bytes is None else max_bytes
     if type(max_bytes) is not int or max_bytes < 0:
         raise ValueError('Pending import byte budget must be a nonnegative integer.')
-    max_bytes = min(max_bytes, MAX_TOTAL)
+    max_bytes = min(max_bytes, limits['pending'])
     root = local_path(app.root, exists=True)
     roots = pending_roots(root)
     if expected_roots is not None and roots != expected_roots:
         raise ValueError('Pending import roots changed during backup; retry after pausing imports.')
     target = local_path(target)
     target.mkdir(mode=0o700)
-    before = _inventory(root)
+    before = _inventory(root, capacity_profile=capacity_profile, cancelled=cancelled)
     catalog_path = target.parent / 'library.sqlite'
     if not catalog_path.exists():
         catalog_path = app.database
@@ -685,22 +710,23 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
     def reserve(size):
         nonlocal total_bytes
         total_bytes += size
-        if total_bytes > max_bytes or len(files) >= MAX_FILES:
+        if total_bytes > max_bytes or len(files) >= limits['files']:
             raise ValueError('Pending import backup exceeds its complete byte or file budget.')
     try:
-        with closing(_catalog(catalog_path)) as catalog:
+        with closing(_catalog(catalog_path, capacity_profile=capacity_profile)) as catalog, \
+                _sqlite_cancellation(catalog, lambda: _check(cancelled)):
             jobs = {}
             journal_path = root / 'imports.sqlite'
             if _present(journal_path):
                 for suffix in ('-wal', '-shm', '-journal'):
                     if _present(Path(str(journal_path) + suffix)):
                         local_path(Path(str(journal_path) + suffix), exists=True)
-                source_db, _ = _journal(journal_path, catalog, cancelled)
+                source_db, _ = _journal(journal_path, catalog, cancelled, capacity_profile=capacity_profile)
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
                 with closing(source_db), closing(sqlite3.connect(target / 'imports.sqlite')) as backup:
                     def progress(status, remaining, total):
                         _check(cancelled)
-                        if total * page_size > min(MAX_JOURNAL, max_bytes):
+                        if total * page_size > min(limits['journal'], max_bytes):
                             raise ValueError('Pending journal exceeds its backup budget.')
                     source_db.backup(backup, pages=256, progress=progress)
                     # Online backup copies the source header's WAL flag. Make
@@ -708,7 +734,7 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                     # validation, so it cannot create unlisted WAL/SHM files.
                     if backup.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                         raise ValueError('Pending journal snapshot is not self-contained.')
-                journal, jobs = _journal(target / 'imports.sqlite', catalog, cancelled)
+                journal, jobs = _journal(target / 'imports.sqlite', catalog, cancelled, capacity_profile=capacity_profile)
                 entry = _entry(target / 'imports.sqlite', 'imports.sqlite', cancelled)
                 reserve(entry['size_bytes'])
                 files.append(entry)
@@ -722,7 +748,7 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 entry = _write(target / name, raw)
                 entry['filename'] = name
                 files.append(entry)
-            requests, batches, reviews = _records(target, str(root), catalog, before)
+            requests, batches, reviews = _records(target, str(root), catalog, before, cancelled=cancelled)
             _relations(requests, batches, reviews, jobs, journal)
 
             def retain(expected=None, known=None, source=None):
@@ -756,7 +782,7 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 entry['mime'] = incoming.mime
                 assets[incoming.digest] = entry
                 files.append({key: value for key, value in dict(entry, filename='originals/' + name).items() if key != 'mime'})
-                if sum(item['size_bytes'] for item in files) > MAX_TOTAL:
+                if total_bytes > limits['pending']:
                     raise ValueError('Pending import backup exceeds its total byte budget.')
                 return incoming.digest
 
@@ -766,11 +792,12 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
                 _check(cancelled)
                 asset_hash = retain(expected, known, source)
                 bindings.append(dict(filename=name, row_id=row_id, source=source, asset_sha256=asset_hash))
+            grouped_jobs = _group_jobs(jobs, cancelled)
             for asset in assets.values():
                 _check(cancelled)
                 original = source_snapshot(target / 'originals', asset['filename'], cancelled=cancelled)
-                _source_checkpoints(asset, original, jobs, journal, cancelled=cancelled)
-        if _inventory(root) != before or pending_roots(root) != roots:
+                _source_checkpoints(asset, original, grouped_jobs.get(asset['sha256'], {}), journal, cancelled=cancelled)
+        if _inventory(root, capacity_profile=capacity_profile, cancelled=cancelled) != before or pending_roots(root) != roots:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
         # Windows file timestamps can stay unchanged after a same-sized edit.
         # Recheck actual committed sidecar bytes before accepting the snapshot.
@@ -782,7 +809,7 @@ def snapshot_pending(app, target, *, max_bytes=MAX_TOTAL, cancelled=lambda: Fals
             journal.close()
     result = dict(version=1, data_dir=str(root), files=sorted(files, key=lambda item: item['filename']),
                   assets=sorted(assets.values(), key=lambda item: item['filename']), sources=bindings)
-    validate_pending(result)
+    validate_pending(result, capacity_profile=capacity_profile)
     sync_directory(target)
     return result
 
@@ -794,12 +821,13 @@ def _component_name(name):
         r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}(?:' + suffixes + ')', name))
 
 
-def validate_pending(metadata):
+def validate_pending(metadata, *, capacity_profile=None):
     """Validate enclosing manifest fields before touching component paths."""
+    limits = capacity(capacity_profile)
     if (not isinstance(metadata, dict) or set(metadata) != {'version', 'data_dir', 'files', 'assets', 'sources'}
             or type(metadata['version']) is not int or metadata['version'] != 1
             or any(not isinstance(metadata[key], list) for key in ('files', 'assets', 'sources'))
-            or any(len(metadata[key]) > MAX_FILES for key in ('files', 'assets', 'sources'))):
+            or any(len(metadata[key]) > limits['files'] for key in ('files', 'assets', 'sources'))):
         raise ValueError('Invalid pending import backup manifest.')
     _source(metadata['data_dir'])
     files, total = {}, 0
@@ -810,13 +838,13 @@ def validate_pending(metadata):
             raise ValueError('Invalid pending import file manifest.')
         name = item['filename']
         original_mime = next((mime for mime, suffix in SUFFIXES.items() if name.endswith(suffix)), None)
-        limit = MAX_JOURNAL if name == 'imports.sqlite' else source_limit(original_mime) if name.startswith('originals/') else (
+        limit = limits['journal'] if name == 'imports.sqlite' else source_limit(original_mime) if name.startswith('originals/') else (
             MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST)
         if item['size_bytes'] > limit:
             raise ValueError('Pending import file exceeds its byte budget.')
         files[name] = item
         total += item['size_bytes']
-    if total > MAX_TOTAL:
+    if total > limits['pending']:
         raise ValueError('Pending import backup exceeds its total byte budget.')
     assets = {}
     for item in metadata['assets']:
@@ -845,15 +873,16 @@ def validate_pending(metadata):
         _source(item['source'])
 
 
-def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: False):
+def restore_pending(source, stage, new_root, metadata, *, capacity_profile=None, cancelled=lambda: False):
     """Restore into a private staging root; return extra assets and root paths.
 
     ``stage/library.sqlite`` must already be the enclosing verified catalog.
     The caller publishes only after this and the other backup components pass.
     ``new_root`` is the final destination, not the temporary staging directory.
     """
+    capacity(capacity_profile)
     _check(cancelled)
-    validate_pending(metadata)
+    validate_pending(metadata, capacity_profile=capacity_profile)
     source = local_path(source, exists=True)
     regular(source, directory=True)
     stage = local_path(stage, exists=True)
@@ -895,11 +924,12 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
         _copy(source / entry['filename'], verified / entry['filename'], entry, cancelled)
     journal = None
     try:
-        with closing(_catalog(stage / 'library.sqlite')) as catalog:
+        with closing(_catalog(stage / 'library.sqlite', capacity_profile=capacity_profile)) as catalog, \
+                _sqlite_cancellation(catalog, lambda: _check(cancelled)):
             jobs = {}
             if 'imports.sqlite' in names:
-                journal, jobs = _journal(verified / 'imports.sqlite', catalog, cancelled)
-            requests, batches, reviews = _records(verified, metadata['data_dir'], catalog, names)
+                journal, jobs = _journal(verified / 'imports.sqlite', catalog, cancelled, capacity_profile=capacity_profile)
+            requests, batches, reviews = _records(verified, metadata['data_dir'], catalog, names, cancelled=cancelled)
             _relations(requests, batches, reviews, jobs, journal)
             assets = {entry['sha256']: entry for entry in metadata['assets']}
             bindings = {(entry['filename'], entry['row_id']): entry for entry in metadata['sources']}
@@ -917,11 +947,13 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 referenced.add(asset['sha256'])
             if set(bindings) != expected_bindings or referenced != set(assets):
                 raise ValueError('Pending backup contains missing or unreferenced original bytes.')
+            grouped_jobs = _group_jobs(jobs, cancelled)
             for asset in assets.values():
+                _check(cancelled)
                 original = source_snapshot(verified / 'originals', asset['filename'], cancelled=cancelled)
                 if original.manifest() != dict(sha256=asset['sha256'], mime=asset['mime'], size=asset['size_bytes']):
                     raise ValueError('Pending original MIME or checksum mismatch.')
-                _source_checkpoints(asset, original, jobs, journal, cancelled=cancelled)
+                _source_checkpoints(asset, original, grouped_jobs.get(asset['sha256'], {}), journal, cancelled=cancelled)
 
             # Change only the explicitly listed location fields. Existing
             # status, job, expected manifest, result and identity fields survive.
