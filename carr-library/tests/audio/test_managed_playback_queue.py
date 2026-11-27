@@ -625,3 +625,81 @@ def test_final_shared_publisher_callback_refuses_a_substituted_stage_after_flush
     assert state['path'].read_bytes() == state['foreign']
     assert state['retained'].read_bytes() == state['original']
     assert (store.path.read_bytes() if store.path.exists() else None) == previous
+
+
+def _rewrite_retained_sample(path):
+    stamp = path.stat()
+    with path.open('r+b') as stream:
+        stream.seek(-2, os.SEEK_END)
+        stream.write(b'\x67\x45')
+    os.utime(path, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+
+
+@pytest.mark.parametrize('existing_queue', [False, True], ids=['create', 'replace'])
+def test_new_asset_pin_is_rechecked_after_the_last_metadata_cancellation_callback(
+        project, monkeypatch, existing_queue):
+    _, _, store, paths = project
+    review = store.append([paths[0]]) if existing_queue else store.review()
+    before = store.path.read_bytes() if store.path.exists() else None
+    originals = tuple(path.read_bytes() for path in paths)
+    selected = paths[1]
+    retained = store.audio / 'assets' / (module.sha256(selected.read_bytes()).hexdigest() + '.wav')
+    real_seal = module._seal_stage
+    state = {'armed': False, 'changed': False}
+    def seal(path, *args, **kwargs):
+        result = real_seal(path, *args, **kwargs)
+        if path.parent == store.audio:
+            state['armed'] = True
+        return result
+    def cancelled():
+        if state['armed'] and not state['changed']:
+            state['changed'] = True
+            _rewrite_retained_sample(retained)
+        return False
+    monkeypatch.setattr(module, '_seal_stage', seal)
+    with pytest.raises(ValueError, match='before queue publication') as caught:
+        store.append([selected], review=review, cancelled=cancelled)
+    assert state['changed']
+    assert not isinstance(caught.value, module.QueueChangeCommittedError)
+    assert retained.read_bytes() != originals[1]
+    assert tuple(path.read_bytes() for path in paths) == originals
+    assert (store.path.read_bytes() if store.path.exists() else None) == before
+
+
+def test_append_rehashes_earlier_new_asset_after_copying_later_input(project, monkeypatch):
+    from contextlib import contextmanager
+    _, _, store, paths = project
+    originals = tuple(path.read_bytes() for path in paths)
+    retained = store.audio / 'assets' / (module.sha256(originals[0]).hexdigest() + '.wav')
+    actual_reader = module.verified_reader
+    changed = []
+    @contextmanager
+    def reader(path, *args, **kwargs):
+        with actual_reader(path, *args, **kwargs) as stream:
+            # The second input's real payload reader is active. Its preliminary
+            # _stamp calls carry expected_identity and do not trigger this edit.
+            if path == paths[1] and not kwargs and retained.exists() and not changed:
+                _rewrite_retained_sample(retained)
+                changed.append(retained)
+            yield stream
+    monkeypatch.setattr(module, 'verified_reader', reader)
+    with pytest.raises(ValueError, match='PCM receipt') as caught:
+        store.append(paths)
+    assert changed == [retained]
+    assert not isinstance(caught.value, module.QueueChangeCommittedError)
+    assert not store.path.exists()
+    assert retained.read_bytes() != originals[0]
+    assert tuple(path.read_bytes() for path in paths) == originals
+
+
+def test_metadata_checkpoint_reuses_verified_pins_without_rehashing_audio(project, monkeypatch):
+    _, _, store, paths = project
+    reviewed = store.append(paths)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A metadata-only cursor checkpoint must not rehash retained PCM.')
+    monkeypatch.setattr(module, 'verify_items', forbidden)
+    saved = store.checkpoint(reviewed, index=1, frame=4321, accuracy='completed_buffers')
+    value = json.loads(store.path.read_bytes())
+    assert saved.pins == reviewed.pins
+    assert value['cursor'] == {'index': 1, 'frame': 4321, 'accuracy': 'completed_buffers'}
+    assert value['items'] == reviewed.state.payload()['items']

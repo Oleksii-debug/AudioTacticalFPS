@@ -284,7 +284,7 @@ class PlaylistStore:
         if _read(self.path)[1] != review.digest:
             raise ValueError('The saved queue changed in another window. Restore its current version first.')
 
-    def _write(self, review, state, cancelled):
+    def _write(self, review, state, cancelled, *, expected_pins=None):
         self._validate_review(review)
         parse_queue(state.payload(), self.project_id)
         data = (json.dumps(state.payload(), ensure_ascii=False, sort_keys=True,
@@ -309,13 +309,17 @@ class PlaylistStore:
                 staged_identity = _seal_stage(stage, parent_identity, owner,
                                               len(data), checksum, cancelled)
                 self._validate_review(review)
-                pins = tuple((item.asset, _stamp(self.audio / 'assets' / item.asset))
-                             for item in state.items)
+                pins = (tuple((item.asset, _stamp(self.audio / 'assets' / item.asset))
+                              for item in state.items)
+                        if expected_pins is None else expected_pins)
                 candidate = QueueReview(self, state, checksum, pins)
                 def before_commit():
                     check_cancelled(cancelled)
                     self._validate_review(review)
                     _check_stage(stage, parent_identity, staged_identity)
+                    if tuple((item.asset, _stamp(self.audio / 'assets' / item.asset))
+                             for item in candidate.state.items) != candidate.pins:
+                        raise ValueError('A retained playlist recording changed before queue publication.')
                     return False
                 if review.digest is None:
                     publish_noreplace(stage, self.path, cancelled=before_commit)
@@ -462,7 +466,14 @@ class PlaylistStore:
                             _remove_owned_stage(stage, parent_identity, owner)
                     check()
                     state = replace(current.state, items=tuple(items))
-                    published = self._write(current, state, check)
+                    # An earlier new asset can change while a later input is
+                    # copied. Verify those actual bytes once at append admission,
+                    # then preserve the resulting native pins through the final
+                    # metadata callback. Ordinary cursor saves do not rehash PCM.
+                    added = replace(state, items=state.items[len(current.state.items):],
+                                    index=None, frame=None, accuracy='not_started')
+                    pins = current.pins + verify_items(self.audio, added, cancelled=check)
+                    published = self._write(current, state, check, expected_pins=pins)
         except QueueChangeCommittedError:
             raise
         except Exception as error:
