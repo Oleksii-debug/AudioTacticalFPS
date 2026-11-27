@@ -515,6 +515,35 @@ def test_wav_export_stays_private_until_final_auth_and_never_clobbers(source, tm
     assert not (app.root / FILENAME).exists(), 'Derivative export must not create source voice-resume positions.'
 
 
+@pytest.mark.parametrize('replacement', ['detached', 'same_source'])
+def test_wav_export_rejects_reprepared_copy_with_identical_text(source, tmp_path, replacement):
+    from carr_library.reader.live_export import export_document_speech
+    app, workspace, _, desk, _ = source
+    page = desk.page(1)
+    document = ReadingDocument(page.raw_text)
+    sequence = DocumentSequence(app.root, document, source_locations=(page.location,))
+    destination = tmp_path / 'rebound.wav'
+    renderer = SyntheticRender()
+
+    def render(*args, **kwargs):
+        result = renderer(*args, **kwargs)
+        # Changing the selected copy during a render must invalidate the
+        # request even when every displayed code point remains identical.
+        locations = () if replacement == 'detached' else (page.location,)
+        sequence.prepare(ReadingDocument(document.text), source_locations=locations)
+        assert sequence.document.text == document.text
+        if replacement == 'detached':
+            app.archive_workspace(workspace)
+        return result
+
+    with pytest.raises(ValueError, match='source binding changed'):
+        export_document_speech(sequence, destination, start=0, end=10,
+                               voice_id=VOICE.id, render=render)
+    assert renderer.requests
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
 def test_resume_rejects_new_revision_before_any_renderer_call(source, make_reader):
     app, workspace, book, desk, pages = source
     LiveState(app.root).remember(desk.page(1).location, 3, len(pages[0]), len(pages[0]), VOICE.id)

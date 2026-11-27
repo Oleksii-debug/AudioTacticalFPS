@@ -18,7 +18,22 @@ def export_document_speech(sequence, destination, *, start, end, voice_id,
     Rendered audio stays in the writer's private staging directory until the
     exact original source and its current authorization have been rechecked.
     """
+    # A replacement reading copy can have the same displayed text but a
+    # different (or absent) authenticated source. Pin the actual snapshot,
+    # not just the selected string, across rendering and final publication.
+    document = sequence.document
+    locations = sequence.source_locations
+    root = sequence.root
+    snapshot = document.to_dict()
+
+    def check_binding(*, full=False):
+        if (sequence.document is not document or sequence.source_locations != locations
+                or sequence.root != root or document.revision != snapshot['revision']
+                or (full and document.to_dict() != snapshot)):
+            raise ValueError('The reading-copy source binding changed during export.')
+
     section = sequence.load(1, cancelled)
+    check_binding(full=True)
     if (type(start) is not int or type(end) is not int
             or not 0 <= start < end <= len(section.text)
             or not section.text[start:end].strip()):
@@ -29,7 +44,9 @@ def export_document_speech(sequence, destination, *, start, end, voice_id,
 
     def checked_cancelled():
         check_cancelled(cancelled)
+        check_binding()
         sequence.check(section, cancelled)
+        check_binding()
         check_cancelled(cancelled)
         return False
 
@@ -53,7 +70,9 @@ def export_document_speech(sequence, destination, *, start, end, voice_id,
                 or receipt.duration_seconds != frames / rate):
             raise ValueError('The staged WAV geometry or duration does not match its rendering receipt.')
         # A cheap database digest check cannot detect changed retained bytes.
+        check_binding(full=True)
         sequence.check(section, cancelled, full=True)
+        check_binding(full=True)
         check_cancelled(cancelled)
 
     request = SpeechRequest(section.text[start:end], voice_id, rate=rate, volume=volume)
