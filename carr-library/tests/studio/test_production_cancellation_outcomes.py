@@ -1,6 +1,6 @@
 """Real local render receipts distinguish late stop requests from failures.
 
-Only the final verification boundary is wrapped to inject a publication error.
+Only publication/verification boundaries are wrapped to inject failures or stops.
 Speech, mixing, outputs, and their hashes use the actual installed engines.
 """
 from hashlib import sha256
@@ -95,3 +95,37 @@ def test_actual_dsp_cancellation_retains_typed_paused_or_cancelled_receipt(tmp_p
     assert saved['status'] == expected
     assert saved['artifacts']
     service._verify_artifacts(saved)
+
+
+def test_stop_during_staged_master_validation_prevents_publication_and_resumes(tmp_path, voices, monkeypatch):
+    from carr_library.studio import render
+    service, job = production(tmp_path, voices)
+    output = Path(service.get(job)['destination'])
+    digest = render.digest_file
+    stopping = False
+    observed = []
+
+    def digest_then_stop(path, *args, **kwargs):
+        nonlocal stopping
+        result = digest(path, *args, **kwargs)
+        path = Path(path)
+        if path.parent == output and path.name.startswith('.pending-') and not observed:
+            observed.append(path)
+            stopping = True
+        return result
+
+    monkeypatch.setattr(render, 'digest_file', digest_then_stop)
+    with pytest.raises(InterruptedError, match='completed chunks are retained'):
+        service.run(job, cancelled=lambda: stopping)
+    assert len(observed) == 1
+    saved = service.get(job)
+    assert saved['status'] == 'paused'
+    assert any(Path(row['path']) == output / 'master.wav' for row in saved['artifacts'])
+    assert not (output / 'master.wav').exists()
+    assert not observed[0].exists()
+
+    stopping = False
+    completed = service.run(job, cancelled=lambda: stopping)
+    assert completed['status'] == 'complete'
+    service._verify_artifacts(completed)
+    assert (output / 'master.wav').is_file()
