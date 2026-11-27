@@ -1,20 +1,52 @@
 """Real native cross-process resource coordination; no model or device inference."""
 from dataclasses import replace
+import importlib.util
 import json
 import multiprocessing
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import threading
 import time
 from types import SimpleNamespace
 
+# A real file entrypoint gives spawn an importable __main__, even when pytest
+# itself runs through isolated stdin and collects tests with importlib. Bind
+# only the package already imported by the parent; never add checkout/src or
+# alter sys.path to make an installed-package check pass.
+if __name__ in ('__main__', '__mp_main__'):
+    if len(sys.argv) != 6 or sys.argv[1] != '--resource-process-scenario':
+        raise SystemExit('Use the explicit resource process fixture entrypoint.')
+    package_file = Path(sys.argv[4]).resolve(strict=True)
+    package_spec = importlib.util.spec_from_file_location('carr_library', package_file,
+        submodule_search_locations=[str(package_file.parent)])
+    package = importlib.util.module_from_spec(package_spec)
+    sys.modules['carr_library'] = package
+    package_spec.loader.exec_module(package)
+
 import pytest
 
+import carr_library
 from carr_library.durable_state import atomic_json
 from carr_library.operations import (ResourceBroker, ResourceLimits, ResourceRequest,
     ResourceCancelled, ResourceConflict, ResourceError, ResourceStateError,
     ResourceTimeout, ResourceUnavailable)
+
+if __name__ in ('__main__', '__mp_main__'):
+    assert Path(carr_library.__file__).resolve() == Path(sys.argv[4]).resolve()
+    assert Path(sys.modules[ResourceBroker.__module__].__file__).resolve() == Path(sys.argv[5]).resolve()
+
+
+def _standalone_process_case(scenario, directory):
+    product = Path(carr_library.__file__).resolve()
+    broker_module = Path(sys.modules[ResourceBroker.__module__].__file__).resolve()
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8',
+        str(Path(__file__).resolve()), '--resource-process-scenario', scenario,
+        str(directory), str(product), str(broker_module)], capture_output=True,
+        text=True, encoding='utf-8', timeout=45)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def _hold(directory, request, queue, stop, *, crash=False):
@@ -201,6 +233,9 @@ def test_capacity_freed_after_deadline_does_not_start_late_worker(broker, monkey
 
 
 def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
+    if __name__ != '__main__':
+        _standalone_process_case('crash', broker.root)
+        return
     ctx = multiprocessing.get_context('spawn')
     queue, stop = ctx.Queue(), ctx.Event()
     process = ctx.Process(target=_hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
@@ -233,6 +268,9 @@ def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
 
 
 def test_actual_process_contention_has_no_overlapping_admission(tmp_path):
+    if __name__ != '__main__':
+        _standalone_process_case('contention', tmp_path)
+        return
     broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
     ctx = multiprocessing.get_context('spawn')
     queue, start = ctx.Queue(), ctx.Event()
@@ -315,3 +353,12 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
                    {'devices': ('microphone:one', 'microphone:one')}, {'cpu_slots': 0}):
         with pytest.raises(ValueError):
             ResourceRequest(**values)
+
+
+if __name__ == '__main__':
+    if sys.argv[2] == 'crash':
+        test_actual_spawned_process_crash_releases_without_pid_reaping(ResourceBroker(Path(sys.argv[3])))
+    elif sys.argv[2] == 'contention':
+        test_actual_process_contention_has_no_overlapping_admission(Path(sys.argv[3]))
+    else:
+        raise SystemExit('Unknown resource process fixture scenario.')
