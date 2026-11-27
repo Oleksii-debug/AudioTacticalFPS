@@ -451,7 +451,7 @@ def test_controlled_receipt_checks_range_hash_before_studio_backup(capture, monk
     controller = create_recording_project(capture.app.root, result['id'], title='Retained paused take')
     payload = read_json(controller.project_path)
     payload['source_reference']['receipt']['segments'][0]['pcm_sha256'] = '0' * 64
-    atomic_json(controller.project_path, payload)
+    atomic_json(controller.project_path, payload, replace=True)
     with pytest.raises(ValueError, match='segment'):
         backup.input_assets(controller.project_path, controller.output_dir)
     assert capture.service.get(result['id']) == result
