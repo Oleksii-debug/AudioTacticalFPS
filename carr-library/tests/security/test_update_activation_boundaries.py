@@ -141,6 +141,57 @@ def test_program_only_updater_refuses_managed_installer_ownership_before_verifyi
     assert calls == [] and marker.read_bytes() == b'Existing standard installation identity'
 
 
+@pytest.mark.parametrize('operation', ['verify', 'prepare', 'activate', 'health'])
+def test_portable_adapter_refuses_actual_standard_generation_before_any_action(tmp_path, operation):
+    # Exact accepted e5da installer contract, standard_windows.iss.in blob
+    # 08ce600e18101f0d6bbd7cb0ddc052b09819554f: root marker + versions/short-SHA-N.
+    root = tmp_path / 'program'
+    generation = root / 'versions' / 'e5da666c3794-1'
+    generation.mkdir(parents=True)
+    marker = root / 'install-layout-v1.txt'
+    marker.write_bytes(b'Resonance.StandardInstall/1\r\n')
+    maintenance = generation / 'maintenance-setup.exe'
+    maintenance.write_bytes(b'Inert installer-owned repair fixture, never executed.')
+    calls = []
+    adapter = installation.WindowsBundleAdapter(lambda *a, **kw: calls.append('verify'))
+    adapter._run_owned = lambda *a, **kw: calls.append('launch')
+    release = Release('carr-test', 'stable', '0.2.0', 2, '2' * 40, 4,
+                      'release.zip', 1, 'a' * 64, '')
+    arguments = (generation,) if operation == 'verify' else (generation, release)
+    with pytest.raises(TrustError, match='ownership receipts'):
+        getattr(adapter, operation)(*arguments)
+    assert calls == []
+    assert marker.read_bytes() == b'Resonance.StandardInstall/1\r\n'
+    assert maintenance.read_bytes() == b'Inert installer-owned repair fixture, never executed.'
+
+
+@pytest.mark.parametrize('layout', ['root', 'versions', 'incomplete-generation',
+                                  'maintenance-only', 'unknown-marker'])
+def test_portable_verifier_does_not_adopt_partial_or_unknown_standard_ownership(tmp_path, layout):
+    root = tmp_path / 'program'
+    generation = root / 'versions' / 'e5da666c3794-1'
+    generation.mkdir(parents=True)
+    marker = root / 'install-layout-v1.txt'
+    if layout != 'maintenance-only':
+        marker.write_bytes(b'Unknown ownership marker\n' if layout == 'unknown-marker'
+                           else b'Resonance.StandardInstall/1\r\n')
+    if layout == 'maintenance-only':
+        (generation / 'maintenance-setup.exe').write_bytes(b'Retained repair owner; never execute.')
+    selected = root if layout == 'root' else root / 'versions' if layout == 'versions' else generation
+    calls = []
+    with pytest.raises(TrustError, match='ownership receipts'):
+        installation.WindowsBundleAdapter(lambda *a, **kw: calls.append(True)).verify(selected)
+    assert calls == [] and generation.is_dir()
+
+
+def test_unmanaged_versions_directory_remains_a_portable_verifier_input(tmp_path):
+    program = tmp_path / 'ordinary-downloads' / 'versions' / 'portable-copy'
+    program.mkdir(parents=True)
+    calls = []
+    installation.WindowsBundleAdapter(lambda root: calls.append(root)).verify(program)
+    assert calls == [program]
+
+
 def test_update_native_runner_uses_the_shared_owned_tree_and_fixed_diagnostic_budget(tmp_path, monkeypatch):
     from carr_library.audio import process as capture_process
     calls = []
