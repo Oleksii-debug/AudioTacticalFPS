@@ -84,6 +84,7 @@ jobs:
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.academic_integration.doi
           import carr_library.speech.session
+          import carr_library.extract.ocr_runtime
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -92,6 +93,7 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
+                   'carr_library.extract.ocr_runtime',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -111,6 +113,9 @@ jobs:
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_keeps_ordinary_unicode_names',
                     'tests/storage/test_state_backup_portability.py::test_portable_snapshot_roundtrip_unicode',
+                    'tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory',
+                    'tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound',
+                    'tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
@@ -128,10 +133,14 @@ jobs:
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen
+          required_ocr = {'test_unreadable_directory_rejects_entire_inventory', 'test_empty_directory_inventory_has_a_bound', 'test_directory_inventory_checks_budget_between_entries'}
+          ocr_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_ocr_runtime']
+          ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
-                        origins=installed_origins(), manual_nvda='NOT_RUN')
+                        origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
+                        ocr_inventory_exact=ocr_exact, manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
           raise SystemExit(0 if ok else 1)
