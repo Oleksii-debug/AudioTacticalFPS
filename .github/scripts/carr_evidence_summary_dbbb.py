@@ -33,7 +33,7 @@ def fetch(url, limit):
         if len(data) > limit:
             raise ValueError("Evidence read exceeded its reviewed bound")
         return data
-remaining = 110000
+remaining = 150000
 def emit(text):
     global remaining
     if remaining <= 0:
@@ -68,10 +68,13 @@ for identity, digest in ARTIFACTS:
                 continue
             content = archive.read(entry).decode("utf-8-sig", errors="replace")
             if path.suffix.lower() == ".json":
-                if re.search(r'"(?:status|outcome|passed)"\s*:\s*(?:"(?:FAIL|failed|error)"|false)', content, re.I):
+                if re.search(r'"(?:status|outcome|passed)"\s*:\s*(?:"(?:FAIL|failed|error)"|false)', content, re.I) or "reading-tabs" in name:
                     emit("JSON " + name + "\n" + content[:14000])
                 continue
             lines = content.splitlines()
+            summary = [line for line in lines if re.search(
+                r"(?:^|[.])FAIL: tests/|^Required suites complete:|^FAILED tests/|^ERROR tests/", line)]
+            emit("ALL_VERDICTS " + name + "\n" + "\n".join(line[:650] for line in summary)[:36000])
             markers = [i for i, line in enumerate(lines) if re.search(
                 r"^(?:FAILED |ERROR |FAIL: |Required suites complete:)|"
                 r"Traceback \(most recent call last\)|"
@@ -86,6 +89,18 @@ for identity, digest in ARTIFACTS:
                     continue
                 chosen.update(range(max(0, index - 12), min(len(lines), index + 7)))
             emit("CONTEXT " + name + "\n" + "\n".join(
-                str(i + 1) + ": " + lines[i][:1000] for i in sorted(chosen))[:23000])
+                str(i + 1) + ": " + lines[i][:1000] for i in sorted(chosen))[:5000])
+for job in (140566100641,):
+    endpoint = "https://api.github.com/repos/" + REPOSITORY + "/actions/jobs/" + str(job)
+    metadata = json.loads(fetch(endpoint, 512 * 1024))
+    if metadata["run_id"] != RUN or metadata["head_sha"] != HEAD:
+        raise ValueError("Prior job identity differs")
+    raw = fetch(endpoint + "/logs", 48 * 1024 * 1024).decode("utf-8-sig", errors="replace")
+    lines = raw.splitlines()
+    selected = set()
+    for index, line in enumerate(lines):
+        if re.search(r"clipboard|ModuleNotFoundError|ImportError|unrecognized arguments|can't open file", line, re.I):
+            selected.update(range(max(0, index - 6), min(len(lines), index + 12)))
+    emit("NATIVE_JOB_CONTEXT " + str(job) + "\n" + "\n".join(lines[i][:1800] for i in sorted(selected))[:26000])
 emit(json.dumps({"summary_complete": True, "remaining_output_budget": remaining,
                  "source_run": RUN, "source_head": HEAD, "qualification": "diagnostic only"}))
