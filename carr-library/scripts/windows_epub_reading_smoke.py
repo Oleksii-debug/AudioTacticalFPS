@@ -136,7 +136,7 @@ def main():
                 digest = file_digest(stream, 'sha256').hexdigest()
             audio_proof[name] = {'path': str(binary), 'sha256': digest}
             if bundle:
-                entry = 'audio/bin/' + name + '.exe'
+                entry = 'audio-runtime/bin/' + name + '.exe'
                 check('exact bundled executable: ' + name, binary == (bundle / entry).resolve(strict=True))
                 check('sealed executable bytes: ' + name, digest == manifest['files'][entry])
 
