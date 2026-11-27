@@ -97,6 +97,21 @@ def _stamp(value):
     return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
 
 
+def _python_runtime(value):
+    """Keep a selected venv entrypoint while binding its actual executable."""
+    selected = Path(value).absolute()
+    resolved = local_path(selected.resolve(strict=True), exists=True)
+    binding = {'resolved': str(resolved),
+               'selected': list(_stamp(selected.lstat())),
+               'binary': list(_stamp(regular(resolved)))}
+    digest = digest_file(resolved)
+    if (selected.resolve(strict=True) != resolved
+            or list(_stamp(selected.lstat())) != binding['selected']
+            or list(_stamp(regular(resolved))) != binding['binary']):
+        raise ValueError('The configured transcription runtime changed; select and review it again.')
+    return selected, binding, digest
+
+
 def _copy(source, destination, *, maximum, cancelled):
     source = local_path(source, exists=True)
     before = regular(source)
@@ -212,18 +227,18 @@ class TranscriptionService:
 
     def configure(self, python, worker, models_dir):
         self._authorize()
-        python = local_path(Path(python).resolve(strict=True), exists=True)
+        python, python_binding, python_sha256 = _python_runtime(python)
         worker = local_path(worker, exists=True)
         models_dir = local_path(models_dir, exists=True)
         regular(models_dir, directory=True)
-        regular(python)
         regular(worker)
         if worker.suffix.lower() != '.py' or regular(worker).st_size > 4 * 1024**2:
             raise ValueError('Select the reviewed local Whisper worker Python file.')
         if models_dir.is_relative_to(self.app.root):
             raise ValueError('Keep model/runtime assets outside the backed-up library data directory.')
         value = {'version': 1, 'python': str(python), 'worker': str(worker),
-                 'models_dir': str(models_dir), 'python_sha256': digest_file(python),
+                 'models_dir': str(models_dir), 'python_sha256': python_sha256,
+                 'python_binding': python_binding,
                  'worker_sha256': digest_file(worker),
                  'network': 'local-files-only; Python network calls denied',
                  'inference_qualified': False}
@@ -240,9 +255,16 @@ class TranscriptionService:
         if value.get('version') != 1:
             raise ValueError('Unsupported transcription engine configuration.')
         if verify:
-            for key in ('python', 'worker'):
-                if digest_file(local_path(value[key], exists=True)) != value[key + '_sha256']:
+            if 'python_binding' in value:
+                _, binding, digest = _python_runtime(value['python'])
+                if binding != value['python_binding'] or digest != value['python_sha256']:
                     raise ValueError('The configured transcription runtime changed; select and review it again.')
+            elif digest_file(local_path(value['python'], exists=True)) != value['python_sha256']:
+                # Earlier configurations stored an already resolved interpreter.
+                # Preserve their exact path/hash checks until explicit reselection.
+                raise ValueError('The configured transcription runtime changed; select and review it again.')
+            if digest_file(local_path(value['worker'], exists=True)) != value['worker_sha256']:
+                raise ValueError('The configured transcription runtime changed; select and review it again.')
             regular(local_path(value['models_dir'], exists=True), directory=True)
         return value
 

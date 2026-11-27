@@ -8,13 +8,19 @@ from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import http.client
 import html
+import errno
+import ipaddress
 import json
 import math
 import os
 from pathlib import Path
+import queue
 import re
+import select
+import socket
 import ssl
 from tempfile import NamedTemporaryFile
+import threading
 from time import monotonic, time
 from uuid import uuid4
 from urllib.parse import urlencode
@@ -31,6 +37,197 @@ MODES = ('LOCAL_ONLY', 'APPROVED_REMOTE', 'HYBRID')
 
 class ProviderError(RuntimeError):
     """User-safe provider failure, without remote response bodies or credentials."""
+
+
+def _check_request(deadline, cancelled):
+    callback = cancelled.is_set if hasattr(cancelled, 'is_set') else cancelled
+    if not callable(callback):
+        raise ValueError('Invalid provider cancellation callback.')
+    if callback():
+        raise InterruptedError('Provider operation cancelled; charge state may be uncertain.')
+    if monotonic() >= deadline:
+        raise TimeoutError('Provider request exceeded its time budget; charge state may be uncertain.')
+
+
+def _addresses(host, port, *, local, deadline, cancelled):
+    """Validate one DNS answer set; late answers never have connection authority."""
+    _check_request(deadline, cancelled)
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        answers = queue.Queue(maxsize=1)
+
+        def resolve():
+            try:
+                answers.put(socket.getaddrinfo(host, port, type=socket.SOCK_STREAM))
+            except (OSError, UnicodeError):
+                answers.put(None)
+
+        # libc lookup cannot be cancelled portably. Its daemon may finish late,
+        # but only this waiting caller can validate an answer and open a socket.
+        resolver = threading.Thread(target=resolve, name='carr-provider-resolver', daemon=True)
+        resolver.start()
+        while True:
+            _check_request(deadline, cancelled)
+            try:
+                records = answers.get(timeout=min(0.05, max(0, deadline - monotonic())))
+                resolver.join()
+                break
+            except queue.Empty:
+                pass
+    else:
+        family = socket.AF_INET6 if literal.version == 6 else socket.AF_INET
+        address = (host, port, 0, 0) if literal.version == 6 else (host, port)
+        records = [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', address)]
+    _check_request(deadline, cancelled)
+    if not records or len(records) > 64:
+        raise ProviderError('The provider address could not be resolved.')
+    result = []
+    for family, kind, protocol, _, address in records:
+        ip = ipaddress.ip_address(address[0])
+        permitted = ip.is_loopback if local else ip.is_global
+        if (not permitted or ip.is_multicast or ip.is_unspecified
+                or family not in (socket.AF_INET, socket.AF_INET6)
+                or kind != socket.SOCK_STREAM):
+            raise ProviderError('The provider resolved to a disallowed network destination.')
+        if address not in [entry[3] for entry in result]:
+            result.append((family, kind, protocol, address))
+    return result
+
+
+class _Connection:
+    """Pinned direct HTTP(S) with a deadline covering reads and TLS handshake.
+
+    Keep the actual socket independently of HTTPConnection: a close-delimited
+    response transfers ownership to HTTPResponse and clears connection.sock.
+    The watchdog must still be able to interrupt its buffered/TLS body reads.
+    """
+    def __init__(self, target, *, local, deadline, cancelled):
+        self.deadline = deadline
+        self.cancelled = cancelled
+        self.connection = None
+        self.response = None
+        self.raw_socket = self.active_socket = None
+        self.watcher = None
+        self.done = threading.Event()
+        self.interrupted = None
+        try:
+            port = target.port if target.port is not None else (443 if target.scheme == 'https' else 80)
+            addresses = _addresses(target.hostname, port, local=local,
+                                   deadline=deadline, cancelled=cancelled)
+            self.check()
+            for index, (family, kind, protocol, address) in enumerate(addresses):
+                self.check()
+                self.raw_socket = self.active_socket = None
+                try:
+                    self.raw_socket = self.active_socket = socket.socket(family, kind, protocol)
+                    self._connect(address)
+                except OSError as exc:
+                    if self.raw_socket is not None:
+                        self.raw_socket.close()
+                    if isinstance(exc, InterruptedError):
+                        raise
+                    self.check()
+                    if index == len(addresses) - 1:
+                        raise
+                    # Match HTTPConnection's address fallback before any TLS
+                    # or HTTP transmission, using only this validated DNS set.
+                else:
+                    break
+            self.check()
+            self.raw_socket.settimeout(min(30.0, deadline - monotonic()))
+            self.connection = http.client.HTTPConnection(target.hostname, port,
+                timeout=min(30.0, deadline - monotonic()))
+            self.connection.default_port = 443 if target.scheme == 'https' else 80
+            self.connection.auto_open = 0
+            if target.scheme == 'https':
+                self.active_socket = ssl.create_default_context().wrap_socket(self.raw_socket,
+                    server_hostname=target.hostname, do_handshake_on_connect=False)
+            self.connection.sock = self.active_socket
+            self.check()
+            # Start only after the raw-to-TLS ownership transfer. The active
+            # socket remains fixed while the watchdog can access it.
+            watcher = threading.Thread(target=self._interrupt,
+                name='carr-provider-watchdog', daemon=True)
+            watcher.start()
+            self.watcher = watcher
+            if target.scheme == 'https':
+                self.active_socket.do_handshake()
+            self.check()
+        except BaseException:
+            try:
+                self.check()
+            finally:
+                self.close()
+            raise
+
+    def check(self):
+        if self.interrupted is not None:
+            raise self.interrupted
+        _check_request(self.deadline, self.cancelled)
+
+    def _connect(self, address):
+        # Poll pending TCP connects so cancellation is not dependent on whether
+        # shutdown interrupts an unconnected socket on the current platform.
+        attempt_deadline = min(self.deadline, monotonic() + 30.0)
+        self.raw_socket.setblocking(False)
+        error = self.raw_socket.connect_ex(address)
+        pending = (errno.EINPROGRESS, errno.EWOULDBLOCK, errno.EALREADY,
+            getattr(errno, 'WSAEWOULDBLOCK', errno.EWOULDBLOCK),
+            getattr(errno, 'WSAEINPROGRESS', errno.EINPROGRESS),
+            getattr(errno, 'WSAEALREADY', errno.EALREADY))
+        while error in pending:
+            self.check()
+            remaining = attempt_deadline - monotonic()
+            if remaining <= 0:
+                raise TimeoutError('Provider address connection timed out.')
+            _, writable, exceptional = select.select([], [self.raw_socket], [self.raw_socket], min(0.05, remaining))
+            if writable or exceptional:
+                error = self.raw_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if error:
+            raise OSError(error, 'Provider connection failed.')
+
+    def _interrupt(self):
+        while not self.done.wait(0.025):
+            try:
+                self.check()
+            except BaseException as exc:
+                self.interrupted = exc
+                try:
+                    # Do not clear SSLSocket._sslobj concurrently with read().
+                    socket.socket.shutdown(self.active_socket, socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                return
+
+    def request(self, *args, **kwargs):
+        self.check()
+        self.connection.request(*args, **kwargs)
+        self.check()
+
+    def getresponse(self):
+        self.response = self.connection.getresponse()
+        self.check()
+        return self.response
+
+    def close(self):
+        self.done.set()
+        if self.watcher is not None:
+            self.watcher.join()
+        try:
+            if self.response is not None:
+                self.response.close()
+        finally:
+            try:
+                if self.connection is not None:
+                    self.connection.close()
+            finally:
+                try:
+                    if self.active_socket is not None:
+                        self.active_socket.close()
+                finally:
+                    if self.raw_socket is not None:
+                        self.raw_socket.close()
 
 
 def money(value):
@@ -287,7 +484,7 @@ class Gateway:
         headers = {'Content-Type': 'application/json', 'Accept': expected_type,
                    'User-Agent': 'UniversalResearchLibrary/0.2'}
         secret_bytes = None
-        started = monotonic()
+        deadline = monotonic() + timeout
         try:
             if output is not None:
                 if expected_type == 'application/json':
@@ -298,8 +495,7 @@ class Gateway:
                     raise FileExistsError('Provider output already exists; choose another name.')
             if expected_type != 'application/json' and destination is None:
                 raise ValueError('Choose a new output file for generated audio.')
-            if cancelled():
-                raise InterruptedError('Provider operation cancelled before transmission.')
+            _check_request(deadline, cancelled)
             if profile.credential_ref:
                 secret = self.vault.get(profile.id, profile.credential_ref)
                 if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
@@ -312,13 +508,8 @@ class Gateway:
                 del secret
             elif not profile.local:
                 raise ProviderError('Reconnect this remote provider account before generation.')
-            if cancelled():
-                raise InterruptedError('Provider operation cancelled before transmission.')
-            cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
-            options = {'timeout': min(timeout, 30.0)}
-            if target.scheme == 'https':
-                options['context'] = ssl.create_default_context()
-            connection = cls(target.hostname, target.port, **options)
+            _check_request(deadline, cancelled)
+            connection = _Connection(target, local=profile.local, deadline=deadline, cancelled=cancelled)
             # No proxy environment or redirects are consulted. Host/TLS authority stays fixed.
             prefix = target.path.rstrip('/')
             if profile.adapter == 'elevenlabs' and not prefix:
@@ -327,6 +518,7 @@ class Gateway:
             method = 'GET' if operation == 'translation.languages' else 'POST'
             connection.request(method, prefix + route, body=None if method == 'GET' else raw, headers=headers)
             response = connection.getresponse()
+            connection.check()
             if response.status != 200:
                 if 300 <= response.status < 400:
                     raise ProviderError('The provider attempted a redirect; credentials were not forwarded.')
@@ -337,6 +529,8 @@ class Gateway:
             length = response.getheader('Content-Length')
             if length is not None and (not length.isdecimal() or int(length) > max_response_bytes):
                 raise ProviderError('Provider response exceeds the approved byte budget.')
+            if response.getheader('Content-Encoding', 'identity').lower() != 'identity':
+                raise ProviderError('Provider returned an unexpected encoded response.')
             count = 0
             digest = sha256()
             chunks = []
@@ -347,9 +541,11 @@ class Gateway:
                 temporary = Path(stream.name)
             try:
                 while True:
-                    if cancelled() or monotonic() - started > timeout:
-                        raise InterruptedError('Provider operation cancelled or timed out; charge state may be uncertain.')
-                    block = response.read(65536)
+                    connection.check()
+                    block = response.read(min(65536, max_response_bytes + 1 - count))
+                    # A slow read can return partial bytes or EOF after shutdown
+                    # instead of raising. Neither can become a successful result.
+                    connection.check()
                     if not block:
                         break
                     count += len(block)
@@ -419,8 +615,10 @@ class Gateway:
                                  if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int and v >= 0}
                 result['usage'] = usage
                 _reject_decoded_credential(result, secret_bytes)
+            connection.check()
             if destination:
                 local_path(destination.parent)
+                connection.check()
                 os.link(temporary, destination)
                 result['artifacts'] = [{'path': str(destination), 'sha256': digest.hexdigest(), 'size': count}]
             if reserved:
@@ -429,6 +627,11 @@ class Gateway:
         except BaseException as exc:
             if reserved:
                 self.ledger.finish(authorization.id, operation_id, status='uncertain' if sent else 'not_sent')
+            # Preserve cancellation/deadline classification when socket shutdown
+            # produced EOF, truncation or a low-level HTTP/TLS exception.
+            if connection is not None:
+                connection.check()
+            _check_request(deadline, cancelled)
             if isinstance(exc, (PermissionError, FileExistsError, ProviderError, InterruptedError)):
                 raise
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):

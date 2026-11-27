@@ -6,6 +6,9 @@ import sys
 
 import pytest
 
+import carr_library
+from bootstrap.vendor.cairn_extractors import hasher as bootstrap_hasher
+
 from carr_library.research import export_file
 
 
@@ -248,10 +251,13 @@ writer = export_file.write_export if sys.argv[4] == 'text' else export_file.writ
 writer(Path(sys.argv[1]), payload.decode('utf-8') if sys.argv[4] == 'text' else payload,
        private_root=Path(sys.argv[2]), require_absent=True)
 '''
-    result = subprocess.run([sys.executable, '-c', script, str(target),
+    roots = (Path(carr_library.__file__).resolve().parents[1],
+             Path(bootstrap_hasher.__file__).resolve().parents[3])
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join(map(str, dict.fromkeys(roots))))
+    result = subprocess.run([sys.executable, '-B', '-s', '-P', '-X', 'utf8', '-c', script, str(target),
                              str(target.parent / 'private'), expected.hex(),
                              'text' if target.suffix == '.txt' else 'binary'],
-                            capture_output=True, timeout=20, check=False)
+                            env=environment, capture_output=True, timeout=20, check=False)
     assert result.returncode == 74, result.stderr.decode('utf-8', errors='replace')
     assert target.read_bytes() == expected
     stages = list(target.parent.glob('.research-export-*'))

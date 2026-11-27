@@ -7,11 +7,16 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
+import venv
 
 import pytest
+
+import carr_library
+from bootstrap.vendor.cairn_extractors import hasher as bootstrap_hasher
 
 from carr_library.application import LibraryApp
 from carr_library.durable_state import read_json, atomic_json
@@ -259,6 +264,88 @@ def test_worker_change_requires_explicit_reconfiguration(prepared):
     assert service.get(identity)['status'] == 'ready'
 
 
+@pytest.fixture
+def isolated_runtime(prepared, tmp_path):
+    """A real interpreter environment with a dependency unavailable to its base."""
+    environment = tmp_path / 'selected-runtime'
+    venv.EnvBuilder(with_pip=False, symlinks=os.name == 'posix').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    package_path = subprocess.run([str(python), '-I', '-B', '-c',
+        'import sysconfig; print(sysconfig.get_path("purelib"))'],
+        check=True, capture_output=True, text=True, timeout=20).stdout.strip()
+    (Path(package_path) / 'isolated_transcription_dependency.py').write_text(
+        'MARKER = "Selected virtual environment"\n', encoding='utf-8')
+    worker = prepared[4]()
+    worker.write_text('from isolated_transcription_dependency import MARKER\n'
+        'assert MARKER == "Selected virtual environment"\n' + worker.read_text(encoding='utf-8'),
+        encoding='utf-8')
+    return python, worker, tmp_path / 'models'
+
+
+def test_selected_virtual_environment_executes_its_own_dependency(prepared, isolated_runtime):
+    _, _, service, original, _ = prepared
+    python, worker, models = isolated_runtime
+    configured = service.configure(python, worker, models)
+    identity = service.submit([original])
+
+    result = service.run(identity, timeout=20)
+
+    assert result['status'] == 'completed', result['last_error']
+    assert configured['python'] == str(python)
+    assert service.verify(identity)['done'] == 1
+    assert 'Український' in service.text(identity, result['sources'][0]['filename'])
+
+
+@pytest.mark.parametrize('change', ['selected-replaced', 'binary-changed'] +
+                         (['link-retargeted'] if os.name == 'posix' else []))
+def test_selected_runtime_changes_are_refused_before_child_launch(
+        prepared, isolated_runtime, tmp_path, change):
+    _, _, service, original, _ = prepared
+    python, worker, models = isolated_runtime
+    # Never alter the shared base interpreter. Bind our own executable copy
+    # when the test needs to modify the resolved target's bytes.
+    if change == 'binary-changed' and python.is_symlink():
+        target = tmp_path / 'owned-runtime-binary'
+        shutil.copy2(python.resolve(), target)
+        python.unlink()
+        python.symlink_to(target)
+    else:
+        target = python.resolve()
+    service.configure(python, worker, models)
+    identity = service.submit([original])
+    if change == 'selected-replaced':
+        replacement = python.with_name('replacement-python')
+        if python.is_symlink():
+            replacement.symlink_to(os.readlink(python))
+        else:
+            shutil.copy2(python, replacement)
+        replacement.replace(python)
+    elif change == 'link-retargeted':
+        replacement = tmp_path / 'different-runtime-same-bytes'
+        shutil.copy2(target, replacement)
+        python.unlink()
+        python.symlink_to(replacement)
+    else:
+        with target.open('ab') as stream:
+            stream.write(b'changed selected runtime bytes')
+
+    with pytest.raises(ValueError, match='runtime changed'):
+        service.run(identity, timeout=20)
+
+    assert service.get(identity)['status'] == 'ready'
+    assert not (service._path(identity) / 'job_status.json').exists()
+
+
+def test_legacy_resolved_interpreter_configuration_still_runs(prepared):
+    _, _, service, original, _ = prepared
+    config = read_json(service.root / 'engine.json')
+    config.pop('python_binding', None)
+    atomic_json(service.root / 'engine.json', config, replace=True)
+    identity = service.submit([original])
+    result = service.run(identity, timeout=20)
+    assert result['status'] == 'completed', result['last_error']
+
+
 def test_changed_retained_source_refuses_inference(prepared):
     _, _, service, original, _ = prepared
     identity = service.submit([original])
@@ -342,14 +429,18 @@ def test_invalid_settings_fail_before_job_creation(prepared, options):
 
 def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
     app, workspace, service, original, _ = prepared
-    created = subprocess.run([sys.executable, '-m', 'carr_library', 'transcribe',
+    roots = (Path(carr_library.__file__).resolve().parents[1],
+             Path(bootstrap_hasher.__file__).resolve().parents[3])
+    environment = dict(os.environ, PYTHONPATH=os.pathsep.join(map(str, dict.fromkeys(roots))))
+    command = [sys.executable, '-B', '-s', '-P', '-X', 'utf8', '-m', 'carr_library', 'transcribe']
+    created = subprocess.run([*command,
         '--data-dir', str(app.root), '--workspace', workspace, 'create', str(original)],
-        check=True, capture_output=True, text=True, encoding='utf-8')
+        env=environment, check=True, capture_output=True, text=True, encoding='utf-8')
     identity = json.loads(created.stdout)['id']
     assert service.get(identity)['status'] == 'ready'
-    completed_job = subprocess.run([sys.executable, '-m', 'carr_library', 'transcribe',
+    completed_job = subprocess.run([*command,
         '--data-dir', str(app.root), '--workspace', workspace, 'run', identity, '--timeout', '30'],
-        capture_output=True, text=True, encoding='utf-8')
+        env=environment, capture_output=True, text=True, encoding='utf-8')
     assert completed_job.returncode == 0, completed_job.stderr
     assert service.verify(identity)['status'] == 'completed'
 

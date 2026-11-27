@@ -503,7 +503,8 @@ def test_studio_executor_start_failure_is_terminal_and_unlocks_controls(studio):
 
 
 @pytest.mark.parametrize('device_failure', [False, True])
-def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure):
+@pytest.mark.parametrize('registry_failure', [False, True])
+def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure, registry_failure):
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/speech_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
@@ -512,6 +513,8 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
                                       'executor', 'audio_files', 'dialog')}
     registries = [Mock(), Mock()]
     env['owned_registries'] = registries
+    if registry_failure:
+        registries[0].close.side_effect = RuntimeError('Voice provider disconnected')
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
@@ -527,7 +530,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
         env['audio_files'].cleanup.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
     assert env['alive'] is False
-    assert env['parent'].report.call_count == int(device_failure)
+    assert env['parent'].report.call_count == int(device_failure or registry_failure)
 
 
 @pytest.mark.parametrize('device_failure', [False, True])

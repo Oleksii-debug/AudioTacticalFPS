@@ -1,13 +1,12 @@
 """Synthetic TLS-adapter, authorization, resume and original-integrity checks."""
 from decimal import Decimal
 from hashlib import sha256
-import http.client
 import json
-import ssl
 from time import time
 import pytest
 from carr_library.assistant.profiles import ProviderProfile
 from carr_library.assistant.providers import Authorization, Gateway, ProviderError
+from carr_library.assistant import providers
 from carr_library.assistant.translation import TranslationService, split_text, ENDPOINT
 from carr_library.assistant.state import read_json
 from carr_library.speech.reading import ReadingDocument
@@ -36,11 +35,14 @@ class Vault:
 def connection(monkeypatch):
     state = {'calls': [], 'status': 200, 'custom': None}
     class Connection:
-        def __init__(self, host, port, **kwargs):
-            assert host == 'translation.googleapis.com'
-            assert port in (None, 443)
-            assert isinstance(kwargs.get('context'), ssl.SSLContext)
+        def __init__(self, target, *, local, deadline, cancelled):
+            assert target.hostname == 'translation.googleapis.com'
+            assert target.port in (None, 443) and target.scheme == 'https' and not local
+            self.deadline, self.cancelled = deadline, cancelled
             self.position = 0
+
+        def check(self):
+            providers._check_request(self.deadline, self.cancelled)
 
         def request(self, method, route, body, headers):
             state['calls'].append({'method': method, 'route': route, 'body': body, 'headers': dict(headers)})
@@ -74,7 +76,7 @@ def connection(monkeypatch):
 
         def close(self):
             pass
-    monkeypatch.setattr(http.client, 'HTTPSConnection', Connection)
+    monkeypatch.setattr(providers, '_Connection', Connection)
     return state
 
 

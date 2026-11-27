@@ -124,7 +124,8 @@ def reader(tmp_path, monkeypatch):
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
 
-    def registry_factory(state_root):
+    def registry_factory(state_root, *, cancelled=lambda: False):
+        assert callable(cancelled)
         roots.append(Path(state_root))
         return registry
 
@@ -139,7 +140,7 @@ def reader(tmp_path, monkeypatch):
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
     values = dict(parent=parent, progress=progress, voice_choice=choice,
-        voices=registry.voices(), registry=registry, run=work, report=report,
+        voices=registry.voices(), registry=registry, owned_registries=set(), run=work, report=report,
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,

@@ -298,12 +298,13 @@ def test_authorized_remote_route_budget_and_unsafe_retry_with_local_mock(tmp_pat
     """Real local HTTP response, mocked TLS transport; no external API call."""
     address, requests, settings = server
     from urllib.parse import urlsplit
-    local = urlsplit(address)
+    from carr_library.assistant import providers
     targets = []
-    def mock_tls(host, port, **options):
-        targets.append((host, port))
-        return http.client.HTTPConnection(local.hostname, local.port, timeout=options['timeout'])
-    monkeypatch.setattr(http.client, 'HTTPSConnection', mock_tls)
+    connection = providers._Connection
+    def mock_tls(target, *, local, deadline, cancelled):
+        targets.append((target.hostname, target.port))
+        return connection(urlsplit(address), local=True, deadline=deadline, cancelled=cancelled)
+    monkeypatch.setattr(providers, '_Connection', mock_tls)
     profile = remote()
     approval = auth(profile, budget='0.50', max_calls=3)
     gateway = Gateway(tmp_path, vault=Vault(), mode='APPROVED_REMOTE')

@@ -63,6 +63,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/ci_check.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require bounded provider transport and durable translation boundaries
+        timeout-minutes: 5
+        run: |
+          python -B -m pytest -q -o xfail_strict=true tests/assistant/test_providers.py tests/assistant/test_translation.py tests/assistant/test_provider_deadline.py tests/assistant/test_provider_resolution.py --junitxml=ci-v3-results/provider-boundaries.xml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-v3-results/provider-boundaries.xml').iter('testcase')); names={c.get('name','').split('[')[0] for c in cases}; required={'test_real_tls_drip_obeys_whole_call_deadline','test_late_end_of_body_never_returns_success','test_google_discovery_remains_get_with_verified_original_tls_authority','test_remote_charge_state_tracks_whether_http_transmission_began','test_interrupted_audio_discards_already_streamed_bytes_and_never_retries','test_remote_dns_rejects_every_disallowed_answer_before_connect','test_saved_translation_requires_its_original_authority_and_receipts'}; assert cases and required<=names and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',passed=len(cases),network='synthetic loopback TLS only',actual_provider_calls='NOT_RUN')))" | Tee-Object 'ci-v3-results/provider-boundaries.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime
         run: |
@@ -114,7 +121,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/transcription tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

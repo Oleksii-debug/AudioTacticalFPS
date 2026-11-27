@@ -7,10 +7,54 @@ import sys
 
 import pytest
 
+from bootstrap.vendor.cairn_extractors import hasher as bootstrap_hasher
+import carr_library
 from carr_library.application import LibraryApp
 
 
-ROOT = Path(__file__).resolve().parents[2]
+PACKAGE = Path(carr_library.__file__).resolve()
+BOOTSTRAP_HASHER = Path(bootstrap_hasher.__file__).resolve()
+
+
+def cli_command(*arguments):
+    # -B is not inherited from pytest by a newly launched interpreter. These
+    # real CLI children must preserve the hash-sealed base runtime as the
+    # supplied application launchers do. Keep source and installed runs bound
+    # to the same distribution that their parent pytest process imported.
+    return [sys.executable, '-B', '-s', '-P', '-X', 'utf8', *arguments]
+
+
+def cli_environment():
+    environment = dict(os.environ)
+    # Source trees split src/carr_library and bootstrap across two roots;
+    # wheels install both into the same site-packages directory. Derive both
+    # trusted roots from imported modules instead of relying on cwd or an
+    # unrelated package already installed in the test interpreter.
+    roots = dict.fromkeys((PACKAGE.parent.parent, BOOTSTRAP_HASHER.parents[3]))
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, roots))
+    environment['PYTHONUTF8'] = '1'
+    return environment
+
+
+def test_cli_child_uses_current_distribution_without_writing_runtime_bytecode(tmp_path):
+    environment = cli_environment()
+    cache = tmp_path / 'private-runtime-cache'
+    environment['PYTHONPYCACHEPREFIX'] = str(cache)
+    result = subprocess.run(cli_command('-c',
+        'from __future__ import annotations\n'
+        'import carr_library,json,pathlib,sys\n'
+        'from bootstrap.vendor.cairn_extractors import hasher\n'
+        'print(json.dumps({"package":str(pathlib.Path(carr_library.__file__).resolve()),'
+        '"bootstrap_hasher":str(pathlib.Path(hasher.__file__).resolve()),'
+        '"dont_write_bytecode":sys.dont_write_bytecode,"safe_path":sys.flags.safe_path,'
+        '"no_user_site":sys.flags.no_user_site}))'),
+        cwd=tmp_path, env=environment, capture_output=True, text=True,
+        encoding='utf-8', timeout=30, check=True)
+    actual = json.loads(result.stdout)
+    assert Path(actual['package']).samefile(PACKAGE)
+    assert Path(actual['bootstrap_hasher']).samefile(BOOTSTRAP_HASHER)
+    assert actual['dont_write_bytecode'] and actual['safe_path'] and actual['no_user_site']
+    assert not list(cache.rglob('*.pyc'))
 
 
 @pytest.fixture
@@ -23,12 +67,10 @@ def cli(tmp_path):
         imported = app.add_text(workspace, 'Synthetic source', 'Railway history — Straße.',
                                 authors=(author,), language=language, edition='First')
         assert imported['state'] == 'complete'
-    env = dict(os.environ)
-    env['PYTHONPATH'] = os.pathsep.join((str(ROOT / 'src'), str(ROOT)))
-    env['PYTHONUTF8'] = '1'
+    env = cli_environment()
     def run(*arguments, expected=0):
-        result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(app.root),
-                                 *map(str, arguments)], cwd=tmp_path, env=env, text=True,
+        result = subprocess.run(cli_command('-m', 'carr_library', '--data-dir', str(app.root),
+                                 *map(str, arguments)), cwd=tmp_path, env=env, text=True,
                                 encoding='utf-8', capture_output=True, timeout=30)
         assert result.returncode == expected, (result.stdout, result.stderr, result.returncode)
         assert 'Traceback' not in result.stderr
@@ -64,10 +106,10 @@ def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli,
 
 
 def test_missing_library_selection_is_an_error_and_does_not_create_data(tmp_path):
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(ROOT / 'src'), str(ROOT))))
+    env = cli_environment()
     destination = tmp_path / 'must-not-exist'
-    result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(destination),
-                             '--search', 'history'], env=env, capture_output=True, text=True, timeout=30)
+    result = subprocess.run(cli_command('-m', 'carr_library', '--data-dir', str(destination),
+                             '--search', 'history'), env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 2 and '--workspace' in result.stderr
     assert not destination.exists()
 
