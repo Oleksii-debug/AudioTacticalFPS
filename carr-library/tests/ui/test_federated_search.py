@@ -841,9 +841,9 @@ def test_native_library_checklist_uses_distinct_choices_without_reordering(monke
     wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate((
         'VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL',
         'LEFT', 'RIGHT', 'TE_PROCESS_ENTER', 'LB_SINGLE', 'TE_READONLY',
-        'TE_MULTILINE', 'ALIGN_RIGHT', 'EVT_BUTTON'))})
+        'TE_MULTILINE', 'ALIGN_RIGHT', 'VSCROLL', 'EVT_BUTTON'))})
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer', 'CheckListBox',
-                 'TextCtrl', 'Choice', 'Button', 'ListBox'):
+                 'TextCtrl', 'Choice', 'Button', 'ListBox', 'ScrolledWindow'):
         setattr(wx, name, Mock(side_effect=lambda *args, **kwargs: Mock()))
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(module, 'SearchCenter', Mock())
@@ -932,3 +932,40 @@ def test_ranked_center_uses_full_scope_with_one_existing_worker(center):
     assert center.frame.unsaved_note == "An unsaved notebook draft — retain exactly."
     assert len(center.frame.jobs) == 3 and all(t != get_ident() for t in center.frame.worker_threads)
     center.controller.dispose()
+
+
+def test_native_rewrapped_destroy_id_disposes_the_same_pending_owner(center):
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.window = Mock()
+    native._window_id = 317
+    native.controller = center.controller
+    native._window_alive = True
+    native._deferred_destroy = False
+    center.frame.deferred = True
+    search(center)
+    child_event = SimpleNamespace(GetEventObject=lambda: object(), GetId=lambda: 318, Skip=Mock())
+    native._destroyed(child_event)
+    assert native._window_alive and center.controller.alive and not center.frame.cancel_event.is_set()
+    owner_event = SimpleNamespace(GetEventObject=lambda: object(), GetId=lambda: 317, Skip=Mock())
+    native._destroyed(owner_event)
+    assert not native._window_alive and not center.controller.alive
+    assert center.frame.cancel_event.is_set() and center.controller.running
+    before = list(center.view.messages)
+    center.frame.finish()
+    assert not center.controller.running and center.view.messages == before
+    assert center.controller.rows == () and center.controller.service.current is None
+    native.window.Destroy.assert_not_called()
+    child_event.Skip.assert_called_once()
+    owner_event.Skip.assert_called_once()
+
+
+@pytest.mark.parametrize("error", [OSError("queue unavailable"), KeyboardInterrupt()])
+def test_search_admission_failure_releases_controller_for_explicit_retry(center, error):
+    original = center.frame.run_job
+    center.frame.run_job = Mock(side_effect=error)
+    search(center)
+    assert not center.controller.running and not center.frame.working
+    assert center.controller.rows == ()
+    center.frame.run_job = original
+    search(center)
+    assert center.controller.rows and not center.controller.running

@@ -1,0 +1,271 @@
+name: Native search pages and pinned model batches
+on:
+  push:
+    branches: [carr/search-native-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-search-native-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: search-native-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  native-model:
+    name: Exact installed search controls and existing local model / Windows
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the current package and existing pinned semantic runtime
+        run: |
+          New-Item -ItemType Directory -Force 'ci-search-native' | Out-Null
+          python -m pip install ".[test,desktop]"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the pinned model through the existing model_bundle verifier
+        timeout-minutes: 10
+        run: |
+          $model = Join-Path $env:RUNNER_TEMP 'carr-search-model/minilm'
+          $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-search-model/model-manifest.json'
+          $acquire = @'
+          import importlib.util, json, pathlib, shutil, sys
+          from huggingface_hub import hf_hub_download
+          spec = importlib.util.spec_from_file_location('model_build', pathlib.Path('packaging/model_bundle.py').resolve())
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          target, manifest = map(pathlib.Path, sys.argv[1:])
+          target.mkdir(parents=True, exist_ok=False)
+          for name in sorted(helper.FILES):
+              source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
+              shutil.copyfile(source, target / name)
+          proof = helper.seal(target)
+          with manifest.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True)
+          print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
+          '@
+          $env:HF_HUB_OFFLINE = '0'
+          try {
+            $acquire | python -I -B - $model $modelManifest | Tee-Object 'ci-search-native/model-acquisition.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:HF_HUB_OFFLINE = '1'
+          }
+          python -I -B -c "import sys; from carr_library.semantic import verify_model_bundle; verify_model_bundle(sys.argv[1], sys.argv[2]); print('PASS: exact approved local model')" $model $modelManifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_TEST_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR07_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR07_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Copy-Item -LiteralPath $modelManifest 'ci-search-native/model-manifest.json'
+      - name: Prepare strict source and installed proof without changing imports
+        shell: bash
+        run: |
+          cat > ci-search-native/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-search-native"
+          suites = ["tests/ui/test_federated_search.py","tests/ui/test_desktop_handlers.py","tests/ui/test_search_owner_lifetime.py","tests/ui/test_desktop_query_jobs.py","tests/ui/test_desktop_result_modes.py","tests/e2e/test_semantic_runtime.py","tests/search/test_thematic_onnx_probe.py","tests/search/test_semantic_window_page_ranking.py"]
+          
+          names = ["carr_library.application","carr_library.search.paging","carr_library.search.ranked_scope","carr_library.search.literal","carr_library.search.thematic","carr_library.search.federated","carr_library.semantic","carr_library.search.semantic_windows","carr_library.semantic_cache","carr_library.ui.federated_search","carr_library.ui.desktop_app","carr_library.catalog.read_views","carr_library.storage.revisions","carr_library.durable_state","carr_library.audio.cleanup"]
+          # Compile selected real source and test bytes without importing UI/native code.
+          for name in names:
+              path = source.joinpath(*name.split(".")[1:]).with_suffix(".py")
+              compile(path.read_bytes(), str(path), "exec")
+          for suite in suites:
+              path = root / suite
+              compile(path.read_bytes(), str(path), "exec")
+          
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              return result
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collectreport(self, report):
+                  if report.failed:
+                      # Preserve the original collection failure before the
+                      # required nonempty-suite assertion can terminate pytest.
+                      print("FAILED COLLECTION: " + report.nodeid, flush=True)
+                      print(str(report.longrepr)[:16384], flush=True)
+          
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "--durations=20", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-search-scale-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert sum(case.attrib.get("name") == "test_actual_full_scope_semantic_search_scores_more_than_500_sources" for case in cases) == 1, "The real607-source model case is required."
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "qualification": "PINNED_MODEL_AND_SEARCH_UI_CONTRACTS",
+                        "large_corpus_benchmark": "NOT_RUN",
+                        "actual_neural_model_control": "PASS", "held_out_model_quality": "NOT_RUN",
+                        "selected_suites": proof.collected, "package_python_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+          python -B - <<'PY'
+          from pathlib import Path
+          for name in ('scripts/windows_search_paging_smoke.py', 'scripts/windows_publishing_smoke.py',
+                       'tests/e2e/test_semantic_runtime.py'):
+              compile(Path(name).read_bytes(), name, 'exec')
+          PY
+      - name: Require model and native search with selected runtime egress denied
+        timeout-minutes: 25
+        run: |
+          $python = (Get-Command python.exe).Source
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @($python, $basePython,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Get-Process -Id $PID).Path) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $rulePrefix = 'CARR-search-native-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-search-native/runtime-firewall.json'
+            Remove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue
+            $failures = @()
+            & $python -B -X utf8 ci-search-native/check.py source 2>&1 | Tee-Object 'ci-search-native/source.txt'
+            if ($LASTEXITCODE -ne 0) { $failures += 'source model/UI' }
+            & $python -I -B -X utf8 ci-search-native/check.py installed 2>&1 | Tee-Object 'ci-search-native/installed.txt'
+            if ($LASTEXITCODE -ne 0) { $failures += 'installed model/UI' }
+            & $python -I -B -X utf8 -X faulthandler scripts/windows_search_paging_smoke.py 2>&1 | Tee-Object 'ci-search-native/native-search.txt'
+            if ($LASTEXITCODE -ne 0) { $failures += 'native search' }
+            if ($failures.Count -ne 0) { throw ('Required search workflows failed: ' + ($failures -join ', ')) }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Preserve exact selected commit and dependencies
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force 'ci-search-native' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-search-native/commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-search-native/tree.txt'
+          python -m pip freeze | Set-Content 'ci-search-native/packages.txt'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: search-native-${{ github.sha }}
+          path: carr-library/ci-search-native
+          if-no-files-found: error

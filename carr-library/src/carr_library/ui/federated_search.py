@@ -356,7 +356,7 @@ class SearchCenter:
 
         try:
             self.frame.run_job(title, guarded_operation, complete, failed)
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
             failed(exc)
 
     def search(self, options, *, continuing=False):
@@ -577,106 +577,118 @@ class NativeSearchCenter:
         import wx
         self.wx = wx
         self.window = self.parent = wx.Dialog(frame, title='Research Search Center', size=(980, 850))
+        self._window_id = self.window.GetId()
         self._window_alive = True
         self._deferred_destroy = False
         self.window.SetMinSize((800, 700))
         self.libraries = tuple(libraries)
+        self.viewport = wx.ScrolledWindow(self.window, style=wx.VSCROLL)
+        self.viewport.SetScrollRate(0, 20)
+        self.viewport.SetMinSize((600, 400))
+        parent = self.viewport
         layout = wx.BoxSizer(wx.VERTICAL)
-        explanation = wx.StaticText(self.window, label=
+        explanation = wx.StaticText(parent, label=
             'Check the libraries to search. Space checks or unchecks a focused library. '
             'Results retain their source library; quotations can be saved only to its topics.')
-        explanation.Wrap(920)
+        explanation.Wrap(700)
         layout.Add(explanation, 0, wx.EXPAND | wx.ALL, 8)
         form = wx.FlexGridSizer(cols=2, hgap=8, vgap=5)
         form.AddGrowableCol(1)
 
         def field(label, control):
             control.SetName(label)
-            form.Add(wx.StaticText(self.window, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+            form.Add(wx.StaticText(parent, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
             form.Add(control, 0, wx.EXPAND)
             return control
 
         choices = scope_labels((row.id, None, row.name) for row in self.libraries)
         self.libraries_control = field('Libraries to search (Space selects)',
-            wx.CheckListBox(self.window, choices=choices, size=(-1, 95)))
+            wx.CheckListBox(parent, choices=choices, size=(-1, 95)))
         selected = default_libraries(self.libraries, frame.active)
         for index, row in enumerate(self.libraries):
             self.libraries_control.Check(index, row.id in selected)
         self.query = field('Search query (Enter starts search)',
-                           wx.TextCtrl(self.window, style=wx.TE_PROCESS_ENTER))
-        self.retrieval = field('Retrieval method', wx.Choice(self.window, choices=[
+                           wx.TextCtrl(parent, style=wx.TE_PROCESS_ENTER))
+        self.retrieval = field('Retrieval method', wx.Choice(parent, choices=[
             'Exact phrase', 'Whole word', 'All words on one page',
             'Thematic (local keywords)', 'Semantic (local model)',
             'Advanced (AND, OR, NOT, NEAR)']))
-        self.presentation = field('Result presentation', wx.Choice(self.window,
+        self.presentation = field('Result presentation', wx.Choice(parent,
             choices=['Short quotations', 'Thematic excerpts']))
-        self.limit = field('Results per library on this result page', wx.Choice(self.window,
+        self.limit = field('Results per library on this result page', wx.Choice(parent,
             choices=[str(value) for value in LIMITS]))
         self.retrieval.SetSelection(0)
         self.presentation.SetSelection(0)
         self.limit.SetSelection(2)
-        self.timeout = field('Cooperative search time budget in seconds', wx.TextCtrl(self.window, value='300'))
-        self.memory = field('Search working-memory allowance in MiB', wx.TextCtrl(self.window, value='64'))
-        self.disk = field('Search temporary-disk allowance in MiB', wx.TextCtrl(self.window, value='2048'))
-        self.filters = {key: field(label, wx.TextCtrl(self.window)) for key, label in (
+        self.timeout = field('Cooperative search time budget in seconds', wx.TextCtrl(parent, value='300'))
+        self.memory = field('Search working-memory allowance in MiB', wx.TextCtrl(parent, value='64'))
+        self.disk = field('Search temporary-disk allowance in MiB', wx.TextCtrl(parent, value='2048'))
+        self.filters = {key: field(label, wx.TextCtrl(parent)) for key, label in (
             ('author', 'Author contains'), ('title', 'Title contains'),
             ('language', 'Language code (exact)'), ('edition', 'Edition (exact)'))}
         layout.Add(form, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         commands = wx.BoxSizer(wx.HORIZONTAL)
-        self.search_button = wx.Button(self.window, label='&Search')
-        self.builder_button = wx.Button(self.window, label='Build &advanced query')
+        self.search_button = wx.Button(parent, label='&Search')
+        self.builder_button = wx.Button(parent, label='Build &advanced query')
         self.builder_button.SetName('Build advanced query; Ctrl+Alt+Q')
-        self.cancel_button = wx.Button(self.window, label='Cancel &operation')
+        self.cancel_button = wx.Button(parent, label='Cancel &operation')
         commands.Add(self.search_button, 0, wx.ALL, 5)
         commands.Add(self.builder_button, 0, wx.ALL, 5)
         commands.Add(self.cancel_button, 0, wx.ALL, 5)
         layout.Add(commands, 0, wx.EXPAND)
-        layout.Add(wx.StaticText(self.window, label='Results — grouped by source library'),
+        layout.Add(wx.StaticText(parent, label='Results — grouped by source library'),
                    0, wx.LEFT | wx.RIGHT, 8)
         pages = wx.BoxSizer(wx.HORIZONTAL)
-        self.previous_button = wx.Button(self.window, label='&Previous result page')
-        self.next_button = wx.Button(self.window, label='&Next result page')
+        self.previous_button = wx.Button(parent, label='&Previous result page')
+        self.next_button = wx.Button(parent, label='&Next result page')
         self.previous_button.SetName('Previous result page within current sources')
         self.next_button.SetName('Next result page within current sources')
         for button in (self.previous_button, self.next_button):
             pages.Add(button, 0, wx.ALL, 5)
         layout.Add(pages, 0, wx.EXPAND)
-        source_pages = wx.BoxSizer(wx.HORIZONTAL)
+        source_pages = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        source_pages.AddGrowableCol(0)
+        source_pages.AddGrowableCol(1)
         self.scope_buttons = {}
         for key, label, kind, direction in (
             ('source_previous', 'Previous source window', 'sources', -1),
             ('source_next', 'Next source window', 'sources', 1),
             ('library_previous', 'Previous selected libraries', 'libraries', -1),
             ('library_next', 'Next selected libraries', 'libraries', 1)):
-            button = wx.Button(self.window, label=label)
+            button = wx.Button(parent, label=label)
             button.SetName(label)
             self.scope_buttons[key] = button
-            source_pages.Add(button, 0, wx.ALL, 5)
+            source_pages.Add(button, 0, wx.EXPAND | wx.ALL, 5)
             button.Bind(wx.EVT_BUTTON, lambda event, kind=kind, direction=direction:
                         self.controller.navigate_scope(kind, direction))
         layout.Add(source_pages, 0, wx.EXPAND)
-        self.results = wx.ListBox(self.window, style=wx.LB_SINGLE, size=(-1, 130))
+        self.results = wx.ListBox(parent, style=wx.LB_SINGLE, size=(-1, 130))
         self.results.SetName('Search results with library and verification status')
         layout.Add(self.results, 1, wx.EXPAND | wx.ALL, 8)
-        layout.Add(wx.StaticText(self.window, label='Selected source details'), 0, wx.LEFT | wx.RIGHT, 8)
-        self.details = wx.TextCtrl(self.window, style=wx.TE_READONLY | wx.TE_MULTILINE,
+        layout.Add(wx.StaticText(parent, label='Selected source details'), 0, wx.LEFT | wx.RIGHT, 8)
+        self.details = wx.TextCtrl(parent, style=wx.TE_READONLY | wx.TE_MULTILINE,
                                    size=(-1, 115))
         self.details.SetName('Selected source details, excerpt and verification status')
         layout.Add(self.details, 1, wx.EXPAND | wx.ALL, 8)
-        actions = wx.BoxSizer(wx.HORIZONTAL)
-        self.context_button = wx.Button(self.window, label='View source conte&xt')
-        self.quote_button = wx.Button(self.window, label='Copy &quotation')
-        self.citation_button = wx.Button(self.window, label='Copy ci&tation')
-        self.save_button = wx.Button(self.window, label='Save quotation to a to&pic')
+        actions = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
+        actions.AddGrowableCol(0)
+        actions.AddGrowableCol(1)
+        self.context_button = wx.Button(parent, label='View source conte&xt')
+        self.quote_button = wx.Button(parent, label='Copy &quotation')
+        self.citation_button = wx.Button(parent, label='Copy ci&tation')
+        self.save_button = wx.Button(parent, label='Save quotation to a to&pic')
         for button in (self.context_button, self.quote_button, self.citation_button, self.save_button):
-            actions.Add(button, 0, wx.ALL, 5)
+            actions.Add(button, 0, wx.EXPAND | wx.ALL, 5)
         layout.Add(actions, 0, wx.EXPAND)
-        self.status = wx.TextCtrl(self.window, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 65))
+        self.status = wx.TextCtrl(parent, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 65))
         self.status.SetName('Search Center status')
         layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
-        self.close_button = wx.Button(self.window, label='&Close')
+        self.close_button = wx.Button(parent, label='&Close')
         layout.Add(self.close_button, 0, wx.ALIGN_RIGHT | wx.ALL, 8)
-        self.window.SetSizer(layout)
+        self.viewport.SetSizer(layout)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(self.viewport, 1, wx.EXPAND)
+        self.window.SetSizer(outer)
         self.window.SetEscapeId(self.close_button.GetId())
         self.controller = SearchCenter(frame, self)
         self._bind()
@@ -713,7 +725,8 @@ class NativeSearchCenter:
         self.window.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.window:
+        if (event.GetEventObject() is self.window
+                or event.GetId() == self._window_id):
             self._window_alive = False
             self._deferred_destroy = False
             self.controller.dispose()

@@ -129,7 +129,9 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.GetSizer().Insert(3, self.advanced_builder, 0, wx.ALL, 4)
         self.advanced_builder.MoveAfterInTabOrder(self.query)
         self.retrieval.MoveAfterInTabOrder(self.advanced_builder)
-        navigation = wx.BoxSizer(wx.HORIZONTAL)
+        navigation = wx.FlexGridSizer(cols=2, hgap=3, vgap=3)
+        navigation.AddGrowableCol(0)
+        navigation.AddGrowableCol(1)
         self.search_navigation = {}
         for key, caption in (('result_previous', 'Previous result page'), ('result_next', 'Next result page'),
                              ('source_previous', 'Previous source window'), ('source_next', 'Next source window')):
@@ -138,9 +140,10 @@ class DesktopSearchPanel(PagedSearchPanel):
             button.Bind(wx.EVT_BUTTON, lambda event, key=key: self.on_search_navigation(key))
             button.Disable()
             self.search_navigation[key] = button
-            navigation.Add(button, 0, wx.ALL, 3)
+            navigation.Add(button, 0, wx.EXPAND | wx.ALL, 3)
         self.GetSizer().Add(navigation, 0, wx.EXPAND)
-        budget_row = wx.BoxSizer(wx.HORIZONTAL)
+        budget_row = wx.FlexGridSizer(cols=2, hgap=6, vgap=3)
+        budget_row.AddGrowableCol(1)
         budget_row.Add(wx.StaticText(self, label='Search time budget in seconds'), 0, wx.ALL, 3)
         self.search_timeout = wx.TextCtrl(self, value='300')
         self.search_timeout.SetName('Search time budget in seconds')
@@ -169,6 +172,21 @@ class DesktopSearchPanel(PagedSearchPanel):
             control.Bind(wx.EVT_CHOICE, self.on_options_changed)
         for control in (self.query, *self.filters.values()):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
+
+        # Retain this exact notebook page/controller while native focus scrolls
+        # its expanded search form at the host's supported minimum size.
+        children, content = tuple(self.GetChildren()), self.GetSizer()
+        self.SetSizer(None, deleteOld=False)
+        self.search_viewport = wx.ScrolledWindow(self, style=wx.VSCROLL)
+        self.search_viewport.SetScrollRate(0, 20)
+        self.search_viewport.SetMinSize((600, 360))
+        for child in children:
+            if not child.Reparent(self.search_viewport):
+                raise RuntimeError('The search form could not create its scrollable viewport.')
+        self.search_viewport.SetSizer(content)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(self.search_viewport, 1, wx.EXPAND)
+        self.SetSizer(outer)
 
     def on_build_query(self, event=None):
         if getattr(self.frame, '_closing', False):
