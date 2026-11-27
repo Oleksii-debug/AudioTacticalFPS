@@ -295,3 +295,35 @@ def test_legacy_completed_backup_without_new_intent_still_verifies(library, monk
     monkeypatch.setattr(service.app, 'backup', forbid_backup)
     assert service.resume(identity).status == 'complete'
     assert tree(target) == before
+
+
+@pytest.mark.parametrize('damage', ['database', 'original'])
+def test_initial_receipt_cannot_baseline_payload_changed_before_producer_return(library, monkeypatch, damage):
+    service, identity, target, _scope = submit(library)
+    producer, calls, observed = service.app.backup, [], []
+
+    def publish_then_change(destination, **options):
+        checksum = producer(destination, **options)
+        manifest = json.loads((destination / 'manifest.json').read_text(encoding='utf-8'))
+        selected = (destination / manifest['database']['filename'] if damage == 'database'
+                    else destination / 'originals' / manifest['assets'][0]['filename'])
+        with selected.open('r+b') as stream:
+            first = stream.read(1)
+            stream.seek(0)
+            stream.write(bytes([first[0] ^ 1]))
+        calls.append(checksum)
+        observed.append(tree(destination))
+        return checksum
+
+    monkeypatch.setattr(service.app, 'backup', publish_then_change)
+    result = service.run(identity)
+    assert result.status == 'failed' and result.completed == 0
+    assert 'Published backup changed' in result.message
+    assert digest(target / 'manifest.json') == calls[0]
+    assert service.store.load(identity)['steps'][0]['intent'] == {'backup_manifest_sha256': calls[0]}
+    assert tree(target) == observed[0]
+    monkeypatch.setattr(service.app, 'backup', forbid_backup)
+    assert service.resume(identity).status == 'failed'
+    assert tree(target) == observed[0] and len(calls) == 1
+    hit, = service.app.search(library[1], 'Unchanged retained source')
+    assert hit.quote == 'Unchanged retained source'

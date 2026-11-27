@@ -576,8 +576,7 @@ class AssistantService:
             from .backup_receipt import capture_backup_receipt
             receipt = capture_backup_receipt(target, checksum, max_bytes=scope.max_bytes,
                                              max_files=scope.max_files, cancelled=cancelled)
-            if recovering:
-                _verify_published_backup(target, checksum, receipt, scope, cancelled)
+            _verify_published_backup(target, checksum, receipt, scope, cancelled)
             return {'directory': str(target), 'manifest_sha256': checksum,
                     'backup_receipt': receipt.to_dict(),
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}
