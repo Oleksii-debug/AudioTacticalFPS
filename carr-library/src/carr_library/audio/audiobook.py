@@ -148,5 +148,11 @@ def line_lrc(lines):
         for text in line['text'].splitlines() or ['']:
             if '\x00' in text:
                 raise ValueError('Invalid LRC text.')
+            # LRC permits several leading timestamp tags for the same lyric.
+            # Place an invisible literal-text boundary before *all* of the
+            # original text, including its whitespace. Removing this marker
+            # before LRC parsing would restore the ambiguous timestamp syntax.
+            if text.lstrip().startswith('['):
+                text = '\u2060' + text
             result.append(stamp + text)
     return '\n'.join(result) + ('\n' if result else '')

@@ -2,9 +2,10 @@
 
 The resource broker reuses the native-lock implementation reviewed in
 [PR143, e6225630](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143/commits/e6225630f88c3aa85814e488da863345d10faa15).
-Its models, locks, broker and two resource suites are retained from that exact
-revision. The canonical package initially exposes only the resource core;
-service integrations are separate changes against their current contracts.
+Its models, locks, broker and two resource suites were adopted from that exact
+revision. The broker's policy-save method now additionally accepts a reviewed
+previous policy and cancellation callback for the canonical native editor.
+Service integrations are separate changes against their current contracts.
 
 `ResourceBroker.for_app(data_root)` shares a coordinator in
 `runtime/resources` and saves the operator policy in
@@ -60,3 +61,59 @@ completed receipt reuse with a fully occupied pool, explicit GPU policy rejectio
 source mutation before render admission, queued pause/cancel and actual child
 termination while the reservation is still held. Windows native gates remain
 separate evidence.
+
+## Shared saved-operation view
+
+The facade reuses PR143's bounded journal view, adapted to the canonical
+`transcription.TranscriptionService`, its 32-hex job identities, and
+`state/transcription/jobs/<id>/job.json`. It does not read live worker status,
+launch engines, resume jobs, contact providers or verify recorded output bytes.
+Completion is labelled as stored journal state. Actual output verification and
+resume remain in each original workstation. A live broker reservation is
+positive evidence of cooperative ownership; absence is unknown, not proof that
+an engine stopped.
+
+`python -m carr_library operations --data-dir <folder> list` lists saved jobs.
+`get <kind> <id>`, `pause <kind> <id>` and `cancel <kind> <id>` use the same view
+and existing service controls. `--workspace <id>` restricts authorized workspace
+views. Controls recheck scope immediately before dispatch. Import and translation
+workflows without saved-job control methods expose no invented control API.
+An ASR control must additionally provide `--attempt-id <active_attempt_id>` from
+the selected job and is rejected if that exact host attempt ended or changed.
+The worker's result `run_id` is a different identity and is never substituted.
+
+`resources` reports declared reservations. `configure-resources <policy.json>`
+accepts the exact `ResourceLimits` fields, retains the last valid policy on
+rejection, and cannot reduce allowances below existing reservations. No command
+in this interface executes a plan, resumes a paused engine or approves an
+external transfer. Record bodies, transcript text and provider credentials are
+excluded from the shared view. Invalid checkpoints appear as attention entries
+without copying their diagnostic contents into the dashboard.
+
+## Native Tasks and resources
+
+Open **Tools → Tasks and resources**, or find that existing menu action with
+**Ctrl+Shift+P**. The native saved-job list and read-only details use the same
+facade as the CLI. Refresh, pause/cancel requests and policy persistence run on
+the desktop's existing worker. The close control remains available while a
+view request waits; it cancels that request without cancelling a different
+operation. The owning workstation remains the place to resume or approve work.
+Opening a selected transcription verifies its saved results in that existing
+workstation and does not start recognition.
+
+The Resource allowances page exposes CPU slots, declared memory, temporary disk,
+free disk reserve, exclusive GPU capacities and the maximum reservation count.
+Its usage summary is the last refreshed declared reservation snapshot, not live
+hardware telemetry. Policy save is conditional on the exact policy reviewed in
+the window. A concurrent edit requires refresh; cancellation while waiting
+preserves the previous policy. A successful durable save or control request
+remains successful if its optional refresh later fails. Unchanged native byte
+fields preserve their exact stored values even when the display rounds units.
+
+`scripts/windows_operations_smoke.py` requires installed native Windows wx. It
+opens the action through the existing command palette, sends real keyboard
+press/release pairs to the owned foreground window, records pause/cancel through
+the actual assistant store, rejects a concurrent policy edit, saves reviewed
+limits, and closes a request waiting on a real native lock. It also checks
+deferred native destruction. It reports NOT_RUN on other platforms and makes
+no manual keyboard, NVDA, model-inference or measured-capacity claim.

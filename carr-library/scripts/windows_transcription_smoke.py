@@ -137,6 +137,9 @@ def main():
             scenario_errors=[]
             def scenario():
                 try:
+                    dialog.settings_controls['device'].SetStringSelection('cpu')
+                    check('native transcription explicitly selects CPU admission',
+                          dialog.settings_controls['device'].GetStringSelection() == 'cpu')
                     check('folder selection has named native controls and recursion starts off',
                           isinstance(dialog.buttons['folder'], wx.Button) and not dialog.recursive.GetValue()
                           and dialog.recursive.GetName() == 'Include subfolders when choosing a folder')
@@ -150,6 +153,11 @@ def main():
                     press(dialog.buttons['run'])
                     until(lambda: dialog.current_job is not None and not frame.working and not dialog.busy)
                     job=dialog.service.get(dialog.current_job)
+                    check('completed native job retains the explicit CPU resource plan',
+                          job['settings']['device'] == 'cpu'
+                          and job['resource_plan']['request']['gpu_device'] is None
+                          and job['resource_plan']['request']['memory_bytes'] > 0
+                          and dialog.service.broker.snapshot()['leases'] == [])
                     check('native shared folder job completes only after eight verified exports',job['state']=='succeeded'
                           and len(job['inputs']) == 2 and len(job['receipt']['artifacts'])==8)
                     check('shared OperationProgress confirms durable completion',frame.operation_progress.event.state=='succeeded'

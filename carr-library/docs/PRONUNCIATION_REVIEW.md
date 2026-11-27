@@ -1,4 +1,4 @@
-# Pronunciation rules for a reading copy
+# Pronunciation rules for reading copies and Studio spoken lines
 
 The Voice reader provides an explicit review and apply workflow for the existing
 `ReadingDocument` pronunciation dictionary. It edits a reversible reading copy.
@@ -90,6 +90,54 @@ suppresses late UI callbacks. Closing with unsaved rules offers Save, Discard,
 or Cancel. Library relocation or loss of source authority invalidates queued
 work; it cannot apply a previously approved preview to a different source.
 
+## Studio: one spoken line at a time
+
+Open **Audio Studio → Review spoken-line pronunciation**. Select a saved project,
+scene and spoken line, then choose **Open selected line**. These are the existing
+`Scene.lines` and `Line.text` objects. Audio clips have no implicit transcript and
+are not treated as narration text.
+
+The line's role supplies its exact voice ID and initial rule-matching language.
+Select a range in the read-only line text if needed, then choose **Review
+pronunciation rules**. This opens the same review dialog and the same saved
+library dictionary used by the Voice reader. Its **Apply** and **Undo last
+apply** operate on a local reading draft. Close that review and choose **Save
+spoken line** to publish the edit as one new project revision. Save and Discard
+are explicit; project/scene/line choices remain disabled while a draft is dirty.
+
+**Discard unsaved line changes** restores the opened line without changing the
+saved project. **Undo last saved change** creates a further project revision
+restoring that editor session's previous line text. It is available only while
+the exact saved project remains current; it never overwrites later edits by
+another editor. Earlier revisions remain in the existing project history after
+the dialog closes, although the session's one-click undo target is not restored
+on reopening.
+
+Saving compares the complete reviewed project fingerprint and expected revision
+inside the existing `ProjectStore` lock. A same-revision external replacement is
+therefore rejected as well as an ordinary later revision. Original script,
+source references, other lines, role settings, clips, music, pauses, schema and
+sample rate remain unchanged. An ordinary Studio Save with an unchanged script
+retains the edited performance. Explicitly rewriting the script continues to use
+the existing script parser and creates a new performance revision.
+
+The line draft is limited by the existing 100,000-character `Line` contract.
+Native selections are mapped from wx's normalized display text back to retained
+text, so untouched CR/LF sequences and Unicode characters remain exact. This
+follows the [wx.TextCtrl text-format and selection contract](https://docs.wxpython.org/wx.TextCtrl.html).
+Project enumeration is cancellable between bounded project reads and permits at
+most 1,000 reviewed projects and 32 MiB of aggregate saved/canonical project JSON.
+The whole list is checked before loading; content growth is checked again after
+parsing. A collection beyond that review budget receives an explicit error,
+without claiming support for a larger collection. All work uses the existing Desktop shared worker
+and cancellation event. Closing waits for its owned operation to finish; an
+already committed save remains saved if a later cancellation is requested.
+
+Project edits and historical revisions use ordinary library backup/restore.
+They do not create a new dictionary format or rendering engine. An explicitly
+requested subsequent Studio render consumes the revised spoken line and emits
+its existing measured timeline; earlier completed job outputs remain intact.
+
 ## Verification and qualification boundary
 
 The source suites exercise actual core/dictionary functions, a real shared
@@ -110,7 +158,18 @@ controlled fixtures and are reported separately. A source-suite pass does not
 mean this Windows probe ran. Neither test proves NVDA behavior, human voice
 quality, or physical keyboard/file-picker interaction.
 
+The Studio source suites additionally exercise real project histories,
+same-revision replacement, source and clip preservation, shared-worker handlers,
+portable backup/delete/restore, and two actual FFmpeg render jobs using synthetic
+tone fixtures. Those tones prove text-to-job binding and artifact preservation,
+not pronunciation quality. `scripts/windows_studio_pronunciation_smoke.py` is the
+separate installed native Studio gate: it dispatches the production menu command,
+uses real keyboard controls through a normal MainLoop, checks selected
+Unicode/CRLF edits, saves and undoes revisions, and rejects a later project
+replacement. It performs no synthesis and reports human/NVDA qualification as
+not run.
+
 The reviewed PR127 narration editor informed the UI comparison, but its
 alternative narration/project model is not used here. This workflow reuses the
-canonical reading-copy engine; per-cue Studio dictionary editing remains a
-separate adapter task rather than a second pronunciation engine.
+canonical reading-copy engine; the Studio adapter only publishes an approved
+spoken-line draft through the existing versioned project store.

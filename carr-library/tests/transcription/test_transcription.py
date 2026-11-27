@@ -634,12 +634,18 @@ def test_cancel_after_child_exit_preserves_outputs_without_admitting_completion(
     observed = []
     if during == 'final-source-verification':
         original = service._verify_inputs
-        calls = []
+        validate_result = service._validate_result
+        terminal_verification = threading.Event()
+        def terminal(*args, **kwargs):
+            terminal_verification.set()
+            return validate_result(*args, **kwargs)
         def verify(root, job, cancelled=lambda: False):
-            calls.append(root)
-            if len(calls) == 2:
+            # Admission now rechecks inputs after waiting too. Bind this
+            # cancellation to final receipt validation, not a call count.
+            if terminal_verification.is_set():
                 cancellation.set()
             return original(root, job, cancelled)
+        monkeypatch.setattr(service, '_validate_result', terminal)
         monkeypatch.setattr(service, '_verify_inputs', verify)
     else:
         original = service._artifact

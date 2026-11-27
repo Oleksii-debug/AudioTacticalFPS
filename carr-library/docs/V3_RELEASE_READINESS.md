@@ -13,12 +13,13 @@ unchanged until a verified migration; visible application titles use Resonance.
 | --- | --- | --- |
 | Library and OCR | Scoped originals, exact quotations, advanced Boolean/NEAR search, BibTeX and DOI/ISBN workflows, additional document formats, managed Fast/Best OCR | Actual SQLite/parser/import/recovery tests; externally downloaded PDFs bind import and resume to their exact verified receipt; native acceptance is recorded per build |
 | Reading and voices | Source-preserving reading derivatives, reviewed whole-copy/selected-text pronunciation rules with dictionary save/import/export and undo, local voice discovery, playback, SAPI5 native COM worker and explicitly configured Dordiai adapter | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
-| Audio studio | Roles/scenes, versioned named clips with trim/placement/gain/pan/fades, microphone capture, pauses, procedural score, DSP, aligned stems, subtitles and verified resume | Actual FFmpeg PCM, stop/cancel, clip/recording composition and destructive recovery; physical microphone, listening and native evidence remain per build; streaming fixtures do not establish full-length neural inference |
+| Audio studio | Roles/scenes, reviewed pronunciation derivatives for selected or whole spoken lines with undo, versioned named clips with trim/placement/gain/pan/fades, microphone capture, pauses, procedural score, DSP, aligned stems, measured M4B chapters/LRC, subtitles and verified resume | Actual Flite/FFmpeg rendering, ffprobe chapter/text checks, stop/cancel, clip/recording composition and destructive recovery; original script and non-spoken clips remain intact; physical microphone, listening, other players and native evidence remain per build |
 | Documents and citations | Isolated conversion, local citeproc-js, retained citation DOCX regeneration, exact custom style, guarded bibliography exports and opt-in DOI previews | Actual Node/DOCX regeneration, immutable source snapshot, final content recheck and no-clobber tests; native regeneration is separately gated; no live Word add-in |
 | Synchronized publishing and reading | EPUB3 chapters/navigation/MP3/line-level SMIL and DAISY 2.02 NCC/XHTML/SMIL file sets from an exact completed Studio job; retained EPUB overlays play through Reading Desk with segment navigation and source reauthorization | Actual FFmpeg/package/no-clobber/recovery/playback-boundary tests; three official EPUBCheck cases passed without errors/warnings, four DAISY documents passed pinned DTDs; exact-build native probes, third-party readers, word alignment, Braille, listening and WCAG/NVDA qualification remain separate |
-| Recovery | Manifest-bound backup v4, conditional v5 for reading state, pending import bytes, bookmarks/resume, Studio inputs and transcription state; portable collision checks; transcription admission/run locks prevent snapshots from disrupting active workers | Real deletion/restore/resume and active/paused-job exclusion tests; external engine approvals require explicit rebind; external exports and OS credential secrets remain separate |
+| Recovery | Manifest-bound backup v4, conditional v5 for reading state, exact supported database schemas through v5, pending import bytes, bookmarks/resume, Studio inputs and transcription state; portable collision checks; transcription admission/run locks prevent snapshots from disrupting active workers | Real deletion/restore/resume and active/paused-job exclusion tests; archive format and database schema are distinct identities; external engine approvals require explicit rebind; external exports and OS credential secrets remain separate |
 | Transcription | Supplied reviewed Whisper worker through one service, native dialog and CLI; explicit file/folder intake, retained source, four output formats, revision editing and resume; Windows live progress remains indeterminate until verified worker exit | Actual offline tiny.en CPU inference, two-file folder execution and destructive recovery with synthetic English speech; other languages/models, diarization, word alignment and human Windows/NVDA quality remain separate |
 | Keyboard and progress | Configurable menu keys and searchable command palette with current command/scope validation, named controls, measured or indeterminate progress, Off/Beep/Speech/Beep+Speech, explicit local voice and playback suppression | Real private PCM synthesis and bounded feedback-worker tests; terminal notices wait for obsolete speech to stop; human NVDA listening remains required |
+| Tasks and resources | One native task view and CLI over the existing Studio/transcription journals; shared cross-process CPU/RAM/GPU/disk/device admission for Studio, ASR and recording; reviewed resource-policy editing and attempt-bound ASR controls | Actual subprocess lock/crash and control tests, real rendering and offline Whisper with an observed lease; declared allowances do not measure or isolate physical resource usage; journal completion is verified by the originating workstation |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, explicit local-model proposal through the existing gateway, protected credential references and consent/budget | Actual local HTTP protocol and CLI tests use explicitly synthetic responses; proposed plans cannot execute without separate review; installed LLM quality and paid providers remain separate |
 | Translation | Optional Google Basic v2 and Advanced v3 selected-text derivatives, directional language inventory, explicit OAuth expiry/renewal, reviewed glossary/model binding, consent/budget, chunk receipts/resume and new exports | Actual gateway/ledger/jobs/UI handler/CLI with synthetic REST responses; live Google IAM/billing, translation quality, whole-document fidelity and local model inference remain separate |
@@ -113,3 +114,44 @@ next action. Both source-installation and sealed-bundle jobs require recorded EP
 reading, DAISY publication, command palette and pronunciation review. Their result
 remains NOT_RUN until a corresponding exact-build Windows run completes. See
 [command palette](COMMAND_PALETTE.md) and [pronunciation review](PRONUNCIATION_REVIEW.md).
+
+## Composed recovery, resources and spoken-text evidence
+
+After the canonical schema-five/import-publication merge, local `c59556b`
+passed 522 distinct cases across 24 selected suites with zero failures/skips.
+These cover immutable import publication, existing and previous-format reading
+state, pronunciation, exact database/backup identities, portable restore paths,
+federated search, resource admission, actual measured M4B rendering, clips and
+production cancellation. The three non-overlapping reports contain 193, 259 and
+70 cases respectively; earlier overlapping runs are not added to this total.
+
+The final composed application source `504ea2f` passed a further 221-case
+focused run with zero failures/errors/skips. This run combines the task facade,
+resource broker and policy UI, ASR and microphone admission, Studio pronunciation,
+actual audiobook output, retained-input cancellation, worker ownership and Studio
+backup. It overlaps earlier runs and is reported separately.
+
+The exact application source `01f893b8d63cba86153f3f90658f313b2f813ec3`
+also passed 117 actual private-worker assertions with the reviewed worker,
+all 31 pinned runtime distributions and five pinned tiny.en model components.
+Both two-file inference runs executed in a Linux network namespace with no
+external connectivity. The replay observed a live resource reservation, proved
+that a completed job opens while the resource pool is occupied, and restored
+the same completed job after deleting the original library and sources.
+The restored archive retained the exact resource policy and database schema five;
+external runtime access remained blocked until explicit rebind. The second run
+exercised the no-live-progress policy branch on Linux, not native Windows.
+See the [sanitized exact-source report](evidence/transcription-resource-recovery-01f893b-20261127.json).
+
+Actual FFmpeg/ffprobe tests also verify that literal source text beginning with
+brackets cannot create an extra LRC timestamp; source and timeline text remain
+unchanged. A separate retained-input cancellation review passed 52 cases,
+including four real WAVE files larger than 3 MiB that stop after one 1 MiB read
+with no runtime launch or leaked reservation. See [audiobook chapters](AUDIOBOOK_CHAPTERS.md)
+and [shared resource behavior](runtime_resources.md).
+
+The composed Windows workflow selects 207 unique source suites and 114 unique
+installed suites, including the new Studio pronunciation, Tasks/resources,
+ASR admission and microphone admission cases. Real-key Studio pronunciation and
+Tasks/resources probes are required for both the installed desktop and complete
+bundle. Selection and source checks alone are not Windows execution evidence.

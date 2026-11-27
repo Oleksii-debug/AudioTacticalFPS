@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+  push:
+    branches: [carr/v3-release-integration-dbbb-20261126]
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
 permissions:

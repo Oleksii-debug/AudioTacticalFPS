@@ -1,6 +1,7 @@
 """Actual FFmpeg M4B metadata, source preservation and publication boundaries."""
 from dataclasses import replace
 from hashlib import sha256
+import json
 from pathlib import Path
 import shutil
 import struct
@@ -10,6 +11,7 @@ import pytest
 
 from carr_library.audio import AudioBudget, AudioRuntime, AudioCancelled, AudioError
 from carr_library.audio.audiobook import inspect_chapters, line_lrc, metadata_bytes
+from carr_library.audio.process import run_process
 
 
 @pytest.fixture
@@ -126,3 +128,37 @@ def test_metadata_and_line_lrc_use_measured_boundaries_without_word_times():
                      '[01:00.00]First\n[01:00.00]Second\n[60:00.01]Кінець 😀\n')
     with pytest.raises(ValueError):
         line_lrc([{'start': 2, 'end': 1, 'text': 'Invalid'}])
+
+
+@pytest.mark.parametrize(('original', 'expected_lyrics'), [
+    ('[10:00.00]Synthetic literal bracket text.',
+     ('\u2060[10:00.00]Synthetic literal bracket text.',)),
+    (' \t[10:00.00] Leading whitespace stays.',
+     ('\u2060 \t[10:00.00] Leading whitespace stays.',)),
+    ('[ar:Literal metadata-looking text] Українська 😀',
+     ('\u2060[ar:Literal metadata-looking text] Українська 😀',)),
+    ('Plain [10:00.00] text\r\n[10:00.00]First bracket row.\n \t[11:00.00]Second bracket row.',
+     ('Plain [10:00.00] text', '\u2060[10:00.00]First bracket row.',
+      '\u2060 \t[11:00.00]Second bracket row.')),
+])
+def test_actual_lrc_demux_preserves_literal_brackets_without_extra_timestamps(
+        actual, original, expected_lyrics):
+    runtime, _, root, _ = actual
+    lines = [{'start': 1.0, 'end': 2.0, 'text': original}]
+    target = root / 'literal-brackets.lrc'
+    raw = line_lrc(lines)
+    target.write_text(raw, encoding='utf-8', newline='')
+    result = run_process([runtime.ffprobe, '-v', 'error', '-protocol_whitelist', 'file',
+        '-f', 'lrc', '-show_packets', '-show_data_hash', 'sha256', '-of', 'json', str(target)],
+        budget=AudioBudget(timeout=15))
+    packets = json.loads(result.stdout)['packets']
+    # Exactly one packet per existing visual row; every row has the one actual
+    # measured start. Literal [10:00.00]/[11:00.00] must never create events.
+    assert len(packets) == len(expected_lyrics)
+    assert [packet['pts_time'] for packet in packets] == ['1.000000'] * len(expected_lyrics)
+    for packet, lyric in zip(packets, expected_lyrics):
+        expected_bytes = (lyric + '\n').encode('utf-8')
+        assert int(packet['size']) == len(expected_bytes)
+        assert packet['data_hash'] == 'SHA256:' + sha256(expected_bytes).hexdigest()
+    assert raw == ''.join('[00:01.00]' + lyric + '\n' for lyric in expected_lyrics)
+    assert lines == [{'start': 1.0, 'end': 2.0, 'text': original}]

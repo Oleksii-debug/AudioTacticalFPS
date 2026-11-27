@@ -21,7 +21,7 @@ import tempfile
 import time
 from uuid import uuid4
 
-from .durable_state import (_unique, atomic_bytes, atomic_json, local_path,
+from .durable_state import (MAX_JSON_BYTES, _unique, atomic_bytes, atomic_json, local_path,
                             read_json, regular, state_lock, sync_directory)
 from .speech._io import stop_process
 from .state_backup import relative_name
@@ -231,13 +231,51 @@ class TranscriptionSettings:
 
 class TranscriptionService:
     """Private jobs under ``library.root / 'state' / 'transcription'``."""
-    def __init__(self, directory):
+    def __init__(self, directory, *, broker=None):
         self.directory = local_path(directory)
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         local_path(self.directory, exists=True)
         self.jobs = self.directory / 'jobs'
         self.jobs.mkdir(exist_ok=True, mode=0o700)
         local_path(self.jobs, root=self.directory, exists=True)
+        self._broker = broker
+
+    @property
+    def broker(self):
+        return self._admission_broker()
+
+    def _admission_broker(self, cancelled=lambda: False):
+        from .operations import ResourceBroker, ResourceStateError
+        app_root = (self.directory.parent.parent if self.directory.parent.name == 'state'
+                    else self.directory)
+        if self._broker is None:
+            self._broker = ResourceBroker.for_app(app_root, cancelled=cancelled)
+        if (not isinstance(self._broker, ResourceBroker)
+                or self._broker.root != app_root / 'runtime' / 'resources'
+                or self._broker.policy_path != app_root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The transcription resource policy belongs to another data folder.')
+        return self._broker
+
+    def _resource_plan(self, settings, broker):
+        from .operations import ResourceRequest, ResourceUnavailable
+        limits = broker.limits
+        if settings.device == 'auto':
+            raise ResourceUnavailable('Choose cpu or cuda explicitly before reserving transcription resources; automatic GPU selection has no declared device.')
+        if not limits.memory_bytes:
+            raise ResourceUnavailable('Configure a positive declared memory allowance before transcription.')
+        device = 'cuda:0' if settings.device == 'cuda' else None
+        capacity = dict(limits.gpu_devices).get(device, 0) if device else 0
+        if device and not capacity:
+            raise ResourceUnavailable('The selected CUDA device needs an explicit shared resource capacity before transcription.')
+        request = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
+            gpu_device=device, gpu_memory_bytes=capacity,
+            disk_path=self.directory, disk_bytes=2 * MAX_OUTPUT_BYTES + 2 * MAX_JSON_BYTES,
+            additional_disks=((Path(tempfile.gettempdir()), MAX_WORKER_BYTES + 2 * MAX_DIAGNOSTIC_BYTES),))
+        return request, {'schema': 1, 'request': request.to_dict(),
+            'cpu_memory_basis': 'whole declared CPU/RAM pool; supplied worker native threads and peak memory are not measured',
+            'disk_basis': 'declared accepted-output/staging and JSON allowances, plus the separate private worker and diagnostic temporary volume',
+            'gpu_basis': 'whole explicitly configured cuda:0 capacity; the worker environment excludes inherited GPU remapping',
+            'enforcement': 'cooperative admission; no physical RAM/VRAM measurement or operating-system memory sandbox'}
 
     def _job_dir(self, identity):
         if type(identity) is not str or not _ID.fullmatch(identity):
@@ -360,6 +398,9 @@ class TranscriptionService:
                 or type(job.get('revisions')) is not list or len(job['revisions']) > MAX_REVISIONS):
             raise ValueError('The transcription job record is invalid.')
         _text(job.get('title'), 'job name')
+        attempt = job.get('active_attempt_id')
+        if attempt is not None and (type(attempt) is not str or not _ID.fullmatch(attempt)):
+            raise ValueError('The transcription attempt identity is invalid.')
         try:
             settings = TranscriptionSettings(**job['settings'])
         except (KeyError, TypeError) as exc:
@@ -557,18 +598,52 @@ class TranscriptionService:
         rows = [self.get(path.name, verify=False) for path in paths if _ID.fullmatch(path.name)]
         return sorted(rows, key=lambda row: row['created_ns'], reverse=True)
 
-    def set_paused(self, identity, paused):
+    def _accept_control(self, root, job, expected_attempt_id):
+        attempt = job.get('active_attempt_id')
+        if (job['state'] != 'running' or attempt is None
+                or expected_attempt_id is not None and attempt != expected_attempt_id):
+            return False
+        # This lock belongs only to an active Run, unlike the run lock also
+        # retained by backup. A stale journal/PID never proves a live owner.
+        try:
+            with state_lock(root, 'transcription-active'):
+                pass
+        except RuntimeError:
+            return True
+        return False
+
+    def request_stop(self, identity, *, expected_attempt_id):
+        """Stop only the selected active host attempt through its existing flag."""
+        if type(expected_attempt_id) is not str or not _ID.fullmatch(expected_attempt_id):
+            raise ValueError('Choose the exact active transcription attempt to stop.')
+        root = self._job_dir(identity)
+        with state_lock(root, 'transcription-control'):
+            root, job, _ = self._load(identity)
+            if not self._accept_control(root, job, expected_attempt_id):
+                return False
+            flag = local_path(root / 'stop.flag', root=root)
+            atomic_bytes(flag, b'stop\n', replace=True)
+            return True
+
+    def set_paused(self, identity, paused, *, expected_attempt_id=None):
         if type(paused) is not bool:
             raise ValueError('Pause must be boolean.')
-        root, job, _ = self._load(identity)
-        if job['state'] != 'running':
-            raise ValueError('Start or explicitly resume the job before pausing it.')
-        flag = local_path(root / 'pause.flag', root=root)
-        if paused:
-            atomic_bytes(flag, b'pause\n', replace=True)
-        elif flag.exists():
-            regular(flag)
-            flag.unlink()
+        if expected_attempt_id is not None and (type(expected_attempt_id) is not str or not _ID.fullmatch(expected_attempt_id)):
+            raise ValueError('Choose the exact active transcription attempt to pause.')
+        root = self._job_dir(identity)
+        with state_lock(root, 'transcription-control'):
+            root, job, _ = self._load(identity)
+            if not self._accept_control(root, job, expected_attempt_id):
+                if expected_attempt_id is not None:
+                    return False
+                raise ValueError('Start or explicitly resume the job before pausing it.')
+            flag = local_path(root / 'pause.flag', root=root)
+            if paused:
+                atomic_bytes(flag, b'pause\n', replace=True)
+            elif flag.exists():
+                regular(flag)
+                flag.unlink()
+            return True
 
     def _config(self, root, job, settings, engine):
         model = local_path(Path(engine.models_dir) / settings.model, root=engine.models_dir, exists=True)
@@ -580,36 +655,75 @@ class TranscriptionService:
             'settings': asdict(settings)}
 
     def run(self, identity, *, engine=None, cancelled=lambda: False, progress=lambda *args: None,
-            timeout=24 * 3600, stop_grace=3):
+            timeout=24 * 3600, stop_grace=3, resource_timeout=60):
         for value, maximum in ((timeout, 7 * 24 * 3600), (stop_grace, 30)):
             if type(value) not in (int, float) or not 0 < value <= maximum or not math.isfinite(value):
                 raise ValueError('Choose a bounded positive transcription time budget.')
+        if (type(resource_timeout) not in (int, float) or not math.isfinite(resource_timeout)
+                or not 0 <= resource_timeout <= 86400):
+            raise ValueError('Choose a bounded nonnegative resource waiting time.')
         _cancel(cancelled)
         engine = self.engine() if engine is None else engine
         if not isinstance(engine, EngineSpec):
             raise ValueError('Choose an explicit reviewed engine profile.')
         engine = engine.validate()
         root = self._job_dir(identity)
-        with state_lock(root, 'transcription'):
+        with state_lock(root, 'transcription'), ExitStack() as attempts, ExitStack() as reservations:
             root, job, settings = self._load(identity)
             self._verify_inputs(root, job, cancelled)
             if job['state'] == 'succeeded':
                 return self.get(identity, cancelled=cancelled)
-            config = self._config(root, job, settings, engine)
-            # Executing a private, byte-verified copy closes the script pathname
-            # replacement window. It is never a public repo artifact or backup.
-            worker = _bounded_bytes(engine.worker_path, MAX_WORKER_BYTES)
-            if sha256(worker).hexdigest() != engine.worker_sha256:
-                raise ValueError('The reviewed worker changed before launch.')
-            for name in ('stop.flag', 'pause.flag', 'job_result.json', 'job_status.json'):
-                path = local_path(root / name, root=root)
-                if path.exists():
-                    regular(path)
-                    path.unlink()
-            atomic_json(root / 'job_config.json', config, replace=True)
-            atomic_json(root / 'settings_live.json', asdict(settings), replace=True)
-            job['state'], job['error'] = 'running', None
-            atomic_json(root / 'job.json', job, replace=True)
+            from .operations import ResourceCancelled, ResourceTimeout
+            try:
+                broker = self._admission_broker(cancelled)
+                request, plan = self._resource_plan(settings, broker)
+                # Explicit Run clears old controls before announcing its active
+                # wait. A new Pause received during admission must reach the worker.
+                with state_lock(root, 'transcription-control'):
+                    attempts.enter_context(state_lock(root, 'transcription-active'))
+                    for name in ('stop.flag', 'pause.flag'):
+                        path = local_path(root / name, root=root)
+                        if path.exists():
+                            regular(path)
+                            path.unlink()
+                    job['active_attempt_id'] = uuid4().hex
+                    job['resource_plan'] = plan
+                    job['state'], job['error'] = 'running', None
+                    atomic_json(root / 'job.json', job, replace=True)
+                caller_cancelled = cancelled
+                def admission_cancelled():
+                    return bool(caller_cancelled()) or os.path.lexists(root / 'stop.flag')
+                progress(None, len(job['inputs']), 'Waiting for shared local transcription resources')
+                lease = reservations.enter_context(broker.reserve(request,
+                    operation_id='asr:' + identity, cancelled=admission_cancelled, timeout=resource_timeout))
+                cancelled = lease.cancelled
+                # Waiting never extends authority over a changed source or worker.
+                engine = engine.validate()
+                self._verify_inputs(root, job, cancelled)
+                config = self._config(root, job, settings, engine)
+                # Executing a private, byte-verified copy closes the script pathname
+                # replacement window. It is never a public repo artifact or backup.
+                worker = _bounded_bytes(engine.worker_path, MAX_WORKER_BYTES)
+                if sha256(worker).hexdigest() != engine.worker_sha256:
+                    raise ValueError('The reviewed worker changed before launch.')
+                for name in ('job_result.json', 'job_status.json'):
+                    path = local_path(root / name, root=root)
+                    if path.exists():
+                        regular(path)
+                        path.unlink()
+                atomic_json(root / 'job_config.json', config, replace=True)
+                atomic_json(root / 'settings_live.json', asdict(settings), replace=True)
+                job['state'], job['error'] = 'running', None
+                atomic_json(root / 'job.json', job, replace=True)
+            except Exception as exc:
+                stopped = isinstance(exc, (InterruptedError, ResourceCancelled))
+                job['state'] = 'cancelled' if stopped else 'queued' if isinstance(exc, ResourceTimeout) else 'failed'
+                job['active_attempt_id'] = None
+                job['error'] = str(exc)[:8000]
+                atomic_json(root / 'job.json', job, replace=True)
+                if stopped:
+                    return job
+                raise
             process, stopping, cancelled_run, observed_run_id = None, None, False, None
             try:
                 with tempfile.TemporaryDirectory(prefix='carr-asr-reviewed-') as runner, \
@@ -719,6 +833,7 @@ class TranscriptionService:
                         diagnostic = errors.read(4096).decode('utf-8', errors='replace').strip()
                         raise RuntimeError('The reviewed worker exited without a valid terminal result (exit '
                             + str(process.returncode) + ').' + (' Worker diagnostic: ' + diagnostic if diagnostic else ''))
+                    job['active_attempt_id'] = None
                     atomic_json(root / 'job.json', job, replace=True)
                     if job['state'] == 'succeeded':
                         try:
@@ -731,6 +846,7 @@ class TranscriptionService:
                     return job
             except Exception as exc:
                 job['state'], job['error'] = ('cancelled' if isinstance(exc, InterruptedError) else 'failed'), str(exc)[:8000]
+                job['active_attempt_id'] = None
                 atomic_json(root / 'job.json', job, replace=True)
                 if isinstance(exc, InterruptedError):
                     # Keep completed bytes and any earlier admitted receipt.

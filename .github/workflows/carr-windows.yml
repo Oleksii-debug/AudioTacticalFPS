@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-release-integration-dbbb-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -242,6 +242,20 @@ jobs:
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/windows_pronunciation_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Native acceptance - Studio pronunciation
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/windows_studio_pronunciation_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Native acceptance - Tasks and resource allowances
+        if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_operations_smoke.py 2>&1 | Tee-Object 'ci-results/windows_operations_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Native acceptance - command palette
@@ -565,6 +579,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_pronunciation_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_studio_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_studio_pronunciation_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_operations_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_operations_smoke.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-windows_command_palette_smoke.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --require-installed --report 'ci-results/full-bundle-epubcheck.json' 2>&1 | Tee-Object 'ci-results/full-bundle-epubcheck.txt'
@@ -615,6 +633,11 @@ jobs:
                        'carr_library.operations.broker',
                        'carr_library.operations.models',
                        'carr_library.operations._locks',
+                       'carr_library.operations.facade',
+                       'carr_library.operations.cli',
+                       'carr_library.ui.operations_dialog',
+                       'carr_library.studio.pronunciation',
+                       'carr_library.ui.studio_pronunciation',
                        'carr_library.reader.ebook_audio',
                        'carr_library.ui.ebook_audio_dialog',
                        'carr_library.ui.command_palette',
@@ -634,6 +657,15 @@ jobs:
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/operations/test_resources.py',
                             'tests/operations/test_production_admission.py',
+                            'tests/operations/test_facade.py',
+                            'tests/e2e/test_operations_cli.py',
+                            'tests/ui/test_operations_dialog.py',
+                            'tests/ui/test_operations_policy.py',
+                            'tests/transcription/test_resource_admission.py',
+                            'tests/audio/test_recording_resources.py',
+                            'tests/studio/test_pronunciation.py',
+                            'tests/studio/test_pronunciation_dialog.py',
+                            'tests/studio/test_pronunciation_render.py',
                             'tests/audio/test_audiobook.py',
                             'tests/studio/test_audiobook_publication.py',
                             'tests/e2e/test_import_worker_publication.py',
@@ -738,7 +770,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_federated_advanced.py tests/storage/test_library_backup_reading_state.py tests/e2e/test_research_search_cli.py tests/citations/test_pdf_mapping_contradiction.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_m4b_contains_exact_titles_measured_chapters_and_audio','test_actual_studio_m4b_embeds_measured_chapters_and_lrc','test_actual_studio_admits_threads_releases_and_completed_job_needs_no_capacity','test_actual_spawned_process_crash_releases_without_pid_reaping','test_preview_real_regex_and_scopes_then_one_undo_preserves_source_evidence','test_reader_hook_converts_unicode_native_range_and_keeps_one_undoable_source_copy','test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added','test_current_menu_identity_is_verified_again_before_existing_handler_runs[duplicate_id]','test_actual_daisy_ncc_smil_audio_source_and_same_receipt','test_actual_daisy_reuses_verified_mp3_without_reencoding','test_actual_cli_daisy_export_verify_and_required_publisher','test_actual_studio_publication_import_and_recorded_overlay_roundtrip','test_actual_ffmpeg_completed_job_to_verified_epub','test_existing_verified_job_mp3_is_reused_byte_for_byte','test_actual_cli_export_list_verify_and_no_clobber','test_actual_service_writes_source_preserving_glossary_derivative','test_expiry_reentry_resumes_same_job_without_rebilling','test_actual_registry_frames_and_publishes_24k_mono_pcm','test_actual_trim_position_pan_fades_and_complete_clip_stems','test_edited_clip_backup_survives_deletion_and_same_job_resume','test_windows_capture_is_killed_after_abrupt_owner_exit','test_actual_capture_backup_delete_original_root_restore_and_verify','test_service_proposal_is_validated_scoped_and_never_submitted','test_actual_cli_proposal_then_separate_reviewed_json_run','test_regeneration_parses_the_bytes_it_hashed_when_a_path_is_reopened','test_same_metadata_source_change_during_docx_assembly_stops_publication','test_real_render_backup_delete_original_state_restore_and_render_again','test_published_pdf_mutation_cannot_change_receipted_import_or_resumed_identity','test_cli_real_worker_protocol_edit_export_and_persistence','test_reading_studio_transcription_and_pending_html_survive_two_restores[False]','test_reading_studio_transcription_and_pending_html_survive_two_restores[True]','test_cancel_source_revalidation_after_studio_input_snapshot_never_publishes','test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]','test_regex_pronunciation_child_preserves_runtime','test_doi_metadata_child_preserves_runtime_without_network','test_native_sapi_child_preserves_runtime','test_source_save_as_reauthorizes_after_picker[authorized]','test_source_save_as_reauthorizes_after_picker[late-topic-archive]','test_boolean_results_can_be_copied_saved_and_exported_without_changing_source','test_final_result_page_after_ten_thousand_matches_is_not_rejected','test_full_backup_keeps_bookmarks_resume_and_archived_library','test_cancellation_cannot_publish_partial_advanced_selections','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')} | {'test_pending_extended_original_survives_complete_backup_and_resume['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')} | {'test_extended_source_import_reader_search_and_quote_boundary['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')}; metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape']; assert len(metadata_cases)==58 and len({c.get('name') for c in metadata_cases})==58; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',document_formats='PASS',advanced_search='PASS',reading_backups='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_facade_controls_only_selected_asr_attempt_and_never_resumes_it','test_cli_existing_assistant_job_list_get_pause_and_cancel_never_resubmit','test_canonical_transcription_view_uses_32hex_job_store_without_opening_live_status','test_policy_changed_after_review_is_not_overwritten','test_disposal_after_worker_before_callback_closes_owned_service_once','test_real_batch_holds_lease_through_cleanup_and_completed_replay_bypasses_it','test_actual_capture_holds_microphone_and_budgets_through_cleanup_and_publication','test_saved_pronunciation_is_rendered_in_new_job_and_old_verified_outputs_stay_unchanged','test_real_nested_review_then_save_and_saved_undo_use_existing_history','test_actual_m4b_contains_exact_titles_measured_chapters_and_audio','test_actual_studio_m4b_embeds_measured_chapters_and_lrc','test_actual_studio_admits_threads_releases_and_completed_job_needs_no_capacity','test_actual_spawned_process_crash_releases_without_pid_reaping','test_preview_real_regex_and_scopes_then_one_undo_preserves_source_evidence','test_reader_hook_converts_unicode_native_range_and_keeps_one_undoable_source_copy','test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added','test_current_menu_identity_is_verified_again_before_existing_handler_runs[duplicate_id]','test_actual_daisy_ncc_smil_audio_source_and_same_receipt','test_actual_daisy_reuses_verified_mp3_without_reencoding','test_actual_cli_daisy_export_verify_and_required_publisher','test_actual_studio_publication_import_and_recorded_overlay_roundtrip','test_actual_ffmpeg_completed_job_to_verified_epub','test_existing_verified_job_mp3_is_reused_byte_for_byte','test_actual_cli_export_list_verify_and_no_clobber','test_actual_service_writes_source_preserving_glossary_derivative','test_expiry_reentry_resumes_same_job_without_rebilling','test_actual_registry_frames_and_publishes_24k_mono_pcm','test_actual_trim_position_pan_fades_and_complete_clip_stems','test_edited_clip_backup_survives_deletion_and_same_job_resume','test_windows_capture_is_killed_after_abrupt_owner_exit','test_actual_capture_backup_delete_original_root_restore_and_verify','test_service_proposal_is_validated_scoped_and_never_submitted','test_actual_cli_proposal_then_separate_reviewed_json_run','test_regeneration_parses_the_bytes_it_hashed_when_a_path_is_reopened','test_same_metadata_source_change_during_docx_assembly_stops_publication','test_real_render_backup_delete_original_state_restore_and_render_again','test_published_pdf_mutation_cannot_change_receipted_import_or_resumed_identity','test_cli_real_worker_protocol_edit_export_and_persistence','test_reading_studio_transcription_and_pending_html_survive_two_restores[False]','test_reading_studio_transcription_and_pending_html_survive_two_restores[True]','test_cancel_source_revalidation_after_studio_input_snapshot_never_publishes','test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]','test_regex_pronunciation_child_preserves_runtime','test_doi_metadata_child_preserves_runtime_without_network','test_native_sapi_child_preserves_runtime','test_source_save_as_reauthorizes_after_picker[authorized]','test_source_save_as_reauthorizes_after_picker[late-topic-archive]','test_boolean_results_can_be_copied_saved_and_exported_without_changing_source','test_final_result_page_after_ten_thousand_matches_is_not_rejected','test_full_backup_keeps_bookmarks_resume_and_archived_library','test_cancellation_cannot_publish_partial_advanced_selections','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')} | {'test_pending_extended_original_survives_complete_backup_and_resume['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')} | {'test_extended_source_import_reader_search_and_quote_boundary['+extension+']' for extension in ('.html','.md','.eml','.fb2','.fb3','.odt','.ods','.odp','.pptx','.xlsx')}; metadata_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape']; assert len(metadata_cases)==58 and len({c.get('name') for c in metadata_cases})==58; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',document_formats='PASS',advanced_search='PASS',reading_backups='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -793,6 +825,15 @@ jobs:
           $suites = @(
             'tests/operations/test_resources.py',
             'tests/operations/test_production_admission.py',
+            'tests/operations/test_facade.py',
+            'tests/e2e/test_operations_cli.py',
+            'tests/ui/test_operations_dialog.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/transcription/test_resource_admission.py',
+            'tests/audio/test_recording_resources.py',
+            'tests/studio/test_pronunciation.py',
+            'tests/studio/test_pronunciation_dialog.py',
+            'tests/studio/test_pronunciation_render.py',
             'tests/audio/test_audiobook.py',
             'tests/studio/test_audiobook_publication.py',
             'tests/e2e/test_import_worker_publication.py',

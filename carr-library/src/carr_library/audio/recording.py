@@ -113,12 +113,27 @@ class RecordingOptions:
 
 
 class RecordingService:
-    def __init__(self, library_root, *, runtime=None):
+    def __init__(self, library_root, *, runtime=None, broker=None):
         self.library_root = local_path(library_root, exists=True)
         self.root = local_path(self.library_root / 'state' / 'studio' / 'recordings')
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.runtime = runtime
+        self._broker = broker
         self._devices, self._engine_hash = {}, None
+
+    @property
+    def broker(self):
+        return self._admission_broker()
+
+    def _admission_broker(self, cancelled=lambda: False):
+        from ..operations import ResourceBroker, ResourceStateError
+        if self._broker is None:
+            self._broker = ResourceBroker.for_app(self.library_root, cancelled=cancelled)
+        if (not isinstance(self._broker, ResourceBroker)
+                or self._broker.root != self.library_root / 'runtime' / 'resources'
+                or self._broker.policy_path != self.library_root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The recording resource policy belongs to another data folder.')
+        return self._broker
 
     def _runtime(self):
         if self.runtime is None:
@@ -154,7 +169,8 @@ class RecordingService:
                 '-i', 'audio=' + device.alternative]
 
     def capture(self, device_id, *, title='Microphone recording', options=None,
-                stop_requested=lambda: False, cancelled=lambda: False, progress=None):
+                stop_requested=lambda: False, cancelled=lambda: False, progress=None,
+                resource_timeout=60):
         options = options or RecordingOptions()
         if not isinstance(options, RecordingOptions):
             raise ValueError('Validated recording options are required.')
@@ -170,7 +186,29 @@ class RecordingService:
             raise RuntimeError('Another microphone recording is active. Stop it before starting another.')
         try:
             with state_lock(self.root, 'recording'):
-                return self._capture(device, title, options, stop_requested, cancelled, progress)
+                from ..operations import ResourceCancelled, ResourceRequest
+                engine_hash = self._engine_hash
+                started = False
+                def stopping():
+                    return bool(cancelled()) or (not started and bool(stop_requested()))
+                try:
+                    broker = self._admission_broker(stopping)
+                    budget = AudioBudget(threads=1)
+                    pcm_bytes = options.max_seconds * options.sample_rate * options.channels * 2 + 4096
+                    request = ResourceRequest(cpu_slots=1, memory_bytes=2 * budget.max_alloc_bytes,
+                        disk_path=self.root, disk_bytes=2 * pcm_bytes + budget.reserve_disk_bytes,
+                        devices=('microphone:' + device.id,))
+                    with broker.reserve(request, operation_id='recording:' + uuid4().hex,
+                                        cancelled=stopping, timeout=resource_timeout) as lease:
+                        lease.checkpoint()
+                        if self._devices.get(device_id) != device or self._engine_hash != engine_hash:
+                            raise ValueError('The microphone inventory changed while waiting. Refresh and select the device again.')
+                        started = True
+                        # Stop now finalizes PCM through the existing owned q
+                        # pipe; only Cancel interrupts and discards the capture.
+                        return self._capture(device, title, options, stop_requested, lease.cancelled, progress)
+                except ResourceCancelled as exc:
+                    raise AudioCancelled('Recording stopped while waiting for shared resources; no microphone was opened.') from exc
         finally:
             _CAPTURE.release()
 

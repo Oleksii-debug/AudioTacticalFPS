@@ -117,6 +117,36 @@ private worker bytes changed during either run. The earlier interruption/resume
 record and 69-assertion folder record are preserved independently; this evidence
 does not extend their acoustic, language, platform or distribution qualifications.
 
+## Resource admission and schema-five replay
+
+The [subsequent source-bound record](evidence/transcription-resource-recovery-01f893b-20261127.json)
+binds immutable source `01f893b8d63cba86153f3f90658f313b2f813ec3`, twelve
+public module hashes, the unchanged private worker and raw report SHA256
+`73fe8889afa9bbe9236dd592b71a3a9e4c49ed173112a652426ee5fb1c847668`.
+**117 assertions passed**, including the original 107 functional assertions.
+The exact 31-package runtime was reconstructed, all five model components were
+verified and `pip check` passed before two actual two-file inference runs in a
+Linux user/network namespace with only loopback and external errno 101.
+
+An independent observer saw the actual ASR batch's live reservation: four
+declared CPU slots, 4 GiB declared RAM, 603,979,776 bytes of primary staging/output
+allowance and one additional temporary-disk allowance. Those values describe
+cooperative reservations, not measured hardware consumption. Native cleanup
+released the lease and cleared its active-attempt token. A deliberately occupied
+whole CPU/RAM pool did not block completed-receipt revalidation, before or after
+restore, and no extra lease or worker result appeared.
+
+The complete v4 backup identified database schema 5 and retained 20 state files
+(360,350 bytes), including the exact resource policy. Original test library and
+selected inputs were removed; restore to a new location, explicit engine rebind,
+catalog/input/output checks and the second no-live-progress inference all passed.
+The 646a15e report is unchanged. A preceding run passed 115 functional checks
+but failed an added coverage-label comparison because generated output names
+contain variable digests; its raw report remains preserved. The fresh replay
+normalizes only these digest labels for coverage counting and preserves all
+functional assertions and their multiplicity. Neither record qualifies native
+Windows, human NVDA use, GPU inference or broader acoustic/language quality.
+
 ## Original static review and resolved findings
 
 The following inventory describes the received V4.3 snapshot. It is retained as

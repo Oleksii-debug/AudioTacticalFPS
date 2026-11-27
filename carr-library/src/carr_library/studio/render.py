@@ -162,7 +162,7 @@ class ProductionService:
             duration = max(scene.minimum_duration,
                 sum(len(line.text) * .5 + line.pause_after for line in scene.lines))
             for cue in scene.cues:
-                source = self._cue_source(cue)
+                source = self._cue_source(cue, cancelled=cancelled)
                 if source not in source_info:
                     before = self._resource_source_identity(source, cancelled)
                     info = runtime.inspect(source, cancelled=cancelled)
@@ -332,22 +332,28 @@ class ProductionService:
         from .backup_inputs import approve_input_review
         return approve_input_review(self.root, selected_paths, cancelled=cancelled)
 
-    def _cue_source(self, cue):
+    def _cue_source(self, cue, *, cancelled=lambda: False):
         from .backup_inputs import input_review
+        if cancelled():
+            raise InterruptedError('Production input review was cancelled.')
         review = input_review(self.root)
         if cue.path in review['pending']:
             raise ValueError('Review and explicitly approve this legacy Studio input before rendering.')
         source = local_path(cue.path, exists=True)
         if source.is_relative_to(self.inputs):
             match = re.fullmatch(r'([0-9a-f]{64})\.audio', source.name)
-            if source.parent != self.inputs or match is None or digest_file(source) != match[1]:
+            if (source.parent != self.inputs or match is None
+                    or self._resource_source_identity(source, cancelled) != match[1]):
                 raise ValueError('A restored Studio input differs from its verified content identity.')
         elif cue.path in review['approved']:
             if review['approved'][cue.path] != {
-                    'size_bytes': source.stat().st_size, 'sha256': digest_file(source)}:
+                    'size_bytes': source.stat().st_size,
+                    'sha256': self._resource_source_identity(source, cancelled)}:
                 raise ValueError('A reviewed legacy Studio input changed; select it again before rendering.')
         elif not any(source.is_relative_to(root) for root in self.input_roots):
             raise ValueError('A cue is outside the explicitly selected input directories.')
+        if cancelled():
+            raise InterruptedError('Production input review was cancelled.')
         return source
 
     def _save(self, state):
@@ -400,7 +406,8 @@ class ProductionService:
             try:
                 from ..operations import ResourceRequest
                 self._admission_broker(admission_cancelled)
-                sources = [self._cue_source(cue) for scene in project.scenes for cue in scene.cues]
+                sources = [self._cue_source(cue, cancelled=admission_cancelled)
+                           for scene in project.scenes for cue in scene.cues]
                 runtime = self._runtime(reviewed_roots=tuple({source.parent for source in sources}))
                 state['status'], state['progress'], state['error'] = 'queued', 'Waiting for shared local resources.', ''
                 self._save(state)
@@ -433,7 +440,7 @@ class ProductionService:
                 local_path(Path(state['destination']).parent, exists=True)
                 for scene in project.scenes:
                     for cue in scene.cues:
-                        source = self._cue_source(cue)
+                        source = self._cue_source(cue, cancelled=admission_cancelled)
                         if self._resource_source_identity(source, admission_cancelled) != resource_plan['source_sha256'].get(str(source)):
                             raise ValueError('A selected production input changed while waiting for resources.')
                 lease.checkpoint()
@@ -557,7 +564,7 @@ class ProductionService:
                     required_duration = scene.minimum_duration
                     cue_tracks = []
                     for cue in scene.cues:
-                        source = self._cue_source(cue)
+                        source = self._cue_source(cue, cancelled=stopping)
                         info = runtime.inspect(source, cancelled=stopping)
                         available = info.duration - cue.trim_start
                         selected = available if cue.duration is None else cue.duration
@@ -753,7 +760,12 @@ class ProductionService:
                             'music_kind': 'procedural/MIDI/local-model as explicitly selected per scene',
                             'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
                                                 'continuous neural composition and perceptually seamless joins are not assumed.',
-                            'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
+                            'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.',
+                            'lrc_notice': 'script.lrc uses measured line starts rounded to hundredths of a second. '
+                                'A U+2060 WORD JOINER prefixes the untouched lyric row, before any whitespace, '
+                                "when its first non-whitespace character is '['. Remove only this export-added "
+                                'marker after LRC parsing, never before. Original script and timeline line text '
+                                'are unchanged. FFmpeg parsing is tested; other players need separate qualification.'}
                 if project.schema >= 2:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '

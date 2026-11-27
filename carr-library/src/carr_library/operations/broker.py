@@ -268,11 +268,17 @@ class ResourceBroker:
                 return 'actual free disk reserve'
         return None
 
-    def configure(self, limits, *, timeout=5):
+    def configure(self, limits, *, timeout=5, expected_limits=None, cancelled=lambda: False):
         if not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
+        if expected_limits is not None and not isinstance(expected_limits, ResourceLimits):
+            raise TypeError('The reviewed previous resource policy must be typed.')
+        if not callable(cancelled):
+            raise TypeError('Policy admission requires a cancellation callback.')
         deadline = time.monotonic() + _seconds(timeout, 'Policy wait timeout')
-        with self._gate(deadline, lambda: False):
+        with self._gate(deadline, cancelled):
+            if expected_limits is not None and self.limits != expected_limits:
+                raise ResourceConflict('Resource allowances changed. Refresh and review them before saving.')
             active = self._active()
             if len(active) > limits.max_leases or any(self._usage(active)[name] > getattr(limits, name)
                                                      for name in ('cpu_slots', 'memory_bytes', 'disk_bytes')):
@@ -282,6 +288,8 @@ class ResourceBroker:
                     self._fits_policy(ResourceRequest.from_dict(record['request']), limits)
                 except ResourceUnavailable as exc:
                     raise ResourceConflict('New resource limits would invalidate an existing reservation.') from exc
+            if cancelled():
+                raise ResourceCancelled('Saving resource allowances was cancelled before publication.')
             atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1', 'limits': limits.to_dict()}, replace=True)
         return limits
 

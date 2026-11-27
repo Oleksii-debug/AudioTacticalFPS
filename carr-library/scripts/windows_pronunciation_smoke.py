@@ -212,10 +212,11 @@ def _run_native():
             reader = top_with_title('Voice reader and reading copy')
             editor = named(reader, 'Reading copy (editable; Ctrl+S saves)')
             initial = editor.GetValue()
-            matches = [position for position in range(editor.GetLastPosition() - 2)
-                       if editor.GetRange(position, position + 3) == 'Dr.']
-            check('native Unicode/line-ending selection has two matches', len(matches) == 2)
-            start = matches[-1]
+            # Subtract a known ASCII suffix from the native end. This never
+            # probes an index in the middle of an emoji's UTF-16 surrogate pair.
+            start = editor.GetLastPosition() - len('Dr. Second listens.')
+            check('native Unicode/line-ending selection has two matches', initial.count('Dr.') == 2
+                  and editor.GetRange(start, start + 3) == 'Dr.')
             editor.SetSelection(start, start + 3)
             observed.update(reader=reader, editor=editor, initial=initial)
             key(editor, ord('N'), lambda: until(

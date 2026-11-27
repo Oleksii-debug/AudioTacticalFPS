@@ -68,6 +68,38 @@ This platform limit does not relax final job/run identity, exit-code, source-has
 or output-hash checks. The Windows behavior follows Microsoft's documented
 [open-target rename rules](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information).
 
+## Shared resource admission
+
+An explicit Run uses the same `runtime/resources` coordinator and
+`state/operations/resources.json` policy as other cooperating operations in
+this library. The whole serial batch reserves the declared CPU/RAM pool because
+the supplied worker's native thread count and peak memory are not measured.
+It also reserves estimated output/staging bytes and the separate temporary
+worker/diagnostic volume. These are cooperative allowances, not measured
+hardware usage or operating-system memory limits. Configure a positive memory
+allowance before running. Waiting is cancellable and defaults to 60 seconds;
+an admission timeout keeps the saved job queued for an explicit retry.
+
+Fresh UI and CLI jobs default to explicit `cpu`. A saved `device=auto` setting
+remains readable but a new execution now refuses it with CPU/CUDA guidance:
+automatic device discovery cannot reserve an unknown GPU. Create a new job
+with the chosen device; saved settings are not silently rewritten. Explicit
+`cuda` requires positive configured capacity for `cuda:0`; the adapter reserves
+that device exclusively and excludes inherited GPU-remapping variables from
+the worker environment. This does not qualify a particular GPU/model/runtime.
+A completed receipt revalidates before any new resource admission or launch.
+
+The reservation starts before worker configuration is written and stays held
+through terminal byte verification and native child cleanup. Inputs and worker
+bytes are rechecked after waiting. A host-owned `active_attempt_id`, distinct
+from the worker receipt's `run_id`, binds dashboard Pause/Continue/Stop to the
+selected active attempt. A stale token or an interrupted journal without a live
+Run cannot control a new attempt. Stop uses the existing managed flag and
+bounded child cleanup; it does not delete retained inputs or verified results.
+`tests/transcription/test_resource_admission.py` exercises these boundaries
+with actual synthetic processes, including contention, timeout, stale controls,
+worker failure, descendant cleanup and completed replay.
+
 ## Read, edit and export
 
 Choose a verified output in the transcript list. TXT edits are saved as a new
@@ -145,6 +177,23 @@ This exercises the policy with the supplied worker; native Windows file-sharing
 behavior still requires the Windows gate. The public record contains hashes and
 sanitized facts, without private source, paths, recordings, transcripts or model
 weights. Earlier 69- and 82-assertion records remain unchanged.
+
+The [resource and schema-five recovery replay](evidence/transcription-resource-recovery-01f893b-20261127.json)
+then exercised immutable source `01f893b8d63cba86153f3f90658f313b2f813ec3`.
+All **117 assertions passed**, retaining the original 107 functional checks.
+The actual supplied worker held one shared reservation during inference and
+released it after cleanup. Both before and after restore, the completed job
+revalidated while another reservation occupied the entire declared CPU/RAM
+pool, without a new worker result or another lease. The v4 backup contained a
+schema-five catalog and 20 state files (360,350 bytes), including the exact
+saved resource policy. Both real inference runs, the five model checks, all
+31 dependency pins and `pip check` passed inside the same no-egress Linux
+boundary. Twelve public module hashes bind this evidence to the tested source;
+the earlier 646a15e report remains unchanged. The initial replay's added coverage
+summary compared variable artifact digest names literally; its raw failure is
+preserved, and the fresh successful replay normalizes only those labels while
+retaining every functional assertion. This adds resource/recovery evidence for
+the tested CPU profile, without extending platform or recognition-quality claims.
 
 ## Command line
 

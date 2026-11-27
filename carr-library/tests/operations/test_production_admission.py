@@ -1,5 +1,6 @@
 """Canonical studio integration, including actual FFmpeg output and recovery."""
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 import shutil
 import sys
@@ -11,6 +12,7 @@ import wave
 import pytest
 
 from carr_library.audio import AudioBudget, AudioRuntime
+from carr_library.durable_state import atomic_json
 from carr_library.operations import ResourceBroker, ResourceLimits, ResourceRequest, ResourceUnavailable
 from carr_library.speech import VoiceRegistry
 from carr_library.studio.project import Cue, Music, Project, Scene
@@ -352,3 +354,75 @@ def test_cancellation_keeps_reservation_through_actual_child_cleanup(tmp_path, m
             if child.poll() is None:
                 child.kill()
                 child.wait(timeout=3)
+
+
+@pytest.mark.parametrize('binding', ['retained', 'approved'])
+@pytest.mark.parametrize('stop', ['callback', 'service-close'])
+def test_retained_input_hash_stops_after_first_real_chunk_without_starting_runtime(
+        tmp_path, monkeypatch, binding, stop):
+    output = tmp_path / 'out'
+    output.mkdir()
+    broker = ResourceBroker.for_app(tmp_path, limits=ResourceLimits(cpu_slots=1))
+    voices = VoiceRegistry([])
+    runtime_calls, registry_closes = [], []
+    service = ProductionService(tmp_path / 'state/studio', voices=voices, broker=broker,
+        runtime_factory=lambda *_args, **_kwargs: runtime_calls.append(True))
+    source = tmp_path / 'selected.wav'
+    with wave.open(str(source), 'wb') as stream:
+        stream.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
+        stream.writeframes(b'\x64\x00' * (3 * 1024 ** 2 // 2))
+    original = source.read_bytes()
+    digest = sha256(original).hexdigest()
+    if binding == 'retained':
+        source = source.rename(service.inputs / (digest + '.audio'))
+    else:
+        atomic_json(service.root / 'legacy-input-review.json', {
+            'schema': 1, 'pending': [], 'approved': {str(source): {
+                'size_bytes': len(original), 'sha256': digest}}})
+    project = Project('cancelled-input-hash', 'Retained input cancellation', (), (
+        Scene('one', 'One', (), cues=(Cue('clip', str(source), duration=1),)),), schema=2)
+    job = service.submit(project, output)
+    cancelled = threading.Event()
+    reads = []
+    original_open, original_close = Path.open, voices.close
+
+    class ObservedStream:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): self.stream.__enter__(); return self
+        def __exit__(self, *args): return self.stream.__exit__(*args)
+        def __getattr__(self, name): return getattr(self.stream, name)
+        def read(self, size=-1):
+            block = self.stream.read(size)
+            reads.append(len(block))
+            if block:
+                if stop == 'callback': cancelled.set()
+                else: service.close()
+            return block
+
+    def opened(path, *args, **kwargs):
+        stream = original_open(path, *args, **kwargs)
+        mode = args[0] if args else kwargs.get('mode', 'r')
+        return ObservedStream(stream) if path == source and mode == 'rb' else stream
+
+    def closed():
+        registry_closes.append(True)
+        return original_close()
+
+    monkeypatch.setattr(voices, 'close', closed)
+    try:
+        with monkeypatch.context() as patched:
+            patched.setattr(Path, 'open', opened)
+            with pytest.raises(InterruptedError, match='input review was cancelled'):
+                service.run(job, cancelled=cancelled.is_set)
+        assert reads == [1024 ** 2], 'Cancellation must not read the remainder of a large retained input.'
+        assert not runtime_calls and not registry_closes
+        assert service.get(job)['status'] == 'paused'
+        assert not broker.snapshot()['leases'] and not list(output.iterdir())
+        assert source.read_bytes() == original
+        assert Project.from_dict(service.get(job)['project']) == project
+        service.close()
+        assert not registry_closes, 'The cancelled service does not own its supplied voice registry.'
+    finally:
+        service.close()
+        voices.close()
+    assert registry_closes == [True]

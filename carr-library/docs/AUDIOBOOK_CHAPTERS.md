@@ -30,6 +30,24 @@ text and full measured intervals remain in `project.json` and `timeline.json`.
 Player-specific LRC interpretation and third-party audiobook interoperability
 require separate qualification.
 
+When a visual lyric row's first non-whitespace character is `[`, the LRC export
+adds one invisible U+2060 WORD JOINER before the complete, otherwise untouched
+row, including any leading spaces or tabs. LRC permits repeated timestamp tags:
+without this boundary, literal text such as `[10:00.00]` could create another
+event at ten minutes and disappear from the displayed words. No backslash
+escaping rule is assumed. Ordinary rows receive no added marker, and multiple
+visual rows retain the same measured narration start.
+
+The rendered `timeline.json` records this transformation in `lrc_notice`.
+Consumers may remove the export-added marker **after** parsing LRC, using the
+retained timeline text to distinguish it from any original WORD JOINER. Removing
+it before parsing restores the ambiguous syntax. The original script, saved
+spoken-line text and timeline text are unchanged. The actual FFmpeg LRC demuxer
+is tested for one event per visual row at the measured time and exact UTF-8
+packet text, including bracket literals, leading whitespace and multiple rows.
+This qualifies that parser contract; display and parsing in other LRC players
+still require separate testing.
+
 The current native Studio format selector and `studio render --format m4b` use
 the same ProductionService path. The lower-level `AudioRuntime.audiobook()` API
 accepts explicit title and measured chapters. Artist/genre/year editing and
@@ -46,6 +64,17 @@ metadata, measured LRC and real Flite/Studio completed-receipt reuse. The tests
 are required in the Windows source and installed selections. Native and human
 acceptance remains tied to the exact CI artifact and separate reviewer record.
 
+The literal-text follow-up adds four real ffprobe cases. Both suites passed
+18 cases with no skips on Linux using FFmpeg/ffprobe 7.1.5: bracket timestamps,
+leading spaces/tabs, metadata-looking Unicode text and multiple visual rows
+retain their expected packet counts, measured starts and exact UTF-8 payload
+hashes. This source result does not substitute for the required Windows and
+installed-bundle runs.
+
 Format reference: [FFmpeg metadata documentation](https://ffmpeg.org/ffmpeg-formats.html#Metadata),
 reviewed 2026-11-27. Existing FFmpeg native-package rights and distribution
 clearance are unchanged by adding metadata through its reviewed runtime.
+
+LRC grammar reference: [FFmpeg LRC demuxer source](https://ffmpeg.org/doxygen/6.1/lrcdec_8c_source.html),
+reviewed 2026-11-27. The literal-text regression uses the selected installed
+ffprobe rather than assuming all players implement this grammar identically.
