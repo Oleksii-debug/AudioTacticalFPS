@@ -59,7 +59,8 @@ independently tested predecessor wheel can be used for delivery.
 ## Earlier completion evidence
 
 The authoritative specification was rechecked against canonical source
-`e69ba2403515f21509686d66f4bc8b3673756d81`, with the current finalization
+`e3cf74c243d4ef930b526b5648ca9003c0900057` (PR147 composition and the
+reviewed PR182 early export guard), with the current finalization
 specification at blob `db8adbdc483a03c262885928c7ed214ca70bbaa7`. The next candidate retains the
 full requested platform scope. It adds native A/B and sleep controls, retained
 document/range translation, explicit owner voice profiles, accessible local

@@ -9,7 +9,7 @@
   Its two-path PR176 publication-cancellation delta is already present here:
   the exact check after staged fsync/digest and before link, plus the identical
   real-render cancellation/resume regression. No prior verdict is transferred.
-- Latest reviewed canonical: 924ae83316a3cf9482aaf2ec51a6e6a5adb614c3.
+- Later reviewed checkpoint: 924ae83316a3cf9482aaf2ec51a6e6a5adb614c3.
   Optional-root lookup remains fail-closed; cancellation now runs before each
   optional sidecar root. The real-child publication barriers already in this
   composite remain stronger than the incoming clock-only fixture.
@@ -368,3 +368,16 @@ from inventory into each source, installed and sealed probe. A reordered numeric
 index must fail before playback instead of silently qualifying another output.
 This strengthens the diagnostic boundary without changing the production
 player or the user's default audio device.
+
+## Final pre-qualification canonical readback
+
+Immediately before the complete successor run, canonical advanced to
+`e3cf74c243d4ef930b526b5648ca9003c0900057` through reviewed PR182.
+The exact compare from e69 contains only the two-line early export path/root
+guard and its four mismatch cases. Both are already present in this reviewed
+composition, together with its stronger bounded content and native-change-time
+checks. The canonical parent is incorporated explicitly; no alternative export
+backend or passing result is substituted. The technical specification blob is
+unchanged. The supplementary diagnostic source remains separately identified;
+only the complete required workflows at the final candidate can qualify its
+retained application wheel.
