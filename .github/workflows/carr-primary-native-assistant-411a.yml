@@ -83,10 +83,14 @@ jobs:
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Firewall coverage differs from the tested programs.' }
             @{ status='PASS'; blocked_programs=$filters; profiles_enabled=@($profiles.Name); scope='selected runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-assistant-results/runtime-firewall.json'
             $probe = @'
-          import hashlib, importlib.util, json, os, pathlib, subprocess, sys, tempfile
+          import faulthandler, hashlib, importlib.util, json, os, pathlib, subprocess, sys, tempfile
+          faulthandler.enable()
+          faulthandler.dump_traceback_later(90, exit=True)
+          print('DIAGNOSTIC: Python started', flush=True)
           if sys.platform != 'win32':
               raise RuntimeError('This preflight requires actual Windows.')
           import wx
+          print('DIAGNOSTIC: wx imported', flush=True)
           import carr_library
           source = pathlib.Path.cwd() / 'src' / 'carr_library'
           installed = pathlib.Path(carr_library.__file__).resolve().parent
@@ -104,9 +108,28 @@ jobs:
               raw = (source / name).read_bytes()
               assert (installed / name).read_bytes() == raw, name
               hashes[name] = hashlib.sha256(raw).hexdigest()
+          print('DIAGNOSTIC: installed source bytes verified', flush=True)
+          seen_phases = set()
+          def trace_native(frame, event, arg):
+              if event == 'call' and frame.f_code.co_filename.endswith('windows_assistant_smoke.py'):
+                  name = frame.f_code.co_name
+                  if name in ('exercise_controls', 'run_dialog', 'close', 'select_saved'):
+                      print('DIAGNOSTIC:', name, 'reopened=', frame.f_locals.get('reopened'), flush=True)
+                  elif name == 'poll':
+                      state = frame.f_locals.get('state', {})
+                      key = (frame.f_locals.get('reopened'), state.get('phase'))
+                      if key not in seen_phases:
+                          seen_phases.add(key)
+                          print('DIAGNOSTIC: poll phase', key, flush=True)
+              return trace_native
+          sys.setprofile(trace_native)
           app = wx.App(False)
+          print('DIAGNOSTIC: wx.App initialized', flush=True)
           with tempfile.TemporaryDirectory(prefix='carr-native-assistant-Архів-') as temporary:
               result = module.exercise_controls(pathlib.Path(temporary), wx)
+          sys.setprofile(None)
+          faulthandler.cancel_dump_traceback_later()
+          print('DIAGNOSTIC: controls completed', flush=True)
           assert tuple(result['checks']) == module.EXPECTED_CHECKS
           for name, expected in hashes.items():
               assert hashlib.sha256((source / name).read_bytes()).hexdigest() == expected
@@ -119,7 +142,7 @@ jobs:
               json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False), encoding='utf-8')
           print(json.dumps(result, ensure_ascii=False, allow_nan=False))
           '@
-            $probe | & $python -I -B - 2>&1 | Tee-Object 'ci-assistant-results/native-assistant.txt'
+            $probe | & $python -u -X utf8 -I -B - 2>&1 | Tee-Object 'ci-assistant-results/native-assistant.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native assistant acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
