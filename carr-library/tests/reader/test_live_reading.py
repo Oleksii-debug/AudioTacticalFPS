@@ -567,3 +567,61 @@ def test_live_state_strict_roundtrip_cancellation_and_no_clobber(source):
     forged = original.replace(b'"version": 1', b'"version": 1, "version": 1')
     with pytest.raises(ValueError):
         validate_live_state(forged)
+
+
+@pytest.mark.parametrize('field', ['text_sha256', 'sha256', 'voice_id', 'path'])
+def test_wav_export_rejects_mismatched_render_receipt(source, tmp_path, field):
+    from carr_library.reader.live_export import export_document_speech
+    app, _, _, desk, _ = source
+    page = desk.page(1)
+    document = ReadingDocument(page.raw_text)
+    sequence = DocumentSequence(app.root, document, source_locations=(page.location,))
+    destination = tmp_path / 'mismatch.wav'
+    renderer = SyntheticRender()
+
+    def render(*args, **kwargs):
+        result = renderer(*args, **kwargs)
+        incorrect = {'text_sha256': '0' * 64, 'sha256': '0' * 64,
+                     'voice_id': 'wrong:voice', 'path': destination}
+        return replace(result, **{field: incorrect[field]})
+
+    with pytest.raises(ValueError, match='receipt'):
+        export_document_speech(sequence, destination, start=0, end=10,
+                               voice_id=VOICE.id, render=render)
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+def test_wav_export_rechecks_full_source_after_staging_fsync(source, tmp_path, monkeypatch):
+    import os
+    from carr_library.reader.live_export import export_document_speech
+    app, _, _, desk, _ = source
+    page = desk.page(1)
+    sequence = DocumentSequence(app.root, ReadingDocument(page.raw_text),
+                                source_locations=(page.location,))
+    destination = tmp_path / 'drift.wav'
+    renderer = SyntheticRender()
+    actual_check = sequence.check
+    actual_fsync = os.fsync
+    flushed = False
+    observed = []
+
+    def check(section, cancelled, *, full=False):
+        observed.append((flushed, full))
+        if flushed and full:
+            raise ValueError('Injected retained-byte drift detectable only by full attestation.')
+        return actual_check(section, cancelled, full=full)
+
+    def flush(fd):
+        nonlocal flushed
+        actual_fsync(fd)
+        flushed = True
+
+    monkeypatch.setattr(sequence, 'check', check)
+    monkeypatch.setattr(os, 'fsync', flush)
+    with pytest.raises(ValueError, match='retained-byte drift'):
+        export_document_speech(sequence, destination, start=0, end=10,
+                               voice_id=VOICE.id, render=renderer)
+    assert renderer.requests and (True, True) in observed
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.speech-*'))
