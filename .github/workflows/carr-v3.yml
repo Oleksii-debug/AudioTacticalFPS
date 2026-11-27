@@ -14,8 +14,8 @@ permissions:
 
 concurrency:
   group: carr-v3-${{ github.head_ref || github.ref_name }}
-  # Let an active integrated native run finish while the next exact tree queues.
-  cancel-in-progress: ${{ (github.head_ref || github.ref_name) != 'carr/canonical-completion-2aa-20261127' }}
+  # Validate the latest branch head; superseded runs retain incomplete evidence.
+  cancel-in-progress: true
 
 jobs:
   native-studio:

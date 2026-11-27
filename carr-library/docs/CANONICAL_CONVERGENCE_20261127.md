@@ -396,3 +396,30 @@ See the [exact separate checkpoints](acceptance/20261127-09c312-source-checkpoin
 These source passes resolve the earlier fixture timeout and Studio quick failures;
 they do not replace the separate one-failure production result, installed/native
 checks or execution of the later full-name presentation correction.
+
+
+## Current-head CI scheduling
+
+The finite source audit and concrete Book corrections are complete for testing.
+The remaining installed/native gates must run on the current assembled head.
+Four existing workflows had a special exception that disabled cancellation only
+for the integration branch: Windows desktop, V3, supplied transcription and
+portable lifetime. At the recorded18:16UTC observation, older Windows/lifetime
+jobs were still queued and the old cdc V3 job was running, while the current0b2
+runs remained pending in the same workflow/branch groups.
+
+These four workflows now use the same `cancel-in-progress: true` policy they
+already applied to other branches. Their exact concurrency groups, jobs, runner
+images, steps, source/installed selectors, time budgets, required tests, origins,
+artifact handling and repository permissions are unchanged. All application,
+script and test files are byte-identical to0b2. This is validation scheduling;
+there is no deployment or release transaction in these workflows.
+
+The [official GitHub concurrency contract](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
+allows a newer run to cancel an older run in the same group. It does not guarantee
+immediate runner allocation. Completed evidence already recorded retains its
+exact SHA and outcome. Interrupted old jobs remain cancelled/incomplete; they do
+not become passing acceptance. The final head still requires the full unchanged
+source, installed, native and recovery gates. Independent review confirmed that
+this correction changes orchestration only and does not alter the fifteen worker
+automations, their cadence or enabled state, or repository protections.
