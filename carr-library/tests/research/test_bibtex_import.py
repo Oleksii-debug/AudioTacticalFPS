@@ -96,6 +96,13 @@ def test_incomplete_comma_names_preserve_identity_instead_of_shifting_fields(nam
     assert original in row.notes
     records = json.loads(reopened.export(identity=row.id, format='csl-json'))
     assert records[0]['author'] == [{'literal': expected[1:-1]}]
+    from carr_library.citations.bibliography_workbench import records_for_style
+    # The explicit personal-name mode must continue treating the preserved
+    # incomplete name as literal, rather than assigning John/Jr. new roles.
+    snapshot = json.dumps([{'id': 'x', 'type': 'book', 'title': 'Test',
+                           'author': [{'literal': expected}]}])
+    records, _ = records_for_style(snapshot, name_mode='family-given')
+    assert records[0]['author'] == [{'literal': expected[1:-1]}]
 
 
 @pytest.mark.parametrize('name', ['Doe,,John', 'Doe,{},John'])

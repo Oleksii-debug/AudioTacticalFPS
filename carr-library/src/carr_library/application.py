@@ -757,16 +757,16 @@ class LibraryApp:
                         # and its current authorized identity before returning.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
-                            published = storage.db.execute(
+                            current = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (published is None or tuple(published[:3]) !=
+                            if (current is None or tuple(current[:3]) !=
                                     (workspace, record.edition_id, asset.digest)
-                                    or published[3] is None):
+                                    or current[3] is None):
                                 raise ValueError('Completed import is missing its sealed source revision.')
-                            if (published[3] == job) != (result['state'] == 'complete'):
+                            if (current[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
                             if was_published:
                                 if cancelled():
@@ -809,6 +809,8 @@ class LibraryApp:
                     progress = None
 
         cancelled = metadata.get('cancelled', lambda: False)
+        if not callable(cancelled):
+            raise ValueError('An import cancellation callback is required.')
         report(0)
         results = []
         for path in paths:
@@ -1268,7 +1270,8 @@ class LibraryApp:
         from .transcription import TranscriptionService
         return TranscriptionService(self, workspace)
 
-    def backup(self, destination):
+    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
         from .library_backup import create_backup
-        return create_backup(self, destination)
+        return create_backup(self, destination, max_bytes=max_bytes,
+                             include_generated=include_generated, cancelled=cancelled)
 

@@ -22,7 +22,7 @@ def export(request, tmp_path):
     expected = payload.encode('utf-8') if isinstance(payload, str) else payload
 
     def publish(**options):
-        writer(target, payload, private_root=private, **options)
+        return writer(target, payload, private_root=private, **options)
 
     return target, expected, publish
 
@@ -49,9 +49,9 @@ def test_file_created_after_final_destination_check_is_never_replaced(export, mo
     inspect = export_file._destination
     checks = 0
 
-    def competing_writer(*args):
+    def competing_writer(*args, **kwargs):
         nonlocal checks
-        state = inspect(*args)
+        state = inspect(*args, **kwargs)
         checks += 1
         if checks == 2:
             # A real file appears after the writer's last destination snapshot,
@@ -71,9 +71,9 @@ def test_default_new_destination_never_replaces_a_last_moment_competing_file(exp
     inspect = export_file._destination
     checks = 0
 
-    def create_after_final_check(*args):
+    def create_after_final_check(*args, **kwargs):
         nonlocal checks
-        state = inspect(*args)
+        state = inspect(*args, **kwargs)
         checks += 1
         if checks == 2:
             target.write_bytes(b'Concurrent writer after the final default-policy check')
@@ -156,9 +156,9 @@ def test_captured_absence_forces_atomic_no_clobber_even_without_policy_flag(expo
     inspect = export_file._destination
     checks = 0
 
-    def create_after_final_check(*args):
+    def create_after_final_check(*args, **kwargs):
         nonlocal checks
-        state = inspect(*args)
+        state = inspect(*args, **kwargs)
         checks += 1
         if checks == 2:
             target.write_bytes(b'Late writer at the publication boundary')
@@ -222,8 +222,9 @@ def test_permanent_cleanup_failure_reports_published_bytes_truthfully(export, mo
         assert not attempts
         assert not list(target.parent.glob('.research-export-*'))
     else:
-        with pytest.raises(OSError, match='Export was published'):
-            publish(require_absent=True)
+        receipt = publish(require_absent=True)
+        assert receipt.path == target and 'file is saved' in receipt.cleanup_warning
+        assert 'does not need to be repeated' in receipt.cleanup_warning
         assert len(attempts) == 2
         stage, = target.parent.glob('.research-export-*')
         assert os.path.samefile(stage, target)
@@ -380,8 +381,8 @@ def test_existing_content_inspection_accepts_exact_byte_budget(export, monkeypat
     target, expected, publish = export
     previous = b'original'
     target.write_bytes(previous)
-    monkeypatch.setattr(export_file, 'MAX_EXISTING_EXPORT_BYTES', len(previous))
-    monkeypatch.setattr(export_file, 'HASH_CHUNK_BYTES', 3)
+    monkeypatch.setattr(export_file, '_MAX_OVERWRITE_BYTES', len(previous))
+    monkeypatch.setattr(export_file, '_HASH_BLOCK_BYTES', 3)
     read = os.read
     requests = []
 
@@ -405,7 +406,7 @@ def test_oversized_existing_target_is_rejected_before_open(export, monkeypatch, 
     target, _, publish = export
     previous = b'oversized'
     target.write_bytes(previous)
-    monkeypatch.setattr(export_file, 'MAX_EXISTING_EXPORT_BYTES', len(previous) - 1)
+    monkeypatch.setattr(export_file, '_MAX_OVERWRITE_BYTES', len(previous) - 1)
     opened = os.open
 
     def reject_read(path, *args, **kwargs):
@@ -437,11 +438,11 @@ def test_existing_content_deadline_preserves_file_and_cleans_stage(export, monke
     def delayed_read(descriptor, size):
         result = read(descriptor, size)
         if phase != 'final' or list(target.parent.glob('.research-export-*')):
-            clock[0] += export_file.DESTINATION_CHECK_SECONDS + 1
+            clock[0] += export_file._OVERWRITE_CHECK_SECONDS + 1
         return result
 
     monkeypatch.setattr(os, 'read', delayed_read)
-    with pytest.raises(TimeoutError, match='could not be verified in time'):
+    with pytest.raises(ValueError, match='quickly enough.*Choose a new filename'):
         if phase == 'approval':
             export_file.capture_export_destination(target, private_root=target.parent / 'private')
         else:
@@ -478,7 +479,7 @@ def test_existing_file_growth_during_inspection_cannot_exceed_captured_budget(ex
     target, _, _ = export
     previous = b'Original content'
     target.write_bytes(previous)
-    monkeypatch.setattr(export_file, 'HASH_CHUNK_BYTES', 4)
+    monkeypatch.setattr(export_file, '_HASH_BLOCK_BYTES', 4)
     read = os.read
     total = 0
 
@@ -561,3 +562,184 @@ def test_parent_redirect_into_private_library_is_rejected_before_digest_reads(
     moved = private / 'moved-exports'
     assert (moved / target.name).read_bytes() == previous
     assert not list(moved.glob('.research-export-*'))
+
+
+
+def test_create_only_export_recovers_transient_staging_cleanup(export, monkeypatch):
+    target, expected, publish = export
+    unlink = os.unlink
+    failed = False
+
+    def fail_once(path, *args, **kwargs):
+        nonlocal failed
+        if Path(path).name.startswith('.research-export-') and not failed:
+            # Inject only after actual publication. Windows no-replace rename
+            # avoids this separate cleanup operation entirely.
+            assert target.read_bytes() == expected
+            failed = True
+            raise PermissionError('Synthetic transient cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', fail_once)
+    receipt = publish(require_absent=True)
+    assert failed is (os.name != 'nt')
+    assert receipt.path == target and receipt.cleanup_warning is None
+    assert target.read_bytes() == expected
+    assert target.stat().st_nlink == 1
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('broken_logger', [False, True])
+def test_create_only_cleanup_cannot_reverse_completed_export(
+        export, monkeypatch, caplog, broken_logger):
+    target, expected, publish = export
+    unlink = os.unlink
+
+    def locked_stage(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-'):
+            assert target.read_bytes() == expected
+            raise PermissionError('Synthetic persistent cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', locked_stage)
+    if broken_logger:
+        def unavailable_log(*args):
+            raise OSError('Synthetic unavailable log sink')
+        monkeypatch.setattr(export_file._logger, 'warning', unavailable_log)
+    try:
+        receipt = publish(require_absent=True)
+        assert receipt.path == target
+        assert target.read_bytes() == expected
+        if os.name == 'nt':
+            # No staging link needs cleanup after Windows no-replace rename.
+            assert receipt.cleanup_warning is None
+            assert not list(target.parent.glob('.research-export-*'))
+        else:
+            assert 'file is saved' in receipt.cleanup_warning
+            assert 'does not need to be repeated' in receipt.cleanup_warning
+            if not broken_logger:
+                assert receipt.cleanup_warning in caplog.text
+            stage, = target.parent.glob('.research-export-*')
+            assert os.path.samefile(stage, target)
+    finally:
+        # Remove only this test's own staging link with the real OS operation.
+        for stage in target.parent.glob('.research-export-*'):
+            unlink(stage)
+    assert target.stat().st_nlink == 1
+    assert target.read_bytes() == expected
+
+
+def test_cli_reports_completed_export_when_staging_cleanup_is_denied(
+        tmp_path, monkeypatch, capsys):
+    import json
+
+    from carr_library.application import LibraryApp
+    from carr_library.bibliography_cli import main
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Publication receipt')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))
+    destination = tmp_path / 'bibliography.txt'
+    unlink = os.unlink
+
+    def locked_stage(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-'):
+            raise PermissionError('Synthetic persistent cleanup failure')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', locked_stage)
+    try:
+        result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
+                       '--reference', reference.id, '--output', str(destination)])
+        report = json.loads(capsys.readouterr().out)
+        assert result == 0 and report['result'] == 'SAVED'
+        assert 'Synthetic source' in destination.read_text(encoding='utf-8')
+        if os.name == 'nt':
+            assert not any('cleanup' in warning for warning in report['warnings'])
+            assert not list(tmp_path.glob('.research-export-*'))
+        else:
+            assert any('file is saved' in warning for warning in report['warnings'])
+            stage, = tmp_path.glob('.research-export-*')
+            assert os.path.samefile(stage, destination)
+    finally:
+        for stage in tmp_path.glob('.research-export-*'):
+            unlink(stage)
+
+
+def test_cli_without_overwrite_preserves_file_created_during_formatting(tmp_path, monkeypatch, capsys):
+    from carr_library.application import LibraryApp
+    from carr_library.bibliography_cli import main
+    from carr_library.citations.bibliography_workbench import BibliographyWorkbench
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Export audit')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))
+    destination = tmp_path / 'bibliography.txt'
+    render = BibliographyWorkbench.preview
+
+    def format_then_competing_write(workbench, **options):
+        preview = render(workbench, **options)
+        destination.write_bytes(b'Created by another program during rendering')
+        return preview
+
+    monkeypatch.setattr(BibliographyWorkbench, 'preview', format_then_competing_write)
+    result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
+                   '--reference', reference.id, '--output', str(destination)])
+    assert result == 1
+    assert 'destination changed' in capsys.readouterr().err
+    assert destination.read_bytes() == b'Created by another program during rendering'
+    assert controller.get(reference.id) == reference
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('change', ('metadata', 'workspace-archive'))
+@pytest.mark.parametrize('existing', (False, True))
+def test_staged_bibliography_reauthorizes_metadata_and_scope_before_publication(
+        tmp_path, change, existing):
+    from carr_library.application import LibraryApp
+    from carr_library.citations.bibliography_workbench import BibliographyWorkbench
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Export freshness audit')
+    controller = AcademicController(app, workspace)
+    reference = controller.create(dict(title='Original metadata title', authors=('Doe, Jane',), year='2020'))
+    workbench = BibliographyWorkbench(controller)
+    preview = workbench.preview(identity=reference.id, style='ieee')
+    destination = tmp_path / 'bibliography.txt'
+    original_bytes = b'Previously exported work must survive'
+    if existing:
+        destination.write_bytes(original_bytes)
+    changed = False
+
+    def change_after_real_staging():
+        nonlocal changed
+        if not changed and list(tmp_path.glob('.research-export-*')):
+            # The pre-render and pre-writer checks already passed. Change the
+            # database only once the real payload has reached a staging file.
+            changed = True
+            if change == 'metadata':
+                controller.update(reference, {'title': 'New current metadata title'})
+            else:
+                app.archive_workspace(workspace)
+        return False
+
+    with pytest.raises(ValueError):
+        workbench.export(preview, destination, cancelled=change_after_real_staging,
+                         require_absent=not existing)
+
+    assert changed, 'The metadata/scope change must happen after the payload is staged.'
+    if existing:
+        assert destination.read_bytes() == original_bytes
+    else:
+        assert not destination.exists()
+    assert not list(tmp_path.glob('.research-export-*'))
+    if change == 'metadata':
+        assert controller.get(reference.id).title == 'New current metadata title'
+    else:
+        with pytest.raises(ValueError):
+            controller.get(reference.id)

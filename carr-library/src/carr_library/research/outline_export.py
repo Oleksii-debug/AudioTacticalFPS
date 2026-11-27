@@ -198,7 +198,7 @@ def export_outline(db, workspace, topic_id, *, load_page, attest_metadata,
     return result
 
 
-def export_filtered_outline(app, workspace, topic, *, format='markdown', include_descendants=True,
+def export_topic_outline(app, workspace, topic, *, format='markdown', include_descendants=True,
                    tag_filter=None, cancelled=lambda: False):
     """Return Markdown/text with topic order, exact slices and separate user notes.
 
@@ -259,3 +259,7 @@ def export_filtered_outline(app, workspace, topic, *, format='markdown', include
             yield 'No matching saved evidence in the selected topic scope.\n'
 
     return _bounded_export(chunks(), cancelled)
+
+
+# Existing callers retain the same freshly authorized renderer.
+export_filtered_outline = export_topic_outline

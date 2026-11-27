@@ -494,3 +494,29 @@ def test_malformed_primary_relationship_or_text_leaf_does_not_publish(tmp_path, 
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
     assert source.read_bytes() == malformed
+
+
+@pytest.mark.parametrize('arguments', (
+    ('--self-test',), ('--backup', 'unused-backup'), ('studio', 'voices'),
+    ('--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'selected'),
+))
+def test_format_listing_rejects_another_operation_before_opening_any_runtime(arguments, monkeypatch):
+    from carr_library.__main__ import main
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Ambiguous command must not initialize an application or native runtime.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    with pytest.raises(SystemExit) as error:
+        main(['--document-formats', *arguments])
+    assert error.value.code == 2
+
+
+def test_format_listing_does_not_open_a_library_or_native_runtime(monkeypatch, capsys):
+    from carr_library.__main__ import main
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Format listing must not open a library or native runtime.')
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)
+    assert main(['--document-formats']) == 0
+    text = capsys.readouterr().out
+    assert 'HTML' in text and '.xlsx' in text

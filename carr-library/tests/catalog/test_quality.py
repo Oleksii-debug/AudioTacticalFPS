@@ -346,3 +346,43 @@ def test_sqlite_progress_cancellation_interrupts_actual_author_join(library, mon
     with pytest.raises(InterruptedError, match='cancelled'):
         quality.catalog_quality(app, workspace, cancelled=cancelled)
     assert interrupted == [sqlite3.SQLITE_INTERRUPT]
+
+
+
+def test_utf8_metadata_preflight_rejects_before_materializing_authors(library, monkeypatch):
+    app, workspace, _ = library
+    with app.catalog_transaction(workspace) as catalog:
+        add(catalog, 'heavy', authors=('界' * 200,))
+    monkeypatch.setattr(quality.insights, 'MAX_METADATA_BYTES', 500)
+    monkeypatch.setattr(quality, 'browse_editions',
+                        lambda *a, **k: pytest.fail('oversized metadata was materialized'))
+    with pytest.raises(ValueError, match='metadata.*limit'):
+        quality.catalog_quality(app, workspace)
+
+
+def test_count_preflight_rejects_before_materializing_a_page(library, monkeypatch):
+    app, workspace, _ = library
+    with app.catalog_transaction(workspace) as catalog:
+        add(catalog, 'one')
+        add(catalog, 'two')
+    monkeypatch.setattr(quality.insights, 'MAX_SOURCES', 1)
+    monkeypatch.setattr(quality, 'browse_editions',
+                        lambda *a, **k: pytest.fail('oversized catalog was materialized'))
+    with pytest.raises(ValueError, match='Too many sources'):
+        quality.catalog_quality(app, workspace)
+
+
+def test_preflight_counts_only_authorized_selected_sources(library, monkeypatch):
+    app, workspace, other = library
+    with app.catalog_transaction(workspace) as catalog:
+        catalog.create_collection('selected', 'Selected')
+        add(catalog, 'small')
+        add(catalog, 'excluded', authors=('界' * 200,))
+        catalog.assign('selected', 'small')
+    with app.catalog_transaction(other) as catalog:
+        add(catalog, 'private', authors=('界' * 200,))
+    monkeypatch.setattr(quality.insights, 'MAX_METADATA_BYTES', 500)
+    selected = quality.catalog_quality(app, workspace, collection='selected')
+    assert [row.edition_id for row in selected.editions] == ['small']
+    with pytest.raises(ValueError, match='metadata.*limit'):
+        quality.catalog_quality(app, workspace)

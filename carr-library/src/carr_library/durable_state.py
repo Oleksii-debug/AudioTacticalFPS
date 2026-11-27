@@ -38,11 +38,15 @@ def local_path(value, *, root=None, exists=False):
     return path
 
 
-def digest_file(path):
+def digest_file(path, *, cancelled=lambda: False):
     regular(path)
     digest = sha256()
     with Path(path).open('rb') as stream:
+        if cancelled():
+            raise InterruptedError('File verification cancelled.')
         while block := stream.read(1024 * 1024):
+            if cancelled():
+                raise InterruptedError('File verification cancelled.')
             digest.update(block)
     return digest.hexdigest()
 
