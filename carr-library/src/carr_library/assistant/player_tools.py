@@ -207,7 +207,7 @@ class LivePlayerBridge:
                 raise ValueError('The existing reader returned invalid measured status.')
             return {'schema': 'carr-current-player-receipt/1', 'session': context['session'],
                 'source_sha256': context['source_sha256'], 'workspace': self.workspace,
-                'edition': self.identity.edition, 'revision': self.identity.revision,
+                'edition': self.identity.edition_id, 'revision': self.identity.revision,
                 'asset_sha256': self.identity.asset_sha256,
                 'source_text_sha256': context['source_text_sha256'], 'action': action,
                 'state': state, 'reader_state': view.state, 'busy': busy,
