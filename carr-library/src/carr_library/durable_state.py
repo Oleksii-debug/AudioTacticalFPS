@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import sys
 import tempfile
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
@@ -135,6 +136,85 @@ def sync_directory(path):
             os.close(descriptor)
 
 
+def _replace_windows_snapshot(source, destination, staged):
+    """Publish our staged snapshot while existing shared readers keep theirs.
+
+    MoveFileExW cannot replace an open destination even when readers share
+    delete access. Reuse the reviewed FileRenameInfoEx POSIX rename boundary;
+    unsupported filesystems still fail without deleting the old destination.
+    """
+    source = local_path(source, exists=True)
+    destination = local_path(destination)
+    if source.parent != destination.parent or not source.name.startswith('.pending-'):
+        raise ValueError('State replacement requires its staged file in the destination directory.')
+    before = regular(source)
+    expected = (staged.st_dev, staged.st_ino, staged.st_size)
+    if (before.st_dev, before.st_ino, before.st_size) != expected:
+        raise ValueError('Staged state changed before atomic replacement.')
+    if os.path.lexists(destination):
+        regular(destination)
+
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
+                    ('FileNameLength', wintypes.DWORD), ('FileName', wintypes.WCHAR * 1)]
+
+    # Native calls do not emit os.rename: preserve installed audit policies.
+    sys.audit('os.rename', str(source), str(destination), -1, -1)
+    # DELETE | FILE_READ_ATTRIBUTES; share read/write/delete; open the final
+    # reparse point itself so the opened-object guard cannot follow a link.
+    handle = create(str(source), 0x00010080, 0x7, None, 3, 0x00200080, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_NOINHERIT)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        opened = os.fstat(descriptor)
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or (opened.st_dev, opened.st_ino, opened.st_size) != expected):
+            raise ValueError('Staged state changed before atomic replacement.')
+        local_path(source, exists=True)
+        local_path(destination)
+        name = str(destination).encode('utf-16-le')
+        buffer = ctypes.create_string_buffer(ctypes.sizeof(RenameInfo) + len(name))
+        record = RenameInfo.from_buffer(buffer)
+        record.Flags, record.RootDirectory, record.FileNameLength = 0x3, None, len(name)
+        ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.FileName.offset, name, len(name))
+        # FileRenameInfoEx: REPLACE_IF_EXISTS | POSIX_SEMANTICS. Old handles
+        # retain their snapshot; new opens resolve to the fully written file.
+        if not rename(handle, 22, buffer, ctypes.sizeof(buffer)):
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        os.close(descriptor)
+
+
+def _replace_snapshot(source, destination, staged):
+    try:
+        os.replace(source, destination)
+    except PermissionError as error:
+        if os.name != 'nt' or getattr(error, 'winerror', None) not in (5, 32, 33):
+            raise
+        _replace_windows_snapshot(source, destination, staged)
+
+
 def atomic_bytes(path, raw, *, replace=False):
     path = local_path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -150,8 +230,9 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.write(raw)
             stream.flush()
             os.fsync(stream.fileno())
+            staged = os.fstat(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            _replace_snapshot(temporary, path, staged)
         else:
             # link is the portable same-filesystem no-replace publication primitive.
             os.link(temporary, path)

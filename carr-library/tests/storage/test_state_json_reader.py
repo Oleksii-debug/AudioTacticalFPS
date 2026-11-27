@@ -1,6 +1,7 @@
 """Actual file-handle and child-process checks for concurrently published state."""
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 
@@ -29,16 +30,35 @@ finally:
 '''
 
 
-def replace_in_child(path):
+PUBLISH_ONCE = r'''
+import json, pathlib, sys
+sys.path.insert(0, sys.argv[2])
+from carr_library.durable_state import atomic_json
+target = pathlib.Path(sys.argv[1])
+try:
+    atomic_json(target, {'done': 1}, replace=True)
+except OSError as error:
+    print(json.dumps({'published': False, 'winerror': getattr(error, 'winerror', None)}))
+    raise SystemExit(2)
+else:
+    print(json.dumps({'published': True}))
+'''
+
+
+def replace_in_child(path, *, production=False):
+    # Bind the child to the same source/installed module as this test process.
+    package_root = str(Path(state.__file__).resolve().parents[1])
     process = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c',
-                              REPLACE_ONCE, str(path)], capture_output=True,
+                              PUBLISH_ONCE if production else REPLACE_ONCE,
+                              str(path), package_root], capture_output=True,
                              text=True, encoding='utf-8', timeout=15)
     assert process.returncode in (0, 2), process.stderr
     return json.loads(process.stdout)
 
 
-def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch):
-    target = tmp_path / 'стан.json'
+@pytest.mark.parametrize('name', ['стан.json', 'стан-𐐷.json'])
+def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch, name):
+    target = tmp_path / name
     target.write_bytes(b'{"done":0}')
     # This negative control demonstrates the real Windows sharing collision.
     # POSIX permits replacement with either kind of reader, without a skip.
@@ -59,7 +79,7 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
         streams.append(stream)
         try:
             assert not os.get_inheritable(stream.fileno())
-            observed.append(replace_in_child(path))
+            observed.append(replace_in_child(path, production=True))
             assert observed[-1] == {'published': True}
         except BaseException:
             stream.close()
@@ -73,6 +93,27 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
     assert all(stream.closed for stream in streams)
     monkeypatch.setattr(state, '_open_json_file', original)
     assert state.read_json(target) == {'done': 1}
+    assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('change', ['foreign-parent', 'unmanaged-name', 'replaced-stage'])
+def test_native_replacement_rejects_an_unbound_stage_before_opening_it(tmp_path, change):
+    target = tmp_path / 'state.json'
+    target.write_bytes(b'{"old":1}')
+    parent = tmp_path / 'other' if change == 'foreign-parent' else tmp_path
+    parent.mkdir(exist_ok=True)
+    staged = parent / ('unmanaged.json' if change == 'unmanaged-name' else '.pending-test')
+    staged.write_bytes(b'{"new":1}')
+    expected = staged.stat()
+    if change == 'replaced-stage':
+        replacement = parent / 'replacement.json'
+        replacement.write_bytes(b'{"substituted":1}')
+        os.replace(replacement, staged)
+    retained = staged.read_bytes()
+    with pytest.raises(ValueError, match='[Ss]taged'):
+        state._replace_windows_snapshot(staged, target, expected)
+    assert target.read_bytes() == b'{"old":1}'
+    assert staged.read_bytes() == retained
 
 
 @pytest.mark.parametrize('kind', ['file', 'ancestor', 'hardlink'])
