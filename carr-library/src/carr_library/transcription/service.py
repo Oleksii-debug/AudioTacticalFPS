@@ -20,7 +20,7 @@ from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, loc
 from ..research.export_file import write_binary_export
 from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
                      fingerprint, settings as validate_settings, validated_result,
-                     worker_settings)
+                     worker_settings, validate_effective_settings)
 from .runtime import file_identity, inspect_runtime, stopped, _stamp
 from . import verified_protocol
 
@@ -82,10 +82,11 @@ def expand_sources(paths, *, recursive=False, cancel=None):
     return result
 
 
-def _snapshot(source, target, *, cancel=None):
+def _snapshot(source, target, *, cancel=None, maximum=MAX_SOURCE_BYTES):
     before = regular(source)
-    if not 0 < before.st_size <= MAX_SOURCE_BYTES:
-        raise ValueError('Choose nonempty audio within the 32 GiB per-source budget.')
+    allowed = min(MAX_SOURCE_BYTES, maximum)
+    if not 0 < before.st_size <= allowed:
+        raise ValueError('Source audio exceeds the remaining retained-job byte budget.')
     target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     descriptor, temporary = tempfile.mkstemp(prefix='.pending-source-', dir=target.parent)
     temporary = Path(temporary)
@@ -97,7 +98,7 @@ def _snapshot(source, target, *, cancel=None):
             while block := incoming.read(1024 * 1024):
                 stopped(cancel)
                 count += len(block)
-                if count > MAX_SOURCE_BYTES:
+                if count > allowed:
                     raise ValueError('The audio grew beyond its byte budget.')
                 outgoing.write(block)
                 digest.update(block)
@@ -245,7 +246,7 @@ class TranscriptionService:
         identity = uuid4().hex
         job_root = self._job_root(identity)
         job_root.mkdir()
-        retained = []
+        retained, retained_bytes = [], 0
         try:
             for index, source in enumerate(selected):
                 stopped(cancel)
@@ -254,7 +255,11 @@ class TranscriptionService:
                 if progress:
                     progress({'phase': 'Retaining original audio', 'status': 'running',
                               'done': index, 'total': len(selected), 'current': source.name, 'indeterminate': False})
-                value = _snapshot(source, job_root / relative, cancel=cancel)
+                value = _snapshot(source, job_root / relative, cancel=cancel,
+                                  maximum=MAX_JOB_BYTES - retained_bytes)
+                retained_bytes += value['size']
+                if retained_bytes > MAX_JOB_BYTES:
+                    raise ValueError('Retained sources exceed the complete job byte budget.')
                 retained.append({'id': source_id, 'original_path': str(source), 'name': source.name,
                                  'retained_path': relative, **value})
             state = {'schema': SCHEMA, 'id': identity, 'title': _label(title), 'status': 'pending',
@@ -418,6 +423,8 @@ class TranscriptionService:
         return receipt
 
     def _publish_result(self, state, source, result, provenance):
+        if state['settings']['include_headers']:
+            provenance = {**provenance, 'text_headers': 'derived-v1'}
         root = self._job_root(state['id'])
         folder = root / 'artifacts' / source['id'] / uuid4().hex
         folder.mkdir(parents=True)
@@ -536,8 +543,7 @@ class TranscriptionService:
             meta = read_json(meta_path)
             result = validated_result(meta, text_path.read_text(encoding='utf-8'))
             effective = meta.get('effective_settings', meta.get('settings'))
-            if not isinstance(effective, dict) or effective.get('language') != expected_settings['language'] or effective.get('task') != expected_settings['task']:
-                raise ValueError('The worker silently changed the requested language or task.')
+            validate_effective_settings(effective, state['settings'], profile['model_name'])
             provenance = {'derived': True, 'citation_authority': False, 'quality': 'unqualified',
                           'source_sha256': source['sha256'], 'source_bytes': source['size'],
                           'profile_id': profile['id'], 'profile_fingerprint': profile['fingerprint'],
@@ -554,6 +560,15 @@ class TranscriptionService:
 
     def run(self, identity, *, progress=None, cancel=None):
         from ..operations import ResourceBroker, ResourceRequest
+        observer = progress
+        def progress(event):
+            # Notifications have no admission or publication authority. A UI
+            # failure must not turn a durable accepted result into failed work.
+            if observer is not None:
+                try:
+                    observer(event)
+                except Exception:
+                    pass
         job_root = self._job_root(identity)
         with state_lock(job_root, 'run'):
             state = self._load(identity)

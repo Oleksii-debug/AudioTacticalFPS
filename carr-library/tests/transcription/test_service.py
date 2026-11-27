@@ -106,6 +106,68 @@ def test_actual_process_receipts_reading_and_subtitle_rollover(setup):
     assert starts(runtime) == 1
 
 
+def test_actual_retained_bytes_enforce_aggregate_after_source_growth(setup, monkeypatch):
+    service, runtime, profile, audio = setup
+    audio.write_bytes(b'ab')
+    second = audio.with_name('second.wav')
+    second.write_bytes(b'cd')
+    previous = service.create_job(profile['id'], [audio])
+    previous_root = service._job_root(previous['id'])
+    previous_json = (previous_root / 'job.json').read_bytes()
+    previous_input = previous_root / previous['sources'][0]['retained_path']
+    monkeypatch.setattr(module, 'MAX_JOB_BYTES', 10)
+    def grow_before_retention(event):
+        if event['phase'] == 'Retaining original audio' and event['done'] == 0:
+            audio.write_bytes(b'abcdefg')
+            second.write_bytes(b'abcdefg')
+    with pytest.raises(ValueError, match='byte budget'):
+        service.create_job(profile['id'], [audio, second], progress=grow_before_retention)
+    assert list(service.jobs_root.iterdir()) == [previous_root]
+    assert (previous_root / 'job.json').read_bytes() == previous_json
+    assert previous_input.read_bytes() == b'ab'
+    assert audio.read_bytes() == second.read_bytes() == b'abcdefg'
+
+
+@pytest.mark.parametrize('when', ['inspection', 'running', 'complete', 'cached-complete'])
+def test_progress_observer_failure_cannot_change_durable_worker_outcome(setup, when):
+    service, runtime, profile, audio = setup
+    created = job(setup)
+    if when == 'cached-complete':
+        assert service.run(created['id'])['status'] == 'complete'
+        value = service.get_job(created['id'])
+        value['status'] = 'paused'
+        service._save(value)
+    observed, failures = [], []
+    def display(event):
+        observed.append(event)
+        matches = (when == 'inspection' and event.get('phase', '').startswith('Verifying')
+                   or when == 'running' and event.get('status') == 'running'
+                   or when in ('complete', 'cached-complete') and event.get('status') == 'complete')
+        if matches:
+            failures.append(True)
+            raise RuntimeError('Display was destroyed after receiving a notification.')
+    result = service.run(created['id'], progress=display)
+    assert result['status'] == service.get_job(created['id'])['status'] == 'complete'
+    assert result['done'] == result['total'] == 1
+    assert len(result['results']) == 1 and starts(runtime) == 1
+    assert observed and failures
+
+
+def test_requested_text_headers_are_a_bound_derivative_without_polluting_recognition(setup):
+    service, runtime, profile, audio = setup
+    created = job(setup, settings={'include_headers': True, 'output_srt': True})
+    result = service.run(created['id'])
+    assert result['status'] == 'complete', result['error']
+    receipt = service._receipt(result, result['results'][0])
+    assert receipt['provenance']['text_headers'] == 'derived-v1'
+    text = (service._job_root(created['id']) / receipt['files']['txt']['path']).read_text(encoding='utf-8')
+    assert text.startswith('Unverified transcription derivative\n')
+    assert created['sources'][0]['sha256'] in text
+    assert service.read_transcript(created['id'])['text'] == receipt['result']['text']
+    subtitle = (service._job_root(created['id']) / receipt['files']['srt']['path']).read_text(encoding='utf-8')
+    assert 'Unverified transcription derivative' not in subtitle
+
+
 def test_isolated_worker_preserves_unicode_paths_and_diagnostics(tmp_path, monkeypatch):
     runtime = make_runtime(tmp_path / 'Рушій з пробілами')
     diagnostic = 'Українська діагностика — перевірено.'

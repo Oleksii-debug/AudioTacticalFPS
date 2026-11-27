@@ -13,7 +13,8 @@ import re
 
 from ..durable_state import atomic_json, encode, local_path, regular, state_lock, sync_directory
 from ..operations.models import ResourceLimits
-from .models import AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, fingerprint, settings, validated_result, encoded_outputs
+from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, fingerprint, settings,
+                     validated_result, encoded_outputs, validate_effective_settings)
 from .runtime import file_identity, stopped, _stamp
 from .verified_protocol import read_bytes, decode, relative_name, validate_packages, validate_implementation
 
@@ -123,7 +124,7 @@ def _profile(value, identity):
         if type(record) is not dict or set(record) != {'version', 'file_count', 'installed_files_sha256'}:
             raise ValueError('Invalid ASR distribution record.')
         _text(record['version'], 256)
-        _number(record['file_count'], 50000)
+        _number(record['file_count'], 65536)
         _hash(record['installed_files_sha256'])
     model = value['model_files']
     if type(model) is not dict or not 3 <= len(model) <= 4096:
@@ -264,7 +265,7 @@ def _provenance(value, source, profiles, options):
         'profile_id', 'profile_fingerprint', 'model_content_fingerprint', 'worker_sha256',
         'python_sha256', 'runtime_identity_sha256', 'worker_checkpoint_sha256', 'settings',
         'effective_settings', 'translation_target', 'diarization'}
-    extra = {'worker_export_receipt_sha256', 'worker_protocol'}
+    extra = {'worker_export_receipt_sha256', 'worker_protocol', 'text_headers'}
     if (type(value) is not dict or not fields <= set(value) or set(value) - fields - extra
             or value['derived'] is not True or value['citation_authority'] is not False
             or value['quality'] != 'unqualified' or value['diarization'] is not False
@@ -283,12 +284,12 @@ def _provenance(value, source, profiles, options):
         if value.get('worker_protocol') != 'verified-file-job/1':
             raise ValueError('Invalid verified ASR provenance protocol.')
         _hash(value.get('worker_export_receipt_sha256'))
+    if 'text_headers' in value and (value['text_headers'] != 'derived-v1' or not options['include_headers']):
+        raise ValueError('ASR text headers do not match the requested export option.')
     if value['translation_target'] != ('en' if options['task'] == 'translate' else None):
         raise ValueError('ASR translation target changed.')
-    effective = value['effective_settings']
-    if (type(effective) is not dict or len(encode(effective)) > 65536
-            or effective.get('language') != options['language'] or effective.get('task') != options['task']):
-        raise ValueError('ASR effective language/task differs from the approved job.')
+    validate_effective_settings(value['effective_settings'], options, profile['model_name'],
+                                verified=value.get('worker_protocol') == 'verified-file-job/1')
 
 
 def _path_kind(name):

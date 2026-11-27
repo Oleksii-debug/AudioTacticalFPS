@@ -71,3 +71,42 @@ def test_corrupt_checkpoint_remains_attention_without_source_body(tmp_path):
     assert 'PRIVATE' not in repr(value)
     with pytest.raises(ValueError):
         OperationFacade(app).get('assistant', '../../source')
+
+
+def test_direct_studio_get_and_control_preserve_library_scope(tmp_path):
+    app = LibraryApp(tmp_path / 'library')
+    output = tmp_path / 'output'
+    output.mkdir()
+    identity = uuid4().hex
+    called = []
+    controller = SimpleNamespace(private_root=tmp_path / 'other-library', project_id=identity,
+        _operation_output=output, cancel_render=called.append)
+    facade = OperationFacade(app, studio=controller)
+    assert facade.list() == ()
+    with pytest.raises(PermissionError, match='another library'):
+        facade.get('studio', identity)
+    with pytest.raises(PermissionError, match='another library'):
+        facade.control('studio', identity, 'cancel')
+    assert called == []
+
+
+def test_waiting_studio_attempt_does_not_relabel_previous_complete_journal(tmp_path):
+    import threading
+    from carr_library.operations.studio import studio_journal_identity
+    app = LibraryApp(tmp_path / 'library')
+    output = tmp_path / 'output'
+    output.mkdir()
+    path = output / 'render-journal.json'
+    value = {'schema_version': 1, 'run_key': 'a' * 64, 'state': 'complete',
+             'completed_steps': 5, 'scene_count': 2, 'source_sha256': 'b' * 64}
+    atomic_json(path, value)
+    lock = threading.Lock()
+    controller = SimpleNamespace(private_root=app.root, project_id=uuid4().hex,
+        _operation_output=output, _render_lock=lock,
+        _operation_previous_journal=studio_journal_identity(output))
+    with lock:
+        waiting = read_studio_operation(controller)
+        assert waiting.status == 'preparing' and waiting.completed is None
+        atomic_json(path, {**value, 'state': 'running', 'run_key': 'c' * 64, 'completed_steps': 0}, replace=True)
+        current = read_studio_operation(controller)
+        assert current.status == 'running' and current.completed == 0

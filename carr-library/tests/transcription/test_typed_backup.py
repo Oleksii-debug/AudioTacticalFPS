@@ -190,6 +190,60 @@ def test_copied_payload_hardlink_is_rejected_before_restore(prepared, tmp_path):
     assert not (tmp_path / 'restored').exists()
 
 
+@pytest.mark.parametrize('changed', ['source', 'beam_size', 'parallel_files', 'vad_filter', 'extra', 'boolean_type'])
+def test_resigned_receipt_job_and_outer_inventory_still_reject_unbound_provenance(prepared, tmp_path, changed):
+    app, _, _, _, _, job = prepared
+    backup = tmp_path / 'backup'
+    create_backup(app, backup)
+    value = manifest(backup)
+    records = value['transcription']['files']
+    receipt_entry = next(row for row in records if row['filename'].endswith('/receipt.json'))
+    receipt_path = backup / 'transcription' / receipt_entry['filename']
+    receipt = read_json(receipt_path)
+    if changed == 'source':
+        receipt['provenance']['source_sha256'] = '0' * 64
+    elif changed == 'extra':
+        receipt['provenance']['effective_settings']['unreviewed_override'] = True
+    elif changed == 'boolean_type':
+        receipt['provenance']['effective_settings']['vad_filter'] = 1
+    else:
+        old = receipt['provenance']['effective_settings'][changed]
+        receipt['provenance']['effective_settings'][changed] = not old if type(old) is bool else old + 1
+    atomic_json(receipt_path, receipt, replace=True)
+    receipt_raw = receipt_path.read_bytes()
+    job_entry = next(row for row in records if row['filename'] == 'jobs/' + job['id'] + '/job.json')
+    job_path = backup / 'transcription' / job_entry['filename']
+    state = read_json(job_path)
+    state['results'][0]['sha256'] = sha256(receipt_raw).hexdigest()
+    atomic_json(job_path, state, replace=True)
+    changed_bytes = {receipt_entry['filename']: receipt_raw, job_entry['filename']: job_path.read_bytes()}
+    def mutate(value):
+        for row in value['transcription']['files']:
+            if row['filename'] in changed_bytes:
+                raw = changed_bytes[row['filename']]
+                row.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))
+    checksum = resign(backup, mutate)
+    with pytest.raises((ValueError, RuntimeError), match='provenance|effective settings|approved|setting'):
+        restore_backup(backup, tmp_path / 'restored', checksum)
+    assert not (tmp_path / 'restored').exists()
+
+
+def test_header_enabled_transcript_roundtrips_with_exact_original_and_text_bytes(prepared, tmp_path):
+    app, service, _, profile, source, _ = prepared
+    job = service.create_job(profile['id'], [source], settings={'include_headers': True})
+    done = service.run(job['id'])
+    assert done['status'] == 'complete', done['error']
+    original = service.read_transcript(job['id'])
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = TranscriptionService(restored_root / 'state/transcription')
+    assert restored.read_transcript(job['id']) == original
+    receipt = restored._receipt(restored.get_job(job['id']), done['results'][0])
+    text = (restored._job_root(job['id']) / receipt['files']['txt']['path']).read_text(encoding='utf-8')
+    assert text.startswith('Unverified transcription derivative\n')
+
+
 def test_profile_schema_or_plan_change_is_not_silently_exported(prepared, tmp_path):
     app, service, _, profile, _, job = prepared
     path = service._job_root(job['id']) / 'job.json'

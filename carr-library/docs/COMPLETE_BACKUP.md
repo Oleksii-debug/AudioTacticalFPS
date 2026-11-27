@@ -38,10 +38,11 @@ This does not capture text still only in an open control: save it or allow its
 recovery draft to finish before starting the backup.
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
-New backups use version 5 with the existing typed sidecars, explicit LOCAL ONLY
-restoration policy and a separate typed pending-import component. Even an empty
-queue has an explicit empty component. Restore still accepts the exact supported
-version-1 through version-4 layouts and validates their database schema. Older
+New backups use version 5, or version 6 when saved local transcription or resource
+policy state is present, with typed sidecars, explicit LOCAL ONLY restoration
+and a separate typed pending-import component. Even an empty queue has an explicit
+empty component. Restore still accepts the exact supported version-1 through
+version-6 layouts and validates their database schema. Older
 backups contain only the state supported by their original format; unknown or
 mixed manifest fields are rejected.
 

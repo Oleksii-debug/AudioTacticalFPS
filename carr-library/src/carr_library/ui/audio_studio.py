@@ -114,6 +114,7 @@ class StudioController:
         self.voice, self.language = 'sapi5:default', 'en'
         self.project_id = uuid4().hex
         self._operation_output = None
+        self._operation_previous_journal = None
         self.source_reference = source_reference
         self.project_path = self.output_dir = self.result = None
         self._file_hash = self._saved_value = self._recovery_hash = None
@@ -284,6 +285,8 @@ class StudioController:
         self._saved_value = _json_text(self.to_dict())
         self._recovery_hash = None
         self.result = None
+        self._operation_output = None
+        self._operation_previous_journal = None
         return self
 
     def save_recovery(self, *, cancelled=lambda: False):
@@ -350,8 +353,9 @@ class StudioController:
             if renderer is None:
                 from ..audio.production import render_project
                 renderer = render_project
-            from ..operations.studio import render_with_resources
+            from ..operations.studio import render_with_resources, studio_journal_identity
             self._render_cancel.clear()
+            self._operation_previous_journal = studio_journal_identity(folder)
             self._operation_output = folder
             result = render_with_resources(self.private_root, plan, folder,
                 engine=self._registry(), ffmpeg=ffmpeg, renderer=renderer,
@@ -365,6 +369,17 @@ class StudioController:
                 raise ValueError('The render did not produce its expected file in the selected output folder.')
             self.result = result
             return result
+        except BaseException:
+            # A refused or cancelled new attempt must not present an unchanged
+            # previous completed journal as the outcome of that new attempt.
+            if self._operation_output is not None:
+                from ..operations.studio import studio_journal_identity
+                try:
+                    if studio_journal_identity(self._operation_output) == self._operation_previous_journal:
+                        self._operation_output = None
+                except (OSError, ValueError):
+                    self._operation_output = None
+            raise
         finally:
             self._render_lock.release()
 

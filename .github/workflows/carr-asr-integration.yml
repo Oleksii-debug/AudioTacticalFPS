@@ -52,7 +52,7 @@ jobs:
           architecture: x64
       - name: Install only protocol test dependencies
         run: |
-          python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.0 pypdf==7.1.1 python-docx==1.2.0 defusedxml==0.7.1 Pillow==13.0.0
+          python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.4 pypdf==7.1.1 python-docx==1.2.0 defusedxml==0.7.1 Pillow==13.0.0
       - name: Require actual subprocess and strict file-contract tests
         run: python scripts/ci_check.py tests/transcription/test_verified_protocol.py tests/transcription/test_verified_runtime.py tests/transcription/test_verified_runtime_dependencies.py tests/transcription/test_verified_runtime_launch.py tests/transcription/test_verified_runtime_recovery.py tests/transcription/test_verified_runtime_stdlib.py tests/transcription/test_verified_runtime_handoff_1.py tests/transcription/test_verified_runtime_handoff_2.py tests/transcription/test_verified_runtime_handoff_3.py tests/transcription/test_service.py tests/transcription/test_runtime_admission.py tests/operations/test_resources.py tests/operations/test_worker_start_cleanup.py tests/ui/test_transcription_dialog.py tests/ui/test_operations_policy.py tests/e2e/test_transcription_cli.py tests/ui/test_audio_studio.py tests/e2e/test_audio_cli.py tests/operations/test_root_production_admission.py tests/operations/test_root_facade.py tests/transcription/test_typed_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_library_backup.py tests/assistant/test_complete_recovery.py
       - name: Require POSIX fork inheritance protection

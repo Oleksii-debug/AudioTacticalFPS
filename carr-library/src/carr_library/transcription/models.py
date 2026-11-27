@@ -66,6 +66,22 @@ def worker_settings(value, model_name):
             'output_srt': False, 'output_vtt': False, 'include_headers': False}
 
 
+def validate_effective_settings(value, requested, model_name, *, verified=False):
+    """Bind every approved worker option, allowing only reported int8 variants."""
+    expected = worker_settings(requested, model_name)
+    if type(value) is not dict or set(value) != set(expected):
+        raise ValueError('The worker effective settings are incomplete or unsupported.')
+    if any(type(value[name]) is not type(expected[name]) for name in expected):
+        raise ValueError('The worker changed the type of an approved setting.')
+    if verified and expected['compute_type'] == 'int8':
+        if value['compute_type'] not in ('int8', 'int8_float16', 'int8_float32'):
+            raise ValueError('The worker changed the approved compute type.')
+        expected['compute_type'] = value['compute_type']
+    if value != expected:
+        raise ValueError('The worker silently changed approved recognition or output settings.')
+    return value
+
+
 def _seconds(value):
     if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 30 * 86400:
         raise ValueError('The transcription worker returned an invalid timestamp.')
@@ -132,8 +148,17 @@ def encoded_outputs(result, provenance):
     for index, segment in enumerate((s for s in result['segments'] if s['text']), 1):
         srt.extend((str(index), f"{timestamp(segment['start'])} --> {timestamp(segment['end'])}", segment['text'], ''))
         vtt.extend((f"{timestamp(segment['start'], vtt=True)} --> {timestamp(segment['end'], vtt=True)}", segment['text'], ''))
+    text = result['text'] + ('\n' if result['text'] else '')
+    # This explicit marker preserves the exact historical plain-text receipt
+    # format while making the existing header option effective for new results.
+    if provenance.get('text_headers') == 'derived-v1':
+        text = ('Unverified transcription derivative\n'
+                'Detected input language: ' + result['language'] + '\n'
+                'Task: ' + provenance['settings']['task'] + '\n'
+                'Source SHA256: ' + provenance['source_sha256'] + '\n'
+                'Runtime profile SHA256: ' + provenance['profile_fingerprint'] + '\n\n' + text)
     return {
-        'txt': (result['text'] + ('\n' if result['text'] else '')).encode('utf-8'),
+        'txt': text.encode('utf-8'),
         'srt': ('\n'.join(srt) + ('\n' if srt else '')).encode('utf-8'),
         'vtt': ('\n'.join(vtt) + '\n').encode('utf-8'),
         'json': (json.dumps({'schema': 'resonance-transcript/1', **result, 'provenance': provenance},

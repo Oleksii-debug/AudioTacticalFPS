@@ -2,7 +2,17 @@
 from pathlib import Path
 import re
 
-from ..durable_state import local_path, read_json, regular
+from ..durable_state import digest_file, local_path, read_json, regular
+
+
+def studio_journal_identity(root):
+    root = local_path(root, exists=True)
+    path = local_path(root / 'render-journal.json', root=root)
+    if not path.exists():
+        return None
+    if regular(path).st_size > 65536:
+        raise ValueError('Audio Studio journal exceeds its bounded view budget.')
+    return digest_file(path)
 
 
 def read_studio_operation(controller):
@@ -15,7 +25,10 @@ def read_studio_operation(controller):
     if not isinstance(identity, str) or not re.fullmatch('[0-9a-f]{32}', identity):
         raise ValueError('Invalid open Audio Studio identity.')
     path = local_path(root / 'render-journal.json', root=root)
-    if not path.exists():
+    render_lock = getattr(controller, '_render_lock', None)
+    previous = getattr(controller, '_operation_previous_journal', None)
+    if (not path.exists() or (render_lock is not None and render_lock.locked()
+            and studio_journal_identity(root) == previous)):
         return OperationView('studio', identity, None, 'preparing', None, None,
             'Explicitly opened Audio Studio; waiting for its first render checkpoint',
             '', (), 'Audio Studio / render-journal.json')

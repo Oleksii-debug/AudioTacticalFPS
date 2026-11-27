@@ -78,7 +78,10 @@ class OperationFacade:
     def _read_view(self, kind, identity):
         if kind == 'studio':
             from .studio import read_studio_operation
-            value = read_studio_operation(self.services['studio'])
+            studio = self.services.get('studio')
+            if studio is None or Path(studio.private_root).absolute() != self.root:
+                raise PermissionError('The open Audio Studio belongs to another library.')
+            value = read_studio_operation(studio)
             if value is None or value.id != identity:
                 raise ValueError('Choose the explicitly opened Audio Studio operation.')
             return replace(value, controls=self._controls(kind, value.status))
