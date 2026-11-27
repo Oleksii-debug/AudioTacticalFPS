@@ -450,3 +450,57 @@ def test_record_limit_and_empty_visible_content_rejected(monkeypatch):
         extract_xml_document(fb2('<section><p>A</p><p>B</p><p>C</p></section>'), '.fb2')
     with pytest.raises(ValueError, match='no supported visible text'):
         extract_xml_document(fb2('<section><p> </p></section>'), '.fb2')
+
+
+@pytest.mark.parametrize('suffix', ['.odt', '.ods', '.odp'])
+@pytest.mark.parametrize('settings', [
+    '',
+    ' form:apply-design-mode="false" form:automatic-focus="false"',
+    ' form:apply-design-mode="true" form:automatic-focus="true"',
+    ' form:apply-design-mode="0" form:automatic-focus="1"',
+])
+def test_empty_office_forms_preserves_static_text_and_source_identity(suffix, settings):
+    # Regression for the actual LibreOffice empty office:forms census in
+    # Windows diagnostic run 46029037728, not an acceptance of form controls.
+    forms = (f'<office:forms xmlns:form="{ODF}form:1.0"{settings}>'
+             ' \n\t</office:forms>')
+    body = {
+        '.odt': '<text:p>Книга remains intact.</text:p>',
+        '.ods': '<table:table table:name="Sheet"><table:table-row>'
+                '<table:table-cell><text:p>Книга remains intact.</text:p>'
+                '</table:table-cell></table:table-row></table:table>',
+        '.odp': '<draw:page draw:name="One"><draw:frame><draw:text-box>'
+                '<text:p>Книга remains intact.</text:p>'
+                '</draw:text-box></draw:frame></draw:page>',
+    }[suffix]
+    source = odf(suffix, forms + body)
+    result = extract_xml_document(source, suffix)
+    assert texts(result) == ['Книга remains intact.']
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
+
+
+@pytest.mark.parametrize('suffix', ['.odt', '.ods', '.odp'])
+@pytest.mark.parametrize('forms', [
+    '<office:forms>authored form text</office:forms>',
+    '<office:forms><form:form/></office:forms>',
+    '<office:forms><text:p>authored form content</text:p></office:forms>',
+    '<office:forms form:unknown="false"/>',
+    '<office:forms form:apply-design-mode="unexpected"/>',
+    '<office:forms form:automatic-focus=""/>' ,
+    '<office:forms office:automatic-focus="false"/>',
+])
+def test_nonempty_or_unknown_office_forms_are_never_silently_omitted(suffix, forms):
+    forms = forms.replace('<office:forms',
+                          f'<office:forms xmlns:form="{ODF}form:1.0"', 1)
+    with pytest.raises(ValueError, match='document forms'):
+        extract_xml_document(odf(suffix, forms), suffix)
+
+
+def test_empty_forms_cannot_hide_following_raw_text_or_active_scripts():
+    for body in (
+        '<office:forms/>authored text<text:p>Visible.</text:p>',
+        '<office:forms/><office:scripts><text:p>active</text:p></office:scripts>',
+        '<office:forms/><text:script>active</text:script>',
+    ):
+        with pytest.raises(ValueError):
+            extract_xml_document(odf('.odt', body), '.odt')

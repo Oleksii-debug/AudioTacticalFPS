@@ -12,18 +12,22 @@ from carr_library.studio.project import Cue, Project, Scene
 
 
 @pytest.fixture
-def dialog():
+def dialog(tmp_path):
     import carr_library
     source = Path(carr_library.__file__).parent / 'ui/studio_clips.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node, (ast.Assign, ast.ClassDef))]
     wx = SimpleNamespace(Dialog=object, ID_CANCEL=2, CallAfter=lambda callback: callback())
-    env = dict(wx=wx, Path=Path, __name__='carr_library.ui._clips_probe', __package__='carr_library.ui')
+    env = dict(wx=wx, Path=Path, threading=threading, __name__='carr_library.ui._clips_probe', __package__='carr_library.ui')
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), env)
     value = object.__new__(env['ClipDialog'])
     value.closed = value.closing = value.pending = False
     value._native_id, value._destroy_requested = 431, False
     value.cleanup_error = ''
+    value.library_root = tmp_path
+    value.navigation = None
+    value._editor_closed = False
+    value._editor_close_lock = threading.RLock()
     value.player = None
     value.playback_generation = 0
     value.previews = []
@@ -32,7 +36,8 @@ def dialog():
     value.Hide = Mock()
     value.IsModal = Mock(return_value=False)
     value._accept = Mock()
-    value.frame = SimpleNamespace(working=False, cancel_event=threading.Event())
+    value.frame = SimpleNamespace(working=False, cancel_event=threading.Event(),
+                                  library=SimpleNamespace(root=tmp_path))
     calls = []
     def run_job(title, operation, done, failed):
         value.frame.working = True
@@ -199,6 +204,7 @@ def test_nested_clip_modal_owner_destruction_never_reads_deleted_peer_or_submits
     dialog._scene, dialog._clip = lambda: scene, lambda: cue
     dialog._settings = lambda: {'start': 0}
     dialog.frame.library = SimpleNamespace(root=tmp_path / 'library')
+    dialog.library_root = dialog.frame.library.root
     dialog.editor = SimpleNamespace(create=Mock(), add=Mock(), move=Mock(),
                                    service=SimpleNamespace(close=Mock(return_value=True)))
     retained = SimpleNamespace(list=Mock(return_value=[{'id': 'recording-1', 'title': 'Saved recording'}]),

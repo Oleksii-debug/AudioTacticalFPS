@@ -218,6 +218,8 @@ def _run_native(options):
     stage, key_pending, finished = 0, False, False
     frame = reader = overlay = service = None
     failure_handler = None
+    playback_errors = []
+    last_playback = [None, 0.0]
 
     def check(name, condition):
         if not condition:
@@ -246,6 +248,23 @@ def _run_native(options):
         errors.append(detail)
         print('FAIL: native recorded EPUB at stage ' + str(stage) + '\n' + detail,
               file=sys.stderr, flush=True)
+
+    def playback_snapshot():
+        if overlay is None or overlay.closed:
+            return {'overlay': 'absent' if overlay is None else 'closed'}
+        transport = overlay.transport
+        return {
+            'stage': stage, 'busy': overlay.busy,
+            'cancelled': overlay.cancelled.is_set(),
+            'status': overlay.status.GetValue()[:2000],
+            'player': None if overlay.player is None else overlay.player.state,
+            'ticket': None if transport is None else transport.ticket,
+            'active': None if transport is None else transport.active,
+            'interrupted': None if transport is None else transport.interrupted,
+            'prepared': transport is not None and transport.prepared is not None,
+            'pending': overlay._pending is not None,
+            'reported_errors': list(playback_errors),
+        }
 
     def current_owners():
         child = getattr(reader, '_audio_dialog', None) if reader is not None else None
@@ -374,8 +393,18 @@ def _run_native(options):
                 if errors or finished:
                     return
                 if monotonic() >= deadline:
-                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
+                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline: '
+                                       + json.dumps(playback_snapshot(), ensure_ascii=False))
                 try:
+                    if 2 <= stage <= 9:
+                        observed = playback_snapshot()
+                        now = monotonic()
+                        if observed != last_playback[0] or now - last_playback[1] >= 5:
+                            print('OBSERVED: actual playback ' + json.dumps(observed, ensure_ascii=False), flush=True)
+                            last_playback[:] = [observed, now]
+                        if playback_errors and stage < 9:
+                            raise AssertionError('The real recorded-audio owner reported: '
+                                                 + json.dumps(observed, ensure_ascii=False))
                     if key_pending:
                         return
                     if stage == 0 and reader.controller.current is not None and not reader.busy:
@@ -402,6 +431,13 @@ def _run_native(options):
                               in frame.progress_panel.media.players
                               and overlay.progress is frame.operation_progress
                               and frame.operation_progress.panel is frame.progress_panel)
+                        actual_error = overlay._error
+                        def observed_error(error):
+                            # Observe the existing error path; its real cleanup and
+                            # user-visible report still run without substituted results.
+                            playback_errors.append(type(error).__name__ + ': ' + str(error))
+                            actual_error(error)
+                        overlay._error = observed_error
                         stage = 2
                         press(named(overlay.dialog, 'Play from selected segment'))
                     elif stage == 2 and overlay.player.state == 'playing':

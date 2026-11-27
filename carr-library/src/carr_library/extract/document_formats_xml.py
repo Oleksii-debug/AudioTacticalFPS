@@ -30,6 +30,7 @@ PRESENTATION = '{urn:oasis:names:tc:opendocument:xmlns:presentation:1.0}'
 MANIFEST = '{urn:oasis:names:tc:opendocument:xmlns:manifest:1.0}'
 STYLE = '{urn:oasis:names:tc:opendocument:xmlns:style:1.0}'
 FO = '{urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0}'
+FORM = '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}'
 REL = '{http://schemas.openxmlformats.org/package/2006/relationships}'
 R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
 CT = '{http://schemas.openxmlformats.org/package/2006/content-types}'
@@ -258,6 +259,14 @@ def _check_odf_visibility(root, budget):
         'script', 'execute-macro')}
     for element in root.iter():
         budget.check()
+        if element.tag == OFFICE + 'forms':
+            # LibreOffice writes this empty settings container even when the
+            # document has no form controls. Never omit authored form content.
+            allowed = {FORM + 'apply-design-mode', FORM + 'automatic-focus'}
+            if (len(element) or (element.text and element.text.strip())
+                    or any(key not in allowed or value not in ('true', 'false', '1', '0')
+                           for key, value in element.attrib.items())):
+                raise ValueError('Active or unsupported document forms require review.')
         if element.tag in blocked or element.tag == OFFICE + 'scripts' and len(element):
             raise ValueError('Conditional, changed or active document text requires review.')
         if (element.get(TEXT + 'display') in ('none', 'false')
@@ -301,6 +310,10 @@ def _odf_text(element, budget):
 
 def _odf_blocks(element, budget, locator, path=()):
     budget.check()
+    if element.tag == OFFICE + 'forms':
+        # The complete tree already passed _check_odf_visibility, including
+        # the empty-content and bounded settings checks for this container.
+        return
     if element.tag in (TEXT + 'p', TEXT + 'h'):
         budget.add(_odf_text(element, budget), {**locator, 'path': list(path)})
         return

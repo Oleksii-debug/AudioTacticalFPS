@@ -61,29 +61,38 @@ class StudioController:
                                    mode=previous_project.mode if previous_project else 'faithful',
                                    project_id=previous_project.id if previous_project else None)
         if previous_project and text != previous_project.original_script:
-            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues}
+            attached = {scene.id: scene for scene in previous_project.scenes
+                        if scene.cues or scene.effects or scene.markers}
             current = {scene.id: scene for scene in project.scenes}
             if any(identity not in current or current[identity].title != old.title
                    for identity, old in attached.items()):
-                raise ValueError('A scene with attached audio changed its identity. '
-                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
-            scenes = tuple(replace(scene, cues=attached[scene.id].cues)
+                raise ValueError('A scene with attached audio, effects or markers changed its identity. '
+                                 'Review those items in the scene audio editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues, effects=attached[scene.id].effects,
+                                   markers=attached[scene.id].markers,
+                                   minimum_duration=max(scene.minimum_duration, attached[scene.id].minimum_duration))
                            if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
+            present_roles = {role.name.casefold() for role in project.roles}
+            if any(role.effects and role.name.casefold() not in present_roles for role in previous_project.roles):
+                raise ValueError('A processed speaking role would be removed. Review its effects before changing roles.')
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
                                   pan=previous[role.name.casefold()].pan,
                                   gain_db=previous[role.name.casefold()].gain_db,
                                   rate=previous[role.name.casefold()].rate,
-                                  volume=previous[role.name.casefold()].volume)
+                                  volume=previous[role.name.casefold()].volume,
+                                  effects=previous[role.name.casefold()].effects)
                           if role.name.casefold() in previous else role for role in project.roles)
             project = replace(project, roles=roles, scenes=scenes,
                               sample_rate=previous_project.sample_rate,
-                              schema=previous_project.schema, revision=previous_project.revision)
+                              schema=previous_project.schema, revision=previous_project.revision,
+                              effects=previous_project.effects)
         if previous_project and project.to_dict() != previous_project.to_dict():
             project = replace(project, revision=previous_project.revision + 1)
         self.service.projects.save(project,
-            expected_revision=previous_project.revision if previous_project else None)
+            expected_revision=previous_project.revision if previous_project else None,
+            expected_fingerprint=previous_project.fingerprint if previous_project else None)
         self.project = project
         return project
 

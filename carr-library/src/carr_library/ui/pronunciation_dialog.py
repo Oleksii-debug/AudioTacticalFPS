@@ -11,6 +11,7 @@ from ..speech._io import check_cancelled, text_value
 from ..research.export_file import (ExportReceipt, capture_export_destination,
                                     export_completion, write_binary_export)
 from ..speech.reading import ReadingDocument, PronunciationRule, export_dictionary, import_dictionary
+from ..speech.pronunciation_formats import ENCODINGS, parse_dictionary
 
 MAX_DICTIONARY_BYTES = 8_000_000
 
@@ -82,7 +83,7 @@ def _stamp(value):
     return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
 
 
-def read_dictionary(path, *, cancelled=lambda: False):
+def read_dictionary(path, *, encoding='unicode', report=None, cancelled=lambda: False):
     """Capture bounded ordinary bytes before calling the existing parser.
 
     The shared descriptor opener refuses a substituted FIFO or link before a
@@ -122,11 +123,21 @@ def read_dictionary(path, *, cancelled=lambda: False):
             or (selected_parent.st_dev, selected_parent.st_ino) != parent_identity):
         raise ValueError('The dictionary changed while reading it.')
     raw = b''.join(chunks)
-    with TemporaryDirectory(prefix='resonance-pronunciation-import-') as temporary:
-        selected = Path(temporary) / 'dictionary.json'
-        selected.write_bytes(raw)
-        rules = import_dictionary(selected)
+    kind = path.suffix.lower().lstrip('.')
+    if kind not in ('dic', 'rex', 'bxd'):
+        # Preserve the original JSON import API for a caller-selected filename.
+        # Only the three explicitly recognized foreign suffixes select conversion.
+        with TemporaryDirectory(prefix='resonance-pronunciation-import-') as temporary:
+            selected = Path(temporary) / 'dictionary.json'
+            selected.write_bytes(raw)
+            rules = import_dictionary(selected)
+        notice = 'Canonical pronunciation JSON; existing scope and order retained.'
+    else:
+        imported = parse_dictionary(raw, format=kind, encoding=encoding, cancelled=cancelled)
+        rules, notice = imported.rules, imported.notice
     check_cancelled(cancelled)
+    if report is not None:
+        report(notice)
     return rules, sha256(raw).hexdigest()
 
 
@@ -221,6 +232,11 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
             self.ignore_case = field('Ignore letter &case', wx.CheckBox)
             self.rule_language = field('Rule language; empty applies to any language')
             self.rule_voice = field('Rule voice ID; empty applies to any voice')
+            self.import_encoding = field('Dictionary import encoding', wx.Choice, choices=[
+                'Unicode (UTF-8 or BOM-marked UTF-16)',
+                'Windows-1251 (explicit legacy text)',
+                'Windows-1252 (explicit legacy text)'])
+            self.import_encoding.SetSelection(0)
             self.scope = field('Text &scope for preview', wx.Choice,
                                choices=['Whole reading copy', 'Selected text only'])
             self.scope.SetSelection(int(initial.selection[0] != initial.selection[1]))
@@ -276,7 +292,7 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
             if not self.alive:
                 return
             for widget in (self.list,self.pattern,self.replacement,self.regex,self.ignore_case,self.rule_language,
-                           self.rule_voice,self.scope,self.language):
+                           self.rule_voice,self.import_encoding,self.scope,self.language):
                 widget.Enable(not self.busy)
             for key, button in self.buttons.items():
                 button.Enable(not self.busy if key not in ('cancel','close') else key == 'close' or self.busy)
@@ -448,7 +464,8 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
             if self.busy:
                 return
             picker = wx.FileDialog(self, 'Import pronunciation rules for review',
-                                   wildcard='Pronunciation dictionary (*.json)|*.json', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+                                   wildcard='Pronunciation rules (*.json;*.dic;*.rex;*.bxd)|*.json;*.dic;*.rex;*.bxd',
+                                   style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
                 answer = picker.ShowModal()
                 if not self.alive or not self or not picker or answer != wx.ID_OK:
@@ -459,10 +476,17 @@ def create_pronunciation_dialog(parent, *, library_root, capture, apply, undo, g
                     picker.Destroy()
             if not self.alive or not self:
                 return
+            selected = self.import_encoding.GetSelection()
+            if type(selected) is not int or not 0 <= selected < len(ENCODINGS):
+                self.report('Choose the dictionary text encoding before importing.')
+                return
+            notices = []
             def done(result):
                 self.rules = result[0]; self.refresh()
-                self.report(f'Imported {len(self.rules)} rules for review. Save explicitly to retain them; preview before applying.')
-            self.begin(lambda: read_dictionary(source, cancelled=self.stopping), done)
+                self.report(f'Imported {len(self.rules)} rules for review. Save explicitly to retain them; preview before applying. '
+                            + ' '.join(notices))
+            self.begin(lambda: read_dictionary(source, encoding=ENCODINGS[selected],
+                                                report=notices.append, cancelled=self.stopping), done)
 
         def on_export(self, event=None):
             if not self.alive:

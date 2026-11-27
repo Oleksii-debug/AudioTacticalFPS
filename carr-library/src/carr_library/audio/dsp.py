@@ -515,8 +515,14 @@ class AudioRuntime:
         labels = {'voice': [], 'music': [], 'other': []}
         for index, (track, path, selected, length, chain) in enumerate(prepared):
             args += self._input_args(path)
-            filters = [f'atrim=start={_n(track.trim_start)}:duration={_n(selected)}', 'asetpts=PTS-STARTPTS',
-                       f'aresample={sample_rate}',
+            # Resample the original stream before taking an output-sample
+            # interval. Trimming first resets the resampler at every cut and
+            # changes boundary samples when adjacent cuts use a different rate.
+            first_sample = round(track.trim_start * sample_rate)
+            selected_samples = round(selected * sample_rate)
+            filters = [f'aresample={sample_rate}',
+                       f'atrim=start_sample={first_sample}:end_sample={first_sample + selected_samples}',
+                       'asetpts=PTS-STARTPTS',
                        'aformat=sample_fmts=fltp:channel_layouts=' + ('stereo' if track.routing == 'stereo' else 'mono'),
                        *chain, f'aresample={sample_rate}', f'volume={_n(track.gain_db)}dB']
             if track.routing == 'stereo':

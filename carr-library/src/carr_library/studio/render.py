@@ -635,7 +635,7 @@ class ProductionService:
 
             roles = {role.id: role for role in project.roles}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
-            clip_timeline, clip_stems = [], {}
+            clip_timeline, clip_stems, marker_timeline = [], {}, []
             offset = 0.0
             try:
                 check()
@@ -700,10 +700,13 @@ class ProductionService:
                             speech, info = node('speech', [line.text, voice_identity, asdict(settings)],
                                 speak, cached_check=verify_voice)
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
-                            clip, clip_info = node('voice placement', [digest_file(speech), duration,
-                                                   role.pan, role.gain_db, project.sample_rate],
+                            placement_identity = [digest_file(speech), duration,
+                                                  role.pan, role.gain_db, project.sample_rate]
+                            if role.effects:
+                                placement_identity.append([effect.to_dict() for effect in role.effects])
+                            clip, clip_info = node('voice placement', placement_identity,
                                 lambda target, speech=speech, role=role, duration=duration:
-                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan),), target,
+                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan, effects=role.effects),), target,
                                             duration=duration, sample_rate=project.sample_rate, cancelled=stopping))
                             scene_lines.append({'scene': scene.id, 'line': line.id, 'role': role.id,
                                 'text': line.text, 'start': offset + cursor, 'end': offset + cursor + info.duration,
@@ -731,7 +734,8 @@ class ProductionService:
                                   if project.schema >= 2 else cue.start)
                         required_duration = max(required_duration, placed + selected)
                         track = Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
-                                      cue.trim_start, cue.duration, cue.fade_in, cue.fade_out)
+                                      cue.trim_start, cue.duration, cue.fade_in, cue.fade_out,
+                                      effects=() if cue.effects_bypassed else cue.effects, routing=cue.routing)
                         cue_tracks.append(track)
                         if project.schema >= 2:
                             clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role, 'title': cue.title,
@@ -776,10 +780,15 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     tracks.extend(cue_tracks)
-                    final_scene, final_info = node('scene mix',
-                        {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
+                    scene_identity = {'tracks': [track_identity(t) for t in tracks],
+                                      'sample_rate': project.sample_rate,
+                                      'selection_grid': 'resample-before-cut-v1'}
+                    if scene.effects:
+                        scene_identity['effects'] = [effect.to_dict() for effect in scene.effects]
+                    final_scene, final_info = node('scene mix', scene_identity,
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
-                                                   duration=voice_info.duration, cancelled=stopping))
+                                                   duration=voice_info.duration, effects=scene.effects,
+                                                   cancelled=stopping))
                     scene_results.append((scene, final_scene, final_info))
                     if state['stems']:
                         for role_id in roles:
@@ -804,12 +813,25 @@ class ProductionService:
                                         sample_rate=project.sample_rate, cancelled=stopping))
                                 clip_stems.setdefault(role, {})[scene.id] = stem
                     timeline.extend(scene_lines)
+                    if project.schema >= 3:
+                        marker_timeline.extend({'scene': scene.id, 'id': item.id, 'label': item.label,
+                            'position': round(item.position * project.sample_rate) / project.sample_rate,
+                            'start': offset + round(item.position * project.sample_rate) / project.sample_rate}
+                            for item in scene.markers)
                     chapter_data.append({'id': scene.id, 'title': scene.title, 'start': offset,
                                          'end': offset + final_info.duration})
                     offset += final_info.duration
                 master, master_info = node('master assembly', [digest_file(row[1]) for row in scene_results],
                     lambda target: runtime.concatenate([row[1] for row in scene_results], target,
                         sample_rate=project.sample_rate, cancelled=stopping))
+                if any(effect.enabled for effect in project.effects):
+                    unprocessed_master = master
+                    master, master_info = node('master effects',
+                        {'source': digest_file(unprocessed_master), 'sample_rate': project.sample_rate,
+                         'effects': [effect.to_dict() for effect in project.effects]},
+                        lambda target: runtime.mix((Track(unprocessed_master, routing='stereo'),),
+                            target, duration=master_info.duration, sample_rate=project.sample_rate,
+                            effects=project.effects, cancelled=stopping))
                 output = local_path(state['destination'])
                 marker = output / 'production-owner.json'
                 if output.exists():
@@ -865,6 +887,16 @@ class ProductionService:
 
                 publish(master, 'master.wav')
                 for index, (scene, path, info) in enumerate(scene_results, 1):
+                    if any(effect.enabled for effect in project.effects):
+                        chapter = chapter_data[index - 1]
+                        path, _ = node('mastered chapter',
+                            {'source': digest_file(master), 'start': chapter['start'],
+                             'end': chapter['end'], 'sample_rate': project.sample_rate,
+                             'selection_grid': 'resample-before-cut-v1'},
+                            lambda target, chapter=chapter: runtime.mix((Track(master, routing='stereo',
+                                trim_start=chapter['start'], duration=chapter['end'] - chapter['start']),),
+                                target, duration=chapter['end'] - chapter['start'],
+                                sample_rate=project.sample_rate, cancelled=stopping))
                     publish(path, f'chapters/{index:04d}-{_output_name(scene.title)}.wav')
                 if state['format'] != 'wav':
                     # Codec selection is delegated to the verified local runtime inventory.
@@ -935,6 +967,19 @@ class ProductionService:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
+                if project.schema >= 3:
+                    metadata['effects'] = {
+                        'master': [effect.to_dict() for effect in project.effects],
+                        'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},
+                        'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes},
+                        'clips': {scene.id: {cue.id: [effect.to_dict() for effect in cue.effects]
+                                  for cue in scene.cues} for scene in project.scenes},
+                        'stems': 'Track effects are included. Scene and master effects apply only to their mixed buses.'}
+                    metadata['effects']['clip_bypass'] = {
+                        scene.id: {cue.id: cue.effects_bypassed for cue in scene.cues}
+                        for scene in project.scenes}
+                    metadata['markers'] = marker_timeline
+                    metadata['marker_notice'] = 'Authored scene annotations; not transcript alignment or source citations.'
                 from ..audio.audiobook import line_lrc
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
@@ -1051,7 +1096,8 @@ def json_safe(value):
 
 
 def track_identity(track):
-    return {'sha256': digest_file(track.path), 'start': track.start, 'gain_db': track.gain_db,
+    return {'selection_grid': 'resample-before-cut-v1',
+            'sha256': digest_file(track.path), 'start': track.start, 'gain_db': track.gain_db,
             'pan': track.pan, 'role': track.role, 'routing': track.routing,
             'trim_start': track.trim_start, 'duration': track.duration,
             'fade_in': track.fade_in, 'fade_out': track.fade_out,
