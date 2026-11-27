@@ -26,6 +26,8 @@ MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
 MAX_LOG = 1_000_000
 MAX_REVIEWS = 1_000_000
+MAX_RECOVERY_SECONDS = 5.0
+MAX_RECOVERY_TEXT = 64 * 1024 * 1024
 FIELDS = {'title', 'authors', 'language', 'edition', 'volume', 'collections', 'work_id', 'edition_id'}
 
 
@@ -90,6 +92,194 @@ def record_progress(root, request_id, **changes):
     record = load_request(root, request_id)
     record.update(changes)
     _store(root, request_id, record)
+
+
+def _request_digest(record):
+    """Bind a worker attempt to its immutable request, excluding progress."""
+    keys = ('version', 'request_id', 'data_dir', 'workspace', 'source', 'metadata',
+            'config', 'expected_manifest')
+    return sha256(canonical({key: record.get(key) for key in keys}).encode('utf-8')).hexdigest()
+
+
+def _pages_digest(rows):
+    digest = sha256()
+    for row in rows:
+        digest.update(canonical(row).encode('utf-8'))
+        digest.update(b'\n')
+    return digest.hexdigest()
+
+
+def record_publication(root, request_id, workspace, registration, revision, config, pages):
+    """Save an intent before a fresh commit, never a completion certificate.
+
+    The existing request result slot carries the current attempt token and the
+    exact candidate identities. It remains ``running`` until the parent verifies
+    a reply or an actual sealed publication. Replays do not call this publisher.
+    """
+    if request_id is None:
+        return
+    record = load_request(root, request_id)
+    attempt = record.get('result')
+    if not isinstance(attempt, dict) or attempt.get('state') != 'running':
+        return  # Direct in-process imports have no supervised attempt.
+    metadata = dict(title=registration.title, authors=list(registration.authors),
+        language=registration.language, edition=registration.edition, volume=registration.volume,
+        collections=list(registration.collections), work_id=registration.work,
+        edition_id=registration.edition_id)
+    if (attempt.get('request_sha256') != _request_digest(record)
+            or record.get('workspace') != workspace or record.get('metadata') != metadata
+            or record.get('asset_sha256') != registration.manifest['sha256']):
+        raise ValueError('Import publication no longer matches its request.')
+    receipt = dict(state='publishing', attempt=attempt['attempt'], request_id=request_id,
+        request_sha256=attempt['request_sha256'], workspace=workspace,
+        edition=registration.edition_id, id=revision, asset=registration.manifest['sha256'],
+        config_sha256=sha256(config.encode('utf-8')).hexdigest(), manifest=registration.manifest,
+        completed=len(pages), pages_sha256=_pages_digest(
+            (index, page.physical, page.printed, int(page.verified),
+             sha256(page.raw.encode('utf-8')).hexdigest()) for index, page in enumerate(pages, 1)))
+    record_progress(root, request_id, result=receipt)
+
+
+def _recover_publication(root, request_id, attempt, request_digest):
+    """Bounded read-only validation after the stopped child has been reaped.
+
+    A request/journal flag alone grants no success. Validate its fresh candidate
+    against the authorized catalog snapshot and retained original, using the
+    existing cooperative writer lock. No parser is run in the supervisor and no
+    catalog membership, active revision or checkpoint is created or repaired.
+    """
+    record = load_request(root, request_id)
+    receipt = record.get('result')
+    if not isinstance(receipt, dict) or receipt.get('state') != 'publishing':
+        return None
+    if (receipt.get('attempt') != attempt or receipt.get('request_id') != request_id
+            or receipt.get('request_sha256') != request_digest
+            or _request_digest(record) != request_digest
+            or receipt.get('workspace') != record.get('workspace')
+            or receipt.get('edition') != record['metadata']['edition_id']
+            or receipt.get('asset') != record.get('asset_sha256')
+            or type(receipt.get('completed')) is not int or not 1 <= receipt['completed'] <= 10000
+            or any(not isinstance(receipt.get(key), str) or not re.fullmatch('[0-9a-f]{64}', receipt[key])
+                   for key in ('id', 'asset', 'config_sha256', 'pages_sha256'))
+            or (record.get('job') is not None and record['job'] != receipt['id'])):
+        raise ValueError('Stopped import publication identity could not be verified.')
+
+    from ..application import LibraryApp
+    from ..catalog.membership import Catalog
+    from ..catalog.read_views import get_edition
+    from ..durable_state import regular
+    from ..storage.revisions import _schema_signature, _expected_signature
+    from .retained_assets import RetainedAssets, SUFFIXES, MAX_BYTES
+    from .writer_guard import exclusive_writer, _regular_if_present
+
+    deadline = time.monotonic() + MAX_RECOVERY_SECONDS
+
+    def check():
+        if time.monotonic() >= deadline:
+            raise TimeoutError('Stopped import verification reached its time limit.')
+
+    with exclusive_writer(root) as base:
+        database = base / 'library.sqlite'
+        for suffix in ('', '-wal', '-shm', '-journal'):
+            _regular_if_present(Path(str(database) + suffix))
+        with closing(sqlite3.connect(database.as_uri() + '?mode=ro', uri=True,
+                                     isolation_level=None, timeout=0)) as db:
+            db.row_factory = sqlite3.Row
+            db.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+            db.execute('PRAGMA foreign_keys=ON')
+            db.execute('PRAGMA query_only=ON')
+            db.execute('PRAGMA trusted_schema=OFF')
+            db.execute('BEGIN')
+            check()
+            if db.execute('PRAGMA user_version').fetchone()[0] != 4 or _schema_signature(db) != _expected_signature(4):
+                raise ValueError('Stopped import library schema changed.')
+            workspace, edition, revision = receipt['workspace'], receipt['edition'], receipt['id']
+            LibraryApp._authorize(db, workspace)
+            published = db.execute('SELECT r.workspace,r.edition,r.asset,a.revision,'
+                'length(CAST(r.config AS BLOB)) FROM revision r JOIN sealed s ON s.revision=r.id '
+                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
+                (revision,)).fetchone()
+            if published is None:
+                return None  # The candidate transaction rolled back before commit.
+            if (tuple(published[:4]) != (workspace, edition, receipt['asset'], revision)
+                    or not 0 < published[4] <= 4 * 1024 * 1024):
+                raise ValueError('Stopped import has no matching active source revision.')
+            config = db.execute('SELECT config FROM revision WHERE id=?', (revision,)).fetchone()[0]
+            if (sha256(config.encode('utf-8')).hexdigest() != receipt['config_sha256']
+                    or sha256(canonical([workspace, edition, receipt['asset'], config]).encode('utf-8')).hexdigest() != revision):
+                raise ValueError('Stopped import extraction identity changed.')
+            metadata = record['metadata']
+            view = get_edition(Catalog(db, workspace), edition)
+            if (view.work_id, view.asset, view.title, view.authors, view.language, view.edition, view.volume) != (
+                    metadata['work_id'], receipt['asset'], metadata['title'], tuple(metadata['authors']),
+                    metadata['language'], metadata['edition'], metadata['volume']):
+                raise ValueError('Stopped import catalog metadata changed.')
+            frozen = db.execute('SELECT author,title,volume,edition_label FROM source_metadata '
+                'WHERE workspace=? AND edition=? AND revision=?', (workspace, edition, revision)).fetchone()
+            if frozen is None or tuple(frozen) != ('; '.join(metadata['authors']) or None,
+                    metadata['title'] or 'Unknown title', metadata['volume'], metadata['edition']):
+                raise ValueError('Stopped import source metadata changed.')
+            for collection in metadata['collections']:
+                Catalog(db, workspace)._active_collection(collection)
+                if db.execute('SELECT 1 FROM catalog_membership WHERE workspace=? AND collection=? '
+                              'AND edition=?', (workspace, collection, edition)).fetchone() is None:
+                    raise ValueError('Stopped import membership was not committed.')
+            manifest = db.execute('SELECT mime,size FROM catalog_asset WHERE digest=?',
+                                  (receipt['asset'],)).fetchone()
+            expected = receipt.get('manifest')
+            if (manifest is None or not isinstance(expected, dict)
+                    or expected != dict(sha256=receipt['asset'], mime=manifest[0], size=manifest[1])
+                    or (record.get('expected_manifest') is not None and record['expected_manifest'] != expected)
+                    or expected['mime'] not in SUFFIXES or type(expected['size']) is not int
+                    or not 0 < expected['size'] <= MAX_BYTES):
+                raise ValueError('Stopped import source manifest changed.')
+            count, size = db.execute('SELECT count(*),sum(length(CAST(raw AS BLOB))) FROM page '
+                                     'WHERE revision=?', (revision,)).fetchone()
+            if count != receipt['completed'] or size is None or size > MAX_RECOVERY_TEXT:
+                raise ValueError('Stopped import pages exceed the verification bound.')
+            fingerprints = []
+            for index, page in enumerate(db.execute('SELECT ordinal,physical,printed,verified,raw,digest '
+                        'FROM page WHERE revision=? ORDER BY ordinal', (revision,)), 1):
+                check()
+                if page[0] != index or sha256(page[4].encode('utf-8')).hexdigest() != page[5]:
+                    raise ValueError('Stopped import source text changed.')
+                fingerprints.append((page[0], page[1], page[2], page[3], page[5]))
+            if _pages_digest(fingerprints) != receipt['pages_sha256']:
+                raise ValueError('Stopped import page identity changed.')
+            if db.execute('SELECT 1 FROM page p LEFT JOIN indexed i ON i.id=p.id '
+                          'WHERE p.revision=? AND (i.id IS NULL OR i.raw!=p.raw) LIMIT 1',
+                          (revision,)).fetchone():
+                raise ValueError('Stopped import search publication is incomplete.')
+            assets = RetainedAssets(base / 'originals')
+            paths = [path for path in assets._paths(receipt['asset']) if os.path.lexists(path)]
+            if len(paths) != 1 or paths[0].suffix != SUFFIXES[expected['mime']]:
+                raise ValueError('Stopped import original is missing or ambiguous.')
+            source = paths[0]
+            before = regular(source)
+            if before.st_size != expected['size']:
+                raise ValueError('Stopped import original size changed.')
+            fingerprint = lambda info: (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
+                                        info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+            hashed, size = sha256(), 0
+            with source.open('rb') as stream:
+                if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
+                    raise ValueError('Stopped import original changed during read.')
+                while block := stream.read(1024 * 1024):
+                    check()
+                    size += len(block)
+                    if size > expected['size']:
+                        raise ValueError('Stopped import original grew during read.')
+                    hashed.update(block)
+                if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
+                    raise ValueError('Stopped import original changed during read.')
+            if (fingerprint(regular(source)) != fingerprint(before) or size != expected['size']
+                    or hashed.hexdigest() != receipt['asset']):
+                raise ValueError('Stopped import original checksum changed.')
+            check()
+            return dict(state='complete', workspace=workspace, edition=edition, id=revision,
+                asset=receipt['asset'], completed=count, total=count,
+                verified=expected['mime'] == 'text/plain', recovered=True,
+                message='Import completed before the worker stopped; its saved source and publication were verified.')
 
 
 class RuntimeBoundIngest(Ingest):
@@ -382,9 +572,20 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
-    record_progress(root, request_id, state='running')
+    attempt, request_digest = uuid4().hex, _request_digest(record)
+    record_progress(root, request_id, state='running',
+                    result=dict(state='running', attempt=attempt, request_sha256=request_digest))
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
+    if result.get('state') in ('cancelled', 'timed_out', 'failed'):
+        try:
+            recovered = _recover_publication(root, request_id, attempt, request_digest)
+        except (ValueError, OSError, sqlite3.Error, TypeError, KeyError):
+            result = dict(state='failed', message='The stopped import may have published data, but its '
+                          'completion could not be verified. Resume this request to check its saved identity.')
+        else:
+            if recovered is not None:
+                result = recovered
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result

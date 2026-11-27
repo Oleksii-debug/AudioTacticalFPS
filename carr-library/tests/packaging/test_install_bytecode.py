@@ -154,6 +154,125 @@ def fixture(root):
     return root
 
 
+def _worker_runtime_fixture(tmp_path, cache_kind):
+    """A sealed stdlib import, including the real stale-cache failure shape.
+
+    Only the private copied module is deliberately exposed to bytecode writes.
+    The dispatch shim then protects the host's shared Python installation before
+    running the unchanged product worker. No Windows runtime/COM is simulated.
+    """
+    import py_compile
+
+    bundle = fixture(tmp_path / 'sealed runtime Ω')
+    library = bundle / 'runtime' / 'Lib'
+    source = library / '__future__.py'
+    source.write_bytes(Path(importlib.util.find_spec('__future__').origin).read_bytes())
+    if cache_kind == 'stale':
+        cached = Path(py_compile.compile(str(source), doraise=True,
+            invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP))
+        raw = bytearray(cached.read_bytes())
+        raw[8:12] = b'\x00' * 4  # Source timestamp mismatch forces a source import.
+        cached.write_bytes(raw)
+    manifest = json.loads((bundle / 'bundle-manifest.json').read_text(encoding='utf-8'))
+    manifest['files'] = {p.relative_to(bundle).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                         for p in bundle.rglob('*')
+                         if p.is_file() and p.name != 'bundle-manifest.json'}
+    (bundle / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    installer_module().verify(bundle)
+    report = tmp_path / 'worker-interpreter.json'
+    dispatch = tmp_path / 'sealed-worker-dispatch.py'
+    dispatch.write_text(
+        'import sys\n'
+        f'sys.path.insert(0, {str(library)!r})\n'
+        "sys.modules.pop('__future__', None)\n"
+        'import __future__\n'
+        'observed = {"dont_write": sys.dont_write_bytecode, '
+        '"isolated": bool(sys.flags.isolated), "no_site": bool(sys.flags.no_site), '
+        '"origin": __future__.__file__}\n'
+        '# The private sealed import above measures the actual launch policy.\n'
+        '# Do not let its negative control rewrite the shared test interpreter.\n'
+        'sys.dont_write_bytecode = True\n'
+        'import json, runpy\n'
+        f'with open({str(report)!r}, "w", encoding="utf-8") as stream:\n'
+        '    json.dump(observed, stream)\n'
+        'script = sys.argv[1]\n'
+        'sys.argv = sys.argv[1:]\n'
+        'runpy.run_path(script, run_name="__main__")\n', encoding='utf-8')
+
+    def instrument(command):
+        # Keep the application's interpreter and every startup option. The
+        # unchanged actual helper receives the same arguments, stdin and files.
+        arguments = [os.fspath(item) for item in command]
+        script = next(index for index, item in enumerate(arguments)
+                      if index and item.endswith('.py'))
+        return arguments[:script] + [str(dispatch)] + arguments[script:]
+
+    return bundle, source, report, instrument
+
+
+@pytest.mark.parametrize('cache_kind', ['cold', 'stale'])
+@pytest.mark.parametrize('worker', ['pronunciation', 'doi', 'native-sapi'])
+def test_product_worker_keeps_sealed_runtime_bytes(tmp_path, monkeypatch, cache_kind, worker):
+    """Real child imports and worker protocols must preserve the sealed runtime.
+
+    Regex substitution runs normally. DOI and SAPI use invalid input that their
+    real workers reject before networking or COM. Only the SAPI parent's host
+    and dependency preflight are doubled so its launch path runs on every host.
+    """
+    bundle, source, report, instrument = _worker_runtime_fixture(tmp_path, cache_kind)
+    monkeypatch.setenv('PYTHONDONTWRITEBYTECODE', '')
+    monkeypatch.setattr(sys, 'dont_write_bytecode', True)
+    monkeypatch.setattr(sys, 'frozen', False, raising=False)
+
+    if worker == 'pronunciation':
+        from carr_library.speech import reading
+        real_run = reading.run_process
+
+        def run(command, **kwargs):
+            return real_run(instrument(command), **kwargs)
+
+        monkeypatch.setattr(reading, 'run_process', run)
+        document = reading.ReadingDocument('The parcel weighs 12 kg.')
+        document.apply_pronunciations([
+            reading.PronunciationRule(r'(\d+) kg', r'\1 kilograms', regex=True)], timeout=10)
+        assert document.text == 'The parcel weighs 12 kilograms.'
+        assert document.source_text == 'The parcel weighs 12 kg.'
+    elif worker == 'doi':
+        from carr_library.academic_integration import doi
+        request, reply = tmp_path / 'doi-request.json', tmp_path / 'doi-reply.json'
+        # No valid MetadataRequest can be constructed from this envelope.
+        request.write_text('{}', encoding='utf-8')
+        result = subprocess.run(instrument(doi._worker_argv(request, reply)),
+            env=dict(os.environ), capture_output=True, timeout=10, check=False)
+        assert result.returncode == 0, result.stderr.decode('utf-8', errors='replace')
+        assert json.loads(reply.read_bytes()) == {'error': 'connection'}
+    else:
+        from carr_library.speech import runtime
+        real_find = importlib.util.find_spec
+        real_run = runtime.run_process
+
+        def find(name, *args, **kwargs):
+            return object() if name == 'comtypes' else real_find(name, *args, **kwargs)
+
+        def run(command, **kwargs):
+            return real_run(instrument(command), **kwargs)
+
+        monkeypatch.setattr(runtime, 'os', types.SimpleNamespace(name='nt'))
+        monkeypatch.setattr(importlib.util, 'find_spec', find)
+        monkeypatch.setattr(runtime, 'run_process', run)
+        with pytest.raises(RuntimeError, match='validating-request'):
+            runtime.NativeSapiProvider()._request({'operation': 'invalid'}, timeout=10)
+
+    # This real verifier detects both added cold-cache files and changed sealed
+    # stale-cache bytes; parent -B/environment settings alone cannot satisfy it.
+    installer_module().verify(bundle)
+    observed = json.loads(report.read_bytes())
+    assert observed['origin'] == str(source)
+    assert observed['dont_write'] is True and observed['isolated'] is True
+    if worker == 'pronunciation':
+        assert observed['no_site'] is True
+
+
 class InstallBytecodeTests(unittest.TestCase):
     def run_installer(self, root, flags, *, fail_native=False):
         environment = {k: v for k, v in os.environ.items() if not k.upper().startswith('PYTHON')}

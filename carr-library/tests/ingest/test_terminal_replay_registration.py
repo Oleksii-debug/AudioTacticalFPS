@@ -130,3 +130,66 @@ def test_forged_terminal_journal_without_published_source_does_not_register(tmp_
     assert app.search(workspace, 'railway') == ()
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+
+
+def test_fresh_committed_import_reports_complete_after_late_cancel(tmp_path, monkeypatch):
+    """Cancellation after the durable commit cannot turn a fresh import into failure."""
+    from threading import Event
+    import carr_library.application as application
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Fresh publication')
+    collection = app.create_collection(workspace, 'Committed source')
+    source = tmp_path / 'source.txt'
+    text = 'Fresh committed railway source: Україна'
+    source.write_text(text, encoding='utf-8')
+    original_bytes = source.read_bytes()
+    metadata = dict(work_id='fresh-work', edition_id='fresh-edition', title='Fresh source')
+    cancelled = Event()
+    observed = []
+    original_run = application.Ingest.run
+
+    def finish_then_cancel(ingest, *args, **kwargs):
+        result = original_run(ingest, *args, **kwargs)
+        assert result['state'] == 'complete'
+        # A separate SQLite connection must see the committed source, seal,
+        # active revision and membership before the late cancellation arrives.
+        with closing(sqlite3.connect(app.database)) as observer:
+            assert observer.execute(
+                'SELECT asset FROM revision WHERE id=?', (result['id'],)
+            ).fetchone() == (sha256(original_bytes).hexdigest(),)
+            assert observer.execute(
+                'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (result['id'],)
+            ).fetchall() == [(text,)]
+            assert observer.execute(
+                'SELECT count(*) FROM sealed WHERE revision=?', (result['id'],)
+            ).fetchone()[0] == 1
+            assert observer.execute(
+                'SELECT count(*) FROM active WHERE workspace=? AND edition=? AND revision=?',
+                (workspace, metadata['edition_id'], result['id']),
+            ).fetchone()[0] == 1
+            observed.append((
+                observer.execute('SELECT count(*) FROM revision').fetchone()[0],
+                observer.execute(
+                    'SELECT count(*) FROM catalog_membership WHERE workspace=? AND collection=?',
+                    (workspace, collection),
+                ).fetchone()[0],
+            ))
+        cancelled.set()
+        return result
+
+    monkeypatch.setattr(application.Ingest, 'run', finish_then_cancel)
+    result = app._import_file(workspace, source, collections=(collection,),
+                              cancelled=cancelled.is_set, **metadata)
+    assert cancelled.is_set()
+    assert result['state'] == 'complete' and result['verified'] is True
+    assert observed == [(1, 1)]
+    assert source.read_bytes() == original_bytes
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute(
+            'SELECT count(*) FROM catalog_membership WHERE workspace=? AND collection=?',
+            (workspace, collection),
+        ).fetchone()[0] == 1
+    hit, = app.search(workspace, 'railway', collection=collection)
+    assert hit.revision == result['id'] and hit.verified

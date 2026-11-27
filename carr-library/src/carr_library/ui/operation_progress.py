@@ -79,7 +79,7 @@ def _phase(value):
 
 
 def _number(value, name, *, positive=False):
-    if type(value) not in (int, float) or not math.isfinite(value) or value < 0 or value > 10**12 or positive and value == 0:
+    if type(value) not in (int, float) or not 0 <= value <= 10**12 or not math.isfinite(value) or positive and value == 0:
         raise ValueError(f'Progress {name} must be a finite {"positive" if positive else "nonnegative"} measured value.')
     return value
 
@@ -243,13 +243,11 @@ class ProgressPreferences:
     mute_during_audio: bool = True
 
     def __post_init__(self):
-        if self.mode not in ('off', 'beep'):
-            raise ValueError('Choose Off or Beep for standalone progress sound.')
-        if (type(self.interval_seconds) not in (int, float)
-                or not 1 <= self.interval_seconds <= 120 or not math.isfinite(self.interval_seconds)):
+        if self.mode not in ('off', 'beep', 'speech', 'both'):
+            raise ValueError('Choose Off, Beep, Speech or Beep + Speech for progress sound.')
+        if type(self.interval_seconds) not in (int, float) or not 1 <= self.interval_seconds <= 120 or not math.isfinite(self.interval_seconds):
             raise ValueError('Progress sound interval must be between 1 and 120 seconds.')
-        if (type(self.volume) not in (int, float)
-                or not 0 <= self.volume <= 1 or not math.isfinite(self.volume)):
+        if type(self.volume) not in (int, float) or not 0 <= self.volume <= 1 or not math.isfinite(self.volume):
             raise ValueError('Progress sound volume must be between zero and one.')
         if any(type(getattr(self, key)) is not bool for key in ('quiet', 'background', 'mute_during_audio')):
             raise ValueError('Progress sound options must be boolean.')
@@ -284,14 +282,14 @@ def save_preferences(root, preferences):
 
 
 def progress_frequency(percent):
-    if type(percent) not in (int, float) or not math.isfinite(percent) or not 0 <= percent <= 100:
+    if type(percent) not in (int, float) or not 0 <= percent <= 100 or not math.isfinite(percent):
         raise ValueError('A measured percent between zero and 100 is required.')
     return 300.0 * 2 ** (percent / 50.0)
 
 
 def progress_tone(percent, *, volume=0.25, state='running', sample_rate=22050):
     """Small PCM memory image for private playback, never a render output."""
-    if type(volume) not in (int, float) or not math.isfinite(volume) or not 0 <= volume <= 1:
+    if type(volume) not in (int, float) or not 0 <= volume <= 1 or not math.isfinite(volume):
         raise ValueError('Invalid progress tone volume.')
     if sample_rate not in (22050, 24000, 44100, 48000):
         raise ValueError('Unsupported progress tone sample rate.')
@@ -329,7 +327,7 @@ def progress_tone(percent, *, volume=0.25, state='running', sample_rate=22050):
 
 
 class WindowsProgressSound:
-    """At most one short, noninterrupting Windows memory-WAV playback thread."""
+    """One bounded notification worker; existing local speech is explicitly injected."""
     def __init__(self, *, backend=None):
         if backend is None and sys.platform == 'win32':
             try:
@@ -337,31 +335,152 @@ class WindowsProgressSound:
             except ImportError:
                 backend = None
         self.backend, self.available = backend, backend is not None
-        self._lock, self._thread = threading.Lock(), None
-        self.muted, self.closed, self.last_error = False, False, None
+        self._lock, self._thread = threading.RLock(), None
+        self._muted, self.closed, self.last_error = False, False, None
+        self._cancel = threading.Event()
+        self._speech_provider, self._active_provider = None, None
+        self._uncertain_providers = []
+        self._kind = None
 
-    def play(self, percent, *, volume, state='running'):
+    @property
+    def muted(self):
+        return self._muted
+
+    @muted.setter
+    def muted(self, value):
+        self._muted = bool(value)
+        if self._muted:
+            self.cancel()
+
+    @property
+    def speech_available(self):
+        return self._speech_provider is not None
+
+    @property
+    def speech_label(self):
+        return getattr(self._speech_provider, 'label', '')
+
+    @property
+    def speech_provider(self):
+        return self._speech_provider
+
+    @property
+    def quiescent(self):
         with self._lock:
-            if (not self.available or self.closed or self.muted or volume == 0
+            if any(not provider.quiescent for provider in self._uncertain_providers):
+                return False
+            if self._thread is None or not self._thread.is_alive():
+                return True
+            # Cancellation makes it safe to wait for synthesis in the background
+            # if it has not entered playback. A finite memory tone must drain.
+            return (self._kind == 'speech' and self._cancel.is_set()
+                    and self._active_provider is not None and self._active_provider.quiescent)
+
+    def cancel(self):
+        with self._lock:
+            self._cancel.set()
+
+    def set_speech_provider(self, provider):
+        if provider is not None and (not callable(getattr(provider, 'speak_progress', None))
+                                     or not isinstance(getattr(provider, 'quiescent', None), bool)):
+            raise ValueError('Use a cancellable, explicitly selected local progress voice.')
+        with self._lock:
+            self._cancel.set()
+            old, self._speech_provider = self._speech_provider, provider
+            if old is not None and old is not provider and callable(getattr(old, 'close', None)):
+                old.close()
+            self.last_error = ('The progress audio device has not confirmed silence.'
+                               if any(not item.quiescent for item in self._uncertain_providers) else None)
+
+    def _start(self, operation, *, kind, provider=None):
+        with self._lock:
+            if (self.closed or self.muted or not self.quiescent
                     or self._thread is not None and self._thread.is_alive()):
                 return False
-            raw = progress_tone(percent, volume=volume, state=state)
+            self._cancel = cancelled = threading.Event()
+            self._kind, self._active_provider = kind, provider
+
             def run():
                 try:
-                    if not self.closed and not self.muted:
-                        # SND_MEMORY | SND_ASYNC is unsupported. This finite
-                        # playback runs off the UI thread and never interrupts
-                        # another PlaySound invocation with SND_NOSTOP.
-                        flags = self.backend.SND_MEMORY | self.backend.SND_NODEFAULT | self.backend.SND_NOSTOP
-                        self.backend.PlaySound(raw, flags)
-                except (OSError, RuntimeError) as exc:
-                    self.last_error = str(exc)
+                    if not self.closed and not self.muted and not cancelled.is_set():
+                        operation(cancelled.is_set)
+                except Exception as exc:
+                    if not cancelled.is_set():
+                        self.last_error = str(exc)
+                finally:
+                    if provider is not None and not provider.quiescent:
+                        with self._lock:
+                            if provider not in self._uncertain_providers:
+                                self._uncertain_providers.append(provider)
+                            self.last_error = 'The progress audio device has not confirmed silence.'
+
             self._thread = threading.Thread(target=run, name='carr-progress-sound', daemon=True)
             self._thread.start()
             return True
 
+    def play(self, percent, *, volume, state='running'):
+        if not self.available or volume == 0:
+            return False
+        raw = progress_tone(percent, volume=volume, state=state)
+
+        def play(cancelled):
+            if not cancelled():
+                # Never use global PlaySound(None), which could stop NVDA or
+                # another app. A recording/playback hold waits for this finite
+                # owned synchronous cue to drain on its background thread.
+                flags = self.backend.SND_MEMORY | self.backend.SND_NODEFAULT | self.backend.SND_NOSTOP
+                self.backend.PlaySound(raw, flags)
+
+        return self._start(play, kind='beep')
+
+    def speak(self, text, *, volume, beep=False, percent=None, state='running'):
+        with self._lock:
+            provider = self._speech_provider
+            if provider is None or volume == 0 or beep and not self.available:
+                return False
+            raw = progress_tone(percent, volume=volume, state=state) if beep else None
+
+            def announce(cancelled):
+                if raw is not None and not cancelled():
+                    flags = self.backend.SND_MEMORY | self.backend.SND_NODEFAULT | self.backend.SND_NOSTOP
+                    self.backend.PlaySound(raw, flags)
+                if cancelled():
+                    return
+                with self._lock:
+                    self._kind = 'speech'
+                provider.speak_progress(text, volume=volume, cancelled=cancelled)
+
+            return self._start(announce, kind='beep' if beep else 'speech', provider=provider)
+
     def close(self):
         self.closed = self.muted = True
+        self.set_speech_provider(None)
+
+
+class _AudioQuietHold:
+    """Admit transport startup only after owned notifications are quiet."""
+    def __init__(self, controller, recording):
+        self.controller, self.recording, self.closed = controller, recording, False
+
+    @property
+    def ready(self):
+        controller = self.controller
+        if self.closed or controller.closed:
+            return False
+        if not self.recording and not controller.preferences.mute_during_audio:
+            return True
+        return (not controller._uncertain_players
+                and bool(getattr(controller.sound, 'quiescent', True)))
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        controller = self.controller
+        if threading.get_ident() != controller._ui_thread:
+            controller.wx.CallAfter(lambda: controller._release_audio_hold(self))
+        else:
+            controller._release_audio_hold(self)
 
 
 class OperationProgress:
@@ -376,7 +495,9 @@ class OperationProgress:
         self._pending, self._scheduled = None, False
         self._displayed_sequence, self._last_display, self._last_sound = -1, -math.inf, -math.inf
         self._last_state, self.audio_active, self.closed = 'idle', False, False
+        self._last_token, self._pending_sound = 0, None
         self._players = weakref.WeakSet()
+        self._uncertain_players, self._audio_holds = set(), set()
         self.root, self.preferences = None, ProgressPreferences()
         self.timer = self.wx.Timer(frame)
         frame.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
@@ -387,8 +508,17 @@ class OperationProgress:
     def event(self):
         return self.tracker.event
 
+    @property
+    def speech_provider(self):
+        return getattr(self.sound, 'speech_provider', None)
+
     def reload_preferences(self):
-        self.root = local_path(self.frame.library.root, exists=True)
+        root = local_path(self.frame.library.root, exists=True)
+        if self.root is not None and root != self.root:
+            # A persisted speech preference never authorizes another library's
+            # helper or voice. The user selects a local voice again explicitly.
+            self.set_speech_provider(None)
+        self.root = root
         try:
             self.preferences = load_preferences(self.root)
         except (ValueError, OSError) as exc:
@@ -403,22 +533,91 @@ class OperationProgress:
         self._mute()
 
     def configure(self, preferences):
+        if not isinstance(preferences, ProgressPreferences):
+            raise ValueError('Validated progress preferences are required.')
         if local_path(self.frame.library.root, exists=True) != self.root:
             raise ValueError('The library folder changed. Reopen progress settings.')
+        if preferences.mode in ('speech', 'both') and not getattr(self.sound, 'speech_available', False):
+            raise ValueError('Select an installed progress voice in Reader or Audio Studio first.')
+        if preferences.mode == 'both' and not self.sound.available:
+            raise ValueError('Beep + Speech requires the Windows audio runtime. Choose Speech here.')
         save_preferences(self.root, preferences)
+        cancel = getattr(self.sound, 'cancel', None)
+        if callable(cancel):
+            cancel()
         self.preferences = preferences
         self._mute()
 
     def _mute(self):
-        playing = False
+        playing, recording = False, False
+        for player in tuple(self._uncertain_players):
+            try:
+                if player.state in ('stopped', 'paused', 'error'):
+                    self._uncertain_players.discard(player)
+            except (OSError, RuntimeError):
+                pass
+        playing = uncertain = bool(self._uncertain_players)
         for player in tuple(self._players):
             try:
-                playing = playing or player.state in ('playing', 'recording', 'monitoring')
+                state = player.state
+                recording = recording or state in ('recording', 'monitoring')
+                playing = playing or state == 'playing'
+                uncertain = uncertain or state not in ('playing', 'recording', 'monitoring', 'stopped', 'paused', 'error')
             except (OSError, RuntimeError):
                 # An uncertain device state stays quiet until stop or close.
-                playing = True
-        self.sound.muted = (self.preferences.mode == 'off' or self.preferences.quiet
-                            or self.preferences.mute_during_audio and (self.audio_active or playing))
+                uncertain = True
+        recording = recording or any(hold.recording for hold in self._audio_holds)
+        playback_wait = any(not hold.recording for hold in self._audio_holds)
+        unavailable_voice = (self.preferences.mode in ('speech', 'both')
+                             and not getattr(self.sound, 'speech_available', False)
+                             or self.preferences.mode == 'both' and not self.sound.available)
+        self.sound.muted = (self.preferences.mode == 'off' or unavailable_voice or self.preferences.quiet
+                            or self.preferences.volume == 0
+                            or not self.preferences.background and not self.frame.IsActive()
+                            or recording or uncertain or self.preferences.mute_during_audio
+                            and (self.audio_active or playing or playback_wait))
+
+    def set_speech_provider(self, provider, *, root=None):
+        """Select an approved local voice for this session; never enable sound."""
+        if provider is not None:
+            current = local_path(self.frame.library.root, exists=True)
+            selected_root = root if root is not None else getattr(provider, 'library_root', None)
+            if current != self.root or selected_root is not None and local_path(selected_root, exists=True) != current:
+                raise ValueError('The library folder changed. Select its progress voice again.')
+            provider_root = getattr(provider, 'library_root', None)
+            if provider_root is not None and local_path(provider_root, exists=True) != current:
+                raise ValueError('This progress voice belongs to a different library. Select it again.')
+        setter = getattr(self.sound, 'set_speech_provider', None)
+        if setter is None:
+            if provider is not None:
+                raise ValueError('This progress sound backend does not support local speech.')
+            return
+        setter(provider)
+        self._mute()
+
+    def hold_audio(self, *, recording=False):
+        """Cancel notifications before transport startup and expose quiet readiness.
+
+        A recorder must keep the returned recording hold until capture has
+        actually stopped, and must not open capture until ``hold.ready``. There
+        is no microphone capture implementation in this progress controller.
+        """
+        if type(recording) is not bool:
+            raise ValueError('Recording activity must be boolean.')
+        if threading.get_ident() != self._ui_thread:
+            raise RuntimeError('Prepare audio transport on the native UI thread.')
+        if self.closed:
+            raise RuntimeError('The progress controller is closed.')
+        hold = _AudioQuietHold(self, recording)
+        self._audio_holds.add(hold)
+        self._mute()
+        self._timer_state()
+        return hold
+
+    def _release_audio_hold(self, hold):
+        self._audio_holds.discard(hold)
+        if not self.closed:
+            self.refresh_audio_state()
 
     def register_player(self, player):
         """Observe actual playback state, including natural EOF/error/pause.
@@ -438,10 +637,18 @@ class OperationProgress:
         self.refresh_audio_state()
         return player
 
-    def unregister_player(self, player):
+    def unregister_player(self, player, *, silence_confirmed=True):
+        if type(silence_confirmed) is not bool:
+            raise ValueError('Playback silence confirmation must be boolean.')
         if threading.get_ident() != self._ui_thread:
-            self.wx.CallAfter(lambda: self.unregister_player(player))
+            self.wx.CallAfter(lambda: self.unregister_player(player, silence_confirmed=silence_confirmed))
             return
+        if not silence_confirmed:
+            # Strong retention is intentional: closing a dialog must not forget
+            # native output whose stop/close both failed.
+            self._uncertain_players.add(player)
+        else:
+            self._uncertain_players.discard(player)
         self._players.discard(player)
         if not self.closed:
             self.refresh_audio_state()
@@ -455,7 +662,8 @@ class OperationProgress:
             self._timer_state()
 
     def _timer_state(self):
-        if self.event.state == 'running' or self._players:
+        if (self.event.state == 'running' or self._pending_sound is not None
+                or self._players or self._uncertain_players or self._audio_holds):
             if not self.timer.IsRunning():
                 self.timer.Start(250)
         else:
@@ -540,7 +748,7 @@ class OperationProgress:
         if (self.closed or event.token != self.event.token or event.sequence < self._displayed_sequence):
             return
         now = self.clock()
-        state_changed = event.state != self._last_state
+        state_changed = event.state != self._last_state or event.token != self._last_token
         if not force and not state_changed and now - self._last_display < .1:
             return
         text = describe_progress(event)
@@ -558,19 +766,52 @@ class OperationProgress:
         self._timer_state()
         self._mute()
         self._sound(event, state_changed=state_changed)
-        self._last_state = event.state
+        self._last_state, self._last_token = event.state, event.token
 
     def _sound(self, event, *, state_changed=False):
         preference = self.preferences
-        if (self.sound.muted or not self.sound.available or preference.volume == 0 or event.state == 'idle'
+        if self._pending_sound is not None and self._pending_sound[:2] != (event.token, event.state):
+            self._pending_sound = None
+        available = (getattr(self.sound, 'speech_available', False)
+                     if preference.mode in ('speech', 'both') else self.sound.available)
+        if (self.sound.muted or not available or preference.volume == 0 or event.state == 'idle'
                 or not preference.background and not self.frame.IsActive()):
+            # Quiet/background/capture policy also discards a deferred cue; it
+            # must not be replayed later after its operation is no longer current.
+            self._pending_sound = None
+            self._timer_state()
             return
         now = self.clock()
-        if not state_changed and (event.state != 'running' or now - self._last_sound < preference.interval_seconds):
+        state = ('resumed' if state_changed and event.token == self._last_token
+                 and event.state == 'running' and self._last_state == 'paused' else event.state)
+        if state_changed:
+            # Keep only the latest state cue. The existing bounded worker may
+            # still be speaking the running state, so cancel that stale speech
+            # and retry this cue on the GUI timer after its owned output drains.
+            self._pending_sound = (event.token, event.state, state)
+            cancel = getattr(self.sound, 'cancel', None)
+            if callable(cancel):
+                cancel()
+        if (self._pending_sound is None and not state_changed
+                and (event.state != 'running' or now - self._last_sound < preference.interval_seconds)):
             return
-        state = 'resumed' if state_changed and event.state == 'running' and self._last_state == 'paused' else event.state
-        if self.sound.play(event.percent, volume=preference.volume, state=state):
+        if self._pending_sound is not None:
+            state = self._pending_sound[2]
+        if preference.mode in ('speech', 'both'):
+            measured = (f'{event.percent} percent. ' if event.percent is not None else
+                        'Total work is not yet known. ' if event.state == 'running' else '')
+            text = _LABELS[event.state] + '. ' + measured + event.phase[:160] + '.'
+            formatter = getattr(self.speech_provider, 'notification_text', None)
+            if formatter is not None:
+                text = formatter(event, state=state)
+            played = self.sound.speak(text, volume=preference.volume, beep=preference.mode == 'both',
+                                      percent=event.percent, state=state)
+        else:
+            played = self.sound.play(event.percent, volume=preference.volume, state=state)
+        if played:
             self._last_sound = now
+            self._pending_sound = None
+        self._timer_state()
 
     def _tick(self, event=None):
         if self.closed:
@@ -585,27 +826,39 @@ class OperationProgress:
         self._sound(current)
 
     def query(self, event=None):
-        self.frame.report(describe_progress(self.event))
+        text = describe_progress(self.event)
+        if getattr(self.sound, 'last_error', None):
+            text += ' Progress sound needs attention: ' + self.sound.last_error
+        elif self.preferences.mode in ('speech', 'both') and not getattr(self.sound, 'speech_available', False):
+            text += ' Select a local progress voice in Reader or Audio Studio for this session.'
+        self.frame.report(text)
 
     def close(self):
         self.closed = True
+        self._pending_sound = None
         self.timer.Stop()
         self.sound.close()
         self._players.clear()
+        self._audio_holds.clear()
 
     def settings_dialog(self, event=None):
         if local_path(self.frame.library.root, exists=True) != self.root:
             self.reload_preferences()
         wx = self.wx
-        dialog = wx.Dialog(self.frame, title='Progress sound settings', size=(640, 480))
+        dialog = wx.Dialog(self.frame, title='Progress sound settings', size=(680, 570))
         try:
             layout = wx.BoxSizer(wx.VERTICAL)
             layout.Add(wx.StaticText(dialog, label='Leave Off when your screen reader already announces progress.\n'
-                'Beep uses rising pitch for known progress and two alternating tones for unknown work.'), 0, wx.EXPAND | wx.ALL, 8)
-            mode = wx.Choice(dialog, choices=['Off', 'Beep'])
+                'Beep uses rising pitch for known work. Speech uses only the local voice you explicitly select.'), 0, wx.EXPAND | wx.ALL, 8)
+            mode = wx.Choice(dialog, choices=['Off', 'Beep', 'Speech: selected local voice', 'Beep + Speech'])
             mode.SetName('Standalone progress sound')
-            mode.SetSelection(1 if self.preferences.mode == 'beep' else 0)
+            mode.SetSelection(('off', 'beep', 'speech', 'both').index(self.preferences.mode))
             layout.Add(mode, 0, wx.EXPAND | wx.ALL, 8)
+            selected_voice = getattr(self.sound, 'speech_label', '')
+            voice_notice = wx.StaticText(dialog, label=('Selected for this session: ' + selected_voice
+                if selected_voice else 'No progress voice selected. Use "Use voice for progress" in Reader or Audio Studio.'))
+            voice_notice.SetName('Selected local progress voice')
+            layout.Add(voice_notice, 0, wx.EXPAND | wx.ALL, 8)
             layout.Add(wx.StaticText(dialog, label='Interval in seconds'), 0, wx.LEFT | wx.TOP, 8)
             interval = wx.SpinCtrl(dialog, min=1, max=120, initial=round(self.preferences.interval_seconds))
             interval.SetName('Progress sound interval in seconds')
@@ -616,7 +869,7 @@ class OperationProgress:
             layout.Add(volume, 0, wx.EXPAND | wx.ALL, 8)
             checks = {}
             for name, label in (('quiet', 'Quiet mode: mute progress sound'), ('background', 'Allow progress sound in the background'),
-                                ('mute_during_audio', 'Mute progress sound during playback or recording')):
+                                ('mute_during_audio', 'Mute progress sound during playback (recording is always muted)')):
                 control = wx.CheckBox(dialog, label=label)
                 control.SetName(label)
                 control.SetValue(getattr(self.preferences, name))
@@ -630,9 +883,9 @@ class OperationProgress:
             mode.SetFocus()
             if dialog.ShowModal() == wx.ID_OK:
                 selected = mode.GetSelection()
-                if selected not in (0, 1):
-                    raise ValueError('Choose Off or Beep.')
-                self.configure(ProgressPreferences(mode=('off', 'beep')[selected], interval_seconds=interval.GetValue(),
+                if selected not in (0, 1, 2, 3):
+                    raise ValueError('Choose Off, Beep, Speech or Beep + Speech.')
+                self.configure(ProgressPreferences(mode=('off', 'beep', 'speech', 'both')[selected], interval_seconds=interval.GetValue(),
                     volume=volume.GetValue() / 100, **{name: control.GetValue() for name, control in checks.items()}))
                 self.frame.report('Progress sound preferences saved.')
         except (ValueError, OSError, RuntimeError) as exc:

@@ -161,6 +161,131 @@ def test_persist_restart_actual_menu_ids_and_default_reset(frame, wx):
     assert json.loads(path.read_bytes()) == {'schema': 1, 'overrides': {}, 'originals': {}}
 
 
+def test_upgrade_preserves_saved_keys_and_disables_only_conflicting_default(frame, wx):
+    previous = KeyboardSettings(frame, wx_module=wx)
+    previous.apply({'library/new library': 'Ctrl+Alt+Q', 'library/import books': 'F9'})
+    path = frame.library.root / 'state/ui/shortcuts.json'
+    saved = path.read_bytes()
+    upgraded = Frame(frame.library.root)
+    research = Menu('Build advanced query\tCtrl+Alt+Q', 'Other research action\tCtrl+Alt+J')
+    upgraded.menu_bar.Append(research, '&Research')
+    controller = KeyboardSettings(upgraded, wx_module=wx)
+    assert controller.reload() is True
+    keys = effective_shortcuts(controller.commands, controller.overrides)
+    assert keys['library/new library'] == 'Ctrl+Alt+Q'
+    assert keys['library/import books'] == 'F9'
+    assert keys['research/build advanced query'] == ''
+    assert keys['research/other research action'] == 'Ctrl+Alt+J'
+    owner_id = upgraded.menu_bar.GetMenu(1).items[0].GetId()
+    assert [entry for entry in upgraded.table if entry[:2] ==
+            (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('Q'))] == [
+                (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('Q'), owner_id)]
+    assert not any(entry[2] == research.items[0].GetId() for entry in upgraded.table)
+    assert research.items[0].label == 'Build advanced query'
+    assert path.read_bytes() == saved
+    loaded, token = load_shortcuts(upgraded.library.root, controller.commands)
+    assert loaded == controller.overrides and token == controller.token
+    explanation = upgraded.reports[-1]
+    assert 'Ctrl+Alt+Q' in explanation and 'Build advanced query' in explanation
+    assert 'New library' in explanation and 'unassigned' in explanation
+    observed = []
+    def inspect_notice(dialog):
+        controls = {control.name: control for control in dialog.controls if control.name}
+        observed.append(controls['Shortcut settings status'].value)
+        choice = controls['Command to change']
+        choice.SetSelection(next(index for index, command in enumerate(controller.commands)
+                                 if command.action == 'research/build advanced query'))
+        choice.handlers[wx.EVT_CHOICE](None)
+        assert controls['Current and original shortcut'].value == 'Current: Unassigned. Original: Ctrl+Alt+Q.'
+    _dialog_wx(wx, inspect_notice)
+    controller.show()
+    assert observed == [explanation]
+
+    # The compatibility result is persisted only by an explicit Apply action.
+    controller.apply(dict(controller.overrides))
+    persisted = json.loads(path.read_bytes())
+    assert persisted['overrides']['research/build advanced query'] == ''
+    assert persisted['originals']['research/build advanced query'] == 'Ctrl+Alt+Q'
+    restarted = Frame(frame.library.root)
+    restarted.menu_bar.Append(Menu('Build advanced query\tCtrl+Alt+Q',
+                                  'Other research action\tCtrl+Alt+J'), '&Research')
+    restored = KeyboardSettings(restarted, wx_module=wx)
+    assert restored.overrides == controller.overrides
+    assert not restarted.reports
+
+
+def test_duplicate_explicit_saved_bindings_are_not_repaired_by_upgrade(frame, wx):
+    previous = KeyboardSettings(frame, wx_module=wx)
+    previous.apply({'library/new library': 'Ctrl+Alt+Q', 'library/import books': 'F9'})
+    path = frame.library.root / 'state/ui/shortcuts.json'
+    data = json.loads(path.read_bytes())
+    data['overrides']['library/import books'] = 'Ctrl+Alt+Q'
+    path.write_text(json.dumps(data), encoding='utf-8')
+    damaged = path.read_bytes()
+    upgraded = Frame(frame.library.root)
+    upgraded.menu_bar.Append(Menu('Build advanced query\tCtrl+Alt+Q'), '&Research')
+    controller = KeyboardSettings(upgraded, wx_module=wx)
+    assert controller.reload() is False
+    assert controller.overrides == {}
+    with pytest.raises(ValueError, match='already assigned'):
+        load_shortcuts(upgraded.library.root, controller.commands)
+    assert 'could not be applied' in upgraded.reports[-1]
+    assert path.read_bytes() == damaged
+
+
+def test_upgrade_does_not_allow_saving_two_explicit_owners_for_one_key(frame, wx):
+    previous = KeyboardSettings(frame, wx_module=wx)
+    previous.apply({'library/new library': 'Ctrl+Alt+Q'})
+    path = frame.library.root / 'state/ui/shortcuts.json'
+    upgraded = Frame(frame.library.root)
+    upgraded.menu_bar.Append(Menu('Build advanced query\tCtrl+Alt+Q'), '&Research')
+    controller = KeyboardSettings(upgraded, wx_module=wx)
+    assert controller.overrides['library/new library'] == 'Ctrl+Alt+Q'
+    saved, table = path.read_bytes(), upgraded.table
+    collision = {**controller.overrides, 'research/build advanced query': 'Ctrl+Alt+Q'}
+    with pytest.raises(ValueError, match='already assigned'):
+        controller.apply(collision)
+    with pytest.raises(ValueError, match='already assigned'):
+        save_shortcuts(upgraded.library.root, controller.commands, collision,
+                       expected_token=controller.token)
+    assert path.read_bytes() == saved and upgraded.table == table
+
+
+@pytest.mark.parametrize('collision', ['path', 'menu-id'])
+def test_upgrade_does_not_mask_duplicate_command_registration(frame, wx, collision):
+    previous = KeyboardSettings(frame, wx_module=wx)
+    previous.apply({'library/new library': 'Ctrl+Alt+Q'})
+    path = frame.library.root / 'state/ui/shortcuts.json'
+    saved = path.read_bytes()
+    upgraded = Frame(frame.library.root)
+    if collision == 'path':
+        upgraded.menu_bar.GetMenu(1).items.append(Item('New library'))
+    else:
+        duplicate = Menu()
+        duplicate.items.append(Item('Build advanced query\tCtrl+Alt+Q',
+                                    identity=upgraded.menu_bar.GetMenu(1).items[0].GetId()))
+        upgraded.menu_bar.Append(duplicate, '&Research')
+    with pytest.raises(ValueError, match='Duplicate|IDs'):
+        KeyboardSettings(upgraded, wx_module=wx)
+    assert path.read_bytes() == saved
+
+
+def test_upgrade_does_not_retarget_saved_unknown_command(frame, wx):
+    previous = KeyboardSettings(frame, wx_module=wx)
+    previous.apply({'library/new library': 'Ctrl+Alt+Q'})
+    path = frame.library.root / 'state/ui/shortcuts.json'
+    saved = path.read_bytes()
+    upgraded = Frame(frame.library.root)
+    upgraded.menu_bar.GetMenu(1).items.pop(0)
+    upgraded.menu_bar.Append(Menu('Build advanced query\tCtrl+Alt+Q'), '&Research')
+    controller = KeyboardSettings(upgraded, wx_module=wx)
+    assert controller.reload() is False
+    with pytest.raises(ValueError, match='unavailable'):
+        load_shortcuts(upgraded.library.root, controller.commands)
+    assert path.read_bytes() == saved
+    assert not controller.overrides
+
+
 def test_failed_save_rolls_back_live_menu_and_accelerator_table(frame, wx, monkeypatch):
     import carr_library.ui.keyboard_settings as module
     controller = KeyboardSettings(frame, wx_module=wx)
@@ -207,6 +332,10 @@ def test_invalid_saved_preferences_keep_originals_and_can_be_reset(frame, wx, ki
     value = json.loads(path.read_bytes())
     if kind == 'duplicate':
         value['overrides']['library/new library'] = 'Ctrl+I'
+        # Both owners are explicit: unlike a new implicit default, neither may
+        # be silently disabled to make a damaged saved configuration load.
+        value['overrides']['library/import books'] = 'Ctrl+I'
+        value['originals']['library/import books'] = 'Ctrl+I'
     elif kind == 'unknown':
         value['overrides'] = {'library/deleted command': 'F9'}
         value['originals'] = {'library/deleted command': 'Ctrl+N'}

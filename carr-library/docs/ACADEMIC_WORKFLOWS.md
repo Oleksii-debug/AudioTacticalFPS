@@ -89,3 +89,6 @@ database schema or network service is introduced. See the
 [reference exchange profile](../src/carr_library/catalog/REFERENCE_EXCHANGE.md)
 and [Catalog tools](CATALOG_TOOLS.md) for the reviewed intake adapter, shared
 catalog exporter and upstream provenance.
+
+For interactive comparison, tag-filtered outlines, selected RIS updates and
+catalog quality review, see [Academic comparison](ACADEMIC_COMPARISON.md).

@@ -1,5 +1,36 @@
 # CARR-10 — resumable ingestion integration candidate
-Status REVIEW_REQUIRED; base a450bd9eb97b11764f0fe2d70d72efbf9788aa5d. No gate closed.
+
+## Supervisor publication boundary — QA-011, 2026-11-27
+
+The native import supervisor uses the existing request's result field for a
+fresh attempt token and a bounded publication intent. An intent is written
+before the catalog transaction and is never sufficient evidence of completion.
+After a cancelled, timed-out or crashed child is reaped, the supervisor checks
+the exact request/attempt, authorized edition/work and collection membership,
+sealed active revision, extraction and page hashes, search rows, and retained
+original bytes. A verified fresh commit returns complete; a rolled-back
+transaction remains cancelled/failed. A cancelled replay cannot adopt an older
+publication or add membership. No new journal, schema or parent-side parser is
+introduced. The existing `published_here` correction is also retained.
+
+Recovery has a five-second cooperative deadline, SQLite progress interruption,
+and limits of 10,000 segments and 64 MiB of text/source bytes. If verification
+cannot finish or identities differ, the result explicitly remains unverified
+and resumable; committed source data is never deleted. Ordinary successful
+imports retain the existing extraction limits. Interrupted request intents
+remain compatible with the existing pending-state backup and restore producer.
+
+`tests/e2e/test_import_commit_supervisor.py` runs actual isolated LibraryApp
+imports with real PDF/DOCX parsing and SQLite publication barriers. It covers
+cancel/timeout/crash after commit, precommit rollback, replay, tampering,
+quarantine, recovery budgets and pre/postcommit backup restoration. The exact
+canonical negative control at `33dcc42` failed all six fresh postcommit cases
+and passed the three rollback/replay controls. The corrected local affected
+selection passed 88 tests with no failures/skips on Linux Python 3.12.14.
+Windows/installed/NVDA acceptance remains separate.
+
+The sections below preserve historical prototype evidence at base
+`a450bd9eb97b11764f0fe2d70d72efbf9788aa5d`; they are not current release status.
 
 ## Actual reuse, no duplicate production adapters
 - PR #17 head 4c2ee5ba43a778a2b160325cfe48678eeab213d3: import original MIT cairnsearch hash_file at bootstrap/vendor/cairn_extractors/hasher.py; upstream https://github.com/smwaqas89/cairnsearch/tree/eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93. Verified remote upstream, vendored and executed local blob b872612f8470191b53af83e41af02f637cbaee69; LICENSE upstream blob 7f60bd126b932ca626c4f19ae6d4086690f56825. TXT extractor blob ed96b96beef0538567532fb5156c8b88f139268a inspected and verified, but not suitable for exact quotes (errors=replace and universal newline translation); strict UTF-8 decoding preserves CRLF and refuses invalid data.

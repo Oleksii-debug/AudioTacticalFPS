@@ -197,6 +197,67 @@ def test_export_preserves_original_and_derivative_authority(tmp_path, connection
         service.export(identity, output)
 
 
+@pytest.mark.parametrize('source, expected', [
+    pytest.param('A' * 4498 + '\n\nB', 'Переклад\n\nПереклад', id='paragraphs'),
+    pytest.param('A' * 4499 + ' B', 'Переклад Переклад', id='word-space'),
+    pytest.param('A' * 4497 + '\r\n\tB', 'Переклад\r\n\tПереклад', id='split-whitespace'),
+    pytest.param('A' * 4499 + ' \u2003B', 'Переклад \u2003Переклад', id='unicode-space'),
+    pytest.param('A' * 4499 + ' ' * 4501 + '\tB',
+                 'Переклад' + ' ' * 4501 + '\tПереклад', id='whitespace-only-chunk'),
+    pytest.param('漢' * 4501, 'ПерекладПереклад', id='no-space-script'),
+])
+def test_export_preserves_source_separators_between_translation_chunks(tmp_path, connection, source, expected):
+    service, p, _ = ready(tmp_path, connection)
+    connection['custom'] = {'data': {'translations': [{'translatedText': 'Переклад'}]}}
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    saved = service.jobs.load(identity)
+    request_count = len(connection['calls'])
+    output = tmp_path / 'export'
+    service.export(identity, output)
+    assert (output / 'translated.txt').read_bytes().decode('utf-8') == expected
+    assert (output / 'original.txt').read_bytes().decode('utf-8') == source
+    reading = ReadingDocument.load(output / 'translation.reading.json')
+    assert reading.text == expected and reading.source_text == source
+    assert service.jobs.load(identity) == saved
+    assert len(connection['calls']) == request_count
+
+
+def test_resumed_translation_keeps_exact_join_separator_without_changing_receipts(tmp_path, connection):
+    service, p, _ = ready(tmp_path, connection)
+    source = 'A' * 4498 + '\n\nB'
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    connection['custom'] = {'data': {'translations': [{'translatedText': 'First \n'}]}}
+    stop = []
+    assert service.resume(identity, cancelled=lambda: bool(stop),
+                          progress=lambda *args: stop.append(True))['status'] == 'paused'
+    connection['custom'] = {'data': {'translations': [{'translatedText': '\tSecond'}]}}
+    reopened = TranslationService(service.directory, gateway=service.gateway)
+    assert reopened.resume(identity)['status'] == 'complete'
+    saved = reopened.jobs.load(identity)
+    assert [row['text'] for row in saved['receipts']] == ['First \n', '\tSecond']
+    assert len(connection['calls']) == 3  # Discovery and exactly two approved chunk requests.
+    output = tmp_path / 'resumed-export'
+    reopened.export(identity, output)
+    assert (output / 'translated.txt').read_bytes().decode('utf-8') == 'First\n\nSecond'
+    assert reopened.jobs.load(identity) == saved
+    assert len(connection['calls']) == 3
+
+
+def test_single_chunk_export_preserves_the_exact_provider_text(tmp_path, connection):
+    service, p, _ = ready(tmp_path, connection)
+    source = '  Single source paragraph.\n'
+    translated = '  Exact provider text.\t\n'
+    connection['custom'] = {'data': {'translations': [{'translatedText': translated}]}}
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    service.export(identity, tmp_path / 'single-export')
+    assert (tmp_path / 'single-export' / 'translated.txt').read_bytes().decode('utf-8') == translated
+
+
 def test_corrupt_completed_chunk_blocks_resume(tmp_path, connection):
     service, p, _ = ready(tmp_path, connection)
     approval, cost = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
@@ -320,3 +381,117 @@ def test_sent_or_unresolved_attempts_remain_nonretryable(tmp_path, status):
         ledger.finish(approval.id, 'same_op', status=status)
     with pytest.raises(ProviderError, match='already been attempted'):
         ledger.reserve(approval, 'same_op', request_hash, Decimal('1'), p, 'translation.text')
+
+
+@pytest.mark.parametrize('translated', ['', ' \t\r\n', '&#32;&#10;&#9;', '&nbsp;'])
+def test_empty_decoded_provider_output_keeps_uncertain_charge_and_no_receipt(tmp_path, connection, translated):
+    service, p, _ = ready(tmp_path, connection)
+    connection['custom'] = {'data': {'translations': [{'translatedText': translated}]}}
+    approval, cost = translation_approval(p, 'Selected source with content.', 'en', 'uk', '1')
+    identity = service.submit(p, 'Selected source with content.', 'en', 'uk',
+                              authorization=approval, per_call_cost=cost)
+    with pytest.raises(ProviderError):
+        service.resume(identity)
+    job = service.jobs.load(identity)
+    assert job['status'] == 'attention' and not job['receipts']
+    usage = service.gateway.ledger.get(approval.id)
+    attempted = usage['operations'][identity + '_0']
+    assert attempted['status'] == 'uncertain' and attempted['output_sha256'] is None
+    count = len(connection['calls'])
+    with pytest.raises(ProviderError, match='already been attempted'):
+        service.resume(identity)
+    with pytest.raises(ValueError):
+        service.export(identity, tmp_path / 'empty-export')
+    assert len(connection['calls']) == count
+    assert not (tmp_path / 'empty-export').exists()
+
+
+@pytest.mark.parametrize('action', ['export', 'resume'])
+@pytest.mark.parametrize('mutation', [
+    'source-language', 'target-language', 'model', 'profile-name', 'credential-ref',
+    'per-call-cost', 'authorization', 'request', 'response', 'empty-receipt',
+    'ledger-profile', 'ledger-response', 'ledger-status', 'missing-ledger',
+])
+def test_saved_translation_requires_its_original_authority_and_receipts(tmp_path, connection, action, mutation):
+    from carr_library.assistant.state import atomic_json
+    service, p, _ = ready(tmp_path, connection)
+    source = 'Selected immutable source.'
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    usage_path = service.gateway.ledger._path(approval.id)
+    if mutation == 'source-language':
+        job['source_language'] = 'auto'
+    elif mutation == 'target-language':
+        job['target_language'] = 'pl'
+    elif mutation == 'model':
+        job['profile']['model'] = 'another-model'
+    elif mutation == 'profile-name':
+        job['profile']['name'] = 'A different account snapshot'
+    elif mutation == 'credential-ref':
+        job['profile']['credential_ref'] = 'carr/provider/google_test/' + 'b' * 32
+    elif mutation == 'per-call-cost':
+        job['per_call_cost'] = '0.25'
+    elif mutation == 'authorization':
+        job['authorization']['budget'] = '2'
+    elif mutation == 'request':
+        job['receipts'][0]['request_sha256'] = '0' * 64
+    elif mutation == 'response':
+        job['receipts'][0]['response_sha256'] = '0' * 64
+    elif mutation == 'empty-receipt':
+        job['receipts'][0]['text'] = ' \n'
+        job['receipts'][0]['translation_sha256'] = sha256(b' \n').hexdigest()
+    elif mutation == 'missing-ledger':
+        usage_path.unlink()
+    else:
+        usage = service.gateway.ledger.get(approval.id)
+        recorded = usage['operations'][identity + '_0']
+        if mutation == 'ledger-profile':
+            recorded['profile_sha256'] = '0' * 64
+        elif mutation == 'ledger-response':
+            recorded['output_sha256'] = '0' * 64
+        else:
+            recorded['status'] = 'uncertain'
+        atomic_json(usage_path, usage)
+    service.jobs.save(job)
+    before = service.jobs.path(identity).read_bytes()
+    count = len(connection['calls'])
+    output = tmp_path / 'invalid-export'
+    with pytest.raises((ValueError, PermissionError)):
+        if action == 'export':
+            service.export(identity, output)
+        else:
+            service.resume(identity)
+    assert not output.exists()
+    assert len(connection['calls']) == count
+    assert service.jobs.path(identity).read_bytes() == before
+
+
+def test_verified_completed_translation_exports_offline_after_approval_expiry(tmp_path, connection, monkeypatch):
+    from carr_library.assistant import providers
+    service, p, vault = ready(tmp_path, connection)
+    source = 'A completed translation stays available offline.'
+    approval, cost = translation_approval(p, source, 'en', 'uk', '1')
+    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert service.resume(identity)['status'] == 'complete'
+    receipts = service.jobs.load(identity)['receipts']
+    calls, credentials = len(connection['calls']), len(vault.calls)
+    monkeypatch.setattr(providers, 'time', lambda: approval.expires_at + 60)
+    service.gateway.mode = 'LOCAL_ONLY'
+    reopened = TranslationService(service.directory, gateway=service.gateway)
+    assert reopened.resume(identity)['status'] == 'complete'
+    reopened.export(identity, tmp_path / 'offline-export')
+    assert (tmp_path / 'offline-export/original.txt').read_text(encoding='utf-8') == source
+    assert reopened.jobs.load(identity)['receipts'] == receipts
+    assert len(connection['calls']) == calls and len(vault.calls) == credentials
+
+
+def test_unstarted_translation_is_readable_without_a_usage_record(tmp_path, connection):
+    service, p, _ = ready(tmp_path, connection)
+    approval, cost = translation_approval(p, 'Selected source.', 'en', 'uk', '1')
+    identity = service.submit(p, 'Selected source.', 'en', 'uk', authorization=approval, per_call_cost=cost)
+    assert not service.gateway.ledger._path(approval.id).exists()
+    saved, = service.list()
+    assert saved['id'] == identity and saved['status'] == 'queued'
+    assert service.resume(identity)['status'] == 'complete'

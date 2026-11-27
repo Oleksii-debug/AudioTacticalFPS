@@ -187,6 +187,14 @@ first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
 
+Full library backups also include personal page bookmarks and reading resume
+positions for every library. Restore preserves their exact source revision,
+names and timestamps in the new data folder. The backup checksums cover this
+reading state as well as the database and retained originals. Older backups
+without reading state still restore; use a separate reading-state export to
+transfer those older bookmarks. Interrupted import queues are not part of the
+backup. See [reading desk](READING_DESK.md) for historical-position handling.
+
 ## Review the source catalog
 
 Open a library, then use the **Research** menu:
@@ -271,6 +279,14 @@ use the same checked Save workflow as topic exports.
 
 ### Search and source actions
 
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ADVANCED_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
+
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently
 chooses **Short quotations**, usually a source sentence around the match, or
@@ -298,6 +314,26 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
+
+## Academic research tools
+
+Press **Alt+A** to open the **Academic** menu. In an open research topic,
+**Ctrl+Alt+M** compares saved source versions, themes, exact quotations and
+research notes. Include subtopics, filter by an exact tag, open selected evidence
+in its existing editor, or export the comparison as CSV/Markdown. **Export
+research outline with subtopics** writes the ordered topic structure as Markdown
+or plain text, keeping source quotations and your notes separately labelled.
+
+**Import bibliographic metadata from RIS** reviews a local RIS record for an
+already imported edition. Only checked title/author/language/edition/volume
+fields are applied; unchecked fields are preserved. Year, journal, DOI and other
+unsupported metadata are not imported, and no attachment or URL is opened.
+**Check catalog quality** reviews missing fields, unfiled editions and tentative
+duplicate hints in one library or collection. It does not merge records.
+
+See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
+limits and provenance. These commands add no runtime dependency or schema
+migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
 
 ## Search across saved research topics
 

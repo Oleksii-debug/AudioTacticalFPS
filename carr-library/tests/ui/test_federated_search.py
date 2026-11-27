@@ -6,7 +6,7 @@ These checks do not claim native Windows or NVDA acceptance.
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, get_ident
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, call
 import sys
 import unicodedata
 
@@ -15,7 +15,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.ui.federated_search import (
     NativeSearchCenter, SearchCenter, SearchOptions, default_libraries,
-    install_federated_search_actions, _topic_labels,
+    install_federated_search_actions, _topic_labels, result_label,
 )
 
 
@@ -28,6 +28,20 @@ class View:
         self.verified = self.selected = self.busy = False
         self.copied, self.focus = [], None
         self.busy_history = []
+        self.query, self.mode = 'Railway history', 'phrase'
+        self.navigation = (False, False)
+
+    def set_navigation(self, previous, next_page):
+        self.navigation = previous, next_page
+
+    def query_value(self):
+        return self.query
+
+    def set_advanced_query(self, query):
+        self.query, self.mode = query, 'advanced'
+
+    def focus_query(self):
+        self.focus = 'query'
 
     def clear_results(self):
         self.labels, self.details, self.index = (), '', -1
@@ -182,6 +196,178 @@ def test_filters_group_labels_limit_and_source_details(center):
     assert center.two in center.view.details and 'Original context.' in center.view.details
     assert 'Current Library: 0' in center.view.messages[-1]
     assert 'Up to 1 results per library' in center.view.messages[-1]
+
+
+def test_advanced_query_searches_only_checked_libraries_with_source_filters(center):
+    center.controller.search(SearchOptions((center.one, center.two),
+        '("railway" NEAR/0 "history") AND NOT "current"', mode='advanced',
+        author='Author Two', language='en', edition='Second'))
+    hit, = center.controller.rows
+    assert hit.workspace == center.two
+    assert 'Railway history from another library.' in hit.result.quote
+    assert center.frame.active == (center.one, center.local_topic)
+    center.controller.copy('quote')
+    assert center.view.copied == [hit.result.quote]
+
+
+def test_invalid_advanced_query_does_not_start_worker_or_keep_old_handles(center):
+    search(center)
+    jobs = len(center.frame.jobs)
+    center.controller.search(SearchOptions((center.one,), 'railway OR', mode='advanced'))
+    assert len(center.frame.jobs) == jobs and center.controller.rows == ()
+    assert 'Invalid advanced query:' in center.view.messages[-1]
+    assert center.view.focus == 'status'
+
+
+def test_builder_cancel_keeps_results_scope_and_current_query(center):
+    search(center)
+    source_hit(center)
+    before = (center.controller.rows, center.controller.epoch, center.view.index,
+              center.view.query, center.view.mode, center.frame.active)
+    builder = Mock(return_value=None)
+    center.controller.build_query(builder)
+    assert (center.controller.rows, center.controller.epoch, center.view.index,
+            center.view.query, center.view.mode, center.frame.active) == before
+    builder.assert_called_once_with(center.view.parent, current_query='Railway history')
+    assert center.view.focus == 'query'
+
+
+def test_builder_use_withdraws_old_handles_and_preserves_notebook(center):
+    search(center)
+    old = source_hit(center)
+    draft = center.frame.unsaved_note
+    center.controller.build_query(lambda *args, **kwargs: '"railway" AND NOT "fiction"')
+    assert center.view.query == '"railway" AND NOT "fiction"'
+    assert center.view.mode == 'advanced' and center.view.focus == 'query'
+    assert center.controller.rows == () and center.controller.service.current is None
+    assert center.view.labels == () and not center.view.verified
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == draft
+    with pytest.raises(ValueError):
+        center.controller.service.copy(old, 'quote')
+
+
+@pytest.mark.parametrize('change', ['query', 'options', 'active', 'folder', 'busy', 'dispose'])
+def test_builder_cannot_replace_changed_scope_or_options(center, tmp_path, change):
+    def changed(*args, **kwargs):
+        if change == 'query':
+            center.view.query = 'replacement'
+        elif change == 'options':
+            center.controller.options_changed()
+        elif change == 'active':
+            center.frame.active = (center.two, center.destination)
+        elif change == 'folder':
+            center.frame.library = LibraryApp(tmp_path / 'new-folder')
+        elif change == 'busy':
+            center.frame.working = True
+        else:
+            center.controller.dispose()
+        return '"railway"'
+    center.controller.build_query(changed)
+    assert center.view.query == ('replacement' if change == 'query' else 'Railway history')
+    assert center.view.mode == 'phrase'
+
+
+def test_running_search_cannot_open_builder(center):
+    center.frame.deferred = True
+    search(center)
+    builder = Mock(return_value='"railway"')
+    center.controller.build_query(builder)
+    builder.assert_not_called()
+    center.frame.finish()
+
+
+def test_search_center_builder_keyboard_shortcut_dispatches_without_main_menu():
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.wx = SimpleNamespace(WXK_ESCAPE=27)
+    native.controller = SimpleNamespace(build_query=Mock())
+    key = Mock()
+    key.GetKeyCode.return_value = ord('Q')
+    key.ControlDown.return_value = key.AltDown.return_value = True
+    native._key(key)
+    native.controller.build_query.assert_called_once()
+    key.Skip.assert_not_called()
+    key.ControlDown.return_value = False
+    native._key(key)
+    key.Skip.assert_called_once()
+
+
+@pytest.mark.parametrize('mode', ['terms', 'advanced'])
+def test_previous_next_pages_keep_exact_scope_filters_and_allow_exhausted_library(center, mode):
+    for workspace, count in ((center.one, 5), (center.two, 2), (center.hidden, 4)):
+        for number in range(count):
+            center.app.add_text(workspace, f'Page source {number}',
+                f'Paging rail source {number}.', authors=('Page Author',), language='en', edition='Reviewed')
+    query = 'paging rail' if mode == 'terms' else '"paging" NEAR/0 "rail"'
+    options = SearchOptions((center.one, center.two), query, mode=mode,
+        author='Page Author', language='en', edition='Reviewed', limit_per_library=2)
+    host_selections = dict(center.app._selections)
+    center.controller.search(options)
+    first = center.controller.rows
+    assert len(first) == 4 and center.view.navigation == (False, True)
+    center.controller.navigate(1)
+    second = center.controller.rows
+    assert len(second) == 2 and center.view.navigation == (True, True)
+    assert center.controller.options.offset_per_library == 2
+    assert center.controller.options.workspaces == options.workspaces
+    assert center.controller.options.author == options.author
+    assert center.controller.options.language == options.language
+    assert center.controller.options.edition == options.edition
+    assert {hit.workspace for hit in second} == {center.one}
+    with pytest.raises(ValueError):
+        center.controller.service.copy(first[0], 'quote')
+    center.controller.navigate(1)
+    third = center.controller.rows
+    assert len(third) == 1 and center.view.navigation == (True, False)
+    def identity(hit):
+        return hit.workspace, hit.result.title, hit.result.page, hit.result.quote
+    keys = [identity(hit) for hit in (*first, *second, *third)]
+    assert len(keys) == len(set(keys)) == 7
+    jobs = len(center.frame.jobs)
+    center.controller.navigate(1)
+    assert len(center.frame.jobs) == jobs and center.controller.rows == third
+    center.controller.navigate(-1)
+    assert [identity(hit) for hit in center.controller.rows] == [identity(hit) for hit in second]
+    assert 'Page 2.' in center.view.messages[-1]
+    assert 'fresh results' in center.view.messages[-1]
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.app._selections == host_selections
+
+
+def test_changing_query_or_filters_clears_paging_and_cannot_repeat_previous_query(center):
+    for number in range(3):
+        center.app.add_text(center.one, f'Additional {number}', 'Paging railway source.')
+    center.controller.search(SearchOptions((center.one,), 'paging', mode='advanced', limit_per_library=1))
+    assert center.view.navigation == (False, True)
+    jobs = len(center.frame.jobs)
+    center.view.query = 'replacement'
+    center.controller.options_changed()
+    assert center.view.navigation == (False, False) and center.controller.options is None
+    center.controller.navigate(1)
+    assert len(center.frame.jobs) == jobs and center.controller.rows == ()
+
+
+def test_ranked_and_phrase_modes_do_not_expose_unstable_result_paging(center):
+    for mode in ('phrase', 'word', 'thematic'):
+        center.controller.search(SearchOptions((center.one,), 'railway', mode=mode, limit_per_library=1))
+        assert center.controller.rows and center.view.navigation == (False, False)
+        jobs = len(center.frame.jobs)
+        center.controller.navigate(1)
+        assert len(center.frame.jobs) == jobs
+
+
+def test_cancelled_result_page_withdraws_navigation_and_source_actions(center):
+    for number in range(3):
+        center.app.add_text(center.one, f'Additional {number}', 'Paging railway source.')
+    center.controller.search(SearchOptions((center.one,), 'paging', mode='advanced', limit_per_library=1))
+    assert center.view.navigation == (False, True)
+    center.frame.deferred = True
+    center.controller.navigate(1)
+    assert center.view.navigation == (False, False) and center.controller.rows == ()
+    center.controller.cancel()
+    center.frame.finish()
+    assert center.controller.rows == () and center.controller.options is None
+    assert center.view.navigation == (False, False) and not center.view.verified
 
 
 def test_copy_context_and_save_route_to_result_library_without_touching_notebook(center):
@@ -467,6 +653,138 @@ def test_menu_installer_keeps_notebook_shortcut_and_dispatches_independent_searc
     notebook_called.assert_called_once()
 
 
+def spoken_key(label):
+    return ' '.join(unicodedata.normalize('NFC', label).split())
+
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
+    ('Same', 'Same', 'Same (library w; topic 0)'), ('Unique', 'Distinct'),
+])
+@pytest.mark.parametrize('reverse', [False, True])
+def test_topic_choices_distinguish_equivalent_spoken_names_without_reordering(names, reverse):
+    topics = [SimpleNamespace(id=str(index), name=name, parent=None)
+              for index, name in enumerate(names)]
+    if reverse:
+        topics.reverse()
+    labels = _topic_labels(topics, 'w')
+    assert len(labels) == len(topics) == len(set(map(spoken_key, labels)))
+    assert all(label.startswith(topic.name) for topic, label in zip(topics, labels))
+
+
+def test_topic_choice_paths_preserve_hierarchy_and_reject_cycles():
+    topics = [SimpleNamespace(id='root', name='Parent', parent=None),
+              SimpleNamespace(id='first', name='Café', parent='root'),
+              SimpleNamespace(id='second', name='Cafe\u0301', parent='root')]
+    labels = _topic_labels(topics, 'w')
+    assert labels[0] == 'Parent'
+    assert all(label.startswith('Parent / ') for label in labels[1:])
+    assert len(set(map(spoken_key, labels))) == 3
+    topics[0].parent = 'second'
+    with pytest.raises(ValueError, match='hierarchy changed'):
+        _topic_labels(topics, 'w')
+
+
+def test_equivalent_topic_labels_save_to_each_original_destination(center):
+    topics = tuple(center.app.create_topic(center.two, name, parent=center.root)
+                   for name in ('Café', 'Cafe\u0301'))
+    search(center)
+    hit = source_hit(center)
+    for destination in topics:
+        current = center.app.topics(center.two)
+        center.dialogs.choice = next(index for index, row in enumerate(current)
+                                     if row.id == destination)
+        center.controller.save()
+        choices = center.dialogs.choices[-1][2]
+        assert len(set(map(spoken_key, choices))) == len(current)
+        assert destination in choices[center.dialogs.choice]
+        saved, = center.app.evidence(center.two, destination)
+        assert saved.anchor.identity.workspace == center.two
+        assert saved.anchor.identity.edition_id == hit.result.edition_id
+        assert saved.anchor.quote == hit.result.quote
+    assert center.app.evidence(center.two, center.destination) == ()
+    assert center.app.evidence(center.one, center.local_topic) == ()
+
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'),
+    ('Same', 'Same', 'Same (library library-0; library only)'),
+])
+@pytest.mark.parametrize('reverse', [False, True])
+def test_native_checklist_preserves_checked_library_identity_with_distinct_labels(center, monkeypatch, names, reverse):
+    wx = MagicMock()
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    rows = [SimpleNamespace(id=f'library-{index}', name=name)
+            for index, name in enumerate(names)]
+    if reverse:
+        rows.reverse()
+    center.frame.active = ('library-1', None)
+    native = NativeSearchCenter(center.frame, rows)
+    choices = wx.CheckListBox.call_args.kwargs['choices']
+    assert len(choices) == len(rows) == len(set(map(spoken_key, choices)))
+    assert all(label.startswith(row.name) for row, label in zip(rows, choices))
+    assert native.libraries_control.Check.call_args_list == [
+        call(index, row.id == 'library-1') for index, row in enumerate(rows)]
+    native.controller.search = Mock()
+    native.libraries_control.IsChecked.side_effect = lambda index: rows[index].id == 'library-1'
+    for control in (native.retrieval, native.presentation, native.limit):
+        control.GetSelection.return_value = 0
+    native.query.GetValue.return_value = 'history'
+    for control in native.filters.values():
+        control.GetValue.return_value = ''
+    native._search()
+    options, = native.controller.search.call_args.args
+    assert options.workspaces == ('library-1',)
+
+
+@pytest.mark.parametrize('names', [('Same', 'Same'), ('Café', 'Cafe\u0301'),
+                                  ('Research  library', 'Research library')])
+@pytest.mark.parametrize('reverse', [False, True])
+def test_identical_library_names_remain_distinct_in_results_counts_and_source_actions(center, names, reverse):
+    for workspace, name, edition in zip((center.one, center.two), names, ('First edition', 'Second edition')):
+        center.app.rename_workspace(workspace, name)
+        center.app.add_text(workspace, 'Shared title', 'Distinctive source quotation.',
+                            authors=('Shared Author',), edition=edition)
+    selected = (center.two, center.one) if reverse else (center.one, center.two)
+    center.controller.search(SearchOptions(selected, 'Distinctive source quotation'))
+    rows = center.controller.rows
+    assert tuple(hit.workspace for hit in rows) == selected
+    assert len(center.view.labels) == len(set(map(spoken_key, center.view.labels))) == 2
+    for number, (hit, label) in enumerate(zip(rows, center.view.labels), 1):
+        assert label.startswith(f'{number}. ')
+        assert hit.workspace in label and hit.result.edition in label
+        assert hit.workspace in center.view.messages[-1]
+    # Copy and save must still use the original result identity, never the
+    # formatted display label or the position in a separate sorted list.
+    for index, hit in enumerate(rows):
+        center.view.select(index)
+        center.controller.selection_changed()
+        center.controller.copy('citation')
+        assert center.view.copied[-1] == hit.result.citation
+        center.dialogs.choice = 0
+        center.controller.save()
+        topic = center.app.topics(hit.workspace)[0]
+        saved, = center.app.evidence(hit.workspace, topic.id)
+        assert saved.anchor.identity.workspace == hit.workspace
+        assert saved.anchor.identity.edition_id == hit.result.edition_id
+    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
+
+
+def test_result_labels_include_unknown_edition_and_number_repeated_same_page_hits(center):
+    center.app.add_text(center.one, 'Unknown edition source',
+        'needle near the beginning. ' + 'Middle content. ' * 80 + 'needle near the end.')
+    center.controller.search(SearchOptions((center.one,), 'needle', mode='word'))
+    assert len(center.controller.rows) == 2
+    assert len(set(center.view.labels)) == 2
+    for index, (hit, label) in enumerate(zip(center.controller.rows, center.view.labels), 1):
+        assert label.startswith(f'{index}. ') and 'Unknown edition' in label
+        assert hit.result.page in label and 'Verified source' in label
+    hit = center.controller.rows[0]
+    assert 'Unknown edition' in result_label(hit)
+
+
 COLLIDING_NAMES = [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
     ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
     ('Same', 'Same', 'Same (library w; topic 0)'), ('Same', 'Same'), ('Unique', 'Distinct')]
@@ -563,10 +881,11 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
         return SimpleNamespace(workspace='w', library_name='Library', result=SimpleNamespace(
             title='Same title', author='Same author', page='p. 5', edition=edition, verified=verified))
     hits = (hit('First', True), hit('Second', True), hit(None, False), hit('First', True))
-    session = SimpleNamespace(workspaces=('w',), hits=hits,
+    session = SimpleNamespace(workspaces=('w',), hits=hits, offset_per_library=0, has_more=False,
                               groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),))
     controller = SimpleNamespace(view=View(), epoch=0, _ready=Mock(), _clear_rows=Mock(),
         selection_changed=Mock(), _report_error=Mock(), _cancelled=lambda: False,
+        _refresh_navigation=Mock(),
         service=SimpleNamespace(search=Mock(return_value=session)))
     controller._job = lambda title, operation, done, **kwargs: done(operation())
     SearchCenter.search(controller, SearchOptions(('w',), 'test'))

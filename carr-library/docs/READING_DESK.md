@@ -12,6 +12,7 @@ and current verification status as ordinary text.
 Open the Reading menu with **Alt+D**. Select a source in Books and Collections
 and press **Ctrl+R**, or use **Reading,
 Read selected book**. If no source is selected, a named book chooser opens.
+Use **Alt+D** to open the Reading menu from the main window.
 
 - **Ctrl+PageDown / Ctrl+PageUp:** next / previous source location.
 - **Ctrl+G:** jump to a reading-order position.
@@ -60,10 +61,29 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-The existing research-database backup does not yet include this sidecar. Keep the
-reading-state export with that backup when moving to another computer. A restored
-library retains the same source identities; a different library cannot accept
-the export. No cloud account or network retrieval is involved.
+The full library backup includes this file, together with every library's
+bookmarks and resume positions. It checks the source identities against the
+same database snapshot and binds the saved bytes to the backup manifest. Restore
+creates a new data folder and preserves bookmark names, times and locations.
+Archived libraries and historical reading revisions remain unchanged; opening
+an old position never silently jumps to a newer revision. Damaged state or a
+location that does not match the saved source stops the backup or restore before
+publication, keeping the existing data intact.
+
+Older version-one and version-two backups remain readable; they do not contain
+personal reading state. For those backups, keep the separate reading-state
+export when moving to another computer. A restored library retains the same
+source identities; a different library cannot accept the export. No cloud
+account or network retrieval is involved.
+
+The same backup also preserves the existing application-state and pending-import
+records. When personal reading state exists, version five binds those records and
+the reading sidecar in one manifest. Without a reading sidecar, the existing
+version-two, version-three or version-four format is retained. Both historical
+version-three layouts remain readable: application state and reading-state-only
+backups are distinguished by their exact declared fields. A mixed or incomplete
+manifest is rejected. Generated audio remains an explicit backup option; pending
+source inputs needed to resume an import remain part of the checked snapshot.
 
 ## Implementation and primary references
 

@@ -40,6 +40,59 @@ def _hash(value):
     return sha256(value.encode('utf-8')).hexdigest()
 
 
+def _approved_requests(profile, chunks, source, target, authorization, per_call_cost):
+    """Reconstruct the same approved requests for submission and later reads."""
+    if profile.adapter != 'google-translation-v2' or not profile.enabled:
+        raise ValueError('Choose an enabled Google Basic v2 NMT profile.')
+    hashes = []
+    for chunk in chunks:
+        if not chunk.strip():
+            hashes.append(None)
+            continue
+        payload = {'q': chunk, 'target': target}
+        if source != 'auto':
+            payload['source'] = source
+        _, body, _ = _request(profile, 'translation.text', payload)
+        hashes.append(_hash(canonical(body)))
+    remote_hashes = tuple(value for value in hashes if value is not None)
+    if (not isinstance(authorization, Authorization) or authorization.task_id != authorization.id
+            or tuple(authorization.operations) != ('translation.text',)
+            or tuple(authorization.data_classes) != ('selected-excerpt',)
+            or tuple(tuple(p) for p in authorization.profiles) != ((profile.id, profile.endpoint),)
+            or authorization.max_calls < len(remote_hashes)):
+        raise PermissionError('A fresh translation-specific approval is required.')
+    if remote_hashes != tuple(authorization.request_hashes):
+        raise PermissionError('Approval does not match this exact selected text and languages.')
+    cost = money(per_call_cost)
+    if cost * len(remote_hashes) > money(authorization.budget):
+        raise PermissionError('The per-call reservation exceeds the approved total budget.')
+    return hashes, cost
+
+
+def _assemble_translation(chunks, receipts):
+    """Restore source whitespace at joins without changing provider receipts.
+
+    Providers may trim or normalize a chunk's outer whitespace. Preserve the
+    exact source separator where two chunks meet, including whitespace-only
+    chunks. A join without source whitespace and a single-chunk result remain
+    unchanged; neither is evidence that an extra word separator is needed.
+    """
+    parts = []
+    for index, (source, receipt) in enumerate(zip(chunks, receipts)):
+        translated = receipt['text']
+        if not source.strip():
+            parts.append(source)
+            continue
+        if index and (chunks[index - 1][-1].isspace() or source[0].isspace()):
+            leading = source[:len(source) - len(source.lstrip())]
+            translated = leading + translated.lstrip()
+        if index + 1 < len(chunks) and (source[-1].isspace() or chunks[index + 1][0].isspace()):
+            trailing = source[len(source.rstrip()):]
+            translated = translated.rstrip() + trailing
+        parts.append(translated)
+    return ''.join(parts)
+
+
 class TranslationService:
     def __init__(self, directory, *, gateway=None):
         self.directory = local_path(directory, must_exist=False)
@@ -102,27 +155,8 @@ class TranslationService:
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost):
         preview = self.preview(profile, value, source, target)
-        if (not isinstance(authorization, Authorization) or authorization.task_id != authorization.id
-                or tuple(authorization.operations) != ('translation.text',)
-                or tuple(authorization.data_classes) != ('selected-excerpt',)
-                or tuple(tuple(p) for p in authorization.profiles) != ((profile.id, profile.endpoint),)
-                or authorization.max_calls < preview['calls']):
-            raise PermissionError('A fresh translation-specific approval is required.')
         parts = split_text(value)
-        hashes = []
-        for part in parts:
-            if not part.strip():
-                continue
-            payload = {'q': part, 'target': target}
-            if source != 'auto':
-                payload['source'] = source
-            _, body, _ = _request(profile, 'translation.text', payload)
-            hashes.append(_hash(canonical(body)))
-        if tuple(hashes) != tuple(authorization.request_hashes):
-            raise PermissionError('Approval does not match this exact selected text and languages.')
-        cost = money(per_call_cost)
-        if cost * preview['calls'] > money(authorization.budget):
-            raise PermissionError('The per-call reservation exceeds the approved total budget.')
+        _, cost = _approved_requests(profile, parts, source, target, authorization, per_call_cost)
         text(title, 'translation title', maximum=512)
         identity = uuid4().hex
         job = {'schema': 'carr-assistant-job/1', 'kind': 'translation/1', 'id': identity,
@@ -134,17 +168,57 @@ class TranslationService:
         return identity
 
     def _load(self, identity):
+        """Verify existing receipts without renewing remote authority or billing."""
         job = self.jobs.load(identity)
         if (job.get('kind') != 'translation/1' or job.get('source_sha256') != _hash(job.get('source_text', ''))
                 or job.get('chunks') != list(split_text(job['source_text'])) or not isinstance(job.get('receipts'), list)
                 or len(job['receipts']) > len(job['chunks'])):
             raise ValueError('The translation checkpoint is invalid.')
+        try:
+            profile = ProviderProfile(**job['profile'])
+            authorization = Authorization(**job['authorization'])
+            requests, cost = _approved_requests(profile, job['chunks'], job['source_language'],
+                job['target_language'], authorization, job['per_call_cost'])
+        except (KeyError, TypeError, ValueError, PermissionError):
+            raise ValueError('The saved translation authority is invalid.') from None
+        operations = {}
+        if any(value is not None for value in requests[:len(job['receipts'])]):
+            try:
+                usage = self.gateway.ledger.get(authorization.id)
+            except (OSError, ValueError):
+                raise ValueError('Accepted translation usage evidence is unavailable or invalid.') from None
+            if (type(usage) is not dict or usage.get('schema') != 'carr-provider-usage/1'
+                    or usage.get('authorization') != _hash(canonical(asdict(authorization)))
+                    or usage.get('currency') != authorization.currency
+                    or type(usage.get('operations')) is not dict):
+                raise ValueError('Accepted translation authority differs from its usage evidence.')
+            operations = usage['operations']
+        profile_hash = _hash(canonical(profile.to_dict()))
         for index, row in enumerate(job['receipts']):
             if (type(row) is not dict or row.get('index') != index
                     or row.get('source_sha256') != _hash(job['chunks'][index])
                     or type(row.get('text')) is not str or len(row['text']) > 200000
                     or row.get('translation_sha256') != _hash(row['text'])):
                 raise ValueError('A completed translation chunk is damaged.')
+            if requests[index] is None:
+                if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None
+                        or row.get('response_sha256') is not None or row.get('detected_source') is not None):
+                    raise ValueError('A whitespace chunk differs from its preserved original.')
+                continue
+            text(row['text'], 'completed translation output', maximum=200000)
+            recorded = operations.get(identity + '_' + str(index))
+            if (row.get('request_sha256') != requests[index]
+                    or not isinstance(row.get('response_sha256'), str)
+                    or len(row['response_sha256']) != 64
+                    or any(char not in '0123456789abcdef' for char in row['response_sha256'])
+                    or type(recorded) is not dict or recorded.get('status') != 'complete'
+                    or recorded.get('profile') != profile.id or recorded.get('model') != profile.model
+                    or recorded.get('profile_sha256') != profile_hash
+                    or recorded.get('operation') != 'translation.text'
+                    or recorded.get('request_sha256') != requests[index]
+                    or recorded.get('output_sha256') != row['response_sha256']
+                    or money(recorded.get('reserved_cost')) != cost):
+                raise ValueError('A completed translation receipt differs from its approved request or usage evidence.')
         return job
 
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
@@ -195,7 +269,7 @@ class TranslationService:
         target = local_path(output, must_exist=False)
         local_path(target.parent)
         target.mkdir(mode=0o700)  # Exclusive: never overwrite an original or prior export.
-        translated = ''.join(row['text'] for row in job['receipts'])
+        translated = _assemble_translation(job['chunks'], job['receipts'])
         reading = ReadingDocument(job['source_text'], title=job['title'])
         reading.replace(0, len(reading.text), translated, label='Machine translation derivative; not a source quotation')
         reading.save(target / 'translation.reading.json')

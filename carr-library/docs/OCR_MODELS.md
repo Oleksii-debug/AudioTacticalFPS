@@ -1,5 +1,10 @@
 # Official OCR model catalogue and offline packs
 
+This page describes the `research-library-ocr-models` catalogue/preparation CLI.
+The native installation manager is documented in [OCR model manager](OCR_MODEL_MANAGER.md).
+Its Fast list also displays the materialized `frk` compatibility alias, for
+163 entries; the preparer resolves that alias to `deu_latf` instead.
+
 The packaged catalogue lists pinned official Tesseract `tessdata_fast` and
 `tessdata_best` snapshots. Each profile contains 123 language models, 37 script
 models, an orientation/script-detection model (`osd`) and an equation model
@@ -53,9 +58,9 @@ rejected. The default selected-payload budget is 4 GiB; `--max-bytes` accepts a
 positive explicit budget. Cancellation removes unpublished staging data.
 
 The result reports `manifest_sha256`. Keep this value separately from the pack;
-it binds the exact `models.json` reviewed by the offline installer. The complete
-manifest is published only after all selected files and notices. Its schema is
-the existing offline-installation schema:
+it identifies the exact `models.json` produced by this preparer. The complete
+manifest is published only after all selected files and notices. Its pack
+schema is:
 
 ```json
 {
@@ -69,30 +74,28 @@ the existing offline-installation schema:
 ```
 
 The pack includes the upstream license and path-free provenance. The license is
-also embedded in `models.json` so the existing installer retains it even when it
-copies only the models and manifest. Neither a Git hash nor a locally computed
+also embedded in `models.json` so it accompanies the verified model inventory. Neither a Git hash nor a locally computed
 checksum is a publisher signature.
 
 ## Install and activate
 
-The native language manager can pass the prepared directory, a new installation
-directory and the separately retained manifest checksum to:
+Open **Library, OCR language models: Fast and Best**. Choose a profile, check
+models, select the local folder containing their reviewed source files, and
+choose **Install selected**. The manager independently verifies those files
+against its pinned catalogue before activating the selected batch in its
+separate local model store. See [OCR model manager](OCR_MODEL_MANAGER.md) for
+the exact source revisions, recovery behavior and `--install-ocr-models` CLI.
 
-```python
-install_offline_pack(pack, destination, expected_manifest_sha256=checksum)
-```
-
-Preparation does not activate or modify the application's sealed OCR runtime.
-Model selection/activation belongs to the language manager and must preserve
-the complete portable-runtime integrity inventory. A standalone Tesseract
-installation can use the installed directory through its explicit
-`--tessdata-dir` option. Choose the actual languages/scripts present on the page;
-installing every model is not a reason to run all of them in one OCR pass.
+The preparation command on this page does not activate or modify the sealed
+OCR runtime. During PDF import, choose installed runtime models, Managed Fast,
+or Managed Best as appropriate. Choose the actual languages/scripts present
+on the page; installing every model is not a reason to run all of them in one
+OCR pass.
 
 ## Implementation and verification boundary
 
-`load_source`, `list_models` and `prepare_offline_pack` form the offline API for
-the native manager. The preparer has no network or subprocess dependency and
+`load_source`, `list_models` and `prepare_offline_pack` form the offline
+catalogue and pack-preparation API. The preparer has no network or subprocess dependency and
 does not execute model files. Synthetic tests cover filesystem integrity,
 publication, cancellation and budgets. Real selected-model OCR smoke results
 are recorded separately; they must not be reported as all-language acceptance.

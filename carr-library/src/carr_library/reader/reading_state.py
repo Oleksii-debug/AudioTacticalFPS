@@ -3,8 +3,8 @@
 Locations bind the source, exact revision and page bytes. A reader must resolve
 them against the authorized library before showing a page. This module neither
 approves extracted text nor changes the research database. It stores a bounded
-JSON sidecar using the same cooperative writer lock as the library. Explicit
-workspace exports provide portable reading-state backups.
+JSON sidecar using the same cooperative writer lock as the library. Full library
+backups retain this state; explicit workspace exports support selective transfer.
 """
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -192,12 +192,13 @@ class ReadingState:
         self.root = _private_root(root)
         self.path = self.root / FILENAME
 
-    def _read(self):
+    def _read_validated(self):
+        """Read one stable snapshot, retaining its exact bytes for full backups."""
         _regular_if_present(self.path)
         try:
             before = self.path.lstat()
         except FileNotFoundError:
-            return {}, {}, None
+            return None, {}, {}, None
         if not 0 < before.st_size <= MAX_BYTES:
             raise ValueError('Reading-state file is empty or exceeds its size limit.')
         flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
@@ -214,7 +215,11 @@ class ReadingState:
         except UnicodeError as exc:
             raise ValueError('Reading state must be valid UTF-8. The existing file was kept.') from exc
         positions, bookmarks, _ = _decode(text)
-        return positions, bookmarks, _file_identity(before)
+        return raw, positions, bookmarks, _file_identity(before)
+
+    def _read(self):
+        _, positions, bookmarks, previous = self._read_validated()
+        return positions, bookmarks, previous
 
     def _publish(self, positions, bookmarks, previous, *, cancelled=lambda: False):
         _check_cancelled(cancelled)

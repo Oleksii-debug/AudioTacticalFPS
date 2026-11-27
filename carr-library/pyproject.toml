@@ -17,6 +17,8 @@ dependencies = [
   "Pillow==13.0.0",
   "defusedxml==0.7.1",
   "comtypes==1.5.0; sys_platform == 'win32'",
+  "bibtexparser==2.1.0",
+  "pylatexenc==2.11",
 ]
 license-files = [
   "bootstrap/vendor/cairn_extractors/LICENSE",
@@ -87,6 +89,7 @@ packages = [
   "carr_library.studio",
   "carr_library.assistant",
   "carr_library.conversion",
+  "carr_library.integrations",
   "carr_library.academic_integration",
   "carr_library.language_qualification",
   "bootstrap",

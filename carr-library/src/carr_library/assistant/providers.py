@@ -398,7 +398,8 @@ class Gateway:
                         if (not isinstance(translations, list) or len(translations) != 1
                                 or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
                             raise ProviderError('The text translation response is invalid.')
-                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        decoded = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        result['text'] = text(decoded, 'translation output', maximum=max_response_bytes)
                         detected = translations[0].get('detectedSourceLanguage')
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
