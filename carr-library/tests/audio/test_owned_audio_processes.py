@@ -54,9 +54,18 @@ def _running(pid):
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    status = Path('/proc') / str(pid) / 'stat'
-    if status.exists():
-        return status.read_text().rsplit(')', 1)[1].split()[0] not in ('Z', 'X')
+    if sys.platform.startswith('linux'):
+        status = Path('/proc') / str(pid) / 'stat'
+        try:
+            return status.read_text().rsplit(')', 1)[1].split()[0] not in ('Z', 'X')
+        except FileNotFoundError:
+            # init can reap the process after kill(pid, 0) succeeds. Missing
+            # procfs state is not itself proof; require ESRCH for that PID.
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return False
+            raise AssertionError('Owned child state is not verifiable.')
     return True
 
 
@@ -70,6 +79,39 @@ def _last_cleanup(children):
             except ProcessLookupError:
                 pass
             child.wait(timeout=5)
+
+
+def test_process_liveness_probe_does_not_resurrect_a_reaped_child(monkeypatch):
+    child = subprocess.Popen([PYTHON, '-I', '-c', 'import sys; sys.stdin.buffer.read()'],
+                             stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+    try:
+        if sys.platform.startswith('linux'):
+            actual_kill = os.kill
+            inspected = []
+
+            def exit_after_liveness(pid, selected):
+                result = actual_kill(pid, selected)
+                if pid == child.pid and selected == 0 and not inspected:
+                    inspected.append(pid)
+                    child.stdin.close()
+                    assert child.wait(timeout=5) == 0
+                return result
+
+            monkeypatch.setattr(os, 'kill', exit_after_liveness)
+        else:
+            # Windows uses a pinned native process handle instead of /proc.
+            child.stdin.close()
+            assert child.wait(timeout=5) == 0
+        assert not _running(child.pid)
+        if sys.platform.startswith('linux'):
+            assert inspected == [child.pid]
+    finally:
+        if not child.stdin.closed:
+            child.stdin.close()
+        if child.poll() is None:
+            child.kill()
+        child.wait(timeout=5)
 
 
 def _subject(kind, tmp_path, cancelled=lambda: False):

@@ -7,6 +7,7 @@ and actual ASR inference remain separate acceptance gates.
 from dataclasses import replace
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -23,17 +24,84 @@ from carr_library.transcription_receipt import DEFAULT_SETTINGS, PROTOCOL
 from carr_library.transcription_state import read_definition, validate_definition
 
 
-CHILD = r"""
-import hashlib, json, os, sys, time
+PROTOCOL_HELPERS = r"""
+import hashlib, json, os, stat, sys, time
 from pathlib import Path
 def canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False)
 def digest(value):
     return hashlib.sha256(value).hexdigest()
+def binding(path):
+    try:
+        before = path.lstat()
+    except FileNotFoundError:
+        return None
+    if (not stat.S_ISREG(before.st_mode) or before.st_nlink != 1
+            or getattr(before, 'st_file_attributes', 0) & 0x400
+            or before.st_size > 1024 * 1024):
+        raise ValueError('Synthetic status is not a bounded independent regular file.')
+    identity = lambda info: (info.st_dev, info.st_ino, info.st_size,
+                             info.st_mtime_ns, info.st_ctime_ns, info.st_mode, info.st_nlink)
+    with path.open('rb') as stream:
+        opened = os.fstat(stream.fileno())
+        data = stream.read(1024 * 1024 + 1)
+        after = os.fstat(stream.fileno())
+    if (identity(before) != identity(opened) or identity(before) != identity(after)
+            or identity(before) != identity(path.lstat()) or len(data) != before.st_size):
+        raise ValueError('Synthetic status changed while its binding was captured.')
+    return identity(before), digest(data)
+def replace_status(stage, path):
+    if path.name != 'job_status.json' or stage.parent != path.parent:
+        raise ValueError('Synthetic status needs its same-directory owned stage.')
+    parent = path.parent.lstat()
+    if (not stat.S_ISDIR(parent.st_mode)
+            or getattr(parent, 'st_file_attributes', 0) & 0x400):
+        raise ValueError('Synthetic status needs its original local parent.')
+    parent_identity = parent.st_dev, parent.st_ino
+    original_stage, original_target = binding(stage), binding(path)
+    if original_stage is None:
+        raise ValueError('Synthetic status lost its owned stage.')
+    deadline, last_error = time.monotonic() + 2, None
+    while True:
+        if last_error is not None and time.monotonic() >= deadline:
+            raise last_error
+        current_parent = path.parent.lstat()
+        if ((current_parent.st_dev, current_parent.st_ino) != parent_identity
+                or not stat.S_ISDIR(current_parent.st_mode)
+                or getattr(current_parent, 'st_file_attributes', 0) & 0x400
+                or binding(stage) != original_stage or binding(path) != original_target):
+            raise ValueError('Synthetic status publication lost its captured file bindings.')
+        if last_error is not None and time.monotonic() >= deadline:
+            raise last_error
+        try:
+            os.replace(stage, path)
+            return
+        except OSError as error:
+            if getattr(error, 'winerror', None) not in (5, 32):
+                raise
+            last_error = error
+            if globals().get('mode') == 'held_status':
+                (path.parent / 'status-retry.flag').write_bytes(b'')
+            time.sleep(.01)
 def write(path, value):
     stage = path.with_name(path.name + '.synthetic-part')
-    stage.write_text(canonical(value), encoding='utf-8')
-    os.replace(stage, path)
+    with stage.open('xb') as stream:
+        stream.write(canonical(value).encode('utf-8'))
+        stream.flush()
+        os.fsync(stream.fileno())
+    if path.name == 'job_status.json':
+        replacing = path.exists()
+        if replacing and globals().get('mode') == 'held_status':
+            (path.parent / 'status-attempt.flag').write_bytes(b'')
+        replace_status(stage, path)
+        if replacing and globals().get('mode') == 'held_status':
+            (path.parent / 'status-replaced.flag').write_bytes(b'')
+    else:
+        os.replace(stage, path)
+"""
+
+
+CHILD = PROTOCOL_HELPERS + r"""
 job = Path(sys.argv[sys.argv.index('--job-dir') + 1])
 config_path = job / 'job_config.json'
 config = json.loads(config_path.read_text(encoding='utf-8'))
@@ -48,6 +116,12 @@ protocol = 'supplied-whisper-v43-hardened-1'
 status = dict(protocol=protocol, run_id=config['run_id'], state='processing', done=0,
               failed=0, total=len(config['inputs']), active_files=[])
 write(job / 'job_status.json', status)
+if mode == 'held_status':
+    deadline = time.monotonic() + 5
+    while not (job / 'status-reader.flag').exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError('The synthetic status reader did not reach its barrier.')
+        time.sleep(.01)
 if mode == 'wait':
     while not (job / 'stop.flag').exists():
         time.sleep(.01)
@@ -155,6 +229,99 @@ def real_protocol_child(monkeypatch):
 
     monkeypatch.setattr(service, 'review_runtime', selected)
     return calls
+
+
+def test_actual_status_writer_waits_for_an_open_snapshot_without_mutating_it(
+        prepared_environment, real_protocol_child, monkeypatch):
+    from carr_library.audio.jobs import _open_json_file
+
+    app, manifest, source, settings = prepared_environment('held_status')
+    identity = app.prepare([source], manifest, settings)
+    job = app._job(identity)
+    actual_read = service._read_json_snapshot
+    snapshots = []
+
+    def held_snapshot(path, **options):
+        if Path(path) == job / 'job_status.json' and not snapshots:
+            with _open_json_file(Path(path)) as stream:
+                first = stream.read()
+                assert json.loads(first)['state'] == 'processing'
+                snapshots.append(first)
+                (job / 'status-reader.flag').write_bytes(b'')
+                deadline = time.monotonic() + 5
+                while not ((job / 'status-retry.flag').exists()
+                           or (job / 'status-replaced.flag').exists()):
+                    assert time.monotonic() < deadline, 'The actual status writer did not reach publication.'
+                    time.sleep(.01)
+                assert (job / 'status-attempt.flag').exists()
+                if os.name == 'nt':
+                    # MoveFileEx cannot replace this open snapshot even though
+                    # it shares deletion. This is real native contention.
+                    assert (job / 'status-retry.flag').exists()
+                    assert not (job / 'status-replaced.flag').exists()
+                stream.seek(0)
+                assert stream.read() == first
+        return actual_read(path, **options)
+
+    monkeypatch.setattr(service, '_read_json_snapshot', held_snapshot)
+    result = app.run(identity, manifest, timeout=10)
+    assert len(snapshots) == 1
+    assert (job / 'status-replaced.flag').exists()
+    assert read_json(job / 'job_status.json')['state'] == 'завершено'
+    assert result['output_count'] == 1
+    assert read_json(job / 'execution.json')['exit_code'] == 0
+
+
+@pytest.mark.parametrize('winerror', [5, 32])
+def test_status_peer_retries_only_the_same_owned_stage(tmp_path, monkeypatch, winerror):
+    namespace = {}
+    exec(PROTOCOL_HELPERS, namespace)
+    status = tmp_path / 'job_status.json'
+    namespace['write'](status, {'state': 'processing'})
+    old = status.read_bytes()
+    actual_replace, attempts = os.replace, []
+
+    def briefly_shared(stage, destination):
+        attempts.append((Path(stage).stat().st_ino, Path(stage).read_bytes()))
+        if len(attempts) == 1:
+            assert status.read_bytes() == old
+            error = PermissionError('Synthetic Windows status contention.')
+            error.winerror = winerror
+            raise error
+        return actual_replace(stage, destination)
+
+    monkeypatch.setattr(os, 'replace', briefly_shared)
+    namespace['write'](status, {'state': 'complete'})
+    assert len(attempts) == 2 and attempts[0] == attempts[1]
+    assert json.loads(status.read_bytes()) == {'state': 'complete'}
+
+
+@pytest.mark.parametrize('case', ['unrelated-error', 'changed-stage', 'changed-target', 'deadline'])
+def test_status_peer_never_retries_unbound_publication(tmp_path, monkeypatch, case):
+    namespace = {}
+    exec(PROTOCOL_HELPERS, namespace)
+    status = tmp_path / 'job_status.json'
+    namespace['write'](status, {'state': 'processing'})
+    old, attempts = status.read_bytes(), []
+    ticks = iter((0, 3)) if case == 'deadline' else None
+    if ticks is not None:
+        monkeypatch.setattr(namespace['time'], 'monotonic', lambda: next(ticks))
+
+    def denied(stage, destination):
+        attempts.append(Path(stage))
+        if case == 'changed-stage':
+            Path(stage).write_bytes(b'changed retained stage')
+        elif case == 'changed-target':
+            status.write_bytes(b'changed concurrent target')
+        error = PermissionError('Synthetic status publication refusal.')
+        error.winerror = 123 if case == 'unrelated-error' else 5
+        raise error
+
+    monkeypatch.setattr(os, 'replace', denied)
+    with pytest.raises((PermissionError, ValueError)):
+        namespace['write'](status, {'state': 'complete'})
+    assert len(attempts) == 1 and attempts[0].is_file()
+    assert status.read_bytes() == (b'changed concurrent target' if case == 'changed-target' else old)
 
 
 def test_complete_manifest_accepts_only_explicit_reviewed_local_assets(prepared_environment):

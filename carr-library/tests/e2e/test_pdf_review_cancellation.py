@@ -1,13 +1,13 @@
 """Cancelled review actions must not publish or revoke a source attestation."""
 import threading
 from contextlib import contextmanager
-import subprocess
 import sys
-from time import monotonic
+from time import monotonic, sleep
 
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.audio import capture_process
 from carr_library.ingest import worker
 
 
@@ -96,26 +96,55 @@ def test_cancel_inside_revocation_transaction_preserves_prior_review(pdf_result,
     assert tuple(row[0] for row in _reviews(app, workspace)) == (1,)
 
 
-def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
+def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch, tmp_path):
     app, workspace, hit = pdf_result
-    original = subprocess.Popen
+    original = capture_process.start_owned_process
     children = []
+    ready = tmp_path / 'renderer-ready'
+    cancellation = threading.Event()
+    requested_at = []
+    child_code = (
+        "from pathlib import Path; import sys,time; "
+        "ready=Path(sys.argv[1]); staged=ready.with_suffix('.part'); "
+        "staged.write_bytes(b'renderer-ready'); staged.replace(ready); time.sleep(30)"
+    )
 
-    def delayed_renderer(command, *args, **kwargs):
-        # Preserve real Windows process-tree cleanup commands.
-        if command[0] != sys.executable:
-            return original(command, *args, **kwargs)
-        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
-                         *args, **kwargs)
+    def running_renderer(command, **options):
+        # Observe the shared owned starter: Windows JobProcess deliberately
+        # bypasses Popen, and POSIX still owns its separate native session.
+        child = original([sys.executable, '-I', '-B', '-c', child_code, str(ready)],
+                         **options)
         children.append(child)
-        return child
+        try:
+            deadline = monotonic() + 10
+            while not ready.exists():
+                assert child.poll() is None, 'The synthetic renderer exited before its ready barrier.'
+                assert monotonic() < deadline, 'The actual renderer did not reach its ready barrier.'
+                sleep(.01)
+            assert ready.read_bytes() == b'renderer-ready'
+            assert child.poll() is None
+            requested_at.append(monotonic())
+            cancellation.set()
+            return child
+        except BaseException:
+            # The caller has not registered its ExitStack cleanup until this
+            # starter returns. Retain that ownership on failed fixture setup.
+            capture_process.stop_owned_process(child)
+            raise
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', delayed_renderer)
-    started = monotonic()
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',
-                            confirmed=True, cancelled=lambda: monotonic() - started > 0.2)
-    assert len(children) == 1 and children[0].poll() is not None
-    assert monotonic() - started < 5
-    assert _reviews(app, workspace) == ()
-
+    monkeypatch.setattr(capture_process, 'start_owned_process', running_renderer)
+    try:
+        with pytest.raises(InterruptedError, match='cancelled'):
+            app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',
+                                confirmed=True, cancelled=cancellation.is_set)
+        assert cancellation.is_set() and len(children) == len(requested_at) == 1
+        assert children[0].poll() is not None
+        assert children[0]._carr_family_quiescent is True
+        # Measure cancellation after confirmed startup, excluding source
+        # validation and loaded-runner interpreter startup from this allowance.
+        assert monotonic() - requested_at[0] < 5
+        assert _reviews(app, workspace) == ()
+        assert app.search(workspace, 'railway')[0].verified is False
+    finally:
+        for child in children:
+            capture_process.stop_owned_process(child)
