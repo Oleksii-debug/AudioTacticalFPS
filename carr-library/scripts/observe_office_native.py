@@ -2,6 +2,7 @@
 
 This records observations; it is not a converter acceptance waiver. Diagnostic
 variants do not change the product environment or its immutable runtime lease.
+The crossed direct/worker matrix varies path length and Unicode independently.
 """
 from contextlib import contextmanager
 from collections import Counter
