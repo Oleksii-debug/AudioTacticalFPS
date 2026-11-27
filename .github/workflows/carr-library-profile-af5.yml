@@ -1,0 +1,1471 @@
+name: CARR library profile / exact accepted wheel
+
+on:
+  push:
+    branches: [carr/v3-library-profile-af5-20261127]
+    paths: [.github/workflows/carr-library-profile-af5.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: carr-library-profile-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  source-acceptance:
+    name: Await the exact original source acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      EXPECTED_SOURCE_COMMIT: '33007dc83fa1ede699ee9a6ef8df494dace401b9'
+      ORIGINAL_MAIN_RUN: '45946353309'
+      ORIGINAL_MAIN_JOB: '140331831055'
+      ORIGINAL_MAIN_ATTEMPT: '1'
+    steps:
+      - name: Set up the read-only acceptance reader
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Require terminal success of the exact source run before using Windows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python -I -B {0}
+        run: |
+          import json, os, time, urllib.request
+          REPO = 'Oleksii-debug/AudioTacticalFPS'
+          SOURCE = os.environ['EXPECTED_SOURCE_COMMIT']
+          RUN, JOB, ATTEMPT = (int(os.environ[name]) for name in ('ORIGINAL_MAIN_RUN', 'ORIGINAL_MAIN_JOB', 'ORIGINAL_MAIN_ATTEMPT'))
+          token = os.environ.pop('GH_TOKEN')
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, response, code, message, headers, newurl):
+                  return None
+          opener = urllib.request.build_opener(NoRedirect())
+          def require(condition, message):
+              if not condition:
+                  raise ValueError(message)
+          def api(path):
+              request = urllib.request.Request('https://api.github.com/repos/' + REPO + path, headers={
+                  'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'carr-library-profile-source-gate'})
+              with opener.open(request, timeout=15) as response:
+                  raw = response.read(4 * 1024 * 1024 + 1)
+              require(len(raw) <= 4 * 1024 * 1024, 'Oversized source acceptance metadata.')
+              return json.loads(raw.decode('utf-8'))
+          def main():
+              require(os.environ['GITHUB_REPOSITORY'] == REPO and
+                      os.environ['GITHUB_REF'] == 'refs/heads/carr/v3-library-profile-af5-20261127',
+                      'The source acceptance gate requires its dedicated profile branch.')
+              deadline, previous = time.monotonic() + 74 * 60, None
+              active = {'queued', 'in_progress', 'waiting', 'pending', 'requested'}
+              while True:
+                  require(time.monotonic() < deadline, 'The bounded source acceptance wait expired.')
+                  run, job = api('/actions/runs/' + str(RUN)), api('/actions/jobs/' + str(JOB))
+                  require(run['id'] == RUN and run['head_sha'] == SOURCE and run['run_attempt'] == ATTEMPT
+                          and run['repository']['full_name'] == REPO and run['head_repository']['full_name'] == REPO
+                          and run['path'] == '.github/workflows/carr-windows.yml',
+                          'The pinned original source run identity differs.')
+                  require(job['id'] == JOB and job['run_id'] == RUN and job['head_sha'] == SOURCE
+                          and job['run_attempt'] == ATTEMPT, 'The pinned original source job identity differs.')
+                  state = (run['status'], run.get('conclusion'), job['status'], job.get('conclusion'))
+                  if state != previous:
+                      print(json.dumps({'source_commit': SOURCE, 'original_run': RUN, 'original_job': JOB,
+                          'attempt': ATTEMPT, 'run_status': state[0], 'run_conclusion': state[1],
+                          'job_status': state[2], 'job_conclusion': state[3],
+                          'library_profile_runtime_acceptance': 'NOT_RUN'}, sort_keys=True), flush=True)
+                      previous = state
+                  for record, label in ((run, 'source run'), (job, 'source job')):
+                      if record['status'] == 'completed':
+                          require(record.get('conclusion') == 'success', 'The original ' + label + ' did not succeed.')
+                      else:
+                          require(record['status'] in active and record.get('conclusion') is None,
+                                  'Unexpected original ' + label + ' state.')
+                  if run['status'] == job['status'] == 'completed':
+                      for name in ('Run required integrated source workflows',
+                                   'Build, install and exercise the complete bundle with runtime egress blocked',
+                                   'Preserve exact-commit runtime and test evidence'):
+                          matches = [step for step in job['steps'] if step['name'] == name]
+                          require(len(matches) == 1 and matches[0]['conclusion'] == 'success',
+                                  'A required original source gate did not succeed.')
+                      print(json.dumps({'status': 'PASS', 'source_acceptance': 'original main terminal SUCCESS',
+                          'source_commit': SOURCE, 'original_run': RUN, 'original_job': JOB, 'attempt': ATTEMPT,
+                          'library_profile_runtime_acceptance': 'NOT_RUN'}, sort_keys=True), flush=True)
+                      return
+                  require(time.monotonic() + 20 < deadline, 'The bounded source acceptance wait expired.')
+                  time.sleep(20)
+          try:
+              main()
+          except Exception as error:
+              # No response body, signed URL, token or Authorization header is logged.
+              detail = str(error) if type(error) is ValueError else type(error).__name__
+              print('FAIL: original source acceptance: ' + detail, flush=True)
+              raise SystemExit(1)
+
+  library-profile:
+    needs: source-acceptance
+    name: Windows x64 / exact wheel / library without bundled audio
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: source/carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_COMMIT: '33007dc83fa1ede699ee9a6ef8df494dace401b9'
+      EXPECTED_SOURCE_TREE: 'c8bf0cc8e7ddd928b479282fd629f6e6d267174b'
+      ORIGINAL_MAIN_RUN: '45946353309'
+      ORIGINAL_MAIN_JOB: '140331831055'
+      ORIGINAL_MAIN_ATTEMPT: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the frozen product source independently of this profile workflow
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: '33007dc83fa1ede699ee9a6ef8df494dace401b9'
+          path: source
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Require and download the original successful post-seal wheel artifact
+        timeout-minutes: 10
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force 'profile-results' | Out-Null
+          $originalArtifact = @'
+          import base64, datetime, hashlib, importlib.util, json, os, pathlib, re, stat, sys, urllib.error, urllib.parse, urllib.request, xml.etree.ElementTree as ET, zipfile
+          REPO = 'Oleksii-debug/AudioTacticalFPS'
+          SOURCE = os.environ['EXPECTED_SOURCE_COMMIT']
+          TREE = os.environ['EXPECTED_SOURCE_TREE']
+          RUN, JOB, ATTEMPT = (int(os.environ[name]) for name in ('ORIGINAL_MAIN_RUN', 'ORIGINAL_MAIN_JOB', 'ORIGINAL_MAIN_ATTEMPT'))
+          PROFILE_PATH = '.github/workflows/carr-library-profile-af5.yml'
+          PROFILE_REF = 'refs/heads/carr/v3-library-profile-af5-20261127'
+          CHUNK, MAX_ZIP, MAX_TOTAL = 1024 * 1024, 256 * 1024 * 1024, 512 * 1024 * 1024
+          API = 'https://api.github.com/repos/' + REPO
+          def require(condition, message):
+              if not condition:
+                  raise ValueError(message)
+          def unique(pairs):
+              out = {}
+              for key, value in pairs:
+                  require(key not in out, 'Duplicate JSON key.')
+                  out[key] = value
+              return out
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, response, code, message, headers, newurl):
+                  return None
+          opener = urllib.request.build_opener(NoRedirect())
+          token = os.environ.pop('GH_TOKEN')
+          def api(path):
+              require(path.startswith('/') and not path.startswith('//'), 'Invalid API path.')
+              request = urllib.request.Request(API + path, headers={
+                  'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'carr-library-profile-proof'})
+              with opener.open(request, timeout=45) as response:
+                  raw = response.read(4 * CHUNK + 1)
+              require(len(raw) <= 4 * CHUNK, 'Oversized API metadata.')
+              return json.loads(raw.decode('utf-8'), object_pairs_hook=unique)
+          def terminal_identity():
+              run = api('/actions/runs/' + str(RUN))
+              job = api('/actions/jobs/' + str(JOB))
+              require(run['id'] == RUN and run['head_sha'] == SOURCE and run['run_attempt'] == ATTEMPT
+                      and run['repository']['full_name'] == REPO and run['head_repository']['full_name'] == REPO
+                      and run['path'] == '.github/workflows/carr-windows.yml'
+                      and run['status'] == 'completed' and run['conclusion'] == 'success',
+                      'The exact original main run has not qualified successfully.')
+              require(job['id'] == JOB and job['run_id'] == RUN and job['head_sha'] == SOURCE
+                      and job['run_attempt'] == ATTEMPT and job['status'] == 'completed'
+                      and job['conclusion'] == 'success', 'The exact original main job has not qualified successfully.')
+              for name in ('Run required integrated source workflows',
+                           'Build, install and exercise the complete bundle with runtime egress blocked',
+                           'Preserve exact-commit runtime and test evidence'):
+                  matches = [step for step in job['steps'] if step['name'] == name]
+                  require(len(matches) == 1 and matches[0]['conclusion'] == 'success',
+                          'A required original main gate did not succeed.')
+              return run, job
+          def main():
+              require(os.environ['GITHUB_REPOSITORY'] == REPO and os.environ['GITHUB_REF'] == PROFILE_REF,
+                      'This profile must use its dedicated repository branch.')
+              head = os.environ['GITHUB_SHA']
+              require(re.fullmatch('[0-9a-f]{40}', head) and head != SOURCE, 'Invalid profile workflow identity.')
+              profile = api('/commits/' + head)
+              require([parent['sha'] for parent in profile['parents']] == [SOURCE],
+                      'The profile workflow must be a direct source-only child of the frozen product.')
+              changes = profile.get('files', [])
+              require(len(changes) == 1 and changes[0]['filename'] == PROFILE_PATH
+                      and changes[0]['status'] == 'added', 'The profile commit changes product source or other files.')
+              workflow_blob = api('/git/blobs/' + changes[0]['sha'])
+              require(workflow_blob['encoding'] == 'base64', 'Unsupported workflow blob encoding.')
+              workflow = base64.b64decode(''.join(workflow_blob['content'].splitlines()), validate=True)
+              require(hashlib.sha1(b'blob ' + str(len(workflow)).encode('ascii') + b'\0' + workflow).hexdigest()
+                      == changes[0]['sha'], 'Profile workflow bytes do not match their Git identity.')
+              work = pathlib.Path(os.environ['RUNNER_TEMP']) / 'carr-original-main-artifact'
+              work.mkdir(exist_ok=False)
+              definition = work / 'profile-definition.yml'
+              definition.write_bytes(workflow)
+              run, job = terminal_identity()
+              listing = api('/actions/runs/' + str(RUN) + '/artifacts?per_page=100')
+              require(listing['total_count'] <= 100, 'Unexpected artifact inventory size.')
+              expected_name = 'carr-windows-' + SOURCE + '-' + str(ATTEMPT)
+              matches = [item for item in listing['artifacts'] if item['name'] == expected_name]
+              require(len(matches) == 1, 'The exact original acceptance artifact is missing or ambiguous.')
+              artifact = api('/actions/artifacts/' + str(matches[0]['id']))
+              require(artifact['id'] == matches[0]['id'] and artifact['name'] == expected_name
+                      and artifact['expired'] is False and artifact['workflow_run']['id'] == RUN
+                      and artifact['workflow_run']['head_sha'] == SOURCE
+                      and artifact['workflow_run']['repository_id'] == run['repository']['id']
+                      and artifact['workflow_run']['head_repository_id'] == run['repository']['id'],
+                      'Artifact identity does not match the original successful run.')
+              require(isinstance(artifact.get('digest'), str)
+                      and re.fullmatch('sha256:[0-9a-f]{64}', artifact['digest']),
+                      'Original complete-artifact SHA256 is absent.')
+              require(type(artifact['size_in_bytes']) is int and 0 < artifact['size_in_bytes'] <= MAX_ZIP,
+                      'Original artifact exceeds the bounded download size.')
+              stamp = lambda value: datetime.datetime.fromisoformat(value.replace('Z', '+00:00'))
+              require(stamp(job['started_at']) <= stamp(artifact['created_at']) <= stamp(artifact['updated_at']) <= stamp(job['completed_at']),
+                      'Artifact timestamps do not belong to the original completed job.')
+              request = urllib.request.Request(API + '/actions/artifacts/' + str(artifact['id']) + '/zip',
+                  headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',
+                           'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'carr-library-profile-proof'})
+              try:
+                  with opener.open(request, timeout=45):
+                      pass
+              except urllib.error.HTTPError as response:
+                  require(response.code == 302, 'Artifact endpoint did not return its expected redirect.')
+                  location = response.headers.get('Location', '')
+                  response.close()
+              else:
+                  raise ValueError('Artifact endpoint did not return its expected redirect.')
+              target = urllib.parse.urlsplit(location)
+              require(target.scheme == 'https' and target.hostname and target.username is None
+                      and target.password is None and target.port in (None, 443) and not target.fragment,
+                      'Artifact download location is not HTTPS.')
+              # The signed storage URL is never printed; a NEW request sends no GitHub token.
+              archive_path = work / 'original-artifact.zip'
+              digest, received = hashlib.sha256(), 0
+              with opener.open(urllib.request.Request(location, headers={'Accept': 'application/zip'}), timeout=45) as response:
+                  with archive_path.open('xb') as output:
+                      while block := response.read(CHUNK):
+                          received += len(block)
+                          require(received <= artifact['size_in_bytes'] and received <= MAX_ZIP,
+                                  'Original artifact exceeded its exact declared length.')
+                          digest.update(block)
+                          output.write(block)
+              require(received == artifact['size_in_bytes'] and 'sha256:' + digest.hexdigest() == artifact['digest'],
+                      'Original complete-artifact length or SHA256 differs.')
+              guard_spec = importlib.util.spec_from_file_location('profile_transfer_guard',
+                  pathlib.Path('packaging/create_delivery.py').resolve())
+              guard = importlib.util.module_from_spec(guard_spec)
+              guard_spec.loader.exec_module(guard)
+              proof_names = {'tested-application-wheel.json', 'source-wheel-proof.json',
+                             'import-ownership-installed.json', 'native-transcription-proof.json',
+                             'full-bundle-workflows.json', 'full-bundle-workflows.xml', 'full-bundle-verified.json', 'tested-commit.txt'}
+              extracted, inventory = {}, {}
+              with archive_path.open('rb') as stream:
+                  end = zipfile._EndRecData(stream)
+                  require(end is not None and not end[zipfile._ECD_DISK_NUMBER] and not end[zipfile._ECD_DISK_START]
+                          and end[zipfile._ECD_ENTRIES_TOTAL] <= 2048 and end[zipfile._ECD_SIZE] <= 4 * CHUNK
+                          and end[zipfile._ECD_ENTRIES_THIS_DISK] == end[zipfile._ECD_ENTRIES_TOTAL]
+                          and end[zipfile._ECD_LOCATION] - end[zipfile._ECD_OFFSET] - end[zipfile._ECD_SIZE] in (0, 76)
+                          and end[zipfile._ECD_LOCATION] + zipfile.sizeEndCentDir + end[zipfile._ECD_COMMENT_SIZE] == received
+                          and end[zipfile._ECD_COMMENT_SIZE] == 0,
+                          'Invalid or oversized original artifact ZIP directory.')
+                  if end[zipfile._ECD_LOCATION] - end[zipfile._ECD_OFFSET] - end[zipfile._ECD_SIZE] == 76:
+                      # Accept the standard bounded ZIP64 end record/locator, never arbitrary trailing data.
+                      stream.seek(end[zipfile._ECD_OFFSET] + end[zipfile._ECD_SIZE])
+                      require(stream.read(4) == b'PK\x06\x06' and int.from_bytes(stream.read(8), 'little') == 44,
+                              'Invalid ZIP64 end record.')
+                      stream.seek(end[zipfile._ECD_LOCATION] - 20)
+                      require(stream.read(4) == b'PK\x06\x07', 'Invalid ZIP64 locator.')
+                  stream.seek(0)
+                  with zipfile.ZipFile(stream) as archive:
+                      infos = archive.infolist()
+                      require(0 < len(infos) <= 2048 and len(infos) == end[zipfile._ECD_ENTRIES_TOTAL]
+                              and min(info.header_offset for info in infos) == 0,
+                              'Invalid artifact ZIP entry count or prefixed data.')
+                      files = [info for info in infos if not info.is_dir()]
+                      prefixes = [info.filename[:-len('tested-application-wheel.json')] for info in files
+                                  if info.filename.endswith('tested-application-wheel.json')]
+                      require(len(prefixes) == 1 and prefixes[0] in ('', 'ci-results/', 'carr-library/ci-results/'),
+                              'Artifact evidence root is missing or ambiguous.')
+                      prefix, seen, total = prefixes[0], set(), 0
+                      for info in infos:
+                          name = info.filename.rstrip('/') if info.is_dir() else info.filename
+                          folded = guard._name(name)
+                          kind = stat.S_IFMT(info.external_attr >> 16)
+                          require(info.orig_filename == info.filename and folded not in seen
+                                  and kind in (0, stat.S_IFREG, stat.S_IFDIR)
+                                  and not info.external_attr & stat.FILE_ATTRIBUTE_REPARSE_POINT
+                                  and not info.flag_bits & (1 | 0x40 | 0x2000)
+                                  and info.compress_type in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)
+                                  and 0 <= info.file_size <= 128 * CHUNK,
+                                  'Unsafe, duplicate, linked, encrypted or oversized artifact ZIP entry.')
+                          require((info.is_dir() and kind != stat.S_IFREG) or
+                                  (not info.is_dir() and kind != stat.S_IFDIR), 'ZIP file kind differs from its path.')
+                          seen.add(folded)
+                          total += info.file_size
+                          require(total <= MAX_TOTAL, 'Expanded artifact exceeds its bound.')
+                          if info.is_dir():
+                              require(info.file_size == 0 and ((name + '/').startswith(prefix) or
+                                      prefix.startswith(name + '/')),
+                                      'Unexpected artifact directory.')
+                              continue
+                          require(info.filename.startswith(prefix), 'Artifact entry is outside its evidence root.')
+                          relative = info.filename[len(prefix):]
+                          wheel_entry = bool(re.fullmatch(r'tested-application-wheel/[A-Za-z0-9_.+-]+\.whl', relative))
+                          require(wheel_entry or re.fullmatch(r'[A-Za-z0-9_.-]+\.(json|txt|xml|log)', relative),
+                                  'Original artifact contains an undeclared payload type.')
+                          if relative in proof_names:
+                              require(info.file_size <= 16 * CHUNK, 'Oversized original proof file.')
+                          keep = relative in proof_names or wheel_entry
+                          destination = work / relative if keep else None
+                          if destination is not None:
+                              destination.parent.mkdir(parents=True, exist_ok=True)
+                          output = destination.open('xb') if destination is not None else None
+                          value, size = hashlib.sha256(), 0
+                          try:
+                              with archive.open(info) as member:
+                                  while block := member.read(CHUNK):
+                                      size += len(block)
+                                      require(size <= info.file_size, 'ZIP member exceeded its declared size.')
+                                      value.update(block)
+                                      if output is not None:
+                                          output.write(block)
+                          finally:
+                              if output is not None:
+                                  output.close()
+                          require(size == info.file_size, 'ZIP member length differs.')
+                          inventory[relative] = {'sha256': value.hexdigest(), 'bytes': size}
+                          if destination is not None:
+                              extracted[relative] = destination
+              require(proof_names <= extracted.keys(), 'An original required post-seal proof is missing.')
+              def proof(name):
+                  return json.loads(extracted[name].read_text(encoding='utf-8-sig'), object_pairs_hook=unique)
+              receipt, source = proof('tested-application-wheel.json'), proof('source-wheel-proof.json')
+              for value in (receipt, source):
+                  require(value.get('status') == 'PASS' and value.get('source_commit') == SOURCE
+                          and value.get('source_tree') == TREE, 'Original wheel proof source/tree identity differs.')
+              require(receipt.get('installed_bundle') == 'PASS'
+                      and re.fullmatch('[A-Za-z0-9_.+-]+\\.whl', receipt.get('wheel', ''))
+                      and receipt.get('sha256') == source.get('wheel_sha256'),
+                      'Original tested wheel is not bound to its post-seal receipt.')
+              wheel_name = 'tested-application-wheel/' + receipt['wheel']
+              require([name for name in extracted if name.endswith('.whl')] == [wheel_name]
+                      and inventory[wheel_name]['sha256'] == receipt['sha256'],
+                      'The extracted original wheel differs from the tested bytes.')
+              require(extracted['tested-commit.txt'].read_text(encoding='utf-8-sig').strip() == SOURCE,
+                      'Original tested-commit evidence differs.')
+              ownership = proof('import-ownership-installed.json')
+              require(all(ownership.get(key) == 'PASS' for key in ('status', 'transactional_import_ownership',
+                      'old_schema_migration', 'pending_receipt_backup')) and ownership.get('required_cases'),
+                      'Original import ownership/migration/backup proof is incomplete.')
+              transcription = proof('native-transcription-proof.json')
+              checks = ['actual named wx controls', 'shared background operation', 'actual isolated child protocol',
+                        'six verified formats', 'separate edit revision', 'original unchanged',
+                        'actual export dispatch preserves verified bytes']
+              require(transcription.get('status') == 'PASS' and transcription.get('checks') == checks
+                      and transcription.get('source_commit') == SOURCE and transcription.get('source_tree') == TREE
+                      and transcription.get('installed_package') is True
+                      and transcription.get('whisper_acoustic_inference') == 'NOT_RUN'
+                      and transcription.get('manual_NVDA') == 'NOT_RUN', 'Original native transcription proof differs.')
+              workflows, verified = proof('full-bundle-workflows.json'), proof('full-bundle-verified.json')
+              require(workflows.get('status') == 'PASS' and workflows.get('failed') == workflows.get('skipped') == 0
+                      and workflows.get('passed', 0) > 0, 'Original installed workflows did not qualify.')
+              require(verified.get('status') == 'PASS' and verified.get('source_commit') == SOURCE
+                      and verified.get('source_tree') == TREE and verified.get('manifest_unchanged') is True
+                      and verified.get('sealed_files_verified') is True, 'Original installed seal proof differs.')
+              xml = extracted['full-bundle-workflows.xml'].read_bytes()
+              require(b'<!DOCTYPE' not in xml and b'<!ENTITY' not in xml, 'DTD declarations are not permitted in original JUnit proof.')
+              cases = list(ET.fromstring(xml).iter('testcase'))
+              require(cases and all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                                   for case in cases), 'Original installed JUnit proof contains failures or omissions.')
+              expected_asr = {'tests.transcription.test_supplied_worker_bridge': 38,
+                              'tests.transcription.test_pr99_host': 18}
+              observed_asr = {module: sum(case.get('classname') == module for case in cases)
+                              for module in expected_asr}
+              require(observed_asr == expected_asr, 'Original installed ASR collection differs.')
+              archive_cases = {'test_final_callback_archive_blocks_transcription_publication[edit]',
+                               'test_final_callback_archive_blocks_transcription_publication[export]'}
+              require(archive_cases <= {case.get('name') for case in cases
+                      if case.get('classname') == 'tests.transcription.test_supplied_worker_bridge'},
+                      'Original main proof lacks the final-callback archive publication cases.')
+              again = api('/actions/artifacts/' + str(artifact['id']))
+              require(all(again.get(key) == artifact.get(key) for key in
+                          ('id', 'name', 'digest', 'size_in_bytes', 'created_at', 'updated_at'))
+                      and again['expired'] is False, 'Original artifact metadata changed during download.')
+              terminal_identity()
+              evidence = pathlib.Path('profile-results')
+              originals = evidence / 'original-main-proof'
+              originals.mkdir(parents=True, exist_ok=False)
+              for name in sorted(proof_names):
+                  (originals / name).write_bytes(extracted[name].read_bytes())
+              identity = {'status': 'PASS', 'source_commit': SOURCE, 'source_tree': TREE,
+                  'profile_workflow_commit': head, 'profile_workflow_tree': profile['commit']['tree']['sha'],
+                  'profile_workflow_blob': changes[0]['sha'], 'original_run': RUN, 'original_job': JOB,
+                  'original_attempt': ATTEMPT, 'artifact_id': artifact['id'], 'artifact_name': expected_name,
+                  'artifact_sha256': digest.hexdigest(), 'artifact_bytes': received,
+                  'wheel': receipt['wheel'], 'wheel_sha256': receipt['sha256'],
+                  'artifact_entries': inventory, 'qualification': 'original complete-bundle proof only'}
+              (evidence / 'original-main-artifact.json').write_text(
+                  json.dumps(identity, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+              with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as environment:
+                  environment.write('CARR_APPLICATION_WHEEL=' + str(extracted[wheel_name]) + '\n')
+                  environment.write('CARR_PROFILE_DEFINITION=' + str(definition) + '\n')
+              print(json.dumps({key: value for key, value in identity.items() if key != 'artifact_entries'}, sort_keys=True))
+          try:
+              main()
+          except Exception as error:
+              # Never print Authorization, response headers or the signed download URL.
+              detail = str(error) if type(error) is ValueError else type(error).__name__
+              print('FAIL: original acceptance artifact qualification: ' + detail, file=sys.stderr)
+              raise SystemExit(1)
+          '@
+          $originalArtifact | python -I -B - 2>&1 | Tee-Object 'profile-results/original-main-download.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install the original tested application wheel and pinned build dependencies
+        timeout-minutes: 10
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-library-profile-build'
+          python -B -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -I -B -m pip install --no-compile --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip install --no-compile --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $beforeInstallWheel = @'
+          import importlib.util, json, os, pathlib
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('profile_before_install', project / 'packaging/source_wheel.py')
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          proof = helper.verify_application_wheel(os.environ['CARR_APPLICATION_WHEEL'], project.parent, os.environ['EXPECTED_SOURCE_COMMIT'])
+          identity = json.loads(pathlib.Path('profile-results/original-main-artifact.json').read_text(encoding='utf-8'))
+          assert proof['wheel_sha256'] == identity['wheel_sha256']
+          assert proof['source_tree'] == identity['source_tree'] == os.environ['EXPECTED_SOURCE_TREE']
+          print(json.dumps({'status': 'PASS', **proof}, sort_keys=True))
+          '@
+          $beforeInstallWheel | & $python -I -B - | Tee-Object 'profile-results/preinstall-source-wheel.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip install --no-compile --no-deps $env:CARR_APPLICATION_WHEEL
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $profileEnvironment = @'
+          import importlib.metadata as metadata, importlib.util, json, os, pathlib, platform, sqlite3, struct, subprocess, sys
+          import carr_library, wx
+          project = pathlib.Path.cwd()
+          assert sys.platform == 'win32' and struct.calcsize('P') == 8 and sys.version_info[:2] == (3, 11)
+          commit = subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip()
+          tree = subprocess.run(['git', 'rev-parse', 'HEAD^{tree}'], check=True, capture_output=True, text=True).stdout.strip()
+          assert commit == os.environ['EXPECTED_SOURCE_COMMIT'] and tree == os.environ['EXPECTED_SOURCE_TREE']
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve())
+          assert not pathlib.Path(carr_library.__file__).resolve().is_relative_to(project / 'src')
+          spec = importlib.util.spec_from_file_location('profile_source_wheel', project / 'packaging/source_wheel.py')
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          proof = helper.verify_application_wheel(os.environ['CARR_APPLICATION_WHEEL'], project.parent, commit)
+          identity = json.loads(pathlib.Path('profile-results/original-main-artifact.json').read_text(encoding='utf-8'))
+          assert proof['wheel_sha256'] == identity['wheel_sha256'] and proof['source_tree'] == tree
+          spec = importlib.util.spec_from_file_location('profile_build', project / 'packaging/build_windows_bundle.py')
+          builder = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(builder)
+          locked = builder.read_lock(project / 'packaging/windows-semantic-cp311.lock')
+          pins = {name: value[0] for name, value in locked.items()}
+          actual = {name: metadata.version(name) for name in pins}
+          assert pins and actual == pins
+          pathlib.Path('profile-results/tested-commit.txt').write_text(commit + '\n', encoding='utf-8')
+          print(json.dumps({'status': 'PASS', 'source_commit': commit, 'source_tree': tree,
+              'original_wheel_sha256': proof['wheel_sha256'], 'application_wheel_rebuilt': False,
+              'build_environment_package': str(pathlib.Path(carr_library.__file__).resolve()),
+              'python': sys.version, 'windows': platform.platform(), 'sqlite': sqlite3.sqlite_version,
+              'wx': wx.version(), 'locked_versions': actual}, sort_keys=True))
+          '@
+          $profileEnvironment | & $python -I -B - | Tee-Object 'profile-results/build-environment.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate the exact profile syntax and complete retained gate selection
+        timeout-minutes: 3
+        run: |
+          $profileSyntax = @'
+          import ast, json, os, pathlib, re, textwrap
+          import yaml
+          project = pathlib.Path.cwd()
+          profile = pathlib.Path(os.environ['CARR_PROFILE_DEFINITION']).read_text(encoding='utf-8')
+          original = (project.parent / '.github/workflows/carr-windows.yml').read_text(encoding='utf-8')
+          document = yaml.safe_load(profile)
+          assert document['permissions'] == {'contents': 'read', 'actions': 'read'}
+          assert set(document['jobs']) == {'source-acceptance', 'library-profile'}
+          wait = document['jobs']['source-acceptance']
+          assert wait['runs-on'] == 'ubuntu-24.04' and wait['timeout-minutes'] == 75
+          assert wait['env']['EXPECTED_SOURCE_COMMIT'] == os.environ['EXPECTED_SOURCE_COMMIT']
+          assert all(wait['env'][name] == os.environ[name] for name in ('ORIGINAL_MAIN_RUN', 'ORIGINAL_MAIN_JOB', 'ORIGINAL_MAIN_ATTEMPT'))
+          wait_steps = [step for step in wait['steps'] if 'run' in step]
+          assert len(wait_steps) == 1 and wait_steps[0]['shell'] == 'python -I -B {0}'
+          ast.parse(wait_steps[0]['run'], filename='profile-source-acceptance-wait')
+          job = document['jobs']['library-profile']
+          assert job['needs'] == 'source-acceptance'
+          assert job['runs-on'] == 'windows-2022' and job['timeout-minutes'] == 60
+          assert job['env']['EXPECTED_SOURCE_COMMIT'] == os.environ['EXPECTED_SOURCE_COMMIT']
+          assert job['env']['EXPECTED_SOURCE_TREE'] == os.environ['EXPECTED_SOURCE_TREE']
+          checkouts = [step for step in job['steps'] if step.get('uses', '').startswith('actions/checkout@')]
+          assert len(checkouts) == 1 and checkouts[0]['with']['ref'] == os.environ['EXPECTED_SOURCE_COMMIT']
+          assert checkouts[0]['with']['path'] == 'source' and checkouts[0]['with']['persist-credentials'] is False
+          assert document['concurrency']['cancel-in-progress'] is False
+          blocks = re.findall(r"^          \$\w+ = @'\n(.*?)^          '@$", profile, re.M | re.S)
+          assert blocks
+          for number, block in enumerate(blocks, 1):
+              ast.parse(textwrap.dedent(block), filename=f'profile-python-{number}')
+          inline = re.findall(r'^          &[^\r\n]*? -c "([^"\r\n]+)"', profile, re.M)
+          for number, expression in enumerate(inline, 1):
+              ast.parse(expression, filename=f'profile-inline-{number}')
+          def selection(text):
+              matches = re.findall(r'installed_suites = \[\n(.*?)\n          \]', text, re.S)
+              assert len(matches) == 1
+              return re.findall(r"'([^']+)'", matches[0])
+          omitted = {'tests/assistant/test_audio_bridge.py', 'tests/audio/test_music.py', 'tests/audio/test_production.py'}
+          original_suites, suites = selection(original), selection(profile)
+          assert len(original_suites) == 92 and len(suites) == 89 and len(set(suites)) == 89
+          assert suites == [name for name in original_suites if name not in omitted]
+          original_native = re.findall(r"^            @\{ Script='([^']+)'", original, re.M)
+          native = re.findall(r"^            @\{ Script='([^']+)'", profile, re.M)
+          omitted_native = {'scripts/windows_audio_runtime_smoke.py', 'scripts/windows_audio_smoke.py'}
+          assert len(original_native) == 26 and len(native) == 24 and len(set(native)) == 24
+          assert native == [name for name in original_native if name not in omitted_native]
+          baseline = [
+              'tests/e2e/test_semantic_runtime.py', 'tests/e2e/test_import_worker.py',
+              'tests/e2e/test_import_batches_ocr.py', 'tests/e2e/test_notebook_research_workflow.py',
+              'tests/e2e/test_epub_import.py', 'tests/reader/test_ebook_reader.py',
+              'tests/e2e/test_catalog_insights_workflow.py', 'tests/e2e/test_academic_workflows.py',
+              'tests/e2e/test_academic_workflow.py', 'tests/e2e/test_academic_document_export.py',
+              'tests/e2e/test_result_presentation.py']
+          assert set(baseline) <= set(suites)
+          assert all((project / name).is_file() for name in suites + native + ['tests/audio/test_engines.py'])
+          assert 'tests/audio/test_engines.py' not in suites
+          commands = '\n'.join(re.findall(r'^          &[^{\r\n]+$', profile, re.M))
+          assert 'packaging/add_audio_runtime.py' not in commands and ' -m pip wheel ' not in commands
+          assert 'packaging/build_windows_bundle.py --wheel $applicationWheel ' in commands
+          engine_blocks = [block for block in blocks if "report = pathlib.Path('profile-results/full-bundle-audio-engines.xml')" in block]
+          assert len(engine_blocks) == 1
+          assert 'test_actual_installed_windows_sapi_voice' in engine_blocks[0]
+          assert 'assert status == 0 and not policy.expected_failure' in engine_blocks[0]
+          print(json.dumps({'status': 'PASS', 'python_blocks': len(blocks), 'python_inline': len(inline),
+              'source_proof': 'original successful complete main run', 'installed_suites': len(suites),
+              'native_probes': len(native), 'old_no_audio_baseline_retained': len(baseline),
+              'separate_SAPI_engine_gate': 'REQUIRED', 'wheel_rebuild_allowed': False}, sort_keys=True))
+          '@
+          $profileSyntax | & $env:CARR_PYTHON -I -B - | Tee-Object 'profile-results/workflow-source-preflight.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $definition = Get-Content -LiteralPath $env:CARR_PROFILE_DEFINITION -Raw
+          $profileBody = [regex]::Match($definition, '(?ms)^  library-profile:\r?\n(.*)\z')
+          if (!$profileBody.Success) { throw 'The Windows profile job is missing.' }
+          $blocks = [regex]::Matches($profileBody.Value, '(?ms)^        run: \|\r?\n(.*?)(?=^      - |\z)')
+          if ($blocks.Count -lt 1) { throw 'No profile PowerShell blocks found.' }
+          foreach ($block in $blocks) {
+            $script = $block.Groups[1].Value -replace '(?m)^ {10}', ''
+            $tokens = $null
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseInput($script, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -ne 0) { throw ('Invalid profile PowerShell syntax: ' + ($errors.Message -join '; ')) }
+          }
+          @{ status='PASS'; blocks=$blocks.Count } | ConvertTo-Json | Set-Content 'profile-results/workflow-powershell-preflight.json'
+
+      - name: Prepare the verified OCR engine before its required source regression
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-library-profile-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'profile-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          "TESSDATA_PREFIX=$(Join-Path $ocr 'tessdata')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+
+      - name: Prepare the exact test font for real OCR fixtures
+        timeout-minutes: 2
+        run: |
+          # A test fixture only. It is outside src and never joins the product wheel.
+          $font = @'
+          import hashlib, json, pathlib, urllib.request
+          target = pathlib.Path('DejaVuSans.ttf')
+          url = 'https://raw.githubusercontent.com/matplotlib/matplotlib/4aeb773422464799998d900198b35cb80e94b3e1/lib/matplotlib/mpl-data/fonts/ttf/DejaVuSans.ttf'
+          with urllib.request.urlopen(url, timeout=45) as response:
+              raw = response.read(756073)
+          assert len(raw) == 756072
+          blob = hashlib.sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+          assert blob == '5267218852f631928716a8005d7bf4b492aaf83d'
+          with target.open('xb') as stream:
+              stream.write(raw)
+          from PIL import ImageFont
+          ImageFont.truetype(str(target), 72)
+          print(json.dumps({'status': 'PASS', 'git_blob': blob, 'sha256': hashlib.sha256(raw).hexdigest(), 'test_fixture_only': True}))
+          '@
+          $font | & $env:CARR_PYTHON -I -B - | Tee-Object 'profile-results/ocr-test-font.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Prepare the pinned local model through the existing upstream verifier
+        timeout-minutes: 10
+        run: |
+          $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
+          $modelManifest = Join-Path $env:RUNNER_TEMP 'carr-model-ci/model-manifest.json'
+          $acquire = @'
+          import importlib.util, json, pathlib, shutil, sys
+          from huggingface_hub import hf_hub_download
+          spec = importlib.util.spec_from_file_location('model_build', pathlib.Path('packaging/model_bundle.py').resolve())
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+          target, manifest = map(pathlib.Path, sys.argv[1:])
+          target.mkdir(parents=True, exist_ok=False)
+          for name in sorted(helper.FILES):
+              source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
+              shutil.copyfile(source, target / name)
+          proof = helper.seal(target)
+          with manifest.open('x', encoding='utf-8') as stream:
+              json.dump(proof, stream, sort_keys=True)
+          print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
+          '@
+          # Only this explicit build-time child may fetch the pinned public model.
+          # Importing the application before acquisition would enforce offline mode.
+          $env:HF_HUB_OFFLINE = '0'
+          try {
+            $acquire | & $env:CARR_PYTHON -I -B - $model $modelManifest | Tee-Object 'profile-results/model-acquisition.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:HF_HUB_OFFLINE = '1'
+          }
+          & $env:CARR_PYTHON -I -B -c "import sys; from carr_library.semantic import verify_model_bundle; verify_model_bundle(sys.argv[1], sys.argv[2]); print('PASS: exact approved local model')" $model $modelManifest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+
+      - name: Build the exact native-tested private launch entry
+        timeout-minutes: 10
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+          Invoke-WebRequest -Uri 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $archive
+          if ((Get-Item -LiteralPath $archive).Length -ne 82229343) { throw 'Unexpected compiler archive length.' }
+          if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') { throw 'Compiler archive digest mismatch.' }
+          Expand-Archive -LiteralPath $archive -DestinationPath $env:RUNNER_TEMP
+          $zig = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1/zig.exe'
+          $private = Join-Path $env:RUNNER_TEMP 'carr-native-launcher-private'
+          & $env:CARR_PYTHON packaging/native-launcher/build_launcher.py --zig $zig --toolchain-archive $archive --output-dir $private
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $nativeLauncher = Join-Path $private 'ResearchLibrary.exe'
+          $expectedLauncher = '5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec'
+          if ((Get-FileHash -LiteralPath $nativeLauncher -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedLauncher) { throw 'Launcher differs from the exact native-tested bytes.' }
+          Copy-Item -LiteralPath (Join-Path $private 'build-evidence.json') -Destination 'profile-results/native-launcher-build.json'
+          "CARR_CI_NATIVE_LAUNCHER=$nativeLauncher" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+
+      - name: Build and qualify the exact-wheel library profile with runtime egress blocked
+        timeout-minutes: 35
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-library-profile-ci'
+          $wheelhouse = Join-Path $bundleWork 'wheelhouse'
+          $baseBundle = Join-Path $bundleWork 'base bundle'
+          $bundle = Join-Path $bundleWork 'library profile bundle'
+          New-Item -ItemType Directory -Force $wheelhouse | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Consume the original post-seal tested wheel. No wheel build/repack is permitted.
+          $applicationWheel = $env:CARR_APPLICATION_WHEEL
+          $wheels = @(Get-Item -LiteralPath $applicationWheel)
+          if ($wheels.Count -ne 1 -or $wheels[0].Extension -cne '.whl') { throw 'Original tested wheel is missing.' }
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
+          Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
+          $archiveHash = (Get-FileHash -LiteralPath $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($archiveHash -ne $runtime.download.sha256) { throw 'Pinned Python archive checksum mismatch.' }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          if (!(Test-Path -LiteralPath $ocrSource -PathType Leaf) -or $ocr -ne $env:CARR_CI_OCR_DIR) { throw 'Verified source-test OCR runtime is missing.' }
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $bundleWork 'native-runtime.conda'
+          Invoke-WebRequest -Uri $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item -LiteralPath $nativePackage).Length -ne $nativeLock.package.size) { throw 'Pinned native package size mismatch.' }
+          if ((Get-FileHash -LiteralPath $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nativeLock.package.sha256) { throw 'Pinned native package checksum mismatch.' }
+          $nativeRuntime = Join-Path $bundleWork 'native-runtime'
+          & $env:CARR_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output $nativeRuntime | Tee-Object 'profile-results/native-runtime-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyWheel = @'
+          import importlib.util, json, pathlib, sys
+          project = pathlib.Path.cwd()
+          spec = importlib.util.spec_from_file_location('source_wheel', project / 'packaging/source_wheel.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          proof = module.verify_application_wheel(sys.argv[1], project.parent, sys.argv[2])
+          print(json.dumps(dict(status='PASS', **proof)))
+          '@
+          $verifyWheel | & $env:CARR_PYTHON -I -B - $applicationWheel $sourceCommit | Tee-Object 'profile-results/source-wheel-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_CI_NATIVE_LAUNCHER --output $baseBundle | Tee-Object 'profile-results/full-bundle-build.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'profile-results/full-bundle-native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifySbom = @'
+          import hashlib, json, pathlib, subprocess, sys
+          root, commit = pathlib.Path(sys.argv[1]), sys.argv[2]
+          expected = subprocess.run(['git', 'show', commit + ':carr-library/packaging/windows-semantic-sbom.cdx.json'], check=True, capture_output=True).stdout
+          actual = (root / 'runtime-sbom.cdx.json').read_bytes()
+          manifest = json.loads((root / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          tree = subprocess.run(['git', 'rev-parse', commit + '^{tree}'], check=True, capture_output=True, text=True).stdout.strip()
+          if actual != expected or manifest['source_commit'] != commit or manifest['source_tree'] != tree:
+              raise ValueError('The completed bundle does not contain the exact committed runtime SBOM/source identity.')
+          digest = hashlib.sha256(actual).hexdigest()
+          if manifest['files'].get('runtime-sbom.cdx.json') != digest:
+              raise ValueError('The completed bundle does not seal the verified runtime SBOM bytes.')
+          print(json.dumps(dict(status='PASS', source_commit=commit, source_tree=tree, sbom_sha256=digest, after_native_supplement=True, bundled_audio_runtime=False, profile='library-semantic-ocr-no-audio')))
+          '@
+          $verifySbom | & $env:CARR_PYTHON -I -B - $bundle $sourceCommit | Tee-Object 'profile-results/full-bundle-sbom-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyProfile = @'
+          import hashlib, importlib.util, json, os, pathlib, sys
+          import carr_library
+          from carr_library.audio_runtime import activate_bundled_audio_runtime
+          root, phase = pathlib.Path(sys.argv[1]).resolve(), sys.argv[2]
+          assert phase in ('built', 'installed')
+          source, tree = os.environ['EXPECTED_SOURCE_COMMIT'], os.environ['EXPECTED_SOURCE_TREE']
+          identity = json.loads(pathlib.Path('profile-results/original-main-artifact.json').read_text(encoding='utf-8'))
+          assert identity['status'] == 'PASS' and identity['source_commit'] == source and identity['source_tree'] == tree
+          assert identity['profile_workflow_commit'] == os.environ['GITHUB_SHA']
+          path = pathlib.Path('packaging/create_delivery.py').resolve()
+          raw_guard = path.read_bytes()
+          assert hashlib.sha1(b'blob ' + str(len(raw_guard)).encode('ascii') + b'\0' + raw_guard).hexdigest() == '6b105aee0643d3afcac8342a067960d4f30d25ef'
+          spec = importlib.util.spec_from_file_location('profile_transfer_guard', path)
+          guard = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(guard)
+          raw = (root / 'bundle-manifest.json').read_bytes()
+          manifest = guard._manifest(raw, source)
+          guard._require_transferable_audio_inventory(manifest)
+          guard._trusted_verify(root, manifest_bytes=raw)
+          assert (root / 'bundle-manifest.json').read_bytes() == raw
+          assert manifest['source_tree'] == tree
+          assert all(manifest.get(key) is True for key in ('bundled_python', 'bundled_model', 'bundled_ocr', 'bundled_native_runtime'))
+          assert manifest.get('bundled_audio_runtime', False) is False and manifest.get('bundled_audio', False) is False
+          assert activate_bundled_audio_runtime(bundle_root=root) is None
+          assert manifest['files']['wheelhouse/' + identity['wheel']] == identity['wheel_sha256']
+          assert manifest['files']['ResearchLibrary.exe'] == '5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec'
+          if phase == 'installed':
+              assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          report = {'status': 'PASS', 'phase': phase, 'profile': 'library-semantic-ocr-no-bundled-audio',
+              'source_commit': source, 'source_tree': tree, 'profile_workflow_commit': os.environ['GITHUB_SHA'],
+              'manifest_sha256': hashlib.sha256(raw).hexdigest(), 'wheel_sha256': identity['wheel_sha256'],
+              'transfer_guard_blob': '6b105aee0643d3afcac8342a067960d4f30d25ef',
+              'audio_inventory': 'ABSENT', 'audio_activation': 'NONE', 'files_verified': len(manifest['files'])}
+          print(json.dumps(report, sort_keys=True))
+          '@
+          $verifyProfile | & $env:CARR_PYTHON -I -B - $bundle built | Tee-Object 'profile-results/library-profile-built.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $sealedLauncher = Join-Path $bundle 'ResearchLibrary.exe'
+          $expectedLauncher = '5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec'
+          $completedManifest = Get-Content (Join-Path $bundle 'bundle-manifest.json') -Raw | ConvertFrom-Json
+          if ((Get-FileHash -LiteralPath $sealedLauncher -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedLauncher -or $completedManifest.files.'ResearchLibrary.exe' -ne $expectedLauncher) { throw 'Final supplemented bundle did not preserve the sealed native launch entry.' }
+          $manifest = Join-Path $bundle 'bundle-manifest.json'
+          $manifestBefore = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash
+          $bundledPython = Join-Path $bundle 'runtime/python.exe'
+          $installedPython = Join-Path $bundle '.venv/Scripts/python.exe'
+          # Finish test-only acquisition before the offline execution boundary.
+          $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
+          New-Item -ItemType Directory -Force $testWheels | Out-Null
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @(
+            $sealedLauncher,
+            $bundledPython,
+            (Join-Path $bundle 'runtime/pythonw.exe'),
+            $installedPython,
+            (Join-Path $bundle '.venv/Scripts/pythonw.exe'),
+            (Join-Path $bundle 'ocr/tesseract.exe'),
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')
+          ) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          if (@($programs | Sort-Object -Unique).Count -ne 8) { throw 'Every intended runtime/helper must have one distinct outbound block.' }
+          $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+          # Temporary rules on this disposable CI VM. Fail before execution if
+          # Windows Firewall cannot enforce every runtime program's outbound block.
+          Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+          foreach ($program in $programs) {
+            $ruleName = $rulePrefix + '-' + $ruleNames.Count
+            $ruleNames += $ruleName
+            New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+          }
+          $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+          if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline checks require enabled Windows Firewall profiles.' }
+          $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+          if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline execution rules are not active.' }
+          $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+          if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
+          @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, local SAPI, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'profile-results/full-bundle-firewall.json'
+          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'profile-results/core-bundle-install.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -m carr_library --self-test | Tee-Object 'profile-results/core-bundle-self-test.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report (Join-Path (Resolve-Path 'profile-results').Path 'installed-native-launcher.json') 2>&1 | Tee-Object 'profile-results/installed-native-launcher.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'profile-results/offline-bundle-ocr-catalogue.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'profile-results/installed-launchers.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Test-only dependencies are added after the production installer,
+          # self-test and all four shipped launchers have succeeded offline.
+          & $installedPython -I -B -m pip install --no-compile --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:TESSDATA_PREFIX = Join-Path $bundle 'ocr/tessdata'
+          Remove-Item Env:CARR_FFMPEG -ErrorAction SilentlyContinue
+          $env:PATH = "$(Join-Path $bundle 'ocr');$env:PATH"
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          $runNative = @'
+          import hashlib, json, pathlib, runpy, sys
+          import carr_library
+          from carr_library.native_runtime import activate_bundled_runtime
+          from carr_library.audio_runtime import activate_bundled_audio_runtime
+          root = pathlib.Path(sys.argv.pop(1)).resolve()
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          native_handle = activate_bundled_runtime(bundle_root=root)
+          assert native_handle is not None
+          assert activate_bundled_audio_runtime(bundle_root=root) is None
+          sys.argv = sys.argv[1:]
+          script = pathlib.Path(sys.argv[0]).resolve()
+          if script == pathlib.Path('scripts/windows_assistant_smoke.py').resolve():
+              original = script.read_bytes()
+              blob = hashlib.sha1(b'blob ' + str(len(original)).encode('ascii') + b'\0' + original).hexdigest()
+              assert blob == '7a562c930436a83577d0702e913b0ef30a3d82ab'
+              before = b'    assert activate_bundled_audio_runtime(bundle_root=bundle)\n'
+              after = b'    assert activate_bundled_audio_runtime(bundle_root=bundle) is None\n'
+              assert original.count(before) == 1 and after not in original
+              adapted = original.replace(before, after)
+              assert adapted.count(after) == 1 and adapted.replace(after, before) == original
+              namespace = {'__name__': '__main__', '__file__': str(script), '__package__': None,
+                           '__spec__': None, '__cached__': None}
+              try:
+                  exec(compile(adapted, str(script), 'exec'), namespace)
+              except SystemExit as result:
+                  if result.code not in (None, 0):
+                      raise
+              evidence = {'status': 'PASS', 'probe_git_blob': blob,
+                  'original_sha256': hashlib.sha256(original).hexdigest(),
+                  'adapted_sha256': hashlib.sha256(adapted).hexdigest(),
+                  'original_file_and_argv_preserved': True, 'reverse_bytes_equal': True,
+                  'real_activation_called': True, 'scenario_assertions_unchanged': 6,
+                  'reason': 'The declared library profile requires genuinely absent bundled audio.'}
+              pathlib.Path('profile-results/assistant-profile-harness.json').write_text(
+                  json.dumps(evidence, sort_keys=True) + '\n', encoding='utf-8')
+          else:
+              runpy.run_path(sys.argv[0], run_name='__main__')
+          '@
+          $nativeGates = @(
+            @{ Script='tests/ui/probe_source_open_native.py'; Args=@(); Output='core-bundle-native.txt' },
+            @{ Script='scripts/windows_academic_smoke.py'; Args=@(); Output='full-bundle-academic-native.txt' },
+            @{ Script='scripts/windows_ocr_models_smoke.py'; Args=@(); Output='full-bundle-ocr-models.txt' },
+            @{ Script='scripts/windows_assistant_smoke.py'; Args=@('--bundle', $bundle); Output='full-bundle-assistant.json' },
+            @{ Script='tests/ui/native_import_center_smoke.py'; Args=@(); Output='native-import-center.txt' },
+            @{ Script='tests/ui/native_document_formats_smoke.py'; Args=@('--native'); Output='native-document-formats.txt' },
+            @{ Script='tests/ui/native_evidence_pages_smoke.py'; Args=@('--native'); Output='native-evidence-pages.txt' },
+            @{ Script='tests/ui/native_academic_smoke.py'; Args=@(); Output='native-academic-workflows.txt' },
+            @{ Script='tests/ui/native_notebook_search_smoke.py'; Args=@('--native'); Output='native-notebook-search.txt' },
+            @{ Script='tests/ui/native_ebook_reader_smoke.py'; Args=@('--native'); Output='native-ebook-reader.txt' },
+            @{ Script='tests/ui/native_catalog_tools_smoke.py'; Args=@('--native'); Output='native-catalog-tools.txt' },
+            @{ Script='tests/ui/probe_ebook_native.py'; Args=@(); Output='native-ebook-contents.txt' },
+            @{ Script='tests/ui/native_reading_desk_smoke.py'; Args=@('--native'); Output='native-reading-desk.txt' },
+            @{ Script='tests/ui/probe_catalog_insights_native.py'; Args=@(); Output='native-catalog-insights.txt' },
+            @{ Script='scripts/windows_v3_reading_smoke.py'; Args=@(); Output='native-v3-reading.txt' },
+            @{ Script='scripts/windows_ocr_languages_smoke.py'; Args=@('--require-bundled'); Output='native-ocr-languages.txt' },
+            @{ Script='tests/ui/native_academic_comparison_smoke.py'; Args=@('--require-windows'); Output='native-academic-comparison.txt' },
+            @{ Script='tests/ui/probe_advanced_search_native.py'; Args=@(); Output='native-advanced-search.txt' },
+            @{ Script='tests/ui/native_keyboard_settings_smoke.py'; Args=@('--native'); Output='native-keyboard-settings.txt' },
+            @{ Script='tests/ui/native_reader_keymap_smoke.py'; Args=@('--native'); Output='native-reader-keymap.txt' },
+            @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
+            @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' },
+            @{ Script='tests/ui/native_progress_smoke.py'; Args=@('--native'); Output='native-progress.txt' },
+            @{ Script='scripts/windows_transcription_smoke.py'; Args=@(); Output='native-transcription.txt' }
+          )
+          foreach ($gate in $nativeGates) {
+            $arguments = @($gate.Args)
+            & $installedPython -I -B -X utf8 -c $runNative $bundle (Resolve-Path $gate.Script).Path @arguments 2>&1 | Tee-Object (Join-Path 'profile-results' $gate.Output)
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          & $installedPython -I -B -c "import json,pathlib,sys; records=[json.loads(line) for line in pathlib.Path('profile-results/native-transcription.txt').read_text(encoding='utf-8').splitlines() if line.startswith('{')]; report=records[-1]; required=['actual named wx controls','shared background operation','actual isolated child protocol','six verified formats','separate edit revision','original unchanged','actual export dispatch preserves verified bytes']; assert report['status']=='PASS' and report['checks']==required and report['whisper_acoustic_inference']=='NOT_RUN' and report['manual_NVDA']=='NOT_RUN'; manifest=json.loads((pathlib.Path(sys.argv[1])/'bundle-manifest.json').read_text(encoding='utf-8')); report.update(source_commit=manifest['source_commit'],source_tree=manifest['source_tree'],installed_package=True); print(json.dumps(report,sort_keys=True))" $bundle | Tee-Object 'profile-results/native-transcription-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import json,os,pathlib; records=[json.loads(line) for line in pathlib.Path('profile-results/full-bundle-assistant.json').read_text(encoding='utf-8').splitlines() if line.startswith('{')]; value=records[-1]; assert value['status']=='PASS' and value['windows_execution']=='PASS' and value['installed_modules']=='PASS' and len(value['checks'])==6 and value['source_commit']==os.environ['EXPECTED_SOURCE_COMMIT'] and value['source_tree']==os.environ['EXPECTED_SOURCE_TREE'] and value['manual_nvda']=='NOT_RUN' and value['paid_api']=='NOT_RUN'; print('PASS: all six original native library assistant scenarios retained under the explicit no-audio profile')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath 'profile-results/core-bundle-native.txt' -Destination 'profile-results/native-desktop.txt'
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; assert manifest.get('bundled_audio_runtime',False) is False; print(json.dumps(dict(status='PASS',python=sys.version,source_commit=manifest['source_commit'],source_tree=manifest['source_tree'],manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',private_audio_runtime='NOT_INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'profile-results/full-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
+          $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+          $runInstalledTests = @'
+          import ctypes, importlib, importlib.util, json, pathlib, sys
+          from ctypes import wintypes
+          import carr_library
+          from carr_library.native_runtime import activate_bundled_runtime
+          from carr_library.audio_runtime import activate_bundled_audio_runtime
+          root = pathlib.Path(sys.argv[1]).resolve()
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          manifest = json.loads((root / 'bundle-manifest.json').read_text())
+          assert all(manifest[key] for key in ('bundled_model', 'bundled_ocr', 'bundled_native_runtime'))
+          assert manifest.get('bundled_audio_runtime', False) is False
+          runtime_handle = activate_bundled_runtime(bundle_root=root)
+          assert runtime_handle is not None
+          assert activate_bundled_audio_runtime(bundle_root=root) is None
+          core_modules = [
+              'carr_library.transcription',
+              'carr_library.transcription_host',
+              'carr_library.transcription_backup',
+              'carr_library.transcription_cli',
+              'carr_library.application',
+              'carr_library.ingest.worker',
+              'carr_library.storage.revisions',
+              'carr_library.storage.schema_identity',
+              'carr_library.pending_backup',
+              'carr_library.durable_state',
+              'carr_library.product_info',
+              'carr_library.research.export_file',
+              'carr_library.library_backup',
+              'carr_library.backup_sidecars',
+              'carr_library.acquisition.service',
+              'carr_library.acquisition.transport',
+              'carr_library.acquisition.providers',
+              'carr_library.audio.ffmpeg',
+              'carr_library.audio.engines',
+              'carr_library.audio.production',
+              'carr_library.audio_runtime',
+              'carr_library.assistant.models',
+              'carr_library.assistant.planner',
+              'carr_library.assistant.service',
+              'carr_library.assistant.state',
+              'carr_library.assistant.audio_bridge',
+              'carr_library.assistant.backup_receipt',
+              'carr_library.assistant.backup_state',
+              'carr_library.citations.csl',
+              'carr_library.research.bibtex_import',
+              'carr_library.research.academic_library',
+              'carr_library.reader.narration',
+              'carr_library.reader.narration_text',
+              'carr_library.reader.reading_state',
+              'carr_library.keyboard_preferences',
+              'carr_library.evidence_drafts',
+              'carr_library.search.advanced',
+              'carr_library.semantic_cache',
+              'carr_library.extract.model_catalog',
+              'carr_library.extract.ocr_model_store',
+              'carr_library.extract.managed_ocr',
+              'carr_library.extract.ocr_process',
+              'carr_library.progress',
+              'carr_library.progress_preferences',
+              'carr_library.progress_feedback',
+              'carr_library.audio.player',
+              'carr_library.audio.progress_bridge',
+              'carr_library.extract.ocr_languages',
+              'carr_library.extract.ocr_runtime',
+              'carr_library.audio.music'
+          ]
+          ui_modules = [
+              'carr_library.ui.transcription_dialog',
+              'carr_library.ui.acquisition_dialog',
+              'carr_library.ui.academic_library_dialog',
+              'carr_library.ui.academic_tools',
+              'carr_library.ui.advanced_search',
+              'carr_library.ui.narration_editor',
+              'carr_library.ui.keyboard_settings',
+              'carr_library.ui.evidence_panel',
+              'carr_library.ui.audio_studio',
+              'carr_library.ui.assistant_dialog',
+              'carr_library.ui.ocr_language_dialog',
+              'carr_library.ui.ocr_model_manager',
+              'carr_library.ui.progress_panel',
+              'carr_library.ui.export_destination',
+              'carr_library.ui.academic_actions',
+              'carr_library.ui.catalog_insights_actions',
+              'carr_library.ui.catalog_tools_dialog',
+              'carr_library.ui.desktop_app',
+              'carr_library.ui.import_center',
+              'carr_library.ui.reading_desk'
+          ]
+          origins = {}
+          for name in core_modules:
+              module = importlib.import_module(name)
+              origin = pathlib.Path(module.__file__).resolve()
+              assert origin.is_relative_to(root / '.venv'), (name, origin)
+              origins[name] = str(origin)
+          # Actual native gates above import these UI modules in fresh processes;
+          # resolving their installed origins here keeps pytest's wx doubles isolated.
+          for name in ui_modules:
+              spec = importlib.util.find_spec(name)
+              assert spec and spec.origin
+              origin = pathlib.Path(spec.origin).resolve()
+              assert origin.is_relative_to(root / '.venv'), (name, origin)
+              origins[name] = str(origin)
+          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit'],
+                            'source_tree': manifest['source_tree'], 'installed_module_origins': origins}), flush=True)
+          import pytest
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          installed_suites = [
+              'tests/e2e/test_semantic_runtime.py',
+              'tests/e2e/test_import_worker.py',
+              'tests/ingest/test_terminal_replay_registration.py',
+              'tests/e2e/test_import_batches_ocr.py',
+              'tests/e2e/test_notebook_research_workflow.py',
+              'tests/e2e/test_epub_import.py',
+              'tests/e2e/test_extended_document_workflows.py',
+              'tests/reader/test_ebook_reader.py',
+              'tests/e2e/test_catalog_insights_workflow.py',
+              'tests/e2e/test_academic_workflows.py',
+              'tests/e2e/test_academic_workflow.py',
+              'tests/e2e/test_academic_document_export.py',
+              'tests/e2e/test_result_presentation.py',
+              'tests/reader/test_ebook_contents.py',
+              'tests/e2e/test_epub_library.py',
+              'tests/e2e/test_epub_reading_desk.py',
+              'tests/acquisition/test_providers.py',
+              'tests/acquisition/test_acquisition_security.py',
+              'tests/acquisition/test_acquisition_workflow.py',
+              'tests/acquisition/test_acquisition_cli.py',
+              'tests/ui/test_native_acquisition.py',
+              'tests/e2e/test_advanced_research_search.py',
+              'tests/research/test_bibtex_import.py',
+              'tests/citations/test_csl.py',
+              'tests/citations/test_bibliography_workbench.py',
+              'tests/reader/test_export_no_clobber.py',
+              'tests/ui/test_citation_styles_jobs.py',
+              'tests/catalog/test_ris_apply.py',
+              'tests/storage/test_backup_v4_sidecars.py',
+              'tests/storage/test_backup_source_binding_review.py',
+              'tests/storage/test_backup_keyboard_drafts.py',
+              'tests/storage/test_keyboard_preferences.py',
+              'tests/storage/test_evidence_drafts.py',
+              'tests/reader/test_narration.py',
+              'tests/reader/test_narration_text.py',
+              'tests/assistant/test_backup_receipt.py',
+              'tests/assistant/test_budget_resume.py',
+              'tests/assistant/test_local_assistant.py',
+              'tests/assistant/test_complete_recovery.py',
+              'tests/storage/test_assistant_restored_history.py',
+              'tests/audio/test_chunk_cache_budget.py',
+              'tests/e2e/test_managed_ocr_import.py',
+              'tests/extract/test_managed_ocr.py',
+              'tests/search/test_semantic_cache.py',
+              'tests/search/test_semantic_cache_boundary.py',
+              'tests/audio/test_player.py',
+              'tests/audio/test_player_progress_safety.py',
+              'tests/audio/test_progress_bridge.py',
+              'tests/progress/test_progress_contract.py',
+              'tests/progress/test_progress_feedback.py',
+              'tests/progress/test_progress_preferences.py',
+              'tests/progress/test_progress_reporting_failure.py',
+              'tests/storage/test_backup_progress_preferences.py',
+              'tests/ui/test_audio_progress_hooks.py',
+              'tests/ui/test_progress_job_results.py',
+              'tests/ui/test_progress_panel_state.py',
+              'tests/reader/test_export_publication_boundary.py',
+              'tests/storage/test_pending_backup.py',
+              'tests/storage/test_complete_pending_backup.py',
+              'tests/ingest/test_worker_publication_boundary.py',
+              'tests/e2e/test_import_worker_publication.py',
+              'tests/ingest/test_import_replay_identity.py',
+              'tests/storage/test_academic_migration.py',
+              'tests/storage/test_backup_schema_identity.py',
+              'tests/storage/test_saved_query_v4_upgrade.py',
+              'tests/catalog/test_application_metadata_integrity.py',
+              'tests/reader/test_reading_desk.py',
+              'tests/storage/test_finish_workspace_integrity.py',
+              'tests/storage/test_library_backup.py',
+              'tests/e2e/test_import_files_cancellation.py',
+              'tests/e2e/test_research_search_cli.py',
+              'tests/transcription/test_supplied_worker_bridge.py',
+              'tests/transcription/test_pr99_host.py',
+              'tests/e2e/test_export_destination.py',
+              'tests/ui/probe_catalog_insights_actions.py',
+              'tests/ui/test_academic_actions.py',
+              'tests/ui/test_academic_library_dialog.py',
+              'tests/ui/test_academic_tools.py',
+              'tests/ui/test_catalog_tools_dialog.py',
+              'tests/ui/test_export_destination.py',
+              'tests/ui/test_import_center.py',
+              'tests/ui/test_keyboard_manager.py',
+              'tests/ui/test_reading_desk_actions.py',
+              'tests/ui/test_academic_export_handler.py',
+              'tests/reader/test_export_content_identity.py',
+              'tests/ui/test_audio_studio.py',
+              'tests/ui/test_desktop_handlers.py',
+              'tests/extract/test_ocr_runtime.py',
+              'tests/extract/test_ocr_languages.py',
+          ]
+          status = pytest.main([*sys.argv[2:], *installed_suites], plugins=[policy])
+          if status or policy.seen:
+              raise SystemExit(int(status) or 1)
+          kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+          kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+          kernel.GetModuleHandleW.restype = wintypes.HMODULE
+          kernel.GetModuleFileNameW.argtypes = [wintypes.HMODULE, wintypes.LPWSTR, wintypes.DWORD]
+          kernel.GetModuleFileNameW.restype = wintypes.DWORD
+          for name in ('msvcp140.dll', 'msvcp140_1.dll'):
+              module = kernel.GetModuleHandleW(name)
+              assert module, name + ' was not loaded by the native workflow'
+              actual = ctypes.create_unicode_buffer(32768)
+              length = kernel.GetModuleFileNameW(module, actual, len(actual))
+              assert 0 < length < len(actual)
+              assert pathlib.Path(actual.value).samefile(root / 'native-runtime' / 'bin' / name), name + ' loaded outside the private bundle'
+          print(json.dumps({'status': 'PASS', 'private_native_dll_paths': 'PASS'}), flush=True)
+          '@
+          $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=profile-results/full-bundle-workflows.xml 2>&1 | Tee-Object 'profile-results/full-bundle-workflows.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('profile-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata','test_fresh_committed_import_reports_complete_after_late_cancel','test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environment','test_real_list_languages_uses_managed_model_directory','test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; required |= {'test_actual_partial_import_restores_original_and_resumes_same_job', 'test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes', 'test_backup_never_follows_symlinked_journal_ancestor', 'test_cancel_after_committed_text_leaves_next_original_unopened', 'test_cancel_during_pending_publication_leaves_no_completion_manifest', 'test_cancelled_receipt_stops_even_if_later_callback_is_clear', 'test_cancelled_snapshot_and_restore_are_explicit', 'test_canonical_state_and_pending_v4_remains_readable', 'test_changed_request_identity_cannot_authorize_reconciliation[asset]', 'test_changed_request_identity_cannot_authorize_reconciliation[configuration]', 'test_changed_request_identity_cannot_authorize_reconciliation[scope]', 'test_changed_request_identity_cannot_authorize_reconciliation[work]', 'test_cli_child_uses_current_distribution_without_writing_runtime_bytecode', 'test_competing_file_at_actual_publication_is_preserved[False]', 'test_competing_file_at_actual_publication_is_preserved[True]', 'test_complete_backup_preserves_prepared_request_before_first_worker_launch', 'test_complete_backup_survives_lost_original_and_resumes_identical_import', 'test_component_tampering_and_source_retargeting_rejected[extra]', 'test_component_tampering_and_source_retargeting_rejected[foreign_request]', 'test_component_tampering_and_source_retargeting_rejected[hash]', 'test_component_tampering_and_source_retargeting_rejected[retarget]', 'test_component_tampering_and_source_retargeting_rejected[size]', 'test_component_tampering_and_source_retargeting_rejected[symlink]', 'test_component_tampering_and_source_retargeting_rejected[traversal]', 'test_conflicting_operations_and_invalid_result_limit_fail_clearly', 'test_corrupt_library_database_fails_clearly_without_partial_json_or_replacing_it[list]', 'test_corrupt_library_database_fails_clearly_without_partial_json_or_replacing_it[search]', 'test_corrupted_retained_bytes_cannot_authorize_reconciliation', 'test_create_only_cleanup_after_publication_is_truthful[False]', 'test_create_only_cleanup_after_publication_is_truthful[True]', 'test_durable_publication_survives_stopped_worker[cancel-docx]', 'test_durable_publication_survives_stopped_worker[cancel-epub]', 'test_durable_publication_survives_stopped_worker[cancel-md]', 'test_durable_publication_survives_stopped_worker[cancel-pdf]', 'test_durable_publication_survives_stopped_worker[cancel-txt]', 'test_durable_publication_survives_stopped_worker[crash-docx]', 'test_durable_publication_survives_stopped_worker[crash-epub]', 'test_durable_publication_survives_stopped_worker[crash-md]', 'test_durable_publication_survives_stopped_worker[crash-pdf]', 'test_durable_publication_survives_stopped_worker[crash-txt]', 'test_durable_publication_survives_stopped_worker[timeout-docx]', 'test_durable_publication_survives_stopped_worker[timeout-epub]', 'test_durable_publication_survives_stopped_worker[timeout-md]', 'test_durable_publication_survives_stopped_worker[timeout-pdf]', 'test_durable_publication_survives_stopped_worker[timeout-txt]', 'test_empty_pending_component_and_no_unreferenced_retained_bytes', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[phrase]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[semantic]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[terms]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[thematic]', 'test_existing_modes_and_metadata_filters_apply_in_each_selected_library[word]', 'test_interrupted_error_is_acknowledged_cancellation_and_stops_selection', 'test_journal_online_backup_includes_committed_wal', 'test_journal_tampering_rejected_before_restore_publication[checkpoint_hash]', 'test_journal_tampering_rejected_before_restore_publication[checkpoint_locator]', 'test_journal_tampering_rejected_before_restore_publication[checkpoint_text]', 'test_journal_tampering_rejected_before_restore_publication[fake_complete]', 'test_journal_tampering_rejected_before_restore_publication[job_identity]', 'test_journal_tampering_rejected_before_restore_publication[schema]', 'test_journal_tampering_rejected_before_restore_publication[workspace]', 'test_list_libraries_and_search_only_explicit_selection_without_desktop', 'test_manifest_limits_and_exact_source_bindings', 'test_missing_last_library_or_corrupted_original_never_prints_partial_results', 'test_missing_library_selection_is_an_error_and_does_not_create_data', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[changed]', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[hardlink]', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[missing]', 'test_missing_or_replaced_planned_source_never_makes_complete_backup[symlink]', 'test_noncanonical_and_duplicate_json_are_not_accepted', 'test_ordinary_file_error_does_not_cancel_later_valid_source', 'test_pdf_reconciliation_requires_its_exact_saved_job_and_config[configuration]', 'test_pdf_reconciliation_requires_its_exact_saved_job_and_config[job]', 'test_pending_component_bytes_count_in_complete_backup_budget', 'test_planned_batch_without_requests_captures_external_bytes_and_duplicates', 'test_precancelled_selection_opens_no_source', 'test_precommit_cancellation_remains_cancelled_without_publication', 'test_preexisting_replay_is_not_new_completion_after_cancel', 'test_prelaunch_cancellation_never_starts_or_recovers_a_worker', 'test_prepared_extended_format_survives_relocation_and_resumes[.eml-From: synthetic@example.invalid\\nTo: local@example.invalid\\nSubject: Retained evidence\\nContent-Type: text/plain; charset=utf-8\\n\\nEvidence survives.\\n]', 'test_prepared_extended_format_survives_relocation_and_resumes[.html-<html><body><p>Retained evidence survives.</p></body></html>]', 'test_prepared_extended_format_survives_relocation_and_resumes[.md-# Retained evidence\\n\\nEvidence survives.]', 'test_prepared_request_and_running_batch_remain_bound_after_restore', 'test_process_exit_immediately_after_create_only_publication[False]', 'test_process_exit_immediately_after_create_only_publication[True]', 'test_recovered_publication_survives_complete_backup_and_lost_original[docx]', 'test_recovered_publication_survives_complete_backup_and_lost_original[pdf]', 'test_recovered_publication_survives_complete_backup_and_lost_original[txt]', 'test_same_size_pending_change_with_coarse_timestamps_blocks_completion', 'test_unlisted_pending_bytes_block_enclosing_restore'}; expected_asr={'tests.transcription.test_supplied_worker_bridge': {'test_real_subprocess_preserves_original_and_exports_separate_edits': 1, 'test_duplicate_source_names_remain_separate': 1, 'test_optional_word_timestamps_keep_four_base_formats': 1, 'test_actual_child_guards_fail_closed': 3, 'test_worker_success_alone_does_not_publish_incomplete_results': 3, 'test_partial_batch_is_saved_and_can_resume_with_reviewed_engine': 1, 'test_stop_flag_cancellation_and_explicit_resume': 1, 'test_actual_child_timeout_is_failed_and_original_remains': 1, 'test_worker_change_requires_explicit_reconfiguration': 1, 'test_changed_retained_source_refuses_inference': 1, 'test_changed_output_and_stale_receipt_are_rejected': 1, 'test_restore_rebinds_retained_paths_without_modifying_recognition_receipts': 1, 'test_scope_archive_and_unknown_job_do_not_create_junk': 1, 'test_cancelled_intake_publishes_no_partial_job': 1, 'test_invalid_settings_fail_before_job_creation': 9, 'test_cli_and_application_share_one_durable_job_service': 1, 'test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files': 1, 'test_progress_observer_failure_during_actual_child_does_not_kill_recognition': 1, 'test_final_progress_observer_failure_cannot_reverse_durable_completed_result': 1, 'test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs': 1, 'test_progress_observer_failure_preserves_real_child_or_receipt_failure': 2, 'test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct': 1, 'test_partial_progress_requires_verified_resume_before_host_success': 1, 'test_final_callback_archive_blocks_transcription_publication': 2}, 'tests.transcription.test_pr99_host': {'test_stopped_receipt_deferral_respects_existing_monotonic_progress': 1, 'test_actual_fast_child_cannot_evade_final_staging_budget': 2, 'test_ready_job_backup_restores_retained_media_without_engine_execution': 1, 'test_foreign_edit_binding_blocks_backup_without_publication': 3, 'test_unknown_transcription_state_cannot_disappear_from_backup': 1, 'test_completed_backup_keeps_engine_receipts_and_omits_only_declared_cache': 1, 'test_running_job_backup_requires_stop_without_losing_originals': 1, 'test_escaped_edit_roundtrip_uses_serialized_json_limit': 1, 'test_malformed_engine_checksum_is_a_typed_backup_error': 3, 'test_live_worker_status_reader_allows_atomic_replacement': 1, 'test_completed_run_recheck_observes_stop_after_real_output_read': 1, 'test_worker_status_publication_handles_reader_lifetime': 2}}; observed_asr={module:{name:sum(c.get('classname')==module and c.get('name','').split('[',1)[0]==name for c in cases) for name in functions} for module,functions in expected_asr.items()}; assert observed_asr==expected_asr; expected_export={'tests.reader.test_export_content_identity': {'test_equal_length_edit_after_approval_with_unchanged_metadata_is_rejected': 2, 'test_equal_length_edit_after_real_staging_is_rejected': 4, 'test_unchanged_existing_destination_still_publishes_exact_bytes': 8, 'test_destination_digest_reads_actual_content_in_bounded_blocks': 1, 'test_destination_hash_cancellation_stops_between_real_read_blocks': 2, 'test_oversized_existing_destination_is_rejected_before_payload_read': 2, 'test_cancelled_capture_preserves_absent_or_existing_destination': 2}, 'tests.ui.test_export_destination': {'test_absent_destination_needs_no_native_import_and_remains_no_clobber': 1, 'test_declined_or_cancelled_confirmation_never_grants_approval': 2, 'test_yes_is_bound_to_state_before_question_not_after_it': 1, 'test_modal_failure_disposes_question_and_preserves_file': 1}, 'tests.ui.test_audio_studio': {'test_audio_export_approval_rejects_late_destination_change': 4, 'test_audio_export_captures_before_preparation': 4, 'test_project_save_detects_change_after_external_hash_check': 1, 'test_audio_save_dialog_binds_replace_answer': 6}}; observed_export={module:{name:sum(c.get('classname')==module and c.get('name','').split('[',1)[0]==name for c in cases) for name in functions} for module,functions in expected_export.items()}; assert observed_export==expected_export; expected_ocr={'test_native_script_inventory_keeps_canonical_portable_identity':1,'test_backslash_script_report_is_only_a_native_windows_spelling':1,'test_native_script_aliases_cannot_create_duplicate_inventory_entries':2,'test_native_report_normalization_does_not_admit_unsafe_paths':6}; observed_ocr={name:sum(c.get('classname')=='tests.extract.test_ocr_languages' and c.get('name','').split('[',1)[0]==name for c in cases) for name in expected_ocr}; assert observed_ocr==expected_ocr; export_totals={'tests.reader.test_export_content_identity': 21, 'tests.ui.test_export_destination': 5, 'tests.ui.test_audio_studio': 28}; assert all(sum(c.get('classname')==module for c in cases)==count for module,count in export_totals.items()); required.add('test_completed_run_recheck_observes_stop_after_real_output_read'); required.update({'test_final_callback_archive_blocks_transcription_publication[edit]', 'test_final_callback_archive_blocks_transcription_publication[export]'}); required.add('test_live_worker_status_reader_allows_atomic_replacement'); required.update({'test_worker_status_publication_handles_reader_lifetime[released-reader]', 'test_worker_status_publication_handles_reader_lifetime[persistent-reader]'}); assert required<={c.get('name') for c in cases} and passed>0 and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',persistent_semantic_cache='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',transcription_protocol='PASS',transcription_host='PASS',whisper_acoustic_inference='NOT_RUN',nvda='NOT_RUN')))" | Tee-Object 'profile-results/full-bundle-workflows.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $checkImportOwnership = @'
+          import json, xml.etree.ElementTree as E
+          cases = list(E.parse('profile-results/full-bundle-workflows.xml').iter('testcase'))
+          expected = {
+              "tests.e2e.test_import_worker_publication": {
+                  "test_barrier_leaves_other_processes_unchanged": 2,
+                  "test_stopped_child_reports_verified_fresh_commit": 9,
+                  "test_stopped_child_before_commit_never_reports_completion": 6,
+                  "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+                  "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+                  "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+                  "test_recovery_rechecks_candidate_source_and_authorization": 3,
+                  "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+                  "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+                  "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+              },
+              "tests.ingest.test_import_replay_identity": {
+                  "test_registration_failure_rolls_back_then_replay_adds_only_membership": 2,
+                  "test_replay_conflicting_identity_cannot_leave_catalog_or_membership": 8,
+                  "test_replay_after_metadata_edit_preserves_revision_and_validates_current_metadata": 4,
+                  "test_replay_rejects_checkpoint_text_that_differs_from_sealed_source": 2,
+                  "test_replay_rechecks_active_revision_before_registering": 2,
+                  "test_cancelled_replay_does_not_add_membership": 2,
+                  "test_fresh_post_commit_cancellation_returns_committed_source": 2
+              },
+              "tests.storage.test_academic_migration": {
+                  "test_previous_released_schema_fingerprints_are_unchanged": 1,
+                  "test_previous_backups_restore_unchanged_then_migrate_normally": 4,
+                  "test_invalid_previous_schema_is_not_upgraded_for_publication_receipts": 4,
+                  "test_process_exit_during_import_receipt_migration_preserves_exact_old_data": 8
+              },
+              "tests.storage.test_pending_backup": {
+                  "test_lost_parent_reply_backup_preserves_commit_but_discards_attempt_receipt": 1,
+                  "test_malformed_publication_candidate_cannot_enter_backup": 5
+              }
+          }
+          observed = {module: {name: sum(case.get('classname') == module and
+                       case.get('name', '').split('[', 1)[0] == name for case in cases)
+                       for name in functions} for module, functions in expected.items()}
+          assert observed == expected, (expected, observed)
+          totals = {'tests.e2e.test_import_worker_publication': 34, 'tests.ingest.test_import_replay_identity': 22,
+                    'tests.ingest.test_worker_publication_boundary': 29}
+          assert all(sum(case.get('classname') == module for case in cases) == count for module, count in totals.items())
+          assert any(case.get('classname') == 'tests.ingest.test_worker_publication_boundary' and
+                     case.get('name') == 'test_pdf_reconciliation_requires_its_exact_saved_job_and_config[missing_job]'
+                     for case in cases)
+          assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in cases)
+          print(json.dumps({'status': 'PASS', 'transactional_import_ownership': 'PASS',
+                            'old_schema_migration': 'PASS', 'pending_receipt_backup': 'PASS',
+                            'required_cases': observed}, sort_keys=True))
+          '@
+          $checkImportOwnership | & $python -I -B - | Tee-Object 'profile-results/import-ownership-installed.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          # This declared profile includes no FFmpeg/Flite runtime. Exclude only
+          # its two real synthesis cases; the actual installed SAPI case is mandatory.
+          $runEngines = @'
+          import importlib, json, pathlib, sys, xml.etree.ElementTree as ET
+          from carr_library.native_runtime import activate_bundled_runtime
+          from carr_library.audio_runtime import activate_bundled_audio_runtime
+          root = pathlib.Path(sys.argv[1]).resolve()
+          manifest = json.loads((root / 'bundle-manifest.json').read_text())
+          assert sys.platform == 'win32'
+          assert pathlib.Path(sys.prefix).resolve() == (root / '.venv').resolve()
+          handle = activate_bundled_runtime(bundle_root=root)
+          assert handle is not None and activate_bundled_audio_runtime(bundle_root=root) is None
+          module = importlib.import_module('carr_library.audio.engines')
+          assert pathlib.Path(module.__file__).resolve().is_relative_to(root / '.venv')
+          import pytest
+          excluded = [
+              'tests/audio/test_engines.py::test_actual_flite_speech_has_nonzero_pcm_and_cannot_overwrite',
+              'tests/audio/test_engines.py::test_actual_flite_treats_filter_metacharacters_as_text',
+          ]
+          class SelectionPolicy:
+              def __init__(self):
+                  self.deselected = []
+                  self.expected_failure = False
+              def pytest_deselected(self, items):
+                  self.deselected.extend(item.nodeid for item in items)
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.expected_failure = True
+          policy = SelectionPolicy()
+          report = pathlib.Path('profile-results/full-bundle-audio-engines.xml')
+          arguments = ['-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+                       '--import-mode=importlib', '--junitxml=' + str(report),
+                       'tests/audio/test_engines.py']
+          for name in excluded:
+              arguments += ['--deselect', name]
+          status = pytest.main(arguments, plugins=[policy])
+          assert status == 0 and not policy.expected_failure
+          assert sorted(policy.deselected) == sorted(excluded)
+          cases = list(ET.parse(report).iter('testcase'))
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          passed = len(cases) - failed - skipped
+          assert passed > 0 and failed == skipped == 0
+          assert 'test_actual_installed_windows_sapi_voice' in {case.get('name') for case in cases}
+          evidence = {'status': 'PASS', 'windows_execution': 'PASS', 'execution_context': 'installed-wheel',
+                      'source_commit': manifest['source_commit'], 'source_tree': manifest['source_tree'],
+                      'passed': passed, 'failed': failed, 'skipped': skipped,
+                      'deselected': sorted(policy.deselected), 'actual_sapi': 'PASS',
+                      'flite': 'NOT_RUN', 'flite_reason': 'This library profile includes no bundled FFmpeg or Flite runtime.'}
+          pathlib.Path('profile-results/full-bundle-audio-engines.json').write_text(json.dumps(evidence, sort_keys=True) + '\n', encoding='utf-8')
+          print(json.dumps(evidence, sort_keys=True), flush=True)
+          '@
+          $runEngines | & $installedPython -I -B - $bundle 2>&1 | Tee-Object 'profile-results/full-bundle-audio-engines.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyProfile | & $installedPython -I -B - $bundle installed | Tee-Object 'profile-results/library-profile-installed.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Retain only the exact source wheel after every installed gate and final seal.
+          # Reuse the reviewed canonical tested-wheel handoff; private runtimes stay local.
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installed acceptance.' }
+          $wheelKey = 'wheelhouse/' + $wheels[0].Name
+          $sealedWheel = Join-Path $bundle $wheelKey
+          $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'profile-results/source-wheel-proof.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheelProof = Get-Content -LiteralPath 'profile-results/source-wheel-proof.json' -Raw | ConvertFrom-Json
+          $sealedWheelHash = $completedManifest.files.PSObject.Properties[$wheelKey].Value
+          if (!$sealedWheelHash -or $wheelProof.wheel_sha256 -ne $sealedWheelHash) { throw 'Verified source wheel differs from the installed bundle seal.' }
+          $testedWheelDirectory = Join-Path 'profile-results' 'tested-application-wheel'
+          New-Item -ItemType Directory -Force $testedWheelDirectory | Out-Null
+          $testedWheel = Join-Path $testedWheelDirectory $wheels[0].Name
+          Copy-Item -LiteralPath $sealedWheel -Destination $testedWheel
+          if ((Get-FileHash -LiteralPath $testedWheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $wheelProof.wheel_sha256) {
+            Remove-Item -LiteralPath $testedWheel -Force
+            throw 'Tested application wheel copy differs.'
+          }
+          @{ status='PASS'; source_commit=$sourceCommit; source_tree=$wheelProof.source_tree; wheel=$wheels[0].Name; sha256=$wheelProof.wheel_sha256; installed_bundle='PASS' } | ConvertTo-Json | Set-Content 'profile-results/tested-application-wheel.json'
+          $finalProfile = @'
+          import hashlib, json, os, pathlib, stat, sys
+          root = pathlib.Path(sys.argv[1]).resolve()
+          out = pathlib.Path('profile-results')
+          identity = json.loads((out / 'original-main-artifact.json').read_text(encoding='utf-8'))
+          original = json.loads((out / 'original-main-proof/tested-application-wheel.json').read_text(encoding='utf-8-sig'))
+          current = json.loads((out / 'tested-application-wheel.json').read_text(encoding='utf-8-sig'))
+          installed = json.loads((out / 'library-profile-installed.json').read_text(encoding='utf-8'))
+          assert current['status'] == current['installed_bundle'] == 'PASS'
+          assert current['sha256'] == original['sha256'] == identity['wheel_sha256'] == installed['wheel_sha256']
+          assert current['source_commit'] == original['source_commit'] == identity['source_commit']
+          assert current['source_tree'] == original['source_tree'] == identity['source_tree']
+          raw = (root / 'bundle-manifest.json').read_bytes()
+          assert hashlib.sha256(raw).hexdigest() == installed['manifest_sha256']
+          (out / 'library-profile-manifest.json').write_bytes(raw)
+          launcher = root / 'ResearchLibrary.exe'
+          with launcher.open('rb') as stream:
+              assert hashlib.file_digest(stream, 'sha256').hexdigest() == '5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec'
+          assert launcher.stat().st_size == 13824
+          scope = {'profile': 'library-semantic-ocr-no-bundled-audio',
+              'included': ['library import/search/exact evidence', 'semantic retrieval', 'portable OCR',
+                  'academic bibliography and exports', 'native keyboard/UI and typed assistant',
+                  'verified backup/restore and request-bound recovery', 'local installed SAPI and progress',
+                  'synthetic ASR protocol/host/export checks; no acoustic model qualification'],
+              'omitted_installed_suites': {
+                  'tests/assistant/test_audio_bridge.py': 'Real FFmpeg-backed assistant audio rendering.',
+                  'tests/audio/test_music.py': 'Real FFmpeg composition/rendering.',
+                  'tests/audio/test_production.py': 'Real FFmpeg/DSP project rendering.'},
+              'omitted_native_probes': {
+                  'scripts/windows_audio_runtime_smoke.py': 'Bundled FFmpeg tools are not included.',
+                  'scripts/windows_audio_smoke.py': 'FFmpeg-backed audio rendering is outside this profile.'},
+              'flite': 'NOT_RUN: no bundled FFmpeg/Flite runtime',
+              'whisper_acoustic_inference': 'NOT_RUN', 'manual_NVDA': 'NOT_RUN',
+              'delivery': 'Development-preview qualification; no application ZIP or runtime transfer is produced.'}
+          (out / 'library-profile-scope.json').write_text(json.dumps(scope, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          files = {}
+          for path in sorted(out.rglob('*')):
+              info = path.lstat()
+              assert not stat.S_ISLNK(info.st_mode) and not getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+              if stat.S_ISDIR(info.st_mode):
+                  continue
+              assert stat.S_ISREG(info.st_mode)
+              if path.name not in ('library-profile-proof.json', 'library-profile-final.txt'):
+                  with path.open('rb') as stream:
+                      files[path.relative_to(out).as_posix()] = hashlib.file_digest(stream, 'sha256').hexdigest()
+          report = {'status': 'PASS', 'profile': scope['profile'],
+              'source_commit': identity['source_commit'], 'source_tree': identity['source_tree'],
+              'profile_workflow_commit': identity['profile_workflow_commit'],
+              'profile_workflow_tree': identity['profile_workflow_tree'],
+              'profile_workflow_blob': identity['profile_workflow_blob'],
+              'original_main_run': identity['original_run'], 'original_main_job': identity['original_job'],
+              'original_artifact_id': identity['artifact_id'], 'original_artifact_sha256': identity['artifact_sha256'],
+              'wheel_sha256': identity['wheel_sha256'], 'application_wheel_rebuilt': False,
+              'profile_run': int(os.environ['GITHUB_RUN_ID']), 'profile_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']),
+              'manifest_sha256': installed['manifest_sha256'], 'required_installed_suites': 89,
+              'required_native_probes': 24, 'separate_SAPI_engine_gate': 'PASS',
+              'native_EXE_and_CMD_launchers': 'PASS', 'after_installed_final_seal': True,
+              'native_launcher_sha256': '5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec',
+              'native_launcher_bytes': 13824, 'native_launcher_uploaded': False,
+              'bundled_audio_runtime': False, 'whisper_acoustic_inference': 'NOT_RUN', 'manual_NVDA': 'NOT_RUN',
+              'application_archive_created': False, 'evidence_files': files}
+          (out / 'library-profile-proof.json').write_text(json.dumps(report, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({key: value for key, value in report.items() if key != 'evidence_files'}, sort_keys=True))
+          '@
+          $finalProfile | & $installedPython -I -B - $bundle | Tee-Object 'profile-results/library-profile-final.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
+      - name: Curate only synthetic evidence and the exact tested application wheel
+        if: always()
+        timeout-minutes: 3
+        run: |
+          $curateProfile = @'
+          import hashlib, json, os, pathlib, re, stat
+          source = pathlib.Path('profile-results')
+          public = pathlib.Path(os.environ['RUNNER_TEMP']) / 'carr-library-profile-public'
+          public.mkdir(exist_ok=False)
+          # Only named synthetic evidence and the exact post-seal application wheel may leave this job.
+          allowed = set(["assistant-profile-harness.json","build-environment.json","core-bundle-install.txt","core-bundle-native.txt","core-bundle-self-test.json","full-bundle-academic-native.txt","full-bundle-assistant.json","full-bundle-audio-engines.json","full-bundle-audio-engines.txt","full-bundle-audio-engines.xml","full-bundle-build.json","full-bundle-firewall.json","full-bundle-native-runtime.json","full-bundle-ocr-models.txt","full-bundle-sbom-proof.json","full-bundle-verified.json","full-bundle-workflows.json","full-bundle-workflows.txt","full-bundle-workflows.xml","import-ownership-installed.json","installed-launchers.json","installed-native-launcher.json","installed-native-launcher.txt","library-profile-built.json","library-profile-final.txt","library-profile-installed.json","library-profile-manifest.json","library-profile-proof.json","library-profile-scope.json","model-acquisition.json","native-academic-comparison.txt","native-academic-workflows.txt","native-advanced-search.txt","native-catalog-insights.txt","native-catalog-tools.txt","native-citation-styles.txt","native-desktop.txt","native-document-formats.txt","native-ebook-contents.txt","native-ebook-reader.txt","native-evidence-drafts.txt","native-evidence-pages.txt","native-import-center.txt","native-keyboard-settings.txt","native-launcher-build.json","native-notebook-search.txt","native-ocr-languages.txt","native-progress.txt","native-reader-keymap.txt","native-reading-desk.txt","native-runtime-preparation.json","native-transcription-proof.json","native-transcription.txt","native-v3-reading.txt","ocr-preparation.json","ocr-test-font.json","offline-bundle-ocr-catalogue.json","original-main-artifact.json","original-main-download.txt","preinstall-source-wheel.json","source-wheel-proof.json","tested-application-wheel.json","tested-commit.txt","workflow-powershell-preflight.json","workflow-source-preflight.json"])
+          originals = {'tested-application-wheel.json', 'source-wheel-proof.json',
+              'import-ownership-installed.json', 'native-transcription-proof.json',
+              'full-bundle-workflows.json', 'full-bundle-workflows.xml', 'full-bundle-verified.json', 'tested-commit.txt'}
+          def regular(path):
+              value = path.lstat()
+              assert stat.S_ISREG(value.st_mode) and not stat.S_ISLNK(value.st_mode)
+              assert not getattr(value, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+              assert 0 <= value.st_size <= 128 * 1024 * 1024
+              return value
+          def read_json(path):
+              regular(path)
+              assert path.stat().st_size <= 16 * 1024 * 1024
+              return json.loads(path.read_text(encoding='utf-8-sig'))
+          final = source / 'library-profile-proof.json'
+          qualified = final.is_file() and read_json(final).get('status') == 'PASS'
+          identity = read_json(source / 'original-main-artifact.json') if (source / 'original-main-artifact.json').is_file() else None
+          receipt = read_json(source / 'tested-application-wheel.json') if qualified else None
+          if qualified:
+              proof = read_json(final)
+              assert identity and receipt and proof['after_installed_final_seal'] is True
+              assert proof['source_commit'] == identity['source_commit'] == os.environ['EXPECTED_SOURCE_COMMIT']
+              assert proof['source_tree'] == identity['source_tree'] == os.environ['EXPECTED_SOURCE_TREE']
+              assert proof['profile_workflow_commit'] == os.environ['GITHUB_SHA']
+              assert proof['bundled_audio_runtime'] is False and proof['application_archive_created'] is False
+              assert proof['wheel_sha256'] == receipt['sha256'] == identity['wheel_sha256']
+              assert re.fullmatch(r'[A-Za-z0-9_.+-]+\.whl', receipt['wheel'])
+              assert proof['required_installed_suites'] == 89 and proof['required_native_probes'] == 24
+          records, total = {}, 0
+          for path in sorted(source.rglob('*')) if source.exists() else []:
+              info = path.lstat()
+              assert not stat.S_ISLNK(info.st_mode) and not getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+              relative = path.relative_to(source).as_posix()
+              if stat.S_ISDIR(info.st_mode):
+                  assert relative in ('original-main-proof', 'tested-application-wheel')
+                  continue
+              regular(path)
+              assert path.suffix.casefold() != '.exe', 'Executable binaries must remain private.'
+              is_wheel = relative.startswith('tested-application-wheel/')
+              if is_wheel:
+                  if not qualified:
+                      continue
+                  assert relative == 'tested-application-wheel/' + receipt['wheel']
+              else:
+                  assert relative in allowed or relative.startswith('original-main-proof/') and relative.split('/', 1)[1] in originals
+                  assert path.suffix in ('.json', '.txt', '.xml', '.log')
+              total += info.st_size
+              assert total <= 256 * 1024 * 1024
+              target = public / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              digest, count = hashlib.sha256(), 0
+              with path.open('rb') as incoming, target.open('xb') as outgoing:
+                  opened = os.fstat(incoming.fileno())
+                  assert (opened.st_dev, opened.st_ino, opened.st_size) == (info.st_dev, info.st_ino, info.st_size)
+                  while chunk := incoming.read(1024 * 1024):
+                      count += len(chunk)
+                      assert count <= info.st_size
+                      digest.update(chunk)
+                      outgoing.write(chunk)
+                  closed = os.fstat(incoming.fileno())
+                  assert (closed.st_size, closed.st_mtime_ns) == (info.st_size, info.st_mtime_ns)
+              assert count == info.st_size
+              if is_wheel:
+                  assert digest.hexdigest() == receipt['sha256']
+              records[relative] = {'sha256': digest.hexdigest(), 'bytes': count}
+          if qualified:
+              assert 'tested-application-wheel/' + receipt['wheel'] in records
+              for name, digest in proof['evidence_files'].items():
+                  assert name in records and records[name]['sha256'] == digest
+          report = {'status': 'PASS', 'purpose': 'public artifact boundary only',
+              'profile_qualification': 'PASS' if qualified else 'NOT_COMPLETED',
+              'source_commit': os.environ['EXPECTED_SOURCE_COMMIT'], 'source_tree': os.environ['EXPECTED_SOURCE_TREE'],
+              'profile_workflow_commit': os.environ['GITHUB_SHA'], 'run': int(os.environ['GITHUB_RUN_ID']),
+              'run_attempt': int(os.environ['GITHUB_RUN_ATTEMPT']), 'files': records,
+              'application_wheel_rebuilt': False, 'application_archive_created': False,
+              'runtime_model_ocr_source_archives_uploaded': False, 'private_worker_uploaded': False,
+              'native_launcher_uploaded': False}
+          (public / 'public-artifact-manifest.json').write_text(json.dumps(report, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as environment:
+              environment.write('CARR_PROFILE_PUBLIC=' + str(public) + '\n')
+          print(json.dumps({'status': 'PASS', 'profile_qualification': report['profile_qualification'],
+              'evidence_and_code_files': len(records), 'bytes': total, 'runtime_payloads_uploaded': False}, sort_keys=True))
+          '@
+          $curateProfile | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve distinct profile evidence and the tested application wheel
+        if: ${{ always() && env.CARR_PROFILE_PUBLIC != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-library-profile-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ env.CARR_PROFILE_PUBLIC }}/
+          if-no-files-found: error
+          retention-days: 7
