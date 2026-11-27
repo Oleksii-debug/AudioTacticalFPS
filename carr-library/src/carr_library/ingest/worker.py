@@ -21,7 +21,7 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
-from ..extract.document_formats import MIME_SUFFIXES
+from ..extract.document_formats import MIME_SUFFIXES, PHYSICAL_MIMES, RASTER_MIMES, RASTER_BY_MIME, raster_format
 from ..catalog.intake import (MAX_BYTES, MAX_STREAM_BYTES, FileSnapshot, source_snapshot,
     file_snapshot, source_limit, text_segments)
 
@@ -272,11 +272,14 @@ def _validate_recovery_settings(record, config, mime, revision):
     settings = json.loads(config)
     if not isinstance(settings, dict) or canonical(settings) != config:
         raise ValueError('Stopped import extraction configuration changed.')
-    if mime == 'application/pdf':
-        if (record.get('job') != revision or settings.get('adapter') != 'page_ocr-v1'
+    if mime in PHYSICAL_MIMES:
+        adapter = 'raster_ocr-v1' if mime in RASTER_MIMES else 'page_ocr-v1'
+        if (record.get('job') != revision or settings.get('adapter') != adapter
                 or settings.get('kind') != 'physical_page'
                 or settings.get('config') != record['config']):
-            raise ValueError('Stopped PDF import has a different job or configuration.')
+            raise ValueError('Stopped physical-page import has a different job or configuration.')
+        if mime in RASTER_MIMES and settings.get('format') != RASTER_BY_MIME[mime].name:
+            raise ValueError('Stopped raster import has a different image format.')
     else:
         adapter = ('strict-utf8-v1' if mime == 'text/plain' else
                    'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
@@ -482,7 +485,7 @@ class RuntimeBoundIngest(Ingest):
 
     def _plan(self, asset, config):
         count, settings, segments = super()._plan(asset, config)
-        if asset.mime == 'application/pdf':
+        if asset.mime in PHYSICAL_MIMES:
             from ..extract.runtime_identity import runtime_identity
             data = json.loads(settings)
             data['runtime_identity'] = runtime_identity(config)
@@ -524,7 +527,7 @@ class RuntimeBoundIngest(Ingest):
             renderer, fingerprint = render_fingerprint(self.review_asset, physical,
                 cancelled=getattr(self, '_cancelled', lambda: False))
             if review.get('renderer') != renderer or review.get('render_sha256') != fingerprint:
-                raise ValueError('Reviewed PDF page rendering changed.')
+                raise ValueError('Reviewed physical-page rendering changed.')
             self.validated_reviews[physical] = dict(review)
         return True
 
@@ -610,7 +613,7 @@ def _pending_review(root, workspace, request_id):
                 or record.get('provenance', {}).get('asset_sha256') != job['asset']
                 or request.get('asset_sha256') != job['asset']
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
-            raise ValueError('No intact extracted PDF text is available for review.')
+            raise ValueError('No intact extracted physical-page text is available for review.')
         from .retained_assets import RetainedAssets
         retained = RetainedAssets(Path(root) / 'originals').resolve(job['asset'])
         asset = source_snapshot(retained.parent, retained.name)
@@ -632,7 +635,7 @@ def pending_review(root, workspace, request_id):
 
 def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected_checksum):
     if confirmed is not True:
-        raise ValueError('Independent comparison with the original PDF page must be confirmed.')
+        raise ValueError('Independent comparison with the original physical page or image frame must be confirmed.')
     if (not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 512
             or '\x00' in reviewer):
         raise ValueError('Enter the reviewer identity.')
@@ -860,7 +863,7 @@ def _published_after_stop(app, initial, watermark, *, revision=None):
                         or page['ordinal'] != count
                         or page['digest'] != sha256(encoded).hexdigest()
                         or page['printed'] is not None or page['verified'] != 0
-                        or page['physical'] != (count if mime == 'application/pdf' else None)
+                        or page['physical'] != (count if mime in PHYSICAL_MIMES else None)
                         or (row['active'] == row['id'] and page['indexed'] != raw)):
                     return None
                 if expected_text is not None and raw != next(expected_text, missing):
@@ -1047,11 +1050,13 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
         if data.mime != 'application/pdf' or not 0 < data.size <= source_limit(data.mime):
             raise ValueError('Invalid file-backed PDF review source.')
     elif type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
-        raise ValueError('Invalid PDF review bytes.')
+        raise ValueError('Invalid physical-page review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
-        raise ValueError('Invalid PDF review page.')
+        raise ValueError('Invalid physical review page.')
     with TemporaryDirectory(prefix='carr-review-') as temporary:
-        source = Path(temporary) / 'page-source.pdf'
+        selected = raster_format(data) if type(data) is bytes else None
+        suffix = MIME_SUFFIXES[selected.mime] if selected is not None else '.pdf'
+        source = Path(temporary) / ('page-source' + suffix)
         if isinstance(data, FileSnapshot):
             data.copy_to(source, cancelled=cancelled)
             digest = data.digest
@@ -1061,12 +1066,12 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
         result = _invoke(dict(action='render', source=str(source), sha256=digest,
                               physical=physical, timeout=30), timeout=30, cancelled=cancelled)
     if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
-        raise InterruptedError('PDF source verification cancelled.')
+        raise InterruptedError('Physical-page source verification cancelled.')
     if (not isinstance(result, dict) or set(result) != {'renderer', 'fingerprint'}
             or not isinstance(result['renderer'], str) or not result['renderer']
             or not isinstance(result['fingerprint'], str)
             or not re.fullmatch('[0-9a-f]{64}', result['fingerprint'])):
-        raise ValueError('The isolated PDF review renderer could not verify this page.')
+        raise ValueError('The isolated review renderer could not verify this physical page.')
     return result['renderer'], result['fingerprint']
 
 
@@ -1094,8 +1099,8 @@ def main():
                 raise ValueError('Invalid render request.')
             source = Path(message['source'])
             original = source_snapshot(source.parent, source.name)
-            if original.mime != 'application/pdf' or original.digest != message['sha256']:
-                raise ValueError('PDF review source digest changed.')
+            if original.mime not in PHYSICAL_MIMES or original.digest != message['sha256']:
+                raise ValueError('Physical-page review source digest changed.')
             data = original if isinstance(original, FileSnapshot) else original.data
             from ..citations.pdf_review_attestation import render_fingerprint
             with redirect_stdout(sys.stderr):

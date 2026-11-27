@@ -94,7 +94,7 @@ def test_federated_epub_preview_keeps_section_and_exact_text_without_quote_autho
     header, boundary, extracted = preview.partition('\n\n')
     assert boundary and 'Confirmed EPUB title' in header
     assert 'EPUB section 1 of 2: Evidence chapter' in header
-    assert 'Segment 1' in header and 'PDF page' not in header
+    assert 'Segment 1' in header and 'Physical page' not in header
     assert extracted == FIRST_TEXT
     assert SECOND_TEXT not in preview
 

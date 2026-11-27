@@ -24,6 +24,7 @@ from .catalog.intake import (MAX_BYTES, source_limit, source_snapshot, copy_snap
     AssetSnapshot, FileSnapshot, text_segments)
 from .durable_state import local_path, regular, sync_directory
 from .extract.page_ocr import Config
+from .extract.document_formats import PHYSICAL_MIMES, RASTER_MIMES, RASTER_BY_MIME
 from .ingest.batch_scan import planned_snapshot
 from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS
 from .ingest.batch_pages import (batch_shape, validate_scan_metadata, validate_scan_relations,
@@ -190,7 +191,8 @@ def _manifest(value):
 
 
 def _config(value):
-    if not isinstance(value, dict) or set(value) != set(asdict(Config())):
+    fields = set(asdict(Config()))
+    if not isinstance(value, dict) or set(value) not in (fields, fields - {'automatic_languages'}):
         raise ValueError('Invalid pending extraction configuration.')
     if any(type(value[key]) is not int for key in ('dpi', 'timeout', 'max_pixels')):
         raise ValueError('Invalid pending extraction resource limits.')
@@ -421,14 +423,24 @@ def _journal(path, catalog, cancelled):
                 if settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
                     raise ValueError('Unsupported pending text extraction identity.')
             else:
-                required = {'adapter', 'kind', 'config', 'pypdf', 'pdfium'}
-                if (set(settings) not in (required, required | {'runtime_identity'})
-                        or settings['adapter'] != 'page_ocr-v1'
-                        or not _text(settings['pypdf'], 128) or not _text(settings['pdfium'], 128)):
-                    raise ValueError('Unsupported pending PDF extraction identity.')
+                if settings.get('adapter') == 'raster_ocr-v1':
+                    required = {'adapter', 'kind', 'config', 'format', 'pillow',
+                                'normalization', 'frame_inventory_sha256'}
+                    if (set(settings) not in (required, required | {'runtime_identity'})
+                            or settings.get('format') not in ('JPEG', 'PNG', 'TIFF')
+                            or not _text(settings.get('pillow'), 128)
+                            or settings.get('normalization') != 'pillow-exif-rgb-white-v1'
+                            or not _hash(settings.get('frame_inventory_sha256'))):
+                        raise ValueError('Unsupported pending raster extraction identity.')
+                else:
+                    required = {'adapter', 'kind', 'config', 'pypdf', 'pdfium'}
+                    if (set(settings) not in (required, required | {'runtime_identity'})
+                            or settings['adapter'] != 'page_ocr-v1'
+                            or not _text(settings['pypdf'], 128) or not _text(settings['pdfium'], 128)):
+                        raise ValueError('Unsupported pending PDF extraction identity.')
                 _config(settings['config'])
                 if 'runtime_identity' in settings and not isinstance(settings['runtime_identity'], dict):
-                    raise ValueError('Invalid pending PDF runtime identity.')
+                    raise ValueError('Invalid pending physical-page runtime identity.')
             if row['id'] != digest(canonical([row['workspace'], row['edition'], row['asset'], row['config']])):
                 raise ValueError('Pending journal job identity mismatch.')
             if row['expected_active'] is not None and (not _hash(row['expected_active']) or catalog.execute(
@@ -480,6 +492,10 @@ def _checkpoint(checkpoint, job, ordinal, kind):
             or not isinstance(value['blocks'], list) or not isinstance(value['warnings'], list)
             or not isinstance(value['provenance'], dict) or value['provenance'].get('asset_sha256') != job['asset']):
         raise ValueError('Pending checkpoint source or locator identity mismatch.')
+    settings = json.loads(job['config'])
+    if settings.get('adapter') == 'raster_ocr-v1':
+        from .extract.raster_pages import validate_checkpoint
+        validate_checkpoint(value, settings, ordinal, job['count'])
 
 
 def _inventory(root):
@@ -603,9 +619,17 @@ def _source_checkpoints(asset, raw, jobs, journal, *, cancelled=lambda: False):
     for job in jobs.values():
         if job['asset'] != asset['sha256']:
             continue
-        kind = json.loads(job['config'])['kind']
-        if (asset['mime'], kind) not in (('text/plain', 'logical_segment'), ('application/pdf', 'physical_page')):
+        settings = json.loads(job['config'])
+        kind = settings['kind']
+        if not ((asset['mime'] == 'text/plain' and kind == 'logical_segment')
+                or (asset['mime'] in PHYSICAL_MIMES and kind == 'physical_page')):
             raise ValueError('Pending journal MIME differs from the source format.')
+        if asset['mime'] in RASTER_MIMES:
+            if (settings.get('adapter') != 'raster_ocr-v1'
+                    or settings.get('format') != RASTER_BY_MIME[asset['mime']].name):
+                raise ValueError('Pending raster job differs from its retained image format.')
+        elif kind == 'physical_page' and settings.get('adapter') != 'page_ocr-v1':
+            raise ValueError('Pending PDF job differs from its retained source format.')
         if kind == 'logical_segment':
             checkpoints = iter(journal.execute('SELECT ordinal,payload FROM checkpoint WHERE job=? ORDER BY ordinal', (job['id'],)))
             checkpoint = next(checkpoints, None)

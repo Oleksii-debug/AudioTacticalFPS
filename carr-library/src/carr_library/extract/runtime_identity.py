@@ -37,7 +37,7 @@ def _hash(path, limit=256 * 1024 * 1024, remaining=lambda: None):
 
 def _source_hashes():
     root = Path(__file__).parent
-    names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
+    names = ('page_ocr.py', 'raster_pages.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py',
              'model_catalog.py', 'ocr_model_store.py', 'managed_ocr.py',
              'ocr_model_catalog.py', 'ocr-model-catalog.json', 'ocr_process.py')

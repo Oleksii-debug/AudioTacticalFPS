@@ -75,7 +75,7 @@ def test_guard_blocks_forged_label(source, tmp_path):
 def test_verified_roman_label(source, tmp_path):
     identity, _, raw, approval, text = source
     guard = printed_label_guard(identity.workspace, text, lambda *_: approval)
-    assert 'p. iv (PDF page 1)' in read_citation(tmp_path, identity, approval.replacement, raw, guard)
+    assert 'p. iv (physical page 1)' in read_citation(tmp_path, identity, approval.replacement, raw, guard)
 
 
 def test_unverified_metadata_fallback(source, tmp_path):
@@ -84,7 +84,7 @@ def test_unverified_metadata_fallback(source, tmp_path):
         pytest.fail('unverified metadata is not a printed-page claim')
     guard = printed_label_guard(identity.workspace, text, should_not_lookup)
     citation = read_citation(tmp_path, identity, candidate, raw, guard)
-    assert 'PDF page 1 (printed page unverified)' in citation and '999' not in citation
+    assert 'Physical page 1 (printed page unverified)' in citation and '999' not in citation
 
 
 @pytest.mark.parametrize('kind', ['missing', 'workspace', 'edition', 'revision', 'asset', 'page', 'label', 'unverified'])

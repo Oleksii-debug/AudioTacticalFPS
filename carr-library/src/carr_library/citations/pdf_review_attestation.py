@@ -30,7 +30,11 @@ class ReviewedPage:
 
 
 def render_fingerprint(data, physical, *, cancelled=lambda: False):
-    """Reuse PDFium; include dimensions and renderer version in review binding."""
+    """Bind physical-page pixels with the existing PDF or retained raster decoder."""
+    from ..extract.document_formats import raster_format
+    if type(data) is bytes and raster_format(data) is not None:
+        from ..extract.raster_pages import render_fingerprint as raster_fingerprint
+        return raster_fingerprint(data, physical, cancelled=cancelled)
     import pypdfium2 as pdfium
     if isinstance(data, FileSnapshot):
         if data.mime != 'application/pdf' or not 0 < data.size <= source_limit(data.mime):

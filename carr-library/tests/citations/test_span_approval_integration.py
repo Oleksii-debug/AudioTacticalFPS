@@ -101,7 +101,7 @@ def test_reopened_exact_span(library):
     with reader() as (db, load, meta):
         ctx = stored(db, load, meta)
         assert [p.quote for p in ctx.pages] == ['synthetic page\niv\n','Second']
-        assert ctx.clipboard('a',1,'both',load) == 'Second\n\nCitation: Fixture author, Fixture title, vol. 1, edition first, p. v (PDF page 2)'
+        assert ctx.clipboard('a',1,'both',load) == 'Second\n\nCitation: Fixture author, Fixture title, vol. 1, edition first, p. v (physical page 2)'
 
 
 @pytest.mark.parametrize('sql', [

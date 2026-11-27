@@ -137,7 +137,7 @@ class SavedSpanCompatibilityTests(unittest.TestCase):
             self.assertEqual(quotes, [self.raw[0], *self.raw])
             self.assertEqual(output.count('Evidence ID: "span"'), 2)
             self.assertIn('source slice 2 of 2', output)
-            self.assertIn('PDF page 2', output)
+            self.assertIn('Physical page 2', output)
             ris = export_saved('a', 'topic', rows, self.readers(db, 'a')[0], format='ris')
             self.assertEqual(ris.count('TY  - '), 2)
             self.assertNotIn('Separate span note', ris)

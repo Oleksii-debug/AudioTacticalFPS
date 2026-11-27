@@ -126,8 +126,8 @@ def run_native(source):
                   and panel.page_choice.IsEnabled())
             check('initial quotation is exact first source slice', panel.quote.GetValue() == first.quote)
             check('source locators are outside the quotation',
-                  'PDF page 3' in panel.page_choice.GetString(0)
-                  and 'PDF page 4' in panel.page_choice.GetString(1))
+                  'Physical page 3' in panel.page_choice.GetString(0)
+                  and 'Physical page 4' in panel.page_choice.GetString(1))
             draft = 'Unsaved research note — зберегти дослівно.'
             panel.note.SetValue(draft)
             book.ChangeSelection(0)
@@ -155,7 +155,7 @@ def run_native(source):
             select(1)
             check('second part contains only its exact source quotation', panel.quote.GetValue() == second.quote)
             check('second part citation corresponds only to its own page',
-                  'PDF page 4' in panel.citation.GetValue() and 'PDF page 3' not in panel.citation.GetValue())
+                  'Physical page 4' in panel.citation.GetValue() and 'Physical page 3' not in panel.citation.GetValue())
             check('changing source part preserves unsaved note', panel.note.GetValue() == draft)
             select(0)
             check('returning to first part restores exact first quote', panel.quote.GetValue() == first.quote)
