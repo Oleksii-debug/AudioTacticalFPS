@@ -51,7 +51,7 @@ jobs:
       - name: Check out the distinct previous standard generation
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: f26c7eeef2ad3090ab531d1b8bca72ba68eb5991
+          ref: 91332206578b4d8dc779fec08c8d51a67962b0ff
           path: carr-standard-source-a
           fetch-depth: 0
           persist-credentials: false
@@ -1606,7 +1606,7 @@ jobs:
       - name: Verify two distinct signed standard generations and native rollback
         timeout-minutes: 120
         run: |
-          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource 'f26c7eeef2ad3090ab531d1b8bca72ba68eb5991'
+          & ./scripts/ci_standard_update.ps1 -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '91332206578b4d8dc779fec08c8d51a67962b0ff'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
