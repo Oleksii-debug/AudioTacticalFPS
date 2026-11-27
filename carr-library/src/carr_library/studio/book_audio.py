@@ -552,6 +552,27 @@ class BookAudioService:
             result.append(self.load(path.stem))
         return tuple(result)
 
+    def _retain_plan_locked(self, plan):
+        """The caller already holds this exact book's state_lock."""
+        path = self.plans / (plan.id + '.json')
+        if os.path.lexists(path):
+            if self.load(plan.id).fingerprint != plan.fingerprint:
+                raise ValueError('This book identity already belongs to another reviewed plan.')
+        else:
+            saved = {'plan': plan.to_dict(), 'fingerprint': plan.fingerprint}
+            validate_saved_plan(saved, namespace=self.plans.name, identity=plan.id)
+            atomic_json(path, saved)
+
+    def save(self, plan, *, cancelled=lambda: False, guard=lambda: None):
+        """Retain this source review without creating jobs or starting speech."""
+        if not isinstance(plan, BookPlan):
+            raise ValueError('A typed immutable book plan is required.')
+        self._validate(plan, cancelled, guard)
+        with state_lock(self.plans, 'book-' + plan.id):
+            self._validate(plan, cancelled, guard)
+            self._retain_plan_locked(plan)
+        return plan
+
     def _validate(self, plan, cancelled, guard):
         caller_guard = guard
         def guard():
@@ -619,14 +640,7 @@ class BookAudioService:
             reviewed = self.review(plan, destination, cancelled=cancelled, guard=guard)
             if approval != reviewed.fingerprint:
                 raise ValueError('The book split or output names changed. Review them again.')
-            path = self.plans / (plan.id + '.json')
-            if os.path.lexists(path):
-                if self.load(plan.id).fingerprint != plan.fingerprint:
-                    raise ValueError('This book identity already belongs to another reviewed plan.')
-            else:
-                saved = {'plan': plan.to_dict(), 'fingerprint': plan.fingerprint}
-                validate_saved_plan(saved, namespace=self.plans.name, identity=plan.id)
-                atomic_json(path, saved)
+            self._retain_plan_locked(plan)
             for index in range(1, len(plan.parts) + 1):
                 self._validate(plan, cancelled, guard)
                 state = self._job(plan, index)
@@ -640,30 +654,60 @@ class BookAudioService:
             return self.review(plan, reviewed.output_parent, cancelled=cancelled, guard=guard)
 
     def run(self, plan_id, destination, *, approval, cancelled=lambda: False,
-            guard=lambda: None, progress=None):
+            guard=lambda: None, progress=None, cancel_action=lambda: 'pause'):
         with state_lock(self.plans, 'book-' + _identity(plan_id)):
             plan = self.load(plan_id)
             review = self.review(plan, destination, cancelled=cancelled, guard=guard)
             if not review.prepared or approval != review.fingerprint:
                 raise ValueError('Prepare and explicitly review the exact saved item destinations before Run.')
             results = []
-            for index, expected_output in enumerate(review.destinations, 1):
-                def source_guard(index=index, expected_output=expected_output):
-                    self._validate(plan, cancelled, guard)
-                    if self.load(plan.id).fingerprint != plan.fingerprint:
-                        raise ValueError('The saved book plan changed during rendering.')
-                    current = self._job(plan, index)
-                    if (current is None or current['destination'] != expected_output
-                            or current.get('recovery', {}).get('requires_output_directory') is True):
-                        raise ValueError('The reviewed book output changed during rendering.')
-                    return plan.provenance(index)
+            try:
+                for index, expected_output in enumerate(review.destinations, 1):
+                    def source_guard(index=index, expected_output=expected_output):
+                        self._validate(plan, cancelled, guard)
+                        if self.load(plan.id).fingerprint != plan.fingerprint:
+                            raise ValueError('The saved book plan changed during rendering.')
+                        current = self._job(plan, index)
+                        if (current is None or current['destination'] != expected_output
+                                or current.get('recovery', {}).get('requires_output_directory') is True):
+                            raise ValueError('The reviewed book output changed during rendering.')
+                        return plan.provenance(index)
 
-                source_guard()
-                # ProductionService itself verifies completed artifacts before
-                # returning a reuse result; no batch-level status shortcut exists.
-                result = self.production.run(plan.job_id(index),
-                    cancelled=lambda: self._closed.is_set() or bool(cancelled()),
-                    progress=progress, source_guard=source_guard)
-                results.append({'index': index, 'job': result['id'], 'status': result['status'],
-                                'destination': result['destination']})
+                    signalled = False
+                    def owned_cancelled(index=index):
+                        nonlocal signalled
+                        if not (self._closed.is_set() or bool(cancelled())):
+                            return False
+                        # This callback is invoked only by ProductionService.run,
+                        # inside its native render lock. A caller that fails to
+                        # acquire the book/job lock never signals another owner.
+                        if not signalled:
+                            self._check_scope()
+                            action = cancel_action()
+                            if action not in ('pause', 'cancel'):
+                                raise ValueError('Invalid book cancellation action.')
+                            current = self._job(plan, index)
+                            if current is not None and current['status'] != 'complete':
+                                callback = (self.production.cancel if action == 'cancel'
+                                            else self.production.request_pause)
+                                callback(plan.job_id(index))
+                            signalled = True
+                        return True
+
+                    source_guard()
+                    # ProductionService itself verifies completed artifacts before
+                    # returning a reuse result; no batch-level status shortcut exists.
+                    result = self.production.run(plan.job_id(index),
+                        cancelled=owned_cancelled, progress=progress, source_guard=source_guard)
+                    results.append({'index': index, 'job': result['id'], 'status': result['status'],
+                                    'destination': result['destination']})
+                    if result['status'] != 'complete':
+                        # Pause/cancel/failure requires a new explicit Run; never
+                        # advance merely because this call returned.
+                        break
+            except BaseException as exc:
+                # These are actual returned, verified Studio results, not an
+                # inference from an existing destination or another invocation.
+                exc.book_audio_result = {'plan': plan.id, 'items': tuple(results)}
+                raise
             return tuple(results)

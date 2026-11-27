@@ -47,7 +47,7 @@ def test_full_text_reader_has_no_search_dependency_and_keeps_exact_unicode(text_
     assert pages[2].location.asset_sha256 == book['asset']
     assert 'Segment 3' in pages[2].description
     assert 'unpaginated' in pages[2].description
-    assert 'PDF page' not in pages[2].description
+    assert 'Physical page' not in pages[2].description
     assert app._selections == {}
 
 
@@ -272,7 +272,7 @@ def test_docx_reading_is_explicitly_unpaginated_and_unverified(tmp_path):
     assert 'Synthetic DOCX reading passage' in page.raw_text
     assert not page.verified
     assert page.location.kind == 'logical_segment'
-    assert 'unpaginated' in page.description and 'PDF page' not in page.description
+    assert 'unpaginated' in page.description and 'Physical page' not in page.description
 
 
 def test_noncontiguous_physical_locations_use_reading_order_not_fake_page_numbers(tmp_path):
@@ -301,7 +301,7 @@ def test_noncontiguous_physical_locations_use_reading_order_not_fake_page_number
     desk = ReadingDesk(app, workspace, book['edition'])
     assert [p.ordinal for p in desk.pages] == [1, 2]
     assert [p.locator.index for p in desk.pages] == [5, 9]
-    assert 'PDF page 5' in desk.pages[0].description
+    assert 'Physical page 5' in desk.pages[0].description
     first = desk.page(1)
     second = desk.page(2)
     assert first.location.index == 5 and second.location.index == 9

@@ -95,6 +95,11 @@ def panel(classes):
     value.collection.GetSelection.return_value = 0
     value.collection_ids = [None]
     value.filters = {}
+    value._search_page = None
+    value._source_history = []
+    value.search_navigation = {}
+    value.search_timeout = Mock()
+    value.search_timeout.GetValue.return_value = '300'
     value.grid,value.details,value.status = Mock(),Mock(),Mock()
     value._load_context,value._refresh_details = Mock(),Mock()
     value.verified_copy_service = Mock(return_value=hit.quote)
@@ -575,7 +580,7 @@ def test_pending_import_review_requires_explicit_approval_of_displayed_page(clas
     display(prepare())
     f.library.pending_review.assert_called_once_with('a','request')
     shown = env['show_text'].call_args.args[2]
-    assert 'Original.pdf' in shown and 'Physical PDF page 2' in shown
+    assert 'Original.pdf' in shown and 'Physical page 2' in shown
     assert page['raw_text'] in shown
     f.library.confirm_import_review.assert_not_called()
     if confirmed and reviewer is not None:

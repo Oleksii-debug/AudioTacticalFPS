@@ -13,7 +13,7 @@ import re
 import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
-from . import backup_effect_presets, backup_playback_queue
+from . import backup_effect_presets, backup_playback_queue, backup_book_batches
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
@@ -57,6 +57,8 @@ def _stamp(value):
 
 def _include(path, generated):
     name = 'state/' + path.as_posix()
+    if backup_book_batches.reserved(name):
+        return not backup_book_batches.ignored(name)
     if backup_effect_presets.reserved(name):
         return not backup_effect_presets.ignored(name)
     return (not _local_studio_origin(path) and not _local_transcription_origin(path)
@@ -90,6 +92,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
                     'state/' + (Path(directory) / name).relative_to(root).as_posix())
                 backup_playback_queue.validate_directory(
                     'state/' + (Path(directory) / name).relative_to(root).as_posix())
+                backup_book_batches.validate_directory(
+                    'state/' + (Path(directory) / name).relative_to(root).as_posix())
             dirs[:] = [name for name in dirs if _include((Path(directory) / name).relative_to(root), include_generated)]
             for name in sorted(files):
                 source = Path(directory) / name
@@ -100,6 +104,9 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
                         raise ValueError('Application state exceeds the file budget.')
         return found
     before_inventory = inventory()
+    backup_book_batches.collection_budgets(
+        ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
+         for name, stamp in before_inventory.items()), cancelled=cancelled)
     backup_playback_queue.collection_budgets(
         ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
          for name, stamp in before_inventory.items()), cancelled=cancelled)
@@ -180,7 +187,33 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     validate_collection(None, target, entries, cancelled=cancelled)
     backup_effect_presets.validate_collection(target, entries, cancelled=cancelled)
     backup_playback_queue.validate_collection(target, entries, cancelled=cancelled)
+    backup_book_batches.validate_collection(target, entries, cancelled=cancelled)
+    _validate_reader_preferences(target, entries, cancelled=cancelled)
+    from .audio.recording import verify_retained_recordings
+    verify_retained_recordings(target, entries, cancelled=cancelled)
     return sorted(entries, key=lambda entry: entry['filename'])
+
+
+def _validate_reader_preferences(copied_root, entries, *, cancelled=lambda: False):
+    """Validate new passive reader records in the already-copied state only."""
+    from .durable_state import read_json_snapshot
+    from .speech.tabs import validate_collection
+    from .speech.presentation import ReadingPresentation, MAX_PROFILE_BYTES
+    from .runtime_settings import validate_voice_preferences
+
+    names = {item['filename'] for item in entries}
+    validate_collection(copied_root, entries, state_only=True, cancelled=cancelled)
+    if cancelled():
+        raise InterruptedError('Reader preference backup validation cancelled.')
+    appearance = 'speech/reading-presentation.json'
+    if appearance in names:
+        ReadingPresentation.from_dict(read_json_snapshot(
+            copied_root / appearance, max_bytes=MAX_PROFILE_BYTES)[0])
+    engines = 'audio/engines.json'
+    if engines in names:
+        value = read_json_snapshot(copied_root / engines)[0]
+        if isinstance(value, dict) and 'voice_preferences' in value:
+            validate_voice_preferences(value['voice_preferences'])
 
 
 def validate_state(entries):
@@ -218,6 +251,8 @@ def validate_state(entries):
     backup_effect_presets.collection_budgets(
         ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
     backup_playback_queue.collection_budgets(
+        ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
+    backup_book_batches.collection_budgets(
         ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
 
 
@@ -353,6 +388,8 @@ def restore_state(source, target, entries):
                 'state/' + (Path(directory) / name).relative_to(source).as_posix())
             backup_playback_queue.validate_directory(
                 'state/' + (Path(directory) / name).relative_to(source).as_posix())
+            backup_book_batches.validate_directory(
+                'state/' + (Path(directory) / name).relative_to(source).as_posix())
         for name in files:
             path = Path(directory) / name
             regular(path)
@@ -366,6 +403,9 @@ def restore_state(source, target, entries):
         raise ValueError('Backup has missing or unlisted application state.')
     backup_effect_presets.validate_collection(source, entries)
     backup_playback_queue.validate_collection(source, entries)
+    backup_book_batches.validate_collection(source, entries)
+    from .audio.recording import verify_retained_recordings
+    verify_retained_recordings(source, entries)
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
@@ -393,6 +433,9 @@ def restore_state(source, target, entries):
     validate_collection(None, target, entries)
     backup_effect_presets.validate_collection(target, entries)
     backup_playback_queue.validate_collection(target, entries)
+    backup_book_batches.validate_collection(target, entries)
+    _validate_reader_preferences(target, entries)
+    verify_retained_recordings(target, entries)
     if (target / 'transcription').exists():
         from .integrations.transcription_protocol import prepare_restored_state
         prepare_restored_state(target)

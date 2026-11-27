@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from ..extract.document_formats import MIME_SUFFIXES
+from ..catalog.intake import FileSnapshot, source_snapshot, source_limit, _hash_stream
 
 MAX_BYTES = 64 * 1024 * 1024
 SUFFIXES = dict(MIME_SUFFIXES)
@@ -34,7 +35,7 @@ class RetainedAssets:
             raise RetentionError('invalid asset digest')
         return [self.root / (digest + suffix) for suffix in SUFFIXES.values()]
 
-    def resolve(self, digest):
+    def resolve(self, digest, *, cancelled=lambda: False):
         """Internal verified lookup; never expose directly to unscoped UI."""
         paths = [p for p in self._paths(digest) if os.path.lexists(p)]
         if len(paths) != 1:
@@ -43,11 +44,52 @@ class RetainedAssets:
         info = path.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or
                 getattr(info, 'st_file_attributes', 0) & 0x400 or
-                not 0 < info.st_size <= MAX_BYTES):
+                not 0 < info.st_size <= source_limit(next(mime for mime, suffix in SUFFIXES.items()
+                                                            if suffix == path.suffix))):
             raise RetentionError('invalid retained asset file')
-        if hash_file(path) != digest:
+        if self._digest(path, cancelled=cancelled) != digest:
             raise RetentionError('retained asset digest mismatch')
         return path
+
+    @staticmethod
+    def _digest(path, *, cancelled=lambda: False):
+        before = path.stat()
+        stamp = lambda value: (value.st_dev, value.st_ino, value.st_mode, value.st_nlink,
+                               value.st_size, value.st_mtime_ns, value.st_ctime_ns)
+        with path.open('rb') as stream:
+            if stamp(os.fstat(stream.fileno())) != stamp(before):
+                raise RetentionError('retained asset changed while opening')
+            digest, size = _hash_stream(stream, cancelled=cancelled, maximum=before.st_size)
+            if (stamp(os.fstat(stream.fileno())) != stamp(before)
+                    or stamp(path.lstat()) != stamp(before) or size != before.st_size):
+                raise RetentionError('retained asset changed during verification')
+        return digest
+
+    def retain_snapshot(self, asset, *, cancelled=lambda: False):
+        """Reuse the exact private publication transaction for file-backed originals."""
+        if not isinstance(asset, FileSnapshot):
+            if cancelled():
+                raise InterruptedError('Original retention cancelled.')
+            return self.retain(asset.data, asset.mime, asset.digest)
+        if asset.mime not in SUFFIXES or not 0 < asset.size <= source_limit(asset.mime):
+            raise RetentionError('unsupported or oversized file-backed original')
+        target = self.root / (asset.digest + SUFFIXES[asset.mime])
+        paths = self._paths(asset.digest)
+        existing = [path for path in paths if os.path.lexists(path)]
+        if existing:
+            if len(existing) != 1 or existing[0] != target:
+                raise RetentionError('missing, ambiguous or differently typed retained original')
+            asset.verify(cancelled=cancelled)
+            self._recover_staged_publication(target, asset.digest)
+            return self.resolve(asset.digest, cancelled=cancelled)
+        with TemporaryDirectory(prefix='.carr-original-', dir=self.root) as tmp:
+            stage = Path(tmp) / 'original'
+            asset.copy_to(stage, cancelled=cancelled)
+            if cancelled():
+                raise InterruptedError('Original retention cancelled before publication.')
+            # Keep the existing no-replace link and abandoned-twin recovery.
+            os.link(stage, target)
+        return self.resolve(asset.digest, cancelled=cancelled)
 
     def _recover_staged_publication(self, target, digest):
         """Finish only a fully accounted link publication under the writer guard.
@@ -60,7 +102,8 @@ class RetainedAssets:
         published = target.lstat()
         if (not stat.S_ISREG(published.st_mode) or
                 getattr(published, 'st_file_attributes', 0) & 0x400 or
-                not 0 < published.st_size <= MAX_BYTES):
+                not 0 < published.st_size <= source_limit(next(mime for mime, suffix in SUFFIXES.items()
+                                                                 if suffix == target.suffix))):
             raise RetentionError('invalid retained asset file')
         if published.st_nlink == 1:
             return
@@ -155,9 +198,8 @@ class RetainedAssets:
 
     def start(self, ingest, workspace, edition, source_root, relative, **kwargs):
         """Reuse bounded catalog intake and existing Ingest.start."""
-        from carr_library.catalog.intake import snapshot
-        asset = snapshot(source_root, relative)
-        retained = self.retain(asset.data, asset.mime, asset.digest)
+        asset = source_snapshot(source_root, relative, cancelled=kwargs.get('cancelled', lambda: False))
+        retained = self.retain_snapshot(asset, cancelled=kwargs.get('cancelled', lambda: False))
         job = ingest.start(workspace, edition, self.root, retained.name, **kwargs)
         if ingest.inspect(workspace, job)['asset'] != asset.digest:
             raise RetentionError('job asset mismatch')
@@ -166,5 +208,5 @@ class RetainedAssets:
     def run(self, ingest, workspace, job, **kwargs):
         """Scope-check via existing journal first; resume from original bytes."""
         record = ingest.inspect(workspace, job)
-        retained = self.resolve(record['asset'])
+        retained = self.resolve(record['asset'], cancelled=kwargs.get('cancelled', lambda: False))
         return ingest.run(workspace, job, self.root, retained.name, **kwargs)

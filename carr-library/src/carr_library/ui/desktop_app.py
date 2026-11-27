@@ -89,6 +89,8 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.bound_library = frame.library
         self.bound_workspace,self.bound_topic = services.workspace,services.topic
         self.results = {}
+        self._search_page = None
+        self._source_history = []
         super().__init__(parent, services.search, services.load_context,
                          verified_copy=services.verified_copy)
         self.retrieval.SetItems(['Exact phrase', 'Whole word', 'All words on one page',
@@ -128,10 +130,28 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.GetSizer().Insert(3, self.advanced_builder, 0, wx.ALL, 4)
         self.advanced_builder.MoveAfterInTabOrder(self.query)
         self.retrieval.MoveAfterInTabOrder(self.advanced_builder)
+        navigation = wx.BoxSizer(wx.HORIZONTAL)
+        self.search_navigation = {}
+        for key, caption in (('result_previous', 'Previous result page'), ('result_next', 'Next result page'),
+                             ('source_previous', 'Previous source window'), ('source_next', 'Next source window')):
+            button = wx.Button(self, label=caption)
+            button.SetName(caption)
+            button.Bind(wx.EVT_BUTTON, lambda event, key=key: self.on_search_navigation(key))
+            button.Disable()
+            self.search_navigation[key] = button
+            navigation.Add(button, 0, wx.ALL, 3)
+        self.GetSizer().Add(navigation, 0, wx.EXPAND)
+        budget_row = wx.BoxSizer(wx.HORIZONTAL)
+        budget_row.Add(wx.StaticText(self, label='Search time budget in seconds'), 0, wx.ALL, 3)
+        self.search_timeout = wx.TextCtrl(self, value='300')
+        self.search_timeout.SetName('Search time budget in seconds')
+        self.search_timeout.Bind(wx.EVT_TEXT, self.on_options_changed)
+        budget_row.Add(self.search_timeout, 0, wx.ALL, 3)
+        self.GetSizer().Add(budget_row, 0, wx.EXPAND)
         save = wx.Button(self, label='Save selected quotation to &topic')
         save.Bind(wx.EVT_BUTTON, self.save_selected)
         self.GetSizer().Add(save, 0, wx.ALL, 4)
-        review = wx.Button(self,label='Record independent review of selected PDF page')
+        review = wx.Button(self,label='Record independent review of selected physical page')
         review.Bind(wx.EVT_BUTTON, self.review_selected)
         self.GetSizer().Add(review,0,wx.ALL,4)
         original = wx.Button(self, label='Open &original source file')
@@ -178,6 +198,9 @@ class DesktopSearchPanel(PagedSearchPanel):
 
     def on_options_changed(self, event=None):
         """Discard old results when query, filters or presentation change."""
+        self._search_page = None
+        self._source_history = []
+        self.refresh_search_navigation()
         self._context_epoch += 1
         self.model.clear()
         self.results.clear()
@@ -200,10 +223,13 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.results.clear()
         self.grid.refresh()
         self.details.ChangeValue('')
+        self._search_page = None
+        self._source_history = []
+        self.refresh_search_navigation()
         self.status.ChangeValue('Collections refreshed. Search again using the current selection.' if selected in self.collection_ids else
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
-    def on_search(self, event):
+    def on_search(self, event=None, *, cursor=None, offset=0, continuing=False):
         if getattr(self.frame, '_closing', False):
             return
         if self.frame.working:
@@ -249,6 +275,19 @@ class DesktopSearchPanel(PagedSearchPanel):
             self.collection.SetFocus()
             return
         options['collection'] = self.collection_ids[index]
+        try:
+            allowance = float(self.search_timeout.GetValue())
+            from ..search.paging import MAX_TIMEOUT_SECONDS
+            if not 0 < allowance <= MAX_TIMEOUT_SECONDS:
+                raise ValueError('Choose a search time budget greater than zero and at most 86400 seconds.')
+        except (ValueError, TypeError) as exc:
+            self.status.ChangeValue(str(exc))
+            self.status.SetFocus()
+            return
+        if not continuing:
+            self._source_history = []
+        self._search_page = None
+        self.refresh_search_navigation()
         self._context_epoch += 1
         epoch = self._context_epoch
         self.model.clear()
@@ -266,9 +305,12 @@ class DesktopSearchPanel(PagedSearchPanel):
         def stopped():
             return self.frame.cancel_event.is_set() or not current_scope()
 
-        def done(rows):
+        def done(page):
             if stopped():
                 return
+            rows = page.results
+            self._search_page = page
+            self.refresh_search_navigation()
             self.results = {r.ref: r for r in rows}
             self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
                 r.author, r.edition, r.page, r.quote, r.citation) for r in rows))
@@ -277,7 +319,11 @@ class DesktopSearchPanel(PagedSearchPanel):
             if rows:
                 info += (' Short source quotations.' if result_mode == 'short' else
                          ' Expanded source excerpts from the matching page or text segment.')
-                info += ' Showing excerpts from up to 100 matches. Use source filters to focus the search.'
+                info += f' Result page {offset // 100 + 1} within {page.source_pages} source pages.'
+            info += ' Relevance is local to this bounded source window.'
+            info += (' More matching results are available in this window.' if page.has_more_results else '')
+            info += (' Next source window continues the remaining books or segments.'
+                     if page.next_source_cursor is not None else ' All source windows have been visited.')
             if notes:
                 info += ' ' + ' '.join(dict.fromkeys(notes))
             if mode == 'advanced':
@@ -296,10 +342,40 @@ class DesktopSearchPanel(PagedSearchPanel):
         def load():
             if stopped():
                 raise InterruptedError('The search query, library, or data folder changed before searching.')
-            return library.search(workspace, query, mode=mode, result_mode=result_mode,
+            return library.search_page(workspace, query, mode=mode, result_mode=result_mode,
+                cursor=cursor, offset=offset, timeout=allowance,
                 cancelled=stopped, authorized_topic=self.bound_topic, on_status=notes.append, **options)
 
         self.frame.run_job('Searching the selected library', load, done)
+
+
+    def refresh_search_navigation(self):
+        page = self._search_page
+        flags = {'result_previous': bool(page and page.offset > 0),
+                 'result_next': bool(page and page.has_more_results),
+                 'source_previous': bool(page and self._source_history),
+                 'source_next': bool(page and page.next_source_cursor is not None)}
+        for key, button in self.search_navigation.items():
+            button.Enable(flags[key] and not getattr(self.frame, '_closing', False))
+
+    def on_search_navigation(self, key):
+        if self.frame.working or self._search_page is None:
+            return
+        page = self._search_page
+        cursor, offset = page.cursor, page.offset
+        if key == 'result_previous' and offset > 0:
+            offset = max(0, offset - 100)
+        elif key == 'result_next' and page.has_more_results:
+            offset += 100
+        elif key == 'source_next' and page.next_source_cursor is not None:
+            self._source_history.append((cursor, offset))
+            del self._source_history[:-128]
+            cursor, offset = page.next_source_cursor, 0
+        elif key == 'source_previous' and self._source_history:
+            cursor, offset = self._source_history.pop()
+        else:
+            return
+        self.on_search(cursor=cursor, offset=offset, continuing=True)
 
     def on_more(self, event):
         if self.frame.working:
@@ -1125,10 +1201,10 @@ class DesktopFrame(WorkspaceFrame):
                     self.report('This import has no page awaiting review. Choose Resume interrupted import to continue it.')
                     return
                 show_text(self,'Imported page to compare with the original',
-                    f'{selected["file"]}\nPhysical PDF page {page["physical"]}\n\n'
-                    'Compare the entire extracted text below with the same physical page of the original PDF.\n\n' +
+                    f'{selected["file"]}\nPhysical page {page["physical"]}\n\n'
+                    'Compare the entire extracted text below with the same physical page or image frame of the original source.\n\n' +
                     page['raw_text'])
-                if wx.MessageBox('Have you independently compared all the extracted text with this original PDF page? '
+                if wx.MessageBox('Have you independently compared all the extracted text with this original physical page or image frame? '
                         'Confirm only after that comparison. Printed page numbers remain unverified.',
                         'Confirm independent imported-page review',
                         wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,self) != wx.YES:

@@ -190,6 +190,11 @@ class ReadingDialog:
         layout.Add(self.location, 0, wx.EXPAND | wx.ALL, 8)
         self.text = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.text.SetName('Full source page or text segment')
+        from .reading_presentation import load_reading_presentation
+        self._appearance_library = getattr(parent, 'library', None)
+        appearance_root = getattr(self._appearance_library, 'root', None)
+        self.reading_presentation, self._presentation_store, self._presentation_notice = load_reading_presentation(
+            self.text, appearance_root, wx)
         layout.Add(self.text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         navigation = wx.WrapSizer(wx.HORIZONTAL)
         self._button(navigation, 'Previous source location', lambda _: self.navigate(-1),
@@ -214,6 +219,7 @@ class ReadingDialog:
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
                      command_id='reader.bookmarks')
         self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
+        self._button(bookmarks, 'Reading appearance...', self.appearance, command_id='reader.appearance')
         self._button(bookmarks, 'EPUB synchronized recorded audio...', self.open_audio,
                      command_id='reader.audio')
         self._button(bookmarks, 'Find a reader command...', lambda event: self.keyboard.commands(event),
@@ -255,6 +261,32 @@ class ReadingDialog:
             self.dialog.Bind(wx.EVT_MENU, handler, id=int(identifier))
             self.accelerators.append((modifier, key, int(identifier)))
         return button
+
+    def _appearance_guard(self):
+        if (self.closed or self.busy or getattr(self.parent, '_closing', False)
+                or self._presentation_store is None
+                or getattr(self.parent, 'library', None) is not self._appearance_library
+                or Path(self._appearance_library.root) != self._presentation_store.root):
+            raise ValueError('The source reader or library changed. Reopen reading appearance.')
+        self.controller.check()
+        self._presentation_store.guard()
+
+    def appearance(self, event=None):
+        from .reading_presentation import show_reading_presentation
+        try:
+            self._appearance_guard()
+            applied = show_reading_presentation(self.dialog, library_root=self._presentation_store.root,
+                presenter=self.reading_presentation, guard=self._appearance_guard)
+            self._appearance_guard()
+            if applied:
+                self.status.ChangeValue('Reading appearance saved. The source text, positions and quotation authority are unchanged.')
+            self.text.SetFocus()
+        except Exception as exc:
+            try:
+                self._appearance_guard()
+            except Exception:
+                return
+            self._error(exc)
 
     def _error(self, error):
         self.status.ChangeValue(str(error))
@@ -315,6 +347,8 @@ class ReadingDialog:
         self.status.ChangeValue(self.controller.save_warning or
             ('Source location loaded. Page-level resume saved. '
              + (f'Use {help_shortcut} for reader shortcuts.' if help_shortcut else 'Choose Reader keyboard guide for shortcuts.')))
+        if getattr(self, '_presentation_notice', ''):
+            self.status.ChangeValue(self.status.GetValue() + '\n' + self._presentation_notice)
         self.text.SetFocus()
 
     def navigate(self, direction):

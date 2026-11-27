@@ -104,6 +104,12 @@ def _open_json_file(path):
 
 
 def read_json(path, *, maximum=None):
+    return read_json_snapshot(path, max_bytes=maximum)[0]
+
+
+def read_json_snapshot(path, *, max_bytes=None):
+    """Return one checked JSON snapshot and the digest of its exact bytes."""
+    maximum = max_bytes
     if maximum is None:
         maximum = MAX_JSON_BYTES
     if type(maximum) is not int or not 1 <= maximum <= MAX_JSON_BYTES:
@@ -130,13 +136,20 @@ def read_json(path, *, maximum=None):
             if opened.st_size > maximum:
                 raise ValueError('State exceeds its configured JSON budget.')
             raw = stream.read(maximum + 1)
+            finished = os.fstat(stream.fileno())
         break
     else:
         raise ValueError('State changed repeatedly while opening; retry the operation.')
     if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+    # Atomic replacement can unlink the bound snapshot. Its link count or
+    # change time may change; its file identity, size and bytes must stay stable.
+    fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
+    if any(getattr(opened, name) != getattr(finished, name) for name in fields):
+        raise ValueError('State changed while it was being read.')
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    return value, sha256(raw).hexdigest()
 
 
 def sync_directory(path):

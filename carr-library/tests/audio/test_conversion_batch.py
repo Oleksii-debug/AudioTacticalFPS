@@ -462,3 +462,18 @@ def test_single_converter_keeps_its_exact_resource_admission_for_each_batch_item
     result = peer.service.run(review(peer))
     assert result['status'] == 'completed' and len(observed) == 2
     assert peer.broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('suffix', ['.exe', '.EXE', '.com', '.bat', '.cmd', '.bin'])
+def test_actual_file_identity_accepts_name_derived_windows_execute_bits(tmp_path, suffix):
+    # These are inert bytes, never an executable invocation. On Windows the
+    # filename can affect st_mode while the opened descriptor has no suffix.
+    path = tmp_path / ('reviewed-tool' + suffix)
+    content = b'Exact source identity retained across named and opened metadata.'
+    path.write_bytes(content)
+    before = path.stat()
+    result = module._file_identity(path, len(content), lambda: None)
+    assert result['sha256'] == sha256(content).hexdigest()
+    assert result['size'] == len(content)
+    assert result['stamp'] == list(conversion._stamp(before))
+    assert path.read_bytes() == content

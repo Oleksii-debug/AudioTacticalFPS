@@ -180,6 +180,7 @@ def test_format_listing_does_not_open_a_library_or_native_runtime(monkeypatch, c
     assert main(['--document-formats']) == 0
     text = capsys.readouterr().out
     assert 'HTML' in text and '.xlsx' in text
+    assert all(value in text for value in ('JPEG/PNG', 'TIFF', '20 million pixels', 'independent review'))
 
 
 @pytest.mark.parametrize('extension', FORMATS)

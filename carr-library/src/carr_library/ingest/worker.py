@@ -21,7 +21,9 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
-from ..extract.document_formats import MIME_SUFFIXES
+from ..extract.document_formats import (MIME_SUFFIXES, PHYSICAL_MIMES, RASTER_MIMES,
+                                        RASTER_BY_MIME, raster_format)
+from ..catalog.intake import MAX_BYTES, FileSnapshot, source_snapshot, source_limit
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -233,7 +235,7 @@ class RuntimeBoundIngest(Ingest):
 
     def _plan(self, asset, config):
         count, settings, segments = super()._plan(asset, config)
-        if asset.mime == 'application/pdf':
+        if asset.mime in PHYSICAL_MIMES:
             from ..extract.runtime_identity import runtime_identity
             data = json.loads(settings)
             data['runtime_identity'] = runtime_identity(config)
@@ -259,20 +261,23 @@ class RuntimeBoundIngest(Ingest):
         if review is None:
             return False
         if (record.get('status') != 'review_required' or not record.get('raw_text', '').strip()
-                or type(physical) is not int or not isinstance(self.review_asset, bytes)
+                or type(physical) is not int or not isinstance(self.review_asset, (bytes, FileSnapshot))
                 or not isinstance(review, dict)
                 or review.get('physical') != physical
                 or review.get('asset_sha256') != record['provenance'].get('asset_sha256')
-                or review.get('asset_sha256') != sha256(self.review_asset).hexdigest()
+                or review.get('asset_sha256') != (self.review_asset.verify(
+                    cancelled=getattr(self, '_cancelled', lambda: False)).digest
+                    if isinstance(self.review_asset, FileSnapshot) else sha256(self.review_asset).hexdigest())
                 or review.get('raw_sha256') != sha256(record['raw_text'].encode('utf-8')).hexdigest()
                 or review.get('checkpoint_sha256') != sha256(canonical(record).encode('utf-8')).hexdigest()
                 or not isinstance(review.get('reviewer'), str) or not review['reviewer'].strip()):
             raise ValueError('Reviewed checkpoint identity differs from the extracted source.')
         if physical not in self.validated_reviews:
             from ..citations.pdf_review_attestation import render_fingerprint
-            renderer, fingerprint = render_fingerprint(self.review_asset, physical)
+            renderer, fingerprint = render_fingerprint(self.review_asset, physical,
+                cancelled=getattr(self, '_cancelled', lambda: False))
             if review.get('renderer') != renderer or review.get('render_sha256') != fingerprint:
-                raise ValueError('Reviewed PDF page rendering changed.')
+                raise ValueError('Reviewed physical-page rendering changed.')
             self.validated_reviews[physical] = dict(review)
         return True
 
@@ -358,9 +363,11 @@ def _pending_review(root, workspace, request_id):
                 or record.get('provenance', {}).get('asset_sha256') != job['asset']
                 or request.get('asset_sha256') != job['asset']
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
-            raise ValueError('No intact extracted PDF text is available for review.')
+            raise ValueError('No intact extracted physical-page text is available for review.')
         from .retained_assets import RetainedAssets
-        data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
+        retained = RetainedAssets(Path(root) / 'originals').resolve(job['asset'])
+        asset = source_snapshot(retained.parent, retained.name)
+        data = asset if isinstance(asset, FileSnapshot) else asset.data
         renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'])
         binding = dict(request_id=request_id, workspace=workspace, job=job['id'], edition=job['edition'],
                        asset_sha256=job['asset'], physical=row['ordinal'],
@@ -378,7 +385,7 @@ def pending_review(root, workspace, request_id):
 
 def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected_checksum):
     if confirmed is not True:
-        raise ValueError('Independent comparison with the original PDF page must be confirmed.')
+        raise ValueError('Independent comparison with the original physical page or image frame must be confirmed.')
     if (not isinstance(reviewer, str) or not reviewer.strip() or len(reviewer) > 512
             or '\x00' in reviewer):
         raise ValueError('Enter the reviewer identity.')
@@ -449,14 +456,13 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=asdict(config), state='pending')
     if expected_manifest is not None:
-        from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or not 0 < expected_manifest['size'] <= source_limit(expected_manifest['mime'])):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -692,8 +698,9 @@ def _resource_limits(timeout):
         import resource
     except ImportError:
         return
-    # Runtime libraries and a bounded 64 MiB source fit well below this address
-    # limit. Windows uses process/time isolation; POSIX limits are not claimed there.
+    # Keep the existing 3 GiB parser address ceiling for the 128 MiB TXT/PDF
+    # streaming profile and the unchanged 64 MiB memory formats. Windows uses
+    # process/time isolation; POSIX address limits are not claimed there.
     for key, value in ((resource.RLIMIT_AS, 3 * 1024**3),
                        (resource.RLIMIT_CPU, max(1, math.ceil(timeout)))):
         _, hard = resource.getrlimit(key)
@@ -706,22 +713,32 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
     """Reuse the citation renderer in the same bounded isolated worker."""
     if not callable(cancelled):
         raise ValueError('A review cancellation callback is required.')
-    if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
-        raise ValueError('Invalid PDF review bytes.')
+    if isinstance(data, FileSnapshot):
+        if data.mime != 'application/pdf' or not 0 < data.size <= source_limit(data.mime):
+            raise ValueError('Invalid file-backed PDF review source.')
+    elif type(data) is not bytes or not 0 < len(data) <= MAX_BYTES:
+        raise ValueError('Invalid physical-page review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
-        raise ValueError('Invalid PDF review page.')
+        raise ValueError('Invalid physical review page.')
     with TemporaryDirectory(prefix='carr-review-') as temporary:
-        source = Path(temporary) / 'page-source.pdf'
-        source.write_bytes(data)
-        result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
+        selected = raster_format(data) if type(data) is bytes else None
+        suffix = MIME_SUFFIXES[selected.mime] if selected is not None else '.pdf'
+        source = Path(temporary) / ('page-source' + suffix)
+        if isinstance(data, FileSnapshot):
+            data.copy_to(source, cancelled=cancelled)
+            digest = data.digest
+        else:
+            source.write_bytes(data)
+            digest = sha256(data).hexdigest()
+        result = _invoke(dict(action='render', source=str(source), sha256=digest,
                               physical=physical, timeout=30), timeout=30, cancelled=cancelled)
     if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
-        raise InterruptedError('PDF source verification cancelled.')
+        raise InterruptedError('Physical-page source verification cancelled.')
     if (not isinstance(result, dict) or set(result) != {'renderer', 'fingerprint'}
             or not isinstance(result['renderer'], str) or not result['renderer']
             or not isinstance(result['fingerprint'], str)
             or not re.fullmatch('[0-9a-f]{64}', result['fingerprint'])):
-        raise ValueError('The isolated PDF review renderer could not verify this page.')
+        raise ValueError('The isolated review renderer could not verify this physical page.')
     return result['renderer'], result['fingerprint']
 
 
@@ -748,12 +765,10 @@ def main():
             if message['action'] != 'render' or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')
             source = Path(message['source'])
-            info = source.lstat()
-            if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
-                raise ValueError('Invalid PDF review source.')
-            data = source.read_bytes()
-            if sha256(data).hexdigest() != message['sha256']:
-                raise ValueError('PDF review source digest changed.')
+            original = source_snapshot(source.parent, source.name)
+            if original.mime not in PHYSICAL_MIMES or original.digest != message['sha256']:
+                raise ValueError('Physical-page review source digest changed.')
+            data = original if isinstance(original, FileSnapshot) else original.data
             from ..citations.pdf_review_attestation import render_fingerprint
             with redirect_stdout(sys.stderr):
                 renderer, fingerprint = render_fingerprint(data, message['physical'])

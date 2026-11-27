@@ -212,6 +212,7 @@ class ReadingDocument:
         self._anchor_signature = json.dumps(self._source_anchor, sort_keys=True, ensure_ascii=False)
         self._states = [_original_runs(self._source, self._source_anchor)]
         self._edits = []
+        self._bookmarks = ()
         self._position = 0
         self._saved_path = None
         self._saved_digest = None
@@ -257,9 +258,40 @@ class ReadingDocument:
     def dirty(self):
         return self._signature() != self._saved_signature
 
-    def _signature(self):
+    def _text_signature(self):
         return (self.title, self._source_hash, self._anchor_signature, self._position,
                 tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
+
+    def _signature(self):
+        base = self._text_signature()
+        return base + (self._bookmarks,) if self._bookmarks else base
+
+    @property
+    def bookmarks(self):
+        return self._bookmarks
+
+    def add_bookmark(self, label, offset):
+        from .marks import MAX_MARKS, ReadingBookmark
+        if len(self._bookmarks) >= MAX_MARKS:
+            raise ValueError('Keep at most 256 bookmarks in one reading copy.')
+        bookmark = ReadingBookmark.create(label, self.text, offset)
+        self._bookmarks = (*self._bookmarks, bookmark)
+        return bookmark
+
+    def remove_bookmark(self, identity):
+        if not any(item.id == identity for item in self._bookmarks):
+            raise ValueError('Choose an existing reading-copy bookmark.')
+        self._bookmarks = tuple(item for item in self._bookmarks if item.id != identity)
+
+    def bookmark_position(self, identity):
+        from .marks import text_digest
+        bookmark = next((item for item in self._bookmarks if item.id == identity), None)
+        if bookmark is None:
+            raise ValueError('Choose an existing reading-copy bookmark.')
+        if bookmark.text_sha256 != text_digest(self.text):
+            raise ValueError('The reading text changed since this bookmark. Undo to that version or create a new bookmark.')
+        self._range(bookmark.offset, bookmark.offset)
+        return bookmark.offset
 
     def _range(self, start, end):
         if type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(self.text):
@@ -379,6 +411,9 @@ class ReadingDocument:
         if self._source_anchor is not None:
             data['schema'] = 'carr.reading-copy.v2'
             data['source_anchor'] = self.source_anchor
+        if self._bookmarks:
+            data['schema'] = 'carr.reading-copy.v3'
+            data['bookmarks'] = [bookmark.to_dict() for bookmark in self._bookmarks]
         return data
 
     def save(self, path, *, cancelled=lambda: False):
@@ -441,7 +476,19 @@ class ReadingDocument:
             raise ValueError('Invalid reading-project fields.')
         version = data.get('schema')
         pre_release = False
-        if version == 'carr.reading-copy.v1' and set(data) == fields:
+        bookmarks = ()
+        if (version == 'carr.reading-copy.v3'
+                and set(data) in (fields | {'bookmarks'}, fields | {'bookmarks', 'source_anchor'})):
+            from .marks import validate_bookmarks
+            bookmarks = validate_bookmarks(data['bookmarks'])
+            anchor = data.get('source_anchor')
+            if 'source_anchor' in data:
+                if type(anchor) is not dict:
+                    raise ValueError('Invalid reading-project source anchor.')
+                if 'schema' in anchor:
+                    anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                    pre_release = True
+        elif version == 'carr.reading-copy.v1' and set(data) == fields:
             anchor = None
         elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_anchor'}
                 and type(data['source_anchor']) is dict):
@@ -464,6 +511,7 @@ class ReadingDocument:
         if type(data['revision']) is not int or not 0 <= data['revision'] <= len(data['edits']):
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']
+        document._bookmarks = bookmarks
         document._pre_release_format = pre_release
         return document
 

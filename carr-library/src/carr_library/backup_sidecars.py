@@ -19,7 +19,7 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated, backup_transcription, backup_book_audio, backup_effect_presets, backup_playback_queue
+from . import backup_producers, backup_generated, backup_transcription, backup_book_audio, backup_effect_presets, backup_playback_queue, backup_book_batches
 from .state_backup import _local_studio_origin, _local_transcription_origin
 
 MAX_FILES = 100_000
@@ -182,11 +182,16 @@ def _validate_engine_settings(value):
         return value
 
     fields(value, {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'},
-           {'dordiai'})
+           {'dordiai', 'voice_preferences'})
     if type(value['schema']) is not int or value['schema'] != 1:
         raise ValueError('Unsupported local engine settings schema.')
     # The primary speech provider has its own optional top-level declaration.
     # Resolve only its pure settings validator, never a provider or installation.
+    if 'voice_preferences' in value:
+        validator = getattr(_model('runtime_settings'), 'validate_voice_preferences', None)
+        if not callable(validator):
+            raise ValueError('The installed settings validator does not support voice preferences.')
+        validator(value['voice_preferences'])
     dordiai = value.get('dordiai')
     if dordiai is not None:
         validator = getattr(_model('runtime_settings'), 'validate_dordiai_configuration', None)
@@ -353,6 +358,8 @@ def _collection_budgets(entries):
                                                  for name, size in entries)
         backup_playback_queue.collection_budgets({'filename': name, 'size_bytes': size}
                                                  for name, size in entries)
+        backup_book_batches.collection_budgets({'filename': name, 'size_bytes': size}
+                                               for name, size in entries)
     except ValueError as exc:
         raise RestoreError(str(exc)) from exc
     narration = [(name, size) for name, size in entries if name.startswith('narration-projects/')]
@@ -492,6 +499,8 @@ def _ignored(name):
         return True
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
+    if backup_book_batches.reserved(name):
+        return backup_book_batches.ignored(name)
     if backup_effect_presets.reserved(name):
         return backup_effect_presets.ignored(name)
     if name.startswith('state/studio/'):
@@ -505,7 +514,7 @@ def _ignored(name):
     if path.parent.as_posix() == 'state/trusted-client':
         return path.name == '.trust.lock' or bool(re.fullmatch(r'\.trust-[a-z0-9_]{8}', path.name))
     if path.parent.as_posix() == 'state/speech':
-        return bool(path.name == '.playback-queue.lock' or re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name) or path.name.startswith('.pending-'))
+        return bool(path.name in ('.playback-queue.lock', '.reading-tabs.lock', '.reading-presentation.lock') or re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name) or path.name.startswith('.pending-'))
     if path.parent.as_posix() == 'state/audio':
         return path.name == '.state.lock' or path.name.startswith('.pending-')
     if path.parent.as_posix() in ('state/assistant', 'state/providers', 'state/providers/usage',
@@ -543,6 +552,7 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
         directory = root / name
         backup_effect_presets.validate_directory(name)
         backup_playback_queue.validate_directory(name)
+        backup_book_batches.validate_directory(name)
         directories[name] = _identity(_plain(directory, directory=True))
         for path in directory.iterdir():
             _check_cancelled(cancelled)
@@ -552,6 +562,7 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
                 _plain(path, directory=True)
                 backup_effect_presets.validate_directory(relative)
                 backup_playback_queue.validate_directory(relative)
+                backup_book_batches.validate_directory(relative)
                 if (not _ignored(relative) and (relative != 'state/studio/cache' or include_generated)
                         and (not backup_transcription.is_cache_directory(relative) or include_generated)):
                     pending.append(relative)
@@ -632,7 +643,12 @@ def _validate_collections(db, root, entries, records, *, cancelled):
         backup_book_audio.validate_collection(db, root / 'state',
             ({**entry, 'filename': entry['filename'][6:]}
              for entry in entries if entry['filename'].startswith('state/')), cancelled=cancelled)
+        backup_book_batches.validate_collection(root / 'state',
+            ({**entry, 'filename': entry['filename'][6:]}
+             for entry in entries if entry['filename'].startswith('state/')), cancelled=cancelled)
         backup_transcription.validate_collection(root, entries, records, cancelled=cancelled)
+        from .speech.tabs import validate_collection as validate_reading_tabs
+        validate_reading_tabs(root, entries, cancelled=cancelled)
     except InterruptedError:
         raise
     except (ValueError, TypeError, KeyError, OSError) as exc:

@@ -10,7 +10,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 import re
 from uuid import NAMESPACE_URL, uuid5
 
-from . import backup_book_audio, backup_effect_presets, backup_playback_queue
+from . import backup_book_audio, backup_effect_presets, backup_playback_queue, backup_book_batches
 
 ID = r'[A-Za-z0-9_-]{1,80}'
 HEX = r'[0-9a-f]{64}'
@@ -32,6 +32,8 @@ TRUSTED_CLIENT = frozenset({'state/trusted-client/entitlement.json',
 
 
 def limit(name):
+    if maximum := backup_book_batches.limit(name):
+        return maximum
     if backup_playback_queue.reserved(name):
         if name != backup_playback_queue.NAME:
             raise ValueError('Invalid reserved playback queue path.')
@@ -40,6 +42,12 @@ def limit(name):
         return maximum
     if maximum := backup_effect_presets.limit(name):
         return maximum
+    if name == 'state/speech/reading-tabs.json':
+        from .speech.tabs import MAX_BYTES
+        return MAX_BYTES
+    if name == 'state/speech/reading-presentation.json':
+        from .speech.presentation import MAX_PROFILE_BYTES
+        return MAX_PROFILE_BYTES
     if name == 'state/studio/draft.json':
         return 32 * 1024 * 1024
     if TEMPLATE.fullmatch(name):
@@ -99,6 +107,8 @@ def validate_primary_collection(root, entries, records, *, cancelled):
                 expected = tuple(audio[key] for key in ('sample_rate', 'channels', 'frames', 'sample_width'))
                 if actual != expected:
                     raise ValueError('The retained recording PCM differs from its verified receipt.')
+                from .audio.recording import verify_recording_segments
+                verify_recording_segments(root / media_name, receipt, cancelled=cancelled)
     state_entries = [{**entry, 'filename': entry['filename'][6:]}
                      for entry in entries if entry['filename'].startswith('state/')]
     _validate_managed_clip_inputs(root / 'state', state_entries, cancelled=cancelled)
@@ -698,7 +708,9 @@ def _public_entitlement(value):
 
 
 def validate(db, name, value):
-    if name == backup_playback_queue.NAME:
+    if backup_book_batches.limit(name) is not None:
+        backup_book_batches.validate_record(name, value)
+    elif name == backup_playback_queue.NAME:
         backup_playback_queue.validate_record(value)
     elif backup_book_audio.limit(name) is not None:
         backup_book_audio.validate_record(name, value)
@@ -722,6 +734,12 @@ def validate(db, name, value):
     elif match := PUBLICATION.fullmatch(name):
         from .studio.publishing import validate_publication_receipt
         validate_publication_receipt(value, publication_id=match[1])
+    elif name == 'state/speech/reading-tabs.json':
+        from .speech.tabs import ReadingTabs
+        ReadingTabs.from_dict(value)
+    elif name == 'state/speech/reading-presentation.json':
+        from .speech.presentation import ReadingPresentation
+        ReadingPresentation.from_dict(value)
     elif READER.fullmatch(name):
         from .speech.reading import ReadingDocument
         from .speech.session import ReaderResume

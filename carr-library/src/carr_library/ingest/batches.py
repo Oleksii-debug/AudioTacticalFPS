@@ -18,14 +18,16 @@ import sqlite3
 import stat
 from uuid import uuid4
 
-from filelock import FileLock, Timeout
+from ..durable_state import regular
+from ..operations._locks import NativeLock
 
-from ..catalog.intake import MAX_BYTES
+from ..catalog.intake import MAX_BYTES, source_limit
 from ..catalog.membership import Catalog
 from ..extract.page_ocr import Config
 from ..extract.document_formats import MIME_SUFFIXES
 from .pipeline import canonical
 from .worker import load_request, prepare_request
+from .batch_pages import batch_shape, validate_scan_metadata, referenced_row
 
 
 MAX_BATCH = 16 * 1024 * 1024
@@ -70,14 +72,30 @@ class ImportBatchStore:
     def __init__(self, app):
         self.app = app
         self.root = app.root
+        info = regular(self.root, directory=True)
+        self._root_identity = (info.st_dev, info.st_ino)
+        self._batch_identity = None
+
+    def _bound(self):
+        info = regular(self.root, directory=True)
+        if (self.app.root != self.root
+                or (info.st_dev, info.st_ino) != self._root_identity):
+            raise ValueError('The library folder changed. Reopen the import queue.')
 
     def _directory(self):
+        self._bound()
         path = self.root / 'import-batches'
         path.mkdir(mode=0o700, exist_ok=True)
         info = path.lstat()
         if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
                 or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
             raise ValueError('Import batches require a local private directory.')
+        identity = (info.st_dev, info.st_ino)
+        if self._batch_identity is None:
+            self._batch_identity = identity
+        elif identity != self._batch_identity:
+            raise ValueError('The import queue directory changed. Reopen the import queue.')
+        self._bound()
         return path
 
     def _path(self, batch_id):
@@ -89,21 +107,25 @@ class ImportBatchStore:
     def _lock(self, batch_id):
         path = self._path(batch_id).with_suffix('.lock')
         _regular(path, missing=True)
+        lock = NativeLock(path)
         try:
-            with FileLock(path, mode=0o600).acquire(timeout=0):
-                yield
-        except Timeout as exc:
-            raise ValueError('This import batch is already running.') from exc
+            if not lock.acquire():
+                raise ValueError('This import batch is already running.')
+            self._directory()
+            yield
+        finally:
+            lock.release()
 
     def _authorize(self, workspace, collections=()):
+        self._bound()
         with self.app.read(workspace) as db:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
+        self._bound()
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not batch_shape(record, _BATCH_KEYS)
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -143,7 +165,7 @@ class ImportBatchStore:
                     or not isinstance(manifest['sha256'], str)
                     or not re.fullmatch('[0-9a-f]{64}', manifest['sha256'])
                     or manifest['mime'] not in _MIMES
-                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= MAX_BYTES):
+                    or type(manifest['size']) is not int or not 0 < manifest['size'] <= source_limit(manifest['mime'])):
                 raise ValueError('Invalid import batch source manifest.')
         counts = dict.fromkeys(STATES, 0)
         counts.update(Counter(row['state'] for row in record['rows']))
@@ -152,6 +174,7 @@ class ImportBatchStore:
                 or any(type(value) is not int for value in record['counts'].values())
                 or record['counts'] != counts):
             raise ValueError('Import batch summary differs from its rows.')
+        validate_scan_metadata(record)
         return record
 
     def _load(self, batch_id):
@@ -164,6 +187,7 @@ class ImportBatchStore:
             if (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
                 raise ValueError('Import batch journal changed during read.')
             raw = stream.read(MAX_BATCH + 1)
+        self._directory()
         if len(raw) > MAX_BATCH:
             raise ValueError('Import batch journal exceeds its size limit.')
         try:
@@ -185,6 +209,9 @@ class ImportBatchStore:
             state = 'attention'
         else:
             state = 'complete'
+        if (record['version'] == 2 and not record['rows']
+                and not record['scan']['cursor']['complete']):
+            state = 'paused'
         record['state'] = state
 
     def _store(self, record, *, create=False, paused=False):
@@ -204,6 +231,9 @@ class ImportBatchStore:
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
+            self._directory()
+            _regular(temporary)
+            _regular(path, missing=True)
             os.replace(temporary, path)
             if os.name != 'nt':
                 directory = os.open(path.parent, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
@@ -212,6 +242,9 @@ class ImportBatchStore:
                 finally:
                     os.close(directory)
         finally:
+            # A renamed/recreated directory no longer belongs to this operation.
+            # Keep any old staging file inert; never unlink through its replacement.
+            self._directory()
             temporary.unlink(missing_ok=True)
 
     def plan(self, workspace, paths, *, collections=(), recursive=True,
@@ -244,6 +277,16 @@ class ImportBatchStore:
         with self._lock(record['batch_id']):
             self._store(record, create=True, paused=bool(cancelled()))
         return _copy(record)
+
+    def plan_page(self, workspace, paths, **options):
+        """Save one reviewed page; traversal continues only on explicit request."""
+        from .batch_pages import plan_page
+        return plan_page(self, workspace, paths, **options)
+
+    def continue_plan(self, workspace, batch_id, **options):
+        """Append/recover the deterministic next ordinary batch without imports."""
+        from .batch_pages import continue_plan
+        return continue_plan(self, workspace, batch_id, **options)
 
     def get(self, workspace, batch_id):
         self._authorize(workspace)
@@ -301,8 +344,15 @@ class ImportBatchStore:
             record = self._load(path.stem)
             if record['workspace'] == workspace:
                 record = self._reconcile(record)
-                rows.append({key: record[key] for key in
-                             ('batch_id', 'created', 'updated', 'state', 'counts', 'total')})
+                summary = {key: record[key] for key in
+                           ('batch_id', 'created', 'updated', 'state', 'counts', 'total')}
+                if record['version'] == 2:
+                    scan = record['scan']
+                    summary['scan'] = {key: scan[key] for key in
+                                      ('session_id', 'page', 'next', 'review_required', 'classification_complete')}
+                    summary['scan']['complete'] = scan['cursor']['complete']
+                    summary['scan']['planned'] = scan['cursor']['planned']
+                rows.append(summary)
         return tuple(sorted(rows, key=lambda row: (row['created'], row['batch_id']), reverse=True))
 
     def set_row(self, workspace, batch_id, row_id, *, included):
@@ -317,8 +367,9 @@ class ImportBatchStore:
                 raise ValueError('Unknown import batch row.')
             alternate = (included and row['state'] == 'duplicate'
                 and row['duplicate_of'] is not None and not row['duplicate_of'].startswith('existing:')
-                and any(other['source'] == row['duplicate_of'] and other['manifest'] == row['manifest']
-                        for other in record['rows']))
+                and (any(other['source'] == row['duplicate_of'] and other['manifest'] == row['manifest']
+                         for other in record['rows'])
+                     or referenced_row(self, record, row['duplicate_of'], row['manifest'])))
             if ((row['state'] not in ('queued', 'excluded') and not alternate)
                     or row['result'] is not None):
                 raise ValueError('Only imports that have never started can be selected or excluded.')

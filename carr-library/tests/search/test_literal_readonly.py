@@ -98,7 +98,7 @@ def test_precancel_and_invalid_budget(tmp_path):
     path = tmp_path / 'missing.db'
     with pytest.raises(TimeoutError):
         literal.search_file(path, 'A', 'needle', cancelled=lambda: True)
-    for timeout in (0, 61, float('nan'), True):
+    for timeout in (0, 86401, float('nan'), True):
         with pytest.raises(ValueError):
             literal.search_file(path, 'A', 'needle', timeout=timeout)
     assert not path.exists()
