@@ -46,6 +46,7 @@ from .assistant_dialog import install_assistant_actions
 from .portable_sync import install_portable_sync_actions
 from .language_matrix import install_language_actions
 from .translation_dialog import install_translation_actions
+from .translation_scope_dialog import install_translation_scope_actions
 from .document_conversion import install_conversion_actions
 from .engine_settings import install_engine_settings_actions
 from .operations_dialog import install_operations_actions
@@ -652,6 +653,7 @@ class DesktopFrame(WorkspaceFrame):
         install_api_connection_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)
+        install_translation_scope_actions(self)
         install_conversion_actions(self)
         install_engine_settings_actions(self)
         install_operations_actions(self)
