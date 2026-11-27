@@ -476,8 +476,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Add original text\tCtrl+Shift+N', self.add_text),
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
             ('Library tools\tCtrl+Shift+L', lambda e: show_catalog_tools(self)),
-            ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
-            ('Exit\tAlt+F4', lambda e: self.Close())]),
+            ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup)]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
                 ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
                 ('Edit selected evidence tags',self.edit_tags),
@@ -508,6 +507,26 @@ class DesktopFrame(WorkspaceFrame):
         install_catalog_insights_actions(self)
         install_federated_search_actions(self)
         install_query_manager_actions(self)
+        from .speech_dialog import install_speech_actions
+        from .studio_dialog import install_studio_actions
+        from .assistant_dialog import install_assistant_actions
+        from .save_actions import install_save_actions
+        from .document_conversion import install_conversion_actions
+        from .keyboard_settings import install_keyboard_settings
+        from .citation_formatting import install_citation_actions
+        from .operation_progress import install_operation_progress
+        from .language_matrix import install_language_actions
+        from .translation_dialog import install_translation_actions
+        install_speech_actions(self)
+        install_language_actions(self)
+        install_studio_actions(self)
+        install_assistant_actions(self)
+        install_translation_actions(self)
+        install_conversion_actions(self)
+        install_save_actions(self)
+        install_citation_actions(self)
+        install_operation_progress(self)
+        install_keyboard_settings(self)
 
     def make_evidence_panel(self,parent,services):
         return DesktopEvidencePanel(parent,self,services.workspace,services.topic,services.evidence_tx)
@@ -612,11 +631,19 @@ class DesktopFrame(WorkspaceFrame):
         if self.book is not None:
             self.book.Disable()
         for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+            # Progress query, quiet-mode settings and keyboard help remain
+            # reachable while a long operation owns the editable controls.
+            label = self.menu_bar.GetMenuLabel(i)
+            self.menu_bar.EnableTop(i, label.replace('&', '').casefold() == 'help')
         self.report(title + '…')
+        progress = getattr(self, 'operation_progress', None)
+        progress_token = progress.start(title) if progress is not None else None
         try:
             future = self.executor.submit(operation)
         except Exception as exc:
+            if progress is not None:
+                progress.fail('Could not start: ' + title, token=progress_token)
+                progress.finalize(token=progress_token)
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
@@ -631,11 +658,40 @@ class DesktopFrame(WorkspaceFrame):
                     return
                 self._finish_job_controls()
                 try:
+                    from .operation_progress import operation_outcome
                     result = future.result()
-                    self.report(title + ': complete.')
+                    outcome = operation_outcome(result)
+                    status = getattr(self, 'status', None)
+                    before = status.GetValue() if status is not None else None
+                    # Some callbacks validate or publish the final artifact.
+                    # Do not emit success until those steps have completed.
                     if done is not None:
                         done(result)
+                    if self._closing:
+                        return
+                    if progress is not None:
+                        if outcome == 'cancelled':
+                            progress.cancel(title + ': cancelled', token=progress_token)
+                        elif outcome == 'paused':
+                            progress.pause(title + ': needs attention', token=progress_token)
+                        elif outcome == 'failed':
+                            progress.fail(title + ': failed', token=progress_token)
+                        else:
+                            progress.succeed(title + ': complete', token=progress_token)
+                        progress.finalize(token=progress_token)
+                    # Preserve a callback's detailed report or a new job's
+                    # status instead of replacing it with a generic message.
+                    if not self.working and (status is None or status.GetValue() == before):
+                        label = {'succeeded': 'complete', 'paused': 'needs attention',
+                                 'failed': 'failed', 'cancelled': 'cancelled'}[outcome]
+                        self.report(title + ': ' + label + '.')
                 except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(title + ': cancelled', token=progress_token)
+                        else:
+                            progress.fail(title + ': failed', token=progress_token)
+                        progress.finalize(token=progress_token)
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
@@ -668,6 +724,8 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        if getattr(self, 'keyboard_settings', None) is not None:
+            self.keyboard_settings.reload()
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:

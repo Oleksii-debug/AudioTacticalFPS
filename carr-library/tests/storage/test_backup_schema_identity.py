@@ -3,6 +3,7 @@ from contextlib import closing
 from hashlib import sha256
 import json
 import sqlite3
+import shutil
 
 import pytest
 
@@ -31,6 +32,13 @@ def backup(tmp_path):
 
 
 def write_manifest(directory, manifest):
+    if type(manifest.get('version')) is int and manifest['version'] in (1, 2):
+        # Produce an actual historical shape for legacy compatibility tests.
+        for key in ('state', 'generated_audio_included', 'pending'):
+            manifest.pop(key, None)
+        for name in ('state', 'pending'):
+            if (directory / name).exists():
+                shutil.rmtree(directory / name)
     raw = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     (directory / 'manifest.json').write_bytes(raw)
     return sha256(raw).hexdigest()
@@ -49,10 +57,11 @@ def forbid_writable_storage(monkeypatch):
 
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
-    assert manifest['version'] == 2
+    assert manifest['version'] == 4
     assert manifest['schema_version'] == 4
     assert set(manifest) == {'version', 'kind', 'schema_version',
-                             'schema_fingerprint', 'database', 'assets'}
+                             'schema_fingerprint', 'database', 'assets', 'state',
+                             'generated_audio_included', 'pending'}
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
