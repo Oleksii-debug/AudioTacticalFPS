@@ -722,7 +722,7 @@ def test_pending_import_review_requires_explicit_approval_of_displayed_page(clas
     _,prepare,display = f.run_job.call_args.args
     f.library.pending_review.assert_not_called()
     display(prepare())
-    f.library.pending_review.assert_called_once_with('a','request')
+    f.library.pending_review.assert_called_once_with('a','request', cancelled=f.cancel_event.is_set)
     shown = env['show_text'].call_args.args[2]
     assert 'Original.pdf' in shown and 'Physical PDF page 2' in shown
     assert page['raw_text'] in shown
@@ -733,7 +733,7 @@ def test_pending_import_review_requires_explicit_approval_of_displayed_page(clas
         f.library.resume_import.return_value = {'state':'quarantined'}
         complete(approve())
         f.library.confirm_import_review.assert_called_once_with('a','request','Person',
-            confirmed=True,expected_checksum=page['checksum'])
+            confirmed=True,expected_checksum=page['checksum'], cancelled=f.cancel_event.is_set)
         assert f.library.resume_import.call_args.args == ('a','request')
         assert 'Another page needs independent review' in f.report.call_args.args[0]
     else:

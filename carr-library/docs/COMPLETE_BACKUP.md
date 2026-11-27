@@ -24,7 +24,11 @@ when they exist:
 - Managed Audio Studio projects, recovery drafts, local production assets,
   cached speech/music, subtitles, masters, stems and render checkpoints.
 - Durable local-assistant job and control records, with the exact approved plan,
-  source identities, checkpoint history and original path scope.
+  source identities, checkpoint history and original path scope; named templates
+  remain inert and require fresh scope review after loading or restoration.
+- Managed playback queue metadata and required retained PCM, plus exact historical
+  queue provenance for explicitly imported projects. Restoring a queue does not
+  select an output device, arm a timer or start playback.
 - Import requests, batch selections, durable extraction checkpoints and review
   attestations, plus the exact pinned original bytes required to resume them.
 - Authenticated historical state from the alternate canonical backup format,
@@ -42,8 +46,9 @@ Completed imports also leave journals; populated libraries therefore normally
 produce version 5. Libraries without import or historical-state components
 retain the existing version-2, reader-only version-3, or managed version-4 shape.
 
-Restore and read-only verification accept exact version-1 through version-5
-schemas. The earlier version-3 `reading_state` entry, version-3 filename/root
+Restore and read-only verification accept exact version-1 through version-6
+schemas. Version 6 is reserved for the explicitly selected `large-source-v1`
+capacity profile; it does not silently widen ordinary backup limits. The earlier version-3 `reading_state` entry, version-3 filename/root
 `sidecars`, and version-4 path/folder `sidecars` remain distinct supported
 formats. The alternate canonical version-3 `state` folder and version-4
 `state` plus `pending` folder are also recognized by their complete exact
@@ -183,8 +188,9 @@ managed snapshot. No external directories are searched automatically. The option
 checked backup format, with an explicit encrypted or plain export. It is not
 continuous synchronization or a scheduled-backup service.
 
-Assistant snapshots include only `state/assistant/<job-id>.json` and its optional
-`<job-id>.control.json`. A job publication takes the application writer guard,
+Assistant job snapshots include `state/assistant/<job-id>.json` and its optional
+`<job-id>.control.json`. Named templates have a separate typed producer with
+validated names, bounded definitions and no inherited execution authority. A job publication takes the application writer guard,
 then the assistant state guard. Backup holds these guards in the same order and
 then takes sorted job guards. Only the backup's own currently held native job
 lock can be borrowed, in the same process and thread. Another active job is
@@ -216,9 +222,13 @@ up to 32 MiB per file and 64 MiB combined; legacy keyboard preferences up to
 preferences up to 16 KiB and OCR presets up to 64 KiB. Assistant state permits at
 most 1,000 jobs and 1,000 matching controls, 64 MiB per job, 1 KiB per control and
 64 MiB combined; the caller's overall sidecar file/byte budget also applies.
-These are checked resource budgets, not measurements of
-large-library capacity. Future streaming/scale work must preserve the same source
-and publication guarantees.
+These are the ordinary checked resource budgets. The explicit `large-source-v1`
+profile separately admits a 64 GiB catalog, 32 GiB import journal, 128 GiB
+registered originals and 64 GiB pending inputs, with its own manifest v6 and
+component checks. Typed audio and historical-state allowances remain independent.
+A configured allowance does not prove measured capacity. See
+[large-source profiles](LARGE_SOURCE_PROFILES.md) and the source-specific
+[retained capacity evidence](acceptance/RETAINED_CAPACITY_431_20261127.md).
 
 `verify_backup(source, expected_manifest_sha256)` performs the same manifest,
 database, original-file, sidecar and source-binding checks as restore without
@@ -231,9 +241,9 @@ The assistant forwards pause, close and deadline signals into backup. Registered
 sidecars check cancellation at each 1 MiB block. The worker releases snapshot
 locks before recording its paused checkpoint; closing its dialog does not write
 a competing control file. Private cancelled staging is removed before a final
-backup is published. SQLite snapshotting and original-asset copying still do not
-check cancellation inside every copy operation; a pause there takes effect at
-the next cooperative checkpoint. Existing completed backups are never replaced.
+backup is published. The current SQLite snapshot and retained-original streaming paths also check
+cancellation cooperatively. An in-flight system call must return before the
+next checkpoint; this is not a hard real-time interruption guarantee. Existing completed backups are never replaced.
 
 Backup destinations and their parents must be stable private local directories
 on a filesystem that supports hard links. This workflow coordinates application

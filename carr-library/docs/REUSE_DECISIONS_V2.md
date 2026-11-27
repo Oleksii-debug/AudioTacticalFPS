@@ -8,6 +8,22 @@ Reuse canonical implementation → reconcile an existing reviewed PR → adopt a
 
 Record exact source commit/release, binary/model hashes, license texts/notices, dependencies/assets, supported hardware/OS, chosen distribution profile and real acceptance results. A code license does not automatically license weights, voices, training/reference recordings, SoundFonts, citation styles or generated content. GPL/AGPL allow commercial use but may impose incompatible source/combination duties for a particular closed application; IPC and a “private” ZIP are not automatic exemptions. Resolve the affected package rather than blocking unrelated platform work.
 
+## Canonical history and current integration
+
+The [canonical 2026-11-27 reconciliation at e3cf74](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e3cf74c243d4ef930b526b5648ca9003c0900057/carr-library/docs/REUSE_DECISIONS_V2.md)
+retains the historical PR136/137/138/139/143/145 selections, Advanced v3 and
+local-planning evidence at their own exact sources. Those recorded counts do
+not transfer to the current tree. The current platform keeps its shared service,
+resource, native publication and retained-input owners; the semantic convergence
+ledger records compatible corrections and explicit schema migration.
+
+The merge preserves the current FULL FFmpeg runtime identity below, selected
+17/53 dependency profiles and managed installation lease. It does not replace
+them with the older canonical shared-FFmpeg/Node layout. Canonical named
+citation attribution is retained visibly in the normal desktop and checked by
+the existing native academic probe. New source and installed gates remain
+required for the composed result.
+
 ## Current reuse map
 
 | Area | Reuse decision | Rights / qualification boundary and primary source |
@@ -25,8 +41,8 @@ Record exact source commit/release, binary/model hashes, license texts/notices, 
 | MusicGen | Retain optional adapter for terms-compatible use profiles | AudioCraft code MIT, released MusicGen weights CC-BY-NC4.0. Not the default unrestricted commercial-use pack. Real inference/quality remains separate. [AudioCraft](https://github.com/facebookresearch/audiocraft), [weights license](https://github.com/facebookresearch/audiocraft/blob/main/LICENSE_weights) |
 | MIDI | Review FluidSynth/Pretty MIDI where current MIDI path lacks a required capability | FluidSynth LGPL2.1, Pretty MIDI MIT; SoundFonts/dependencies separately licensed. Do not label the current simple synthesis fallback professional sound-library output. [FluidSynth](https://github.com/FluidSynth/fluidsynth), [Pretty MIDI](https://github.com/craffel/pretty-midi) |
 | Transcription | Adopt the supplied Whisper Transcribe headless worker after targeted corrections | Uses faster-whisper; retain model session and existing file-job protocol through a versioned adapter. Source review is in TRANSCRIPTION_INTEGRATION_REVIEW.md. [faster-whisper MIT](https://github.com/SYSTRAN/faster-whisper), [Whisper code/weights](https://github.com/openai/whisper); supplied wrapper/dependency/model distribution rights still need a complete record. |
-| Local agent | Keep current typed plans/executor; evaluate llama.cpp for actual model planning | Runtime MIT, selected LLM weights separate. Guided regex commands do not demonstrate LLM planning. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
-| Translation | Add official Google through the existing gateway; independently qualify local engines | Basic v2 supports API keys; Advanced v3 requires supported IAM/ADC authentication. Coverage, glossaries/batch and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
+| Local agent | Keep current typed plans/executor, selected loopback proposal/review and named inert templates | No server/model startup or download is inferred from the client adapter. Synthetic HTTP results, selected-model quality and model rights remain separate. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
+| Translation | Reuse current Google Basic v2/Advanced v3 and explicit numeric-loopback LibreTranslate clients through the same gateway and jobs | Account-authorized real calls, selected local models, coverage, linguistic quality and rights require their own evidence. Structured application batches do not imply Google Cloud Storage batch/document APIs or automatic credential discovery. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
 | Bibliography | Preserve existing RIS/BibTeX/CSL-JSON and candidate citeproc-js/QuickJS integration | citeproc-js CPAL1.0/AGPL alternative and CSL styles/locales have distinct obligations. Verify accessible attribution/source in the shipped package; do not replace a working adapter solely because it is not MIT. [citeproc-js](https://github.com/Juris-M/citeproc-js) |
 | Larger applications | Use Zotero/calibre/Audacity and similar tools as interoperability/reference candidates where suitable | Do not embed a second GUI/database or copy an entire licensed application without an explicit integration/distribution decision. Existing standard-format interchange is preferable when it meets the task. |
 | Updates/security | Reuse reviewed signed-update/entitlement and credential contracts | Evaluate python-tuf/standard Windows tooling for actual gaps; signatures, key lifecycle, installer/runtime and data migration all require exact tests. No new cryptographic protocol. [TUF](https://theupdateframework.io/docs/security/) |

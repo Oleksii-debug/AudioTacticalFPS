@@ -1,8 +1,21 @@
-# Universal Research Library
+# Резонанс / Resonance
 
-An offline research desktop for multiple libraries, authors and languages. Carr
-is an optional collection. All project changes stay in `carr-library/`; the
-unrelated repository's `main` branch is unchanged.
+
+Resonance is an accessible Windows platform by Sceneria Innovative Technologies
+for reading and scientific research, translation, speech and voice cloning,
+transcription, music creation and audio production. These are the intended
+platform capabilities; the implemented and qualified subset is tracked separately.
+
+Start with the [current technical specification and architecture](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md),
+[reuse decisions](docs/REUSE_DECISIONS_V2.md), [acceptance](docs/acceptance.md) and
+[worker instructions](automation/COMMON.md). The internal package and existing
+launch filenames are retained for compatibility. Carr is an optional collection.
+The canonical product branch is carr-library; preserve main and unrelated projects.
+
+The library workflows below describe the canonical implementation at the time
+of this review. Audio/agent and other additions in open integrated candidates
+require their own exact-head installed-build acceptance before being called released.
+The owner-supplied transcription implementation is [under reviewed integration](docs/TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
 ## Run the desktop
 
@@ -22,6 +35,19 @@ python -m carr_library
 Use `python -m carr_library --help` for explicit data-folder, backup, restore and
 model options. See [the running guide](docs/RUNNING.md) for installer and keyboard
 instructions.
+
+## Implementation and acceptance
+
+The integrated continuation adds ordered Book batches and measured PCM publication,
+structured translation, named assistant templates and foreground schedules,
+managed playback queues, explicit legacy queue import, and selected large-source
+and backup profiles through the existing services. The [finite V3 audit](docs/V3_FINITE_GAP_AUDIT_2026_11_27.md)
+keeps implementation separate from executed native, model/language, accessibility
+and distribution evidence. See [managed queue](docs/MANAGED_PLAYBACK_QUEUE.md),
+[legacy queue recovery](docs/LEGACY_PLAYBACK_QUEUE_MIGRATION.md),
+[large sources](docs/LARGE_SOURCE_PROFILES.md) and [complete backups](docs/COMPLETE_BACKUP.md)
+for the current workflow and limits. The current source remains an integration
+candidate until its own required checks pass.
 
 ## Implemented workflows
 
@@ -110,6 +136,6 @@ python scripts/ci_check.py tests bootstrap docs/contracts/probes
 The adapters reuse SQLite/FTS5, pypdf, PDFium, Tesseract, python-docx, FastEmbed,
 ONNX Runtime and the already imported licensed components. Exact upstream
 notices and model/dependency pins are preserved with the source and distribution.
-See [scope](docs/UNIVERSAL_SCOPE_V2.md), [acceptance](docs/acceptance.md),
+See [scope and architecture](docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md), [acceptance](docs/acceptance.md),
 [packaging](packaging/README.md), and
 [the control issue](https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1).

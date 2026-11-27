@@ -6,6 +6,7 @@ Every bound service must independently enforce authorization on each operation.
 No global search, database access, or new persistence contract here.
 """
 import wx
+from carr_library.citations.csl import ATTRIBUTION
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
@@ -23,6 +24,9 @@ class WorkspaceFrame(wx.Frame):
         self.host = wx.Panel(self)
         self.layout = wx.BoxSizer(wx.VERTICAL)
         self.host.SetSizer(self.layout)
+        self.citation_credit = wx.StaticText(self.host, label=ATTRIBUTION)
+        self.citation_credit.SetName('Citation processor attribution. ' + ATTRIBUTION.replace('\n', ' '))
+        self.layout.Add(self.citation_credit, 0, wx.EXPAND)
         self.choice = wx.Choice(self.host)
         self.choice.SetName('Library and research topic')
         self.layout.Add(wx.StaticText(self.host, label='Library and research topic'))

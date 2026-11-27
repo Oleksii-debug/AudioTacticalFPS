@@ -60,6 +60,17 @@ location and verify the copy before deleting that program folder. Never delete
 a folder containing your only research copy. The application does not silently
 move existing data. The installer refuses to replace an existing environment.
 
+## Optional local audio setup
+
+The core transfer archive excludes the FFmpeg runtime. Run **SetupLocalAudio.cmd**
+to review the current pinned FFmpeg 9.1 FULL archive, its exact checksum and a new
+external destination. Only explicit confirmation starts preparation. This flow
+keeps the installation seal and library unchanged and downloads no voices or
+models. After successful verification, choose the reported executable through
+**Audio Studio → Production → Choose FFmpeg executable** and retain the whole
+runtime directory with its notices. Existing configured runtimes can be selected
+through the same current owner. See [local audio setup](LOCAL_AUDIO_SETUP.md).
+
 ## Installation from a source checkout
 
 Use Python 3.11 or later. From the `carr-library` directory:
@@ -200,9 +211,12 @@ be restored into a new folder and upgraded on opening.
 
 Choose **Library, Back up all libraries** to save all libraries, including archived ones,
 their registered originals, immutable source revisions, research evidence,
-notes, topics, tags, saved queries and academic references. Backup format 3 also
-includes the existing page bookmarks and resume positions in `reading-state.json`.
-If no reading state has been saved, the manifest records its absence explicitly.
+notes, topics, tags, saved queries and academic references. Current typed backups
+include saved page bookmarks and resume positions, managed reading/audio state
+and retained pending-import recovery. Normal populated libraries use format 5;
+the explicitly selected large-source profile uses format 6. Simpler libraries
+may retain an earlier supported shape. If a component is absent, its exact
+manifest declares that absence; restore does not invent missing work.
 
 The database and reading state are captured under the same library writer lock.
 Each included file is bound by size and SHA256, and saved reading places are
@@ -219,10 +233,15 @@ does not overwrite or merge an existing library. Formats 1 and 2 remain
 compatible but do not contain reading state. Their separately exported reading
 bookmarks can be imported after restoring the matching library.
 
-This format includes only its documented database, original files and reading
-sidecar. It does not collect arbitrary settings, API credentials, audio projects,
-generated audio, model files or pending import journals. Those V3 recovery
-components require their own implemented and validated formats.
+The typed producers also preserve managed Audio Studio projects and queues,
+reading copies, supported settings, assistant jobs/templates, translation and
+transcription recovery, and retained import journals. Restore validates each
+schema, exact bytes and source references before publishing a new destination.
+Historical state stays inert until explicitly reviewed. Machine-local engine
+installations, model weights, vault credentials and arbitrary neighboring files
+remain separate. See [complete backups](COMPLETE_BACKUP.md) for exact supported
+layouts and [legacy queue migration](LEGACY_PLAYBACK_QUEUE_MIGRATION.md) for
+explicit import into the current player.
 
 ## Review the source catalog
 
