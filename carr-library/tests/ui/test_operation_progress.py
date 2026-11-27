@@ -246,6 +246,7 @@ class Frame:
         self.library = SimpleNamespace(root=root)
         self.active, self.reports, self.notices, self.bindings = True, [], [], []
         self.status = SimpleNamespace(SetValue=self.notices.append)
+    def GetId(self): return 4242
     def IsActive(self): return self.active
     def Bind(self, *args): self.bindings.append(args)
     def report(self, message): self.reports.append(message)
@@ -516,5 +517,13 @@ def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcut
     assert install_operation_progress(frame) is controller and len(items) == 2
     destroy = next(binding[1] for binding in frame.bindings if binding[0] == 'destroy')
     skipped = []
-    destroy(SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
-    assert controller.closed and skipped == [True]
+    destroy(SimpleNamespace(GetEventObject=lambda: object(), GetId=lambda: 4243,
+                            Skip=lambda: skipped.append(True)))
+    assert not controller.closed and controller.timer.IsRunning()
+    # The native owner can be rewrapped after the derived Python wrapper dies.
+    destroy(SimpleNamespace(GetEventObject=lambda: object(), GetId=frame.GetId,
+                            Skip=lambda: skipped.append(True)))
+    assert controller.closed and not controller.timer.IsRunning()
+    destroy(SimpleNamespace(GetEventObject=lambda: frame, GetId=frame.GetId,
+                            Skip=lambda: skipped.append(True)))
+    assert controller.closed and skipped == [True, True, True]

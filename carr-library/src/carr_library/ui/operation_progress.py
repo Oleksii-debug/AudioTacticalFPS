@@ -841,6 +841,8 @@ class OperationProgress:
         self.frame.report(text)
 
     def close(self):
+        if self.closed:
+            return
         self.closed = True
         self._pending_sound = None
         self.timer.Stop()
@@ -912,6 +914,7 @@ def install_operation_progress(frame):
     frame.layout.Insert(1, label, 0, wx.EXPAND | wx.ALL, 4)
     frame.layout.Insert(2, gauge, 0, wx.EXPAND | wx.ALL, 4)
     controller = OperationProgress(frame, gauge, label)
+    owner_id = frame.GetId()
     frame.operation_progress = controller
     menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
                  if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'help'), None)
@@ -923,8 +926,10 @@ def install_operation_progress(frame):
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
     def destroy(event):
-        if event.GetEventObject() is frame:
-            controller.close()
-        event.Skip()
+        try:
+            if event.GetId() == owner_id:
+                controller.close()
+        finally:
+            event.Skip()
     frame.Bind(wx.EVT_WINDOW_DESTROY, destroy)
     return controller

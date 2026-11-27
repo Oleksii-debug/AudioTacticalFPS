@@ -1314,6 +1314,21 @@ class DesktopFrame(WorkspaceFrame):
             'Reading-menu export and import can also transfer bookmarks separately. Keep the backup manifest checksum.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
+    def Destroy(self):
+        # Direct destruction bypasses the vetoable close event. Quiesce the
+        # two owned timers while the native frame is still valid.
+        stop_draft = getattr(self, '_stop_draft_autosave', None)
+        if stop_draft is not None:
+            stop_draft()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            progress.close()
+        if not self._closing:
+            self._closing = True
+            self.cancel_event.set()
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        return super().Destroy()
+
     def on_close(self, event):
         if self.working:
             if event.CanVeto():
@@ -1326,6 +1341,9 @@ class DesktopFrame(WorkspaceFrame):
             stop_draft = getattr(self, '_stop_draft_autosave', None)
             if stop_draft is not None:
                 stop_draft()
+            progress = getattr(self, 'operation_progress', None)
+            if progress is not None:
+                progress.close()
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
 

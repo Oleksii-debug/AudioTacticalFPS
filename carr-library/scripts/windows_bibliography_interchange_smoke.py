@@ -286,9 +286,23 @@ def main():
                 startup_interval = startup_timer.GetInterval()
                 check('startup draft autosave uses a running native three-second timer',
                       startup_timer.IsRunning() and startup_interval == 3000)
+                startup_progress = startup.operation_progress
+                startup_progress.start('Synthetic native window lifetime')
+                yield from until(lambda: startup_progress.timer.IsRunning(),
+                                 'The startup progress timer did not start.')
+                startup.working = True
+                try:
+                    check('vetoed startup close preserves both native timers',
+                          not startup.Close() and startup_timer.IsRunning()
+                          and startup_progress.timer.IsRunning() and not startup_progress.closed
+                          and not startup._closing and not startup_cancel.is_set())
+                finally:
+                    startup.working = False
                 check('startup host accepts the idle close request', startup.Close())
                 check('accepted startup close stops the draft timer before deferred destruction',
                       not startup_timer.IsRunning())
+                check('accepted startup close stops the running native progress timer',
+                      startup_progress.closed and not startup_progress.timer.IsRunning())
                 yield from until(lambda: not startup, 'The startup host did not close normally.')
                 check('startup host closes its executor without ending the interchange event loop',
                       startup_executor._shutdown and startup_cancel.is_set()
@@ -296,6 +310,24 @@ def main():
                 check('closing the startup host stops its native draft timer before owner deletion',
                       not startup_timer.IsRunning())
                 former_timer_deadline = monotonic() + startup_interval / 1000 + .1
+                startup = None
+                # Exercise the public direct-destruction path separately from Close.
+                startup = desktop_app.DesktopFrame(library)
+                startup.Show()
+                direct_timer, direct_progress = startup._draft_save_timer, startup.operation_progress
+                direct_executor, direct_cancel = startup.executor, startup.cancel_event
+                direct_progress.start('Synthetic direct destruction')
+                yield from until(lambda: startup.IsShownOnScreen() and direct_timer.IsRunning()
+                                 and direct_progress.timer.IsRunning(),
+                                 'The direct-destruction host did not start both native timers.')
+                check('direct startup destruction stops both native timers before returning',
+                      startup.Destroy() and not direct_timer.IsRunning()
+                      and direct_progress.closed and not direct_progress.timer.IsRunning())
+                yield from until(lambda: not startup, 'The direct-destruction host did not finish.')
+                check('direct startup destruction cancels its executor and preserves the native loop',
+                      direct_executor._shutdown and direct_cancel.is_set()
+                      and gui.GetMainLoop() is not None and frame.IsShown())
+                former_timer_deadline = max(former_timer_deadline, monotonic() + startup_interval / 1000 + .1)
                 startup = None
                 workspace = library.create_workspace('Synthetic native interchange')
                 other_workspace = library.create_workspace('Separate native interchange')
