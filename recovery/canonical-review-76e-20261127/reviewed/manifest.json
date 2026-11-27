@@ -1,0 +1,1778 @@
+{
+  "schema": 1,
+  "kind": "durable-source-review-checkpoint",
+  "application_unchanged": true,
+  "base": "96294e97498f2133bf93f02ce72f84b6e709c72b",
+  "canonical": "3beebd5aca900b8bf2e86498ae79db4015c96705",
+  "status": "SOURCE_REVIEWED_COMPLETE_COMPOSITION_NOT_RUN",
+  "pending_review": "Keyboard legacy F24 canonical-export validation correction before integration",
+  "maps": {
+    "packaging": "96b2f93be566d6473f928f1ae811a4f9ac8d42fb",
+    "packaging_workflows": "a4f7a19d285164058e9a1e78044f3afccca6d5c8",
+    "metadata": "e88ffaf2acb7dd502415229a8db95c0c4913b2ea",
+    "backup": "7a70ce89ca2409b72459a170960c6393f4ebb494",
+    "dordiai": "fd61e5e12d26782f9f8940438e5f4f18691e7a2e",
+    "asr": "ca68060a8610204256f350c5f0a53b78e3a65683",
+    "reader": "2c863f483e387d4b6865d8c4e830147a24a8eefd"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/carr-convergence-review.yml",
+      "sha": "695a846e3f60e2e48c95e061bdcf27e45a86c6f2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Run the exact recovered export composition on Linux and native Windows with actual file boundaries, strict no-skip assertions and immutable artifacts."
+    },
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "sha": "52f4b617901ed638ce0fa3188ab383524481737a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Retain all current native MSVC/Zig build and exact byte acceptance; run isolated complete-candidate ref as well."
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "5b131f7b99a870fd55038e312877029c254fc7a8",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve packaging map ee63 and prior source/native/installed gates; add converged actual component source+installed coverage and isolated complete-candidate branch. Exact962 installed recovery exhausted25 minutes at70% without a test failure; selected expanded recovery bound50, complete native job150 so all preserved mandatory steps can finish."
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "417fef3e4a9f909682f9a62b241bf132e278adb4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve packaging map398c + current gates; select all converged component tests and isolated full-candidate branch. Expand timed-out source wall bound to40 minutes, job120."
+    },
+    {
+      "path": "carr-library/docs/ACADEMIC_ACQUISITION.md",
+      "sha": "bf670574c4bb78897de94425dc800a61f2cd91f9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current documentation includes all canonical content plus retained ISBN/OpenAlex, publication/consent boundaries, BibTeX literal-name and cached-depth fixes."
+    },
+    {
+      "path": "carr-library/docs/academic_integration.md",
+      "sha": "c8d015b55aa595f09d517c8596c6275e2d8a187c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Retain historical document/resource provenance while document both formatters' single bounded QuickJS executor and truthful cancellation."
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "sha": "aef94d5a40cf6df6f969a2b2025a8c1c81f32657",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve existing referenced guide/regression through canonical convergence; canonical omission is not a reason to drop current functionality or test coverage."
+    },
+    {
+      "path": "carr-library/docs/AUDIO_METADATA_COVER.md",
+      "sha": "81d2b0c070256a00159b6eca98bda5897bec11fa",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/docs/AUDIO_RUNTIME.md",
+      "sha": "ea21b6537841cd94f6e3187c15d65bbb84b4d804",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/docs/document_formats.md",
+      "sha": "adf7fbd3449d9ddd2be50ddc93156cb4bbb74dbb",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve existing referenced guide/regression through canonical convergence; canonical omission is not a reason to drop current functionality or test coverage."
+    },
+    {
+      "path": "carr-library/docs/doi_metadata.md",
+      "sha": "9246dff037fb53a95e8a1ce376778eae8255f3dc",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve existing referenced guide/regression through canonical convergence; canonical omission is not a reason to drop current functionality or test coverage."
+    },
+    {
+      "path": "carr-library/docs/DORDIAI_LOCAL_SPEECH.md",
+      "sha": "b0d144fdfc2e1a2ff04c47c7415da26b1869c2f6",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/docs/READING_DESK.md",
+      "sha": "a18e25a6264149bc73536d8866f920692a08796c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Correct obsolete no-backup statement; preserve current voice reader and source semantics, document common4/historical reader and contextual keyboard defaults."
+    },
+    {
+      "path": "carr-library/docs/RUNNING.md",
+      "sha": "474c03ded1ac1a944f0647c0661bce0a8334fd46",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Union native launcher/log guidance, canonical prepared local audio, common4 backup, academic tools and seven CSL styles."
+    },
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "sha": "e88d5ebd7dc79459d3f58bb8935ac2fbca1d95b5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Retain Resonance version/native bootstrap/backup instructions; add accurate separate local-audio setup."
+    },
+    {
+      "path": "carr-library/docs/START_V3_UK.txt",
+      "sha": "a42ee31bc4cf426b955f42045b8720000c9cff94",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve current Ukrainian product/ASR/live/recording/publication/trust guidance; add canonical academic/backup/keyboard/local-audio instructions and correct obsolete FFmpeg/shortcut claims."
+    },
+    {
+      "path": "carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
+      "sha": "fa3994153e69e9df5b0a30db3834b6e60006ba11",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/docs/TRANSCRIPTION_INTEGRATION_REVIEW.md",
+      "sha": "596d4f6d6496e604c9f511b6bbe338c6812f273f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve supplied-source review and worker hash; identify predecessor protocol evidence separately from the converged single-service adapter."
+    },
+    {
+      "path": "carr-library/docs/UPSTREAM_BIBTEX.md",
+      "sha": "e50aac02d787eda9f3fb4dbe10840f10d489b641",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current documentation includes all canonical content plus retained ISBN/OpenAlex, publication/consent boundaries, BibTeX literal-name and cached-depth fixes."
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "sha": "1614e9383088b97f1b294c079c9d19f557273844",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Replace stale mixed-current status with exact input/evidence matrix and single-service/common4/QuickJS contracts; keep finite and owner-dependent qualification gaps explicit."
+    },
+    {
+      "path": "carr-library/packaging/acquire_audio_runtime.py",
+      "sha": "9de23d3f79bf179a2b3da4d759d324086e09675b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/add_audio_runtime.py",
+      "sha": "90f6acb4101d4adca90b7244043b678e82fe1900",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+      "sha": "b9444ddc2718d07086ff655e306741d9cabf84b4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv2",
+      "sha": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv3",
+      "sha": "94a9ed024d3859793618152ea559a168bbcbb5e2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv2.1",
+      "sha": "40924c2a6da76a2b0c639f6fe7ef0b2d095a6adb",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv3",
+      "sha": "65c5ca88a67c30becee01c5a8816d964b03862f9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/licenses/LICENSE.md",
+      "sha": "371b0913ce7c199c4092d9344680c80f78ebeb2a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/provenance/build-configuration.txt",
+      "sha": "51177e3d9c022ee90a11e0e60c953d5c7ee400a3",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/provenance/checksums.sha256",
+      "sha": "8351116133798ac35ff04f72bf727fbc89b9a7df",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/provenance/dependency-source-index.json",
+      "sha": "69dab303955ac5a6622e3a5a223d8ff3cf0cf4ed",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/README.txt",
+      "sha": "3b2d20479de5994a9c9d1497a196459f14cd05c3",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/audio-runtime/source-lock.json",
+      "sha": "be9955a9485b4fa419cc286aaa7920b48fecff07",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "sha": "334ef7a24eb41dce9597b32612ebe5b2c15e0c90",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/CheckInstallation.cmd",
+      "sha": "5c2af899f08476b99f631ebd5f97a47524dc7eb6",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_remaining_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/install_windows.py",
+      "sha": "3892f6be60135a8018fa5ea7444ae25d0a791742",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_remaining_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_installed_windows.py",
+      "sha": "fe43d20d79009f82a5031bcb2932aed52c8bad20",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/README.md",
+      "sha": "a81ec36b46476d2e1b2ccdad5fdcbdc76b7a86ce",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    {
+      "path": "carr-library/packaging/prepare_audio_runtime.py",
+      "sha": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/prepare_windows_audio.py",
+      "sha": "84a06492d5f702cdf7d2ef538fd3997dca69feb4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_remaining_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/refresh_private_bundle.py",
+      "sha": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    {
+      "path": "carr-library/packaging/setup_local_audio.py",
+      "sha": "2df676d830a4aedd2a417315f9f757d65129272d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/SetupLocalAudio.cmd",
+      "sha": "eede996f0f90bf09a81fccdefad9b392aa998760",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/wheel-notices/quickjs-ng-LICENSE.txt",
+      "sha": "85a47b3834ea036f597f5a318fe6e653a663fed5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/wheel-notices/quickjs-ng-SOURCE_NOTICES.txt",
+      "sha": "da0f5e106ab0265549a37df983a971cab90cb5cd",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/wheel-notices/SOURCES.json",
+      "sha": "117955855f5c5dd47317fd3b40e682dd7df4dc26",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/windows-citations.lock.json",
+      "sha": "d8449e0172f8b5beeb10928207e0ba5d32ce684c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve inert exact historical Node package identity while the prior private-bundle migration helper remains callable; current citation execution and primary bundle use QuickJS only. Migration helper is reviewed separately."
+    },
+    {
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "sha": "1bccdec67a5d445677bc747275251ea0a02700a0",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/windows-roots.in",
+      "sha": "4cd6753985b5509015deda2f9753c57910e2bc2e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/windows-sbom.cdx.json",
+      "sha": "a3d3661d110fdc4be61b3eda19d2fd253cf5262e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-cp311.lock",
+      "sha": "d9db4968b7e6fdb776da958072df7870332a2bb4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-roots.in",
+      "sha": "0ad32b2062d803827c7f79541d612db9a4156bff",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/packaging/windows-semantic-sbom.cdx.json",
+      "sha": "b99a213c3fb46dd5f7e01552946fd133cf4ac168",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/pyproject.toml",
+      "sha": "dcb0db89a8db568b3343bd97753dfb460c0d6466",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "sha": "f9273aa951431d36d35ce1ac5c490b77ddfad013",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve native descendant/cleanup corrections proven Windows1dd1; support actual already-required pytest node IDs by checking file scope separately and passing exact node suffix after --."
+    },
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "sha": "3ec60e3c6046cc6e869098a3071730202ecaa070",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Exact962 Windows lxml local file:/ URI correction from release review; only exact pinned aliases, negative/real-parser regressions, final execution pending."
+    },
+    {
+      "path": "carr-library/scripts/verify_supplied_transcription_protocol.py",
+      "sha": "330eeafc64565dc2f5fd56402331cbffdb77bc04",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_metadata_smoke.py",
+      "sha": "a312205a045c7b8e9eb834669a90da8c955fd5b7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_runtime_smoke.py",
+      "sha": "eb9ee4918692e99441e800a808a377b71b92b14b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/scripts/windows_command_palette_smoke.py",
+      "sha": "13b2aae2b62d3b957945f0df4c7204eee2a06e6c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+      "sha": "a3b5de3d527ea1e06852f53b818aec977e74327b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "sha": "950ae704028e500d2d4f27cdd3cc8f551fa1f210",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "sha": "a809c0a658c52de3cd16444e632e9cecb107374f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "The current CLI includes every canonical retained change plus mandatory DOI and native SAPI dispatchers; canonical deleted those accepted current routes."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/__init__.py",
+      "sha": "142b054676a957cf87dd389e2c85989f9b715a3a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/csl_worker.cjs",
+      "sha": "5796d5da9db986250fef76f81b600410c40e493a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/documents.py",
+      "sha": "fc36615166dab5768dc577c0828040f4beae6e45",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/doi.py",
+      "sha": "56fd04e3704a2d38ddb5f64e877364c723e6877c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/formatting.py",
+      "sha": "fc37b24ed692c3ea24e14ba003fe18e7e0034299",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/locales/locales-en-US.xml",
+      "sha": "e1de22196bdbc12bdda9478dbbd4f37f472c818c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/locales/locales-sk-SK.xml",
+      "sha": "02e24843325381a25f3a9462008c6b157b3f41f0",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/locales/locales-uk-UA.xml",
+      "sha": "d850a8c282873ca43f6f8afdcaced2d6a9ea1339",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/regeneration.py",
+      "sha": "83974ab2c6a3832517a5f1e5b1dde24b0c62756a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/apa.csl",
+      "sha": "5ba26ebddef20a9e41d2456b916c14ce88647050",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/chicago-author-date.csl",
+      "sha": "44a177b9cfbeeb61db38bd78616e87e1dcdee4eb",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/chicago-fullnote-bibliography.csl",
+      "sha": "b933cd7e18daa61c6efbeda27c262ef7893136ab",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/harvard-cite-them-right.csl",
+      "sha": "903c6d2dff0195f7acb7b929126379bb49e8e263",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/ieee.csl",
+      "sha": "72cb1491864a388edf086b35d04071f5b2ce84a4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/modern-language-association.csl",
+      "sha": "698263eb2dd88fdbee3a16021465c2e3bc78dcb1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/styles/nlm-citation-sequence.csl",
+      "sha": "cbfcc8212dd71a4a0b4faf0cdb20a89307902ed2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/UPSTREAM.json",
+      "sha": "3926f41e285c87cc092959fdbbc4d65aa94cb6f6",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/citeproc.js",
+      "sha": "31b4f533c4bb4816d91dd61f79b4aa54ff520ac2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/LICENSE",
+      "sha": "dbc0a018c367d83f061e706d52007d988d083d2a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/LICENSE-AGPL-3.0.txt",
+      "sha": "0c97efd25b5974b974ed9a8a18207bc4f55bb338",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/LICENSE-CC-BY-SA-3.0.txt",
+      "sha": "604209a804632b6e5274005a22293976d07c3099",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/LICENSE-CPAL-1.0.txt",
+      "sha": "0ed5b69013c62675941639f3acad0ce3d746a4a7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/vendor/NOTICE.txt",
+      "sha": "f0ddf6fc770a5bbf6d45cd43b65db4ea265053f8",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/__init__.py",
+      "sha": "5369deb2b7a26102c483b00c65c8a3a973a48718",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/cli.py",
+      "sha": "c367ab69e9f21cae2f8d15cf0e6abfc688363e64",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/models.py",
+      "sha": "4b91467674e78436ee6b66f5c252c00f41549593",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/network_worker.py",
+      "sha": "48541e7c9535d400faf26d89828b7f5296c1c832",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/providers.py",
+      "sha": "8f28bde95264104065dfdfb3cebd5fb1ac09ff4b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/service.py",
+      "sha": "b3d6f0c60d1585ff7668e411cf66e88305167cf5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/transport.py",
+      "sha": "b3664fc0ff4a809c92ce6e47e89b6b991f22e69d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Earlier source review retained current DOI/ISBN/OpenAlex and per-provider network/frozen-import authority. Current source already implements canonical acquisition contracts."
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "ff42600453f550510fafa83f804b94d8002143d4",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Preserve request ownership/config/replay, ISBN lookup, search offsets and canonical max_bytes backup delegation."
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/service.py",
+      "sha": "7fcc2707f2a52dd568b18697f886757fb10595ca",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "sha": "c6ed0260496a8323267a5bde0ab3d6cffc2af566",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/metadata.py",
+      "sha": "bc6cd7d2d145f11aa25506fd324f2d2586df7ae4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/music.py",
+      "sha": "da590603a38085ff3f8a0f6099c40f5b7bc1b76f",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Non-overlapping source reconciliation; canonical functionality and current ownership checks retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "sha": "d7a477ac5c2e5ff3cfb9169b41750fb07f6459ca",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Non-overlapping source reconciliation; canonical functionality and current ownership checks retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/transcription.py",
+      "sha": "5f1ab4173207648dd9326fd3362b2a076a603e73",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_compat/state.py",
+      "sha": "54390288e972b575fa71f39c4e470f595126fa96",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_current.py",
+      "sha": "4a4249da993ef312d158a1dff3b64a45649287b9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "sha": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current retained media/ASR/old-extension validators are deliberately reused by common registry and historical reader."
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_generated.py",
+      "sha": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "fef4934ed396218d10ded34d88deeffd9c978627",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "7f5ac619c75527b0c3b3e4ba839944b9d2cc2bb4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/bundled_engines.py",
+      "sha": "cb5f86e223e8bf15be6ba7e677b05d30a52abf94",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "sha": "a85e32f74d62ce8fb7b29799be7585367952660a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "sha": "669b623881cdd90fb723f9c7da725a5f57ae5b1c",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Non-overlapping source reconciliation; canonical functionality and current ownership checks retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/evidence_drafts.py",
+      "sha": "86515b0f7c23e42e68ce7a14367b7bd1697164c4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Canonical typed recovery owner with strict inert legacy-note review and captured native ID lifecycle; no duplicate frame autosave timer."
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_text.py",
+      "sha": "c760e7d1aabf5acbf71c2e76acc2eba9a714783d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "sha": "51ff989f452f926a71105e96223c3eb2f57dc5ce",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Non-overlapping source reconciliation; canonical functionality and current ownership checks retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "sha": "65a90957d98fce756bc501fa669fed59278d9f25",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Actual frozen-attempt V5 receipt authority and Windows selected-venv process ownership; canonical older watermark is not completion authority."
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/__init__.py",
+      "sha": "6fc522f991059acb2dc4c73c253c58f59d5eb393",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Docstring-only divergence; preserve accurate explicit/no-import-execution contract."
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "sha": "a52f940d53905ebde76e6b163c900d1fcbb65268",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact accepted implementation as required by phasefinish_dordiai_map"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "sha": "04c283bfd1f2c4b1f07506c678107f72df4ffcf1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "sha": "f68b6f9a8abe90640a05235c68b53dff3a158eae",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact accepted implementation as required by phasefinish_dordiai_map"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/supplied_transcription.py",
+      "sha": "bc11f8f265ef109b44eee8c27e7ccbf50c2f38b1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/keyboard_preferences.py",
+      "sha": "826c580aebd3cfeef0d76494a0e293f18e007d3c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "fba1ff7758a1258f14606c6a31cce7ba78e02643",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "sha": "9164a5bd6e2fa2ac29f5a597eac57a801f7158f6",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "sha": "240b2dd5497aa576b68899c88d353e0850ed09b9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_feedback.py",
+      "sha": "94253beae4492aa49eb97b402803bc02a0def939",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_preferences.py",
+      "sha": "a3db69d1d8cbbb2f4f45430df9dc2ad724d5cddd",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/progress.py",
+      "sha": "9313dcb6bee3dfaa13873fe7b890d7335f2b6cde",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/research/academic_library.py",
+      "sha": "19222932e33bf34a2b825211d6cd32f31bac55b0",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Retain canonical bibliography support and current literal-author import semantics."
+    },
+    {
+      "path": "carr-library/src/carr_library/research/bibtex_import.py",
+      "sha": "0571e36ff9c23b27fe9acf5d2023d047fe5a32eb",
+      "status": "CURRENT_EXACT_ALREADY_PORTABLE_QUALIFIED",
+      "reason": "Current parser contains all canonical logic plus cached-depth enforcement and literal-name preservation; canonical adoption must not regress these."
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "fb95127e3938a66ec1c4cb4f0d9fa92468fc9ef8",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN",
+      "reason": "Unify bounded single-read full-byte approval, native Windows ChangeTime and create-only publication; retains cancellation/receipt cleanup semantics."
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "sha": "1f5687e3f65a804634772d93f10f7cfbdc0a957a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "sha": "ce7af8cc3fc2f6ac73e4fb6edd382be46ca3474d",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Non-overlapping source reconciliation; canonical functionality and current ownership checks retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic_cache.py",
+      "sha": "3ba6e9498797d02d952b75afe33eb7911fe66696",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "sha": "0df23b007dac6200c448166efae435edc930f4fd",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/dordiai_settings.py",
+      "sha": "8dd750611f97232a5e34f64cd1edc7bc37e5145e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/dordiai.py",
+      "sha": "3d151356b58c0a7f3b3cfc711f427afdc6638a68",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/live_adapter.py",
+      "sha": "ced3f3ebf912d4cd30bc059704c003ac2441e78a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact accepted implementation as required by phasefinish_dordiai_map"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "sha": "6be56bab24ff73f5388f9c11cd75daad154dc4a5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "sha": "18dd461f9ee7853bc745ef7805a8c187c41233e8",
+      "status": "THREE_WAY_MERGED_SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Non-overlapping source reconciliation; canonical functionality and current ownership checks retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "sha": "f6c263f989fd496a512160f08b2b7d5dc989f466",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "sha": "0e7d550e1175eddcac40d64a12e59c0873d613aa",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader current functionality preserved exact as required by convergence map; only adapter seams changed."
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/source.py",
+      "sha": "0f8c432df226b8669d943283c8743afb11859258",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader current functionality preserved exact as required by convergence map; only adapter seams changed."
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "d233427beb2b0b71437733280ce050acde2d2f94",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "sha": "8113dd29eaaca6ce93065e54617128f6e89d96cf",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Preserve current owned registry/cleanup/broker/cache/M4B behavior, canonical total disk and output reserve controls, pre-link cancellation, and incremental cancellable inventory including empty directories."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "sha": "c97f1e1d0b1f73e366af47cdf8bdafb4691eeeb4",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Retain current stricter lifecycle/approval/deadline contracts and all nonconflicting canonical functionality; review resulting diff."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "sha": "f6ee27b8745491a081fe42e788be7132c0befc9d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_tools.py",
+      "sha": "dbccd29a391cb52809bcd43664248c646d98537c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/acquisition_dialog.py",
+      "sha": "86d853bfd5e47fc698c5890b2f556606caad71f5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed exact comparison: current file contains canonical functionality plus stricter accepted behavior; retain current source and tests."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "sha": "b584dd0bf677cfe590382199f671283eedccda04",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Retain current stricter lifecycle/approval/deadline contracts and all nonconflicting canonical functionality; review resulting diff."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_metadata_dialog.py",
+      "sha": "d511772a6a30eff240b94e0cd5cb4cf0578b6a5e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "sha": "dc2df773e58fa46a3a5f57d43ac46179cc190117",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+      "sha": "2927392e1cbb3db71255a2d9beebc5d45d634748",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Exact current source already owns the overwrite prompt and publication receipt; canonical auto-added prompt would duplicate it and reference an unimported helper."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+      "sha": "401e084beb3d6f0d02db9d56cf86b1c4bc7a0ee0",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Preserve current approval, receipt reporting, scope rechecks and cancellable retained registry cleanup; canonical independent changes retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_formatting.py",
+      "sha": "f14222bef92bfa41777c8309b20883797609e1f6",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "sha": "283131ce4c59eec532c354b944624ca1b641067a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed external source composition: one canonical QuickJS executor with verified historical document resources and owned native citation dialogs. Final exact runtime awaits CI."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/command_palette.py",
+      "sha": "c96d8637bd66ea573900606476eb1880106722fa",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/command_registry.py",
+      "sha": "2fe71b6b3b7c46cef384d6fddb56997b30564e08",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "ef2ddf8324f39604c805fae1303b670ede84ac7a",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "One final keyboard manager after all feature menu registration, then one canonical progress panel; current request/UI guards and canonical measured worker context, cancellation and result feedback are composed. Explicit measured callback mode retains fractional progress; ordinary canonical jobs remain integer validated."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+      "sha": "e1def18f6dc0ab2a1616fbf827ed7912770e6c18",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Canonical typed recovery owner with strict inert legacy-note review and captured native ID lifecycle; no duplicate frame autosave timer."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/dordiai_settings.py",
+      "sha": "ef1455a1fc8685ddcb41a53bf8bc847df8103802",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "sha": "74a8806185f656b287f95a3cf40322b4e36392c8",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "sha": "26a227fab5a7737ae3469e4d342fc70d5a44ef6c",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN",
+      "reason": "Keep one owned native MessageDialog and add canonical dependency injection argument."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "sha": "dc83ac96132411c8d96e53272ffabcfc09c88c29",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Preserve current approval, receipt reporting, scope rechecks and cancellable retained registry cleanup; canonical independent changes retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+      "sha": "493e425ce2f7ca25adeb763e9087f8f0b9d5352f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "sha": "b0630fc87e8f631b2054538d4bff51ba0f2f7ed3",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Preserve current approval, receipt reporting, scope rechecks and cancellable retained registry cleanup; canonical independent changes retained."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/live_reading.py",
+      "sha": "6eebf1f358f99ae9a6f2f6a34e641e4a1ab68296",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader current functionality preserved exact as required by convergence map; only adapter seams changed."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operation_progress.py",
+      "sha": "dd66a5505a3b9550aaac4238a392c8fb37259265",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_media.py",
+      "sha": "374ee109fa075af2c7e39518b3451b4b4e5aa94d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "sha": "605b5dd47c26d91ec876a5e4a642f46a7ea52f2a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "sha": "47bed0395ca2156cd4b9207f268d8ff0f46951f0",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_shortcuts.py",
+      "sha": "9c1af3ab559ef0b534f9c1418fb0ec37b291e24b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_actions.py",
+      "sha": "b63a9e8c43342ab2316b66abd19a204708a0d84a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Canonical typed recovery owner with strict inert legacy-note review and captured native ID lifecycle; no duplicate frame autosave timer."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "7b42ad4bbeeb777a7f9981ea2830ad9eaa8edc08",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader current functionality preserved exact as required by convergence map; only adapter seams changed."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "sha": "5c1913d3932a189b86fad85b22828dcd98a0ead1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "sha": "33585c7d04fb6eec3fbf43a1c7f692400a8cbc95",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "sha": "6cafee452939e72da3a1e9d9a11e91f918948b44",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Keep bound-account/source/request approval and canonical current_progress context for measured updates."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_bibtex_workflow.py",
+      "sha": "b89043cafc09f7ffe2b5621d6ceae0c86b0fb12f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_citation_ui.py",
+      "sha": "f2e3efb2479fd1790869bca476c2b98f6fc98b2e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed preservation of current tests plus canonical citation/native lifetime boundaries; executes real QuickJS instead of requiring removed Node picker."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_documents.py",
+      "sha": "ae8f71f381cfe94f65601da7fd5039b16321c411",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_doi.py",
+      "sha": "e777d18f249b4417c539c968660fe67e60153929",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_end_to_end.py",
+      "sha": "e65865916714adcb0576b696f533ceed70b01216",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_formatting.py",
+      "sha": "8445300cff246c01897e983dd1cfe4d645e125be",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed preservation of current tests plus canonical citation/native lifetime boundaries; executes real QuickJS instead of requiring removed Node picker."
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_regeneration.py",
+      "sha": "ac8fda9ec62c5a34b3e2fc4f4eebb1dfae613732",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep accepted DOI/citation/source regeneration behavior through canonical citation executor convergence; deletion would discard current features."
+    },
+    {
+      "path": "carr-library/tests/acquisition/test_acquisition_cli.py",
+      "sha": "5365df1ee55f463ee2d49d5be709de04ff24d074",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/acquisition/test_acquisition_security.py",
+      "sha": "3e22067772e4d10878a6646563df34bf6c0b38d7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/acquisition/test_acquisition_workflow.py",
+      "sha": "5cb2ed81f79ff2d025b29b7f50a578dfb2c7c6f6",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/acquisition/test_providers.py",
+      "sha": "0af4c25f02137fd2063e26dc512fe77a636fbe62",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/assistant/test_supplied_transcription.py",
+      "sha": "bc9fc946757578b96b43d807fc89c935a62f3ca1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/audio/test_hardened_transcription_protocol.py",
+      "sha": "7d6de66e29c1f43d64383eea4350e848f97fe88e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/audio/test_metadata_publication.py",
+      "sha": "e6be0ecfd9de6018147c28c6c59ce27a52649d7f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/audio/test_metadata.py",
+      "sha": "356246290727d81d954b8d4077cf3be93398f8cc",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/audio/test_supplied_transcription.py",
+      "sha": "3935fe3a2ae93422671bb33ea93965f042b673e8",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/audio/test_transcription_settings.py",
+      "sha": "acf14d2a0f03a31f4801f0277fb9483ea9c66a31",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/catalog/test_ris_apply_canonical.py",
+      "sha": "a9e6d53f6a529e7ef7e493ec82f058110648479c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Keep independent canonical RIS review/input/scope/stale-metadata suite alongside current transaction tests."
+    },
+    {
+      "path": "carr-library/tests/catalog/test_ris_apply.py",
+      "sha": "91628dd7c0eb4b64722d55f0c48643d98aefb467",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Retain all current real shared-catalog transaction/cancellation regressions."
+    },
+    {
+      "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+      "sha": "1e74957ac863b86d97b69243a102607aee45ab7e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Canonical file is an exact superset of current tests with two no-runtime format-listing CLI cases."
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_batches.py",
+      "sha": "19ec5febb7820d70af8ae672440240a5e53773b0",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Exact962 Windows isolated test failed importing tests.e2e. Load adjacent synthetic EPUB fixture explicitly without altering product import paths."
+    },
+    {
+      "path": "carr-library/tests/e2e/test_nested_search_clock_budget.py",
+      "sha": "e6091c36220fdf4e03c581e4baafe8a0739a583a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed canonical suite contains every current test plus explicit cache identity and WAL/DELETE cancellation/closed-connection checks; avoid duplicate function definitions from automatic merge."
+    },
+    {
+      "path": "carr-library/tests/e2e/test_search_operation_budget.py",
+      "sha": "fc7ad34267d4346cf0f11e8c7b51f2585db5af51",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed canonical suite contains every current test plus explicit cache identity and WAL/DELETE cancellation/closed-connection checks; avoid duplicate function definitions from automatic merge."
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_text.py",
+      "sha": "bc6d3adb9b15f0f94de3bf2f6b26c4e186b98250",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Retain stricter zero-pad-bit cases, complete canonical invalid-padding cases and positive MIME folding/review-required assertions."
+    },
+    {
+      "path": "carr-library/tests/extract/test_special_ocr_models.py",
+      "sha": "38c42e11311fed3d2a98ad7e0f7a832bedb940fe",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve existing referenced guide/regression through canonical convergence; canonical omission is not a reason to drop current functionality or test coverage."
+    },
+    {
+      "path": "carr-library/tests/ingest/test_worker_publication_boundary.py",
+      "sha": "93cde1bc10464535f3e606620f71a79ee9c7b0ba",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve all current actual worker/receipt tests; add canonical metadata/membership matrix and valid frozen-attempt PDF controls. Source-reviewed, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_canonical_convergence.py",
+      "sha": "baaeff4bea4823a52ca83311b4b235c847b2a45f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_convergence.py",
+      "sha": "d38d621ebebb09b073c7ea7cf8c5e061322eae40",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_ownership.py",
+      "sha": "c9161839366b5b3b71aabb5dab23572507bbf595",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact accepted implementation as required by phasefinish_dordiai_map"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_probe_cancellation.py",
+      "sha": "52db2c928f9f51f19f90e9de8859fd5bdf9b0c7e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact accepted implementation as required by phasefinish_dordiai_map"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_registry.py",
+      "sha": "336a8ee1f941cc07257fe9b9fd844c99a72554d3",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_settings.py",
+      "sha": "d8b4ac5f98a004f7e2d24d3a5247265c808010a4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_speech.py",
+      "sha": "f032f22b0d893e654e91bf475a208213cb0acc45",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_dordiai_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_voices.py",
+      "sha": "f58db339a72a4e57a63e9a9950098c41083680c2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact accepted implementation as required by phasefinish_dordiai_map"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_acquisition.py",
+      "sha": "a93e1b3fbc9b68aa5c5a66942ac8148c5d417f5b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_bundle.py",
+      "sha": "bf63cf92deaf8df1b32d4fef0f5e6d90aa8c795c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_runtime.py",
+      "sha": "7d1604c661ce695b5a396d358989e4004c951585",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/packaging/test_bundled_engines.py",
+      "sha": "49c8c9c3b85af41cd0c9b94e0680b9c59cb2f4c9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "sha": "5f90b7966a6c70b8b2b9bd9af551c327e5a99de7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Retain all selected actual timeout/cleanup regressions and add real subprocess selected-function/parameter/missing-node/outside-scope controls."
+    },
+    {
+      "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+      "sha": "b6fdbdfb6697a19da2afeca44542bae9ab6af5a9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_checks_manifest.py",
+      "sha": "5c1bc741d95a33d3969fbb7a310450aa5d2ef1e7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_checks.py",
+      "sha": "1b60f6ef9da34fe8fe44bdbd457bc8b252d63033",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_launcher_acceptance.py",
+      "sha": "5238d6d7f397aba5d6673897146dc0c600cf5f69",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_launcher_bundle.py",
+      "sha": "0bcd708ff3b98a522d9f18ba91eb384aeab1dbf5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_prepare_windows_audio.py",
+      "sha": "e106f87fcbbdb4a78ea30a311c92fff07e186c3a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_remaining_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+      "sha": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Previously independently reviewed current ownership, selected-runtime process and refresh evidence is stronger; canonical counterpart is older or removed."
+    },
+    {
+      "path": "carr-library/tests/packaging/test_source_wheel.py",
+      "sha": "5251148aa4bae692d5a42ca22694e74d9ba863fe",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_bundle.py",
+      "sha": "d97961759a7e0e60458469317202539131686aa0",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_packaging_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/packaging/test_worker_bytecode.py",
+      "sha": "9218e99a7ed73f145b4fa802f391a4324bf5beb7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/progress/test_native_media_quiet.py",
+      "sha": "59eed580be1b00e4381c5f9cad63b1c54319dcef",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Supplemental reader map: preserve exact current coverage and canonical unique real-worker/queue cases; source-reviewed NOT_RUN."
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_convergence.py",
+      "sha": "1d56a265d07231d01384e5f64be9845278fae429",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/progress/test_progress_media_integration.py",
+      "sha": "7926494ca2487c0f5d2e8f2f3f20a5af86354ebd",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/progress/test_studio_progress_convergence.py",
+      "sha": "aa8b331b2ccb4026218981819ae3e4d7ae75d81e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_change_time.py",
+      "sha": "ebeba99d47eea6e4e97d9447ac568e576af0240c",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN",
+      "reason": "Retain actual same-byte/time races and pointer-width native API tests; update timeout contract and model native ChangeTime by state rather than fixed query count."
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_no_clobber.py",
+      "sha": "d04043f18c0cce7ed470ce45bf99564ce797b399",
+      "status": "Writer PASS at d94e on Linux/Windows138; six canonical CLI/workbench integration cases newly restored, final composition NOT_RUN",
+      "reason": "Preserve every real-file assertion while observing actual os.open/read/close; compare six portable metadata fields independently of appended digest/native fields."
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_publication_boundary.py",
+      "sha": "8b0d55c9f8ca6618560331ea15a1545e0263f326",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/research/test_bibtex_import.py",
+      "sha": "5fc3397575ff3e2f0c5024449cb683797a56cecf",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/search/test_advanced_search.py",
+      "sha": "9ba179e983a58e643c9c5e3ede76ba53fb6a8998",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/search/test_semantic_cache.py",
+      "sha": "caa8a19a54073353868b22779d3b1777c861d286",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/speech/test_progress_speech.py",
+      "sha": "e5b3a5171af2751af5d5a4a548d3b9627dc9daf4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Supplemental reader map: preserve exact current coverage and canonical unique real-worker/queue cases; source-reviewed NOT_RUN."
+    },
+    {
+      "path": "carr-library/tests/storage/legacy_state_writer.py",
+      "sha": "0cf80f8fcfc338a6da2203fdd4f96ad57296185a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact old create_backup body, package qualification only. New test helper, never production routing."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_generated_audio.py",
+      "sha": "faed937a5258204d285472c1e667bbca6e4cc443",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_keyboard_drafts.py",
+      "sha": "2f0076bd4272bc8f542ab50ea56187a3cd191b78",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Extract actual selected package UI source for installed/source compatibility, not checkout-only path."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_legacy_compat.py",
+      "sha": "f86800a57db805d08f5cf0ef786fea18fc97f549",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Preserve authentic historical fixtures, empty originals and inert notices; assert common4 envelope on rebackup."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "sha": "2d0bd02e29dbc533a9ef4de298f6eaaa508e1675",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "sha": "f75ef2b869565c467296ea455d606fb4463fdc8e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. All canonical producer cases retained; all twelve re-signed known-producer tamper controls run against exact historical3 and common4 envelopes."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_reporting.py",
+      "sha": "b5cef41eb740c61dd94fed9b3ffb0c9e80a42373",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Use actual validated generated PCM cache receipt; retain real CLI output assertions."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_restore_cancellation.py",
+      "sha": "c0a6400a318dda15fa3a2c53a89387f9bc33c114",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Actual bounded typed reader state with >2MiB UTF-8 bytes, retaining all mid-copy cancellation assertions."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_schema_identity.py",
+      "sha": "2a9cde0547292d759c74074c94fe696cd75f1349",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_studio_media.py",
+      "sha": "4abd02281fe03c0e42c663e7196d4ffd1d74a020",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Retain all PCM/publication/external-reference controls in common4; preserve historical V5 declaration-downgrade negatives as separate exact-old-writer cases."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_transcription.py",
+      "sha": "cd6aae96b8436986ac81e2d4efdb6459ecc60dcf",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Common4 outer inventory only; retain all actual ASR snapshot, reviewed-recovery, paused control and external-runtime nonactivation checks."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_translation.py",
+      "sha": "d9d91d85e5bcccd38ce68c9731f1434671652fda",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Passive Basic/Advanced/source-bound/legacy receipts, offline completed approval, independent usage-ledger forgery controls."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_v4_review.py",
+      "sha": "e70e93463c388ef710a0f45eb354bc25c4a43263",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Use the real legacy progress producer schema while preserving partial-import/resume and publication controls."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_v4_sidecars.py",
+      "sha": "2f669e3c61f2b3c271033688416918a897e69b09",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_v5_extensions.py",
+      "sha": "eb60bed9fbf5030cfa4a0e705323c321d5c5da88",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. All authentic legacy V5 authority/retention assertions retained; use literal prior producer fixture rather than changing today's writer back."
+    },
+    {
+      "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+      "sha": "1fa4bf33b17eed0e31ec80bb2abac410f8a49ee2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Preserve exact current pending recovery plus two fail-closed root cases absent canonical."
+    },
+    {
+      "path": "carr-library/tests/storage/test_engine_settings_backup.py",
+      "sha": "b7ecfa366738b0428912803266249dd343f96776",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_engine_settings_dordiai_backup.py",
+      "sha": "84d0952b6e93f2f5dd1a82bda63718a8f8c6ea06",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Only adjacent test fixture loading changes for pytest importlib mode; product origins unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_legacy_research_note.py",
+      "sha": "af9d1c07acd794e1c8613e8d9cd5fbdbe1ac790e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed exact-byte legacy file and unauthorized-context regression suite."
+    },
+    {
+      "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+      "sha": "b225c9f1fc96cf112d93bc728a50699ee64c3585",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_pending_backup.py",
+      "sha": "308054a6b95bea969e2ab7f74f4c687bb3f5838a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Retain actual current inventory/OCR tests and add canonical completed-DOCX original asset/result binding matrix."
+    },
+    {
+      "path": "carr-library/tests/storage/test_progress_preferences_backup.py",
+      "sha": "33c832a7cc62adbf7e14ad54d20c77a9f161a56b",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Only common4 inventory prefix changes. Legacy save/load still writes exact state/ui/progress.json per reader owner."
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_snapshot_identity.py",
+      "sha": "e8706c5258741aac52a01270b85290beb01ac594",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Exact canonical adoption, retained assertions unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_studio_input_backup.py",
+      "sha": "2314423388f5fb4fa3f492899c643e540aff9ea4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Retain actual FFmpeg, restored input identity, imported-path review and tamper coverage; adapt only common4 inventory and explicit old-envelope constructors."
+    },
+    {
+      "path": "carr-library/tests/storage/test_v3_state_backup.py",
+      "sha": "d3172f0ab18b8a51cff5127d4f7c98682649f1ce",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_backup_map; final integration execution pending. Canonical suite plus two exact retained current fail-closed tests; validate waiting-input projection and backup-only retained-input receipt removal."
+    },
+    {
+      "path": "carr-library/tests/studio/test_daisy_schema_acceptance.py",
+      "sha": "d04611c12aefb96a7dcd7bf6ceebbe1e72eb1865",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Exact962 Windows lxml local file:/ URI correction from release review; only exact pinned aliases, negative/real-parser regressions, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_cancellation_outcomes.py",
+      "sha": "d8e537d6f3552437b6abe58ac33e9993b65abb17",
+      "status": "SOURCE_RECONCILED_NOT_RUN",
+      "reason": "Retain current real durable-completion-write failure and pre-link stop regressions; add canonical independent verifier-failure scenario without overriding the existing test function."
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_total_budget_ownership.py",
+      "sha": "95fb01dd523d6afd12f561181339a79188e3e12c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Real cleanup-owner/retained path/lease checks plus actual wide-directory cancellation and empty-entry budget regressions."
+    },
+    {
+      "path": "carr-library/tests/ui/native_catalog_tools_smoke.py",
+      "sha": "aecfc7557dd3184e86a7c2b1267d6e9052a99f16",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Canonical comparison adds no missing behavior; current probe additionally observes exact approval identity, real publication, decline-before-worker, changed-after-dialog and staging cleanup, with honest native-dialog/NVDA scope."
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "sha": "e01c2294bb7d6f35c5ea956186d86eb646759b08",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/ui/native_reading_desk_smoke.py",
+      "sha": "91dcc1b3cb8660349618c5e4162e407332e7f3b5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/probe_advanced_search_native.py",
+      "sha": "19cd33b7f4d2ad268cc6647f29cec55f29818210",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/ui/probe_catalog_insights_actions.py",
+      "sha": "4f662540522efc88fa32e339a0e062120ab6a4c4",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/ui/test_academic_actions.py",
+      "sha": "8daba71f7539751e414af71e0c839d7a5b7ec137",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed actual canonical additions: current parameterized render-race regression is a strict superset, and current also preserves decline/scope/queued/staging cases. Retain current fixture and tests; no redundant duplicate canonical cases."
+    },
+    {
+      "path": "carr-library/tests/ui/test_academic_export_handler.py",
+      "sha": "5a72e7fb6f59b80aa78b5f523940bedabe5fbe7a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed preservation of current tests plus canonical citation/native lifetime boundaries; executes real QuickJS instead of requiring removed Node picker."
+    },
+    {
+      "path": "carr-library/tests/ui/test_academic_library_dialog.py",
+      "sha": "74021fd27ccbbf10867c882a394ab5cc9a01d036",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed preservation of current tests plus canonical citation/native lifetime boundaries; executes real QuickJS instead of requiring removed Node picker."
+    },
+    {
+      "path": "carr-library/tests/ui/test_academic_tools.py",
+      "sha": "402579fef31fa216755ee49ec0e5de3a18808471",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed preservation of current tests plus canonical citation/native lifetime boundaries; executes real QuickJS instead of requiring removed Node picker."
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_metadata_dialog.py",
+      "sha": "f9ce819169db168361d22dcaf8c290a7ec99167c",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_metadata_lifetime.py",
+      "sha": "7a1e487685684e52eaffcd0430682b4ab2d2285d",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Agent source-reviewed composition from phasefinish_metadata_map; final integration execution pending. "
+    },
+    {
+      "path": "carr-library/tests/ui/test_catalog_tools_dialog.py",
+      "sha": "0868cd7dae63fbe1fb601f48d3be073cf68759c2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reviewed actual canonical additions: current parameterized render-race regression is a strict superset, and current also preserves decline/scope/queued/staging cases. Retain current fixture and tests; no redundant duplicate canonical cases."
+    },
+    {
+      "path": "carr-library/tests/ui/test_citation_styles_jobs.py",
+      "sha": "943539043419bc2a6cd73303d9f55a2d8fbc91b9",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed preservation of current tests plus canonical citation/native lifetime boundaries; executes real QuickJS instead of requiring removed Node picker."
+    },
+    {
+      "path": "carr-library/tests/ui/test_command_palette.py",
+      "sha": "dbd9e605e8e09be4d07b71d71017b3109d20ed62",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "sha": "7c08e052f2472992578db93254ae8c45b9be3e4e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve all current feature installer assertions, union canonical progress/keyboard ownership and distinct-topic labels; remove obsolete installer stubs and duplicate moved save installer."
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_result_modes.py",
+      "sha": "a1badad00fb06bc9d47ac519e564d17aaedd8fa3",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+      "sha": "9845d98fb75498bde5a4e4e33f4739d0c3c06e5f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Source-reviewed native-ID recovery lifetime and explicit legacy review controls."
+    },
+    {
+      "path": "carr-library/tests/ui/test_export_confirmation.py",
+      "sha": "bf1a4134995af42c0e4ee3d40dc49e784d57d34f",
+      "status": "SOURCE_RECONSTRUCTED_NOT_RUN",
+      "reason": "Exercise the actual owned native MessageDialog protocol and final destruction while retaining raced-confirmation file safety cases."
+    },
+    {
+      "path": "carr-library/tests/ui/test_federated_search.py",
+      "sha": "b35a756bc502d59e24aaf75a4a09315d76b0bad2",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Current suite includes canonical scenarios and retains stronger accepted current behavior; avoid duplicate moved functions and obsolete native confirmation fixtures."
+    },
+    {
+      "path": "carr-library/tests/ui/test_keyboard_convergence.py",
+      "sha": "599551ffd6519c8489550ce395e5fa2bbf54be6f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_keyboard_manager.py",
+      "sha": "0a15e33ecbd8d90b7359c38590ac74b94aba97e5",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_keyboard_settings.py",
+      "sha": "f88aae3389728c07d6bd5ff43b5de1ebef739548",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_menu_contract.py",
+      "sha": "383928cbce553b5b9b341f7e5f6e2c4819b9d757",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_operation_progress.py",
+      "sha": "2d7662160cd31b898a946c98579c1b1dd2c7d844",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact current compatibility/capture regressions; canonical NativeProgressPanel cases retained independently in tests/progress/test_native_media_quiet.py."
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "sha": "2023024774465488f08f1eafb67ee12292fa605a",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Adapt current Desktop regression to actual shared NativeProgressPanel/ProgressHub/legacy projection; retain actual state/focus/reentrancy/stale-event and observer failures, keep Studio untouched pending reader map. Union reader's independent actual-worker owned-progress cleanup regressions f62."
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_media_quiet.py",
+      "sha": "0e040fab023e5c44798ce7a2da569f8860186f2e",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Preserve exact current compatibility/capture regressions; canonical NativeProgressPanel cases retained independently in tests/progress/test_native_media_quiet.py."
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "sha": "bc0a907207b52562455822f57a1084e87c69b8e7",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_dialog_lifetime.py",
+      "sha": "1b1744eafc3aecd22d945ac1f474119fe9a10ae1",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_reading_desk_actions.py",
+      "sha": "251d93a7ba62158acc93ea231123fc8dfa06c7ca",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Supplemental reader map: preserve exact current coverage and canonical unique real-worker/queue cases; source-reviewed NOT_RUN."
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "sha": "9fe2f3db8e74464af86c2f2e5457231d8c62bed8",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "Reader/progress/keyboard canonical/current convergence manifest2c863f; source-reviewed exact bytes, final execution pending."
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_dialog.py",
+      "sha": "4fb9aa4b6d584512389207733901d2fe626f624f",
+      "status": "SOURCE_REVIEWED_NOT_RUN",
+      "reason": "ASR single-service convergence ca68060a; source reviewed and exact readback, final execution pending."
+    }
+  ]
+}

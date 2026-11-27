@@ -1,0 +1,266 @@
+"""Regressions for the single published provider; audio fixtures are synthetic."""
+from hashlib import sha256
+import os
+import runpy
+from pathlib import Path
+import shutil
+import sys
+from threading import Event, Thread
+from time import monotonic, sleep
+
+import pytest
+
+from carr_library.integrations import dordiai_speech as bridge
+from carr_library.integrations import dordiai_voices as api
+from carr_library.speech import dordiai as owned_provider
+# Share checked-in fixture bodies without changing product import resolution.
+_speech_fixture = runpy.run_path(str(Path(__file__).with_name('test_dordiai_speech.py')))
+provider, shared_speech = _speech_fixture['provider'], _speech_fixture['shared_speech']
+_pipe_fixture = runpy.run_path(str(Path(__file__).with_name('test_dordiai_voices.py')))
+ACTOR, requests, runtime = (_pipe_fixture['ACTOR'], _pipe_fixture['requests'], _pipe_fixture['runtime'])
+
+
+def _assert_operation_released(provider):
+    # RLock has no .locked() on the supported Python versions. Another real
+    # thread must be able to acquire it; same-thread reacquisition proves less.
+    acquired = []
+    def attempt():
+        owned = provider._render_lock.acquire(blocking=False)
+        acquired.append(owned)
+        if owned:
+            provider._render_lock.release()
+    thread = Thread(target=attempt)
+    thread.start()
+    thread.join(2)
+    assert not thread.is_alive() and acquired == [True]
+
+
+def _hold_signature(monkeypatch, resource):
+    stamp, recorded = owned_provider._stamp, owned_provider._stamp(resource.stat())
+    monkeypatch.setattr(owned_provider, '_stamp',
+        lambda info: recorded if (info.st_dev, info.st_ino) == recorded[:2] else stamp(info))
+
+
+def test_two_installations_with_same_profiles_route_to_their_own_workers(provider, shared_speech, runtime, tmp_path):
+    second_runtime = tmp_path / 'Second synthetic installation' / 'kx47Runtime'
+    shutil.copytree(runtime, second_runtime)
+    shutil.copyfile(runtime.parent / 'manifest.ini', second_runtime.parent / 'manifest.ini')
+    second = bridge.DordiaiSpeechProvider(second_runtime, python_executable=str(Path(sys.executable).resolve()),
+                                          expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
+    registry = shared_speech.VoiceRegistry([provider, second])
+    try:
+        assert len(registry.voices()) == 10 and not registry.notices
+        first_voices, second_voices = provider.voices(), second.voices()
+        assert {v.id for v in first_voices}.isdisjoint(v.id for v in second_voices)
+        assert not any(str(runtime) in v.id or str(second_runtime) in v.id for v in registry.voices())
+        first_voice = next(v for v in first_voices if v.language == 'uk')
+        second_voice = next(v for v in second_voices if v.language == 'uk')
+        registry.synthesize('First installation.', first_voice.id, tmp_path / 'first.wav')
+        registry.synthesize('Second installation.', second_voice.id, tmp_path / 'second.wav')
+        for installed, expected in ((runtime, 'First installation.'), (second_runtime, 'Second installation.')):
+            rows = [row for row in requests(installed) if row['mode'] == 'reference']
+            assert [(row['profile'], row['language'], row['text']) for row in rows] == [('fixture_one', 'uk', expected)]
+        with pytest.raises(ValueError, match='voice and language'):
+            second.render('Wrong installation', first_voice, tmp_path / 'wrong.wav',
+                          shared_speech.SpeechSettings(), lambda: False)
+        assert not (tmp_path / 'wrong.wav').exists()
+    finally:
+        registry.close()
+        second.close()
+
+
+class SyntheticStream:
+    """A finite PCM iterator with explicit terminal cleanup, not a voice engine."""
+    def __init__(self, close):
+        self.remaining = 1
+        self.on_close = close
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if not self.remaining:
+            raise StopIteration
+        self.remaining -= 1
+        return api.PCMChunk(b'\x01\x00' * 4)
+
+    def close(self):
+        self.closed = True
+        self.on_close()
+
+
+@pytest.mark.parametrize('terminal', ['failure', 'cancel', 'deadline'])
+def test_terminal_stream_cleanup_happens_before_atomic_publication(provider, shared_speech, tmp_path, monkeypatch, terminal):
+    voice = provider.voices()[0]
+    clock = [0.0]
+    cancel = Event()
+
+    def close():
+        if terminal == 'failure':
+            raise RuntimeError('Synthetic terminal cleanup failed')
+        if terminal == 'cancel':
+            cancel.set()
+        if terminal == 'deadline':
+            clock[0] = 2.0
+
+    stream = SyntheticStream(close)
+    monkeypatch.setattr(bridge, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(provider.adapter, 'stream_pcm', lambda *args, **kwargs: stream)
+    expected = {'failure': RuntimeError, 'cancel': InterruptedError, 'deadline': TimeoutError}[terminal]
+    target = tmp_path / 'terminal.wav'
+    with pytest.raises(expected):
+        provider.render('Synthetic text.', voice, target,
+                        shared_speech.SpeechSettings(timeout_seconds=1), cancel.is_set)
+    assert stream.closed and not target.exists()
+    _assert_operation_released(provider)
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+def test_utterance_deadline_includes_initial_model_fingerprint(provider, shared_speech, tmp_path, monkeypatch):
+    voice = provider.voices()[0]
+    clock = [0.0]
+    original = provider.fingerprint
+    calls = []
+
+    def delayed(*args, **kwargs):
+        if not calls:
+            clock[0] = 2.0
+        calls.append(True)
+        return original(*args, **kwargs)
+
+    stream = SyntheticStream(lambda: None)
+    monkeypatch.setattr(bridge, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(provider, 'fingerprint', delayed)
+    monkeypatch.setattr(provider.adapter, 'stream_pcm', lambda *args, **kwargs: stream)
+    target = tmp_path / 'fingerprint-timeout.wav'
+    with pytest.raises(TimeoutError):
+        provider.render('Synthetic text.', voice, target,
+                        shared_speech.SpeechSettings(timeout_seconds=1), lambda: False)
+    assert not target.exists()
+    _assert_operation_released(provider)
+
+
+@pytest.mark.parametrize('cancel_source', ['caller', 'provider'])
+def test_provider_cold_discovery_cancellation_closes_owned_child(provider, runtime, monkeypatch, cancel_source):
+    assert provider.cancellable_discovery is True
+    helper = runtime / 'windows_runtime.py'
+    marker, hold = runtime / 'provider-probe-started', runtime / 'provider-hold-probe'
+    hold.touch()
+    with helper.open('a', encoding='utf8') as target:
+        target.write("\nfrom pathlib import Path\nfrom time import sleep\n"
+                     "Path(__file__).with_name('provider-probe-started').touch()\n"
+                     "while Path(__file__).with_name('provider-hold-probe').exists(): sleep(.01)\n")
+    children = []
+    real = api._JsonLinesProcess
+    def tracked(*args, **kwargs):
+        child = real(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(api, '_JsonLinesProcess', tracked)
+    cancel, errors = Event(), []
+    def discover():
+        try:
+            provider.voices(cancelled=cancel.is_set)
+        except Exception as error:
+            errors.append(error)
+    thread = Thread(target=discover)
+    thread.start()
+    try:
+        deadline = monotonic() + 5
+        while not marker.exists() and thread.is_alive() and monotonic() < deadline:
+            sleep(.01)
+        assert marker.exists() and children
+        cancel.set() if cancel_source == 'caller' else provider.cancel()
+        thread.join(timeout=5)
+        assert not thread.is_alive()
+        assert len(errors) == 1 and isinstance(errors[0], InterruptedError)
+        assert all(child.process.poll() is not None and not child._reader.is_alive()
+                   and not child._writer.is_alive() for child in children)
+        _assert_operation_released(provider)
+    finally:
+        cancel.set()
+        hold.unlink(missing_ok=True)
+        thread.join(timeout=5)
+        for child in children:
+            child.close()
+
+
+@pytest.mark.parametrize('unchanged_metadata', [False, True])
+def test_model_fingerprint_can_be_cancelled_without_losing_content_checks(provider, runtime, monkeypatch,
+                                                                        unchanged_metadata):
+    voice = provider.voices()[0]
+    resource = runtime / 'models/Holos/synthetic-resource.bin'
+    resource.write_bytes(b'first model bytes')
+    if unchanged_metadata:
+        _hold_signature(monkeypatch, resource)
+    original = provider.fingerprint(voice.id)
+    with pytest.raises(InterruptedError):
+        provider.fingerprint(voice.id, cancelled=lambda: True)
+    before = resource.stat()
+    resource.write_bytes(b'other model bytes')
+    os.utime(resource, ns=(before.st_atime_ns, before.st_mtime_ns))
+    assert provider.fingerprint(voice.id) != original
+
+
+def test_same_metadata_model_change_restarts_only_the_changed_warm_worker(
+        provider, shared_speech, runtime, tmp_path, monkeypatch):
+    voice = provider.voices()[0]
+    resource = runtime / 'models/Holos/synthetic-resource.bin'
+    resource.write_bytes(b'first model bytes')
+    _hold_signature(monkeypatch, resource)
+    settings = shared_speech.SpeechSettings()
+    provider.render('First request.', voice, tmp_path / 'first.wav', settings, lambda: False)
+    warm = provider.adapter._worker
+    assert warm is not None and warm.process.poll() is None
+    provider.render('Unchanged model.', voice, tmp_path / 'unchanged.wav', settings, lambda: False)
+    assert provider.adapter._worker is warm
+    before = resource.stat()
+    resource.write_bytes(b'other model bytes')
+    os.utime(resource, ns=(before.st_atime_ns, before.st_mtime_ns))
+    provider.render('Changed model.', voice, tmp_path / 'changed.wav', settings, lambda: False)
+    assert provider.adapter._worker is not None and provider.adapter._worker is not warm
+    assert warm.process.poll() is not None
+    assert not warm._reader.is_alive() and not warm._writer.is_alive()
+
+
+def test_rejected_concurrent_discovery_does_not_clear_active_provider_cancel(
+        provider, shared_speech, tmp_path, monkeypatch):
+    entered, release, closed = Event(), Event(), Event()
+    errors = []
+    voice = provider.voices()[0]
+    def held_stream(*args, **kwargs):
+        try:
+            yield api.PCMChunk(b'\x01\x00' * 4)
+            entered.set()
+            if not release.wait(5):
+                raise TimeoutError('Synthetic held stream was not released.')
+            yield api.PCMChunk(b'\x01\x00' * 4)
+        finally:
+            closed.set()
+    monkeypatch.setattr(provider.adapter, 'stream_pcm', held_stream)
+    output = tmp_path / 'cancelled-concurrent.wav'
+    def render():
+        try:
+            provider.render('Synthetic concurrent operation.', voice, output,
+                            shared_speech.SpeechSettings(), lambda: False)
+        except BaseException as exc:
+            errors.append(exc)
+    thread = Thread(target=render)
+    thread.start()
+    try:
+        assert entered.wait(5)
+        provider.cancel()
+        with pytest.raises(RuntimeError, match='active operation'):
+            provider.voices()
+        assert provider._requested_stop.is_set()
+        release.set()
+        thread.join(5)
+        assert not thread.is_alive()
+        assert len(errors) == 1 and isinstance(errors[0], InterruptedError)
+        assert closed.is_set() and not output.exists()
+        _assert_operation_released(provider)
+    finally:
+        release.set()
+        thread.join(5)
+        provider.close()
