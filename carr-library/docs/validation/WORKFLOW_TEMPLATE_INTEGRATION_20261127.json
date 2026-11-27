@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "component": "named-inert-assistant-workflow-templates",
-  "authoring_status": "CORE_CHECKPOINT_NOT_RUN",
+  "authoring_status": "SOURCE_COMPLETE_QUALIFICATION_NOT_RUN",
   "parent": "aa89b6f2e11bf49dd1b1350b28e8c055f54e62ac",
   "donor": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
   "donor_template_blob": "5f30e456acd385106d33381213b14b93e17f0675",
@@ -48,8 +48,23 @@
     }
   ],
   "pending": [
-    "native settings UI and current assistant action",
-    "explicit CLI operations",
-    "source/installed/native regression qualification"
-  ]
+    "actual Windows source/installed/native execution",
+    "human NVDA qualification remains separate"
+  ],
+  "qualification_parent": "48e038ef1993879605ecb83e0dfa17794382a851",
+  "source_cases": 506,
+  "installed_cases": 506,
+  "retained_cases": 412,
+  "new_cases": 94,
+  "native_checks": 24,
+  "oracle": "scripts/workflow_template_oracle.json",
+  "native_probe": "scripts/windows_workflow_templates_smoke.py",
+  "native_ui": "Existing assistant Templates action; actual name dialogs and owner-bound native removal confirmation; current scope Preview then Run",
+  "cli": "Existing research-library-assistant --templates (list/load/save/update/rename/remove/import/export/rebind); --run refused",
+  "shared_ui": "Existing borrowed assistant executor, current root/revision guard, completion-aware SaveCoordinator and shared progress observer",
+  "quality": {
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN"
+  }
 }

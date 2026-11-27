@@ -34,6 +34,8 @@ def main(argv=None, *, trust_controller=None):
     source.add_argument('--instructions', type=Path)
     source.add_argument('--resume')
     source.add_argument('--jobs', action='store_true', help='List saved jobs without executing them')
+    source.add_argument('--templates', nargs=argparse.REMAINDER, metavar='COMMAND',
+        help='Named settings: list/load/save/update/rename/remove/import/export/rebind; never executes')
     source.add_argument('--list-local-profiles', action='store_true',
                         help='List configured local chat profiles without contacting them')
     parser.add_argument('--local-profile',
@@ -52,8 +54,12 @@ def main(argv=None, *, trust_controller=None):
     if args.local_profile is not None and (args.instructions is None or args.run):
         parser.error('--local-profile requires --instructions and cannot combine with --run. '
                      'Review the proposal in a separate invocation before execution.')
-    if (args.jobs or args.list_local_profiles) and args.run:
-        parser.error('Listing saved jobs or profiles never runs an operation.')
+    if (args.jobs or args.list_local_profiles or args.templates is not None) and args.run:
+        parser.error('Listing or changing named settings never runs an operation.')
+    if args.templates is not None and any((args.workspace, args.input_root, args.output_root,
+            args.allow_create, args.allow_full_backup, *(value is not None for value in
+                (args.max_bytes, args.max_files, args.max_steps, args.max_seconds)))):
+        parser.error('Choose fresh scope after --templates rebind. Other template actions store no permissions.')
     if args.resume and any((args.workspace, args.input_root, args.output_root, args.allow_create,
             args.allow_full_backup, *(value is not None for value in
                 (args.max_bytes, args.max_files, args.max_steps, args.max_seconds)))):
@@ -82,7 +88,10 @@ def main(argv=None, *, trust_controller=None):
                          **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         production = LocalProduction(app.root, cancelled=stopped.is_set)
         service = AssistantService(app, production=production)
-        if args.list_local_profiles:
+        if args.templates is not None:
+            from .template_cli import run_templates
+            result = run_templates(args.templates, service, cancelled=stopped.is_set)
+        elif args.list_local_profiles:
             result = [{'id': row.id, 'name': row.name, 'endpoint': row.endpoint, 'model': row.model}
                       for row in ProfileStore(app.root / 'api-connections.json').profiles()
                       if row.local and row.provider == 'openai-compatible' and row.capabilities == ('llm',)]
