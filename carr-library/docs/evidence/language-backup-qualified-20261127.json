@@ -1,0 +1,676 @@
+{
+  "status": "IN_PROGRESS",
+  "product_subtree": "e4d5c6e27b0fae7fb61544675cd878b46eed4379",
+  "frozen_windows_candidate": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
+  "workflow_only_followup": "b00c173c63f9f414f7e1c656f2d99d1e0d3ffa78",
+  "product_bytes_equal": true,
+  "local": {
+    "status": "PASS",
+    "scope": "Linux final composition and independently installed wheel",
+    "published_commit": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
+    "source_tree": "27518cae86fffe993129584cf0bfd42502740dfe",
+    "local_equivalent_commit": "306255732878c6d43f208124a6413e34e320b449",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "combined_source_tests": {
+      "exit": 0,
+      "passed": 541,
+      "failed": 0,
+      "skipped": 0,
+      "suites": [
+        "tests/storage/test_backup_audio_composition.py",
+        "tests/storage/test_backup_boundary.py",
+        "tests/storage/test_backup_generated_audio.py",
+        "tests/storage/test_backup_keyboard_drafts.py",
+        "tests/storage/test_backup_pending_compatibility.py",
+        "tests/storage/test_backup_publication_recovery.py",
+        "tests/storage/test_backup_reading_state.py",
+        "tests/storage/test_backup_schema_identity.py",
+        "tests/storage/test_backup_source_binding_review.py",
+        "tests/storage/test_backup_v4_sidecars.py",
+        "tests/storage/test_complete_pending_backup.py",
+        "tests/storage/test_crash_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_library_backup_reading_state.py",
+        "tests/storage/test_pending_backup.py",
+        "tests/assistant/test_backup_receipt.py",
+        "tests/catalog/test_metadata_backup_roundtrip.py",
+        "tests/ui/test_desktop_handlers.py",
+        "tests/e2e/test_offline_startup.py",
+        "tests/e2e/test_google_translation.py",
+        "tests/ui/test_command_registry.py",
+        "tests/ui/test_integrated_commands.py",
+        "tests/ui/test_keyboard_manager.py"
+      ]
+    },
+    "additional_isolated_suites": [
+      {
+        "suite": "tests/search/test_semantic_cache.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "tests/search/test_semantic_cache_boundary.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "tests/packaging/test_source_wheel.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "suite": "tests/packaging/test_ci_check.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0
+      }
+    ],
+    "installed_wheel": {
+      "filename": "universal_research_library-0.2.0.dev1-py3-none-any.whl",
+      "sha256": "e55bec8255a448d4e1aa83afac9d400c152a59cd215c944b79f78915461d04a6",
+      "matched_source_wheel_installed_files": 279,
+      "isolated": true,
+      "loaded_project_modules": 75,
+      "requested_modules": {
+        "carr_library.library_backup": {
+          "sha256": "d952e188fd0fdf0e059699022772a5a37fd56930d30b345a63107bff2d9a29c4",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.backup_sidecars": {
+          "sha256": "7ed94178063c70aa57480dc2647f71b73b740bf9d8bf33612fbe0c65759af38a",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.pending_backup": {
+          "sha256": "3a2c279bb0b1fbcd6f058e9dd22b9fc48fb0c4a22ab02e904d65dfddef426240",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.durable_state": {
+          "sha256": "f0522a30322669666a6a12926f9c0ebece39d551e5369520b9ed2b95770c9c2b",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.application": {
+          "sha256": "788c86fb5f6905c11116874e98abf42c81e6c7276daa8aca20385d3879c3a2e6",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.translation": {
+          "sha256": "c8628de5d9b4b4afdb0efa283b6ce6cc26ae86e4817d448a833f35a629a14858",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.providers": {
+          "sha256": "4f365f3343c8ea0a5d31f594be0a1512b989cc6aba964b599b97e70f8fd01006",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.transcription_cli": {
+          "sha256": "d340c31561a7dc1ffd2686e07da1743b689645cb70b10f1508dbf59233098659",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.audio.transcription": {
+          "sha256": "8ecccd2de12534b57614c960e1cbe9c78e81ea8c9148de38210811a2138ade8b",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.audio.transcription_models": {
+          "sha256": "4ab85114f33165a792b9d3cb32e10ab1716061bf954bf3eca604a96ef330915e",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.ui.transcription_dialog": {
+          "sha256": "24d0618622a8303d981230526bb0a899d7e0c85dc0d415dc5bc0d9437ed05f34",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.ui.transcription_results": {
+          "sha256": "5eb8865ec77d948d7def2f1afd56050368a32068bb1b643dcca9feb95eaafba7",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.ui.translation_dialog": {
+          "sha256": "6e79b8a3ec01d155581cd0b0b0083033064808938c8caf03b2240c85ac9a0a5f",
+          "origin": "isolated environment site-packages"
+        },
+        "carr_library.ui.api_connections": {
+          "sha256": "06223403b297e36f9e8c2aa8f947a21b830a57712ab98814cc08e8e74cf00ba7",
+          "origin": "isolated environment site-packages"
+        }
+      },
+      "cases": [
+        {
+          "name": "partial-checkpoint",
+          "initial_state": "running",
+          "overlap": false,
+          "manifest_sha256": "dab3fdd87a50175fa80e146acfe79108cd98b16d48dafd667a8c6ef5f38df660",
+          "manifest_version": 5,
+          "layout": "sidecars-pending-v1",
+          "pending_file_count": 3,
+          "archive_unchanged": true,
+          "external_original_deleted": true,
+          "stable_edition_identity": true,
+          "restored_original_link_count": 1,
+          "isolated_worker_completed": true,
+          "restored_edition_count": 1
+        },
+        {
+          "name": "completed-pending-overlap",
+          "initial_state": "pending",
+          "overlap": true,
+          "manifest_sha256": "26f5b5ad951e7f3349ef4f793df4ff6ff131daa06038aa377cfba045157fdc51",
+          "manifest_version": 5,
+          "layout": "sidecars-pending-v1",
+          "pending_file_count": 3,
+          "archive_unchanged": true,
+          "external_original_deleted": true,
+          "stable_edition_identity": true,
+          "restored_original_link_count": 1,
+          "isolated_worker_completed": true,
+          "restored_edition_count": 2
+        }
+      ],
+      "transcription_entrypoint": {
+        "exit_code": 0,
+        "help_sha256": "a53fd351d02ba6943d7bf26128a70e7be4be89f0331af448307c9128bd30d59c"
+      }
+    },
+    "limitations": [
+      "Linux installed-wheel qualification only; no Windows or NVDA interaction.",
+      "Language modules are imported and checked for package identity; no neural model inference or translation API request.",
+      "Synthetic local TXT sources only; no user documents, recordings or external model acquisition."
+    ],
+    "artifacts": {
+      "final-composition-backup-ui.log": {
+        "sha256": "4b4e5e563f02de0cb4f213eb41d709036ba5269a0c05c6e94612be34e163030a",
+        "bytes": 1755
+      },
+      "final-composition-backup-ui.xml": {
+        "sha256": "d3b642f92bb648fbdff9b324ce58208cb5ffb1e1bc3333058c43db4192a0bec2",
+        "bytes": 83978
+      },
+      "final-composition-cache-packaging.log": {
+        "sha256": "79bce33f39452626200f74330638a22ae8fefdb6c2565ea0e1c958c5fbf01046",
+        "bytes": 2523
+      }
+    }
+  },
+  "completed_ci": [
+    {
+      "key": "languageWindows",
+      "run": 45929940975,
+      "job": 140279989266,
+      "platform": "Windows",
+      "commit": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45929940975/job/140279989266",
+      "suites": [
+        {
+          "suite": "tests/audio/test_transcription.py",
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/audio/test_transcription_models.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/audio/test_model_manifest.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_transcription_controller.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_transcription_results.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_transcription_cli.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_google_translation.py",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_provider_gateway.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_provider_transport_boundaries.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_api_connections.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_audio_menu_registry.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_translation_busy_guard.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_citation_styles_jobs.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/citations/test_bibliography_workbench.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/reader/test_export_no_clobber.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/reader/test_file_export.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/reader/test_binary_file_export.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_academic_document_export.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_native_checks.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_audio_bundle.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_windows_bundle.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "passed": 417,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "key": "languageLinux",
+      "run": 45929940975,
+      "job": 140279989516,
+      "platform": "Linux",
+      "commit": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45929940975/job/140279989516",
+      "suites": [
+        {
+          "suite": "tests/audio/test_transcription.py",
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/audio/test_transcription_models.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/audio/test_model_manifest.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_transcription_controller.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_transcription_results.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_transcription_cli.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_google_translation.py",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_provider_gateway.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_provider_transport_boundaries.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_api_connections.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_audio_menu_registry.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_translation_busy_guard.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_citation_styles_jobs.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/citations/test_bibliography_workbench.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/reader/test_export_no_clobber.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/reader/test_file_export.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/reader/test_binary_file_export.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_academic_document_export.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_native_checks.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_audio_bundle.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/packaging/test_windows_bundle.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "passed": 417,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "key": "backupLinux",
+      "run": 45929940986,
+      "job": 140279988865,
+      "platform": "Linux",
+      "commit": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45929940986/job/140279988865",
+      "suites": [
+        {
+          "suite": "tests/storage/test_backup_audio_composition.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_boundary.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_generated_audio.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_keyboard_drafts.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_pending_compatibility.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_publication_recovery.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_reading_state.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_schema_identity.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_source_binding_review.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_v4_sidecars.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_complete_pending_backup.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup_reading_state.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_pending_backup.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/assistant/test_backup_receipt.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_metadata_backup_roundtrip.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_offline_startup.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "passed": 360,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "pending": [
+    {
+      "name": "Full Windows installed bundle",
+      "run": 45929938111
+    },
+    {
+      "name": "Windows backup workflow with prepared audio parent",
+      "run": 45930802682
+    }
+  ],
+  "limitations": [
+    "No manual NVDA listening qualification",
+    "No private voice-cloning engine or paid Google API request qualification",
+    "Canonical studio/provider migration outside the supported typed layouts is not claimed"
+  ]
+}
