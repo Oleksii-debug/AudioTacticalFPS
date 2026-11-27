@@ -767,3 +767,63 @@ def test_provider_editor_keeps_full_profile_on_token_renewal_without_contacting_
     assert google_oauth_token(vault.records[saved.credential_ref], saved.endpoint)[0] == TOKEN + '_RENEWED'
     assert TOKEN not in store.path(p.id).read_text(encoding='utf-8')
     assert 'No provider was contacted' in by_name('Connection configuration status').GetValue()
+
+
+@pytest.mark.parametrize('glossary', [None, GLOSSARY], ids=['plain-nmt', 'exact-glossary'])
+def test_pasted_advanced_limit_retains_accepted_prefix_before_another_paid_call(tmp_path, transport, glossary):
+    from carr_library.assistant.state import MAX_CHECKPOINT_BYTES
+    service, p, _ = ready(tmp_path, transport)
+    identity, approval = submit(service, p, 'Pasted original sentence. ' * 4000, glossary=glossary)
+    def large_result(document):
+        key = 'glossaryTranslations' if glossary else 'translations'
+        row = document[key][0]
+        row['translatedText'] = 'T' * 190000
+        return {key: [row]}
+    transport['response'] = large_result
+    with pytest.raises(ValueError, match='2,000,000-character'):
+        service.resume(identity)
+    saved = service.get(identity)
+    assert saved['kind'] == 'translation/1' and saved['status'] == 'attention'
+    assert len(saved['receipts']) == 11 < len(saved['chunks'])
+    assert sum(len(row['text']) for row in saved['receipts']) == 2_090_000
+    assert service.jobs.path(identity).stat().st_size <= MAX_CHECKPOINT_BYTES
+    operations = service.gateway.ledger.get(approval.id)['operations']
+    assert len(operations) == 11 and all(row['status'] == 'complete' for row in operations.values())
+    before = service.jobs.path(identity).read_bytes()
+    reopened = TranslationService(service.directory, gateway=service.gateway)
+    with pytest.raises(ValueError, match='Accepted chunks were retained'):
+        reopened.resume(identity)
+    with pytest.raises(ValueError):
+        reopened.export(identity, tmp_path / 'oversized')
+    assert not (tmp_path / 'oversized').exists()
+    assert service.jobs.path(identity).read_bytes() == before
+    assert len(transport['calls']) == 12
+
+
+def test_maximum_pasted_advanced_source_reserves_existing_serialization_limits(tmp_path, transport):
+    from carr_library.assistant.state import MAX_CHECKPOINT_BYTES
+    from carr_library.speech.reading import MAX_PROJECT_BYTES
+    service, p, _ = ready(tmp_path, transport)
+    original = '\U0001f642' * 2_000_000
+    identity, _ = submit(service, p, original, glossary=GLOSSARY)
+    assert service.jobs.path(identity).stat().st_size <= MAX_CHECKPOINT_BYTES
+    reading = ReadingDocument(original, title='Translation')
+    reading.replace(0, len(reading.text), '\x02' * 2_000_000,
+                    label='Machine translation derivative; not a source quotation')
+    target = tmp_path / 'maximum-pasted.reading.json'
+    reading.save(target)
+    assert target.stat().st_size <= MAX_PROJECT_BYTES
+    restored = ReadingDocument.load(target)
+    assert restored.source_text == original and restored.source_anchor is None
+    assert len(restored.text) == 2_000_000
+    assert len(transport['calls']) == 1  # Discovery only; no billable request.
+
+
+def test_pasted_advanced_rejects_predictable_escaped_project_overflow_before_job_or_transfer(tmp_path, transport):
+    service, p, _ = ready(tmp_path, transport)
+    # Valid pasted/provider text can require six JSON bytes per character.
+    # Two retained source copies plus one bounded translation would exceed
+    # the actual existing 32 MiB ReadingDocument format before any paid call.
+    with pytest.raises(ValueError, match='reading-project space'):
+        submit(service, p, '\x02' * 2_000_000, glossary=GLOSSARY)
+    assert not service.jobs.identities() and len(transport['calls']) == 1

@@ -247,24 +247,24 @@ class TranslationService:
         Retain room for the single accepted response that can cross the text
         limit, and bounded per-chunk receipt fields and timestamps.
         """
-        if job.get('kind') != 'translation/2':
+        if job.get('kind') != 'translation/2' and job['profile']['adapter'] != 'google-translation-v3':
             return
         reading = ReadingDocument(job['source_text'], title=job['title'],
-                                  source_anchor=job['source_binding']['anchor'])
+            source_anchor=job['source_binding']['anchor'] if job.get('kind') == 'translation/2' else None)
         original_bytes = len((json.dumps(reading.to_dict(), ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
         if original_bytes + 6 * 2_000_000 + 1024 > MAX_PROJECT_BYTES:
-            raise ValueError('This source leaves insufficient reading-project space for translation; choose fewer positions.')
+            raise ValueError('This source leaves insufficient reading-project space for translation; choose less text or fewer source positions.')
         queued_bytes = len((canonical(job) + '\n').encode('utf-8'))
         if queued_bytes + 6 * (2_000_000 + 200000) + 1000 * len(job['chunks']) > MAX_CHECKPOINT_BYTES:
             raise ValueError('This source exceeds the translation checkpoint budget; choose fewer positions.')
 
     @staticmethod
     def _output_budget(job):
-        if job.get('kind') == 'translation/2' and (
+        if (job.get('kind') == 'translation/2' or job['profile']['adapter'] == 'google-translation-v3') and (
                 sum(len(row['text']) for row in job['receipts']) > 2_000_000
                 or len(_assemble_translation(job['chunks'], job['receipts'])) > 2_000_000):
             raise ValueError('The translated text exceeds the 2,000,000-character reading-copy limit. '
-                             'Accepted chunks were retained; choose a smaller source range for a new job.')
+                             'Accepted chunks were retained; choose less text or a smaller source range for a new job.')
 
     def _languages_path(self, profile):
         return self.directory / ('languages-' + profile.id + '.json')

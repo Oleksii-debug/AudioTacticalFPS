@@ -163,7 +163,7 @@ The source and translated reading copy each support at most 2,000,000 characters
 Requests contain at most 4,500 characters. Library-source and Advanced jobs bound
 each provider response to 200,000 bytes and stop further requests if accepted
 translated text or its reconstructed source separators exceed the reading-copy budget.
-Before a new source job is saved, a conservative JSON-size preflight reserves the
+Before a new library-source or Advanced job is saved, a conservative JSON-size preflight reserves the
 existing 64 MiB checkpoint and 32 MiB reading-project limits, including escaped
 source text, a single translation edit and accepted receipts. Already accepted chunks remain
 stored; an over-limit job is not reported complete.
