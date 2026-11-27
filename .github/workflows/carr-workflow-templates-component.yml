@@ -1,0 +1,50 @@
+name: CARR typed workflow template component
+
+on:
+  push:
+    branches: [carr/typed-workflow-templates-2aa-20261127, carr/typed-workflow-templates-2aa-20261127-*]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typed-template-acceptance:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the current product and test dependencies
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -m pip install '.[test]'
+          python -m pip check
+      - name: Require new typed recipes and existing authority/handler preservation
+        run: |
+          set -euo pipefail
+          python -m compileall -q src scripts
+          python scripts/ci_check.py --jobs 2 \
+            tests/assistant/test_workflow_templates.py \
+            tests/assistant/test_workflow_template_handlers.py \
+            tests/assistant/test_workflow_template_parameters.py \
+            tests/assistant/test_workflow_templates_cli.py \
+            tests/assistant/test_workflow_template_editor.py \
+            tests/assistant/test_planning_handlers.py \
+            tests/ui/test_studio_keyboard_registration.py

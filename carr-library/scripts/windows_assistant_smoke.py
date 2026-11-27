@@ -19,8 +19,8 @@ import traceback
 SOURCE_FILES = (
     'assistant/__init__.py', 'assistant/models.py', 'assistant/planner.py',
     'assistant/service.py', 'assistant/state.py', 'assistant/backup_receipt.py',
-    'assistant/templates.py',
-    'ui/assistant_dialog.py',
+    'assistant/templates.py', 'assistant/template_bindings.py',
+    'ui/assistant_dialog.py', 'ui/workflow_templates.py',
 )
 EXPECTED_CHECKS = (
     'native preview is non-executing and shows exact operations',

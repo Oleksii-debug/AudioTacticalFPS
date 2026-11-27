@@ -28,7 +28,12 @@ Paths must be inside your selected input/output folders. No delete, shell or rem
 def preview(value, scope):
     text(value, 'assistant instruction', maximum=4 * 1024 * 1024)
     if value.lstrip().startswith('{'):
-        return Plan.from_json(value, scope=scope)
+        from ..durable_state import _unique
+        proposed = json.loads(value, object_pairs_hook=_unique)
+        from .templates import REQUEST_SCHEMA, plan_from_request
+        if isinstance(proposed, dict) and proposed.get('schema') == REQUEST_SCHEMA:
+            return plan_from_request(proposed, scope)
+        return Plan.from_dict(proposed, scope=scope)
     steps = []
     lines = value.strip().splitlines()
     index = 0
