@@ -10,6 +10,8 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -41,11 +43,12 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False, startup_delay=0):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
     code = f'''
 import os, time
+time.sleep({startup_delay!r})
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
@@ -53,7 +56,7 @@ def _pause():
     Path({str(marker)!r}).write_text('observed', encoding='utf-8')
     if {exit_after!r}:
         os._exit(7)
-    time.sleep(20)
+    time.sleep(60)
 '''
     if boundary == 'before':
         code += '''
@@ -98,6 +101,25 @@ LibraryApp._import_file = _replay
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
 
 
+def _observe_termination(monkeypatch, marker, termination):
+    """Reach the real commit barrier before expiring only the parent deadline."""
+    outcomes = []
+    invoke = worker._invoke
+
+    def observe(*args, **kwargs):
+        result = invoke(*args, **kwargs)
+        outcomes.append(result['state'])
+        return result
+
+    monkeypatch.setattr(worker, '_invoke', observe)
+    if termination == 'timeout':
+        monotonic = time.monotonic
+        monkeypatch.setattr(worker, 'time', SimpleNamespace(
+            monotonic=lambda: monotonic() + (100 if marker.is_file() else 0),
+            sleep=time.sleep))
+    return outcomes
+
+
 @pytest.mark.parametrize('arguments, expected', [
     (['-V'], 'Python '),
     (['-c', "print('unrelated helper')"], 'unrelated helper'),
@@ -120,11 +142,18 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
+    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+             startup_delay=startup_delay)
+    outcomes = _observe_termination(monkeypatch, marker, termination)
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=30.0)
+    if startup_delay:
+        assert time.monotonic() - started > 3.0  # Actual startup exceeds the old deadline.
     assert marker.exists(), result
+    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
     assert result['verified'] is (kind == 'txt')
@@ -155,11 +184,18 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
+    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+             startup_delay=startup_delay)
+    outcomes = _observe_termination(monkeypatch, marker, termination)
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=30.0)
+    if startup_delay:
+        assert time.monotonic() - started > 3.0
     assert marker.exists(), result
+    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:

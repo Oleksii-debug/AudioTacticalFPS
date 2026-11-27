@@ -589,6 +589,12 @@ jobs:
               'tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory',
               'tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound',
               'tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries',
+              'tests/e2e/test_operations_cli.py',
+              'tests/e2e/test_transcription_cli.py',
+              'tests/assistant/test_translation_v3.py',
+              'tests/assistant/test_local_planning.py',
+              'tests/assistant/test_planning_handlers.py',
+              'tests/storage/test_transcription_backup.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -706,6 +712,18 @@ jobs:
           retention-days: 3
 
       # Evidence and exact public-source Python wheel only: no model, native DLLs, OCR source payload, or user documents
+      - name: Make the verified installed application wheel available for private assembly
+        if: ${{ !cancelled() && steps.complete_bundle.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-tested-application-wheel-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/tested-application-wheel/
+            carr-library/ci-results/tested-application-wheel.json
+            carr-library/ci-results/source-wheel-proof.json
+          if-no-files-found: error
+          retention-days: 7
+
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
@@ -721,6 +739,10 @@ jobs:
             'tests/ui/test_progress_voice_actions.py',
             'tests/storage/test_progress_preferences_backup.py',
             'tests/progress/test_progress_media_integration.py',
+            'tests/assistant/test_translation.py',
+            'tests/assistant/test_translation_v3.py',
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_planning_handlers.py',
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
             'tests/e2e/test_offline_startup.py',
@@ -771,6 +793,9 @@ jobs:
             'tests/reader/test_context.py',
             'tests/reader/test_topic_tree.py',
             'tests/storage/test_backup_schema_identity.py',
+            'tests/storage/test_atomic_state_publication.py',
+            'tests/ingest/test_worker_publication_boundary.py',
+            'tests/reader/test_export_publication_boundary.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
             'tests/research/test_csl_author_boundaries.py',
@@ -794,6 +819,7 @@ jobs:
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
             'tests/reader/test_file_export.py',
+            'tests/reader/test_export_no_clobber.py',
             'tests/reader/test_academic_documents.py',
             'tests/reader/test_bibliographic_locators.py',
             'tests/reader/test_binary_file_export.py',
@@ -892,7 +918,6 @@ jobs:
             'tests/studio/test_studio_controller.py',
             'tests/ingest/test_import_publication_point.py',
             'tests/ingest/test_import_replay_identity.py',
-            'tests/reader/test_export_no_clobber.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/research/test_bibtex_import.py',
             'tests/ui/test_progress_job_results.py',
@@ -900,7 +925,6 @@ jobs:
             'tests/storage/test_state_snapshot_identity.py',
             'tests/storage/test_backup_generated_audio.py',
             'tests/storage/test_backup_translation.py',
-            'tests/assistant/test_translation.py',
             'tests/packaging/test_native_checks_manifest.py',
             'tests/test_delivery_contract.py',
             'tests/storage/test_backup_primary_producers.py',
@@ -917,12 +941,10 @@ jobs:
             'tests/citations/test_custom_csl.py',
             'tests/citations/test_bibliography_workbench.py',
             'tests/citations/test_custom_workbench.py',
-            'tests/ingest/test_worker_publication_boundary.py',
             'tests/e2e/test_import_files_cancellation.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/storage/test_backup_pending_common4.py',
             'tests/storage/test_pending_backup.py',
-            'tests/reader/test_export_publication_boundary.py',
             'tests/reader/test_export_change_time.py',
             'tests/ui/test_export_confirmation.py',
             'tests/storage/test_backup_v4_sidecars.py',

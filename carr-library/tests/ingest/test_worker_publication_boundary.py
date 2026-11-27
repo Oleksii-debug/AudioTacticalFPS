@@ -10,6 +10,7 @@ from uuid import uuid4
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
 
 
@@ -88,6 +89,16 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     original = source.read_bytes()
     marker = tmp_path / 'committed'
     processes = publication_barrier(monkeypatch, marker, crash=stop == 'crash')
+    outcomes = []
+    invoke = worker._invoke
+
+    def observe_invocation(*args, **kwargs):
+        result = invoke(*args, **kwargs)
+        outcomes.append(result['state'])
+        return result
+
+    # Observe the actual stopped child; do not replace its result with a fixture.
+    monkeypatch.setattr(worker, '_invoke', observe_invocation)
     if stop == 'timeout':
         monotonic = time.monotonic
         monkeypatch.setattr(worker, 'time', SimpleNamespace(
@@ -105,6 +116,7 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     assert marker.is_file(), result
     assert result['state'] == 'complete', result
     assert result['recovered_publication'] is True
+    assert outcomes == [{'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]]
     assert result['worker_state'] == {'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]
     assert result['completed'] == (2 if kind == 'epub' else 1)
     assert len(processes) == 1 and processes[0].poll() is not None
@@ -117,6 +129,11 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
         assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
+        receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
+                             'WHERE revision=?', (result['id'],)).fetchone()
+        candidate = request['publication_candidate']
+        assert candidate['revision'] == result['id'] and candidate['attempt'] == request['attempt']
+        assert tuple(receipt) == (result['request_id'], request['attempt'], candidate['sha256'])
 
 
 def test_precommit_cancellation_remains_cancelled_without_publication(tmp_path, monkeypatch):
@@ -133,6 +150,7 @@ def test_precommit_cancellation_remains_cancelled_without_publication(tmp_path, 
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
 
 
 def test_prelaunch_cancellation_never_starts_or_recovers_a_worker(tmp_path, monkeypatch):
@@ -215,6 +233,37 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
         assert app.browse(workspace, collection=collection) == ()
 
 
+def test_other_import_before_child_launch_is_not_this_workers_commit(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Concurrent replay boundary')
+    source = source_file(tmp_path, 'docx')
+    work_id, edition_id = uuid4().hex, uuid4().hex
+    marker = tmp_path / 'replay-before-commit'
+    processes = publication_barrier(monkeypatch, marker, before=True)
+    launch = worker.subprocess.Popen
+    published = []
+
+    def intervening_import(command, *args, **kwargs):
+        if not published:
+            # Another real import completes the same source/edition before our
+            # child acquires the shared writer guard. Equal source identity
+            # cannot grant this request the other transaction's ownership.
+            published.append(app._import_file(workspace, source,
+                work_id=work_id, edition_id=edition_id))
+        return launch(command, *args, **kwargs)
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
+    result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
+                            cancelled=marker.exists, timeout=30)
+    assert published[0]['state'] == 'complete'
+    assert marker.is_file() and len(processes) == 1
+    assert result['state'] == 'cancelled', result
+    assert 'publication_recovered' not in result
+    assert app.browse(workspace)
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
 @pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration'))
 def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, change):
     app = LibraryApp(tmp_path / 'library')
@@ -234,6 +283,8 @@ def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, chan
         changed['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], changed)
     assert worker._published_after_stop(app, initial, 0) is None
+    with pytest.raises(ValueError, match='publication|Committed'):
+        worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
 
 
 def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
@@ -247,6 +298,8 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
     raw[-1] ^= 1
     retained.write_bytes(raw)
     assert worker._published_after_stop(app, initial, 0) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
 
 
 @pytest.mark.parametrize('binding', ('job', 'configuration'))
@@ -263,3 +316,51 @@ def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, bi
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
     assert worker._published_after_stop(app, request, 0) is None
+
+
+@pytest.mark.parametrize('boundary', (None, 0))
+def test_legacy_watermark_survives_backup_validation_but_is_not_restored(tmp_path, boundary):
+    from carr_library.library_backup import create_backup, restore_backup
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Legacy request backup')
+    source = source_file(tmp_path, 'txt')
+    result = worker.run_request(app.root, workspace, source,
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    assert result['state'] == 'complete'
+    request = worker.load_request(app.root, result['request_id'])
+    request['publication_watermark'] = boundary
+    request['state'] = 'running'  # The parent never received its final reply.
+    request.pop('result')
+    worker._store(app.root, result['request_id'], request)
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    source.unlink()
+
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = worker.load_request(restored_root, result['request_id'])
+    assert not {'publication_watermark', 'attempt', 'publication_candidate'} & restored.keys()
+    reopened = LibraryApp(restored_root)
+    resumed = reopened.resume_import(workspace, result['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == result['id']
+    with reopened.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('boundary', (True, -1, 2 ** 63, '0'))
+def test_malformed_legacy_watermark_cannot_enter_backup(tmp_path, boundary):
+    from carr_library.library_backup import create_backup
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Rejected legacy request')
+    result = worker.run_request(app.root, workspace, source_file(tmp_path, 'txt'),
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    assert result['state'] == 'complete'
+    request = worker.load_request(app.root, result['request_id'])
+    request['publication_watermark'] = boundary
+    worker._store(app.root, result['request_id'], request)
+    with pytest.raises(ValueError, match='publication boundary'):
+        create_backup(app, tmp_path / 'rejected-backup')
