@@ -123,6 +123,21 @@ def _assemble_translation(chunks, receipts):
     return ''.join(parts)
 
 
+def _preview_fields(profile, value, parts, source, target, *, rate_per_million=None,
+                    glossary=None, context=None):
+    """Pure reviewed metadata; shared by one document and passive batch manifests."""
+    estimate = None
+    if rate_per_million not in (None, ''):
+        estimate = str((money(rate_per_million) * len(value) / Decimal(1_000_000)).quantize(Decimal('0.000001'), rounding=ROUND_UP))
+    return {'source_sha256': _hash(value), 'characters': len(value),
+        'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
+        'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
+        'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
+        'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
+        'preservation': 'plain text derivative; document formatting is not retained',
+        **(context or {})}
+
+
 class TranslationService:
     def __init__(self, directory, *, gateway=None, library=None, source_guard=lambda: None):
         self.directory = local_path(directory, must_exist=False)
@@ -206,20 +221,21 @@ class TranslationService:
             raise ValueError('The chosen source or target is not declared supported by this provider model.')
         if source == target:
             raise ValueError('Choose a target language different from the source.')
-        estimate = None
-        if rate_per_million not in (None, ''):
-            estimate = str((money(rate_per_million) * len(value) / Decimal(1_000_000)).quantize(Decimal('0.000001'), rounding=ROUND_UP))
+        result = _preview_fields(profile, value, parts, source, target,
+            rate_per_million=rate_per_million, glossary=glossary, context=context)
         if cancelled():
             raise InterruptedError('Translation review cancelled.')
-        return {'source_sha256': _hash(value), 'characters': len(value),
-            'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
-            'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
-            'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
-            'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
-            'preservation': 'plain text derivative; document formatting is not retained',
-            **(context or {})}
+        return result
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost, glossary=None,
+               source_anchor=None, source_metadata=None, source_topic=None, cancelled=lambda: False):
+        job = self._prepared_job(profile, value, source, target, title=title, authorization=authorization,
+            per_call_cost=per_call_cost, glossary=glossary, source_anchor=source_anchor,
+            source_metadata=source_metadata, source_topic=source_topic, cancelled=cancelled)
+        self.jobs.save(job)
+        return job['id']
+
+    def _prepared_job(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost, glossary=None,
                source_anchor=None, source_metadata=None, source_topic=None, cancelled=lambda: False):
         context = source_context(value, source_anchor, source_metadata, source_topic)
         preview = self.preview(profile, value, source, target, glossary=glossary,
@@ -236,8 +252,7 @@ class TranslationService:
             'authorization': asdict(authorization), 'per_call_cost': str(cost), **(context or {})}
         if cancelled():
             raise InterruptedError('Translation submission cancelled.')
-        self.jobs.save(job)
-        return identity
+        return job
 
     def _load(self, identity):
         """Verify existing receipts without renewing remote authority or billing."""
@@ -299,9 +314,13 @@ class TranslationService:
                     raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
         return job
 
-    def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
+    def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None,
+               before_resume=lambda job: None):
         with self.jobs.lock(identity):
             job = self._load(identity)
+            # A batch may further constrain this already-approved child. Check
+            # under the same job lock, before changing state or making a call.
+            before_resume(job)
             self._validate_source(job, cancelled=cancelled)
             profile = ProviderProfile(**job['profile'])
             authorization = Authorization(**job['authorization'])
@@ -388,4 +407,12 @@ class TranslationService:
         return report
 
     def list(self):
-        return tuple(self._load(identity) for identity in self.jobs.identities())
+        result = []
+        for identity in self.jobs.identities():
+            value = self.jobs.load(identity)
+            if value.get('kind') == 'translation-batch/1':
+                from .translation_batch import validate_batch
+                validate_batch(value, identity)
+                continue
+            result.append(self._load(identity))
+        return tuple(result)

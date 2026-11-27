@@ -479,8 +479,18 @@ def _translation_job(db, value, identity):
         raise ValueError('Completed translation is missing accepted chunks.')
 
 
+def _translation_batch(db, value, identity):
+    from .assistant.translation_batch import validate_batch
+    manifest = validate_batch(value, identity)
+    for member in manifest['members']:
+        job = member['job']
+        # Templates have no execution state. Reuse the same passive source,
+        # provider/request and quota validation as a normal unstarted child.
+        _translation_job(db, {**job, 'updated': job['created']}, job['id'])
+
+
 def validate_collection(db, stage, entries, *, cancelled):
-    """Bind accepted translation chunks to their preserved usage evidence."""
+    """Bind batch templates, accepted chunks and their preserved usage evidence."""
     from pathlib import Path
     from .durable_state import read_json
     from .assistant.models import canonical
@@ -494,6 +504,18 @@ def validate_collection(db, stage, entries, *, cancelled):
         if match is None or match[2]:
             continue
         job = read_json(Path(stage) / name)
+        if job.get('kind') == 'translation-batch/1':
+            from .assistant.translation_batch import validate_batch, validate_member
+            manifest = validate_batch(job, match[1])
+            for index, member in enumerate(manifest['members']):
+                if cancelled():
+                    raise InterruptedError('Translation batch verification cancelled.')
+                child_name = 'state/translation/jobs/' + member['job']['id'] + '.json'
+                if child_name in inventory:
+                    validate_member(manifest, index, read_json(Path(stage) / child_name))
+                # Missing children are an unfinished local preparation. The
+                # exact validated templates remain; restore grants no replay.
+            continue
         accepted = [row for row in job['receipts'] if row['request_sha256'] is not None]
         if not accepted:
             continue
@@ -546,6 +568,8 @@ def validate(db, name, value):
             fields(value, {'command'})
             if value['command'] not in ('run', 'pause', 'cancel'):
                 raise ValueError('Invalid translation control.')
+        elif type(value) is dict and value.get('kind') == 'translation-batch/1':
+            _translation_batch(db, value, match[1])
         else:
             _translation_job(db, value, match[1])
     elif match := ASSISTANT.fullmatch(name):
