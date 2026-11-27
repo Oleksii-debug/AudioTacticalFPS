@@ -34,7 +34,7 @@ def _saved(tmp_path, *, name='EFFECT.WAV', music=False):
     script = _script(name)
     if music:
         script = script.replace('[sound', '[music mood=calm tempo=90 seed=7]\n[sound')
-    studio.new(script, title='Portable input sounds')
+    studio.new(script, title='Portable input sounds', input_kind='script')
     output = tmp_path / 'audio'
     output.mkdir()
     studio.configure(output_dir=output)
@@ -206,3 +206,33 @@ def test_generated_music_companions_roundtrip_as_independent_verified_files(tmp_
     after = reopened.render()
     assert after['status'] == 'complete' and after['frames'] == before['frames']
     assert sha256(Path(after['output']).read_bytes()).digest() == sha256(Path(before['output']).read_bytes()).digest()
+
+
+@pytest.mark.parametrize('legacy', [False, True], ids=['version2-literal', 'version1-imported'])
+def test_literal_source_directives_never_select_sound_inputs_during_backup(tmp_path, legacy):
+    source_text = '[sound ../../outside.wav]\n[pause 2]\n# Literal heading'
+    original = tmp_path / 'book.txt'
+    original.write_text(source_text, encoding='utf-8')
+    studio = StudioController(private_root=tmp_path / 'private')
+    studio.new(source_text, source_reference={
+        'kind': 'local-text', 'filename': original.name, 'original_path': str(original),
+        'bytes_sha256': sha256(original.read_bytes()).hexdigest()})
+    output = tmp_path / 'audio'
+    output.mkdir()
+    studio.configure(output_dir=output)
+    project = studio.save(tmp_path / 'literal.json')
+    if legacy:
+        payload = json.loads(project.read_text(encoding='utf-8'))
+        payload['version'] = 1
+        del payload['input_kind']
+        project.write_text(json.dumps(payload), encoding='utf-8')
+    before = project.read_bytes()
+    snapshot = tmp_path / 'literal.zip'
+    backup_project(project, snapshot, project_dir=output, include_cache=False, include_audio=False)
+    with zipfile.ZipFile(snapshot) as archive:
+        assert not any(name.startswith('audio/assets/') for name in archive.namelist())
+    restored = restore_project(snapshot, tmp_path / 'restored')
+    reopened = StudioController(private_root=tmp_path / 'other-private').open(restored['project_file'])
+    assert reopened.input_kind == 'narration' and reopened.script == source_text
+    assert reopened.plan().original_script == source_text
+    assert project.read_bytes() == before and original.read_text(encoding='utf-8') == source_text

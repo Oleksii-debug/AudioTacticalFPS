@@ -263,7 +263,7 @@ def test_snapshot_after_real_render_restores_checked_outputs_without_new_synthes
     digest = hashlib.sha256(Path(before['output']).read_bytes()).hexdigest()
     assert engine.calls == 1
     controller = StudioController(private_root=tmp_path / 'private')
-    controller.new(script)
+    controller.new(script, input_kind='script')
     controller.configure(voice='fixture:local', output_dir=root)
     file = tmp_path / 'studio.json'
     controller.save(file)

@@ -65,6 +65,70 @@ That probe runs the real app's native checks and self-test through the exact EXE
 It requires ready state and never installs or repairs anything. Fresh installation
 and GUI/NVDA acceptance remain separate release checks.
 
+## Actual fresh EXE installation and first GUI boot
+
+Use a fresh extracted private bundle on an interactive native Windows desktop.
+The bundle must have no `.venv` at all. Run this source-checkout helper
+**before any Python-led installation**, with a new report path outside the bundle:
+
+```powershell
+python -I -B carr-library\packaging\native-launcher\probe_fresh_windows.py --bundle-root C:\PrivateBuild\ResearchLibrary --report C:\PrivateBuild\fresh-launcher-probe.json --timeout 600
+```
+
+The helper verifies the sealed manifest using the trusted source checkout's
+installer verifier, then launches the actual bundled `ResearchLibrary.exe`
+with no arguments. The normal native launcher must perform offline installation
+and reach the real wx desktop. The helper requires the completion marker, installed
+Python and a database inside its newly created private data directory. It accepts
+only a visible, enabled, responsive application window whose live Python process
+belongs to the exact job created for that launch.
+
+Each launcher starts suspended, joins a non-breakaway job with kill-on-close, and
+only then resumes. An assignment failure terminates the exact still-suspended
+process handle. The accepted GUI process handle remains open through shutdown;
+a matching title or reused PID alone cannot establish ownership. The helper
+rechecks membership and responsiveness, posts normal `WM_CLOSE`, and requires
+the GUI process, launcher and all owned descendants to exit. It then runs
+`--launcher-check`, `--check-installation` and `--self-test` through
+the same real EXE. A nonzero exit, missing GUI or remaining child fails the probe.
+Timeouts terminate only its owned job; cleanup waits are bounded.
+
+Temporary child environment settings include the pinned platformdirs
+`WIN_PD_OVERRIDE_*` Known Folder overrides. Changing APPDATA alone does not
+redirect that library's Windows data lookup. The probe changes no host environment
+or registry settings and removes only its own temporary test data. It leaves the
+newly installed bundle environment in place. Existing, incomplete or linked
+`.venv` paths are refused and preserved; a failed run must use another fresh
+extraction for its next installation attempt.
+
+Success also requires the original manifest bytes and every sealed file hash to
+remain unchanged. The report distinguishes automated first-launch GUI boot/close
+from full interface acceptance: `first_launch_gui_boot_close_verified` can be
+true while `gui_verified`, `nvda_verified` and
+`authenticode_verified` remain false. Manual NVDA and signing are always
+reported `NOT_RUN`; window responsiveness is not an accessibility or signing
+assessment.
+
+Focused portable contracts are separate from actual native execution:
+
+```powershell
+python -m pytest -q carr-library\tests\packaging\test_native_fresh_launcher.py carr-library\tests\packaging\test_native_launcher_bundle.py
+```
+
+These tests use process/API doubles only for failure and ownership contracts.
+This source addition was prepared while the local executor was unavailable:
+portable execution and actual fresh-bundle native acceptance were `NOT_RUN`
+at preparation. A later exact-source native report must establish those results.
+The helper does not change the launcher C source, executable or build provenance.
+
+Platform contracts used here:
+
+- [Job objects and descendant membership](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)
+- [AssignProcessToJobObject](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-assignprocesstojobobject)
+- [IsProcessInJob](https://learn.microsoft.com/en-us/windows/win32/api/jobapi/nf-jobapi-isprocessinjob)
+- [SendMessageTimeoutW return and timeout rules](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessagetimeoutw)
+- [Pinned platformdirs 4.10.0 Windows path overrides](https://github.com/tox-dev/platformdirs/blob/4.10.0/src/platformdirs/windows.py)
+
 ## Optional pinned cross build
 
 `toolchain.lock.json` pins the official Zig 0.14.1 archive URLs, lengths and SHA256

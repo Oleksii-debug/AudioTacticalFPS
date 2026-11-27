@@ -11,7 +11,8 @@ Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 extends that manifest with explicitly named, checksummed sidecars.
 Version 4 includes progress notification preferences, disconnected provider
 settings and a checked SQLite ledger, with no restored remote authorization or
-credential references.
+credential references. Typed assistant checkpoints retain their history; every
+restored job requires a new review of its current permissions before execution.
 Legacy version 1/2/3 backups and version 4 backups are accepted only for an exact
 supported V3 or V4 database schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
@@ -21,7 +22,7 @@ from contextlib import closing
 from hashlib import sha256
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import sqlite3
 import stat
@@ -29,7 +30,7 @@ from tempfile import TemporaryDirectory
 
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 from .ingest.bundle import _plain, _unique_object
-from .ingest.catalog_asset_copy import copy_catalog_assets, verify_catalog_assets
+from .ingest.catalog_asset_copy import catalog_inventory, copy_catalog_assets, verify_catalog_assets
 from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import _regular_if_present, exclusive_writer
@@ -61,6 +62,14 @@ from .progress import (
     validate_progress_settings_payload,
 )
 
+from .assistant.backup import (
+    MAX_FILES as MAX_ASSISTANT_FILES, MAX_BYTES as MAX_ASSISTANT_BYTES,
+    is_sidecar as is_assistant_sidecar, sidecar_limit as assistant_sidecar_limit,
+    snapshot_files as snapshot_assistant_files, validate_pairs as validate_assistant_pairs,
+    add_restore_reviews,
+)
+from .assistant.backup_state import validate_state_bytes as validate_assistant_state
+
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
 MANIFEST = 'manifest.json'
@@ -69,10 +78,12 @@ MAX_MANIFEST = 8 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
-MAX_SIDECARS = 6 + MAX_PROJECTS * 2
+MAX_SIDECARS = 6 + MAX_PROJECTS * 2 + MAX_ASSISTANT_FILES
 MAX_SIDECAR_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_KEYBINDINGS
                      + MAX_PRESET_BYTES + MAX_PROFILE_BYTES + MAX_LEDGER_BYTES
-                     + MAX_PROGRESS_SETTINGS)
+                     + MAX_PROGRESS_SETTINGS + MAX_ASSISTANT_BYTES)
+MAX_BACKUP_BYTES = MAX_DATABASE + MAX_ASSET_BYTES + MAX_SIDECAR_BYTES + MAX_MANIFEST
+MAX_BACKUP_FILES = 2 + MAX_ASSETS + MAX_SIDECARS
 _SIMPLE_SIDECARS = {
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
@@ -119,6 +130,8 @@ def _sidecar_limit(name, *, version=4):
         return _SIMPLE_SIDECARS[name][0]
     if version >= 4 and name in _V4_SIDECARS:
         return _V4_SIDECARS[name][0]
+    if version >= 4 and is_assistant_sidecar(name):
+        return assistant_sidecar_limit(name)
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return MAX_PROJECT_BYTES
     raise RestoreError('unsupported backup sidecar')
@@ -149,6 +162,7 @@ def _snapshot_sidecars(root, *, live=False):
     raw = ReadingState(root).snapshot()
     sidecars = {} if raw is None else {READING_STATE: raw}
     sidecars.update(snapshot_narration_files(root))
+    sidecars.update(snapshot_assistant_files(root, live=live))
     for name, (maximum, validate) in (_SIMPLE_SIDECARS | _V4_SIMPLE_SIDECARS).items():
         raw = _optional_sidecar(Path(root) / name, maximum)
         if raw is not None:
@@ -193,6 +207,7 @@ def _validate_reading_locations(db, locations):
 
 
 def _validate_sidecars(db, sidecars):
+    validate_assistant_pairs(sidecars)
     for name, raw in sidecars.items():
         _sidecar_limit(name)
         try:
@@ -206,6 +221,11 @@ def _validate_sidecars(db, sidecars):
             elif name in _V4_SIDECARS:
                 _V4_SIDECARS[name][1](raw)
                 locations = set()
+            elif is_assistant_sidecar(name):
+                for workspace in validate_assistant_state(name, raw):
+                    if db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?', (workspace,)).fetchone() is None:
+                        raise ValueError('Assistant checkpoint belongs to a missing library.')
+                locations = set()
             else:
                 project = validate_narration_payload(name, raw)
                 locations = {project.source_location} if project.source_location is not None else set()
@@ -214,30 +234,40 @@ def _validate_sidecars(db, sidecars):
         _validate_reading_locations(db, locations)
 
 
-def _stage_sidecars(stage, sidecars):
+def _stage_sidecars(stage, sidecars, *, cancelled=lambda: False):
     for name, raw in sorted(sidecars.items()):
-        (stage / name).parent.mkdir(mode=0o700, exist_ok=True)
+        _check_cancelled(cancelled)
+        (stage / name).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         _sync_file(stage / name, raw)
 
 
-def _publish_sidecars(stage, destination, sidecars):
+def _publish_sidecars(stage, destination, sidecars, *, cancelled=lambda: False):
     for name in sorted(sidecars):
-        (destination / name).parent.mkdir(mode=0o700, exist_ok=True)
+        _check_cancelled(cancelled)
+        (destination / name).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         os.link(stage / name, destination / name)
-    for parent in {(destination / name).parent for name in sidecars}:
+    parents = {parent for name in sidecars for parent in (destination / name).parents
+               if parent == destination or parent.is_relative_to(destination)}
+    for parent in sorted(parents, key=lambda p: len(p.parts), reverse=True):
         _sync_directory(parent)
 
 
 def _check_backup_namespace(directory, names):
+    names = set(names)
+    directories = {str(parent) for name in names for parent in PurePosixPath(name).parents
+                   if str(parent) != '.'}
     roots = {name.split('/')[0] for name in names}
     if set(p.name for p in directory.iterdir()) != {DATABASE, ORIGINALS, MANIFEST} | roots:
         raise RestoreError('incomplete backup or unexpected files')
-    narration = {name.split('/')[1] for name in names if '/' in name}
-    if narration:
-        folder = directory / NARRATION_DIRECTORY
+    for name in sorted(directories):
+        folder = directory / name
         _plain(folder, directory=True)
-        if set(p.name for p in folder.iterdir()) != narration:
-            raise RestoreError('incomplete narration backup or unexpected files')
+        actual = {p.relative_to(directory).as_posix() for p in folder.iterdir()}
+        expected = {p for p in names | directories if str(PurePosixPath(p).parent) == name}
+        if actual != expected:
+            raise RestoreError('incomplete sidecar backup or unexpected files')
+    for name in names:
+        _regular_if_present(directory / name)
 
 
 def _sync_file(path, data):
@@ -258,15 +288,54 @@ def _sync_directory(path):
             os.close(fd)
 
 
-def create_backup(app, destination):
+def _check_cancelled(cancelled):
+    if cancelled():
+        raise InterruptedError('Library backup cancelled.')
+
+
+def _backup_limits(max_bytes, max_files):
+    values = []
+    for value, maximum, label in (
+            (max_bytes, MAX_BACKUP_BYTES, 'byte'),
+            (max_files, MAX_BACKUP_FILES, 'file')):
+        if value is None:
+            value = maximum
+        if type(value) is not int or not 0 < value <= maximum:
+            raise RestoreError('invalid backup ' + label + ' limit')
+        values.append(value)
+    return tuple(values)
+
+
+def _check_backup_budget(size, files, maximum_bytes, maximum_files):
+    if size > maximum_bytes:
+        raise RestoreError('backup exceeds its total byte limit')
+    if files > maximum_files:
+        raise RestoreError('backup exceeds its total file limit')
+
+
+def create_backup(app, destination, *, max_bytes=None, max_files=None,
+                  cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
+
+    The optional limits cover all delivered regular files, including the final
+    manifest. They may lower the supported aggregate ceilings, never raise them.
+    Cancellation is cooperative between checked staging/publication operations;
+    a SQLite backup or catalog-original copy operation finishes before the next
+    check. Once the final manifest is published, completion wins a late cancel.
 
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
     """
+    maximum_bytes, maximum_files = _backup_limits(max_bytes, max_files)
+    if not callable(cancelled):
+        raise RestoreError('invalid backup cancellation callback')
+    _check_cancelled(cancelled)
+    # Even an empty library delivers its database and the completion manifest.
+    _check_backup_budget(0, 2, maximum_bytes, maximum_files)
     destination = _destination(destination, app.root)
     with exclusive_writer(app.root):
+        _check_cancelled(cancelled)
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
@@ -275,17 +344,32 @@ def create_backup(app, destination):
             snapshot = stage / DATABASE
             with closing(Storage(app.database, schema_version=4)) as storage:
                 storage.backup(snapshot)
+            _check_cancelled(cancelled)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
+            _check_backup_budget(size, 2, maximum_bytes, maximum_files)
             with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+                planned = catalog_inventory(snapshot_storage.db,
+                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                _check_backup_budget(size + sum(entry.size for entry in planned),
+                                     2 + len(planned), maximum_bytes, maximum_files)
+                _check_cancelled(cancelled)
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+                _check_cancelled(cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 sidecars = _snapshot_sidecars(app.root, live=True)
                 _validate_sidecars(snapshot_storage.db, sidecars)
-            _stage_sidecars(stage, sidecars)
-            extended_state = any(name in _V4_SIDECARS for name in sidecars)
+            _check_cancelled(cancelled)
+            sidecar_bytes = sum(len(raw) for raw in sidecars.values())
+            if len(sidecars) > MAX_SIDECARS or sidecar_bytes > MAX_SIDECAR_BYTES:
+                raise RestoreError('backup sidecar inventory limit')
+            total_bytes = size + sum(entry.size for entry in entries) + sidecar_bytes
+            total_files = 2 + len(entries) + len(sidecars)
+            _check_backup_budget(total_bytes, total_files, maximum_bytes, maximum_files)
+            _stage_sidecars(stage, sidecars, cancelled=cancelled)
+            extended_state = any(name in _V4_SIDECARS or is_assistant_sidecar(name) for name in sidecars)
             manifest = dict(version=4 if extended_state else 3 if sidecars else 2,
                 kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
@@ -299,22 +383,28 @@ def create_backup(app, destination):
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
                 raise RestoreError('manifest size limit')
+            _check_backup_budget(total_bytes + len(raw), total_files,
+                                 maximum_bytes, maximum_files)
+            _check_cancelled(cancelled)
             _sync_file(stage / MANIFEST, raw)
             # mkdir provides exclusive no-replace ownership of the destination.
             # The final manifest is the completion marker; no partial bundle is
             # silently overwritten or presented as a successful backup.
+            _check_cancelled(cancelled)
             destination.mkdir(mode=0o700)
             (destination / ORIGINALS).mkdir(mode=0o700)
+            _check_cancelled(cancelled)
             os.link(snapshot, destination / DATABASE)
             for entry in entries:
+                _check_cancelled(cancelled)
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-            _publish_sidecars(stage, destination, sidecars)
+            _publish_sidecars(stage, destination, sidecars, cancelled=cancelled)
             _sync_directory(destination / ORIGINALS)
+            _check_cancelled(cancelled)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
-
 
 def _read_manifest(directory, expected_manifest_sha256):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
@@ -400,7 +490,8 @@ def _read_manifest(directory, expected_manifest_sha256):
             raise RestoreError('narration backup byte limit')
         if total > MAX_SIDECAR_BYTES:
             raise RestoreError('backup sidecar byte limit')
-    if manifest['version'] == 4 and not names.intersection(_V4_SIDECARS):
+    if manifest['version'] == 4 and not (names.intersection(_V4_SIDECARS)
+                                        or any(is_assistant_sidecar(name) for name in names)):
         raise RestoreError('version 4 backup manifest has no version 4 state')
     _check_backup_namespace(directory, names)
     return manifest
@@ -456,6 +547,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
             sidecars = _snapshot_sidecars(source)
             if _sidecar_manifest(sidecars) != manifest.get('sidecars', []):
                 raise RestoreError('backup sidecar size or digest mismatch')
+            _validate_sidecars(storage.db, sidecars)
+            sidecars = add_restore_reviews(sidecars)
             _validate_sidecars(storage.db, sidecars)
             _stage_sidecars(stage, sidecars)
             original_store = RetainedAssets(source / ORIGINALS)

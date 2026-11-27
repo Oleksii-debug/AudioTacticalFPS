@@ -95,6 +95,29 @@ is published. An interrupted restore retains its incomplete marker and the
 application refuses to open that folder. Retry to a different new destination;
 the original library and backup remain unchanged.
 
+## Operation budgets and cancellation
+
+The programmatic `create_backup` operation accepts optional `max_bytes`,
+`max_files` and `cancelled` arguments. A byte or file allowance covers the
+whole delivered backup: the SQLite database, registered originals, every selected
+state file and the final manifest. Directories and temporary staging links do
+not count as delivered files. The final manifest's own serialized bytes count
+toward the byte allowance. Limits must be positive integers and cannot exceed
+the sum of the existing supported component limits.
+
+The complete selected inventory and manifest are checked before publishing the
+destination. A backup that exceeds either caller allowance fails without a valid
+completed backup. Cancellation is checked between staging operations, for each
+state-file write and publication link, and immediately before publishing the final
+manifest. A SQLite snapshot or catalog-original copy operation finishes before the next
+cooperative check; the callback does not interrupt those operations internally.
+
+Cancellation during publication may leave an incomplete folder without its final
+manifest. Restore rejects that folder; retry to a different new destination.
+After the final manifest has been published, a later cancellation does not relabel
+that completed backup as cancelled. Existing overwrite protection, component
+size limits and version-1 through version-4 restore validation still apply.
+
 ## Boundaries
 
 The backup does not copy arbitrary neighboring files, API credentials, runtime

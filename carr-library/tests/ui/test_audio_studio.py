@@ -192,6 +192,46 @@ def test_readable_preview_and_voice_choices_no_wx_dependency(controller):
     assert controller.voice_status() == 'test: available'
 
 
+def test_literal_mode_preserves_source_that_looks_like_script(tmp_path):
+    from carr_library.audio.models import Line
+    controller = StudioController(private_root=tmp_path / 'private')
+    source = 'Date: 2026-11-26\n[pause 2]\n# A heading\fSecond source segment.'
+    controller.new(source)
+    plan = controller.plan()
+    assert controller.input_kind == 'narration'
+    assert plan.original_script == source
+    assert len(plan.roles) == 1 and len(plan.scenes) == 2
+    assert all(isinstance(event, Line) for scene in plan.scenes for event in scene.events)
+    assert '\f'.join(''.join(event.text for event in scene.events) for scene in plan.scenes) == source
+    assert controller.draft.source_text == source
+
+
+def test_saved_interpretation_and_legacy_projects_are_unambiguous(controller, tmp_path):
+    path = tmp_path / 'project.json'
+    controller.new('Label: unchanged source')
+    controller.save(path)
+    controller.configure(input_kind='script')
+    assert controller.dirty
+    controller.open(path)
+    assert controller.input_kind == 'narration' and not controller.dirty
+    saved = controller.to_dict()
+    legacy = {key: value for key, value in saved.items() if key != 'input_kind'}
+    legacy['version'] = 1
+    path.write_text(json.dumps(legacy), encoding='utf-8')
+    controller.open(path)
+    assert controller.input_kind == 'script'
+    legacy['source_reference'] = {'kind': 'library-source-reading-copy'}
+    path.write_text(json.dumps(legacy), encoding='utf-8')
+    controller.open(path)
+    assert controller.input_kind == 'narration'
+    invalid = {**saved, 'input_kind': 'execute'}
+    path.write_text(json.dumps(invalid), encoding='utf-8')
+    before = controller.to_dict()
+    with pytest.raises(ValueError, match='mode'):
+        controller.open(path)
+    assert controller.to_dict() == before
+
+
 def test_original_imported_file_cannot_be_replaced_by_project_or_reading_export(controller, tmp_path):
     original = tmp_path / 'source.txt'
     original.write_text('Original source', encoding='utf-8')
@@ -227,6 +267,8 @@ def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     assert not reports
     controller = captured[0]
     assert controller.script == raw
+    assert controller.input_kind == 'narration'
+    assert controller.plan().original_script == raw
     assert controller.title == title[:256]
     assert controller.source_reference['edition'] == book['edition']
     assert len(controller.source_reference['pages']) == 2
