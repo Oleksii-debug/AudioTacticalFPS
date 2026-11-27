@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -65,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -75,6 +75,37 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare pinned private native entry and optional offline runtimes
+        id: local_engines
+        timeout-minutes: 12
+        run: |
+          $launcherTools = Join-Path $env:RUNNER_TEMP 'carr-launcher-tools'
+          $launcherOutput = Join-Path $env:RUNNER_TEMP 'carr-launcher-private'
+          $launcherArchive = Join-Path $env:RUNNER_TEMP 'zig-x86_64-windows-0.14.1.zip'
+          Invoke-WebRequest 'https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip' -OutFile $launcherArchive
+          if ((Get-FileHash $launcherArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c') { throw 'Pinned compiler archive checksum mismatch.' }
+          if ((Get-Item $launcherArchive).Length -ne 82229343) { throw 'Pinned compiler archive size mismatch.' }
+          Expand-Archive $launcherArchive -DestinationPath $launcherTools
+          $launcherCompiler = Join-Path $launcherTools 'zig-x86_64-windows-0.14.1/zig.exe'
+          & $env:CARR_PYTHON packaging/native-launcher/build_launcher.py --zig $launcherCompiler --toolchain-archive $launcherArchive --output-dir $launcherOutput --build-probe | Tee-Object 'ci-results/native-launcher-build.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Native build failed.' }
+          & $env:CARR_PYTHON packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcherOutput 'ResearchLibrary.exe') --child (Join-Path $launcherOutput 'windows_child_probe.exe') --report 'ci-results/native-launcher-processes.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Native process probe failed.' }
+          "CARR_NATIVE_LAUNCHER=$(Join-Path $launcherOutput 'ResearchLibrary.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-integrated-audio'
+          & $env:CARR_PYTHON packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-results/audio-preparation.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned audio preparation failed.' }
+          "CARR_PREPARED_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          $citationLock = Get-Content packaging/windows-citations.lock.json -Raw | ConvertFrom-Json
+          $citationZip = Join-Path $env:RUNNER_TEMP 'carr-node-pinned.zip'
+          Invoke-WebRequest $citationLock.url -OutFile $citationZip
+          if ((Get-Item $citationZip).Length -ne $citationLock.archive_size -or (Get-FileHash $citationZip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $citationLock.archive_sha256) { throw 'Pinned citation runtime archive mismatch.' }
+          $citationExtract = Join-Path $env:RUNNER_TEMP 'carr-node-pinned'
+          Expand-Archive $citationZip -DestinationPath $citationExtract
+          $citationDirectory = Join-Path $citationExtract ('node-v' + $citationLock.version + '-win-x64')
+          "CARR_PREPARED_CITATIONS=$citationDirectory" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Check the installed application through its self-test entrypoint
         timeout-minutes: 3
@@ -262,7 +293,7 @@ jobs:
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        timeout-minutes: 20
+        timeout-minutes: 35
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -295,7 +326,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --sbom packaging/windows-semantic-sbom.cdx.json --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --native-launcher $env:CARR_NATIVE_LAUNCHER --audio-dir $env:CARR_PREPARED_AUDIO --citation-dir $env:CARR_PREPARED_CITATIONS --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -313,9 +344,9 @@ jobs:
           # Finish test-only acquisition before the offline execution boundary.
           $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
           New-Item -ItemType Directory -Force $testWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'ResearchLibrary.exe'), (Join-Path $bundle 'audio/bin/ffmpeg.exe'), (Join-Path $bundle 'audio/bin/ffprobe.exe'), (Join-Path $bundle 'citation-runtime/node.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -335,10 +366,16 @@ jobs:
           $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
           if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline execution rules do not cover the intended programs.' }
           @{ status='PASS'; profiles_enabled=@($profiles.Name); outbound_blocked_programs=$filters; phase='installation, native desktop, multilingual inference and scanned-source research' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/full-bundle-firewall.json'
-          & $bundledPython -I -B (Join-Path $bundle 'install_windows.py') 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
+          & $env:CARR_PYTHON -B packaging/native-launcher/probe_bootstrap_windows.py --bundle-root $bundle --report 'ci-results/native-launcher-bootstrap.json' --timeout 900 2>&1 | Tee-Object 'ci-results/core-bundle-install.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report 'ci-results/native-launcher-installed.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native launch entry failed.' }
+          & $installedPython -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-results/installed-v3-native.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed speech, production and citation acceptance failed.' }
+          & $installedPython -I -B scripts/windows_live_reading_smoke.py --output 'ci-results/installed-live-reading.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed live reading acceptance failed.' }
           & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
@@ -356,7 +393,7 @@ jobs:
 
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
           # Test dependencies are installed only after production installation passes.
-          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
@@ -420,7 +457,7 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
@@ -532,7 +569,11 @@ jobs:
             'tests/search/test_literal_unicode_memory.py',
             'tests/e2e/test_search_deadline.py',
             'tests/ingest/test_txt_replay_registration.py',
-            'tests/ingest/test_terminal_replay_registration.py'
+            'tests/ingest/test_terminal_replay_registration.py',
+            'tests/packaging/test_native_launcher_bundle.py',
+            'tests/packaging/test_native_bootstrap_probe.py',
+            'tests/packaging/test_bundled_engines.py',
+            'tests/packaging/test_native_checks.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

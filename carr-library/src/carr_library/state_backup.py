@@ -38,7 +38,9 @@ def _include(path, generated):
 
 
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, include_paths=None):
+    if include_paths is not None:
+        include_paths = frozenset(relative_name(name).as_posix() for name in include_paths)
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
@@ -57,7 +59,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             for name in sorted(files):
                 source = Path(directory) / name
                 relative = source.relative_to(root)
-                if _include(relative, include_generated):
+                if (_include(relative, include_generated)
+                        and (include_paths is None or relative.as_posix() in include_paths)):
                     found[relative] = _stamp(regular(source))
                     if len(found) > MAX_STATE_FILES:
                         raise ValueError('Application state exceeds the file budget.')

@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import struct
+import time
 import wave
 from tempfile import TemporaryDirectory
 
@@ -12,6 +13,8 @@ from tempfile import TemporaryDirectory
 def main():
     if sys.platform != 'win32':
         raise RuntimeError('This acceptance script requires actual Windows execution.')
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
     from carr_library.speech import VoiceRegistry, SpeechSettings
@@ -21,6 +24,7 @@ def main():
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
     from carr_library.ui.translation_dialog import show_translation
+    from carr_library.ui.speech_dialog import show_speech_reader
     app = wx.App(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
     with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
@@ -92,7 +96,9 @@ def main():
 
         def inspect_dialog(open_dialog, required_names, close_id=None):
             inspected = []
+            deadline = time.monotonic() + 30
             def visit():
+                assert time.monotonic() < deadline, 'The native dialog did not become visible.'
                 dialogs = [window for window in wx.GetTopLevelWindows() if isinstance(window, wx.Dialog) and window.IsShown()]
                 if not dialogs:
                     wx.CallLater(100, visit)
@@ -118,11 +124,15 @@ def main():
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
         inspect_dialog(show_translation, ('Google Basic v2 account', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
-        result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
+        inspect_dialog(show_speech_reader, ('Reading copy', 'Local reading voice; choose explicitly',
+            'Read aloud from cursor', 'Read selection aloud', 'Pause or resume voice',
+            'Live voice reading status, exact chunk range and measured audio position'))
+        result['checks'].append('native studio/assistant/provider/engine/shared reader dialogs with named keyboard controls')
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+    del native_handle
 
 
 if __name__ == '__main__':

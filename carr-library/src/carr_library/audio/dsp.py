@@ -224,6 +224,11 @@ class AudioRuntime:
         self.budget = budget or AudioBudget()
         if not isinstance(self.budget, AudioBudget):
             raise ValueError('Audio budget must be an AudioBudget.')
+        if ffmpeg is None or ffprobe is None:
+            from ..bundled_engines import bundled_programs
+            programs = bundled_programs('audio')
+            ffmpeg = programs.get('ffmpeg') if ffmpeg is None else ffmpeg
+            ffprobe = programs.get('ffprobe') if ffprobe is None else ffprobe
         self.ffmpeg = self._executable(ffmpeg, 'ffmpeg')
         self.ffprobe = self._executable(ffprobe, 'ffprobe')
         self._capabilities = None
@@ -237,7 +242,8 @@ class AudioRuntime:
     @staticmethod
     def _executable(value, name):
         if value is None:
-            value = shutil.which(name)
+            from ..bundled_engines import executable_on_path
+            value = executable_on_path(name)
         if value is None:
             raise AudioUnavailable(f'{name} is not installed. Select a trusted local FFmpeg installation.')
         path = Path(value)

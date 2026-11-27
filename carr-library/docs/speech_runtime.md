@@ -34,7 +34,19 @@ contains only entries actually enumerated by installed engines.
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
 | Local JSON helper | Explicit opt-in, executable SHA256, configurable catalog budget, JSON v1 enumerate/render contract | Contract boundary implemented; no claim of a particular vendor implementation |
 | SAPI 4 | No available verified Windows 11 32-bit engine contract | Unavailable; no simulated voice or promised obsolete-driver compatibility |
-| dordiai-voices | Exact-name integration remains dependent on its actual private/local contract | Not claimed; a reviewed bridge may implement the JSON contract below |
+| dordiai-voices | Explicit default-off provider using the reviewed public pull-PCM bridge, canonical `Voice`/`SpeechSettings`, shared WAV publication and the existing Studio service | Real subprocess protocol and synthetic PCM/FFmpeg integration tests pass; no actual private neural-model or pronunciation acceptance is claimed |
+
+The optional connection is available under **Audio Studio → Local voice and
+music engines → Connect or disable dordiai-voices**. It checks a separately
+installed worker's paths and approved SHA256 without starting it. Reader voice
+reload or opening Studio performs explicit resource discovery. Full details,
+budgets, cache identity and measured acceptance boundaries are in
+[DORDIAI_LOCAL_SPEECH.md](DORDIAI_LOCAL_SPEECH.md).
+
+Desktop callers use `runtime_settings.voice_registry(library_root / 'state')`
+so enabled declarations belong to the selected library. Bare
+`VoiceRegistry.discover()` does not consult ambient dordiai enable flags or
+silently select another library's runtime.
 
 Piper support follows the inspected upstream CLI at
 `OHF-Voice/piper1-gpl` revision `6aacdbc98eda4b1cb81d960bef7c7fae710b13fd`.
@@ -131,12 +143,28 @@ verified timing. Playback uses native Windows MCI or an installed ffplay.
 MCI position is native; ffplay's elapsed position is labeled approximate.
 Device playback/listening quality is not inferred from PCM tests.
 
-`VoiceRegistry.fingerprint(voice_id)` includes visible voice metadata and the
-installed executable digest; Piper additionally hashes its model and config.
+`VoiceRegistry.fingerprint(voice_id, cancelled=...)` includes visible voice
+metadata, the installed executable digest and registry/process-boundary source
+bytes; Piper additionally hashes its model and config.
 On Debian-style layouts, Flite/eSpeak shared voice-library bytes are also
 included. Opaque third-party SAPI model/driver assets are not fully discoverable
 through a token and must not be advertised as a verified model revision.
 Use a reviewed runtime manifest for stricter cross-machine cache equivalence.
+
+Discovery has one overall deadline and forwards cancellation to the installed
+providers. Synthesis also has one deadline covering asset hashes, every
+utterance, PCM inspection and publication. It rechecks the voice fingerprint
+before publishing. Production binds a render to the identity used in its cache
+key and revalidates cached speech before accepting it. The dordiai provider
+additionally hashes its public adapter dependencies, interpreter, worker/model
+tree and bundled private Python tree; a change in same-size model bytes cannot
+reuse previous speech merely because its timestamp was preserved.
+
+The installed sealed FFmpeg component is verified once per `AudioRuntime`
+constructor, before ordinary PATH discovery. Explicit overrides remain
+explicit. A damaged included component fails without switching to another
+binary. Fallback lookup uses only absolute local PATH directories and explicit
+Windows `.exe` names, without an implicit current-directory lookup.
 
 These process boundaries are not an OS sandbox for malicious installed
 executables or voice DLLs. The generic helper must be explicitly reviewed and

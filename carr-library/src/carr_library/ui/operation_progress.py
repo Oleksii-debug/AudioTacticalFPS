@@ -338,6 +338,12 @@ class WindowsProgressSound:
         self._lock, self._thread = threading.Lock(), None
         self.muted, self.closed, self.last_error = False, False, None
 
+    @property
+    def quiescent(self):
+        """A mute request is not proof that an existing finite cue has ended."""
+        with self._lock:
+            return self._thread is None or not self._thread.is_alive()
+
     def play(self, percent, *, volume, state='running'):
         with self._lock:
             if (not self.available or self.closed or self.muted or volume == 0
@@ -362,6 +368,59 @@ class WindowsProgressSound:
         self.closed = self.muted = True
 
 
+class LiveMediaFeedback:
+    """Nonblocking handoff from the one progress sound to reader/device audio.
+
+    Leases contain plain activity callables, never native controls. Their release
+    may run after a reader window has closed while its worker finishes cleanup.
+    No release callback schedules GUI work or waits for the audio thread.
+    """
+    def __init__(self, progress):
+        self.progress = progress
+        self._lock = threading.Lock()
+        self._activities = {}
+
+    @property
+    def quiet_during_media(self):
+        return self.progress.preferences.mute_during_audio
+
+    @property
+    def quiescent(self):
+        if not self.quiet_during_media:
+            return True
+        return bool(getattr(self.progress.sound, 'quiescent', False))
+
+    @property
+    def busy(self):
+        with self._lock:
+            activities = tuple(self._activities.values())
+        for activity in activities:
+            try:
+                if activity():
+                    return True
+            except Exception:
+                # Unknown cleanup/device state must not start another cue.
+                return True
+        return False
+
+    def suspend(self):
+        if self.quiet_during_media:
+            self.progress.sound.muted = True
+
+    def hold(self, activity):
+        if not callable(activity):
+            raise ValueError('A plain media activity callback is required.')
+        token = object()
+        with self._lock:
+            self._activities[token] = activity
+        self.suspend()
+
+        def release():
+            with self._lock:
+                self._activities.pop(token, None)
+        return release
+
+
 class OperationProgress:
     """Bind measured events to native controls without changing keyboard focus."""
     def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic, sound=None):
@@ -376,6 +435,8 @@ class OperationProgress:
         self._last_state, self.audio_active, self.closed = 'idle', False, False
         self._players = weakref.WeakSet()
         self.root, self.preferences = None, ProgressPreferences()
+        self.live_media_feedback = LiveMediaFeedback(self)
+        frame.live_media_feedback = self.live_media_feedback
         self.timer = self.wx.Timer(frame)
         frame.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
         self.reload_preferences()
@@ -415,8 +476,14 @@ class OperationProgress:
             except (OSError, RuntimeError):
                 # An uncertain device state stays quiet until stop or close.
                 playing = True
+        media = getattr(self.frame, 'progress_media_busy', False)
+        try:
+            media = bool(media() if callable(media) else media)
+        except Exception:
+            media = True
         self.sound.muted = (self.preferences.mode == 'off' or self.preferences.quiet
-                            or self.preferences.mute_during_audio and (self.audio_active or playing))
+                            or self.preferences.mute_during_audio and (
+                                self.audio_active or playing or media or self.live_media_feedback.busy))
 
     def register_player(self, player):
         """Observe actual playback state, including natural EOF/error/pause.
