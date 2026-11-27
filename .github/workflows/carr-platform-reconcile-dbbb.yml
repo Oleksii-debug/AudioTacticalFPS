@@ -63,6 +63,23 @@ jobs:
             'tests/ui/test_reader_presentation.py',
             'tests/storage/test_reader_presentation_backup.py',
             'tests/storage/test_reading_tabs_backup.py',
+            'tests/audio/test_effect_presets.py',
+            'tests/studio/test_clip_editing.py',
+            'tests/studio/test_project_effects.py',
+            'tests/studio/test_clip_input_retention.py',
+            'tests/studio/test_clip_admission.py',
+            'tests/studio/test_clip_source_binding.py',
+            'tests/studio/test_clip_dialog.py',
+            'tests/ui/test_worker_lifetime.py',
+            'tests/storage/test_studio_timeline_backup.py',
+            'tests/storage/test_studio_clip_inputs_backup.py',
+            'tests/audio/test_recording_monitor.py',
+            'tests/audio/test_recording_monitor_capture.py',
+            'tests/speech/test_clipboard_reader.py',
+            'tests/speech/test_reading_tabs.py',
+            'tests/speech/test_reading_focus.py',
+            'tests/ui/test_reader_tabs.py',
+            'tests/ui/test_reading_focus.py',
             'tests/operations/test_resources.py',
             'tests/operations/test_facade.py',
             'tests/operations/test_production_admission.py',
@@ -123,6 +140,7 @@ jobs:
             'tests/audio/test_recording_windows_process.py',
             'tests/audio/test_recording_process.py',
             'tests/audio/test_audio_process.py',
+            'tests/audio/test_process_deadline.py',
             'tests/audio/test_local_runtime_cli.py',
             'tests/audio_acceptance/test_primary_publication_budget.py'
           )
@@ -178,7 +196,7 @@ jobs:
 
   windows-reading-appearance:
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 30
     defaults:
       run:
         shell: pwsh
@@ -225,11 +243,33 @@ jobs:
             wheel_sha256 = (Get-FileHash -LiteralPath $wheels[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             package_origin = 'built from the exact checked-out public source; native probes verify loaded module hashes'
           } | ConvertTo-Json | Set-Content -LiteralPath 'ci-appearance-results/application-source.json' -Encoding utf8
+      - name: Prepare pinned audio for actual clip processing and native controls
+        id: audio
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-clip-preflight-audio'
+          python -I -B packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-appearance-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_AUDIO_RUNTIME=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require actual clip PCM and owner-lifecycle regressions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.audio.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          python -B scripts/ci_check.py --jobs 2 tests/audio/test_effect_presets.py tests/studio/test_clip_editing.py tests/studio/test_project_effects.py tests/studio/test_clip_input_retention.py tests/studio/test_clip_admission.py tests/studio/test_clip_source_binding.py tests/studio/test_clip_dialog.py tests/ui/test_worker_lifetime.py tests/storage/test_studio_timeline_backup.py tests/storage/test_studio_clip_inputs_backup.py tests/audio/test_recording_monitor.py tests/audio/test_recording_monitor_capture.py 2>&1 | Tee-Object 'ci-appearance-results/clip-monitor-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require installed native clip controls and measured effect output
+        if: ${{ !cancelled() && steps.install.outcome == 'success' && steps.audio.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-appearance-results/installed-scene-clip-editor.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require regressions and actual Windows status handles with no skips
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
         run: |
-          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_process.py tests/audio/test_audio_process.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
+          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/storage/test_reading_tabs_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py tests/audio/test_recording_windows_process.py tests/audio/test_recording_process.py tests/speech/test_reading_tabs.py tests/speech/test_reading_focus.py tests/ui/test_reader_tabs.py tests/ui/test_reading_focus.py tests/audio/test_audio_process.py tests/audio/test_process_deadline.py tests/speech/test_clipboard_reader.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require native owned descendants and fresh venv redirectors
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -237,6 +277,20 @@ jobs:
         run: |
           python -I -B tests/audio/native_recording_process_probe.py --report ci-appearance-results/native-owned-process.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require source and installed native reading tabs and focus
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 7
+        run: |
+          $failures = @()
+          python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --source . --output ci-appearance-results/source-reading-tabs.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-reading-tabs' }
+          python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --expect-installed --output ci-appearance-results/installed-reading-tabs.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-tabs' }
+          python -I -B -X utf8 scripts/windows_clipboard_reader_smoke.py --source . --report ci-appearance-results/source-clipboard-reader.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'source-clipboard-reader' }
+          python -I -B -X utf8 scripts/windows_clipboard_reader_smoke.py --expect-installed --report ci-appearance-results/installed-clipboard-reader.json
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed-clipboard-reader' }
+          if ($failures.Count) { throw ('Native reading tabs failed: ' + ($failures -join ', ')) }
       - name: Require exact source native reading appearance
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 3

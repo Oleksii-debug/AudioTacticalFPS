@@ -21,6 +21,20 @@ class ReaderPresentationControls:
             self.error = str(exc)
             host.report('Reading appearance could not be loaded: ' + self.error)
 
+    def bind_editor(self, editor):
+        """Apply the held appearance to a newly active native reading tab."""
+        if not self.host.alive() or self.host.busy():
+            raise ValueError('Wait for the current reading operation before changing tabs.')
+        self.host.guard()
+        self.editor = editor
+        try:
+            self._draw(editor, self.current)
+        except (ValueError, OSError, RuntimeError) as exc:
+            self.error = str(exc)
+            self.host.report('The reading tab is open; its appearance could not be applied: ' + self.error)
+            return False
+        return True
+
     def _resolved(self, value):
         import wx
         if type(value) is not ReadingAppearance:

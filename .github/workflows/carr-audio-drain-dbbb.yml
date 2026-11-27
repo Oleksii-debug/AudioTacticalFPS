@@ -11,7 +11,7 @@ concurrency:
 jobs:
   native-audio:
     runs-on: windows-2022
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -133,6 +133,7 @@ jobs:
           code=pytest.main(['-s','-q','-o','xfail_strict=true','--import-mode=importlib',
               'tests/audio/test_recording_windows_process.py','tests/audio/test_recording_process.py',
               'tests/audio/test_audio_process.py','tests/speech/test_output_devices.py',
+              'tests/audio/test_process_deadline.py',
               'tests/transcription/test_admission_boundaries.py','tests/transcription/test_service.py',
               '--junitxml=ci-owned-results/strict.xml',
               '--asr-timing-report=ci-owned-results/asr-timing.json'],plugins=[timing,policy])
@@ -149,6 +150,12 @@ jobs:
           $script = Join-Path $env:RUNNER_TEMP 'carr-owned-pytest.py'
           $probe | Set-Content -LiteralPath $script -Encoding utf8
           & $env:CARR_PYTHON -I -B $script
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Reproduce the concurrent source ASR boundary with every original case
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          & $env:CARR_PYTHON -B scripts/ci_check.py --jobs 2 tests/transcription/test_admission_boundaries.py tests/transcription/test_service.py tests/audio/test_process_deadline.py 2>&1 | Tee-Object 'ci-owned-results/concurrent-source-asr.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain only bounded synthetic timing and exit evidence
         if: always()

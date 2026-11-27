@@ -183,11 +183,19 @@ def run(arguments, report):
             selection = control('Microphone device (explicit selection required)')
             saved = control('Saved recordings')
             status = control('Recording status')
+            monitoring = control('Dry monitoring during capture (off by default)')
+            monitor_output = control('Monitoring output (explicit selection required)')
             if stage == 0 and refresh.IsEnabled():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
                 check('recording progress has a native accessible gauge',
                       isinstance(control('Recording operation progress'), wx.Gauge))
                 check('native retake waits for a selected original', not retake.IsEnabled())
+                check('native monitoring is unchecked by default', isinstance(monitoring, wx.CheckBox)
+                      and not monitoring.GetValue())
+                check('native monitoring requires an explicit output selection',
+                      monitor_output.GetSelection() == wx.NOT_FOUND and not monitor_output.IsEnabled())
+                check('native output discovery stays an explicit separate action',
+                      control('Refresh monitoring outputs').IsEnabled())
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -198,6 +206,16 @@ def run(arguments, report):
             elif stage == 2 and selection.GetSelection() == 0 and start.IsEnabled():
                 control('Maximum recording duration in minutes').SetValue(1)
                 control('Recording title').SetValue('Native synthetic recording')
+                stage = 20
+                press(monitoring)
+            elif stage == 20 and monitoring.GetValue():
+                check('native enabling monitoring blocks Start without a selected output',
+                      monitor_output.IsEnabled() and not start.IsEnabled() and not captures)
+                stage = 21
+                press(monitoring)
+            elif stage == 21 and not monitoring.GetValue() and start.IsEnabled():
+                check('native disabling monitoring restores ordinary capture without fallback',
+                      not monitor_output.IsEnabled() and monitor_output.GetSelection() == wx.NOT_FOUND)
                 stage = 3
                 press(start)
             elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
@@ -298,7 +316,7 @@ def main():
     report = {'status': 'FAILED', 'checks': [], 'audio_runtime': {},
               'actual_native_keys': False, 'actual_ffmpeg_synthetic_capture': False,
               'physical_microphone': 'NOT_RUN', 'human_listening': 'NOT_RUN',
-              'nvda': 'NOT_RUN', 'live_monitoring': 'NOT_IMPLEMENTED',
+              'nvda': 'NOT_RUN', 'live_monitoring': 'NOT_RUN',
               'independent_deadline_seconds': 110}
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')

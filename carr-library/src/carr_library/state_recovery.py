@@ -267,11 +267,14 @@ def _validate_reading_tabs(root, entries, *, cancelled):
     return frozenset((index_name, *(name for name, _ in selected)))
 
 
-def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False):
+def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False,
+                             destination_state_root=None):
     """Check typed state without touching model paths or external output files."""
     from . import recording_backup, backup_transcription
+    from .studio import backup_inputs
     entries = backup_transcription.validate_state(root, entries, cancelled=cancelled, restored=restored)
     recording_backup.validate_state_entries(entries, cancelled=cancelled)
+    clip_receipt = backup_inputs.validate_state(root, entries, cancelled=cancelled)
     validated_tabs = _validate_reading_tabs(root, entries, cancelled=cancelled)
     for entry in entries:
         if cancelled():
@@ -283,6 +286,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             from .speech.presentation import MAX_BYTES
             if not 0 < entry['size_bytes'] <= MAX_BYTES:
                 raise ValueError('Reading appearance settings exceed their recovery size limit.')
+        if backup_inputs.namespace('state/' + entry['filename']):
+            continue
         if backup_transcription.namespace('state/' + entry['filename']):
             continue
         if relative.as_posix().startswith(recording_backup.STATE_PREFIX):
@@ -321,8 +326,12 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
         if restored and updated is not None:
             atomic_json(path, updated, replace=True)
     recording_backup.validate_state_root(root, cancelled=cancelled)
+    if restored:
+        entries = backup_inputs.restore_inputs(root, entries, clip_receipt,
+            destination_state_root=destination_state_root, cancelled=cancelled)
     return entries
 
 
-def prepare_restored_state(root, entries, *, cancelled=lambda: False):
-    return validate_state_documents(root, entries, cancelled=cancelled, restored=True)
+def prepare_restored_state(root, entries, *, cancelled=lambda: False, destination_state_root=None):
+    return validate_state_documents(root, entries, cancelled=cancelled, restored=True,
+                                    destination_state_root=destination_state_root)

@@ -7,7 +7,7 @@ Start. Originals and retakes retain their exact PCM receipt in private state.
 
 Upstream device contract: https://ffmpeg.org/ffmpeg-devices.html#dshow
 """
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -24,6 +24,7 @@ import wave
 from .models import AudioBudget, AudioCancelled, AudioError, AudioUnavailable, integer
 from .process import publish_file, run_process
 from .cleanup import AudioCleanupPending
+from .recording_monitor import monitored_capture, output_identity
 from ..ingest.writer_guard import exclusive_writer
 from ..durable_state import atomic_json, local_path, read_json, regular, sync_directory
 
@@ -189,10 +190,12 @@ def validate_recording_receipt(value, *, recording_id=None):
     fields = {'schema', 'id', 'filename', 'title', 'created',
               'source', 'ffmpeg_sha256', 'audio', 'limits', 'completion'}
     schema = value.get('schema')
-    if schema == 'carr-recording/2':
+    if schema == 'carr-recording/2' or (schema == 'carr-recording/3' and 'retake' in value):
         fields.add('retake')
+    if schema == 'carr-recording/3':
+        fields.add('monitoring')
     if (set(value) != fields
-            or schema not in ('carr-recording/1', 'carr-recording/2')
+            or schema not in ('carr-recording/1', 'carr-recording/2', 'carr-recording/3')
             or value['filename'] != identity + '.wav'
             or type(value['limits']) is not dict
             or set(value['limits']) != {'max_seconds', 'sample_rate', 'channels', 'max_bytes'}
@@ -227,7 +230,7 @@ def validate_recording_receipt(value, *, recording_id=None):
             or type(audio['duration_seconds']) not in (int, float)
             or audio['duration_seconds'] != audio['frames'] / options.sample_rate):
         raise ValueError('Invalid recording audio receipt.')
-    if schema == 'carr-recording/2':
+    if 'retake' in value:
         retake = value['retake']
         if (type(retake) is not dict or set(retake) != {'origin_id', 'previous_id', 'previous_sha256'}
                 or any(type(retake[key]) is not str or _ID.fullmatch(retake[key]) is None
@@ -235,6 +238,17 @@ def validate_recording_receipt(value, *, recording_id=None):
                 or type(retake['previous_sha256']) is not str
                 or _HASH.fullmatch(retake['previous_sha256']) is None):
             raise ValueError('Invalid recording retake receipt.')
+    if schema == 'carr-recording/3':
+        monitoring = value['monitoring']
+        if (type(monitoring) is not dict
+                or set(monitoring) != {'enabled', 'output_identity', 'submitted_frames', 'dropped_frames'}
+                or monitoring['enabled'] is not True
+                or type(monitoring['output_identity']) is not str
+                or _HASH.fullmatch(monitoring['output_identity']) is None
+                or any(type(monitoring[key]) is not int or monitoring[key] < 0
+                       for key in ('submitted_frames', 'dropped_frames'))
+                or monitoring['submitted_frames'] + monitoring['dropped_frames'] > audio['frames']):
+            raise ValueError('Invalid recording monitoring receipt.')
     return value
 
 
@@ -427,7 +441,8 @@ class RecordingService:
                 '-i', 'audio=' + device.alternative]
 
     def capture(self, device_id, *, title='Microphone recording', options=None,
-                stop_requested=lambda: False, cancelled=lambda: False, progress=None, retake_of=None):
+                stop_requested=lambda: False, cancelled=lambda: False, progress=None, retake_of=None,
+                monitor_output=None):
         options = options or RecordingOptions()
         if not isinstance(options, RecordingOptions):
             raise ValueError('Validated recording options are required.')
@@ -436,6 +451,8 @@ class RecordingService:
             raise ValueError('Recording requires explicit Stop and Cancel callbacks.')
         if progress is not None and not callable(progress):
             raise ValueError('Recording progress requires a callback.')
+        if monitor_output is not None:
+            output_identity(monitor_output)  # Pure, explicit selection before any device opens.
         device = self._devices.get(device_id)
         if device is None or self._engine_hash is None:
             raise ValueError('Refresh microphones and explicitly select a current device before Start.')
@@ -448,7 +465,7 @@ class RecordingService:
         try:
             previous = self.get(retake_of, cancelled=cancelled) if retake_of is not None else None
             return self._capture(device, title, options, stop_requested, cancelled,
-                                 progress, reservation, previous)
+                                 progress, reservation, previous, monitor_output)
         except AudioCleanupPending as exc:
             reservation.retain(exc.cleanup_owner)
             exc.recording_reservation = reservation
@@ -457,7 +474,8 @@ class RecordingService:
             if not reservation.deferred:
                 reservation.close()
 
-    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, previous=None):
+    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation,
+                 previous=None, monitor_output=None):
         identity = reservation.identity
         output, receipt = self.root / (identity + '.wav'), self.root / (identity + '.json')
         if os.path.lexists(output) or os.path.lexists(receipt):
@@ -491,12 +509,28 @@ class RecordingService:
             '-stats_period', '0.1', '-progress', 'pipe:1',
             *self._input_arguments(device), '-thread_queue_size', '128', '-map', '0:a:0', '-vn',
             '-c:a', 'pcm_s16le', '-ar', str(options.sample_rate), '-ac', str(options.channels),
-            '-t', str(options.max_seconds), '-f', 'wav', '-rf64', 'never', str(staged)]
+            '-t', str(options.max_seconds),
+            *(['-flush_packets', '1'] if monitor_output is not None else []),
+            '-f', 'wav', '-rf64', 'never', str(staged)]
         self._validate_root()
         if cancelled() or stop_requested():
             raise AudioCancelled('Recording stopped before opening the microphone.')
-        result = run_process(command, budget=budget, cancelled=cancelled,
-            stop_requested=stop_requested, watch=(staged,), progress=report, cwd=temporary, owned_tree=True)
+        monitoring_receipt = None
+        with (monitored_capture(staged, sample_rate=options.sample_rate, channels=options.channels,
+                maximum_frames=options.max_seconds * options.sample_rate, device=monitor_output,
+                cancelled=cancelled) if monitor_output is not None else nullcontext(None)) as monitoring:
+            def measured(seconds):
+                # Native/tap failures must reach the runner's owned cleanup,
+                # unlike an optional progress observer which may detach.
+                monitoring.poll()
+                report(seconds)
+            result = run_process(command, budget=budget, cancelled=cancelled,
+                stop_requested=stop_requested, watch=(staged,),
+                progress=measured if monitoring is not None else report,
+                cwd=temporary, owned_tree=True)
+            if monitoring is not None:
+                monitoring.poll()
+                monitoring_receipt = monitoring.receipt()
         audio = self._audio(staged, options, cancelled)
         self._validate_root()
         if _digest(self.runtime.ffmpeg, cancelled) != self._engine_hash:
@@ -512,6 +546,9 @@ class RecordingService:
             value['retake'] = {
                 'origin_id': previous.get('retake', {}).get('origin_id', previous['id']),
                 'previous_id': previous['id'], 'previous_sha256': previous['audio']['sha256']}
+        if monitoring_receipt is not None:
+            value['schema'] = 'carr-recording/3'
+            value['monitoring'] = monitoring_receipt
         validate_recording_receipt(value, recording_id=identity)
         self._validate_root()
         publish_file(staged, output, cancelled=cancelled)
@@ -581,7 +618,7 @@ class RecordingService:
     def _lineage(self, value, cancelled=lambda: False):
         seen = {value['id']}
         current = value
-        while current.get('schema') == 'carr-recording/2':
+        while 'retake' in current:
             _check(cancelled)
             relation = current['retake']
             previous = self._receipt(relation['previous_id'])

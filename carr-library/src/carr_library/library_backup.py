@@ -131,6 +131,9 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 state = snapshot_state(state_root, stage / 'state',
                                        include_generated=include_generated, cancelled=cancelled,
                                        missing_ok=False)
+                from .studio.backup_inputs import snapshot_inputs
+                state = snapshot_inputs(stage / 'state', state, source_state_root=state_root,
+                                        cancelled=cancelled)
                 validate_state_documents(stage / 'state', state, cancelled=cancelled)
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
             from .pending_backup import pending_roots, snapshot_pending
@@ -359,7 +362,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
             sidecars = None
             if flat is not None:
-                flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled)
+                flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled,
+                                             destination=destination)
             elif 'sidecars' in manifest:
                 sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
                     stage, manifest['sidecars'], destination, db=storage.db, cancelled=cancelled)
@@ -368,7 +372,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
             from .state_backup import restore_state
             from .state_recovery import prepare_restored_state
             restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
-            prepare_restored_state(stage / 'state', manifest['state'], cancelled=cancelled)
+            prepare_restored_state(stage / 'state', manifest['state'], cancelled=cancelled,
+                                   destination_state_root=destination / 'state')
         pending_manifest = flat.pending if flat is not None else manifest.get('pending')
         if pending_manifest is not None:
             from .pending_backup import restore_pending

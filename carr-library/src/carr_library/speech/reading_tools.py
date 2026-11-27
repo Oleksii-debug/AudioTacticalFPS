@@ -3,7 +3,7 @@
 Snapshots and previews are in-memory UI transactions, never source authority or
 another persisted document format. The ReadingDocument owns history and mapping.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import re
@@ -23,15 +23,17 @@ class ReadingSnapshot:
     text: str
     signature: tuple
     source_sha256: str
+    document: ReadingDocument | None = field(default=None, compare=False, repr=False)
 
     @classmethod
     def capture(cls, document):
         if not isinstance(document, ReadingDocument):
             raise ValueError('Open a reading copy before preparing edits.')
-        return cls(document.text, document._signature(), document.source_sha256)
+        return cls(document.text, document._signature(), document.source_sha256, document)
 
     def check(self, document):
         if (not isinstance(document, ReadingDocument)
+                or self.document is not None and document is not self.document
                 or document._signature() != self.signature
                 or document.source_sha256 != self.source_sha256
                 or document.text != self.text):

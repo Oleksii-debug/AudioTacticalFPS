@@ -387,6 +387,10 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     env['transport'] = create_autospec(ReaderPlaybackControls, instance=True, spec_set=True)
     env['keyboard'] = create_autospec(VoiceReaderKeyboardAdapter, instance=True, spec_set=True)
     env['output_controls'] = create_autospec(ReaderOutputControls, instance=True, spec_set=True)
+    # This existing close fixture represents a single, live reader. The modal
+    # finally also captures the optional tab controller and native owner state.
+    env['reader_tabs'] = None
+    env['dialog_destroyed'] = False
     env['unregister_save'] = Mock()
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')

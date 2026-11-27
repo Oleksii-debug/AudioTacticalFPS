@@ -141,14 +141,18 @@ def reader(tmp_path, monkeypatch):
     values = dict(parent=parent, progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
+        busy=False, close_requested=False, reader_tabs=None, remembered_voice_id='',
+        dialog_destroyed=False, dialog_id=91,
         wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), transport=Mock(), playback_guard=Mock(),
-        executor=Mock(), audio_files=Mock())
+        executor=Mock(), audio_files=Mock(), keyboard=Mock(), output_controls=Mock(),
+        unregister_save=Mock())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
+        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio',
+         'confirm_current_close', 'owner_destroyed', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
@@ -476,3 +480,109 @@ def test_reader_transport_guard_rejects_changed_context_before_source_access(tmp
     with pytest.raises(ValueError, match='library folder changed'):
         handler()
     source_guard.assert_not_called()
+
+
+def _revoked_reader_close(tmp_path, *, tabs=False, dirty=True, answer=2, busy=False):
+    """Actual close/save callbacks with real retained bytes and no native claims."""
+    from carr_library.speech.reading import ReadingDocument
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
+
+    document = ReadingDocument('Retained original cannot be changed by closing.')
+    store = ReaderDraftStore(tmp_path / 'library', slot='revoked-close')
+    store.save(ReaderResume(document))
+    before = store.path.read_bytes()
+    document._saved_signature = document._signature()
+    if dirty:
+        document.set_text('')
+    editor = SimpleNamespace(GetValue=lambda: document.text)
+    guard = Mock(side_effect=ValueError('The library folder changed.'))
+    question = Mock(return_value=answer)
+    wx = SimpleNamespace(YES=2, NO=4, CANCEL=8, YES_NO=6, ICON_QUESTION=16,
+                         ID_CANCEL=1, MessageBox=question)
+    tab_workspace = None
+    if tabs:
+        tab_workspace = SimpleNamespace(
+            check=Mock(side_effect=ValueError('The reading workspace root was replaced.')),
+            states=[SimpleNamespace(resume=ReaderResume(document))],
+            active=0, confirm_all_close=Mock(side_effect=AssertionError('No tab writes after revocation')))
+    values = dict(document=document, editor=editor, recovery_notice='', source_status=Mock(),
+        playback_guard=guard, source_guard=Mock(), save_path=tmp_path / 'must-not-be-written.reading.json',
+        draft_store=store, save_recovery=Mock(side_effect=AssertionError('No recovery writes after revocation')),
+        reader_tabs=tab_workspace, alive=True, busy=busy, close_requested=False,
+        cancel=threading.Event(), report=Mock(), dialog=Mock(), wx=wx)
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader',
+        ['sync_document', 'save_project', 'confirm_current_close', 'closing'], values)
+    return SimpleNamespace(handlers=handlers, values=values, document=document, store=store,
+                           before=before, question=question, tabs=tab_workspace)
+
+
+@pytest.mark.parametrize(('answer', 'closed', 'saving'), [(2, False, True), (4, True, False), (8, False, False)])
+def test_revoked_single_copy_can_decline_write_or_cancel_but_cannot_save(tmp_path, answer, closed, saving):
+    view = _revoked_reader_close(tmp_path, answer=answer)
+    view.handlers.closing(None)
+    assert view.values['dialog'].EndModal.called is closed
+    assert view.values['playback_guard'].called is saving
+    assert view.question.call_count == 1
+    view.values['save_recovery'].assert_not_called()
+    assert view.store.path.read_bytes() == view.before
+    assert not view.values['save_path'].exists()
+    assert view.document.text == '' and view.document.dirty
+    assert view.document.source_text == 'Retained original cannot be changed by closing.'
+
+
+@pytest.mark.parametrize('answer', [2, 4])
+def test_revoked_tab_workspace_close_requires_explicit_dirty_empty_discard_without_any_write(tmp_path, answer):
+    view = _revoked_reader_close(tmp_path, tabs=True, answer=answer)
+    view.handlers.closing(None)
+    assert view.values['dialog'].EndModal.called is (answer == 2)
+    assert view.question.call_count == 1
+    view.tabs.confirm_all_close.assert_not_called()
+    view.values['save_recovery'].assert_not_called()
+    assert view.tabs.active == 0
+    assert view.store.path.read_bytes() == view.before
+    assert view.document.text == '' and view.document.dirty
+    assert not view.values['save_path'].exists()
+
+
+@pytest.mark.parametrize('tabs', [False, True])
+def test_clean_revoked_reader_can_close_without_touching_retained_recovery(tmp_path, tabs):
+    view = _revoked_reader_close(tmp_path, tabs=tabs, dirty=False)
+    view.handlers.closing(None)
+    view.values['dialog'].EndModal.assert_called_once_with(1)
+    view.question.assert_not_called()
+    view.values['save_recovery'].assert_not_called()
+    assert view.store.path.read_bytes() == view.before
+    if tabs:
+        view.tabs.confirm_all_close.assert_not_called()
+
+
+def test_busy_close_requests_cancellation_before_any_tab_visit_or_prompt(tmp_path):
+    view = _revoked_reader_close(tmp_path, tabs=True, busy=True)
+    view.handlers.closing(None)
+    assert view.values['cancel'].is_set()
+    view.values['dialog'].EndModal.assert_not_called()
+    view.question.assert_not_called()
+    view.tabs.check.assert_not_called()
+    view.tabs.confirm_all_close.assert_not_called()
+    assert view.store.path.read_bytes() == view.before
+
+
+def test_reader_direct_owner_destruction_revokes_queued_playback_and_skips_second_destroy(reader):
+    started = Mock()
+    reader.handlers.start_playback(started)
+    child = SimpleNamespace(GetId=lambda: 92, Skip=Mock())
+    reader.handlers.owner_destroyed(child)
+    assert not reader.values['cancel'].is_set()
+    owner = SimpleNamespace(GetId=lambda: 91, Skip=Mock())
+    reader.handlers.owner_destroyed(owner)
+    assert reader.values['cancel'].is_set()
+    child.Skip.assert_called_once()
+    owner.Skip.assert_called_once()
+    reader.handlers.cleanup()
+    reader.values['dialog'].Destroy.assert_not_called()
+    reader.values['player'].close.assert_called_once()
+    reader.values['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    reader.progress.ready = True
+    reader.scheduler.tick()
+    started.assert_not_called()
+    assert all(hold.closed for hold in reader.progress.holds)

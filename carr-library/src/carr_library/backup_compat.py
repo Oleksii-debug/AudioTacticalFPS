@@ -22,6 +22,7 @@ from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 from . import backup_producers, backup_generated, recording_backup, backup_transcription
+from .studio import backup_inputs
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
@@ -90,6 +91,8 @@ def sidecar_limit(name):
         return ENGINE_SETTINGS_BYTES
     if name == 'state/operations/resources.json':
         return 32768
+    if backup_inputs.namespace(name):
+        return backup_inputs.limit(name)
     if backup_transcription.namespace(name):
         maximum = backup_transcription.limit(name)
         if name != name.casefold() or maximum is None:
@@ -312,6 +315,8 @@ def validate_sidecar(db, name, raw):
         elif name == 'state/operations/resources.json':
             from .state_recovery import validate_resource_policy
             validate_resource_policy(_json(raw))
+        elif backup_inputs.namespace(name):
+            backup_inputs.validate_metadata(name, _json(raw))
         elif backup_transcription.namespace(name):
             backup_transcription.validate(name, raw)
         elif recording_backup.state_path(name):
@@ -355,6 +360,11 @@ class Inventory:
 
 
 def _collection_budgets(entries):
+    entries = tuple(entries)
+    presets = [(name, size) for name, size in entries
+               if name.startswith('state/studio/effect-presets/')]
+    if len(presets) > backup_inputs.MAX_PRESETS:
+        raise RestoreError('effect preset snapshot budget exceeded')
     narration = [(name, size) for name, size in entries if name.startswith('narration-projects/')]
     if narration:
         model = _model('reader.narration')
@@ -597,7 +607,7 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
         raise RestoreError('incomplete sidecar backup: ' + missing)
 
 
-def restore(db, source, stage, inventory, *, cancelled=lambda: False):
+def restore(db, source, stage, inventory, *, cancelled=lambda: False, destination=None):
     """Verify exact canonical producers, then revoke authority in private state."""
     receipts = {}
     # Capture the tiny passive index first. Its referenced histories are decoded
@@ -610,7 +620,8 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in entries:
         _check_cancelled(cancelled)
         name = entry['filename']
-        if backup_transcription.is_input(name) or recording_backup.is_audio(name):
+        if (backup_transcription.is_input(name) or recording_backup.is_audio(name)
+                or backup_inputs.is_input(name)):
             # Retained originals use the existing streaming manifest proof.
             # PCM/retake verification runs against the complete private state;
             # an orphan is preserved without parsing binary bytes as JSON.
@@ -647,11 +658,18 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
         # donor format did not record restore markers. Preserve input paths,
         # source hashes and historical receipts, never their old authority.
         from .state_recovery import prepare_restored_state
-        state = prepare_restored_state(stage / 'state', state, cancelled=cancelled)
+        state = prepare_restored_state(stage / 'state', state, cancelled=cancelled,
+            destination_state_root=Path(destination) / 'state' if destination is not None else None)
         inventory = Inventory(tuple(
             [row for row in inventory.entries if not row['filename'].startswith('state/')]
             + [{**row, 'filename': 'state/' + row['filename']} for row in state]),
             inventory.empty_roots, inventory.generated_audio_included, inventory.pending)
+    # Projection adds checked revision/notice files, but does not increase
+    # this foreign envelope's existing metadata/original-byte allowances.
+    if (len(inventory.entries) > MAX_FILES or sum(row['size_bytes']
+            for row in inventory.entries if not backup_generated.is_media(row['filename'])) > MAX_BYTES):
+        raise RestoreError('restored sidecar projection exceeds the existing snapshot budget')
+    _collection_budgets((row['filename'], row['size_bytes']) for row in inventory.entries)
     _check_cancelled(cancelled)
     return inventory
 

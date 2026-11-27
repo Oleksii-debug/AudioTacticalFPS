@@ -183,6 +183,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     callbacks, controls = Queue(), []
     guard_calls = []
     statuses = []
+    focused, blocked_focus = [], []
 
     def scope():
         guard_calls.append(get_ident())
@@ -221,6 +222,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def native(self):
             assert get_ident() == main
             assert not self.destroyed
+        def GetId(self): self.native(); return id(self)
         def SetName(self, value): self.native(); self.name = value
         def GetName(self): self.native(); return self.name
         def SetLabel(self, value): self.native(); self.label = value
@@ -259,7 +261,15 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def IsEnabled(self): self.native(); return self.enabled
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
-        def SetFocus(self): self.native(); assert self.enabled
+        def SetFocus(self):
+            self.native()
+            # Native disabled controls cannot acquire focus; requesting focus
+            # while the source loads is a no-op, not a control activation.
+            if self.enabled:
+                focused[:] = [self]
+            else:
+                blocked_focus.append(self)
+
         def Add(self, *args): self.native()
         def SetSizer(self, *args): self.native()
         def SetEscapeId(self, *args): self.native()
@@ -283,6 +293,11 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     class Dialog(Control):
         def ShowModal(self):
             self.native()
+            editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
+            # The actual source is not admitted until the queued worker result
+            # reaches the UI. A focus request must not enable or populate it.
+            assert not editor.enabled and not named('Reload &voices').enabled
+            assert editor in blocked_focus and editor not in focused
             deadline = time.monotonic() + 5
             while not named('Reload &voices').enabled:
                 assert time.monotonic() < deadline, 'Canonical discovery did not complete.'
@@ -291,11 +306,12 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
                 except Empty:
                     continue
                 callback(*args)
-            editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
-            assert editor.GetValue() == expected_editor
+            assert editor.enabled and editor.GetValue() == expected_editor
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             scope()
-            named('Save &as').handlers['button'](None)
+            save_as = named('Save &as')
+            assert save_as.enabled
+            save_as.handlers['button'](None)
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             return 5101
 
@@ -318,7 +334,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
-        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_CHECKBOX='checkbox')
+        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_WINDOW_DESTROY='destroy',
+        EVT_TIMER='timer', EVT_CHECKBOX='checkbox')
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
