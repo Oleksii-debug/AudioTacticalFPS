@@ -1,0 +1,160 @@
+name: CARR bounded owned audio and ASR timing diagnosis
+on:
+  push:
+    branches: [carr/audio-drain-dbbb-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-audio-drain-dbbb.yml']
+permissions:
+  contents: read
+concurrency:
+  group: carr-audio-drain-dbbb-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  native-audio:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [host, pinned-delivery]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_PYTHON_PROFILE: ${{ matrix.profile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Select the host interpreter or the exact pinned delivery archive
+        timeout-minutes: 5
+        run: |
+          New-Item -ItemType Directory -Force ci-owned-results | Out-Null
+          $base = (Get-Command python).Source
+          if ($env:CARR_PYTHON_PROFILE -eq 'pinned-delivery') {
+            $manifest = Get-Content -Raw packaging/windows-python.json | ConvertFrom-Json
+            $env:CARR_PINNED_ARCHIVE = Join-Path $env:RUNNER_TEMP 'carr-owned-python.tar.gz'
+            $env:CARR_PINNED_ROOT = Join-Path $env:RUNNER_TEMP 'carr-owned-pinned-python'
+            Invoke-WebRequest -Uri $manifest.download.url -OutFile $env:CARR_PINNED_ARCHIVE
+            if ((Get-FileHash -LiteralPath $env:CARR_PINNED_ARCHIVE -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.download.sha256) { throw 'Pinned runtime hash mismatch.' }
+            $extract = @'
+          import hashlib,json,pathlib,tarfile
+          manifest=json.loads(pathlib.Path('packaging/windows-python.json').read_text(encoding='utf-8'))
+          archive=pathlib.Path(__import__('os').environ['CARR_PINNED_ARCHIVE'])
+          target=pathlib.Path(__import__('os').environ['CARR_PINNED_ROOT'])
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==manifest['download']['sha256']
+          with tarfile.open(archive,'r:gz') as source:
+              members=source.getmembers()
+              if len(members)>50000 or sum(item.size for item in members)>512*1024*1024:
+                  raise ValueError('Pinned Python archive exceeds its existing delivery bound.')
+              for item in members:
+                  parts=pathlib.Path(item.name).parts
+                  if not parts or parts[0]!='python' or '..' in parts or not(item.isfile() or item.isdir()):
+                      raise ValueError('Unexpected pinned Python archive member.')
+              source.extractall(target,filter='data')
+          print(json.dumps({'runtime_sha256':manifest['download']['sha256'],'target':manifest['target']}))
+          '@
+            $script = Join-Path $env:RUNNER_TEMP 'carr-owned-extract.py'
+            $extract | Set-Content -LiteralPath $script -Encoding utf8
+            python -I -B $script
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $base = Join-Path $env:CARR_PINNED_ROOT 'python/python.exe'
+            if (!(Test-Path -LiteralPath $base -PathType Leaf)) { throw 'Pinned native Python is absent.' }
+          }
+          $environment = Join-Path $env:RUNNER_TEMP ('carr-owned-' + $env:CARR_PYTHON_PROFILE)
+          & $base -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -I -B -c "import json,sys;print(json.dumps({'version':sys.version,'prefix':sys.prefix,'base_prefix':sys.base_prefix}))"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install pinned dependencies and the exact source wheel
+        id: install
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual descendant shutdown and short fresh venv workers
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/audio/native_recording_process_probe.py --report ci-owned-results/native-owned-process.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep original synthetic deadlines and measure parent admission work
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $probe = @'
+          import hashlib,importlib,importlib.util,json,pathlib,sys,sysconfig,xml.etree.ElementTree as ET
+          root=pathlib.Path.cwd()
+          purelib=pathlib.Path(sysconfig.get_path('purelib')).resolve()
+          proof={}
+          for name,relative in (
+              ('carr_library.audio.process','audio/process.py'),
+              ('carr_library.audio.windows_process','audio/windows_process.py'),
+              ('carr_library.speech.output_devices','speech/output_devices.py'),
+              ('carr_library.transcription.service','transcription/service.py'),
+          ):
+              module=importlib.import_module(name)
+              origin=pathlib.Path(module.__file__).resolve()
+              expected=root/'src/carr_library'/relative
+              assert origin.is_relative_to(purelib) and not origin.is_relative_to(root/'src')
+              assert origin.read_bytes()==expected.read_bytes()
+              proof[name]=hashlib.sha256(origin.read_bytes()).hexdigest()
+          pathlib.Path('ci-owned-results/installed-source.json').write_text(json.dumps({
+              'source_commit':__import__('os').environ['GITHUB_SHA'],'python':sys.version,
+              'profile':__import__('os').environ['CARR_PYTHON_PROFILE'],'modules':proof},indent=2),encoding='utf-8')
+          spec=importlib.util.spec_from_file_location('carr_asr_timing_diagnostic',root/'scripts/transcription_timing_plugin.py')
+          timing=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(timing)
+          import pytest
+          class RejectExpectedFailures:
+              seen=False
+              def pytest_runtest_logreport(self,report):
+                  if hasattr(report,'wasxfail'):
+                      self.seen=True
+          policy=RejectExpectedFailures()
+          code=pytest.main(['-s','-q','-o','xfail_strict=true','--import-mode=importlib',
+              'tests/audio/test_recording_windows_process.py','tests/audio/test_recording_process.py',
+              'tests/audio/test_audio_process.py','tests/speech/test_output_devices.py',
+              'tests/transcription/test_admission_boundaries.py','tests/transcription/test_service.py',
+              '--junitxml=ci-owned-results/strict.xml',
+              '--asr-timing-report=ci-owned-results/asr-timing.json'],plugins=[timing,policy])
+          cases=list(ET.parse('ci-owned-results/strict.xml').iter('testcase'))
+          failed=sum(any(row.find(key)is not None for key in ('failure','error')) for row in cases)
+          skipped=sum(row.find('skipped')is not None for row in cases)
+          result={'passed':len(cases)-failed-skipped,'failed':failed,'skipped':skipped,
+                  'pytest_exit':int(code),'expected_failure':policy.seen}
+          pathlib.Path('ci-owned-results/summary.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+          print(json.dumps(result),flush=True)
+          if code or failed or skipped or not cases or policy.seen:
+              raise SystemExit(1)
+          '@
+          $script = Join-Path $env:RUNNER_TEMP 'carr-owned-pytest.py'
+          $probe | Set-Content -LiteralPath $script -Encoding utf8
+          & $env:CARR_PYTHON -I -B $script
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain only bounded synthetic timing and exit evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-owned-audio-${{ matrix.profile }}-${{ github.sha }}
+          path: carr-library/ci-owned-results/
+          if-no-files-found: error
+          retention-days: 7
