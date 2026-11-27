@@ -154,9 +154,9 @@ def test_binary_recordings_use_streaming_copy_not_json_materialization(library, 
     backup = tmp_path / 'backup'
     _, checksum = _backup(app, backup, shape)
     original = backup_compat.read_regular
-    def guarded(path, maximum):
+    def guarded(path, maximum, *, allow_empty=False):
         assert not str(path).endswith('.wav'), 'binary original reached the JSON reader'
-        return original(path, maximum)
+        return original(path, maximum, allow_empty=allow_empty)
     monkeypatch.setattr(backup_compat, 'read_regular', guarded)
     root = restore_backup(backup, tmp_path / 'restored', checksum)
     assert sha256((root / recording_backup.DIRECTORY / value['filename']).read_bytes()).hexdigest() == value['audio']['sha256']
@@ -293,3 +293,59 @@ def test_foreign_flat_recording_does_not_raise_existing_total_byte_budget():
         'generated_audio_included': False}
     with pytest.raises(RestoreError, match='manifest byte limit'):
         backup_compat.normalize_manifest(manifest)
+
+
+def _monitored(folder, value):
+    """Convert only the explicit monitoring envelope; PCM/retake bytes stay bound."""
+    changed = {**value, 'schema': 'carr-recording/3', 'monitoring': {
+        'enabled': True, 'output_identity': 'f' * 64,
+        'submitted_frames': value['audio']['frames'] - 1, 'dropped_frames': 1}}
+    atomic_json(folder / (value['id'] + '.json'), changed, replace=True)
+    return changed
+
+
+@pytest.mark.parametrize('shape', ['composite', 'flat'])
+def test_monitored_recording_and_retake_keep_pcm_lineage_passive_after_restore(
+        library, tmp_path, monkeypatch, shape):
+    app, _, folder = library
+    first = _monitored(folder, _record(folder, 'a' * 32))
+    second = _monitored(folder, _record(folder, 'b' * 32, previous=first))
+    captured = {path.name: path.read_bytes() for path in folder.iterdir() if path.is_file()}
+    monkeypatch.setattr(RecordingService, '_runtime',
+                        lambda *_a, **_k: pytest.fail('Restoration activated capture or monitoring.'))
+    manifest, checksum = _backup(app, tmp_path / 'backup', shape)
+    root = restore_backup(tmp_path / 'backup', tmp_path / 'restored', checksum)
+    restored = RecordingService(root)
+    observed = restored.get(second['id'])
+    assert observed == {**second, 'path': str(root / recording_backup.DIRECTORY / second['filename'])}
+    assert {path.name: path.read_bytes() for path in (root / recording_backup.DIRECTORY).iterdir()
+            if path.is_file()} == captured
+    assert second['retake']['origin_id'] == first['id']
+    assert second['retake']['previous_sha256'] == first['audio']['sha256']
+    assert observed['monitoring']['submitted_frames'] + observed['monitoring']['dropped_frames'] == (
+        observed['audio']['frames'])
+    assert manifest['schema_version'] == 6 and not (root / INCOMPLETE).exists()
+
+
+@pytest.mark.parametrize('shape', ['composite', 'flat'])
+@pytest.mark.parametrize('change', ['origin', 'previous-hash', 'missing-parent'], ids=str)
+def test_resealed_monitored_retake_cannot_bypass_its_exact_retained_parent(
+        library, tmp_path, shape, change):
+    app, _, folder = library
+    first = _monitored(folder, _record(folder, 'a' * 32))
+    second = _monitored(folder, _record(folder, 'b' * 32, previous=first))
+    backup = tmp_path / 'backup'
+    manifest, _ = _backup(app, backup, shape)
+    name = recording_backup.PREFIX + second['id'] + '.json'
+    value, remove = {**second, 'retake': dict(second['retake'])}, False
+    if change == 'origin':
+        value['retake']['origin_id'] = 'c' * 32
+    elif change == 'previous-hash':
+        value['retake']['previous_sha256'] = 'e' * 64
+    else:
+        name, remove = recording_backup.PREFIX + first['id'] + '.json', True
+    checksum = _reseal_entry(backup, manifest, name, _raw(value), remove=remove)
+    target = tmp_path / 'restored'
+    with pytest.raises((ValueError, RestoreError), match='retake.*identity'):
+        restore_backup(backup, target, checksum)
+    assert not target.exists()

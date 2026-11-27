@@ -26,6 +26,8 @@ class Text:
     SetValue = ChangeValue
     def GetInsertionPoint(self):
         return len(self.value)
+    def GetRange(self, start, end):
+        return self.value[start:end]
     def GetStringSelection(self):
         return self.value
     def SetFocus(self):
@@ -119,7 +121,7 @@ def reader_callbacks(tmp_path, text='Changed reading copy', *, blocked=False):
     draft = ReaderDraftStore(tmp_path / 'library', slot='save-all-test')
     guard = Mock(side_effect=ValueError('Source authorization revoked') if blocked else None)
     env = dict(Path=Path, ReaderResume=ReaderResume, SaveResult=SaveResult,
-               SimpleNamespace=SimpleNamespace)
+               SimpleNamespace=SimpleNamespace, reading_offset=speech_dialog.reading_offset)
     make = callbacks(speech_dialog, 'show_speech_reader',
         ('sync_document', 'save_recovery', 'save_project', 'unsaved', 'save_registered'),
         '''
@@ -127,6 +129,7 @@ def make(document, editor, draft_store, source_guard):
     alive, busy, source_loaded = True, False, True
     save_path = last_audio = last_recovery_signature = None
     recovery_notice = ''
+    reader_tabs, remembered_voice_id = None, ''
     dialog = None
     source_status = Text('')
     voice_choice = SimpleNamespace(GetSelection=lambda: -1)
@@ -151,6 +154,7 @@ def test_reader_participant_commits_real_recovery_including_empty_edit(tmp_path,
     assert summaries[0].complete and summaries[0].saved == ('Voice reading copy',)
     reopened = ReaderDraftStore(tmp_path / 'library', slot='save-all-test').load()
     assert reopened.document.text == text
+    assert reopened.cursor == len(text)
     assert reopened.document.source_text == document.source_text == 'Immutable original source.'
     assert not reader.dirty()
     assert guard.call_count >= 2

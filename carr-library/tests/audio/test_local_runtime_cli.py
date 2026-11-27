@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import create_autospec
 
 import pytest
 
@@ -88,9 +89,11 @@ def test_assistant_preview_does_not_activate_media_or_inspect_a_runtime(tmp_path
             assert instructions == 'Search only.'
             return SimpleNamespace(to_dict=lambda: {'steps': []})
     monkeypatch.setattr(application, 'LibraryApp', lambda root: SimpleNamespace(root=Path(root)))
-    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: SimpleNamespace())
+    production = create_autospec(cli.ProductionService, instance=True, spec_set=True)
+    monkeypatch.setattr(cli, 'ProductionService', lambda *a, **k: production)
     monkeypatch.setattr(assistant, 'AssistantService', Service)
     monkeypatch.setattr(local_runtime, 'open_local_audio_runtime',
                         lambda *a, **k: pytest.fail('assistant preview activated audio'))
     assert cli.assistant_main(['--data-dir', str(tmp_path), '--instructions', str(source)]) == 0
     assert calls == ['created']
+    production.close.assert_called_once_with()

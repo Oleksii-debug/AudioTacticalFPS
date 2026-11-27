@@ -111,6 +111,14 @@ def validate_resource_policy(value):
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
     path = _dispatch_path(relative)
+    if path == PurePosixPath('audio-metadata/choices.json'):
+        from .audio.metadata_review import validate_choices
+        validate_choices(value)
+        return None
+    if path == PurePosixPath('speech/playback-queue.json'):
+        from .speech.playlist import SavedPlaylist
+        SavedPlaylist.from_dict(value)
+        return None
     if path == PurePosixPath('speech/presentation.json'):
         from .speech.presentation import ReadingAppearance
         ReadingAppearance.from_dict(value)
@@ -197,19 +205,110 @@ def _prepared(relative, value):
     return None
 
 
-def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False):
+def _reading_tab_rows(index, inventory, *, cancelled):
+    """Preflight referenced byte totals before any retained history is replayed."""
+    from .speech import tabs
+    selected, total = [], 0
+    for tab in index.tabs:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        name = tab.filename.removeprefix('state/').casefold()
+        entry = inventory.get(name)
+        if entry is None:
+            raise ValueError('Reading-tab recovery references a missing retained draft.')
+        size = entry['size_bytes']
+        if type(size) is not int or size <= 0:
+            raise ValueError('Invalid retained reading-tab draft size.')
+        total += size
+        if total > tabs.MAX_TOTAL_DRAFT_BYTES:
+            raise ValueError('Reading tabs exceed their aggregate recovery byte budget.')
+        selected.append((name, entry))
+    return selected
+
+
+def _validate_reading_tabs(root, entries, *, cancelled):
+    """Validate passive membership against the exact copied state inventory.
+
+    Use the existing portable case identity without renaming any user file.
+    No ReaderDraftStore is constructed and no saved voice is activated.
+    """
+    from .speech import tabs
+    from .speech.session import ReaderDraftStore
+    from .durable_state import read_json_snapshot
+
+    index_name = tabs.NAME.removeprefix('state/').casefold()
+    inventory = {}
+    for entry in entries:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        name = entry['filename'].casefold()
+        if name in inventory:
+            raise ValueError('Ambiguous reading-tab state inventory.')
+        inventory[name] = entry
+    index_entry = inventory.get(index_name)
+    if index_entry is None:
+        return frozenset()
+    if (type(index_entry['size_bytes']) is not int
+            or not 0 < index_entry['size_bytes'] <= tabs.MAX_BYTES):
+        raise ValueError('Reading-tab membership exceeds its recovery byte budget.')
+    if cancelled():
+        raise InterruptedError('Reading-tab backup verification cancelled.')
+    value, _ = read_json_snapshot(root / index_entry['filename'],
+                                 max_bytes=index_entry['size_bytes'])
+    index = tabs.ReadingTabs.from_dict(value)
+    selected = _reading_tab_rows(index, inventory, cancelled=cancelled)
+    captured, characters = [], 0
+    for name, entry in selected:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        record, _ = read_json_snapshot(root / entry['filename'], max_bytes=entry['size_bytes'])
+        characters += tabs._history_characters(record)
+        if characters > tabs.MAX_RETAINED_CHARACTERS:
+            raise ValueError('Reading tabs exceed their aggregate retained-history budget.')
+        captured.append((name, record))
+    for _, record in captured:
+        if cancelled():
+            raise InterruptedError('Reading-tab backup verification cancelled.')
+        ReaderDraftStore.decode(record)
+    if cancelled():
+        raise InterruptedError('Reading-tab backup verification cancelled.')
+    return frozenset((index_name, *(name for name, _ in selected)))
+
+
+def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False,
+                             destination_state_root=None):
     """Check typed state without touching model paths or external output files."""
     from . import recording_backup, backup_transcription
+    from .studio import backup_inputs
     entries = backup_transcription.validate_state(root, entries, cancelled=cancelled, restored=restored)
     recording_backup.validate_state_entries(entries, cancelled=cancelled)
+    clip_receipt = backup_inputs.validate_state(root, entries, cancelled=cancelled)
+    validated_tabs = _validate_reading_tabs(root, entries, cancelled=cancelled)
+    from .studio import book_backup
+    validated_books = book_backup.validate_state(root, entries, cancelled=cancelled)
+    if any(entry['filename'].casefold() == 'speech/playback-queue.json' for entry in entries):
+        from .speech.playlist import validate_state_collection
+        validate_state_collection(root, entries)
     for entry in entries:
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
         relative = _dispatch_path(entry['filename'])
+        if relative.as_posix() in validated_tabs or relative.as_posix() in validated_books:
+            continue
+        if relative == PurePosixPath('audio-metadata/choices.json'):
+            from .audio.metadata_review import MAX_BYTES
+            if not 0 < entry['size_bytes'] <= MAX_BYTES:
+                raise ValueError('Saved audio metadata choices exceed their recovery size limit.')
+        if relative == PurePosixPath('speech/playback-queue.json'):
+            from .speech.playlist import MAX_STATE_BYTES
+            if not 0 < entry['size_bytes'] <= MAX_STATE_BYTES:
+                raise ValueError('Saved playback queue exceeds its recovery size limit.')
         if relative == PurePosixPath('speech/presentation.json'):
             from .speech.presentation import MAX_BYTES
             if not 0 < entry['size_bytes'] <= MAX_BYTES:
                 raise ValueError('Reading appearance settings exceed their recovery size limit.')
+        if backup_inputs.namespace('state/' + entry['filename']):
+            continue
         if backup_transcription.namespace('state/' + entry['filename']):
             continue
         if relative.as_posix().startswith(recording_backup.STATE_PREFIX):
@@ -235,7 +334,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
             if (_publication_path(relative)
-                    or relative in (PurePosixPath('speech/presentation.json'),
+                    or relative in (PurePosixPath('audio-metadata/choices.json'),
+                                    PurePosixPath('speech/presentation.json'),
                                     PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'),
                                     PurePosixPath('operations/resources.json'))
                     or len(relative.parts) == 5 and relative.parts[0] == 'transcription'
@@ -248,8 +348,12 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
         if restored and updated is not None:
             atomic_json(path, updated, replace=True)
     recording_backup.validate_state_root(root, cancelled=cancelled)
+    if restored:
+        entries = backup_inputs.restore_inputs(root, entries, clip_receipt,
+            destination_state_root=destination_state_root, cancelled=cancelled)
     return entries
 
 
-def prepare_restored_state(root, entries, *, cancelled=lambda: False):
-    return validate_state_documents(root, entries, cancelled=cancelled, restored=True)
+def prepare_restored_state(root, entries, *, cancelled=lambda: False, destination_state_root=None):
+    return validate_state_documents(root, entries, cancelled=cancelled, restored=True,
+                                    destination_state_root=destination_state_root)

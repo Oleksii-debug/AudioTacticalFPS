@@ -26,6 +26,7 @@ def run(arguments, report):
     errors, checks = [], report['checks']
     deadline = monotonic() + 90
     stage, reader, frame, finished = 0, None, None, False
+    previous_reader = None
     baseline, snapshot, selection = None, None, None
 
     def check(name, condition):
@@ -140,7 +141,13 @@ def run(arguments, report):
                 raise TimeoutError('Native reader appearance deadline exceeded')
             if reader is None:
                 reader = next((window for window in wx.GetTopLevelWindows()
-                    if isinstance(window, wx.Dialog) and hasattr(window, 'reader_presentation')), None)
+                    if isinstance(window, wx.Dialog) and bool(window)
+                    and hasattr(window, 'reader_presentation')
+                    and hasattr(window, 'reader_edit_host')
+                    and window.IsModal() and window.IsShown()
+                    and window.GetParent() == frame
+                    and window.reader_edit_host.alive()
+                    and window is not previous_reader), None)
             if reader is None:
                 wx.CallLater(30, guarded(drive))
                 return
@@ -203,6 +210,9 @@ def run(arguments, report):
                 stage = 11
                 press(editor, wx.WXK_ESCAPE)
             elif stage == 12 and not host.busy():
+                check('reopening selects a distinct live owned modal reader',
+                      reader is not previous_reader and reader.IsModal()
+                      and reader.IsShown() and reader.GetParent() == frame and host.alive())
                 check('reopening restores the saved appearance on the actual reader',
                       control.current == chosen and store.load() == chosen
                       and abs(editor.GetFont().GetFractionalPointSize() - 1.75 * baseline) < .2
@@ -236,7 +246,7 @@ def run(arguments, report):
             wx.CallLater(30, guarded(drive))
 
         def open_reader():
-            nonlocal reader, stage, finished
+            nonlocal reader, stage, finished, previous_reader
             if frame.working:
                 wx.CallLater(30, guarded(open_reader))
                 return
@@ -247,6 +257,7 @@ def run(arguments, report):
                 app.ExitMainLoop()
                 return
             check('first reader closes using native Escape', stage == 11)
+            previous_reader = reader
             reader = None
             stage = 12
             reader_module.show_speech_reader(frame, text=original, title='Appearance source',

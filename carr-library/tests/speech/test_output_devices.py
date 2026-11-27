@@ -53,10 +53,10 @@ class NativeInventory:
         raw = self.raw_override
         if raw is None:
             raw = self.rows[index].interface.encode('utf-16-le') + b'\0\0'
-        if operation == 0x080D:
+        if operation == 0x0812:
             value = len(raw) if self.size_override is None else self.size_override
-            ctypes.c_uint32.from_address(address).value = value
-        elif operation == 0x080C:
+            ctypes.c_size_t.from_address(address).value = value
+        elif operation == 0x0811:
             assert size >= len(raw)
             ctypes.memmove(address, raw, len(raw))
         else:
@@ -82,6 +82,30 @@ def test_native_inventory_reads_identity_without_opening_output(inventory):
     assert result[0].identity != result[1].identity
     assert len(result[0].identity) == 64
     assert all(call[0] in ('count', 'caps', 'message') for call in inventory.calls)
+
+
+
+def test_two_endpoints_on_one_driver_interface_remain_independently_selectable(inventory):
+    # One native adapter may publish two separately selectable endpoints.
+    # A fallback to DEVICEINTERFACE would collapse them into one shared ID.
+    original = inventory.waveOutMessage.implementation
+    shared = 'same-driver-interface'.encode('utf-16-le') + b'\0\0'
+    def with_shared_adapter(index, operation, address, size):
+        if operation == 0x080D:
+            ctypes.c_uint32.from_address(address).value = len(shared)
+            return 0
+        if operation == 0x080C:
+            ctypes.memmove(address, shared, len(shared))
+            return 0
+        return original(index, operation, address, size)
+    inventory.waveOutMessage = Function(with_shared_adapter)
+    first, second = devices.output_devices()
+    assert first.identity != second.identity
+    assert devices.resolve_output_device(first).index == 0
+    assert devices.resolve_output_device(second).index == 1
+    assert devices.verify_output_device(second) == second
+    assert all(call[2] in (0x0811, 0x0812)
+               for call in inventory.calls if call[0] == 'message')
 
 
 def test_same_identity_reordered_resolves_to_new_index_but_same_name_does_not(inventory):
@@ -113,7 +137,7 @@ def test_native_identity_size_rejects_before_interface_allocation(inventory, siz
     inventory.size_override = size
     with pytest.raises(ValueError, match='bounded'):
         devices.output_devices()
-    assert not any(call[0] == 'message' and call[2] == 0x080C for call in inventory.calls)
+    assert not any(call[0] == 'message' and call[2] == 0x0811 for call in inventory.calls)
 
 
 @pytest.mark.parametrize('raw', [b'\0\0', b'a\0', b'\x00\xd8\0\0'])
@@ -123,7 +147,7 @@ def test_empty_unterminated_or_malformed_identity_does_not_select(inventory, raw
         devices.output_devices()
 
 
-@pytest.mark.parametrize('failure', ['caps', 0x080D, 0x080C])
+@pytest.mark.parametrize('failure', ['caps', 0x0812, 0x0811])
 def test_native_query_failure_is_explicit_not_empty_success(inventory, failure):
     inventory.failure = failure
     with pytest.raises(RuntimeError, match='WinMM'):

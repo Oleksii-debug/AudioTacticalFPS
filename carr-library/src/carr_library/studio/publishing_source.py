@@ -126,15 +126,17 @@ class DirectorPublicationSource:
 
     @contextmanager
     def publication_lock(self, job_id):
-        from filelock import FileLock, Timeout
+        from ..operations._locks import NativeLock
         self.get(job_id)
-        path = self.folder / '.render.lock'
-        plain(path, missing=True)
+        # Same render lock and native identity checks; release may run on the
+        # retained cleanup callback thread after a pending decoder exits.
+        lock = NativeLock(self.folder / '.render.lock')
+        if not lock.acquire():
+            raise RuntimeError('This primary Studio project already has an active render or publication.')
         try:
-            with FileLock(path, timeout=0, mode=0o600):
-                yield
-        except Timeout:
-            raise RuntimeError('This primary Studio project already has an active render or publication.') from None
+            yield
+        finally:
+            lock.release()
 
     def publication_source_fields(self, state):
         project = Project.from_dict(state['project'])
@@ -289,6 +291,21 @@ class LibraryPublicationService:
             source = DirectorPublicationSource(self.library_root, parts[1])
             return PublicationService(source, budget=self.budget).export_epub(parts[2], output, **options)
         raise ValueError('Unknown publication source family or job identity.')
+
+    def export_daisy(self, selection, output, **options):
+        from .publishing import PublicationService
+        if not isinstance(selection, str):
+            raise ValueError('Explicitly select one completed Studio job.')
+        parts = selection.split(':')
+        if len(parts) == 2 and parts[0] == 'scene':
+            return self.service.export_daisy(_id(parts[1]), output, **options)
+        if len(parts) == 3 and parts[0] == 'director':
+            source = DirectorPublicationSource(self.library_root, parts[1])
+            return PublicationService(source, budget=self.budget).export_daisy(parts[2], output, **options)
+        raise ValueError('Unknown publication source family or job identity.')
+
+    def close(self):
+        self.production.close()
 
     def verify(self, publication_id, **options):
         return self.service.verify(publication_id, **options)

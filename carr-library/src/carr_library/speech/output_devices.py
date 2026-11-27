@@ -1,7 +1,7 @@
 """Read-only WinMM output identity for the reader's existing MCI transport.
 
 No system endpoint, voice, NVDA or mixer setting is changed here. Numeric WinMM
-indices are transient; explicit selections retain the opaque WDM interface
+indices are transient; explicit selections retain the opaque Windows endpoint
 identity and are revalidated before MCI can play.
 """
 from dataclasses import dataclass, field
@@ -12,9 +12,12 @@ import os
 
 _MAX_DEVICES = 64
 _MAX_INTERFACE_BYTES = 65536
-# Microsoft WinSDK mmddk.h: DRV_RESERVED + 12 and + 13.
-_QUERY_INTERFACE = 0x080C
-_QUERY_INTERFACE_SIZE = 0x080D
+# Microsoft WinSDK mmddk.h: DRV_QUERYFUNCTIONINSTANCEID/SIZE (+17/+18).
+# Device-interface names (+12/+13) can describe one adapter with multiple
+# distinct output endpoints. Keep each endpoint opaque and independently bound.
+# https://learn.microsoft.com/windows/win32/coreaudio/endpoint-id-strings
+_QUERY_ENDPOINT = 0x0811
+_QUERY_ENDPOINT_SIZE = 0x0812
 
 
 def _check(cancelled):
@@ -97,19 +100,21 @@ def _device(api, index, cancelled):
     caps = _WaveOutputCaps()
     _error(api.waveOutGetDevCapsW(index, ctypes.byref(caps), ctypes.sizeof(caps)), 'capability query')
     _check(cancelled)
-    size = ctypes.c_uint32()
-    _error(api.waveOutMessage(index, _QUERY_INTERFACE_SIZE, ctypes.addressof(size), 0),
+    # The documented endpoint query uses size_t. A zeroed pointer-sized
+    # buffer is also safe for providers which write only a 32-bit byte count.
+    size = ctypes.c_size_t()
+    _error(api.waveOutMessage(index, _QUERY_ENDPOINT_SIZE, ctypes.addressof(size), 0),
            'identity-size query')
     _check(cancelled)
     if not 2 <= size.value <= _MAX_INTERFACE_BYTES or size.value % 2:
-        raise ValueError('The output does not expose a bounded native interface identity. '
+        raise ValueError('The output does not expose a bounded native endpoint identity. '
                          'Explicit selection cannot be verified.')
     buffer = (ctypes.c_ubyte * size.value)()
-    _error(api.waveOutMessage(index, _QUERY_INTERFACE, ctypes.addressof(buffer), size.value),
+    _error(api.waveOutMessage(index, _QUERY_ENDPOINT, ctypes.addressof(buffer), size.value),
            'identity query')
     _check(cancelled)
     return OutputDevice(index, _utf16(bytes(caps.name), field_name='name'),
-                        _utf16(bytes(buffer), field_name='interface identity'))
+                        _utf16(bytes(buffer), field_name='endpoint identity'))
 
 
 def output_devices(*, cancelled=lambda: False):

@@ -186,3 +186,39 @@ def test_explicit_idle_appearance_edit_after_stop_preserves_worker_cancellation(
     control.apply(ReadingAppearance(zoom=150))
     assert editor.font.points == 15 and control.store.load().zoom == 150
     assert flags['cancelled'] is True
+
+
+def test_tab_binding_uses_held_appearance_without_preference_io_or_editing(context, monkeypatch):
+    original, control, _, _ = context
+    control.apply(ReadingAppearance(zoom=175, foreground='#FFFFFF', background='#000000'))
+    saved = control.store.path.read_bytes()
+    fresh = Editor()
+    fresh.text, fresh.selection, fresh.undo = 'Independent tab text', (2, 6), ['other edit']
+    before = (fresh.text, fresh.selection, list(fresh.undo))
+    monkeypatch.setattr(control.store, 'load', lambda: pytest.fail('Tab activation reread appearance.'))
+    monkeypatch.setattr(control.store, 'save', lambda *_a, **_kw: pytest.fail('Tab activation wrote appearance.'))
+    assert control.bind_editor(fresh)
+    assert control.editor is fresh and fresh.font.points == 17.5
+    assert (fresh.text, fresh.selection, fresh.undo) == before
+    assert original.font.points == 17.5 and control.store.path.read_bytes() == saved
+    control.bind_editor(original)
+    assert original.font.points == 17.5  # Returning to a tab does not compound zoom.
+
+
+@pytest.mark.parametrize('flag,value', [('alive', False), ('busy', True), ('revoked', True)])
+def test_rebinding_a_tab_requires_current_idle_reader(context, flag, value):
+    original, control, flags, _ = context
+    flags[flag] = value
+    fresh = Editor()
+    with pytest.raises(ValueError):
+        control.bind_editor(fresh)
+    assert control.editor is original and fresh.refreshes == 0
+
+
+def test_missing_held_font_does_not_rebind_later_appearance_to_an_inactive_tab(context):
+    original, control, _, reports = context
+    control.current = ReadingAppearance(ReadingFont('Missing font', 12))
+    fresh = Editor()
+    assert control.bind_editor(fresh) is False
+    assert control.editor is fresh and fresh.text == original.text
+    assert 'could not be applied' in reports[-1] and not control.store.path.exists()

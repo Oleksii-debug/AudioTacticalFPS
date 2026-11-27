@@ -19,6 +19,10 @@ def data_directory(selected):
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['book']:
+        from .book_cli import main as book_main
+        return book_main(arguments[1:])
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--input-root', action='append', type=Path, default=[], help='Explicit local cue folder; repeat if needed')
@@ -27,6 +31,24 @@ def main(argv=None):
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
+    operations.add_parser('publications', help='List saved publication receipts; use verify-publication to check actual bytes')
+    for operation, extension, description in (
+            ('publish-epub', '.epub', 'Local EPUB3 with measured line overlays'),
+            ('publish-daisy', '.zip', 'DAISY 2.02 file-set ZIP with measured line synchronization')):
+        publish = operations.add_parser(operation, help=description + ' from a completed Studio job')
+        publish.add_argument('job_id', help='Completed Scene job ID, scene:ID, or director:PROJECT:JOB')
+        publish.add_argument('--output', type=Path, required=True, help=f'New {extension} file in an existing directory; never overwritten')
+        publish.add_argument('--language', default='und', help='Publication language, such as uk, en or und')
+        publish.add_argument('--creator', default='')
+        publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+        publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+        if operation == 'publish-daisy':
+            publish.add_argument('--publisher', required=True, help='Publisher metadata explicitly supplied for this publication')
+    verify = operations.add_parser('verify-publication', help='Verify a saved receipt or recover completed publication after interruption')
+    verify.add_argument('publication_id')
+    verify.add_argument('--file', type=Path, help='Explicit existing publication after relocation; must match the exact saved receipt')
+    verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify.add_argument('--timeout', type=float, default=3600)
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
     source.add_argument('--script', type=Path, help='UTF-8 script file')
@@ -38,12 +60,12 @@ def main(argv=None):
     render.add_argument('--no-stems', action='store_true')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
-    args = parser.parse_args(argv)
-    binding = None
+    args = parser.parse_args(arguments)
+    binding = service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
-        if args.operation in ('render', 'resume', 'capabilities'):
+        if args.operation in ('render', 'resume', 'capabilities', 'publish-epub', 'publish-daisy'):
             from ..audio.local_runtime import open_local_audio_runtime
             binding = open_local_audio_runtime(app.root, strict=True)
         service = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
@@ -57,6 +79,35 @@ def main(argv=None):
         elif args.operation == 'capabilities':
             runtime = service._runtime()
             result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
+        elif args.operation in ('publish-epub', 'publish-daisy', 'publications', 'verify-publication'):
+            from ..audio.models import AudioBudget
+            from .publishing import PublicationService
+            budget = (AudioBudget(timeout=args.timeout, max_output_bytes=args.max_bytes)
+                      if args.operation != 'publications' else None)
+            source = service
+            job_id = getattr(args, 'job_id', None)
+            if job_id is not None and ':' in job_id:
+                parts = job_id.split(':')
+                if len(parts) == 2 and parts[0] == 'scene':
+                    job_id = parts[1]
+                elif len(parts) == 3 and parts[0] == 'director':
+                    from .publishing_source import DirectorPublicationSource
+                    source = DirectorPublicationSource(app.root, parts[1])
+                    job_id = parts[2]
+                else:
+                    raise ValueError('Choose an existing Scene or primary Audio Studio job.')
+            publisher = PublicationService(source, budget=budget, private_root=app.root)
+            if args.operation == 'publications':
+                result = publisher.publications()
+            elif args.operation == 'verify-publication':
+                result = publisher.verify(args.publication_id, output=args.file)
+            elif args.operation == 'publish-daisy':
+                result = publisher.export_daisy(job_id, args.output, language=args.language,
+                    creator=args.creator, publisher=args.publisher,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
+            else:
+                result = publisher.export_epub(job_id, args.output, language=args.language, creator=args.creator,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
         else:
             if args.operation == 'render':
                 if args.project:
@@ -82,8 +133,12 @@ def main(argv=None):
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
     finally:
-        if binding is not None:
-            binding.close()
+        try:
+            if service is not None:
+                service.close()
+        finally:
+            if binding is not None:
+                binding.close()
 
 
 def assistant_main(argv=None):

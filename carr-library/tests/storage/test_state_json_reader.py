@@ -266,3 +266,28 @@ def test_digest_cancellation_closes_actual_stream_and_preserves_complete_file(tm
     assert sum(read_bytes) == (0 if stop_at == 1 else 2 * 1024 * 1024)
     assert target.read_bytes() == original and target.stat().st_mtime_ns == stamp
     assert state.digest_file(target) == sha256(original).hexdigest()
+
+
+
+@pytest.mark.parametrize('raw', [b'\xffbroken', b'{"a":1,"a":2}', b'{"a":NaN}', b''])
+def test_raw_snapshot_preserves_exact_invalid_bytes_for_explicit_cas_repair(tmp_path, raw):
+    from hashlib import sha256
+    target = tmp_path / 'reviewed-state.json'
+    target.write_bytes(raw)
+    captured, token = state.read_bytes_snapshot(target, max_bytes=8192)
+    assert captured == raw and token == sha256(raw).hexdigest()
+    with pytest.raises((ValueError, UnicodeError)):
+        state.read_json_snapshot(target, max_bytes=8192)
+    assert target.read_bytes() == raw
+
+
+@pytest.mark.parametrize('kind', ['hardlink', 'over-budget'])
+def test_raw_snapshot_does_not_bypass_existing_path_and_size_guards(tmp_path, monkeypatch, kind):
+    selected = tmp_path / 'selected.json'
+    selected.write_bytes(b'123456789')
+    if kind == 'hardlink':
+        os.link(selected, tmp_path / 'second-name.json')
+    monkeypatch.setattr(state, '_open_json_file',
+                        lambda path: pytest.fail('Rejected state reached a payload open.'))
+    with pytest.raises(ValueError):
+        state.read_bytes_snapshot(selected, max_bytes=8)

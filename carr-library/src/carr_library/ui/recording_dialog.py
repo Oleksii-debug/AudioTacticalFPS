@@ -10,6 +10,7 @@ import time
 from ..audio.recording import (AudioCancelled, AudioCleanupPending, RecordingOptions,
                                RecordingService, unverified_recording_files)
 from ..speech.player import WavePlayer
+from ..speech.output_devices import output_devices
 from ..speech.progress_speech import play_when_quiet
 from .audio_runtime_setup import _bind_modal_progress_query
 
@@ -60,6 +61,13 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
     sample_rate.SetSelection(0)
     channels = field('Recorded WAV channels', wx.Choice, choices=['Mono', 'Stereo'])
     channels.SetSelection(0)
+    monitoring = field('Dry monitoring during capture (off by default)', wx.CheckBox,
+                       label='Enable dry monitoring (&D)')
+    monitoring.SetValue(False)
+    monitor_output = field('Monitoring output (explicit selection required)', wx.Choice, choices=[])
+    fields.Add(wx.StaticText(body, label='Optional monitoring plays the same captured PCM through '
+        'the selected output. Use headphones to avoid feedback. The saved recording is unchanged.'),
+        0, wx.EXPAND | wx.ALL, 8)
     selection_action = field('Selected recording action', wx.TextCtrl,
                              value=selection_label, style=wx.TE_READONLY)
     saved = field('Saved recordings', wx.Choice, choices=[])
@@ -74,6 +82,7 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
     layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
     for row in ((('refresh', '&Refresh microphones'), ('query', 'Current operation &progress')),
+                (('refresh_outputs', 'Refresh monitoring outputs (&V)'),),
                 (('start', '&Start recording'), ('retake', 'Record retake of selected recording (&U)'),
                  ('stop', 'Stop and save recording (&T)'), ('cancel', '&Cancel unfinished recording')),
                 (('preview', '&Listen to saved recording'), ('stop_preview', 'Stop playback (&X)'),
@@ -82,7 +91,8 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
         for key, label in row:
             button = wx.Button(dialog, label=label)
             button.SetName({'use': 'Use selected recording', 'retake': 'Record retake of selected recording',
-                            'stop': 'Stop and save recording', 'stop_preview': 'Stop playback'}.get(
+                            'stop': 'Stop and save recording', 'stop_preview': 'Stop playback',
+                            'refresh_outputs': 'Refresh monitoring outputs'}.get(
                             key, label.replace('&', '')))
             buttons[key] = button
             box.Add(button, 0, wx.ALL, 4)
@@ -103,6 +113,7 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
     busy, alive, closing, devices, records, holds, selected_result = (
         False, True, False, (), (), [], None)
     generation = 0
+    outputs = ()
     recording = False
     cleanup_owner = cleanup_retry = None
     cleanup_saved = None
@@ -120,11 +131,14 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
             return
         has_device = 0 <= microphone.GetSelection() < len(devices)
         has_record = 0 <= saved.GetSelection() < len(records)
-        for control in (microphone, title, minutes, sample_rate, channels, saved):
+        has_output = not monitoring.GetValue() or 0 <= monitor_output.GetSelection() < len(outputs)
+        for control in (microphone, title, minutes, sample_rate, channels, saved, monitoring):
             control.Enable(not busy)
+        monitor_output.Enable(not busy and bool(monitoring.GetValue()))
         buttons['refresh'].Enable(not busy)
-        buttons['start'].Enable(not busy and has_device)
-        buttons['retake'].Enable(not busy and has_device and has_record)
+        buttons['refresh_outputs'].Enable(not busy)
+        buttons['start'].Enable(not busy and has_device and has_output)
+        buttons['retake'].Enable(not busy and has_device and has_record and has_output)
         buttons['stop'].Enable(busy and recording)
         buttons['cancel'].Enable(busy)
         for key in ('preview', 'use'):
@@ -315,6 +329,24 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
             status.SetValue('Choose a microphone explicitly, then Start. Device discovery did not record audio.')
         run(lambda: service.devices(cancelled=cancellation), complete, 'Listing local microphones')
 
+    def refresh_outputs(event=None):
+        nonlocal outputs, generation
+        if busy:
+            return
+        generation += 1
+        outputs = ()
+        monitor_output.SetItems([])
+        cancelled.clear()
+        def complete(values):
+            nonlocal outputs
+            outputs = tuple(values)
+            monitor_output.SetItems([item.name for item in outputs])
+            monitor_output.SetSelection(wx.NOT_FOUND)
+            status.SetValue('Choose a monitoring output explicitly. Discovery did not open '
+                            'an output or start a microphone.')
+        run(lambda: output_devices(cancelled=cancellation), complete,
+            'Listing local monitoring outputs')
+
     def start(event=None, *, retake_of=None):
         nonlocal busy, generation, holds, cleanup_owner, cleanup_saved, recording
         if busy or not current():
@@ -332,6 +364,13 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
                 max_bytes=2 * 1024**3)
             requested_title = title.GetValue()
             device_id = devices[index].id
+            requested_output = None
+            if monitoring.GetValue():
+                output_index = monitor_output.GetSelection()
+                if not 0 <= output_index < len(outputs):
+                    status.SetValue('Refresh monitoring outputs and explicitly select one before Start.')
+                    return
+                requested_output = outputs[output_index]
             cancelled.clear()
             frame.cancel_event.clear()
             stopped.clear()
@@ -378,7 +417,7 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
                 def operation(report):
                     return service.capture(device_id, title=requested_title, options=options,
                         cancelled=cancellation, stop_requested=stopped.is_set, progress=report,
-                        retake_of=retake_of)
+                        retake_of=retake_of, monitor_output=requested_output)
 
                 def complete(value):
                     show_records((*records, value), value['id'])
@@ -532,12 +571,15 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
             status.SetFocus()
 
     _bind_modal_progress_query(frame, dialog, query_progress)
-    for key, callback in (('refresh', refresh), ('query', query_progress), ('start', start),
+    for key, callback in (('refresh', refresh), ('refresh_outputs', refresh_outputs),
+            ('query', query_progress), ('start', start),
             ('retake', retake), ('stop', stop_recording),
             ('cancel', cancel_recording), ('preview', preview), ('stop_preview', stop_playback),
             ('use', use), ('close', close)):
         buttons[key].Bind(wx.EVT_BUTTON, callback)
     microphone.Bind(wx.EVT_CHOICE, lambda event: controls())
+    monitoring.Bind(wx.EVT_CHECKBOX, lambda event: controls())
+    monitor_output.Bind(wx.EVT_CHOICE, lambda event: controls())
     saved.Bind(wx.EVT_CHOICE, display_record)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:

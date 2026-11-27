@@ -165,7 +165,7 @@ def validate_state_root(state_root, *, cancelled=lambda: False):
     parents = {}
     for identity, value in receipts.items():
         _check(cancelled)
-        if value['schema'] != 'carr-recording/2':
+        if 'retake' not in value:
             continue
         relation = value['retake']
         previous = receipts.get(relation['previous_id'])

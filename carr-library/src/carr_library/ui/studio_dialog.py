@@ -47,21 +47,46 @@ class StudioController:
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
         self.autosave(text, title, voice_ids)
-        project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
-        if self.project:
+        previous_project = self.project
+        if previous_project and text == previous_project.original_script:
+            # JSON projects can contain recorded clips, source bindings and
+            # non-default render settings which the prose grammar cannot express.
+            # Saving an unchanged script must preserve that complete performance.
+            project = replace(previous_project, title=title)
+        else:
+            project = parse_script(text, title=title, voice_ids=voice_ids,
+                                   mode=previous_project.mode if previous_project else 'faithful',
+                                   project_id=previous_project.id if previous_project else None)
+        if previous_project and text != previous_project.original_script:
+            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues or scene.effects}
+            current = {scene.id: scene for scene in project.scenes}
+            if any(identity not in current or current[identity].title != old.title
+                   for identity, old in attached.items()):
+                raise ValueError('A scene with attached audio changed its identity. '
+                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues,
+                                   effects=attached[scene.id].effects)
+                           if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
+            current_roles = {role.name.casefold() for role in project.roles}
+            if any(role.effects and name not in current_roles for name, role in previous.items()):
+                raise ValueError('A speaking role with saved effects was removed. Clear its effects in the scene editor before removing that role.')
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
                                   pan=previous[role.name.casefold()].pan,
                                   gain_db=previous[role.name.casefold()].gain_db,
                                   rate=previous[role.name.casefold()].rate,
-                                  volume=previous[role.name.casefold()].volume)
+                                  volume=previous[role.name.casefold()].volume,
+                                  effects=previous[role.name.casefold()].effects)
                           if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, revision=self.project.revision)
-            if project.to_dict() != self.project.to_dict():
-                project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+            project = replace(project, roles=roles, scenes=scenes, effects=previous_project.effects,
+                              sample_rate=previous_project.sample_rate,
+                              schema=previous_project.schema, revision=previous_project.revision)
+        if previous_project and project.to_dict() != previous_project.to_dict():
+            project = replace(project, revision=previous_project.revision + 1)
+        self.service.projects.save(project,
+            expected_revision=previous_project.revision if previous_project else None,
+            expected_fingerprint=previous_project.fingerprint if previous_project else None)
         self.project = project
         return project
 
@@ -634,66 +659,260 @@ def show_studio(frame):
         dialog.Destroy()
 
 
-def show_audio_conversion(frame):
-    """Numeric, keyboard-driven offline DSP and conversion of a selected local file."""
+def show_audio_conversion(frame, *, batch=False):
+    """Numeric offline DSP with an optional ordered, saved effect chain."""
     import wx
-    from ..audio import AudioRuntime, Effect
-    chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    from ..audio import Effect, AudioCancelled
+    from ..audio.effect_presets import checked_chain
+    from ..audio.models import integer
+    from ..durable_state import local_path, regular
+    library = frame.library
+    library_root = local_path(library.root, exists=True)
+    opened = regular(library_root, directory=True)
+    root_identity = opened.st_dev, opened.st_ino
+    chooser = wx.FileDialog(frame, 'Choose local audio or video sources' if batch else 'Choose a local audio or video source',
+                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | (wx.FD_MULTIPLE if batch else 0))
     try:
         if chooser.ShowModal() != wx.ID_OK:
             return
-        source = Path(chooser.GetPath())
+        sources = tuple(Path(value).absolute() for value in chooser.GetPaths()) if batch else ()
+        if batch and not 1 <= len(sources) <= 64:
+            raise ValueError('Choose one to 64 local audio/video files for a batch.')
+        source = sources[0] if batch else local_path(chooser.GetPath(), exists=True)
     finally:
         chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(700, 550),
+    dialog = wx.Dialog(frame, title='Convert audio batch and apply effects' if batch else 'Convert audio and apply effects', size=(760, 720),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    outer = wx.BoxSizer(wx.VERTICAL)
+    panel = wx.ScrolledWindow(dialog)
+    panel.SetScrollRate(0, 16)
     layout = wx.BoxSizer(wx.VERTICAL)
     def entry(label, value):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 5)
-        control = wx.TextCtrl(dialog, value=value)
+        layout.Add(wx.StaticText(panel, label=label), 0, wx.ALL, 5)
+        control = wx.TextCtrl(panel, value=value)
         control.SetName(label)
         layout.Add(control, 0, wx.EXPAND | wx.ALL, 5)
         return control
     start = entry('Start in seconds', '0')
     duration = entry('Duration in seconds; empty means remainder', '')
+    output_rate = entry('Output sample rate in Hz, 8000 to 192000', '24000')
+    output_channels = entry('Output channels, 1 or 2', '2')
+    output_depth = entry('PCM bit depth, 16, 24 or 32', '16')
+    output_bitrate = entry('Encoding bitrate in kbps for MP3, AAC, Opus and WMA', '192')
+    batch_format = batch_resume = None
+    if batch:
+        from ..audio.conversion_batch import FORMATS
+        layout.Add(wx.StaticText(panel, label='Batch output format'), 0, wx.ALL, 5)
+        batch_format = wx.Choice(panel, choices=list(FORMATS))
+        batch_format.SetName('Batch output format')
+        batch_format.SetSelection(0)
+        layout.Add(batch_format, 0, wx.EXPAND | wx.ALL, 5)
+        batch_resume = wx.CheckBox(panel, label='Resume this exact saved batch; keep completed matching files')
+        batch_resume.SetName('Resume matching audio batch')
+        layout.Add(batch_resume, 0, wx.ALL, 5)
     gain = entry('Gain in decibels, -60 to 12', '0')
     tempo = entry('Playback speed without pitch change, 0.5 to 2', '1')
     loudness = entry('Target loudness in LUFS; empty leaves levels unchanged', '-18')
-    effects = wx.CheckBox(dialog, label='Apply speech noise reduction and gentle compression')
+    effects = wx.CheckBox(panel, label='Apply speech noise reduction and gentle compression')
+    effects.SetName('Apply speech noise reduction and gentle compression')
     layout.Add(effects, 0, wx.ALL, 6)
-    layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
-    dialog.SetSizer(layout)
-    try:
-        if dialog.ShowModal() != wx.ID_OK:
-            return
-        start_value, duration_value = float(start.GetValue()), float(duration.GetValue()) if duration.GetValue().strip() else None
+    advanced = wx.Button(panel, label='Edit ordered effect chain and presets')
+    advanced.SetName('Edit ordered effect chain and presets')
+    basic = wx.Button(panel, label='Use basic effect controls')
+    basic.SetName('Use basic effect controls')
+    basic.Disable()
+    layout.Add(advanced, 0, wx.ALL, 6)
+    layout.Add(basic, 0, wx.ALL, 6)
+    status = wx.TextCtrl(panel, value='Basic controls are active. Choose output settings before reviewing an ordered chain.',
+                         style=wx.TE_READONLY | wx.TE_MULTILINE)
+    status.SetName('Audio conversion effect settings')
+    layout.Add(status, 0, wx.EXPAND | wx.ALL, 6)
+    panel.SetSizer(layout)
+    outer.Add(panel, 1, wx.EXPAND | wx.ALL, 5)
+    outer.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
+    dialog.SetSizer(outer)
+    advanced_chain = None
+    alive, pending = True, False
+    original_controls = (gain, tempo, loudness, effects)
+
+    def current_root():
+        if getattr(frame, '_closing', False):
+            raise AudioCancelled('The audio conversion owner is closing.')
+        if frame.library is not library or local_path(frame.library.root, exists=True) != library_root:
+            raise ValueError('The active library changed. Open audio conversion again.')
+        actual = regular(library_root, directory=True)
+        if (actual.st_dev, actual.st_ino) != root_identity:
+            raise ValueError('The selected library directory was replaced.')
+
+    def output_values():
+        rate = integer(int(output_rate.GetValue()), 'Output sample rate', 8000, 192000)
+        channels = integer(int(output_channels.GetValue()), 'Output channels', 1, 2)
+        depth = int(output_depth.GetValue())
+        if depth not in (16, 24, 32):
+            raise ValueError('PCM bit depth must be 16, 24 or 32.')
+        bitrate = integer(int(output_bitrate.GetValue()), 'Encoding bitrate', 32, 512)
+        return rate, channels, depth, bitrate
+
+    def basic_chain():
         gain_value, tempo_value = float(gain.GetValue()), float(tempo.GetValue())
         if not -60 <= gain_value <= 12 or not .5 <= tempo_value <= 2:
             raise ValueError('Gain or speed is outside the displayed range.')
-        chain = [Effect('gain', gain_db=gain_value), Effect('tempo', factor=tempo_value)]
+        values = [Effect('gain', gain_db=gain_value), Effect('tempo', factor=tempo_value)]
         if effects.GetValue():
-            chain += [Effect('denoise'), Effect('compressor')]
+            values += [Effect('denoise'), Effect('compressor')]
         if loudness.GetValue().strip():
-            chain.append(Effect('loudness', target_lufs=float(loudness.GetValue()), peak_db=-1))
+            values.append(Effect('loudness', target_lufs=float(loudness.GetValue()), peak_db=-1))
+        return checked_chain(values, output_values()[0])
+
+    def controls():
+        for control in original_controls:
+            control.Enable(not pending and advanced_chain is None)
+        for control in (output_rate, output_channels, output_depth, output_bitrate,
+                        *((batch_format, batch_resume) if batch else ())):
+            control.Enable(not pending)
+        advanced.Enable(not pending)
+        basic.Enable(not pending and advanced_chain is not None)
+        dialog.FindWindowById(wx.ID_OK).Enable(not pending)
+
+    def use_basic(_event=None):
+        nonlocal advanced_chain
+        advanced_chain = None
+        controls()
+        status.ChangeValue('Basic controls are active. Choose output settings before reviewing an ordered chain.')
+        gain.SetFocus()
+
+    def edit_chain(_event=None):
+        nonlocal pending
+        if pending or getattr(frame, 'working', False):
+            status.ChangeValue('Wait for the current operation or cancel it before reviewing effects.')
+            return
+        try:
+            current_root()
+            selected_rate = output_values()[0]
+            frozen = advanced_chain if advanced_chain is not None else basic_chain()
+            checked_chain(frozen, selected_rate)
+        except Exception as exc:
+            status.ChangeValue(str(exc))
+            status.SetFocus()
+            return
+        pending = True
+        controls()
+        status.ChangeValue('Checking installed local audio effects…')
+
+        def inspect():
+            from ..runtime_settings import audio_runtime
+            runtime = audio_runtime(library_root / 'state' / 'audio-conversion',
+                                    state_root=library_root / 'state')
+            if frame.cancel_event.is_set():
+                raise InterruptedError('Effect review cancelled.')
+            available = runtime.capabilities()['effects']
+            if frame.cancel_event.is_set():
+                raise InterruptedError('Effect review cancelled.')
+            return available
+
+        def failed(error):
+            nonlocal pending
+            if not alive:
+                return
+            pending = False
+            controls()
+            status.ChangeValue(f'Effect review did not open: {error}')
+
+        def reviewed(available):
+            nonlocal pending, advanced_chain
+            if not alive:
+                return
+            try:
+                current_root()
+                if frame.cancel_event.is_set():
+                    raise AudioCancelled('Effect review cancelled.')
+                from .effects_dialog import show_effect_chain
+                value = show_effect_chain(dialog, library_root, frozen,
+                                          sample_rate=selected_rate, available=available)
+                current_root()
+                if frame.cancel_event.is_set():
+                    raise AudioCancelled('Effect review cancelled.')
+                if value is not None:
+                    advanced_chain = value
+                    status.ChangeValue(f'Ordered chain active: {len(value)} effects. Basic controls are inactive.')
+                else:
+                    status.ChangeValue('Effect review cancelled; the previous settings are retained.')
+            finally:
+                pending = False
+                if alive:
+                    controls()
+                    advanced.SetFocus()
+
+        try:
+            frame.run_job('Checking local audio effects', inspect, reviewed, failed)
+        except Exception as exc:
+            failed(exc)
+
+    advanced.Bind(wx.EVT_BUTTON, edit_chain)
+    basic.Bind(wx.EVT_BUTTON, use_basic)
+
+    owner_id = dialog.GetId()
+
+    def destroyed(event):
+        nonlocal alive
+        if event.GetId() == owner_id:
+            alive = False
+            if pending:
+                frame.cancel_event.set()
+        event.Skip()
+
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+    try:
+        if dialog.ShowModal() != wx.ID_OK:
+            return
+        current_root()
+        if pending:
+            raise ValueError('Wait for the effect review to finish before converting audio.')
+        start_value = float(start.GetValue())
+        duration_value = float(duration.GetValue()) if duration.GetValue().strip() else None
+        chain = advanced_chain if advanced_chain is not None else basic_chain()
+        rate_value, channels_value, depth_value, bitrate_value = output_values()
+        checked_chain(chain, rate_value)
+        selected_format = batch_format.GetStringSelection() if batch else None
+        resume_batch = bool(batch_resume.GetValue()) if batch else False
     except Exception as exc:
         frame.report(str(exc))
         return
     finally:
+        alive = False
+        if pending:
+            frame.cancel_event.set()
         dialog.Destroy()
+    if batch:
+        from .audio_conversion_dialog import start_audio_batch
+        try:
+            current_root()
+            start_audio_batch(frame, sources, format=selected_format, resume=resume_batch,
+                start=start_value, duration=duration_value, effects=chain, sample_rate=rate_value,
+                channels=channels_value, bit_depth=depth_value, bitrate=bitrate_value)
+        except Exception as exc:
+            frame.report('Audio batch: ' + str(exc))
+        return
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
-                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus)|*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus',
+                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.ogg;*.opus;*.aac;*.aiff;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.ogg;*.opus;*.aac;*.aiff;*.wma',
                             style=wx.FD_SAVE)
     try:
         if chooser.ShowModal() != wx.ID_OK:
             return
-        output = Path(chooser.GetPath())
+        output = local_path(chooser.GetPath())
+        current_root()
     finally:
         chooser.Destroy()
     def operation():
         from ..runtime_settings import audio_runtime
-        runtime = audio_runtime(output.parent, state_root=frame.library.root / 'state', input_roots=(source.parent,))
+        # The exact selected library, input and immutable effect tuple were
+        # captured before queueing; the worker reads no mutable wx controls.
+        current_root()
+        runtime = audio_runtime(output.parent, state_root=library_root / 'state', input_roots=(source.parent,))
         result = runtime.convert(source, output, start=start_value, duration=duration_value,
-                                  effects=chain, cancelled=frame.cancel_event.is_set)
+                                  effects=chain, sample_rate=rate_value, channels=channels_value,
+                                  bit_depth=depth_value, bitrate=bitrate_value,
+                                  cancelled=frame.cancel_event.is_set)
         measurement = runtime.measure(output, cancelled=frame.cancel_event.is_set)
         return result, measurement
     frame.run_job('Converting local audio', operation,
@@ -704,8 +923,10 @@ def show_audio_conversion(frame):
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
+    from .studio_clips import show_clip_editor
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
+                            ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)

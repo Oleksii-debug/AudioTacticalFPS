@@ -325,3 +325,53 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
                    {'devices': ('microphone:one', 'microphone:one')}, {'cpu_slots': 0}):
         with pytest.raises(ValueError):
             ResourceRequest(**values)
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes(tmp_path, phase):
+    from carr_library.operations._locks import NativeLock
+    outside = tmp_path / 'retained-original'
+    original = b'This retained file must not become a mutable resource lock.'
+    outside.write_bytes(original)
+    path = tmp_path / 'untrusted.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    os.link(outside, path)
+    try:
+        with pytest.raises(ValueError):
+            if lock is None:
+                NativeLock(path)
+            else:
+                lock.acquire()
+        assert outside.read_bytes() == original and path.read_bytes() == original
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_lock_leaf_disappears_inside_local_path(tmp_path, monkeypatch, phase):
+    """Exercise the earlier leaf lstat boundary from the Windows traceback."""
+    from carr_library import durable_state
+    from carr_library.operations._locks import NativeLock
+    path = tmp_path / 'released.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    original = durable_state.regular
+    removed = []
+    def disappear(candidate, **kwargs):
+        if Path(candidate) == path and not removed:
+            path.unlink()
+            removed.append(True)
+        return original(candidate, **kwargs)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(durable_state, 'regular', disappear)
+            if lock is None:
+                lock = NativeLock(path)
+            assert lock.acquire()
+        assert removed == [True] and lock.held
+        peer = NativeLock(path)
+        assert not peer.acquire()
+    finally:
+        if lock is not None:
+            lock.release()

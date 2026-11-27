@@ -90,7 +90,10 @@ def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'total_disk_bytes'})
+                   'updated', 'error', 'runtime'},
+           {'result', 'resource_plan', 'total_disk_bytes', 'restore_requires_new_output'})
+    if 'restore_requires_new_output' in value and type(value['restore_requires_new_output']) is not bool:
+        raise ValueError('Invalid restored production output authorization.')
     if 'total_disk_bytes' in value:
         number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
@@ -104,7 +107,17 @@ def _studio_job(value, identity):
     if 'resource_plan' in value:
         from .operations.models import ResourceRequest
         plan = value['resource_plan']
-        fields(plan, {'schema', 'request', 'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'})
+        fields(plan, {'schema', 'request', 'cpu_basis', 'memory_basis', 'disk_basis', 'enforcement'},
+               {'source_sha256', 'estimated_duration'})
+        if ('source_sha256' in plan) != ('estimated_duration' in plan):
+            raise ValueError('Production input estimates need both their duration and source identities.')
+        if 'source_sha256' in plan:
+            if type(plan['source_sha256']) is not dict or len(plan['source_sha256']) > 100000:
+                raise ValueError('Invalid production source identity inventory.')
+            for source, checksum in plan['source_sha256'].items():
+                path(source)  # Passive syntax only; never resolve an external path.
+                digest(checksum)
+            number(plan['estimated_duration'], 0)
         if type(plan['schema']) is not int or plan['schema'] != 1:
             raise ValueError('Invalid production resource-plan schema.')
         # A restored estimate is inert. Validate its typed bytes without
@@ -146,7 +159,7 @@ def _studio_job(value, identity):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -160,6 +173,10 @@ def _timeline(value):
         raise ValueError('Invalid timeline mode or loudness.')
     for name in ('music_kind', 'timing_notice'):
         text(value[name], 8192)
+    if 'book_source_sha256' in value:
+        digest(value['book_source_sha256'])
+    if 'lrc_sha256' in value:
+        digest(value['lrc_sha256'])
     if 'music_continuity' in value:
         text(value['music_continuity'], 8192)
     for name, required in [('chapters', {'id', 'title', 'start', 'end'}),
@@ -172,6 +189,92 @@ def _timeline(value):
             number(row['end'], row['start'], value['duration'] + 1)
             for key in required - {'start', 'end'}:
                 text(row[key], 100000 if key == 'text' else 8192, empty=key in ('text', 'source_ref'))
+
+
+    if ('clips' in value) != ('clip_stems_notice' in value):
+        raise ValueError('Clip timeline and its stem notice must be retained together.')
+    if 'clips' in value:
+        _timeline_clips(value)
+        text(value['clip_stems_notice'], 8192)
+    if 'effects' in value:
+        if 'clips' not in value:
+            raise ValueError('Effect timelines require the versioned clip inventory.')
+        _timeline_effects(value)
+
+
+def _timeline_clips(value):
+    rows = value['clips']
+    if type(rows) is not list or len(rows) > 100000:
+        raise ValueError('Invalid timeline clip inventory.')
+    scenes = {row['id'] for row in value['chapters']}
+    seen, tolerance = set(), 1 / value['sample_rate']
+    for row in rows:
+        fields(row, {'scene', 'id', 'role', 'title', 'source_sha256', 'source_duration',
+                     'trim_start', 'duration', 'start', 'end', 'gain_db', 'pan', 'fade_in', 'fade_out'})
+        for key in ('scene', 'id'):
+            if type(row[key]) is not str or not re.fullmatch(ID, row[key]):
+                raise ValueError('Invalid timeline clip identity.')
+        identity = row['scene'], row['id']
+        if identity in seen or row['scene'] not in scenes:
+            raise ValueError('Duplicate clip or unknown timeline scene.')
+        seen.add(identity)
+        if row['role'] not in ('sfx', 'ambience', 'music', 'microphone'):
+            raise ValueError('Invalid timeline clip role.')
+        text(row['title'], 512, empty=True)
+        digest(row['source_sha256'])
+        number(row['source_duration'], 0, 31_536_000)
+        number(row['trim_start'], 0, row['source_duration'])
+        number(row['duration'], 1 / value['sample_rate'], 31_536_000)
+        number(row['start'], 0, value['duration'] + 1)
+        number(row['end'], row['start'], value['duration'] + 1)
+        if abs(row['end'] - row['start'] - row['duration']) > tolerance:
+            raise ValueError('Clip duration differs from its retained timeline interval.')
+        number(row['gain_db'], -60, 12)
+        number(row['pan'], -1, 1)
+        for key in ('fade_in', 'fade_out'):
+            number(row[key], 0, row['duration'] + tolerance)
+
+
+def _timeline_effects(value):
+    from .audio.effect_presets import read_effect
+    from .studio.project import _timeline_effects as checked_effects
+    effects = value['effects']
+    fields(effects, {'master', 'roles', 'scenes', 'clips', 'stems'})
+    text(effects['stems'], 8192)
+
+    def chain(rows):
+        if type(rows) is not list or len(rows) > 32:
+            raise ValueError('Invalid retained timeline effect chain.')
+        checked_effects(tuple(read_effect(row) for row in rows), value['sample_rate'])
+
+    def mapping(rows):
+        if type(rows) is not dict or len(rows) > 100000:
+            raise ValueError('Invalid retained timeline effect inventory.')
+        for key in rows:
+            if type(key) is not str or not re.fullmatch(ID, key):
+                raise ValueError('Invalid timeline effect target identity.')
+        return rows
+
+    chain(effects['master'])
+    for rows in mapping(effects['roles']).values():
+        chain(rows)
+    scene_ids = {row['id'] for row in value['chapters']}
+    if set(mapping(effects['scenes'])) != scene_ids or set(mapping(effects['clips'])) != scene_ids:
+        raise ValueError('Retained effects belong to another scene inventory.')
+    for rows in effects['scenes'].values():
+        chain(rows)
+    clip_ids = {identity: set() for identity in scene_ids}
+    for row in value['clips']:
+        clip_ids[row['scene']].add(row['id'])
+    total = 0
+    for scene, rows in effects['clips'].items():
+        if set(mapping(rows)) != clip_ids[scene]:
+            raise ValueError('Retained effects belong to another clip inventory.')
+        total += len(rows)
+        if total > 100000:
+            raise ValueError('Retained clip effects exceed the inventory bound.')
+        for row in rows.values():
+            chain(row)
 
 
 def _assistant_job(db, value, identity):

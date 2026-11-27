@@ -62,7 +62,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          python scripts/ci_check.py tests/transcription_windows/test_protocol_fixture_handles.py
+          python scripts/ci_check.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install actual native desktop controls
         if: runner.os == 'Windows'

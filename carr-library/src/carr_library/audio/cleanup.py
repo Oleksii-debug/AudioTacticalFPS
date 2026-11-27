@@ -6,6 +6,9 @@ Retries use a daemon, so an uncertain child never blocks interpreter shutdown.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
+import re
+import tempfile
 import threading
 
 class AudioCleanupPending(RuntimeError):
@@ -93,8 +96,8 @@ def pending_cleanup(attempt, *, message, callbacks=()):
         owner.add_quiescent_callback(callback)
     with _RETAINED_LOCK:
         _RETAINED.add(owner)
-    worker = threading.Thread(target=owner._retry, name='audio-cleanup', daemon=True)
     try:
+        worker = threading.Thread(target=owner._retry, name='audio-cleanup', daemon=True)
         worker.start()
     except Exception as exc:
         # Retain the owner even if thread admission fails. Its public close()
@@ -102,3 +105,81 @@ def pending_cleanup(attempt, *, message, callbacks=()):
         owner.last_error = exc
     return AudioCleanupPending(message, cleanup_owner=owner)
 
+
+
+def _pending_owners(error):
+    """Find every real native owner, including a failed journal's context."""
+    pending, seen, owners = [error], set(), {}
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, AudioCleanupPending):
+            owners[id(current.cleanup_owner)] = current.cleanup_owner
+        pending.extend((current.__cause__, current.__context__))
+    return tuple(owners.values())
+
+
+@contextmanager
+def retained_context(context):
+    """Borrow an existing context until all pending native owners are quiet.
+
+    This does not create a worker or another admission system. It retains the
+    entered context and uses only each existing CleanupOwner's completion proof.
+    Callers must choose contexts whose release supports the callback thread.
+    """
+    with ExitStack() as ownership:
+        value = ownership.enter_context(context)
+        try:
+            yield value
+        except BaseException as error:
+            owners = _pending_owners(error)
+            if owners:
+                retained = ownership.pop_all()
+                remaining, guard = {id(owner) for owner in owners}, threading.Lock()
+
+                def completed(identity):
+                    with guard:
+                        remaining.discard(identity)
+                        ready = not remaining
+                    if ready:
+                        retained.close()
+
+                for owner in owners:
+                    owner.add_quiescent_callback(
+                        lambda identity=id(owner): completed(identity))
+            raise
+
+
+@contextmanager
+def retained_temporary_directory(*, prefix, dir):
+    """Keep this exact temporary directory alive through uncertain native exit."""
+    with retained_context(tempfile.TemporaryDirectory(prefix=prefix, dir=dir)) as temporary:
+        yield temporary
+
+
+@contextmanager
+def retained_state_lock(root, name='state'):
+    """Use the existing native lock path, retaining it through pending cleanup."""
+    from ..durable_state import local_path, regular
+    from ..operations._locks import NativeLock
+
+    if type(name) is not str or re.fullmatch(r'[A-Za-z0-9_-]{1,64}', name) is None:
+        raise ValueError('Use a bounded local state-lock name.')
+    root = local_path(root)
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    regular(root, directory=True)
+
+    @contextmanager
+    def own_lock():
+        lock = NativeLock(root / ('.' + name + '.lock'))
+        if not lock.acquire():
+            raise RuntimeError('This project is already being changed by another operation.')
+        try:
+            yield
+        finally:
+            lock.release()
+
+    with retained_context(own_lock()):
+        yield

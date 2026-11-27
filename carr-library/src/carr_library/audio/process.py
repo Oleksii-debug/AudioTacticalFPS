@@ -59,44 +59,16 @@ def native_audio_environment(environment=None):
 
 
 def _stop_owned(process):
-    """Keep the exact owned job handle until every native child has stopped."""
+    """Retain the exact owned family until each native member has stopped."""
     if os.name != 'nt':
         _terminate(process)
         if process.poll() is None:
             raise RuntimeError('The capture process has not confirmed shutdown.')
         return True
-    from .windows_process import _Accounting
     job = getattr(process, '_carr_job', None)
     if job is None:
         raise RuntimeError('Capture requires the existing owned Windows process job.')
-    deadline = time.monotonic() + 5
-    handle = job.handle
-    if handle is not None and not job.api.kernel.TerminateJobObject(handle, 1):
-        raise job.api.error()
-    process.wait(timeout=max(0, deadline - time.monotonic()))
-    # Release the leader reference before querying the full job's active count.
-    retained = getattr(process, '_handle', None)
-    if retained is not None:
-        retained.Close()
-    if handle is not None:
-        query = job.api.kernel.QueryInformationJobObject
-        query.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
-                          ctypes.c_uint32, ctypes.c_void_p]
-        query.restype = ctypes.c_int
-        while True:
-            accounting = _Accounting()
-            if not query(handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
-                raise job.api.error()
-            if accounting.active_processes == 0:
-                break
-            if time.monotonic() >= deadline:
-                raise subprocess.TimeoutExpired(process.args, 5)
-            time.sleep(min(.02, max(0, deadline - time.monotonic())))
-        # A failed close keeps the handle available to the retained owner.
-        if not job.api.kernel.CloseHandle(handle):
-            raise job.api.error()
-        job.handle = None
-    return True
+    return job.close(leader=process)
 
 
 def _start_process(args, *, owned_tree=False, **options):
@@ -120,7 +92,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     value rather than accumulated for multi-hour renders.  Callbacks run on the
     caller's thread. No child inherits stdin. Explicit recording calls may send
     only FFmpeg's fixed q command to an owned pipe; Cancel still discards output.
-    Existing render callers retain their original process contract.
+    The worker timeout ends at its first observed exit; later caller-side
+    validation does not extend execution or erase cancellation/output checks.
+    ProcessResult.elapsed still includes that validation and pipe collection.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -145,6 +119,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         cwd=cwd, env=native_audio_environment(env))
     started = time.monotonic()
     stopped_at = None
+    observed_exit_at = None
     reader_failures = []
 
     def read_pipe(pipe, name):
@@ -185,7 +160,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     last_progress = None
 
     def check():
-        nonlocal last_progress, stopped_at
+        nonlocal last_progress, stopped_at, observed_exit_at
+        # A cancellation callback may also verify a completed checkpoint. Take
+        # positive process evidence before that work, never backdate an exit
+        # first observed after the allowance or during a slow callback.
+        if observed_exit_at is None and process.poll() is not None:
+            observed_exit_at = time.monotonic()
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
         if (stop_requested is not None and stopped_at is None
@@ -203,7 +183,8 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker diagnostic stream could not be read.') from reader_failures[0]
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
-        if time.monotonic() - started > budget.timeout:
+        worker_until = time.monotonic() if observed_exit_at is None else observed_exit_at
+        if worker_until - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
         total, count = 0, 0
         pending = list(watched)

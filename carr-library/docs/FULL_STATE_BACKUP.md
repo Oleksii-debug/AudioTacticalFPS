@@ -138,3 +138,26 @@ Canonical source revalidation from commit
 every canonical state source is streamed again and compared with its manifest
 hash. Equal-size changes with unchanged Windows timestamps therefore fail
 before backup publication. This verification remains cancellable.
+
+
+## Explicit transcription cache inclusion (canonical PR196 reconciliation)
+
+The normalized format-1–5 restore boundary now rejects optional ASR recognition
+cache entries unless the manifest explicitly enables generated media. The same
+predicate recognizes the current worker and retained worker-history cache
+subtrees. Required retained source audio, accepted transcript artifacts, edit
+history and ordinary worker results remain part of recovery without that option.
+A forged or legacy manifest cannot turn omitted cache data into approved media.
+
+This integrates the narrow canonical PR196 rule into this host's existing
+`backup_compat.normalize_manifest` boundary; it does not replace the native
+producer or the separate older sidecar format. All 128 manifest-layout cases and
+the actual tampered-backup rejection case are retained, with only the existing
+test inventory projection adapting `state/` filenames to this host's manifest.
+
+Runtime declarations stay passive after restore. External interpreters, model
+weights, credentials and published output folders do not become executable or
+approved through this change. The incremental chain uses the same normalized
+manifest checks. New composed execution evidence must be recorded at the
+candidate SHA; the canonical component's older runs are not qualification of
+this larger integration.

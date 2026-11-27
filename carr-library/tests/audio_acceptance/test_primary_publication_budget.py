@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack, contextmanager
 from dataclasses import replace
 import hashlib
 import importlib
@@ -218,18 +219,44 @@ def total_budget_case(args, audio, speech, production, identity):
 
 def reserve_policy_case(args, audio, speech, production, identity):
     """Portable real-I/O refusal and resume; no fabricated free-space counter."""
-    with tempfile.TemporaryDirectory(prefix="carr-primary-policy-", dir=args.work_parent) as temporary:
+    with tempfile.TemporaryDirectory(prefix="carr-primary-policy-", dir=args.work_parent) as temporary, ExitStack() as cleanup:
         root = Path(temporary)
         outputs = root / "outputs"
         outputs.mkdir()
         base_budget = audio.AudioBudget(max_output_bytes=4 * MIB, reserve_disk_bytes=0, timeout=30)
 
-        def service(reserve=0):
+        created, admitted = [], []
+
+        def service(reserve=0, *, after_admission=False):
+            runtimes = []
             def factory(path, **options):
-                return audio.AudioRuntime(path, ffmpeg=args.ffmpeg, ffprobe=args.ffprobe,
-                    budget=replace(base_budget, reserve_disk_bytes=reserve), **options)
-            return production.ProductionService(root / "state", voices=speech.VoiceRegistry([]),
-                                                runtime_factory=factory, total_disk_bytes=32 * MIB)
+                runtime = audio.AudioRuntime(path, ffmpeg=args.ffmpeg, ffprobe=args.ffprobe,
+                    budget=replace(base_budget, reserve_disk_bytes=0 if after_admission else reserve), **options)
+                runtimes.append(runtime)
+                return runtime
+
+            class TightenAfterAdmission:
+                @property
+                def limits(self):
+                    return first.broker.limits
+
+                @contextmanager
+                def reserve(self, *arguments, **options):
+                    # Keep real shared admission and release. Only after its
+                    # lease exists does this fixture tighten the local reserve,
+                    # so the independent final publication check is exercised.
+                    with first.broker.reserve(*arguments, **options) as lease:
+                        assert len(runtimes) == 1
+                        admitted.append(lease.id)
+                        runtimes[0].budget = replace(base_budget, reserve_disk_bytes=reserve)
+                        yield lease
+
+            engine = production.ProductionService(root / "state", voices=speech.VoiceRegistry([]),
+                runtime_factory=factory, total_disk_bytes=32 * MIB,
+                broker=TightenAfterAdmission() if after_admission else None)
+            cleanup.callback(engine.close)
+            created.append(engine)
+            return engine
 
         first = service()
         plan = first.create("[Scene: Destination reserve admission]\n[Pause: 30]", mode="authored")
@@ -245,7 +272,25 @@ def reserve_policy_case(args, audio, speech, production, identity):
         # physical statistics stay real. Requiring the entire volume capacity
         # is deliberately unattainable while these owned files exist.
         actual_space = shutil.disk_usage(outputs)
-        stricter = service(actual_space.total)
+        resources = importlib.import_module("carr_library.operations")
+        first.broker.configure(replace(first.broker.limits, disk_bytes=actual_space.total))
+        early = service(actual_space.total)
+        early_job = early.submit(plan, outputs, stems=True)
+        try:
+            early.run(early_job)
+        except resources.ResourceUnavailable as error:
+            early_refusal = str(error)
+            assert "disk_bytes" in early_refusal
+        else:
+            raise AssertionError("Shared admission accepted a reserve exceeding its saved policy.")
+        early_state = early.get(early_job)
+        assert early_state["status"] == "attention" and not early_state["nodes"]
+        assert not (Path(early_state["destination"]) / "master.wav").exists()
+        assert snapshot(first.cache) == cached
+        assert snapshot(Path(first_result["destination"])) == accepted
+        assert first.broker.snapshot()["leases"] == []
+
+        stricter = service(actual_space.total, after_admission=True)
         job = stricter.submit(plan, outputs, stems=True)
         try:
             stricter.run(job)
@@ -254,6 +299,7 @@ def reserve_policy_case(args, audio, speech, production, identity):
             assert "output disk space" in refusal
         else:
             raise AssertionError("Publication ignored the actual destination reserve.")
+        assert len(admitted) == 1 and first.broker.snapshot()["leases"] == []
         failed = stricter.get(job)
         destination = Path(failed["destination"])
         assert failed["status"] == "failed" and failed["nodes"]
@@ -272,9 +318,14 @@ def reserve_policy_case(args, audio, speech, production, identity):
         probe_pcm(master, args.ffprobe, rate=16000, frames=480000)
         decoded = decode_pcm(master, args.ffmpeg, expected_frames=480000)
         assert decoded.nonzero_bytes == 0
+        assert first.broker.snapshot()["leases"] == []
+        cleanup.close()
+        assert all(engine._closed for engine in created)
         args.evidence.write_text(json.dumps({
             "status": "PASS", "source_sha256": identity, "statistics_mocked": False,
-            "scope": "Actual 30-second PCM and explicit unattainable reserve; no low-disk or acoustic-quality claim.",
+            "scope": "Actual 30-second PCM and an explicit unattainable reserve after real admission; no low-disk or acoustic-quality claim.",
+            "early_admission_refusal": early_refusal, "real_admission_before_late_reserve": True,
+            "leases_released": True, "services_closed": True,
             "observed_volume_total": actual_space.total, "observed_volume_free": actual_space.free,
             "requested_reserve": actual_space.total, "refusal": refusal,
             "retained_cache_unchanged": True, "earlier_publication_unchanged": True,

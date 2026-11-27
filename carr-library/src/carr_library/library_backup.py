@@ -131,7 +131,12 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 state = snapshot_state(state_root, stage / 'state',
                                        include_generated=include_generated, cancelled=cancelled,
                                        missing_ok=False)
+                from .studio.backup_inputs import snapshot_inputs
+                state = snapshot_inputs(stage / 'state', state, source_state_root=state_root,
+                                        cancelled=cancelled)
                 validate_state_documents(stage / 'state', state, cancelled=cancelled)
+                from .studio.book_backup import validate_database_snapshot
+                validate_database_snapshot(snapshot, stage / 'state', state, cancelled=cancelled)
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
             from .pending_backup import pending_roots, snapshot_pending
             roots = pending_roots(app.root)
@@ -323,6 +328,84 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
             raise RestoreError('backup schema fingerprint mismatch')
 
 
+def _verify_contents(source, stage, manifest, *, destination=None, cancelled=lambda: False):
+    """Use the existing complete restore verifier in one unpublished private stage.
+
+    A destination is supplied only by actual restoration. Plain verification
+    checks current typed state without assigning a projected editable revision.
+    Both routes retain the same database, original, sidecar and pending proofs.
+    """
+    flat = (backup_compat.normalize_manifest(manifest)
+            if backup_compat.is_flat_manifest(manifest) else None)
+    _plain(source / ORIGINALS, directory=True)
+    snapshot = stage / DATABASE
+    _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
+    with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
+        storage.check()
+        original_store = RetainedAssets(source / ORIGINALS)
+        entries = verify_catalog_assets(storage.db, original_store,
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        if _asset_manifest(entries) != manifest['assets']:
+            raise RestoreError('asset manifest disagrees with the database')
+        copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        sidecars = None
+        if flat is not None:
+            flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled,
+                                         destination=destination)
+        elif 'sidecars' in manifest:
+            sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
+                stage, manifest['sidecars'], destination if destination is not None else stage,
+                db=storage.db, cancelled=cancelled)
+    pending = {'assets': [], 'paths': []}
+    if flat is None and 'state' in manifest:
+        from .state_backup import restore_state
+        from .state_recovery import prepare_restored_state, validate_state_documents
+        restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
+        if destination is None:
+            validate_state_documents(stage / 'state', manifest['state'], cancelled=cancelled)
+        else:
+            prepare_restored_state(stage / 'state', manifest['state'], cancelled=cancelled,
+                                   destination_state_root=destination / 'state')
+        from .studio.book_backup import validate_database_snapshot
+        validate_database_snapshot(snapshot, stage / 'state', manifest['state'], cancelled=cancelled)
+    pending_manifest = flat.pending if flat is not None else manifest.get('pending')
+    if pending_manifest is not None:
+        from .pending_backup import restore_pending
+        pending = restore_pending(source / 'pending', stage,
+                                  destination if destination is not None else stage, pending_manifest,
+                                  cancelled=cancelled)
+    if cancelled():
+        raise InterruptedError('Restore cancelled before publication.')
+    return entries, pending, flat, sidecars
+
+
+def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False,
+                  temporary_parent=None):
+    """Verify all complete-backup bytes and source bindings without publishing.
+
+    Source backups remain read-only. SQLite and typed producers see only their
+    existing checked private copy. No restore destination, engine or queue is
+    activated; full formats 1–5 and their checked schema versions are retained.
+    """
+    if not callable(cancelled):
+        raise ValueError('Invalid backup verification cancellation callback.')
+    if cancelled():
+        raise InterruptedError('Backup verification cancelled.')
+    source = local_path(source, exists=True)
+    _plain(source, directory=True)
+    source = source.resolve(strict=True)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
+    if temporary_parent is not None:
+        temporary_parent = local_path(temporary_parent, exists=True)
+        _plain(temporary_parent, directory=True)
+    with TemporaryDirectory(prefix='.carr-library-verify-', dir=temporary_parent) as temporary:
+        _verify_contents(source, Path(temporary), manifest, cancelled=cancelled)
+    if cancelled():
+        raise InterruptedError('Backup verification cancelled.')
+    return manifest
+
+
 def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
     """Restore a trusted backup into a new data root; return that root's Path.
 
@@ -341,41 +424,11 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
-    flat = (backup_compat.normalize_manifest(manifest)
-            if backup_compat.is_flat_manifest(manifest) else None)
-    _plain(source / ORIGINALS, directory=True)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
-        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
-            storage.check()
-            original_store = RetainedAssets(source / ORIGINALS)
-            entries = verify_catalog_assets(storage.db, original_store,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
-            if _asset_manifest(entries) != manifest['assets']:
-                raise RestoreError('asset manifest disagrees with the database')
-            copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
-            sidecars = None
-            if flat is not None:
-                flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled)
-            elif 'sidecars' in manifest:
-                sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
-                    stage, manifest['sidecars'], destination, db=storage.db, cancelled=cancelled)
-        pending = {'assets': [], 'paths': []}
-        if flat is None and 'state' in manifest:
-            from .state_backup import restore_state
-            from .state_recovery import prepare_restored_state
-            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
-            prepare_restored_state(stage / 'state', manifest['state'], cancelled=cancelled)
-        pending_manifest = flat.pending if flat is not None else manifest.get('pending')
-        if pending_manifest is not None:
-            from .pending_backup import restore_pending
-            pending = restore_pending(source / 'pending', stage, destination, pending_manifest,
-                                      cancelled=cancelled)
-        if cancelled():
-            raise InterruptedError('Restore cancelled before publication.')
+        entries, pending, flat, sidecars = _verify_contents(
+            source, stage, manifest, destination=destination, cancelled=cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)

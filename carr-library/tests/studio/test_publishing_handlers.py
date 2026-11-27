@@ -20,6 +20,7 @@ class Widget:
     def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
         self.value, self.label, self.choices = value, label, list(choices)
         self.selection, self.enabled, self.name = -1, True, ''
+        self.identity, self.destroyed, self.handlers = id(self), False, {}
     def SetName(self, name): self.name = name
     def GetName(self): return self.name
     def GetValue(self): return self.value
@@ -29,7 +30,10 @@ class Widget:
     def GetSelection(self): return self.selection
     def Enable(self, enabled=True): self.enabled = enabled
     def IsEnabled(self): return self.enabled
-    def Bind(self, *args, **kwargs): pass
+    def GetId(self):
+        assert not self.destroyed, 'The dying native wrapper was queried.'
+        return self.identity
+    def Bind(self, event, handler, *args, **kwargs): self.handlers[event] = handler
     def SetSizer(self, *args): pass
     def SetScrollRate(self, *args): pass
     def FitInside(self): pass
@@ -49,7 +53,7 @@ def desktop(source_job):
     service, state = source_job
     library = LibraryApp(service.root.parent.parent)
     constants = ('DEFAULT_DIALOG_STYLE','RESIZE_BORDER','VSCROLL','VERTICAL','HORIZONTAL','ALL','EXPAND',
-                 'TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_CLOSE','ID_OK','ID_CLOSE','FD_SAVE')
+                 'TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_CLOSE','EVT_WINDOW_DESTROY','ID_OK','ID_CLOSE','FD_SAVE')
     wx = SimpleNamespace(**{name:index + 1 for index, name in enumerate(constants)})
     for name in ('Dialog','StaticText','TextCtrl','Choice','Button','ScrolledWindow'):
         setattr(wx, name, Widget)
@@ -68,6 +72,11 @@ def desktop(source_job):
         finally:
             frame.working = False
     frame.run_job = run_job
+    frame.cleanups = []
+    def register_cleanup(callback):
+        assert callable(callback), 'Desktop cleanup accepts the owned close callback.'
+        frame.cleanups.append(callback)
+    frame.register_worker_cleanup = register_cleanup
     dialog = create_publishing_dialog(frame, wx_module=wx)
     return frame, dialog, state
 

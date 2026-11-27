@@ -703,6 +703,22 @@ def install_audio_studio(frame):
         except Exception as exc:
             frame.report('Microphone recording could not be opened: ' + str(exc))
     frame.Bind(wx.EVT_MENU, open_recording, recording)
+    batch_conversion = menu.Append(wx.ID_ANY, 'Batch audio conversion...')
+    def open_batch_conversion(event):
+        from .studio_dialog import show_audio_conversion
+        try:
+            show_audio_conversion(frame, batch=True)
+        except Exception as exc:
+            frame.report('Batch audio conversion could not open: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, open_batch_conversion, batch_conversion)
+    metadata = menu.Append(wx.ID_ANY, 'Audio metadata and cover...')
+    def open_audio_metadata(event):
+        from .audio_metadata_dialog import show_audio_metadata
+        try:
+            show_audio_metadata(frame)
+        except Exception as exc:
+            frame.report('Audio metadata could not open: ' + str(exc))
+    frame.Bind(wx.EVT_MENU, open_audio_metadata, metadata)
     frame.menu_bar.Insert(max(0,frame.menu_bar.GetMenuCount()-1),menu,'Audio &Studio')
 
 
