@@ -539,7 +539,7 @@ class TranscriptionService:
             env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG', 'TEMP', 'TMP') if name in os.environ}
             env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_DATASETS_OFFLINE='1',
                        HF_HUB_DISABLE_TELEMETRY='1', PYTHONDONTWRITEBYTECODE='1')
-            run_process([str(python), '-I', '-S', '-B',
+            run_process([str(python), '-I', '-S', '-B', '-X', 'utf8',
                          '-X', 'pycache_prefix=' + str(stage / 'bytecode'), '-c', _BOOTSTRAP,
                          str(worker), str(stage), str(runtime_root)],
                         budget=self.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage)

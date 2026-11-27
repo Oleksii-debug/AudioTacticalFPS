@@ -23,7 +23,7 @@ from carr_library.state_backup import snapshot_state, restore_state
 # Authored synthetic protocol fixture. No private supplied source is reproduced.
 # The AST shape exercises the exact preparation operations and launches through
 # the real isolated subprocess, importing an explicitly inventoried dependency.
-SYNTHETIC_WORKER = '''import argparse, json, time
+SYNTHETIC_WORKER = '''import argparse, json, sys, time
 from pathlib import Path
 from faster_whisper import marker
 
@@ -42,6 +42,7 @@ class Worker:
         return value
 
 def main():
+    assert sys.flags.utf8_mode == 1
     parser = argparse.ArgumentParser()
     parser.add_argument('--job-dir', required=True)
     job = Path(parser.parse_args().job_dir)
@@ -148,8 +149,8 @@ def test_actual_isolated_worker_imports_reviewed_site_and_commits_all_formats(se
     events = []
     record = service.run(job_id, on_status=events.append)
     assert record['status'] == 'complete'
-    assert output(service, job_id).read_text() == 'Синтетичний запис\n'
-    assert '00:01:00,000 --> 00:01:01,000' in output(service, job_id, 'srt').read_text()
+    assert output(service, job_id).read_text(encoding='utf-8') == 'Синтетичний запис\n'
+    assert '00:01:00,000 --> 00:01:01,000' in output(service, job_id, 'srt').read_text(encoding='utf-8')
     result = read_json(output(service, job_id, 'json'))
     assert result['language'] == 'uk' and result['source_sha256'] == digest_file(source)
     assert result['diarization'] is False and result['word_timestamps'] is False
