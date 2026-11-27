@@ -31,6 +31,25 @@ def validate_dordiai_configuration(value):
     return dict(value)
 
 
+def validate_helper_script_configuration(value):
+    """Validate inert script/hash declarations without probing or launching engines."""
+    script, expected = value.get('script'), value.get('script_sha256')
+    if (script is None) != (expected is None):
+        raise ValueError('A local helper script and its identity must be configured together.')
+    if script is None:
+        return
+    if (type(script) is not str or not script.strip() or len(script) > 32767
+            or script.replace('\\', '/').startswith('//') or '://' in script
+            or any(ord(character) < 32 for character in script)):
+        raise ValueError('A local helper script needs a local filesystem reference.')
+    script.encode('utf-8', errors='strict')
+    without_drive = script[2:] if re.match(r'^[A-Za-z]:', script) else script
+    if ':' in without_drive:
+        raise ValueError('Helper script references cannot contain URLs or alternate streams.')
+    if type(expected) is not str or not re.fullmatch('[0-9a-f]{64}', expected):
+        raise ValueError('A helper script needs a lowercase SHA-256 fingerprint.')
+
+
 def _normalize_settings(value):
     if not isinstance(value, dict):
         raise ValueError('Unsupported local engine configuration.')
@@ -77,6 +96,8 @@ def save_settings(state_root, value):
         for item in value[collection]:
             if not isinstance(item, dict):
                 raise ValueError('Invalid local voice declaration.')
+            if collection == 'voice_helpers':
+                validate_helper_script_configuration(item)
             local_path(item.get('executable', ''), exists=True)
     path = settings_path(state_root)
     atomic_json(path, value, replace=path.exists())

@@ -464,3 +464,56 @@ def test_actual_python_helper_stop_reaps_parent_and_descendant(helper, tmp_path,
         finally:
             for descendant in descendants:
                 descendant.cleanup()
+
+
+@pytest.mark.parametrize('fields', [
+    {'script_sha256': None},
+    {'script': None},
+    {'script': 'https://example.invalid/bridge.py'},
+    {'script': r'\\server\share\bridge.py'},
+    {'script': r'C:\Synthetic\bridge.py:stream'},
+    {'script': ''},
+    {'script': 42},
+    {'script_sha256': 'A' * 64},
+    {'script_sha256': True},
+])
+def test_invalid_helper_script_declaration_does_not_replace_saved_settings(helper, tmp_path, monkeypatch, fields):
+    from carr_library import runtime_settings
+
+    root = tmp_path.resolve(strict=True) / 'state'
+    (root / 'audio').mkdir(parents=True)
+    original = runtime_settings.load_settings(root)
+    runtime_settings.save_settings(root, original)
+    saved = runtime_settings.settings_path(root)
+    before = saved.read_bytes()
+    declaration = {'executable': str(helper[0]), **_configuration(helper, script=str(helper[1]))}
+    declaration.update(fields)
+    proposal = {**original, 'voice_helpers': [declaration]}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Saving a passive declaration must not launch its helper.')
+
+    monkeypatch.setattr(speech_io.subprocess, 'Popen', forbidden)
+    with pytest.raises(ValueError):
+        runtime_settings.save_settings(root, proposal)
+    assert saved.read_bytes() == before
+    assert runtime_settings.load_settings(root) == original
+
+
+def test_disabled_missing_script_remains_passive_and_editable(helper, tmp_path, monkeypatch):
+    from carr_library import runtime_settings
+
+    root = tmp_path.resolve(strict=True) / 'state'
+    (root / 'audio').mkdir(parents=True)
+    original = runtime_settings.load_settings(root)
+    missing = helper[1].with_name('external-missing.py')
+    declaration = {'executable': str(helper[0]), **_configuration(helper, script=str(missing), enabled=False)}
+    proposal = {**original, 'voice_helpers': [declaration]}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Saving a disabled external declaration must not launch its helper.')
+
+    monkeypatch.setattr(speech_io.subprocess, 'Popen', forbidden)
+    runtime_settings.save_settings(root, proposal)
+    assert runtime_settings.load_settings(root) == proposal
+    assert not missing.exists()

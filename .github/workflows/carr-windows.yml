@@ -573,6 +573,7 @@ jobs:
               'tests/storage/test_backup_schema_identity.py',
               'tests/storage/test_backup_v4_sidecars.py',
               'tests/storage/test_library_backup_reading_state.py',
+              'tests/storage/test_engine_settings_backup.py',
               'tests/storage/test_v3_state_backup.py',
               'tests/library_assistant/test_library_workflow.py',
               'tests/reader/test_export_no_clobber.py',

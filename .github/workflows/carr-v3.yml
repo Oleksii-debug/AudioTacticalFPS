@@ -116,6 +116,7 @@ jobs:
                     'tests/storage/test_backup_schema_identity.py',
                     'tests/e2e/test_import_worker_publication.py',
                     'tests/ingest/test_import_replay_identity.py',
+                    'tests/storage/test_engine_settings_backup.py',
                     'tests/speech/test_python_helper.py',
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
