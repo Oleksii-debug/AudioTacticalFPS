@@ -341,6 +341,7 @@ def test_native_tasks_destroy_observer_uses_captured_id_for_a_different_wrapper(
 def test_native_tasks_completion_requires_event_deleted_wrapper_and_unchanged_job(tmp_path, missing):
     import ast
     from dataclasses import asdict
+    from carr_library.assistant import AssistantService, Scope
     from pathlib import Path
     from types import SimpleNamespace
     import traceback
