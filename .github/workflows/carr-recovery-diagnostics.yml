@@ -1,31 +1,79 @@
-name: Read retained native failure evidence
+name: Canonical merge conflict evidence
 on:
   push:
     branches: [carr/recovery-diagnostics-f749-20261127]
-    paths: ['.github/workflows/carr-recovery-diagnostics.yml']
+    paths: [.github/workflows/carr-recovery-diagnostics.yml]
 permissions:
   contents: read
-  actions: read
 jobs:
-  retained_evidence:
+  merge-evidence:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Read the exact retained synthetic bibliography report
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect exact public candidate merges without publishing a result
         shell: bash
         run: |
-          gh api repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15168401595/zip > evidence.zip
-          python - <<'PY'
-          import hashlib, json, pathlib, zipfile
-          raw = pathlib.Path('evidence.zip').read_bytes()
-          assert len(raw) < 1000000
-          assert hashlib.sha256(raw).hexdigest() == 'c981cb476e703936b58151cda972d58882c0e435ecdfdb8046f8c0b16dd02490'
-          with zipfile.ZipFile('evidence.zip') as archive:
-              assert len(archive.infolist()) < 100
-              for info in archive.infolist():
-                  if info.filename.endswith('.json'):
-                      assert info.file_size < 1000000
-                      print(json.dumps({'artifact_member': info.filename, 'evidence': json.loads(archive.read(info))}, ensure_ascii=False))
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, subprocess
+          base='e1ea9300fe286eb32f36c7470a295e52d803b1e2'
+          incoming={
+              'academic_asr':'e8c0181c7ff8568789d32bd76e896ccbd0038cfd',
+              'transaction_receipts':'a4e6455cc8f25b374c731d76f99dc706eeced25f',
+              'metadata_guard':'f184ba631934f6bbd38089ebb31c449837762967',
+              'transfer_guard':'65a65de078a185855e75507421c44de6e4dccba0',
+          }
+          evidence=Path('/tmp/resonance-merge-evidence')
+          evidence.mkdir()
+          def git(*args, check=True):
+              return subprocess.run(['git',*args],check=check,capture_output=True)
+          git('config','user.name','Resonance diagnostic')
+          git('config','user.email','diagnostic@example.invalid')
+          for commit in (base,*incoming.values()):
+              git('cat-file','-e',commit+'^{commit}')
+          summary=[]
+          for label,commit in incoming.items():
+              git('checkout','--detach',base)
+              folder=evidence/label
+              folder.mkdir()
+              result=git('merge','--no-commit','--no-ff',commit,check=False)
+              (folder/'merge.stdout.txt').write_bytes(result.stdout)
+              (folder/'merge.stderr.txt').write_bytes(result.stderr)
+              conflict_records=git('ls-files','--unmerged','-z').stdout.split(b'\0')
+              paths=set()
+              stages=[]
+              for record in conflict_records:
+                  if not record:
+                      continue
+                  meta,path_raw=record.split(b'\t',1)
+                  mode,sha,stage=meta.decode().split()
+                  path=path_raw.decode('utf-8')
+                  paths.add(path)
+                  target=folder/('stage-'+stage)/path
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  target.write_bytes(git('show',sha).stdout)
+                  stages.append(dict(path=path,stage=int(stage),blob=sha,mode=mode))
+              (folder/'combined-conflicts.patch').write_bytes(git('diff','--cc').stdout)
+              row=dict(base=base,incoming=commit,result='MERGE_CLEAN' if result.returncode==0 else 'CONFLICT' if paths else 'ERROR',returncode=result.returncode,conflicts=sorted(paths),stages=stages,runtime_acceptance='NOT_RUN')
+              if result.returncode==0:
+                  row['tree']=git('write-tree').stdout.decode().strip()
+                  (folder/'merged.diff').write_bytes(git('diff','--cached',base).stdout)
+              (folder/'result.json').write_text(json.dumps(row,indent=2)+'\n')
+              summary.append(row)
+              print(json.dumps({k:v for k,v in row.items() if k!='stages'}),flush=True)
+              git('merge','--abort',check=False)
+              git('reset','--hard',base)
+          (evidence/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
+          if any(row['result']=='ERROR' for row in summary):
+              raise SystemExit('Unexpected Git failure, see retained diagnostic output')
           PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resonance-public-merge-evidence
+          path: /tmp/resonance-merge-evidence
+          if-no-files-found: error
+          retention-days: 7
