@@ -123,6 +123,7 @@ def prepare(bundle: Path, output: Path, *, manifest_sha256: str, installed_bundl
     (output / 'ResonanceSetup.iss').write_text(template, encoding='utf-8-sig')
     record = dict(schema=1, status='SOURCE_PREPARED', source_commit=document['source_commit'],
                   bundle_manifest_sha256=manifest_sha256, application_version=version,
+                  managed_upgrade_protocol=maintenance.upgrade_protocol.PROOF_SCHEMA,
                   template_sha256=maintenance.sha(output / 'ResonanceSetup.iss'),
                   maintenance_sha256={name: maintenance.sha(helper / name) for name in originals},
                   release_status='unsigned-private-candidate', authenticode_verified=False,

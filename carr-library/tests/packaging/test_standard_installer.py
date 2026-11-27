@@ -348,13 +348,17 @@ def test_incomplete_bootstrap_allows_only_existing_isolated_self_test(installed)
     with installation_lease(root, exclusive=True):
         with application_lease(['--self-test'], prefix=root / 'app/.venv', allow_bootstrap_self_test=True):
             pass
-        with pytest.raises(RuntimeError, match='incomplete'):
+        with pytest.raises(RuntimeError, match='Close Resonance'):
             with application_lease(['--self-test'], prefix=root / 'app/.venv'):
                 pytest.fail('A secondary entrypoint bypassed the incomplete installation.')
         for arguments in ([], ['--data-dir', 'foreign'], ['--self-test', '--data-dir', 'foreign']):
-            with pytest.raises(RuntimeError, match='incomplete'):
+            with pytest.raises(RuntimeError, match='Close Resonance'):
                 with application_lease(arguments, prefix=root / 'app/.venv'):
                     pytest.fail('unready installed entrypoint admitted user-data access')
+    for arguments in ([], ['--self-test'], ['--data-dir', 'foreign']):
+        with pytest.raises(RuntimeError, match='incomplete'):
+            with application_lease(arguments, prefix=root / 'app/.venv'):
+                pytest.fail('Releasing maintenance did not make an incomplete environment ready.')
 
 
 def test_portable_prefix_does_not_create_installation_metadata(tmp_path):
@@ -519,7 +523,11 @@ def test_native_install_success_is_gated_before_inno_registration(tmp_path, payl
     source = (tmp_path / 'setup-source/ResonanceSetup.iss').read_text(encoding='utf-8-sig')
     prepare = source.split('function PrepareToInstall', 1)[1].split('procedure CurStepChanged', 1)[0]
     assert "if not RunHelper('install', True) then begin" in prepare
-    assert prepare.index("RunHelper('install', True)") < prepare.index('Prepared := True;')
+    upgrade, ordinary = prepare.split("if not RunHelper('preflight', False) then begin", 1)
+    assert upgrade.index("RunHelper('upgrade-check', True)") < upgrade.index("RunHelper('upgrade', True)")
+    assert upgrade.index("RunHelper('upgrade', True)") < upgrade.index('Prepared := True;')
+    assert ordinary.index("RunHelper('install', True)") < ordinary.index('Prepared := True;')
+    assert upgrade.count('Prepared := True;') == ordinary.count('Prepared := True;') == 1
     assert "Result := 'Offline installation did not complete." in prepare
     assert 'ssPostInstall' not in source
     assert 'ExecAndLogOutput' in source

@@ -23,6 +23,42 @@ MARKER = 'managed-install.ini'
 LEASE = 'installation.lease'
 _application_holds = {}
 _application_hold_lock = threading.RLock()
+_issued_leases = set()
+
+
+class _HeldLease:
+    """A live same-process borrow; never serialized as update authority."""
+    def __init__(self, root, exclusive, native_handle=None):
+        self.root, self.exclusive = root, exclusive
+        self.pid, self.thread = os.getpid(), threading.get_ident()
+        self.native_handle, self.active = native_handle, False
+
+    def check(self, root, exclusive):
+        with _application_hold_lock:
+            if (self not in _issued_leases or not self.active or self.pid != os.getpid()
+                    or self.thread != threading.get_ident() or self.root != root
+                    or exclusive and not self.exclusive):
+                raise ValueError('The actual maintenance lease is no longer held for this installation.')
+
+    def windows_owner(self):
+        self.check(self.root, True)
+        if self.native_handle is None:
+            raise RuntimeError('A native Windows lease is required for the setup handoff.')
+        return self.pid, self.native_handle
+
+
+@contextmanager
+def _issued_lease(root, exclusive, native_handle=None):
+    held = _HeldLease(root, exclusive, native_handle)
+    with _application_hold_lock:
+        held.active = True
+        _issued_leases.add(held)
+    try:
+        yield held
+    finally:
+        with _application_hold_lock:
+            held.active = False
+            _issued_leases.discard(held)
 
 
 def plain(path: Path, *, directory=False, missing=False):
@@ -71,6 +107,10 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
     """
     root = Path(root).absolute()
     plain(root, directory=True)
+    if isinstance(owner, _HeldLease):
+        owner.check(root, exclusive)
+        yield owner
+        return
     path = root / LEASE
     plain(path, missing=exclusive and owner is None)
     if os.name == 'nt':
@@ -90,13 +130,28 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
                 handle = target.value
             finally:
                 api.CloseHandle(parent)
-            buffer = ctypes.create_unicode_buffer(32768)
-            size = api.GetFinalPathNameByHandleW(handle, buffer, len(buffer), 0)
-            expected = os.path.normcase(str(path.resolve()))
-            actual = os.path.normcase(buffer.value.removeprefix('\\\\?\\'))
-            if not 0 < size < len(buffer) or actual != expected:
+            try:
+                buffer = ctypes.create_unicode_buffer(32768)
+                size = api.GetFinalPathNameByHandleW(handle, buffer, len(buffer), 0)
+                expected = os.path.normcase(str(path.resolve()))
+                actual = os.path.normcase(buffer.value.removeprefix('\\\\?\\'))
+                if not 0 < size < len(buffer) or actual != expected:
+                    raise ValueError('The installer handle does not own this installation lease.')
+                # An application's shared read handle points at the same file
+                # too. It must not be relabelled as exclusive by passing its
+                # PID/handle through the setup command line. A genuine native
+                # exclusive handle denies even a fully shared read-only open.
+                probe = api.CreateFileW(str(path), 0x80000000, 0x7, None, 3,
+                                        0x00200080, None)
+                if probe != ctypes.c_void_p(-1).value:
+                    api.CloseHandle(probe)
+                    raise ValueError('The borrowed installer lease is not exclusive.')
+                error = ctypes.get_last_error()
+                if error != 32:  # ERROR_SHARING_VIOLATION, not access denial
+                    raise OSError(error, 'Cannot confirm the exclusive installer lease.')
+            except BaseException:
                 api.CloseHandle(handle)
-                raise ValueError('The installer handle does not own this installation lease.')
+                raise
         else:
             handle = api.CreateFileW(str(path), 0xC0000000 if exclusive else 0x80000000,
                                     0 if exclusive else 1, None, 4 if exclusive else 3,
@@ -105,7 +160,8 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
                 raise RuntimeError('Close Resonance and its running jobs before repairing or uninstalling.')
         try:
             plain(path)
-            yield
+            with _issued_lease(root, exclusive, handle) as held:
+                yield held
         finally:
             api.CloseHandle(handle)
     else:
@@ -123,7 +179,8 @@ def installation_lease(root: Path, *, exclusive=False, owner=None):
                 fcntl.flock(descriptor, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB)
             except BlockingIOError as error:
                 raise RuntimeError('Close Resonance and its running jobs before repairing or uninstalling.') from error
-            yield
+            with _issued_lease(root, exclusive) as held:
+                yield held
         finally:
             os.close(descriptor)
 
@@ -159,15 +216,36 @@ def application_lease(arguments=(), *, prefix=None, allow_bootstrap_self_test=Fa
     if environment.name.casefold() != '.venv' or program.name.casefold() != 'app' or not os.path.lexists(root / MARKER):
         yield
         return
-    plain(root / MARKER)
-    if not (environment / '.installation-complete').is_file():
-        # The existing offline installer runs this exact synthetic check before
-        # publishing readiness. It cannot open the desktop or a user library.
-        if allow_bootstrap_self_test and list(arguments) == ['--self-test']:
+    def state():
+        import configparser
+        parser = configparser.ConfigParser(interpolation=None, strict=True)
+        marker_info = plain(root / MARKER)
+        if marker_info.st_size > 8192:
+            raise ValueError('Managed installation state exceeds its byte budget.')
+        with (root / MARKER).open('rb') as stream:
+            raw = stream.read(8193)
+        if len(raw) > 8192:
+            raise ValueError('Managed installation state exceeds its byte budget.')
+        parser.read_string(raw.decode('utf-8'))
+        return parser.get('installation', 'state', fallback='')
+
+    # Only the installer's exact synthetic self-test may run while its native
+    # exclusive lease is held. It cannot open the desktop or a user library.
+    if allow_bootstrap_self_test and list(arguments) == ['--self-test']:
+        current = state()
+        if current in ('preparing', 'updating') or (
+                current == 'complete' and not (environment / '.installation-complete').is_file()):
             yield
             return
-        raise RuntimeError('Installation is incomplete. Run Repair from the Resonance setup.')
     with _process_application_hold(root):
+        # Read admission state after acquiring the actual shared lease. A
+        # maintenance transaction may have started and crashed between an
+        # earlier observation and lease acquisition; its ready B environment
+        # alone must never admit an ordinary launch.
+        if state() != 'complete':
+            raise RuntimeError('The managed installation has pending maintenance. Finish its reviewed recovery before opening the application.')
+        if not (environment / '.installation-complete').is_file():
+            raise RuntimeError('Installation is incomplete. Run Repair from the Resonance setup.')
         yield
 
 

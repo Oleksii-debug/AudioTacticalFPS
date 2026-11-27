@@ -32,7 +32,9 @@ MARKER = 'managed-install.ini'
 MAX_MANIFEST = 32 * 1024 * 1024
 MAX_FILES = 100000
 MAINTENANCE = ('ResonanceSetup.exe', 'maintenance.py', 'installation_lease.py',
-               'bundle_verifier.py', 'windows_job.py', 'cleanup.py', 'capture_types.py')
+               'bundle_verifier.py', 'windows_job.py', 'cleanup.py', 'capture_types.py',
+               'managed_installation.py')
+LEGACY_MAINTENANCE = tuple(name for name in MAINTENANCE if name != 'managed_installation.py')
 
 
 def _module(name, path):
@@ -51,12 +53,16 @@ verify_source = HERE / 'bundle_verifier.py'
 if not verify_source.exists():
     verify_source = HERE.parent / 'install_windows.py'
 verifier = _module('resonance_trusted_bundle_verifier', verify_source)
+protocol_source = HERE / 'managed_installation.py'
+if not protocol_source.exists():
+    protocol_source = HERE.parent.parent / 'src/carr_library/managed_installation.py'
+upgrade_protocol = _module('resonance_managed_upgrade_protocol', protocol_source)
 process_source = HERE / 'windows_job.py'
 if not process_source.exists():
     process_source = HERE.parent.parent / 'src/carr_library/audio/windows_job.py'
 PROCESS_HELPERS = ('windows_job.py', 'cleanup.py', 'capture_types.py')
 HELPERS = {'maintenance.py': HERE / 'maintenance.py', 'installation_lease.py': lease_source,
-           'bundle_verifier.py': verify_source,
+           'bundle_verifier.py': verify_source, 'managed_installation.py': protocol_source,
            **{name: process_source.parent / name for name in PROCESS_HELPERS}}
 
 
@@ -96,8 +102,10 @@ def _wait_for_cleanup(owner):
         # A closed console must not release ownership of a live process tree.
         pass
     interrupted = None
-    while not owner.quiescent_event.is_set():
+    while True:
         try:
+            if owner.quiescent_event.is_set():
+                break
             owner.close()
             owner.quiescent_event.wait(.25)
         except (KeyboardInterrupt, SystemExit) as error:
@@ -253,7 +261,7 @@ def marker(root):
     if parser.sections() != ['installation'] or parser.defaults():
         raise ValueError('Invalid managed installation identity.')
     values = dict(parser['installation'])
-    if set(values) != {'schema', 'product', 'state', 'bundle_sha256', 'setup_sha256', 'owner_sha256'} or values['schema'] != '1' or values['product'] != PRODUCT or values['state'] not in ('preparing', 'complete', 'uninstalled'):
+    if set(values) != {'schema', 'product', 'state', 'bundle_sha256', 'setup_sha256', 'owner_sha256'} or values['schema'] != '1' or values['product'] != PRODUCT or values['state'] not in ('preparing', 'complete', 'updating', 'uninstalled'):
         raise ValueError('Invalid managed installation identity.')
     for name in ('bundle_sha256', 'setup_sha256', 'owner_sha256'):
         digest(values[name])
@@ -265,11 +273,11 @@ def set_marker(root, state, bundle_hash, setup_hash, owner_hash='0' * 64):
     write(root / MARKER, text.encode('utf-8'))
 
 
-def owned(root, expected, setup_hash):
+def owned(root, expected, setup_hash, *, allow_updating=False):
     info = marker(root)
     if info['bundle_sha256'] != digest(expected) or info['setup_sha256'] != digest(setup_hash):
         raise ValueError('Use the matching setup for this installation; this is not an upgrade service.')
-    if info['state'] != 'complete':
+    if info['state'] != 'complete' and not (allow_updating and info['state'] == 'updating'):
         raise ValueError('The installation has not completed; retain it and run the matching setup for recovery.')
     raw = read(root / OWNER)
     if hashlib.sha256(raw).hexdigest() != info['owner_sha256']:
@@ -289,7 +297,7 @@ def owned(root, expected, setup_hash):
         digest(checksum)
     # The wrapper has a fixed set of files; supplied JSON cannot own arbitrary
     # files elsewhere in the program folder or in a research-data directory.
-    if set(value['maintenance']) != set(MAINTENANCE):
+    if set(value['maintenance']) not in (set(MAINTENANCE), set(LEGACY_MAINTENANCE)):
         raise ValueError('Invalid installer maintenance inventory.')
     for name, checksum in value['maintenance'].items():
         if sha(root / 'maintenance' / name) != digest(checksum):
@@ -517,17 +525,172 @@ def uninstall(root, expected, setup_hash, *, owner=None):
                 'user_data_modified': False, 'coordination_receipt_retained': True}
 
 
+def _upgrade_proof(root, expected, setup_hash, proof_file, proof_sha256):
+    root = location(root)
+    raw = read(Path(proof_file), upgrade_protocol.MAX_PROOF)
+    proof = upgrade_protocol.decode_proof(raw, proof_sha256)
+    upgrade_protocol.require_binding(proof, root, expected, setup_hash)
+    previous = upgrade_protocol.previous_path(proof)
+    plain(previous, directory=True)
+    if Path(proof_file).absolute() != previous / upgrade_protocol.PROOF_FILE:
+        raise ValueError('The captured upgrade proof is outside its retained transaction.')
+    old = marker(previous)
+    if old['state'] != 'complete' or any(old[key] != value for key, value in proof['old'].items()):
+        raise ValueError('The retained original installation differs from the upgrade approval.')
+    if sha(previous / OWNER) != old['owner_sha256']:
+        raise ValueError('The retained original ownership receipt changed.')
+    return root, proof, previous
+
+
+def upgrade_check(payload, root, expected, setup_hash, *, proof_file, proof_sha256,
+                  owner, setup_source):
+    if owner is None:
+        raise ValueError('A managed update requires its actual exclusive maintenance lease.')
+    root, proof, previous = _upgrade_proof(root, expected, setup_hash, proof_file, proof_sha256)
+    with installation_lease(root, exclusive=True, owner=owner):
+        current = marker(root)
+        if current['state'] != 'complete' or any(current[key] != value for key, value in proof['old'].items()):
+            raise ValueError('The installation changed after the reviewed update selection.')
+        old = owned(root, current['bundle_sha256'], current['setup_sha256'])
+        if inventory(root / 'app') != (old['files'], old['directories']):
+            raise ValueError('Changed or foreign program files need reviewed Repair before updating.')
+        document = bundle(payload, expected)
+        if document['source_commit'] != proof['new']['source_commit'] or sha(Path(setup_source)) != setup_hash:
+            raise ValueError('The proposed setup or source differs from the captured update.')
+        if any(os.path.lexists(previous / name) for name in ('app', 'maintenance')):
+            raise ValueError('Recover the already started managed update before another attempt.')
+    return {'status': 'PASS', 'operation': 'upgrade-check'}
+
+
+def upgrade(payload, root, expected, setup_hash, *, proof_file, proof_sha256, owner,
+            setup_source, runner=_bootstrap):
+    """Fixed Setup-B operation; the trusted outer transaction owns recovery.
+
+    Ordinary install/repair still require the same setup identity. This path
+    never commits the protected update anchor or clears the pending marker.
+    The outer owner retains the exact native lease through Inno registration,
+    health verification and commit, and can restore the complete original.
+    """
+    root, proof, previous = _upgrade_proof(root, expected, setup_hash, proof_file, proof_sha256)
+    with installation_lease(root, exclusive=True, owner=owner):
+        upgrade_check(payload, root, expected, setup_hash, proof_file=proof_file,
+            proof_sha256=proof_sha256, owner=owner, setup_source=setup_source)
+        stage = root / ('staging-upgrade-' + proof['transaction'])
+        if os.path.lexists(stage):
+            raise ValueError('Managed update staging already exists; recover it explicitly.')
+        shutil.copytree(payload, stage, symlinks=False)
+        bundle(stage, expected)
+        # Until the outer protected commit, even a complete B environment is
+        # deliberately unavailable to normal application entrypoints.
+        set_marker(root, 'updating', expected, setup_hash)
+        (root / 'app').rename(previous / 'app')
+        (root / 'maintenance').rename(previous / 'maintenance')
+        tools = root / 'maintenance'
+        tools.mkdir()
+        sources = dict(HELPERS, **{'ResonanceSetup.exe': Path(setup_source)})
+        hashes = {name: sha(path) for name, path in sources.items()}
+        if hashes['ResonanceSetup.exe'] != setup_hash:
+            raise ValueError('The authenticated setup changed before caching.')
+        for name, source in sources.items():
+            with source.open('rb') as incoming, (tools / name).open('xb') as output:
+                shutil.copyfileobj(incoming, output, 1024 * 1024)
+                output.flush()
+                os.fsync(output.fileno())
+            if sha(tools / name) != hashes[name]:
+                raise ValueError('A managed update helper changed during caching.')
+        stage.rename(root / 'app')
+        runner(root / 'app')
+        if not (root / 'app/.venv/.installation-complete').is_file():
+            raise ValueError('The new offline environment did not publish completion.')
+        verifier.verify(root / 'app')
+        files, directories = inventory(root / 'app')
+        actual_helpers = {name: sha(tools / name) for name in MAINTENANCE}
+        if actual_helpers != hashes:
+            raise ValueError('Managed update helpers changed during bootstrap.')
+        record = dict(schema=1, product=PRODUCT, bundle_sha256=expected,
+                      files=files, directories=directories, maintenance=actual_helpers)
+        raw = (json.dumps(record, ensure_ascii=False, sort_keys=True,
+                          separators=(',', ':')) + '\n').encode('utf-8')
+        if len(raw) > MAX_MANIFEST:
+            raise ValueError('New managed ownership receipt exceeds its byte budget.')
+        write(root / OWNER, raw)
+        set_marker(root, 'updating', expected, setup_hash, hashlib.sha256(raw).hexdigest())
+    return {'status': 'PASS', 'operation': 'upgrade-staged', 'transaction': proof['transaction'],
+            'bundle_sha256': expected, 'protected_commit': False, 'user_data_modified': False}
+
+
+def finish_upgrade(root, *, proof_file, proof_sha256, owner):
+    if owner is None:
+        raise ValueError('Managed recovery requires its actual exclusive maintenance lease.')
+    raw = read(Path(proof_file), upgrade_protocol.MAX_PROOF)
+    proof = upgrade_protocol.decode_proof(raw, proof_sha256)
+    root, proof, _ = _upgrade_proof(root, proof['new']['bundle_sha256'],
+        proof['new']['setup_sha256'], proof_file, proof_sha256)
+    with installation_lease(root, exclusive=True, owner=owner):
+        current = marker(root)
+        record = owned(root, proof['new']['bundle_sha256'], proof['new']['setup_sha256'], allow_updating=True)
+        if inventory(root / 'app') != (record['files'], record['directories']):
+            raise ValueError('The new installed program changed before update commit.')
+        set_marker(root, 'complete', current['bundle_sha256'], current['setup_sha256'], current['owner_sha256'])
+
+
+def restore_upgrade(root, *, proof_file, proof_sha256, owner, restore_wrapper):
+    """Restore A's exact files and wrapper before permitting ordinary launches."""
+    if owner is None:
+        raise ValueError('Managed recovery requires its actual exclusive maintenance lease.')
+    raw = read(Path(proof_file), upgrade_protocol.MAX_PROOF)
+    proof = upgrade_protocol.decode_proof(raw, proof_sha256)
+    root, proof, previous = _upgrade_proof(root, proof['new']['bundle_sha256'],
+        proof['new']['setup_sha256'], proof_file, proof_sha256)
+    failed = upgrade_protocol.failed_path(proof)
+    with installation_lease(root, exclusive=True, owner=owner):
+        # Keep all replaced or partial B files; never recursively delete them.
+        for name in ('app', 'maintenance'):
+            retained = previous / name
+            if os.path.lexists(retained):
+                plain(retained, directory=True)
+                if os.path.lexists(root / name):
+                    plain(root / name, directory=True)
+                    failed.mkdir(exist_ok=True)
+                    plain(failed, directory=True)
+                    if os.path.lexists(failed / name):
+                        raise ValueError('Managed update recovery destination already exists.')
+                    (root / name).rename(failed / name)
+                retained.rename(root / name)
+        old_owner = read(previous / OWNER)
+        old = json.loads(old_owner, object_pairs_hook=unique)
+        if inventory(root / 'app') != (old['files'], old['directories']):
+            raise ValueError('The retained original application changed; automatic recovery stopped.')
+        for name, checksum in old['maintenance'].items():
+            if sha(root / 'maintenance' / name) != checksum:
+                raise ValueError('The retained original setup tools changed; automatic recovery stopped.')
+        write(root / OWNER, old_owner)
+        restore_wrapper()
+        # Marker is last: failed wrapper restoration must leave launches blocked.
+        write(root / MARKER, read(previous / MARKER, 8192))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=('preflight', 'check', 'install', 'uninstall'))
+    parser.add_argument('operation', choices=('preflight', 'check', 'install', 'uninstall', 'upgrade-check', 'upgrade'))
     parser.add_argument('--root', required=True, type=Path)
     parser.add_argument('--bundle-sha256', required=True)
     parser.add_argument('--setup-sha256', required=True)
     parser.add_argument('--payload', type=Path)
     parser.add_argument('--setup-source', type=Path)
     parser.add_argument('--lease-owner', nargs=2, type=int)
+    parser.add_argument('--upgrade-proof', type=Path)
+    parser.add_argument('--upgrade-proof-sha256')
     args = parser.parse_args(argv)
-    if args.operation == 'preflight':
+    if args.operation in ('upgrade-check', 'upgrade'):
+        if any(value is None for value in (args.payload, args.setup_source,
+                args.upgrade_proof, args.upgrade_proof_sha256, args.lease_owner)):
+            parser.error('Managed upgrade requires its complete captured identity and live lease.')
+        callback = upgrade_check if args.operation == 'upgrade-check' else upgrade
+        result = callback(args.payload, args.root, args.bundle_sha256, args.setup_sha256,
+            proof_file=args.upgrade_proof, proof_sha256=args.upgrade_proof_sha256,
+            owner=args.lease_owner, setup_source=args.setup_source)
+    elif args.operation == 'preflight':
         preflight(args.root, args.bundle_sha256, args.setup_sha256)
         result = {'status': 'PASS', 'operation': 'preflight'}
     elif args.operation == 'install':

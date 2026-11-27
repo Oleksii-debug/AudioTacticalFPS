@@ -1,0 +1,214 @@
+name: CARR actual managed A-to-B update
+
+on:
+  pull_request:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-managed-update.yml
+  push:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-managed-update.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-managed-update-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  managed-update:
+    name: Windows x64 / real standard setup A-to-B and rollback
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: source-b/carr-library
+    env:
+      # A is a reviewed, immutable prior application/standard-installer source.
+      # B is the exact event head. Their wheel/source hashes are independently
+      # verified, with actual version strings unchanged. The synthetic TUF
+      # build sequence advances 1 -> 2 even when both display 0.2.0.dev1.
+      CARR_MANAGED_SOURCE_A: '4c3632fb1baac4705059e344b6c952f7760c4f00'
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out exact B source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: source-b
+          persist-credentials: false
+      - name: Check out immutable reviewed A source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.CARR_MANAGED_SOURCE_A }}
+          path: source-a
+          persist-credentials: false
+      - name: Set up native x64 build host
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Pin the host profile and record both actual source identities
+        timeout-minutes: 8
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $report = Join-Path (Get-Location) 'managed-update-results'
+          New-Item -ItemType Directory $report | Out-Null
+          $sourceB = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify B source.' }
+          $sourceAPath = Join-Path $env:GITHUB_WORKSPACE 'source-a/carr-library'
+          $sourceA = (git -C $sourceAPath rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceA -ne $env:CARR_MANAGED_SOURCE_A -or $sourceA -eq $sourceB) { throw 'A/B source selection is not exact and distinct.' }
+          @{ source_a=$sourceA; source_b=$sourceB; version_policy='Use exact committed versions; protected synthetic build advances 1 to 2'; runtime_profile='17 pinned core wheels; optional 53-wheel semantic profile unchanged'; audio_transfer_payload=$false } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')
+          $private = Join-Path $env:RUNNER_TEMP 'carr-managed-upgrade-private'
+          New-Item -ItemType Directory $private | Out-Null
+          python -m venv (Join-Path $private 'host')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $private 'host/Scripts/python.exe'
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 setuptools==84.2.1 wheel==0.48.0 packaging==26.4 zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content (Join-Path $report 'host-packages.json')
+          "CARR_MANAGED_PYTHON=$python" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_MANAGED_PRIVATE=$private" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_MANAGED_SOURCE_B=$sourceB" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Require source recovery, authority and publication regressions without skips
+        timeout-minutes: 8
+        run: |
+          & $env:CARR_MANAGED_PYTHON scripts/ci_check.py --jobs 3 tests/security/test_managed_installation.py tests/security/test_managed_registration.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_managed_update_native_policy.py 2>&1 | Tee-Object 'managed-update-results/strict-managed-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Acquire the existing pinned compilers and original Python/native runtime
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private = $env:CARR_MANAGED_PRIVATE
+          $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
+          $runtimeA = Get-Content (Join-Path $env:GITHUB_WORKSPACE 'source-a/carr-library/packaging/windows-python.json') -Raw | ConvertFrom-Json
+          if ($runtime.download.sha256 -ne $runtimeA.download.sha256) { throw 'This A/B gate requires the same reviewed original Python archive; do not substitute one runtime.' }
+          $pythonArchive = Join-Path $private 'original-windows-python.tar.gz'
+          Invoke-WebRequest $runtime.download.url -OutFile $pythonArchive
+          if ((Get-FileHash $pythonArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $runtime.download.sha256) { throw 'Original CPython checksum mismatch.' }
+
+          $zigLock = Get-Content packaging/native-launcher/toolchain.lock.json -Raw | ConvertFrom-Json
+          $zigPin = $zigLock.'x86_64-windows'
+          $zigArchive = Join-Path $private 'zig.zip'
+          Invoke-WebRequest $zigPin.url -OutFile $zigArchive
+          if ((Get-Item $zigArchive).Length -ne $zigPin.bytes -or (Get-FileHash $zigArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $zigPin.sha256) { throw 'Native compiler archive mismatch.' }
+          $zigRoot = Join-Path $private 'zig'
+          Expand-Archive $zigArchive -DestinationPath $zigRoot
+          $zig = @(Get-ChildItem $zigRoot -Filter 'zig.exe' -Recurse)
+          if ($zig.Count -ne 1) { throw 'Ambiguous native compiler.' }
+
+          $nativeLock = Get-Content packaging/native-runtime/source-lock.json -Raw | ConvertFrom-Json
+          $nativePackage = Join-Path $private 'native-runtime.conda'
+          Invoke-WebRequest $nativeLock.package.url -OutFile $nativePackage
+          if ((Get-Item $nativePackage).Length -ne $nativeLock.package.size -or (Get-FileHash $nativePackage -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nativeLock.package.sha256) { throw 'Original native DLL package mismatch.' }
+          & $env:CARR_MANAGED_PYTHON packaging/prepare_native_runtime.py --package $nativePackage --output (Join-Path $private 'native-runtime') | Tee-Object 'managed-update-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory (Join-Path $private 'inno')
+          "CARR_MANAGED_ZIG=$($zig[0].FullName)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          Copy-Item (Join-Path $private 'inno/toolchain-receipt.json') 'managed-update-results/inno-toolchain.json'
+          Copy-Item 'packaging/windows-python.json' 'managed-update-results/original-python.json'
+          Copy-Item 'packaging/native-launcher/toolchain.lock.json' 'managed-update-results/launcher-toolchain.json'
+
+      - name: Build two exact source wheels, core bundles and actual standard setups
+        timeout-minutes: 18
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private, $python = $env:CARR_MANAGED_PRIVATE, $env:CARR_MANAGED_PYTHON
+          $report = (Resolve-Path 'managed-update-results').Path
+          foreach ($label in @('a', 'b')) {
+            $source = Join-Path $env:GITHUB_WORKSPACE ('source-' + $label + '/carr-library')
+            $expected = if ($label -eq 'a') { $env:CARR_MANAGED_SOURCE_A } else { $env:CARR_MANAGED_SOURCE_B }
+            $build = Join-Path $private ('build-' + $label)
+            New-Item -ItemType Directory $build | Out-Null
+            Push-Location $source
+            try {
+              $actual = (git rev-parse HEAD).Trim()
+              if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) { throw 'Source changed before wheel preparation.' }
+              $wheelhouse = Join-Path $build 'wheelhouse'
+              $application = Join-Path $build 'application'
+              New-Item -ItemType Directory $wheelhouse, $application | Out-Null
+              & $python -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-cp311.lock --dest $wheelhouse
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $pins = @(Select-String -Path packaging/windows-cp311.lock -Pattern '^[A-Za-z][A-Za-z0-9_.-]*==')
+              if ($pins.Count -ne 17) { throw 'The reviewed core lock must retain all 17 exact pins.' }
+              & $python -m pip wheel --no-build-isolation --no-deps --wheel-dir $application .
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $wheel = @(Get-ChildItem $application -Filter '*.whl')
+              if ($wheel.Count -ne 1) { throw 'Expected one exact source application wheel.' }
+              $launcher = Join-Path $build 'launcher'
+              & $python packaging/native-launcher/build_launcher.py --zig $env:CARR_MANAGED_ZIG --toolchain-archive (Join-Path $private 'zig.zip') --output-dir $launcher --build-probe | Tee-Object (Join-Path $report ('launcher-build-' + $label + '.txt'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              & $python packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcher 'ResearchLibrary.exe') --child (Join-Path $launcher 'windows_child_probe.exe') --report (Join-Path $report ('launcher-native-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $base = Join-Path $build 'core-base'
+              $bundle = Join-Path $build 'core-bundle'
+              # No model, OCR or audio acquisition: this lane proves the standard
+              # core installer transaction. Existing full 53-wheel/OCR/audio
+              # acceptance lanes remain independently required and unchanged.
+              & $python packaging/build_windows_bundle.py --wheel $wheel[0].FullName --wheelhouse $wheelhouse --lock packaging/windows-cp311.lock --sbom packaging/windows-sbom.cdx.json --python-archive (Join-Path $private 'original-windows-python.tar.gz') --launcher-dir $launcher --source-commit $expected --output $base | Tee-Object (Join-Path $report ('core-build-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              & $python packaging/add_native_runtime.py --bundle $base --native-runtime (Join-Path $private 'native-runtime') --output $bundle | Tee-Object (Join-Path $report ('core-native-' + $label + '.json'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              $manifest = (Get-FileHash (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+              & $python -I -B packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --output (Join-Path $build 'setup') --iscc (Join-Path $private 'inno/tools/ISCC.exe') --toolchain-receipt (Join-Path $private 'inno/toolchain-receipt.json') | Tee-Object (Join-Path $report ('setup-build-' + $label + '.txt'))
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              Copy-Item (Join-Path $bundle 'application-source.json') (Join-Path $report ('wheel-source-' + $label + '.json'))
+              Copy-Item (Join-Path $build 'setup/setup-build.json') (Join-Path $report ('setup-source-' + $label + '.json'))
+              if ($label -eq 'b') {
+                & $python -m pip install --no-deps --force-reinstall $wheel[0].FullName
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              }
+            } finally { Pop-Location }
+          }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import carr_library,importlib.metadata as m,json,pathlib; p=pathlib.Path(carr_library.__file__).resolve(); assert 'site-packages' in p.parts; print(json.dumps({'installed_host':str(p),'version':m.version('universal-research-library')}))" | Tee-Object 'managed-update-results/installed-host.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require real A-to-B, full-wrapper rollback, Repair and Uninstall
+        timeout-minutes: 32
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $private = $env:CARR_MANAGED_PRIVATE
+          $setupA = Join-Path $private 'build-a/setup'
+          $setupB = Join-Path $private 'build-b/setup'
+          $report = Join-Path (Resolve-Path 'managed-update-results').Path 'native'
+          & $env:CARR_MANAGED_PYTHON -I -B -X utf8 scripts/windows_managed_update_smoke.py --setup-a (Join-Path $setupA 'compiled/ResonanceSetup.exe') --build-a (Join-Path $setupA 'setup-build.json') --prepared-b $setupB --source-a $env:CARR_MANAGED_SOURCE_A --source-b $env:CARR_MANAGED_SOURCE_B --work (Join-Path $private 'actual-native-work') --report $report 2>&1 | Tee-Object 'managed-update-results/native-managed-update.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result = Get-Content (Join-Path $report 'managed-update.json') -Raw | ConvertFrom-Json
+          foreach ($field in @('status', 'actual_inno', 'actual_windows_registration', 'actual_windows_vault', 'live_app_exclusion', 'full_wrapper_rollback', 'actual_backup_restore', 'update', 'repair', 'uninstall', 'user_source_preserved')) {
+            if ($result.$field -ne 'PASS') { throw ('Missing actual native evidence: ' + $field) }
+          }
+          if ($result.source_a -ne $env:CARR_MANAGED_SOURCE_A -or $result.source_b -ne $env:CARR_MANAGED_SOURCE_B -or $result.production_publisher -ne 'NOT_CONFIGURED' -or $result.authenticode -ne 'NOT_CLAIMED' -or $result.nvda -ne 'NOT_RUN') { throw 'Native acceptance has mismatched identity or unsupported claims.' }
+
+      - name: Preserve text evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: managed-update-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: source-b/carr-library/managed-update-results/
+          if-no-files-found: error
+          retention-days: 7
+

@@ -127,7 +127,9 @@ def test_checksum_rejects_same_size_mutation_during_read(tmp_path):
         # timestamp comparisons alone can miss rapid same-size NTFS writes.
         with pytest.raises(PermissionError) as error:
             jobs.sha256_file(source, cancelled=mutate)
-        assert error.value.winerror == 32
+        # pathlib uses the CRT; it maps a native sharing violation to EACCES
+        # without retaining winerror on CPython 3.11.
+        assert error.value.errno == errno.EACCES and error.value.winerror in (None, 32)
         assert changed and source.read_bytes() == b'old input'
         source.write_bytes(b'new input')  # The exceptional exit released it.
     else:
@@ -152,13 +154,13 @@ def test_audio_payload_read_interval_rejects_or_blocks_a_real_child_write(tmp_pa
     command = [sys.executable, '-I', '-c',
                'from pathlib import Path; import sys\n'
                'try: Path(sys.argv[1]).write_bytes(b"new input")\n'
-               'except PermissionError as error: print("blocked", error.winerror)\n', str(source)]
+               'except PermissionError as error: print("blocked", error.errno, error.winerror)\n', str(source)]
 
     def read_while_child_writes():
         with jobs.verified_reader(source) as stream:
             child = subprocess.run(command, capture_output=True, text=True, timeout=10, check=True)
             if os.name == 'nt':
-                assert child.stdout.strip() == 'blocked 32'
+                assert child.stdout.strip() in ('blocked 13 None', 'blocked 13 32')
                 assert stream.read() == b'old input'
             else:
                 assert child.stdout == '' and source.read_bytes() == b'new input'

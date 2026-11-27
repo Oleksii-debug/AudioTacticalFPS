@@ -295,7 +295,9 @@ def main():
     executor = ObservedExecutor()
     release = threading.Event()
     with TemporaryDirectory(prefix='research-bibliography-native-') as temporary:
-        root = Path(temporary)
+        # The publisher returns its resolved destination. Windows temporary
+        # roots can otherwise retain an 8.3 spelling for this same directory.
+        root = Path(temporary).resolve()
         try:
             frame = wx.Frame(None, title='Synthetic bibliography acceptance', size=(900, 850))
             gui.SetTopWindow(frame)

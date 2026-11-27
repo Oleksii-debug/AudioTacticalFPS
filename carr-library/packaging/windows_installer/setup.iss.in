@@ -52,6 +52,10 @@ var
   SetupHash: String;
   Bootstrap: String;
   Prepared: Boolean;
+  UpgradeProof: String;
+  UpgradeProofHash: String;
+  UpgradeOwnerPid: Integer;
+  UpgradeOwnerHandle: Integer;
 
 function CreateFileW(Name: String; Access, Share: LongWord; Security: Integer;
   Creation, Flags: LongWord; Template: TResonanceHandle): TResonanceHandle;
@@ -60,6 +64,14 @@ function CloseHandle(Handle: TResonanceHandle): Boolean;
   external 'CloseHandle@kernel32.dll stdcall';
 function GetCurrentProcessId: LongWord;
   external 'GetCurrentProcessId@kernel32.dll stdcall';
+function GetCurrentProcess: TResonanceHandle;
+  external 'GetCurrentProcess@kernel32.dll stdcall';
+function OpenProcess(Access: LongWord; Inherit: Boolean; Pid: LongWord): TResonanceHandle;
+  external 'OpenProcess@kernel32.dll stdcall';
+function DuplicateHandle(SourceProcess, SourceHandle, TargetProcess: TResonanceHandle;
+  var TargetHandle: TResonanceHandle; Access: LongWord; Inherit: Boolean;
+  Options: LongWord): Boolean;
+  external 'DuplicateHandle@kernel32.dll stdcall';
 
 function Quote(Value: String): String;
 begin
@@ -74,8 +86,25 @@ begin
 end;
 
 function AcquireLease: Boolean;
+var
+  OwnerProcess: TResonanceHandle;
 begin
   ReleaseLease;
+  if UpgradeProof <> '' then begin
+    Result := False;
+    if (UpgradeOwnerPid <= 0) or (UpgradeOwnerHandle <= 0) then Exit;
+    OwnerProcess := OpenProcess($0040, False, UpgradeOwnerPid);
+    if OwnerProcess = 0 then Exit;
+    try
+      Result := DuplicateHandle(OwnerProcess, UpgradeOwnerHandle, GetCurrentProcess,
+                  LeaseHandle, 0, False, 2);
+      { Before any files or registry entries change, upgrade-check duplicates
+        this live handle again and verifies its exact final lease pathname. }
+    finally
+      CloseHandle(OwnerProcess);
+    end;
+    Exit;
+  end;
   LeaseHandle := CreateFileW(ExpandConstant('{app}\installation.lease'), $C0000000, 0, 0, 3, $00200080, 0);
   Result := LeaseHandle <> InvalidHandle;
 end;
@@ -88,8 +117,10 @@ begin
   Arguments := '-I -B -X utf8 ' + Quote(Bootstrap + '\helpers\maintenance.py') +
     ' ' + Operation + ' --root ' + Quote(ExpandConstant('{app}')) +
     ' --bundle-sha256 ' + BundleHash + ' --setup-sha256 ' + SetupHash;
-  if Operation = 'install' then Arguments := Arguments + ' --payload ' + Quote(Bootstrap + '\payload') +
+  if (Operation = 'install') or (Operation = 'upgrade') or (Operation = 'upgrade-check') then Arguments := Arguments + ' --payload ' + Quote(Bootstrap + '\payload') +
     ' --setup-source ' + Quote(ExpandConstant('{srcexe}'));
+  if UpgradeProof <> '' then Arguments := Arguments + ' --upgrade-proof ' + Quote(UpgradeProof) +
+    ' --upgrade-proof-sha256 ' + Quote(UpgradeProofHash);
   if WithLease then Arguments := Arguments + ' --lease-owner ' + IntToStr(GetCurrentProcessId) + ' ' + IntToStr(LeaseHandle);
   Result := ExecAndLogOutput(Bootstrap + '\payload\runtime\python.exe', Arguments, Bootstrap,
                  SW_HIDE, ewWaitUntilTerminated, ExitCode, nil) and (ExitCode = 0);
@@ -126,6 +157,29 @@ begin
   ExtractTemporaryFiles('{tmp}\payload\*');
   ExtractTemporaryFiles('{tmp}\helpers\*');
   SetupHash := Lowercase(GetSHA256OfFile(ExpandConstant('{srcexe}')));
+  UpgradeProof := ExpandConstant('{param:CARRUPGRADE|}');
+  UpgradeProofHash := ExpandConstant('{param:CARRUPGRADESHA|}');
+  UpgradeOwnerPid := StrToIntDef(ExpandConstant('{param:CARRLEASEPID|0}'), 0);
+  UpgradeOwnerHandle := StrToIntDef(ExpandConstant('{param:CARRLEASEHANDLE|0}'), 0);
+  if UpgradeProof <> '' then begin
+    if (Length(UpgradeProofHash) <> 64) or not AcquireLease then begin
+      Result := 'The reviewed update owner no longer holds this installation. No running application was closed.';
+      Exit;
+    end;
+    if not RunHelper('upgrade-check', True) then begin
+      Result := 'The captured old/new setup identity changed. The update was not admitted.';
+      ReleaseLease;
+      Exit;
+    end;
+    WizardForm.PreparingLabel.Caption := 'Applying the reviewed update while retaining the complete previous installation.';
+    if not RunHelper('upgrade', True) then begin
+      Result := 'The update requires recovery by its trusted owner. Retained files and research data were not removed.';
+      ReleaseLease;
+      Exit;
+    end;
+    Prepared := True;
+    Exit;
+  end;
   if not RunHelper('preflight', False) then begin
     Result := 'This folder could not be admitted. Choose a new program folder or the matching original setup. Existing files were retained.';
     Exit;
