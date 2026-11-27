@@ -1,5 +1,9 @@
 """Portable failure-path checks for the native probe; no wx execution claim."""
+import ast
+import ctypes
+from ctypes import wintypes
 import importlib.util
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -121,3 +125,78 @@ def test_unwind_has_a_finite_deadline_for_an_owned_child_that_never_destroys():
         queue.pop(0)()
     assert not queue and calls == [('outer exit', 1)]
     assert reader.modal and foreign.modal and 'did not finish their cleanup' in errors[0]
+
+
+
+def _reading_tabs_transition():
+    """Execute the actual key/tick functions, including their focus-yield branch."""
+    from carr_library.speech.navigation import native_insertion_offset
+
+    path = Path(__file__).resolve().parents[2] / 'scripts/windows_reading_tabs_smoke.py'
+    module = ast.parse(path.read_text(encoding='utf-8'))
+    names = {'check', 'advance', 'key', 'tick_body'}
+    functions = [node for node in ast.walk(module)
+                 if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in functions} == names and len(functions) == 4
+    focus, scheduled, keys = [None], [], []
+
+    class Top:
+        def GetHandle(self): return 7
+        def Raise(self): pass
+
+    class Control:
+        def __init__(self):
+            self.cursor, self.value = 5, 'Original reader text'
+        def GetValue(self): return self.value
+        def GetInsertionPoint(self): return self.cursor
+        def GetLastPosition(self): return len(self.value)
+        def GetRange(self, first, last): return self.value[first:last]
+        def SetFocus(self): focus[0] = self
+
+    top, editor, button, notebook = Top(), Control(), Control(), object()
+    focus[0] = editor
+    controls = {'Reading copy (editable; Ctrl+S saves)': editor,
+                'Reading copies; Control+Tab changes reading tab': notebook,
+                'Reading bookmarks and paragraph tools': button}
+    def owner(handle, pointer):
+        assert handle == 7
+        pointer._obj.value = os.getpid()
+    wx = SimpleNamespace(MOD_NONE=0, WXK_SPACE=32,
+        GetTopLevelParent=lambda control: top,
+        Window=SimpleNamespace(FindFocus=lambda: focus[0]),
+        CallLater=lambda delay, action: scheduled.append((delay, action)))
+    context = dict(checks=[], errors=[], held=[None], stage=['bookmark_returned', 0],
+        deadline=1000, monotonic=lambda: 0, evidence={'bookmark_cursor': 5},
+        reader_window=lambda: top, named=lambda name, parent: controls[name],
+        reader_module=SimpleNamespace(native_insertion_offset=native_insertion_offset),
+        wx=wx, os=os, ctypes=ctypes, wintypes=wintypes,
+        user32=SimpleNamespace(GetForegroundWindow=lambda: 7,
+            GetWindowThreadProcessId=owner, SetForegroundWindow=lambda handle: True),
+        simulator=SimpleNamespace(KeyDown=lambda code, modifiers: keys.append((code, modifiers)) or True),
+        released=lambda: None)
+    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])), str(path), 'exec'), context)
+    return context, focus, editor, button, scheduled, keys
+
+
+def test_native_tabs_focus_return_is_verified_before_focusing_the_next_command():
+    context, focus, editor, button, scheduled, keys = _reading_tabs_transition()
+    tick = context['tick_body']
+    tick()  # Verify the returned editor, then advance its completed assertion.
+    tick()  # Actual key() focuses the next button but has not sent any key.
+    assert focus[0] is button and not keys and not scheduled
+    tick()  # The retained dispatch stage can now send the actual next command.
+    assert context['stage'][0] == 'split_tools_open'
+    assert keys == [(32, 0)] and scheduled[0][0] == 40
+    assert context['checks'] == ['native bookmark navigation restores cursor and reader focus']
+
+
+@pytest.mark.parametrize('damage', ['cursor', 'focus'])
+def test_native_tabs_does_not_bypass_an_incorrect_bookmark_return(damage):
+    context, focus, editor, button, scheduled, keys = _reading_tabs_transition()
+    if damage == 'cursor':
+        editor.cursor = 6
+    else:
+        focus[0] = button
+    with pytest.raises(AssertionError, match='restores cursor and reader focus'):
+        context['tick_body']()
+    assert context['stage'][0] == 'bookmark_returned' and not keys and not scheduled
