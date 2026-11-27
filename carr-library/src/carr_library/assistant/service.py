@@ -24,10 +24,16 @@ _KEYS = {
     'library.extract': ({'edition', 'name'}, set()),
     'library.backup': ({'name'}, set()),
     'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems'}),
+    'audio.transcribe': ({'path', 'name'}, {'model', 'model_revision', 'language',
+        'vad_filter', 'beam_size', 'condition_on_previous_text', 'word_timestamps'}),
 }
 
 
 def _check_arguments(step):
+    if step.tool == 'audio.transcribe':
+        from .transcription import arguments
+        arguments(step.arguments)
+        return
     required, optional = _KEYS[step.tool]
     if set(step.arguments) - required - optional or not required <= set(step.arguments):
         raise ValueError(f'Invalid arguments for {step.tool}.')
@@ -138,6 +144,11 @@ class AssistantService:
                     raise FileExistsError('The selected output already exists; choose another name.')
             if step.tool == 'library.backup' and not plan.scope.allow_full_backup:
                 raise PermissionError('Complete backup includes all libraries; enable that explicit permission first.')
+            if step.tool == 'audio.transcribe':
+                from .transcription import preflight
+                if workspace == '<new>':
+                    raise ValueError('Create the library first, then review a transcription plan for it.')
+                preflight(self.app, plan.scope, step.arguments, workspace)
             if step.tool == 'audio.produce':
                 if plan.scope.output_root is None:
                     raise PermissionError('Choose the audio output directory.')
@@ -269,6 +280,10 @@ class AssistantService:
                         with self.app.read(record['workspace']):
                             pass
                     if checkpoint['status'] == 'complete':
+                        if step.tool == 'audio.transcribe':
+                            from .transcription import verify_completed
+                            verify_completed(self.app, record['workspace'], step.arguments, plan.scope,
+                                             checkpoint['intent'], checkpoint['result'], stopped)
                         self._verify_completed(checkpoint['result'], plan.scope, stopped)
                         continue
                     checkpoint['status'] = 'running'
@@ -280,7 +295,15 @@ class AssistantService:
                     result = _plain(result)
                     if not isinstance(result, dict):
                         raise RuntimeError('Tool returned an invalid result.')
-                    result['artifacts'] = self._artifacts(result, plan.scope, stopped)
+                    if step.tool == 'audio.transcribe':
+                        from .transcription import finalize_result
+                        # This branch is reached only after the shared export
+                        # writer committed, or its exact receipt was recovered.
+                        # A late stop cannot reverse that durable result.
+                        result['artifacts'] = finalize_result(self.app, record['workspace'], step.arguments,
+                                                              plan.scope, checkpoint['intent'], result)
+                    else:
+                        result['artifacts'] = self._artifacts(result, plan.scope, stopped)
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
                     persist()
@@ -443,6 +466,13 @@ class AssistantService:
             checksum = self.app.backup(target)
             return {'directory': str(target), 'manifest_sha256': checksum,
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}
+        if step.tool == 'audio.transcribe':
+            from .transcription import execute
+            def transcription_progress(done, total, phase):
+                if progress:
+                    progress(index, len(record['steps']), f'{phase}; {done}/{total} files')
+            return execute(self.app, workspace, args, scope, intent, persist,
+                           cancelled, transcription_progress)
         if step.tool == 'audio.produce':
             if self.production is None:
                 raise RuntimeError('Audio production is unavailable.')

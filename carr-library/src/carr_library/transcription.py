@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from .audio.models import AudioBudget, AudioCancelled, AudioError, finite
 from .audio.process import run_process
-from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
+from .durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
                             read_json, regular, state_lock, sync_directory)
 from .state_backup import relative_name
 from .transcription_contract import (check_requested_capabilities, declared_capabilities,
@@ -529,8 +529,16 @@ class TranscriptionService:
             raise ValueError('Worker completion counters do not match verified receipts.')
         return accepted, artifacts
 
-    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400):
+    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400,
+            max_result_bytes=None, expected_configuration=None, expected_model=None):
         finite(timeout, 'Transcription time allowance', .05, 365 * 86400)
+        if max_result_bytes is not None and (type(max_result_bytes) is not int or max_result_bytes < 1):
+            raise ValueError('The transcription result byte allowance must be positive.')
+        result_allowance = min(512 * 1024**2, max_result_bytes) if max_result_bytes is not None else 512 * 1024**2
+        if ((expected_configuration is None) != (expected_model is None)
+                or expected_configuration is not None
+                and (type(expected_configuration) is not dict or type(expected_model) is not dict)):
+            raise ValueError('Supply both expected transcription configuration and model identities.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -538,8 +546,12 @@ class TranscriptionService:
             if job.get('restore_requires_review', False):
                 raise PermissionError('Restored transcription job: review retained inputs and the current engine before resuming.')
             config = self.configuration(verify=True)
+            if expected_configuration is not None and config != expected_configuration:
+                raise PermissionError('The configured transcription engine changed after plan approval.')
             check_requested_capabilities(config, job['settings'])
             model = model_inventory(config['models_dir'], job['settings'], cancelled=cancelled)
+            if expected_model is not None and model != expected_model:
+                raise PermissionError('The selected model bytes changed after plan approval.')
             self._sources(path, job, cancelled)
             if job['status'] == 'completed':
                 self.verify(identity, cancelled=cancelled)
@@ -618,7 +630,7 @@ class TranscriptionService:
                     budget=AudioBudget(timeout=timeout,
                         max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
                             + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
-                            + 512 * 1024**2),
+                            + result_allowance),
                         max_staging_files=10000))
             except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
                 failure = exc
@@ -748,7 +760,18 @@ class TranscriptionService:
             result.append(value)
         return tuple(sorted(result, key=lambda x: (x['created'], x['id'])))
 
-    def export(self, identity, destination, *, cancelled=lambda: False):
+    def export(self, identity, destination, *, cancelled=lambda: False,
+               max_bytes=None, before_publish=None):
+        """Export through the existing exclusive writer, optionally journalling its receipt.
+
+        A caller may tighten the byte allowance and persist the exact staged
+        inventory before publication. Callback failure leaves the destination
+        absent. Later interruption retains the ordinary INCOMPLETE marker.
+        """
+        if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 1):
+            raise ValueError('The transcription export byte allowance must be positive.')
+        if before_publish is not None and not callable(before_publish):
+            raise TypeError('The export receipt callback must be callable.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -760,24 +783,47 @@ class TranscriptionService:
             temporary = destination.parent / ('.pending-' + uuid4().hex)
             temporary.mkdir(mode=0o700)
             try:
-                exported = []
+                exported, inventory, total = [], [], 0
+                def reserve(size):
+                    nonlocal total
+                    total += size
+                    if max_bytes is not None and total > max_bytes:
+                        raise ValueError('Transcription exports exceed the approved byte budget.')
                 edits = self.edits(identity)
                 for artifact in job['artifacts']:
                     relative = relative_name(artifact['path'])
                     record = _copy(path / 'results' / relative, temporary / relative,
-                                   maximum=512 * 1024**2, cancelled=cancelled)
+                                   maximum=min(512 * 1024**2, max_bytes - total)
+                                           if max_bytes is not None else 512 * 1024**2,
+                                   cancelled=cancelled)
                     if record['sha256'] != artifact['sha256'] or record['size_bytes'] != artifact['size_bytes']:
                         raise ValueError('A transcription export changed while copying.')
+                    reserve(record['size_bytes'])
                     exported.append({'filename': str(relative), **record})
+                    inventory.append({'filename': relative.as_posix(), **record})
                 for edit in edits:
                     name = 'edited/' + edit['id'] + '.txt'
-                    atomic_bytes(temporary / name, edit['text'].encode('utf-8'))
-                atomic_json(temporary / 'transcription-manifest.json', {
+                    raw = edit['text'].encode('utf-8')
+                    reserve(len(raw))
+                    atomic_bytes(temporary / name, raw)
+                    inventory.append({'filename': name, 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()})
+                manifest = {
                     'version': 1, 'job': identity, 'title': job['title'],
                     'status': job['status'], 'sources': job['sources'],
                     'settings': job['settings'], 'artifacts': exported,
                     'edits': edits,
-                    'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})
+                    'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'}
+                raw_manifest = encode(manifest)
+                reserve(len(raw_manifest))
+                atomic_json(temporary / 'transcription-manifest.json', manifest)
+                inventory.append({'filename': 'transcription-manifest.json',
+                                  'size_bytes': len(raw_manifest), 'sha256': sha256(raw_manifest).hexdigest()})
+                if before_publish is not None:
+                    if cancelled():
+                        raise AudioCancelled('Transcription export was cancelled before its receipt.')
+                    self._authorize()
+                    before_publish({'version': 1, 'job': identity,
+                                    'files': sorted(inventory, key=lambda row: row['filename'])})
                 self._authorize()
                 if cancelled():
                     raise AudioCancelled('Transcription export was cancelled.')

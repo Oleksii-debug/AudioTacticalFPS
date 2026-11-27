@@ -185,6 +185,9 @@ List libraries / Покажи бібліотеки
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Produce audio: [script text] / Озвуч: [текст сценарію]
+Transcription uses a JSON plan with an explicit installed local model, for example:
+{"steps":[{"tool":"audio.transcribe","arguments":{"path":"C:/Recordings/lecture.wav","name":"lecture-transcript","model":"small","word_timestamps":false}}]}
+Select the input/output folders and library in this dialog; configure the reviewed local transcription worker first. No model is downloaded.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
 
 

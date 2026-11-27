@@ -125,7 +125,7 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.wx.MessageBox = Mock(return_value=self.wx.YES)
         confirm = export_destination.confirm_export_destination
         native = patch.object(export_destination, 'confirm_export_destination',
-            lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
+            lambda *args, wx_module=None, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
         native.start()
         self.addCleanup(native.stop)
         temporary = TemporaryDirectory(prefix='catalog-insights-actions-')
