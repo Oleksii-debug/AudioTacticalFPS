@@ -154,7 +154,7 @@ def main():
                         'No native Windows or installed-package qualification', 'No OS network-denial test'],
         'runtime_options': {'cpu_threads': 2, 'context_tokens': 2048, 'prediction_tokens': 256,
                             'slots': 1, 'offline_option': True, 'thinking': False,
-                            'grammar': 'upstream generic JSON syntax with the pinned Qwen non-thinking prefix; no plan fields or tool choices forced',
+                            'grammar': 'byte-identical upstream generic JSON syntax; USER grammar without chat-prefix prefill; no plan fields or tool choices forced',
                             'wall_watchdog_seconds': 240, 'address_space_limit_bytes': 3 * 1024**3},
     }
     native = None

@@ -1,7 +1,4 @@
-# Generic JSON grammar reused from llama.cpp 171527522610996f5f0acf12334e185156ca8f44.
-# Only the root adds the pinned Qwen3 non-thinking chat generation prefix;
-# it supplies no plan fields, tool names or argument values.
-root   ::= <|im_start|> "assistant\n" <think> "\n\n" </think> "\n\n" object
+root   ::= object
 value  ::= object | array | string | number | ("true" | "false" | "null") ws
 
 object ::=

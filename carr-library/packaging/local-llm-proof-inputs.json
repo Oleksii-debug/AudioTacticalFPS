@@ -45,12 +45,17 @@
   "equivalence_scope": "The proposal SYSTEM prompt is clarified in this proof; the parser and remaining three hashed permission/gateway modules are byte-identical to bbd7. Not a whole-build qualification.",
   "generation_grammar": {
     "path": "packaging/local-llm-proof-json.gbnf",
-    "sha256": "517f8d23e4195bd6ba3fde173d5fdbd2eafa43fd69a43cfa9fdcb38ca8b71b35",
+    "sha256": "1a3e3469892957861029adcd24ad0c886b778a942dd4a18cc146238ad56474dd",
     "upstream_repository": "ggml-org/llama.cpp",
     "upstream_revision": "171527522610996f5f0acf12334e185156ca8f44",
     "upstream_path": "grammars/json.gbnf",
     "upstream_blob": "b6448c87b72ec7526404d563464df4e622a32f63",
-    "adaptation": "Root consumes the exact Qwen non-thinking chat prefix using documented native token rules; all generic JSON productions are unchanged.",
-    "constraint_scope": "JSON syntax only; no plan fields, tool names, arguments or expected answers are forced."
+    "adaptation": "None. Byte-identical upstream json.gbnf; --grammar-file is a USER grammar and does not consume the chat generation prefix.",
+    "constraint_scope": "JSON syntax only; no plan fields, tool names, arguments or expected answers are forced.",
+    "source_contract": {
+      "sampling_blob": "078bfd984f424573199841633a7fb419ea5d5591",
+      "argument_blob": "c322b5c0fcfc5ce62b9f591685f1b8e17b2a4caa",
+      "distinction": "common_grammar_needs_prefill excludes USER grammars; --json-schema is OUTPUT_FORMAT, --grammar-file is USER."
+    }
   }
 }
