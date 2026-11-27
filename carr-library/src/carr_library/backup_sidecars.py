@@ -181,6 +181,7 @@ class Inventory:
     empty_roots: frozenset = frozenset()
     generated_audio_included: bool = False
     payload_root: str = ''
+    pending: dict | None = None
 
 
 def _collection_budgets(entries):
@@ -202,12 +203,12 @@ def normalize_manifest(manifest, *, max_files=MAX_FILES, max_bytes=MAX_TOTAL_BYT
         raise RestoreError('unsupported library manifest')
     version = manifest.get('version')
     fields = {'version', 'kind', 'schema_version', 'database', 'assets'}
-    if type(version) is not int or version not in (1, 2, 3, 4):
+    if type(version) is not int or version not in (1, 2, 3, 4, 5):
         raise RestoreError('unsupported library manifest')
     if version >= 2:
         fields.add('schema_fingerprint')
     extra = set(manifest) - fields
-    entries, roots, generated, payload_root = [], frozenset(), False, ''
+    entries, roots, generated, payload_root, pending = [], frozenset(), False, '', None
     if version <= 2:
         if set(manifest) != fields:
             raise RestoreError('unsupported library manifest fields')
@@ -219,7 +220,8 @@ def normalize_manifest(manifest, *, max_files=MAX_FILES, max_bytes=MAX_TOTAL_BYT
             entries = [value]
     elif version == 3 and extra == {'sidecars'}:
         entries = manifest['sidecars']
-    elif version == 3 and extra == {'state', 'generated_audio_included'}:
+    elif (version == 3 and extra == {'state', 'generated_audio_included'} or
+          version == 4 and extra == {'state', 'generated_audio_included', 'pending'}):
         generated = manifest['generated_audio_included']
         if type(manifest['state']) is not list or len(manifest['state']) > max_files:
             raise RestoreError('invalid legacy state manifest')
@@ -230,6 +232,8 @@ def normalize_manifest(manifest, *, max_files=MAX_FILES, max_bytes=MAX_TOTAL_BYT
             portable_name(value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
+        if version == 4:
+            pending = manifest['pending']
     elif version == 4 and extra == {'sidecars', 'generated_audio_included'}:
         entries, generated = manifest['sidecars'], manifest['generated_audio_included']
     elif version == 4 and extra == {'sidecars'}:
@@ -251,6 +255,11 @@ def normalize_manifest(manifest, *, max_files=MAX_FILES, max_bytes=MAX_TOTAL_BYT
             entries.append(dict(filename=name, size_bytes=value['size_bytes'], sha256=value['sha256']))
         payload_root = 'sidecars'
         generated = any(backup_audio.is_generated(entry['filename']) for entry in entries)
+    elif version == 5 and extra == {'layout', 'sidecars', 'generated_audio_included', 'pending'}:
+        if manifest['layout'] != 'sidecars-pending-v1':
+            raise RestoreError('unsupported pending backup layout')
+        entries, generated, pending = (manifest['sidecars'], manifest['generated_audio_included'],
+                                       manifest['pending'])
     else:
         raise RestoreError('ambiguous or unsupported library manifest fields')
     if not fields <= set(manifest) or type(generated) is not bool:
@@ -288,8 +297,11 @@ def normalize_manifest(manifest, *, max_files=MAX_FILES, max_bytes=MAX_TOTAL_BYT
     backup_audio.validate_inventory(copied)
     if not generated and any(backup_audio.is_generated(entry['filename']) for entry in copied):
         raise RestoreError('manifest denies generated audio that its inventory contains')
+    if (version == 4 and 'pending' in extra) or version == 5:
+        from .pending_backup import validate_pending
+        validate_pending(pending, max_files=max_files - len(copied), max_bytes=max_bytes - total)
     return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])),
-                     roots, generated, payload_root)
+                     roots, generated, payload_root, pending)
 
 
 def _identity(info):
@@ -413,12 +425,16 @@ def check_namespace(directory, inventory):
     roots = {name.split('/')[0] for name in names} | set(inventory.empty_roots)
     expected_roots = {'library.sqlite', 'originals', 'manifest.json'}
     expected_roots |= {inventory.payload_root} if inventory.payload_root else roots
+    if inventory.pending is not None:
+        expected_roots.add('pending')
     actual_roots = {path.name for path in directory.iterdir()}
     if actual_roots != expected_roots:
         missing = ', '.join(sorted(expected_roots - actual_roots)[:3]) or 'none'
         unexpected = ', '.join(sorted(actual_roots - expected_roots)[:3]) or 'none'
         raise RestoreError('incomplete backup or unexpected files; missing: ' + missing +
                            '; unexpected: ' + unexpected)
+    if inventory.pending is not None:
+        _plain(directory / 'pending', directory=True)
     if inventory.payload_root:
         _plain(payload, directory=True)
         if {path.name for path in payload.iterdir()} != roots:

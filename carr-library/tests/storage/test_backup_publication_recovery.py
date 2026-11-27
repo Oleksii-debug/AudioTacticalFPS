@@ -107,7 +107,7 @@ def test_failed_staging_link_retirement_cannot_publish_completion(produced, tmp_
     assert ReadingDesk(app, workspace, 'edition').page(1).text == page.text
     retry = tmp_path / 'retry'
     checksum = create_backup(app, retry)
-    assert verify_backup(retry, checksum)['version'] == 4
+    assert verify_backup(retry, checksum)['version'] == 5
 
 
 @pytest.mark.parametrize('failure', ['partial_write', 'competing_file'])
@@ -189,7 +189,7 @@ else:
         assert reopened.script == '[pause 2]'
     folder = tmp_path / 'post-crash-backup'
     checksum = create_backup(app, folder)
-    assert verify_backup(folder, checksum)['version'] == 4
+    assert verify_backup(folder, checksum)['version'] == 5
     restored = restore_backup(folder, tmp_path / 'restored', checksum)
     restored_saved = restored / saved.relative_to(app.root)
     restored_project = StudioController(private_root=restored).open(restored_saved)
