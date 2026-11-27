@@ -484,10 +484,13 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
         if len(processor) > 2 * 1024 * 1024 or sha256(processor).hexdigest() != manifest['processor']['sha256']:
             raise CitationError('The installed citation processor failed its integrity check.')
         from ..citations.csl import RenderBudget, _execute
+        # Use the same bounded memory allowance as the canonical executor.
+        # The retained Chicago author-date profile needs more than 256 MiB
+        # even for one record; input/output, CPU and stack limits still apply.
         result = _execute(payload, processor=processor.decode('utf-8'), bridge=_DOCUMENT_BRIDGE,
             budget=RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
                 max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
-                memory_bytes=256 * 1024 * 1024, cpu_seconds=timeout), cancelled=cancelled)
+                cpu_seconds=timeout), cancelled=cancelled)
     except InterruptedError as exc:
         raise CitationCancelled('Citation formatting was cancelled.') from exc
     except (OSError, UnicodeError, KeyError) as exc:

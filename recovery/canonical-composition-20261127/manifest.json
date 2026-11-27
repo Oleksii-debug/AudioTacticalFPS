@@ -34,10 +34,12 @@
       "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
       "base_blob": "76ad6e8730bd852cccb44547733c5ccb29c4f6cc",
       "owner": "root",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
-      "new_blob": "2ade3d52496ea847f20d2318bee4b971807ecfad",
+      "status": "SOURCE_REVIEW_CORRECTED_POWERSHELL_PENDING",
+      "new_blob": "625404170db0b40d46ff3b14c873d15085732d89",
       "readback": true,
-      "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-v3.yml"
+      "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-v3.yml",
+      "supersedes_blob": "2ade3d52496ea847f20d2318bee4b971807ecfad",
+      "review_note": "Use the verified no-audio standard installer bundle and its own manifest hash; bind ui.command_registry; retain both source-selector sets and include the six newly restored regression suites."
     },
     {
       "path": ".github/workflows/carr-windows.yml",
@@ -45,15 +47,16 @@
       "base_ref": "96294e97498f2133bf93f02ce72f84b6e709c72b",
       "base_blob": "13ee8929dc4610c146c713063b750c1a1fce44a6",
       "owner": "root",
-      "status": "SOURCE_REVIEW_PENDING_CONCRETE_WORKFLOW_CORRECTIONS",
-      "new_blob": "a2edd88641b251c5db8867fd7b268bb7bad6350c",
+      "status": "SOURCE_REVIEW_CORRECTED_POWERSHELL_PENDING",
+      "new_blob": "73b602b5365b4882b2d049f681be82ff968d493a",
       "readback": true,
       "saved_path": "recovery/canonical-composition-20261127/sources/.github/workflows/carr-windows.yml",
-      "supersedes_blob": "d067b6e2b885a2196159274a9b903dacd489c995",
+      "supersedes_blob": "a2edd88641b251c5db8867fd7b268bb7bad6350c",
       "remaining_findings": [
         "Standard installer must use verified no-audio nativeBundle with its own manifest identity.",
         "Installed command registry origin must be carr_library.ui.command_registry."
-      ]
+      ],
+      "review_note": "Use the verified no-audio standard installer bundle and its own manifest hash; bind ui.command_registry; retain both source-selector sets and include the six newly restored regression suites."
     },
     {
       "path": "carr-library/docs/SUPPLIED_TRANSCRIPTION_ADAPTER.md",
@@ -272,11 +275,13 @@
       "path": "carr-library/src/carr_library/academic_integration/formatting.py",
       "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
       "base_blob": "ec4e18eadadb16e42abbf88b6ef0f09941ce3681",
-      "new_blob": "fc37b24ed692c3ea24e14ba003fe18e7e0034299",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "new_blob": "bf56aebd7636c33ecf13a4f919eab2d7a190a3ff",
+      "status": "PORTABLE_SOURCE_279_PASS_NATIVE_PENDING",
       "readback": true,
       "owner": "root",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/academic_integration/formatting.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/src/carr_library/academic_integration/formatting.py",
+      "supersedes_blob": "fc37b24ed692c3ea24e14ba003fe18e7e0034299",
+      "review_note": "Actual Chicago profile exceeded the prior256MiB ceiling; use the canonical bounded512MiB executor default. Five exact citation/regeneration suites passed locally."
     },
     {
       "path": "carr-library/src/carr_library/academic_integration/UPSTREAM.json",
@@ -1830,7 +1835,8 @@
     "Checkpoint4 adds six typed backup fixtures, eleven desktop/Studio/progress sources and fixtures, retained registry cleanup acknowledgement, and canonical packaging verification/refresh sources. New sources remain unexecuted.",
     "Local executor recovered; preserved c04+966 merge index and all working sources were snapshotted before further work. Public candidates still require exact reconciliation with stronger local playback/effects/CAS.",
     "Five earlier base_commit fields are normalized into base_ref without changing their recorded base identity.",
-    "The current Windows workflow candidate still has two explicit review findings (no-audio standard-installer input and command-registry import path). It must not be activated unchanged."
+    "The current Windows workflow candidate still has two explicit review findings (no-audio standard-installer input and command-registry import path). It must not be activated unchanged.",
+    "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build."
   ],
   "root_notes": {
     "builder": {
@@ -1905,6 +1911,18 @@
         "Missing shutil import in retained tamper test: fixed in this checkpoint, fresh execution required.",
         "One module-scoped seven-style fixture raises QuickJS JSException null; failed style/resource cause is under diagnosis. No release PASS."
       ]
+    },
+    {
+      "evidence": "recovery/canonical-composition-20261127/quickjs-bounded-profile-local.json",
+      "status": "PASS",
+      "scope": "Five citation/regeneration source suites on actual CPython3.12.14/QuickJS-NG0.18.0.2",
+      "passed": 279,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 269.46,
+      "native_windows": "NOT_RUN",
+      "installed": "NOT_RUN"
     }
   ],
   "deletions": [
@@ -1915,8 +1933,12 @@
       "reason": "Replaced by the single bounded QuickJS executor; retain exact historical processor/style resources for regeneration."
     }
   ],
-  "latest_reviewed_canonical": "3beebd5aca900b8bf2e86498ae79db4015c96705",
-  "checkpoint": 4,
+  "latest_reviewed_canonical": {
+    "commit": "924ae83316a3cf9482aaf2ec51a6e6a5adb614c3",
+    "shared": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
+    "note": "Latest public deltas are being reconciled in an isolated local composition; this archive still changes only recovery records and does not activate the application."
+  },
+  "checkpoint": 5,
   "public_composition_decisions": {
     "manifest_blob": "e4060c83eca99e44a58cd7b4ea682110a9aad29c",
     "shared_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",

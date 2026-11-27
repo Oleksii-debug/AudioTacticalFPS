@@ -36,3 +36,12 @@ This checkpoint records 150 exact candidate paths. It adds typed backup fixtures
 The local executor has recovered. The preserved local c04 plus canonical966 unfinished merge was snapshotted without resetting or aborting it. PUBLIC962 application/render candidates match their recorded bases exactly; the stronger local playback/effects/CAS additions still require patch reconciliation.
 
 The Windows workflow candidate has two known review corrections pending: standard installers must consume the verified no-audio bundle with its own manifest identity, and the installed command registry module lives under carr_library.ui. Do not activate this workflow unchanged. Exact compile, merged source, installed-wheel and native qualification remain outstanding.
+
+
+## Checkpoint5 — measured citation fix and corrected workflow sources
+
+The real legacy Chicago author-date processor reached the256MiB allocator limit. The existing canonical bounded executor's512MiB default completed the same profile, and all five citation/DOCX regeneration source suites passed:279 cases, zero failures/errors/skips,269.46s on CPython3.12.14 and QuickJS-NG0.18.0.2. All438 source/bootstrap file hashes were unchanged across that run. This is source-only Linux evidence; it does not qualify a Windows installation or NVDA.
+
+The Windows/V3 workflow candidates now use the verified no-audio standard-installer bundle and its own manifest identity, bind the actual `carr_library.ui.command_registry`, and include the six restored regression suites with correct paths. PowerShell parsing and CPython3.11 replay remain pending until the dedicated validation job runs. Existing shared962 Windows jobs ended with real reader-fixture/DAISY/import/cleanup failures or timeouts, so those runs remain FAIL/CANCELLED.
+
+This checkpoint still changes only recovery records. The source archive is not an active application, release, installer, or a substitute for completing the in-progress composition. The preserved unfinished local c04 commit has not been published.
