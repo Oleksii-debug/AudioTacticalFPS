@@ -11,7 +11,6 @@ from tempfile import TemporaryDirectory
 from ..citations.anchors import Locator
 from .research_schema import RESEARCH_SCHEMA
 from .academic_schema import ACADEMIC_SCHEMA
-from .publication_receipts import PUBLICATION_SCHEMA
 
 SCHEMA = '''
 CREATE TABLE revision(id TEXT PRIMARY KEY, workspace TEXT NOT NULL, edition TEXT NOT NULL,
@@ -116,8 +115,26 @@ SCHEMA_V2 = CATALOG_V2 + SCHEMA.replace(
 ).replace('PRAGMA user_version=1;', 'PRAGMA user_version=2;')
 SCHEMA_V3 = SCHEMA_V2.replace('PRAGMA user_version=2;', '') + RESEARCH_SCHEMA + '\nPRAGMA user_version=3;\n'
 SCHEMA_V4 = SCHEMA_V3.replace('PRAGMA user_version=3;', '') + ACADEMIC_SCHEMA + '\nPRAGMA user_version=4;\n'
-SCHEMA_V5 = SCHEMA_V4.replace('PRAGMA user_version=4;', '') + PUBLICATION_SCHEMA + '\nPRAGMA user_version=5;\n'
-CURRENT_SCHEMA = 5
+IMPORT_PUBLICATION_SCHEMA = '''
+CREATE TABLE import_publication(
+ revision TEXT PRIMARY KEY NOT NULL REFERENCES sealed(revision),
+ request_id TEXT NOT NULL CHECK(length(request_id)=32 AND request_id NOT GLOB '*[^0-9a-f]*'),
+ attempt TEXT NOT NULL CHECK(length(attempt)=32 AND attempt NOT GLOB '*[^0-9a-f]*'),
+ sha256 TEXT NOT NULL CHECK(length(sha256)=64 AND sha256 NOT GLOB '*[^0-9a-f]*'),
+ UNIQUE(request_id,attempt)
+);
+CREATE TRIGGER import_publication_no_update BEFORE UPDATE ON import_publication
+BEGIN SELECT RAISE(ABORT,'immutable import publication'); END;
+CREATE TRIGGER import_publication_no_delete BEFORE DELETE ON import_publication
+BEGIN SELECT RAISE(ABORT,'immutable import publication'); END;
+CREATE TRIGGER import_publication_no_replace BEFORE INSERT ON import_publication
+WHEN EXISTS(SELECT 1 FROM import_publication WHERE revision=NEW.revision)
+BEGIN SELECT RAISE(ABORT,'import publication already exists'); END;
+'''
+SCHEMA_V5 = SCHEMA_V4.replace('PRAGMA user_version=4;', '') + IMPORT_PUBLICATION_SCHEMA + '\nPRAGMA user_version=5;\n'
+CURRENT_SCHEMA_VERSION = 5
+# Compatibility for callers of the pre-merge application API; the DDL is canonical.
+CURRENT_SCHEMA = CURRENT_SCHEMA_VERSION
 SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4, 5: SCHEMA_V5}
 
 
@@ -171,14 +188,14 @@ class Storage:
                             self.db.execute(sql)
                             sql = ''
                 elif (version in (3, 4) and schema_version in (4, 5)
-                      and version < schema_version):
-                    # Exact layout AND data validation precede each additive
-                    # upgrade. One outer transaction includes the complete
-                    # V3 -> V4 -> V5 chain and the final integrity checks.
+                        and version < schema_version):
+                    # Validate each exact released layout and its data before
+                    # extending it. The existing transaction rolls back the
+                    # entire upgrade, including a chained V3 -> V4 -> V5.
                     while version < schema_version:
                         self.schema_version = version
                         self._check()
-                        migration = ACADEMIC_SCHEMA if version == 3 else PUBLICATION_SCHEMA
+                        migration = ACADEMIC_SCHEMA if version == 3 else IMPORT_PUBLICATION_SCHEMA
                         sql = ''
                         for line in migration.splitlines():
                             sql += line + '\n'
@@ -186,7 +203,7 @@ class Storage:
                                 self.db.execute(sql)
                                 sql = ''
                         if sql.strip():
-                            raise ValueError('incomplete catalog schema migration')
+                            raise ValueError('incomplete storage schema migration')
                         version += 1
                         self.db.execute(f'PRAGMA user_version={version}')
                     self.schema_version = version
@@ -343,9 +360,6 @@ class Storage:
         if self.schema_version >= 4:
             from ..research.academic_library import validate_academic_database
             validate_academic_database(self.db)
-        if self.schema_version >= 5:
-            from .publication_receipts import check_receipts
-            check_receipts(self.db)
 
     def _check_research(self):
         """Check persisted research identities and source slices before backup.

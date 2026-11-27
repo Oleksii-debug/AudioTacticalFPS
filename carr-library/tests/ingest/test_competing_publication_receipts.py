@@ -31,7 +31,7 @@ def receipt_commit_barrier(monkeypatch, marker):
                     'def before_commit(self):',
                     '    with original(self):',
                     '        yield',
-                    "        if self.db.execute('PRAGMA user_version').fetchone()[0] == 5 and self.db.execute('SELECT count(*) FROM publication_receipt').fetchone()[0]:",
+                    "        if self.db.execute('PRAGMA user_version').fetchone()[0] == 5 and self.db.execute('SELECT count(*) FROM import_publication').fetchone()[0]:",
                     '            self._check()',
                     '            Path(' + repr(str(marker)) + ').write_text("receipt and source staged", encoding="utf-8")',
                     '            time.sleep(60)',
@@ -58,7 +58,7 @@ def test_competing_publication_never_borrows_current_attempt(tmp_path, monkeypat
     planned = worker.prepare_request(app.root, workspace, source, metadata, Config())
     marker = tmp_path / 'uncommitted'
     real_popen, real_stop, real_invoke = worker.subprocess.Popen, worker._stop, worker._invoke
-    real_reconcile = worker._published_after_stop
+    real_reconcile = worker._reconcile_publication
     receipt_commit_barrier(monkeypatch, marker)
     attempts, completed, stopped = {}, [], []
 
@@ -70,9 +70,9 @@ def test_competing_publication_never_borrows_current_attempt(tmp_path, monkeypat
         real_stop(process)
         stopped.append(process)
 
-    def publish_before_reconciliation(owner, initial, attempt_id):
-        if initial['request_id'] != planned['request_id'] or not marker.exists() or completed:
-            return real_reconcile(owner, initial, attempt_id)
+    def publish_before_reconciliation(root, request_id, attempt_id, **options):
+        if request_id != planned['request_id'] or not marker.exists() or completed:
+            return real_reconcile(root, request_id, attempt_id, **options)
         # The outer supervisor still owns its reservation throughout native
         # cleanup. Interleave the independent publication after release and
         # immediately before this attempt's unchanged receipt reconciliation.
@@ -91,18 +91,18 @@ def test_competing_publication_never_borrows_current_attempt(tmp_path, monkeypat
         if competitor == 'forged-sidecar':
             stopped_record = worker.load_request(app.root, planned['request_id'])
             with app.read(workspace) as db:
-                receipt = db.execute('SELECT * FROM publication_receipt').fetchone()
+                receipt = db.execute('SELECT * FROM import_publication').fetchone()
                 asset = db.execute('SELECT digest,mime,size FROM catalog_asset').fetchone()
             stopped_record['attempt'] = attempts[planned['request_id']]
             stopped_record['publication_candidate'] = dict(
-                attempt=stopped_record['attempt'], revision=receipt['revision'], sha256=receipt['digest'],
+                attempt=stopped_record['attempt'], revision=receipt['revision'], sha256=receipt['sha256'],
                 completed=1, manifest=dict(sha256=asset[0], mime=asset[1], size=asset[2]))
             worker._store(app.root, planned['request_id'], stopped_record)
-        return real_reconcile(owner, initial, attempt_id)
+        return real_reconcile(root, request_id, attempt_id, **options)
 
     monkeypatch.setattr(worker, '_invoke', capture_attempt)
     monkeypatch.setattr(worker, '_stop', observed_stop)
-    monkeypatch.setattr(worker, '_published_after_stop', publish_before_reconciliation)
+    monkeypatch.setattr(worker, '_reconcile_publication', publish_before_reconciliation)
     result = worker.run_request(app.root, workspace, source, metadata, Config(),
                                 cancelled=marker.exists, timeout=30, request_id=planned['request_id'])
     assert marker.exists() and completed[0]['state'] == 'complete', completed
@@ -110,11 +110,10 @@ def test_competing_publication_never_borrows_current_attempt(tmp_path, monkeypat
     assert source.read_bytes() == original
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
-        assert db.execute('SELECT count(*) FROM publication_receipt WHERE request_id=?',
+        assert db.execute('SELECT count(*) FROM import_publication WHERE request_id=?',
                           (planned['request_id'],)).fetchone()[0] == 0
-        receipt = db.execute('SELECT request_id,attempt_id FROM publication_receipt').fetchone()
+        receipt = db.execute('SELECT request_id,attempt FROM import_publication').fetchone()
         if competitor == 'direct':
             assert receipt is None
         else:
             assert tuple(receipt) == (completed[0]['request_id'], attempts[completed[0]['request_id']])
-

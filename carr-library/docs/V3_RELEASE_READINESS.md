@@ -71,9 +71,14 @@ Opening a supported v3 or v4 library validates and migrates it transactionally.
 Restoring an older snapshot preserves its original version until that normal
 application-open migration. Recovery never infers completion from the timing of
 another import or from a matching pre-existing revision.
-The selected v5 layout uses `publication_receipt`. A different experimental v5
-layout named `import_publication` is not the same schema and is not silently
-accepted or merged by this migration.
+The canonical v5 layout uses `import_publication`, with the exact schema and
+immutable revision/request/attempt receipt contract accepted in PR150. The
+unmerged draft v5 layout named `publication_receipt` is incompatible and is
+rejected without rewriting the database. No parallel receipt store is created.
+A worker freezes its launch identity before waiting for resources, rechecks the
+retained input before execution, and validates that identity before publication.
+Restoring pending work clears the old path-bound attempt and candidate; a resumed
+import must establish a fresh attempt and cannot borrow an earlier receipt.
 
 Existing v1 reading projects remain readable. Both reviewed v2 source dialects
 are checked: new portable projects use canonical `source_anchor`, while earlier

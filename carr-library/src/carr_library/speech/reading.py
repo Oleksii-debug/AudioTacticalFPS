@@ -139,6 +139,39 @@ def _original_runs(text, anchor):
     return tuple(runs)
 
 
+def _import_pre_release_anchor(value, text):
+    """Read the earlier candidate dialect once; all writes use canonical v2."""
+    text_value(text, 'source text', empty=True)
+    fields = {'schema', 'workspace', 'edition', 'revision', 'asset_sha256',
+              'positions', 'derived_separators', 'quotation_authority'}
+    if (type(value) is not dict or set(value) != fields
+            or value['schema'] != 'carr.narration-source.v1'
+            or type(value['positions']) is not list
+            or not 1 <= len(value['positions']) <= 10000):
+        raise ValueError('Unsupported pre-release reading-copy source format.')
+    positions = []
+    for row in value['positions']:
+        if type(row) is not dict or set(row) != {'ordinal', 'kind', 'index',
+                'start', 'end', 'text_sha256', 'text_verified_at_read'}:
+            raise ValueError('Invalid or mixed pre-release reading-copy source position.')
+        positions.append({**{key: item for key, item in row.items()
+                             if key != 'text_verified_at_read'},
+                          'text_verified_at_capture': row['text_verified_at_read']})
+    anchor = _validated_source_anchor({
+        **{key: value[key] for key in ('workspace', 'edition', 'revision',
+                                      'asset_sha256', 'quotation_authority')},
+        'positions': positions}, text)
+    separators = value['derived_separators']
+    expected = [{'start': first['end'], 'end': second['start']}
+                for first, second in zip(positions, positions[1:])]
+    if (type(separators) is not list or len(separators) != len(expected)
+            or any(type(row) is not dict or set(row) != {'start', 'end'}
+                   or type(row['start']) is not int or type(row['end']) is not int
+                   for row in separators) or separators != expected):
+        raise ValueError('Invalid pre-release narration separators.')
+    return anchor
+
+
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
     def __init__(self, source_text, *, title='Reading copy', source_path=None,
@@ -161,6 +194,7 @@ class ReadingDocument:
         self._saved_path = None
         self._saved_digest = None
         self._saved_signature = None
+        self._pre_release_format = False
 
     @property
     def source_text(self):
@@ -184,6 +218,12 @@ class ReadingDocument:
     @property
     def source_bound(self):
         return self._source_anchor is not None
+
+    @property
+    def format_notice(self):
+        """Explain an explicit import without changing the original saved file."""
+        return ('Recovered a pre-release reading-project format. The original file is preserved; '
+                'use Save As to write the current format. ' if self._pre_release_format else '')
 
     @property
     def text(self):
@@ -337,6 +377,8 @@ class ReadingDocument:
         target = local_file(path, must_exist=False)
         if target == self._source_path:
             raise ValueError('Save the reading copy separately from the original source.')
+        if self._pre_release_format and target == self._saved_path:
+            raise ValueError('Use Save As to preserve the original pre-release reading project.')
         payload = (json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
         if len(payload) > MAX_PROJECT_BYTES:
             raise ValueError('The reading-project history exceeds its storage budget.')
@@ -366,6 +408,7 @@ class ReadingDocument:
                     temporary.unlink(missing_ok=True)
         self._saved_path, self._saved_digest = target, sha256(payload).hexdigest()
         self._saved_signature = self._signature()
+        self._pre_release_format = False
         return self._saved_digest
 
     @classmethod
@@ -388,11 +431,15 @@ class ReadingDocument:
             raise ValueError('Invalid reading-project fields.')
         version = data.get('schema')
         origin = None
+        pre_release = False
         if version == 'carr.reading-copy.v1' and set(data) == fields:
             anchor = None
         elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_anchor'}
                 and type(data['source_anchor']) is dict):
             anchor = data['source_anchor']
+            if 'schema' in anchor:
+                anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                pre_release = True
         elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_origin'}
                 and type(data['source_origin']) is dict):
             anchor, origin = None, data['source_origin']
@@ -412,6 +459,7 @@ class ReadingDocument:
         if type(data['revision']) is not int or not 0 <= data['revision'] <= len(data['edits']):
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']
+        document._pre_release_format = pre_release
         return document
 
     def export(self, path, *, original=False, cancelled=lambda: False):

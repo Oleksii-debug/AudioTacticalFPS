@@ -110,12 +110,12 @@ class _SearchBudget:
 
 class _CatalogPublisher:
     """Keep the existing ingest journal, with one atomic catalog publication."""
-    def __init__(self, storage, registration, *, attempt=None, config=None):
+    def __init__(self, storage, registration):
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
         self.published_here = False
-        self.attempt, self.config = attempt, config
+        self.before_commit = lambda workspace, revision: None
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
@@ -123,10 +123,6 @@ class _CatalogPublisher:
         with self.storage.transaction():
             LibraryApp._authorize(self.db, workspace)
             register_batch(Catalog(self.db, workspace), (self.record,))
-            if self.attempt is not None:
-                from .storage.publication_receipts import stage_receipt
-                stage_receipt(self.db, self.attempt, self.record, workspace,
-                              revision, asset, config, self.config)
             self.storage.stage_revision(workspace, edition, revision, asset, config, pages)
             self.db.execute('INSERT INTO source_metadata '
                 '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
@@ -146,6 +142,7 @@ class _CatalogPublisher:
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
             self.storage._check()
+            self.before_commit(workspace, revision)
         self.published_here = True
 
     def check(self):
@@ -627,10 +624,13 @@ class LibraryApp:
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
                 retained = self.assets.retain(asset.data, asset.mime, asset.digest)
-                from .ingest.worker import RuntimeBoundIngest, load_reviews, record_progress
+                from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
+                                            record_publication_candidate)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
-                publisher = _CatalogPublisher(storage, record, attempt=_publication_attempt,
-                                              config=config or Config())
+                publisher = _CatalogPublisher(storage, record)
+                publisher.before_commit = lambda scope, revision: record_publication_candidate(
+                    self.root, _request_id, storage.db, scope, revision,
+                    publication_attempt=_publication_attempt, config=config or Config())
                 if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
@@ -1200,4 +1200,3 @@ class LibraryApp:
     def backup(self, destination):
         from .library_backup import create_backup
         return create_backup(self, destination)
-
