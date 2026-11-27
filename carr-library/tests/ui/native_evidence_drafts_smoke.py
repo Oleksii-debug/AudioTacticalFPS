@@ -151,21 +151,21 @@ def run_native(source=None):
                 errors.append('Native recovery dialog did not appear.')
         wx.CallLater(30, attempt)
 
-    def exercise():
-        with TemporaryDirectory(prefix='carr-native-draft-') as temporary:
-            library = LibraryApp(Path(temporary) / 'library')
-            workspace = library.create_workspace('Synthetic recovery library')
-            topic = library.create_topic(workspace, 'Research note recovery')
-            library.add_text(workspace, 'Synthetic source', 'Exact authenticated source. Україна.')
-            hit, = library.search(workspace, 'Exact')
-            evidence = library.save_hit(workspace, topic, hit.ref, hit.revision, 'Saved baseline')
-            store = EvidenceDrafts(library.root)
-            frame = Host(library, workspace, topic)
-            app.SetTopWindow(frame)
-            panel = frame.open_panel()
-            frame.Show()
-            frame.Raise()
-            try:
+    with TemporaryDirectory(prefix='carr-native-draft-') as temporary:
+        library = LibraryApp(Path(temporary) / 'library')
+        workspace = library.create_workspace('Synthetic recovery library')
+        topic = library.create_topic(workspace, 'Research note recovery')
+        library.add_text(workspace, 'Synthetic source', 'Exact authenticated source. Україна.')
+        hit, = library.search(workspace, 'Exact')
+        evidence = library.save_hit(workspace, topic, hit.ref, hit.revision, 'Saved baseline')
+        store = EvidenceDrafts(library.root)
+        frame = Host(library, workspace, topic)
+        app.SetTopWindow(frame)
+        panel = frame.open_panel()
+        frame.Show()
+        frame.Raise()
+        try:
+            def exercise():
                 check('native evidence asynchronously loads its authorized source',
                       pump(lambda: panel.displayed is not None and not frame.working))
                 check('note is a named native editable text control',
@@ -205,36 +205,36 @@ def run_native(source=None):
                 print(json.dumps(dict(status='PASS', checks=len(checks), wx=wx.version(),
                                       platform=platform.system(), origins=origins, nvda='NOT_RUN',
                                       source_override=str(source) if source is not None else None), sort_keys=True), flush=True)
-            finally:
-                frame._closing = True
-                frame.cancel_event.set()
-                frame.executor.shutdown(wait=True, cancel_futures=True)
-                for window in wx.GetTopLevelWindows():
-                    if isinstance(window, wx.Dialog) and window.IsModal():
-                        window.EndModal(wx.ID_CANCEL)
-                frame.Destroy()
-                app.Yield()
-        return 0
 
-    # Real native input must run while the application's main event loop is active.
-    outcome, failure = [], []
-    def dispatch():
-        try:
-            outcome.append(exercise())
-        except BaseException as error:
-            failure.append((error, error.__traceback__))
+            # wxPython starts MainLoop only after a real top-level window exists.
+            # The actual Host above owns the test controls; input runs in this loop.
+            outcome, failure = [], []
+            def dispatch():
+                try:
+                    outcome.append(exercise())
+                except BaseException as error:
+                    failure.append((error, error.__traceback__))
+                finally:
+                    app.ExitMainLoop()
+
+            app.SetExitOnFrameDelete(False)
+            wx.CallAfter(dispatch)
+            app.MainLoop()
+            if failure:
+                error, original_traceback = failure[0]
+                raise error.with_traceback(original_traceback)
+            if len(outcome) != 1:
+                raise RuntimeError('Native draft scenario did not finish inside the application event loop.')
         finally:
-            app.ExitMainLoop()
-
-    app.SetExitOnFrameDelete(False)
-    wx.CallAfter(dispatch)
-    app.MainLoop()
-    if failure:
-        error, original_traceback = failure[0]
-        raise error.with_traceback(original_traceback)
-    if not outcome:
-        raise RuntimeError('Native draft scenario did not finish inside the application event loop.')
-    return outcome[0]
+            frame._closing = True
+            frame.cancel_event.set()
+            frame.executor.shutdown(wait=True, cancel_futures=True)
+            for window in wx.GetTopLevelWindows():
+                if isinstance(window, wx.Dialog) and window.IsModal():
+                    window.EndModal(wx.ID_CANCEL)
+            frame.Destroy()
+            app.Yield()
+    return 0
 
 
 def main():

@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   native-diagnostics:
-    name: Windows x64 / five native regression diagnostics
+    name: Windows x64 / native regressions and supplied transcription
     runs-on: windows-2022
     timeout-minutes: 15
     defaults:
@@ -122,6 +122,13 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_save_all_smoke.py 2>&1 | Tee-Object 'ci-results/native-save-all.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native supplied transcription controls and isolated child protocol
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_transcription_smoke.py 2>&1 | Tee-Object 'ci-results/native-transcription.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve exact-commit runtime and test evidence

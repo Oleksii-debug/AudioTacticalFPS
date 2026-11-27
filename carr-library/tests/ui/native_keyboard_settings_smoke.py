@@ -125,37 +125,39 @@ def run_native(source=None, timeout=120):
     origins = {module.__name__: str(Path(module.__file__).resolve()) for module in
                (application_module, preferences_module, desktop_module, keyboard_module)}
     checkout = Path(__file__).resolve().parents[2]
-    def exercise():
-        with TemporaryDirectory(prefix='carr-native-main-keyboard-', ignore_cleanup_errors=True) as temporary:
-            root = Path(temporary)
-            library = LibraryApp(root / 'private-library')
-            workspace = library.create_workspace('Synthetic keyboard library')
-            topic = library.create_topic(workspace, 'Synthetic keyboard research')
-            source_text = 'Synthetic keyboard quotation. Exact original source — Україна.'
-            imported = library.add_text(workspace, 'Synthetic keyboard source', source_text)
-            hit, = library.search(workspace, 'keyboard quotation')
-            saved_note = 'Saved research note remains separate from source.'
-            evidence_id = library.save_hit(workspace, topic, hit.ref, hit.revision, saved_note)
-            original_bytes = library.assets.resolve(imported['asset']).read_bytes()
-            draft = 'Unsaved keyboard draft — keep this exact note.'
-            calls = []
-            test_id = 'probe.keyboard_action'
-            test_caption = 'Synthetic keyboard action'
-            settings = None
+    with TemporaryDirectory(prefix='carr-native-main-keyboard-', ignore_cleanup_errors=True) as temporary:
+        root = Path(temporary)
+        library = LibraryApp(root / 'private-library')
+        workspace = library.create_workspace('Synthetic keyboard library')
+        topic = library.create_topic(workspace, 'Synthetic keyboard research')
+        source_text = 'Synthetic keyboard quotation. Exact original source — Україна.'
+        imported = library.add_text(workspace, 'Synthetic keyboard source', source_text)
+        hit, = library.search(workspace, 'keyboard quotation')
+        saved_note = 'Saved research note remains separate from source.'
+        evidence_id = library.save_hit(workspace, topic, hit.ref, hit.revision, saved_note)
+        original_bytes = library.assets.resolve(imported['asset']).read_bytes()
+        draft = 'Unsaved keyboard draft — keep this exact note.'
+        calls = []
+        test_id = 'probe.keyboard_action'
+        test_caption = 'Synthetic keyboard action'
+        settings = None
 
-            def preserved():
-                return (frame.library is library and frame.active == (workspace, topic)
-                        and frame.evidence.note.GetValue() == draft and frame._dirty()
-                        and library.evidence(workspace, topic)[0].note == saved_note
-                        and library.assets.resolve(imported['asset']).read_bytes() == original_bytes)
+        def preserved():
+            return (frame.library is library and frame.active == (workspace, topic)
+                    and frame.evidence.note.GetValue() == draft and frame._dirty()
+                    and library.evidence(workspace, topic)[0].note == saved_note
+                    and library.assets.resolve(imported['asset']).read_bytes() == original_bytes)
 
-            try:
-                frame = DesktopFrame(library)
-                frame._open_workspace(workspace, topic)
-                application.SetTopWindow(frame)
-                frame.SetSize((1100, 900))
-                frame.Show()
-                frame.Raise()
+        try:
+            frame = DesktopFrame(library)
+            frame._open_workspace(workspace, topic)
+            application.SetTopWindow(frame)
+            frame.SetSize((1100, 900))
+            frame.Show()
+            frame.Raise()
+            # Create the real host window before entering wx.App.MainLoop.
+            # Run retained key assertions with native menu/button dispatch active.
+            def exercise():
                 check('production DesktopFrame opens the synthetic evidence topic',
                       pump(lambda: frame.active == (workspace, topic) and frame.evidence is not None
                            and frame.evidence.displayed is not None
@@ -329,41 +331,39 @@ def run_native(source=None, timeout=120):
                                   'source_override': str(source) if source is not None else None,
                                   'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
                 return 0
-            except Exception as exc:
-                print(json.dumps({'status': 'FAIL', 'checks_passed': len(checks), 'error': str(exc),
-                                  'nvda': 'NOT_RUN'}), flush=True)
-                traceback.print_exc()
-                return 1
-            finally:
-                watchdog.Stop()
-                if frame is not None:
-                    frame.cancel_event.set()
-                    frame._closing = True
-                    frame.executor.shutdown(wait=False, cancel_futures=True)
-                    frame.Destroy()
-                    application.Yield()
+            loop_results = []
+            loop_failures = []
 
-    # Native frame accelerators and button keys need the actual outer event
-    # loop, just as modal controls do. Keep all real input and assertions.
-    result, errors = [], []
+            def dispatch():
+                try:
+                    loop_results.append(exercise())
+                except BaseException as error:
+                    loop_failures.append((error, error.__traceback__))
+                finally:
+                    application.ExitMainLoop()
 
-    def dispatch():
-        try:
-            result.append(exercise())
-        except BaseException as error:
-            errors.append((error, error.__traceback__))
+            application.SetExitOnFrameDelete(False)
+            wx.CallAfter(dispatch)
+            application.MainLoop()
+            if loop_failures:
+                error, original_traceback = loop_failures[0]
+                raise error.with_traceback(original_traceback)
+            if len(loop_results) != 1:
+                raise RuntimeError('The native keyboard scenario did not complete.')
+            return loop_results[0]
+        except Exception as exc:
+            print(json.dumps({'status': 'FAIL', 'checks_passed': len(checks), 'error': str(exc),
+                              'nvda': 'NOT_RUN'}), flush=True)
+            traceback.print_exc()
+            return 1
         finally:
-            application.ExitMainLoop()
-
-    application.SetExitOnFrameDelete(False)
-    wx.CallAfter(dispatch)
-    application.MainLoop()
-    if errors:
-        error, trace = errors[0]
-        raise error.with_traceback(trace)
-    if len(result) != 1:
-        raise RuntimeError('The native keyboard scenario did not complete.')
-    return result[0]
+            watchdog.Stop()
+            if frame is not None:
+                frame.cancel_event.set()
+                frame._closing = True
+                frame.executor.shutdown(wait=False, cancel_futures=True)
+                frame.Destroy()
+                application.Yield()
 
 
 def main():

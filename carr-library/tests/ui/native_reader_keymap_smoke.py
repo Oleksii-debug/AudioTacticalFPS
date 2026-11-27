@@ -105,149 +105,151 @@ def run_native(source=None):
         def show(self, parent, title, content, *args, **kwargs):
             self.guides.append((title, content))
 
-    def exercise():
-        with TemporaryDirectory(prefix='carr-native-reader-keys-') as tmp:
-            library = LibraryApp(Path(tmp) / 'library')
-            workspace = library.create_workspace('Native keyboard source')
-            raw = 'First exact source. Україна.\fSecond exact source. Slovenská citácia.\fThird source.'
-            book = library.add_text(workspace, 'Native keyboard source', raw)
-            state = ReadingState(library.root)
-            parent = wx.Frame(None, title='Reader keyboard context probe', size=(900, 750))
-            note = wx.TextCtrl(parent, value='Unsaved host note — keep exactly.')
-            host_calls = []
-            menu, bar = wx.Menu(), wx.MenuBar()
-            host_command = menu.Append(wx.ID_ANY, 'Main academic context\tCtrl+Shift+B')
-            parent.Bind(wx.EVT_MENU, lambda event: host_calls.append(event.GetId()), host_command)
-            bar.Append(menu, '&Library')
-            parent.SetMenuBar(bar)
-            parent.Show()
-            parent.Raise()
-            reader = ReadingDialog(parent, ReadingDesk(library, workspace, book['edition']),
-                                   state, lambda: None)
-            answers = Answers()
-            reader.dialogs = answers
-            failures = []
-            release_worker = Event()
+    with TemporaryDirectory(prefix='carr-native-reader-keys-') as tmp:
+        library = LibraryApp(Path(tmp) / 'library')
+        workspace = library.create_workspace('Native keyboard source')
+        raw = 'First exact source. Україна.\fSecond exact source. Slovenská citácia.\fThird source.'
+        book = library.add_text(workspace, 'Native keyboard source', raw)
+        state = ReadingState(library.root)
+        parent = wx.Frame(None, title='Reader keyboard context probe', size=(900, 750))
+        note = wx.TextCtrl(parent, value='Unsaved host note — keep exactly.')
+        host_calls = []
+        menu, bar = wx.Menu(), wx.MenuBar()
+        host_command = menu.Append(wx.ID_ANY, 'Main academic context\tCtrl+Shift+B')
+        parent.Bind(wx.EVT_MENU, lambda event: host_calls.append(event.GetId()), host_command)
+        bar.Append(menu, '&Library')
+        parent.SetMenuBar(bar)
+        parent.Show()
+        parent.Raise()
+        reader = ReadingDialog(parent, ReadingDesk(library, workspace, book['edition']),
+                               state, lambda: None)
+        answers = Answers()
+        reader.dialogs = answers
+        failures = []
+        release_worker = Event()
 
-            def focus_source():
-                reader.dialog.Raise()
-                reader.text.SetFocus()
-                if not pump(lambda: wx.Window.FindFocus() == reader.text, timeout=3):
-                    raise AssertionError('Native source text did not receive keyboard focus.')
+        def focus_source():
+            reader.dialog.Raise()
+            reader.text.SetFocus()
+            if not pump(lambda: wx.Window.FindFocus() == reader.text, timeout=3):
+                raise AssertionError('Native source text did not receive keyboard focus.')
 
-            def at_page(ordinal):
-                return (not reader.busy and reader.controller.current is not None
-                        and reader.controller.current.ordinal == ordinal)
+        def at_page(ordinal):
+            return (not reader.busy and reader.controller.current is not None
+                    and reader.controller.current.ordinal == ordinal)
 
-            def scenario():
-                try:
-                    reader._run('Opening native keyboard source', reader.controller.start, reader._page)
-                    check('modal reader opens the first exact source', pump(lambda: at_page(1))
-                          and reader.text.GetValue() == raw.split('\f')[0])
-                    check('reader is tested in a real native modal context', reader.dialog.IsModal())
-                    check('reader exposes the shared configurable command adapter',
-                          hasattr(reader, 'keyboard') and callable(reader.keyboard.apply_overrides))
-                    adapter_module = sys.modules[type(reader.keyboard).__module__]
-                    origins[adapter_module.__name__] = str(Path(adapter_module.__file__).resolve())
-                    installed_origins()
-
-                    focus_source()
-                    press(wx.WXK_PAGEDOWN, wx.MOD_CONTROL)
-                    check('actual Ctrl+PageDown opens the next source', pump(lambda: at_page(2)))
-                    press(wx.WXK_PAGEUP, wx.MOD_CONTROL)
-                    check('actual Ctrl+PageUp opens the previous source', pump(lambda: at_page(1)))
-                    press(ord('L'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    check('actual Where am I shortcut focuses the named native location control',
-                          pump(lambda: not reader.busy and wx.Window.FindFocus() == reader.location))
-
-                    focus_source()
-                    press(ord('B'), wx.MOD_CONTROL)
-                    check('actual bookmark shortcut persists the current source location',
-                          pump(lambda: not reader.busy)
-                          and len(state.bookmarks(workspace, book['edition'])) == 1
-                          and state.bookmarks(workspace, book['edition'])[0].location.index == 1)
-                    focus_source()
-                    press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    check('shared chord dispatches to Reader bookmarks in the modal context',
-                          pump(lambda: bool(answers.choice_calls) and not reader.busy)
-                          and host_calls == [])
-
-                    # This exercises the production adapter's complete remap path,
-                    # including removal of the old native accelerator table entry.
-                    reader.keyboard.apply_overrides({'reader.next': 'Ctrl+Shift+J'})
-                    focus_source()
-                    press(wx.WXK_PAGEDOWN, wx.MOD_CONTROL)
-                    check('old next shortcut is inactive after remapping', at_page(1)
-                          and state.resume(workspace, book['edition']).index == 1)
-                    press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    check('new next shortcut dispatches the real source navigation', pump(lambda: at_page(2)))
-                    press(wx.WXK_PAGEUP, wx.MOD_CONTROL)
-                    check('unmodified previous shortcut still works after remapping', pump(lambda: at_page(1)))
-                    press(wx.WXK_F1)
-                    check('native keyboard guide reports the current remapped shortcut',
-                          bool(answers.guides) and 'Ctrl+Shift+J' in answers.guides[-1][1]
-                          and 'Ctrl+PageDown' not in answers.guides[-1][1])
-
-                    next_button = next(button for button in reader.buttons
-                                       if button.GetName() == 'Next source location')
-                    next_button.Disable()
-                    focus_source()
-                    press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    check('shortcut cannot bypass an explicitly disabled native command', at_page(1)
-                          and not next_button.IsEnabled())
-                    next_button.Enable()
-
-                    started = Event()
-                    original_move = reader.controller.move
-
-                    def blocked_move(direction):
-                        started.set()
-                        if not release_worker.wait(10):
-                            raise TimeoutError('Probe failed to release the held reader operation.')
-                        return original_move(direction)
-
-                    reader.controller.move = blocked_move
-                    reader.navigate(1)
-                    check('reader operation is held while its native commands are disabled',
-                          pump(started.is_set) and reader.busy
-                          and all(not button.IsEnabled() for button in reader.buttons))
-                    reader.cancelled.set()
-                    prompt_counts = (len(answers.text_calls), len(answers.choice_calls), len(answers.guides))
-                    focus_source()
-                    press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    press(ord('B'), wx.MOD_CONTROL)
-                    press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    press(wx.WXK_F1)
-                    check('busy native shortcuts neither open prompts nor clear pending cancellation',
-                          reader.busy and reader.cancelled.is_set()
-                          and prompt_counts == (len(answers.text_calls), len(answers.choice_calls),
-                                                len(answers.guides)))
-                    release_worker.set()
-                    check('cancelled work leaves the displayed and persisted source unchanged',
-                          pump(lambda: at_page(1))
-                          and state.resume(workspace, book['edition']).index == 1
-                          and 'cancelled' in reader.status.GetValue().lower())
-                    reader.controller.move = original_move
-
-                    reader.keyboard.apply_overrides({})
-                    focus_source()
-                    press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
-                    check('reset removes the custom native shortcut', at_page(1))
-                    press(wx.WXK_PAGEDOWN, wx.MOD_CONTROL)
-                    check('reset restores the default native shortcut', pump(lambda: at_page(2)))
-                    check('keyboard reading preserves the unsaved host note and citation state',
-                          note.GetValue() == 'Unsaved host note — keep exactly.' and library._selections == {})
-                    focus_source()
-                    press(wx.WXK_ESCAPE)
-                    check('actual Escape closes the modal Reader', pump(lambda: reader.closed)
-                          and reader.cancelled.is_set())
-                except BaseException as exc:
-                    failures.append(exc)
-                finally:
-                    release_worker.set()
-                    reader.close()
-
+        def scenario():
             try:
+                reader._run('Opening native keyboard source', reader.controller.start, reader._page)
+                check('modal reader opens the first exact source', pump(lambda: at_page(1))
+                      and reader.text.GetValue() == raw.split('\f')[0])
+                check('reader is tested in a real native modal context', reader.dialog.IsModal())
+                check('reader exposes the shared configurable command adapter',
+                      hasattr(reader, 'keyboard') and callable(reader.keyboard.apply_overrides))
+                adapter_module = sys.modules[type(reader.keyboard).__module__]
+                origins[adapter_module.__name__] = str(Path(adapter_module.__file__).resolve())
+                installed_origins()
+
+                focus_source()
+                press(wx.WXK_PAGEDOWN, wx.MOD_CONTROL)
+                check('actual Ctrl+PageDown opens the next source', pump(lambda: at_page(2)))
+                press(wx.WXK_PAGEUP, wx.MOD_CONTROL)
+                check('actual Ctrl+PageUp opens the previous source', pump(lambda: at_page(1)))
+                press(ord('L'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('actual Where am I shortcut focuses the named native location control',
+                      pump(lambda: not reader.busy and wx.Window.FindFocus() == reader.location))
+
+                focus_source()
+                press(ord('B'), wx.MOD_CONTROL)
+                check('actual bookmark shortcut persists the current source location',
+                      pump(lambda: not reader.busy)
+                      and len(state.bookmarks(workspace, book['edition'])) == 1
+                      and state.bookmarks(workspace, book['edition'])[0].location.index == 1)
+                focus_source()
+                press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('shared chord dispatches to Reader bookmarks in the modal context',
+                      pump(lambda: bool(answers.choice_calls) and not reader.busy)
+                      and host_calls == [])
+
+                # This exercises the production adapter's complete remap path,
+                # including removal of the old native accelerator table entry.
+                reader.keyboard.apply_overrides({'reader.next': 'Ctrl+Shift+J'})
+                focus_source()
+                press(wx.WXK_PAGEDOWN, wx.MOD_CONTROL)
+                check('old next shortcut is inactive after remapping', at_page(1)
+                      and state.resume(workspace, book['edition']).index == 1)
+                press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('new next shortcut dispatches the real source navigation', pump(lambda: at_page(2)))
+                press(wx.WXK_PAGEUP, wx.MOD_CONTROL)
+                check('unmodified previous shortcut still works after remapping', pump(lambda: at_page(1)))
+                press(wx.WXK_F1)
+                check('native keyboard guide reports the current remapped shortcut',
+                      bool(answers.guides) and 'Ctrl+Shift+J' in answers.guides[-1][1]
+                      and 'Ctrl+PageDown' not in answers.guides[-1][1])
+
+                next_button = next(button for button in reader.buttons
+                                   if button.GetName() == 'Next source location')
+                next_button.Disable()
+                focus_source()
+                press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('shortcut cannot bypass an explicitly disabled native command', at_page(1)
+                      and not next_button.IsEnabled())
+                next_button.Enable()
+
+                started = Event()
+                original_move = reader.controller.move
+
+                def blocked_move(direction):
+                    started.set()
+                    if not release_worker.wait(10):
+                        raise TimeoutError('Probe failed to release the held reader operation.')
+                    return original_move(direction)
+
+                reader.controller.move = blocked_move
+                reader.navigate(1)
+                check('reader operation is held while its native commands are disabled',
+                      pump(started.is_set) and reader.busy
+                      and all(not button.IsEnabled() for button in reader.buttons))
+                reader.cancelled.set()
+                prompt_counts = (len(answers.text_calls), len(answers.choice_calls), len(answers.guides))
+                focus_source()
+                press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                press(ord('B'), wx.MOD_CONTROL)
+                press(ord('B'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                press(wx.WXK_F1)
+                check('busy native shortcuts neither open prompts nor clear pending cancellation',
+                      reader.busy and reader.cancelled.is_set()
+                      and prompt_counts == (len(answers.text_calls), len(answers.choice_calls),
+                                            len(answers.guides)))
+                release_worker.set()
+                check('cancelled work leaves the displayed and persisted source unchanged',
+                      pump(lambda: at_page(1))
+                      and state.resume(workspace, book['edition']).index == 1
+                      and 'cancelled' in reader.status.GetValue().lower())
+                reader.controller.move = original_move
+
+                reader.keyboard.apply_overrides({})
+                focus_source()
+                press(ord('J'), wx.MOD_CONTROL | wx.MOD_SHIFT)
+                check('reset removes the custom native shortcut', at_page(1))
+                press(wx.WXK_PAGEDOWN, wx.MOD_CONTROL)
+                check('reset restores the default native shortcut', pump(lambda: at_page(2)))
+                check('keyboard reading preserves the unsaved host note and citation state',
+                      note.GetValue() == 'Unsaved host note — keep exactly.' and library._selections == {})
+                focus_source()
+                press(wx.WXK_ESCAPE)
+                check('actual Escape closes the modal Reader', pump(lambda: reader.closed)
+                      and reader.cancelled.is_set())
+            except BaseException as exc:
+                failures.append(exc)
+            finally:
+                release_worker.set()
+                reader.close()
+
+        try:
+            # Create the real host window before entering wx.App.MainLoop.
+            # Run retained key assertions with native menu/button dispatch active.
+            def exercise():
                 wx.CallAfter(scenario)
                 reader.dialog.ShowModal()
                 if failures:
@@ -265,35 +267,32 @@ def run_native(source=None):
                                   'native_key_backend': 'wx.UIActionSimulator',
                                   'source_override': str(source) if source is not None else None,
                                   'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
-            finally:
-                release_worker.set()
-                reader.close()
-                reader.dialog.Destroy()
-                parent.Destroy()
-                application.Yield()
-        return 0
+            loop_results = []
+            loop_failures = []
 
-    # Native frame accelerators and button keys need the actual outer event
-    # loop, just as modal controls do. Keep all real input and assertions.
-    result, errors = [], []
+            def dispatch():
+                try:
+                    loop_results.append(exercise())
+                except BaseException as error:
+                    loop_failures.append((error, error.__traceback__))
+                finally:
+                    application.ExitMainLoop()
 
-    def dispatch():
-        try:
-            result.append(exercise())
-        except BaseException as error:
-            errors.append((error, error.__traceback__))
+            application.SetExitOnFrameDelete(False)
+            wx.CallAfter(dispatch)
+            application.MainLoop()
+            if loop_failures:
+                error, original_traceback = loop_failures[0]
+                raise error.with_traceback(original_traceback)
+            if len(loop_results) != 1:
+                raise RuntimeError('The native keyboard scenario did not complete.')
         finally:
-            application.ExitMainLoop()
-
-    application.SetExitOnFrameDelete(False)
-    wx.CallAfter(dispatch)
-    application.MainLoop()
-    if errors:
-        error, trace = errors[0]
-        raise error.with_traceback(trace)
-    if len(result) != 1:
-        raise RuntimeError('The native keyboard scenario did not complete.')
-    return result[0]
+            release_worker.set()
+            reader.close()
+            reader.dialog.Destroy()
+            parent.Destroy()
+            application.Yield()
+    return 0
 
 
 def main():

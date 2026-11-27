@@ -601,6 +601,8 @@ class DesktopFrame(WorkspaceFrame):
         install_library_assistant_actions(self)
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
         from .keyboard_settings import install_keyboard_settings
         install_keyboard_settings(self)
 

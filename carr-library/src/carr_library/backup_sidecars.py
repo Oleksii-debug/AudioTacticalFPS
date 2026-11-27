@@ -60,6 +60,8 @@ def _model(module):
 def sidecar_limit(name):
     """Resolve only explicit formats; also fail early if a producer is absent."""
     portable_name(name)
+    if name.startswith('state/transcription/'):
+        return _model('transcription_backup').limit(name)
     if name == 'reading-state.json':
         return READING_BYTES
     if name == 'keybindings.json':
@@ -256,7 +258,8 @@ def normalize_manifest(manifest):
                 or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
             raise RestoreError('invalid sidecar manifest entry')
         maximum = sidecar_limit(entry['filename'])
-        if not 0 < entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
+        minimum = 0 if entry['filename'].startswith('state/transcription/') else 1
+        if not minimum <= entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
         names.add(entry['filename'].casefold())
         path = PurePosixPath(entry['filename'])
@@ -304,6 +307,8 @@ def read_regular(path, maximum):
 
 
 def _ignored(name):
+    if name.startswith('state/transcription/'):
+        return _model('transcription_backup').ignored(name)
     path = PurePosixPath(name)
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
@@ -329,7 +334,7 @@ def _capture(root, *, cancelled=lambda: False):
             info = path.lstat()
             if stat.S_ISDIR(info.st_mode):
                 _plain(path, directory=True)
-                if relative != 'state/studio/cache':
+                if relative != 'state/studio/cache' and not (relative.startswith('state/transcription/') and _ignored(relative)):
                     pending.append(relative)
             else:
                 _regular(path)
@@ -360,12 +365,17 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
         total += before[0][name][4]
         if total > min(MAX_BYTES, max_bytes):
             raise RestoreError('sidecar snapshot byte limit')
+        if name.startswith('state/transcription/'):
+            entries.append(_model('transcription_backup').copy_entry(root, stage, name, cancelled=cancelled))
+            continue
         raw = read_regular(root / name, sidecar_limit(name))
         validate_sidecar(db, name, raw)
         _write(stage, name, raw)
         entries.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
     if _capture(root, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
+    if any(entry['filename'].startswith('state/transcription/') for entry in entries):
+        _model('transcription_backup').validate_snapshot(db, stage, entries, cancelled=cancelled)
     _check_cancelled(cancelled)
     return entries
 
@@ -397,11 +407,16 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
+        if name.startswith('state/transcription/'):
+            _model('transcription_backup').copy_entry(source, stage, name, expected=entry, cancelled=cancelled)
+            continue
         raw = read_regular(source / name, sidecar_limit(name))
         if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
             raise RestoreError('sidecar digest or size mismatch: ' + name)
         validate_sidecar(db, name, raw)
         _write(stage, name, raw)
+    if any(entry['filename'].startswith('state/transcription/') for entry in inventory.entries):
+        _model('transcription_backup').validate_snapshot(db, stage, inventory.entries, cancelled=cancelled)
     _check_cancelled(cancelled)
 
 
