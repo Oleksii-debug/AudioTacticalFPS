@@ -156,8 +156,8 @@ def test_cancel_after_copy_verification_removes_only_the_new_copy(source,monkeyp
     app,workspace,_,_,imported,hit,raw = source
     cancelled = Event()
     check = source_file._view_matches
-    def cancel_after_check(*args):
-        result = check(*args)
+    def cancel_after_check(*args, **options):
+        result = check(*args, **options)
         cancelled.set()
         return result
     monkeypatch.setattr(source_file,'_view_matches',cancel_after_check)
@@ -173,8 +173,8 @@ def test_cancellation_is_rechecked_at_the_native_launch_boundary(source,monkeypa
     selected = prepare_source_file(app,workspace,hit.ref,hit.revision)
     cancelled = Event()
     check = source_file._view_matches
-    def cancel_after_check(*args):
-        result = check(*args)
+    def cancel_after_check(*args, **options):
+        result = check(*args, **options)
         cancelled.set()
         return result
     monkeypatch.setattr(source_file,'_view_matches',cancel_after_check)
@@ -248,3 +248,51 @@ def test_launcher_failure_is_readable_and_keeps_source_unchanged(source):
         launch_source_file(app, selected, lambda path: False)
     assert app.assets.resolve(imported['asset']).read_bytes() == raw
     assert app.copy(workspace, hit.ref, hit.revision, 'quote') == 'railway'
+
+
+def test_cancel_cleanup_preserves_a_real_replacement_of_its_created_copy(source, monkeypatch):
+    from carr_library.reader import source_file
+    app, workspace, _, _, imported, hit, raw = source
+    cancelled = Event()
+    check = source_file._view_matches
+    replacement_bytes = b'Independent editor replacement; do not remove.'
+    changed = []
+
+    def replace_after_verification(directory, path, original, **options):
+        result = check(directory, path, original, **options)
+        assert result
+        replacement = directory / 'editor-replacement.txt'
+        replacement.write_bytes(replacement_bytes)
+        os.replace(replacement, path)
+        changed.append(path)
+        cancelled.set()
+        return result
+
+    monkeypatch.setattr(source_file, '_view_matches', replace_after_verification)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        prepare_source_file(app, workspace, hit.ref, hit.revision, cancelled=cancelled.is_set)
+    assert len(changed) == 1 and changed[0].read_bytes() == replacement_bytes
+    assert tuple((app.root / 'source-views').iterdir()) == tuple(changed)
+    assert app.assets.resolve(imported['asset']).read_bytes() == raw
+
+
+def test_exclusive_copy_creation_preserves_a_concurrent_name_collision(source, monkeypatch):
+    from pathlib import Path
+    app, workspace, _, _, imported, hit, raw = source
+    destination = app.root / 'source-views' / (imported['asset'] + '.txt')
+    real_open = Path.open
+    replacement_bytes = b'Already owned by another viewing operation.'
+    observed = []
+
+    def collide(path, mode='r', *args, **kwargs):
+        if path == destination and mode == 'xb':
+            with real_open(path, 'xb') as stream:
+                stream.write(replacement_bytes)
+            observed.append(path)
+        return real_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', collide)
+    with pytest.raises(FileExistsError):
+        prepare_source_file(app, workspace, hit.ref, hit.revision)
+    assert observed == [destination] and destination.read_bytes() == replacement_bytes
+    assert app.assets.resolve(imported['asset']).read_bytes() == raw
