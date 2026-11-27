@@ -249,6 +249,7 @@ jobs:
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
             'tests/extract/test_ocr_model_catalog.py',
+            'tests/extract/test_ocr_languages.py',
             'tests/storage/test_library_backup.py',
             'tests/storage/test_library_backup_reading_state.py',
             'tests/catalog/test_metadata_backup_roundtrip.py',
@@ -524,7 +525,8 @@ jobs:
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
-        timeout-minutes: 20
+        # Includes both native library delivery and full-audio component acceptance.
+        timeout-minutes: 30
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'

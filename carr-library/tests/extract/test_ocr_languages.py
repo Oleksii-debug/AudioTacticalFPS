@@ -30,6 +30,8 @@ def test_configuration_rejects_paths_controls_options_and_empty_selections(selec
 
 @pytest.mark.parametrize('selection', ['script/Latin', 'eng+script/Cyrillic', 'fra', 'eng+eng'])
 def test_script_support_does_not_expand_existing_pinned_policy(selection):
-    with pytest.raises(ValueError, match='unsupported pinned OCR language'):
+    expected = ('duplicate or oversized language selection' if selection == 'eng+eng'
+                else 'unsupported pinned OCR language')
+    with pytest.raises(ValueError, match=expected):
         Config(languages=selection, model_policy=POLICY)
     assert Config(languages='eng+ukr+slk', model_policy=POLICY).model_policy == POLICY
