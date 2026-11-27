@@ -182,8 +182,9 @@ def test_changed_retained_pcm_is_refused_before_native_processing(tmp_path, ffmp
     _, service, batch, _, _, _, review = reviewed_book(tmp_path, ffmpeg)
     root = root_for(service, batch, review)
     path = root / 'source.wav'
+    data_offset = wav_info(path).data_offset
     with path.open('r+b') as stream:
-        stream.seek(wav_info(path).data_offset)
+        stream.seek(data_offset)
         stream.write(b'\x01\x02')
     monkeypatch.setattr(media, 'decode', lambda *a, **k: pytest.fail('Changed accepted PCM reached native work.'))
     with pytest.raises(ValueError):
