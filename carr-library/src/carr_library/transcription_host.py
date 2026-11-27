@@ -90,6 +90,21 @@ def report_progress(task, done, total, phase):
                     if snapshot.total not in (None, total) else ''))
 
 
+def fail_progress(task, error):
+    """Close an unstarted/failed task without changing an accepted terminal event."""
+    if task is None:
+        return
+    try:
+        if task.event.terminal:
+            return
+        if isinstance(error, (InterruptedError, AudioCancelled, KeyboardInterrupt)):
+            task.cancel('The transcription operation was stopped.')
+        else:
+            task.fail('The transcription operation did not complete.')
+    except Exception:
+        pass  # Reporting never replaces the original service/submission error.
+
+
 def observe_operation(task, operation):
     """Bind the host reporter without letting an observer reverse saved output."""
     from .progress import finish_result
@@ -97,13 +112,7 @@ def observe_operation(task, operation):
         with task.bind():
             result = operation()
     except BaseException as exc:
-        try:
-            if isinstance(exc, (InterruptedError, AudioCancelled, KeyboardInterrupt)):
-                task.cancel('The transcription operation was stopped.')
-            else:
-                task.fail('The transcription operation did not complete.')
-        except Exception:
-            pass  # The original service error remains authoritative.
+        fail_progress(task, exc)
         raise
     try:
         finish_result(task, result)

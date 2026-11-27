@@ -218,3 +218,126 @@ def test_submit_holds_engine_lock_before_creating_a_workspace_namespace(prepared
             service.submit([original])
     assert not service.jobs_root.exists()
     assert original.exists()
+
+
+@pytest.mark.parametrize('manager_installed', [False, True], ids=['before-keyboard', 'after-keyboard'])
+def test_transcription_menu_preserves_semantic_shortcut_and_installs_once(tmp_path, monkeypatch, manager_installed):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from carr_library.keyboard_preferences import KeymapStore
+    from carr_library.ui import keyboard_settings, transcription_dialog
+    from carr_library.ui.builtin_keyboard_commands import builtin_commands
+    from carr_library.ui.command_registry import CommandRegistry, CommandSpec
+    # Reuse the existing explicit native-menu boundaries; no simulated OS dispatch.
+    path = Path(__file__).parents[1] / 'ui' / 'test_keyboard_manager.py'
+    spec = importlib.util.spec_from_file_location('asr_keyboard_boundaries', path)
+    boundaries = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(boundaries)
+    frame = boundaries.Frame()
+    file_menu = boundaries.Menu()
+    frame.menu = boundaries.DynamicMenuBar([
+        ('&Library', boundaries.Menu(frame.items), True), ('&File', file_menu, True)])
+    frame.menu_bar = frame.menu
+    frame.library = SimpleNamespace(root=tmp_path)
+    frame.Bind = Mock()
+    fake_wx = SimpleNamespace(Menu=boundaries.Menu, ID_ANY=-1, EVT_MENU=object(),
+                              CallAfter=lambda callback, *args: callback(*args))
+    monkeypatch.setitem(sys.modules, 'wx', fake_wx)
+    monkeypatch.setattr(keyboard_settings, 'accelerator_tuple',
+                        lambda key, identifier: (0, 0, identifier))
+    command = CommandSpec('transcription.local', 'Transcription: local audio and video', 'main')
+    store = KeymapStore(tmp_path / 'keyboard-shortcuts.json')
+    expected = {'transcription.local': 'Ctrl+Alt+Shift+F8'}
+    store.save(expected, CommandRegistry((*builtin_commands(), command)))
+    original = store.path.read_bytes()
+    if manager_installed:
+        keyboard_settings.install_keyboard_settings(frame)
+    opened = Mock()
+    monkeypatch.setattr(transcription_dialog, 'show_transcription', opened)
+    actions = transcription_dialog.install_transcription_actions(frame)
+    assert transcription_dialog.install_transcription_actions(frame) is actions
+    manager = keyboard_settings.install_keyboard_settings(frame)
+    assert len(file_menu.items) == 1
+    assert manager.registry.get('transcription.local') == command
+    assert command.default_shortcut == ''
+    assert manager.shortcut('transcription.local') == expected['transcription.local']
+    assert manager.available('transcription.local')
+    assert store.path.read_bytes() == original
+    assert not getattr(frame, '_pending_keyboard_commands', [])
+    opened.assert_not_called()
+    actions.open()
+    opened.assert_called_once_with(frame)
+
+
+def _transcription_native_callbacks(frame, controls, cancel, report):
+    """Execute the installed dialog's real closures with explicit widget boundaries."""
+    import ast
+    from carr_library.ui import transcription_dialog
+    path = Path(transcription_dialog.__file__)
+    tree = ast.parse(path.read_text(encoding='utf-8'))
+    show = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                and node.name == 'show_transcription')
+    begin = next(node for node in show.body if isinstance(node, ast.FunctionDef)
+                 and node.name == 'begin')
+    factory = ast.parse("""
+def callbacks(frame, controls, cancel, report):
+    alive, busy = True, False
+    def can_replace():
+        return True
+    return begin, lambda: busy
+""").body[0]
+    factory.body.insert(-1, begin)
+    namespace = {'__name__': 'carr_library.ui._transcription_callback_probe',
+                 '__package__': 'carr_library.ui'}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
+                 str(path), 'exec'), namespace)
+    return namespace['callbacks'](frame, controls, cancel, report)
+
+
+@pytest.mark.parametrize('failure_mode', ['failed-callback', 'raised'])
+def test_native_submission_failure_closes_progress_and_preserves_error(failure_mode):
+    from threading import Event
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    error = RuntimeError('Synthetic executor submission failure.')
+    operation, completed, report, controls = Mock(), Mock(), Mock(), Mock()
+    def run_job(label, task, done, failed):
+        if failure_mode == 'raised':
+            raise error
+        failed(error)
+        return None  # Exact current DesktopFrame contract, not False.
+    frame = SimpleNamespace(working=False, _closing=False, run_job=run_job)
+    begin, is_busy = _transcription_native_callbacks(frame, controls, Event(), report)
+    assert begin('Transcription', operation, completed) is False
+    assert is_busy() is False
+    event, = frame.progress_hub.snapshot()
+    assert event.state == 'failed' and event.terminal
+    report.assert_called_once_with(error)
+    operation.assert_not_called()
+    completed.assert_not_called()
+
+
+def test_late_native_failed_callback_preserves_verified_actual_result(prepared):
+    from threading import Event
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from carr_library.progress import current_progress
+    from carr_library.transcription_host import require_completed
+    service, original = prepared[2:4]
+    identity = service.submit([original])
+    error = RuntimeError('Synthetic detached UI callback after committed output.')
+    completed, report = Mock(), Mock()
+    def run_job(label, operation, done, failed):
+        result = operation()
+        done(result)
+        failed(error)
+        return None
+    frame = SimpleNamespace(working=False, _closing=False, run_job=run_job)
+    begin, is_busy = _transcription_native_callbacks(frame, Mock(), Event(), report)
+    begin('Transcription', lambda: require_completed(service.run(identity, timeout=30)), completed)
+    assert is_busy() is False and current_progress() is None
+    event, = frame.progress_hub.snapshot()
+    assert event.state == 'complete' and event.verified
+    assert service.verify(identity)['status'] == 'completed'
+    completed.assert_called_once_with(service.get(identity))
+    report.assert_called_once_with(error)

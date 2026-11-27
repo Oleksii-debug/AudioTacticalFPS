@@ -4,7 +4,7 @@ This workspace connects the owner's existing local Whisper worker to the current
 
 ## Native workflow
 
-Open a library, then **Library → Transcription: local audio and video...**.
+Open a library, then **File → Transcription: local audio and video...**.
 
 1. Choose **Підключити Whisper** and select the reviewed worker's Python interpreter, its repaired worker.py, and the folder containing already installed local models. Model/runtime files remain separate from the backed-up research library.
 2. Enter a title, model name, language code (or auto), CPU/CUDA profile, and whether to request per-word timestamps or mixed-language recognition.

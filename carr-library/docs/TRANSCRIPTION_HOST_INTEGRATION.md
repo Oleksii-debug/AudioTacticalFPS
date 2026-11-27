@@ -62,10 +62,13 @@ tests/transcription/test_supplied_worker_bridge.py
 tests/transcription/test_pr99_host.py
 ```
 
-Expected collection is **38 bridge cases and 21 host cases**, with no skips.
+Expected collection is **38 bridge cases and 26 host cases**, with no skips.
 These totals retain the previous 36/14 cases and add cancellation during
 completed-result verification, concurrent export/JSON publication, current-host
-progress context and failure behavior, and engine-lock namespace serialization.
+progress context and failure behavior, engine-lock namespace serialization,
+semantic command registration before/after keyboard setup, and failed submission
+or late-callback handling. Existing Windows stop/partial assertions retain
+bounded synthetic-child diagnostics; unobserved causes are not inferred.
 The host's separate typed-backup regression suite must also run:
 
 ```

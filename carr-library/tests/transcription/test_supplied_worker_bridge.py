@@ -26,6 +26,20 @@ SYNTHETIC_WORKER = r'''
 import hashlib, json, os, pathlib, socket, subprocess, sys, time, uuid
 MODE = __MODE__
 job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
+def unexpected_error(kind, value, trace):
+    try:
+        while trace is not None and trace.tb_next is not None:
+            trace = trace.tb_next
+        detail = {'type': kind.__name__, 'errno': getattr(value, 'errno', None),
+                  'winerror': getattr(value, 'winerror', None),
+                  'function': trace.tb_frame.f_code.co_name if trace else None,
+                  'line': trace.tb_lineno if trace else None,
+                  'mode': MODE}
+        (job / 'synthetic-worker-error.json').write_text(json.dumps(detail), encoding='utf-8')
+    except Exception:
+        pass
+    sys.__excepthook__(kind, value, trace)
+sys.excepthook = unexpected_error
 cfg = json.loads((job / 'job_config.json').read_text(encoding='utf-8'))
 options = cfg['settings']
 sources = sorted(pathlib.Path(cfg['folders'][0]).iterdir())
@@ -376,6 +390,22 @@ def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
     assert service.verify(identity)['status'] == 'completed'
 
 
+def _protocol_diagnostic(path):
+    """Bounded fields from this synthetic job only; never dump transcript bytes."""
+    result = {}
+    for name in ('job_status.json', 'synthetic-worker-error.json'):
+        try:
+            value = read_json(path / name)
+            result[name] = {key: value.get(key) for key in (
+                'state', 'result_state', 'done', 'total', 'failed', 'type', 'errno',
+                'winerror', 'function', 'line', 'mode') if key in value}
+            if isinstance(value.get('receipts'), list):
+                result[name]['receipt_count'] = len(value['receipts'])
+        except (OSError, ValueError, TypeError) as error:
+            result[name] = type(error).__name__
+    return result
+
+
 def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepared, tmp_path, monkeypatch):
     _, _, service, original, configure = prepared
     configure('cancel-after-first')
@@ -383,8 +413,20 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
     second.write_bytes(b'Another synthetic input.')
     identity = service.submit([original, second])
     path = service._path(identity)
+    from carr_library import transcription
+    process_errors = []
+    runner = transcription.run_process
+    def diagnostic_runner(*args, **kwargs):
+        try:
+            return runner(*args, **kwargs)
+        except Exception as error:
+            process_errors.append((type(error).__name__, str(error)[:300],
+                                   getattr(error, 'errno', None), getattr(error, 'winerror', None)))
+            raise
+    monkeypatch.setattr(transcription, 'run_process', diagnostic_runner)
     def must_not_rehash(*args, **kwargs):
-        raise AssertionError('Stop must defer verification until explicit resume.')
+        raise AssertionError('Stop must defer verification until explicit resume: ' +
+                             repr((process_errors, _protocol_diagnostic(path))))
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
         status = path / 'job_status.json'
@@ -536,7 +578,8 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
         events.append(tracker.update(completed=completed, total=total, phase=phase))
 
     partial = service.run(identity, timeout=30, progress=progress)
-    assert partial['status'] == 'partial' and partial['done'] == 1
+    assert partial['status'] == 'partial' and partial['done'] == 1, (
+        partial.get('last_error'), _protocol_diagnostic(service._path(identity)))
     with pytest.raises(RuntimeError):
         require_completed(partial)
     assert events and all(event.percent < 100 for event in events)

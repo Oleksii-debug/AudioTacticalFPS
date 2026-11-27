@@ -136,6 +136,7 @@ def show_transcription(frame):
         if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
             report('Спочатку завершіть поточну операцію програми.')
             return
+        task = None
         busy = True
         cancel.clear()
         controls()
@@ -150,6 +151,8 @@ def show_transcription(frame):
                     report(exc)
         def failed(error):
             nonlocal busy
+            from ..transcription_host import fail_progress
+            fail_progress(task, error)
             busy = False
             controls()
             report(error)
@@ -159,10 +162,19 @@ def show_transcription(frame):
         if hub is None:
             frame.progress_hub = hub = ProgressHub()
         task = hub.start(label, unit='files')
-        if frame.run_job(label, lambda: observe_operation(task, operation),
-                         done=done, failed=failed) is False:
-            busy = False
-            controls()
+        try:
+            accepted = frame.run_job(label, lambda: observe_operation(task, operation),
+                                     done=done, failed=failed)
+        except Exception as error:
+            failed(error)
+            return False
+        if accepted is False:
+            if busy:
+                failed(RuntimeError('The transcription operation did not start.'))
+            return False
+        # This host returns None on both accepted work and a synchronous submit
+        # failure. The actual callback owns busy/terminal state.
+        return busy
     def cancelled():
         return cancel.is_set() or frame.cancel_event.is_set()
     def configure(event):
@@ -317,13 +329,33 @@ def show_transcription(frame):
         dialog.Destroy()
 
 
-def install_transcription_actions(frame):
-    import wx
-    menu = frame.menu_bar.GetMenu(0)
-    item = menu.Append(wx.ID_ANY, 'Transcription: local audio and video...')
-    def open_dialog(event):
+class TranscriptionActions:
+    def __init__(self, frame):
+        self.frame = frame
+
+    def open(self, event=None):
         try:
-            show_transcription(frame)
+            show_transcription(self.frame)
         except (ValueError, OSError, RuntimeError) as exc:
-            frame.report(str(exc))
-    frame.Bind(wx.EVT_MENU, open_dialog, item)
+            self.frame.report(str(exc))
+
+
+def install_transcription_actions(frame):
+    """Register the same semantic command before or after keyboard setup."""
+    import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    existing = getattr(frame, 'transcription_actions', None)
+    if existing is not None:
+        return existing
+    menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
+                 if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'file'), None)
+    if menu is None:
+        raise ValueError('Install the shared File menu before transcription actions.')
+    actions = TranscriptionActions(frame)
+    item = menu.Append(wx.ID_ANY, 'Transcription: local audio and video...')
+    frame.Bind(wx.EVT_MENU, actions.open, item)
+    register_menu_command(frame,
+        CommandSpec('transcription.local', 'Transcription: local audio and video', 'main'), item)
+    frame.transcription_actions = actions
+    return actions
