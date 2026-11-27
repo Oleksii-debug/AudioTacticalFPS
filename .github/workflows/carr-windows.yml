@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/academic-search-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/academic-search-20261126, carr/fix-windows-review-fixtures-bc067-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -90,6 +90,20 @@ jobs:
         run: |
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require locale-independent backup and real process cancellation regressions
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/packaging/test_ci_check.py 2>&1 | Tee-Object 'ci-results/runner-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $previousUtf8 = $env:PYTHONUTF8
+          try {
+            $env:PYTHONUTF8 = '0'
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/storage/test_v3_state_backup.py tests/e2e/test_pdf_review_cancellation.py 2>&1 | Tee-Object 'ci-results/windows-locale-cancellation-regressions.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PYTHONUTF8 = $previousUtf8
+          }
 
       - name: Check the installed offline OCR catalogue and console entrypoint
         timeout-minutes: 2

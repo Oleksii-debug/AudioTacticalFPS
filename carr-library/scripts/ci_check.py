@@ -137,7 +137,8 @@ def run_suite(suite: str) -> bool:
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+        print(f'FAIL: required suite did not produce a valid report: {suite}: '
+              f'{type(exc).__name__}: {exc}', flush=True)
         return False
 
 
