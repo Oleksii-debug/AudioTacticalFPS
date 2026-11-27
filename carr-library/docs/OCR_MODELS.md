@@ -76,11 +76,13 @@ checksum is a publisher signature.
 ## Install and activate
 
 Preparation does not activate or modify the application's sealed OCR runtime.
-The current native language manager discovers and selects models already
-installed in the verified portable runtime or standalone Tesseract installation.
-It does not yet install a prepared additional-language pack. Pack activation
-must preserve the complete portable-runtime integrity inventory; adding a model
-directly to that sealed directory is not a supported installation method.
+Use **Library > OCR language models: Fast and Best** to install selected model
+files from a local source folder into the separate managed model store. The
+manager verifies each file against its pinned upstream family and records its
+SHA256 identity before activating it. See [OCR_MODEL_MANAGER.md](OCR_MODEL_MANAGER.md)
+for the native and command-line installation and profile-selection workflow.
+Managed packs preserve the complete portable-runtime integrity inventory;
+adding a model directly to that sealed directory is not supported.
 A standalone Tesseract installation can use a prepared directory through its explicit
 `--tessdata-dir` option. Choose the actual languages/scripts present on the page;
 installing every model is not a reason to run all of them in one OCR pass.

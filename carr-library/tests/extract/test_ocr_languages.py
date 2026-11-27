@@ -12,6 +12,7 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.extract import ocr_languages as models, ocr_runtime
+from carr_library.extract.ocr_languages import model_ids
 from carr_library.extract.page_ocr import Config
 from carr_library.extract.pinned_tessdata import POLICY
 
@@ -101,7 +102,7 @@ def test_script_selection_does_not_bypass_pinned_profile_or_installed_inventory(
     'List of available languages in "x" (2):\neng\neng',
     'List of available languages in "x" (1):\n../eng',
     'List of available languages in "x" (1):\neng --psm 1',
-    'x' * (models.MAX_REPORT_BYTES + 1)])
+    pytest.param('x' * (models.MAX_REPORT_BYTES + 1), id='oversized-report')])
 def test_invalid_native_inventory_is_not_silently_filtered_into_a_valid_choice(text):
     with pytest.raises(ValueError):
         models.parse_language_report(text)
@@ -135,6 +136,36 @@ def test_capture_uses_bound_native_arguments_and_file_backed_output(monkeypatch)
     native = SimpleNamespace(executable='selected local engine', root='/bound/runtime',
         command=lambda args: [args[0], '--tessdata-dir', '/bound/models', *args[1:]])
     assert models._capture(native, '--list-langs', lambda: 3) == report('eng')
+
+
+def test_capture_maps_unicode_model_directory_without_unbounding_native_output(tmp_path, monkeypatch):
+    from carr_library.extract import ocr_process
+    directory = tmp_path / 'Вибрані моделі'
+    directory.mkdir()
+    original_cwd = Path.cwd()
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+
+    class Process:
+        def __init__(self, argv, **kwargs):
+            assert argv == ['selected local engine', '--tessdata-dir', '.', '--list-langs']
+            assert kwargs['cwd'] == directory
+            assert kwargs.get('shell', False) is False
+            assert kwargs['stdout'].fileno() >= 0 and kwargs['stderr'].fileno() >= 0
+            kwargs['stdout'].write(b'List of available languages in "./" (1):\neng\n')
+            kwargs['stdout'].flush()
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def wait(self, timeout=None):
+            assert timeout is None or timeout <= .05
+            return 0
+        def poll(self): return 0
+
+    monkeypatch.setattr(subprocess, 'Popen', Process)
+    native = ocr_runtime.OcrRuntime('selected local engine', tessdata=directory)
+    captured = models._capture(native, '--list-langs', lambda: 3)
+    assert f'"{directory}"' in captured
+    assert models.parse_language_report(captured) == ('eng',)
+    assert Path.cwd() == original_cwd
 
 
 @pytest.mark.parametrize('stream', ['stdout', 'stderr'])
@@ -240,7 +271,54 @@ def test_linked_preset_file_is_not_read_or_overwritten(tmp_path):
 
 @pytest.mark.parametrize('raw', [b'{}', b'{"version":true,"presets":[]}',
     b'{"version":1,"version":1,"presets":[]}', b'{"version":1,"presets":[],"path":"outside"}',
-    b'\xff', b'x' * (models.MAX_PRESET_BYTES + 1)])
+    b'\xff', pytest.param(b'x' * (models.MAX_PRESET_BYTES + 1), id='oversized-presets')])
 def test_invalid_or_unbounded_saved_preferences_fail_closed(raw):
     with pytest.raises(ValueError):
+        models.validate_presets_bytes(raw)
+
+
+@pytest.mark.parametrize('selection', [
+    'eng', 'chi_tra_vert', 'Latin', 'script/Latin', 'script/Cyrillic',
+    'script/Japanese_vert', 'eng+script/Latin', 'script/Cyrillic+ukr+eng',
+])
+def test_configuration_preserves_root_and_script_model_identity(selection):
+    assert Config(languages=selection).languages == selection
+    assert model_ids(selection) == tuple(selection.split('+'))
+
+
+@pytest.mark.parametrize('selection', [
+    '', None, 1, True, ['eng'], '+eng', 'eng+', 'eng++ukr',
+    '../eng', './eng', '/eng', 'C:/eng', 'C:\\eng',
+    'script/', 'script/../eng', 'script/./Latin', 'script//Latin',
+    'script/Latin/eng', 'other/Latin', 'Script/Latin', 'script\\Latin',
+    'script/Latin.traineddata', 'eng --psm 1', 'eng\n', 'eng\x00',
+    'eng\u200b', ' script/Latin', 'script/Latin ',
+])
+def test_configuration_rejects_paths_controls_options_and_empty_selections(selection):
+    with pytest.raises(ValueError, match='language selection'):
+        Config(languages=selection)
+
+
+@pytest.mark.parametrize('selection', ['script/Latin', 'eng+script/Cyrillic', 'fra', 'eng+eng'])
+def test_script_support_does_not_expand_existing_pinned_policy(selection):
+    with pytest.raises(ValueError, match='unsupported pinned OCR language'):
+        Config(languages=selection, model_policy=POLICY)
+    assert Config(languages='eng+ukr+slk', model_policy=POLICY).model_policy == POLICY
+
+
+@pytest.mark.parametrize('profile', ['fast', 'best'])
+def test_saved_managed_profile_preserves_model_family_on_reopen(tmp_path, profile):
+    settings = Config(languages='script/Latin+eng', model_profile=profile)
+    models.store_preset(tmp_path, 'Managed profile', settings)
+    row, = models.load_presets(tmp_path)
+    assert row['model_profile'] == profile
+    restored = Config(**{key: value for key, value in row.items() if key != 'name'})
+    assert restored == settings
+
+
+@pytest.mark.parametrize('profile,policy', [('network', 'default'), ('best', POLICY), (None, 'default')])
+def test_managed_preset_cannot_silently_change_or_invalidate_profile(profile, policy):
+    raw = json.dumps({'version': 1, 'presets': [{'name': 'Rejected', 'languages': 'eng',
+        'orientation': False, 'model_profile': profile, 'model_policy': policy}]}).encode()
+    with pytest.raises(models.OcrLanguageError, match='settings'):
         models.validate_presets_bytes(raw)

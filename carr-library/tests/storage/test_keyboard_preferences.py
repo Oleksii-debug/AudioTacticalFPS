@@ -43,7 +43,7 @@ def test_first_run_is_read_only_and_save_roundtrips(tmp_path, registry):
     b'{"version":1,"bindings":{"library.import":"Ctrl+C"}}',
     b'{"version":' + b'9' * 5000 + b',"bindings":{}}',
     b' ' * (MAX_BYTES + 1),
-])
+], ids=[f'corrupt-settings-{index}' for index in range(17)])
 def test_corrupt_settings_are_never_overwritten_by_load(tmp_path, raw):
     path = tmp_path / 'keyboard-shortcuts.json'
     path.write_bytes(raw)

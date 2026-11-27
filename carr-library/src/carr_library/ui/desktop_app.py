@@ -500,6 +500,13 @@ class DesktopFrame(WorkspaceFrame):
         if getattr(library,'semantic_notice',None):
             self.report(library.semantic_notice)
 
+    def ocr_language_models(self, event):
+        if self.working:
+            self.report('Wait for the current operation or cancel it before changing OCR models.')
+            return
+        from .ocr_model_manager import show_ocr_model_manager
+        show_ocr_model_manager(self)
+
     def _menus(self):
         self.menu_bar = wx.MenuBar()
         menus = [('&Library', [('New library\tCtrl+N', self.new_library),
@@ -508,6 +515,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Restore archived library', self.unarchive_library),
             ('Import books\tCtrl+I', self.import_books),
             ('Import Center: files, folders and queues', self.import_center),
+            ('OCR language models: Fast and Best...', self.ocr_language_models),
             ('Resume interrupted import',self.resume_import),
             ('Review pending imported page',self.review_pending_import),
             ('Add original text\tCtrl+Shift+N', self.add_text),
@@ -1085,7 +1093,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete library and project backup')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1096,8 +1104,12 @@ class DesktopFrame(WorkspaceFrame):
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'All completed libraries, original files, saved evidence, notes, tags, and searches are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'Includes libraries, retained originals, evidence, notes, reading and editor state, '
+                'saved audio projects and accepted outputs, pending import recovery, '
+                'nonsecret provider settings and assistant receipts. '
+                'External files not yet retained, installed models and voices, and OS credentials are excluded. '
+                'Restored providers start in LOCAL_ONLY mode and require reconnection; '
+                'assistant writes require fresh review.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 
@@ -1199,8 +1211,9 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'Full backups include reading positions, bookmarks, editable copies, saved audio projects, and retained pending import recovery.\n'
+            'Installed models and voices, OS credentials, and external source files not yet retained remain outside the backup.\n'
+            'The Reading menu also provides separate reading-position export and import.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

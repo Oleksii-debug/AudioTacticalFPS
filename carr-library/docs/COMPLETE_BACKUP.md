@@ -16,19 +16,44 @@ when they exist:
   and page-text identities.
 - Saved reading/narration copies, edit histories, literal pronunciation rules
   and separate recoverable drafts. Independent scripts remain independent scripts.
-- Customized main-window keyboard shortcuts.
+- Customized main-window and reader keyboard shortcuts and recoverable evidence-note drafts.
 - Named OCR-language selections and their orientation/model-policy settings.
+- Saved audio projects, immutable script revisions, accepted speech/music chunks,
+  chapters and master audio through the existing checked studio backup format.
+- Nonsecret provider settings and usage receipts, plus the local assistant's
+  durable result history.
+- Import requests, batches, review receipts and their consistent SQLite journal,
+  including retained originals that have not yet entered the library catalog.
 
-The copy is taken under the same local writer lock used by these features. A
-concurrent cooperating write cannot change the database or these saved files
-halfway through the snapshot. This does not capture text still only in an open
-control: save it or allow its recovery draft to finish before starting the backup.
+The library database and its retained originals are copied under their local
+writer lock. Import receipts use their existing short request/batch locks;
+a busy receipt causes a visible retry error. Other saved files are checked for
+unchanged identity and bytes while copied. This does not capture text still only
+in an open control: save it or allow its recovery draft to finish before starting
+the backup.
 
 Every included file has an exact byte count and SHA256 in the checked manifest.
-The reader/editor/settings files use manifest version 3; libraries with none of
-these files retain the existing version-2 format. Restore also accepts supported
-version-1 and version-2 backups and validates their exact database schema. Older
-backups contain only the state that existed in their original format.
+The reader/editor/settings files use manifest version 3. Version 4 adds typed
+production and recovery components without changing the version-3 sidecar
+representation. Libraries with neither kind of saved state retain version 2.
+Restore also accepts supported version-1, version-2 and version-3 backups and
+validates their exact database schema. Older backups contain only the state that
+existed in their original format.
+
+The database for each independent component is copied using SQLite's online
+backup API. An uncommitted write is not included. Completed studio chunks remain
+reusable; an active render is restored as interrupted. Stored project paths are
+rebound only where the studio format explicitly defines an owned output. The
+original authored script and external input paths remain unchanged.
+
+Provider restoration retains spending reservations and request hashes, clears
+OS-vault credential references, disables every provider and selects LOCAL_ONLY.
+A reserved request is retained as uncertain, preventing a restore from silently
+authorizing another paid call. Reconnect and review a provider explicitly before
+using it. Restored assistant write receipts require review and a new approved
+plan; restoration itself never runs a tool. Existing result text is preserved as
+history. Library-scoped assistant backups omit independent studio, provider and
+agent state because selecting a library does not authorize those other projects.
 
 ## Restoration and source integrity
 
@@ -53,16 +78,36 @@ the original library and backup remain unchanged.
 ## Boundaries
 
 The backup does not copy arbitrary neighboring files, API credentials, runtime
-model weights, temporary render files or external documents. Pending import
-queues/journals and unpublished retained originals are not included in this
-version; complete those imports before using a backup to move all work to another
-computer. Audio timelines, rendered audio, sync and scheduled/encrypted backups
-remain separate V3 work and are not implied by this reader-state increment.
+model weights, temporary render files or external documents. Pending imports
+whose source was already retained can resume from those exact bytes after the
+external file disappears. A queued item that never retained its source still
+requires the original selected file. Original external paths are history, never
+new restore output destinations.
+
+Import batches retain their original external path syntax. The current queue
+engine requires absolute paths native to the restored operating system; moving
+a batch between incompatible operating systems is rejected before a new data
+folder is published. Moving between folders or computers on Windows retains
+the original path history. An already retained import request can still use its
+verified original bytes; a never-retained source must remain available at its
+explicitly selected path.
+
+OCR model policy and selected languages survive in saved presets/import records.
+Managed model packs themselves remain separately installed, including packs in
+the shared per-user model directory or an explicitly configured external root.
+Restore never scans that external root. Reinstall the exact reviewed packs on a
+new computer; unavailable models remain an explicit engine error. Voice packs,
+semantic models, MusicGen weights and other runtimes follow the same rule.
+Derived semantic cache entries are rebuilt from the restored authorized sources.
+Scheduled, synchronized and encrypted backups are separate capabilities.
 
 Existing bounded backup budgets still apply: 512 MiB database, 10,000 registered
 originals, 8 GiB original bytes; reader state up to 8 MiB; narration copies/drafts
 up to 32 MiB per file and 64 MiB combined; keyboard preferences up to 128 KiB; OCR
-presets up to 64 KiB. These are checked resource budgets, not measurements of
+presets up to 64 KiB. Recovery components add at most 100,000 files, 64 GiB total,
+32 GiB per file, 512 MiB per auxiliary SQLite database and 1,000 audio projects;
+the manifest is bounded to 64 MiB. The existing studio limits also apply.
+These are checked resource budgets, not measurements of
 large-library capacity. Future streaming/scale work must preserve the same source
 and publication guarantees.
 

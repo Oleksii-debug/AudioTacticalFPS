@@ -4,11 +4,12 @@ Backups include all workspaces, saved research, registered original files and
 the optional reading-state sidecar containing bookmarks and resume positions,
 plus saved narration copies and their recoverable drafts.
 Keyboard preferences and named OCR-language selections are included when present.
-Retained files from failed/unpublished imports are deliberately not included.
+Version 4 also includes typed production/recovery components and the exact
+retained originals referenced by pending import receipts and checkpoints.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Version 3 extends that manifest with explicitly named, checksummed sidecars.
-Legacy version 1/2 backups and version 3 backups are accepted only for an exact
+Legacy version 1/2 backups and version 3/4 backups are accepted only for an exact
 supported V3 or V4 database schema. V3 snapshots are restored unchanged; opening the
 restored library performs the normal checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
@@ -32,6 +33,7 @@ from .ingest.writer_guard import _regular_if_present, exclusive_writer
 from .data_paths import guard_data_directory
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
+from . import recovery_backup
 from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
     _decode as _decode_reading_state, _file_identity,
@@ -54,7 +56,7 @@ DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
 MANIFEST = 'manifest.json'
 INCOMPLETE = '.restore-incomplete'
-MAX_MANIFEST = 8 * 1024 * 1024
+MAX_MANIFEST = 64 * 1024 * 1024
 MAX_DATABASE = 512 * 1024 * 1024
 MAX_ASSETS = 10000
 MAX_ASSET_BYTES = 8 * 1024**3
@@ -191,8 +193,10 @@ def _publish_sidecars(stage, destination, sidecars):
         _sync_directory(parent)
 
 
-def _check_backup_namespace(directory, names):
+def _check_backup_namespace(directory, names, *, recovery=False):
     roots = {name.split('/')[0] for name in names}
+    if recovery:
+        roots.add(recovery_backup.DIRECTORY)
     if set(p.name for p in directory.iterdir()) != {DATABASE, ORIGINALS, MANIFEST} | roots:
         raise RestoreError('incomplete backup or unexpected files')
     narration = {name.split('/')[1] for name in names if '/' in name}
@@ -243,8 +247,8 @@ def create_backup(app, destination, *, authorized_workspaces=None):
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
             with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+                included = {row[0] for row in snapshot_storage.db.execute('SELECT id FROM workspace')}
                 if authorized_workspaces is not None:
-                    included = {row[0] for row in snapshot_storage.db.execute('SELECT id FROM workspace')}
                     if not included <= authorized_workspaces:
                         raise RestoreError('Backup snapshot contains a library outside the approved scope.')
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
@@ -252,13 +256,23 @@ def create_backup(app, destination, *, authorized_workspaces=None):
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 sidecars = _snapshot_sidecars(app.root)
                 _validate_sidecars(snapshot_storage.db, sidecars)
+                if authorized_workspaces is not None:
+                    # A typed agent's library selection does not authorize
+                    # unrelated drafts, manual scripts or global preferences.
+                    sidecars = {name: raw for name, raw in sidecars.items()
+                        if name == READING_STATE or (name.startswith(NARRATION_DIRECTORY + '/')
+                            and validate_narration_payload(name, raw).source_location is not None)}
             _stage_sidecars(stage, sidecars)
-            manifest = dict(version=3 if sidecars else 2, kind='carr-library', schema_version=4,
+            recovery = recovery_backup.snapshot(app, stage, included, {entry.digest for entry in entries},
+                include_independent=authorized_workspaces is None)
+            manifest = dict(version=4 if recovery else 3 if sidecars else 2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
-            if sidecars:
+            if sidecars or recovery:
                 manifest['sidecars'] = _sidecar_manifest(sidecars)
+            if recovery:
+                manifest['recovery'] = recovery
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -273,6 +287,8 @@ def create_backup(app, destination, *, authorized_workspaces=None):
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             _publish_sidecars(stage, destination, sidecars)
+            if recovery:
+                recovery_backup.publish(stage, destination, recovery, backup=True)
             _sync_directory(destination / ORIGINALS)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
@@ -296,13 +312,15 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3)):
+            or manifest['version'] not in (1, 2, 3, 4)):
         raise RestoreError('unsupported library manifest')
     fields = {'version','kind','schema_version','database','assets'}
     if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
-    if manifest['version'] == 3:
+    if manifest['version'] >= 3:
         fields.add('sidecars')
+    if manifest['version'] == 4:
+        fields.add('recovery')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
@@ -357,7 +375,13 @@ def _read_manifest(directory, expected_manifest_sha256):
             raise RestoreError('narration backup byte limit')
         if total > MAX_SIDECAR_BYTES:
             raise RestoreError('backup sidecar byte limit')
-    _check_backup_namespace(directory, names)
+    if manifest['version'] == 4:
+        recovery = recovery_backup.validate_manifest(manifest['recovery'])
+        pending = {Path(row['path']).name for row in recovery['files']
+                   if row['path'].startswith('pending-originals/')}
+        if pending & filenames:
+            raise RestoreError('Pending originals duplicate registered library assets.')
+    _check_backup_namespace(directory, names, recovery=manifest['version'] == 4)
     return manifest
 
 
@@ -420,6 +444,10 @@ def restore_backup(source, destination, expected_manifest_sha256):
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+            if manifest['version'] == 4:
+                included = {row[0] for row in storage.db.execute('SELECT id FROM workspace')}
+                recovery_backup.prepare_restore(source / recovery_backup.DIRECTORY,
+                    stage, manifest['recovery'], destination, included, {entry.digest for entry in entries})
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -428,6 +456,8 @@ def restore_backup(source, destination, expected_manifest_sha256):
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         _publish_sidecars(stage, destination, sidecars)
+        if manifest['version'] == 4:
+            recovery_backup.publish(stage, destination, manifest['recovery'], backup=False)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

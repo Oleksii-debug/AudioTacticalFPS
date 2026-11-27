@@ -195,3 +195,23 @@ def test_runtime_change_invalidates_dsp_cache_but_preserves_speech(tmp_path, mon
     result = engine.render(project)
     assert len(mixes) == 3 and calls == ['First.', 'Second.']
     assert result['pipeline'].endswith('b' * 64)
+
+
+def test_completed_crlf_captions_resume_without_normalizing_or_rewriting(tmp_path):
+    calls = []
+    exact = 'Перший рядок.\r\nDruhý riadok.'
+    project = Project('Exact authored line endings', (Role('n', 'center'),),
+        (Scene('one', 'One', (Line('a', 'n', exact),)),), authored_script=exact)
+    engine = director(tmp_path / 'project', calls)
+    first = engine.render(project)
+    captions = Path(first['captions_path'])
+    before = captions.read_bytes()
+    modified = captions.stat().st_mtime_ns
+    assert exact.encode('utf-8') in before
+    again = engine.render(project)
+    assert calls == [exact]
+    assert again['completed_chunks'] == 0
+    assert again['master']['sha256'] == first['master']['sha256']
+    assert captions.read_bytes() == before
+    assert captions.stat().st_mtime_ns == modified
+    assert engine.store.load().authored_script == exact

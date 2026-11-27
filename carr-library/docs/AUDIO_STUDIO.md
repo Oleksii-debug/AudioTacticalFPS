@@ -12,6 +12,7 @@ requirements include additional features; this guide describes this implementati
 | Narrate focused text or its selection | Voice → Narrate selected text; Ctrl+Alt+V |
 | Create narration or dialogue | Audio Studio → New narration or dialogue; Ctrl+Alt+U |
 | Open a saved project | Audio Studio → Open saved audio project |
+| Send a prepared reading copy with source provenance | Reading-copy editor → Save and open Audio Studio |
 | Save the current studio form | Ctrl+S inside the studio |
 | Save and export project JSON | Ctrl+Shift+S inside the studio |
 | Render/resume, pause or cancel | Named native studio buttons |
@@ -20,13 +21,21 @@ requirements include additional features; this guide describes this implementati
 | Convert a selected local audio file | Audio Studio → Convert local audio |
 | Review a create-and-import assistant plan | Tools → Local assistant; Ctrl+Alt+J |
 | Configure optional API profiles | Tools → Optional providers and API keys |
-| Build a Boolean/NEAR search | Search → Build advanced query; Ctrl+Alt+Q |
+| Build a Boolean/NEAR search | Research → Build advanced query; Ctrl+Alt+Q |
 
 The editor, selectors and status are native labelled controls. Status receives
 focus after save/error. Invalid drafts remain in the editor. Closing a changed
 form prompts to save; a failed save does not discard it. Editing is frozen while
 a render uses its saved revision; Pause waits for a recoverable checkpoint.
 Automated native-control tests do not establish actual NVDA spoken behavior.
+
+The reading-copy handoff discovers local voices outside the UI thread, requires
+an explicit voice choice, and creates a separate project with the exact saved
+reading text and source hashes. It preserves already reviewed pronunciation
+edits without automatically applying dictionary rules. The new project opens in
+JSON scenario mode for inspection; it is not rendered until the user chooses
+Render. See [READING_COPIES.md](READING_COPIES.md) for its save and cancellation
+behavior.
 
 ### Narration and dialogue
 
@@ -165,8 +174,10 @@ so an active render can continue independently.
 
 `--without-audio` preserves scripts/history and archives production metadata; audio
 is regenerated after restore. External voices, SoundFonts, source audio assets and
-model installations remain separate. Library and studio backup are distinct
-operations; a single complete backup of all settings/queue sidecars is not claimed.
+model installations remain separate. The Studio command backs up one project;
+**Library > Back up all libraries** also includes saved audio projects and
+accepted outputs alongside retained import recovery and nonsecret settings.
+See [COMPLETE_BACKUP.md](COMPLETE_BACKUP.md) for exact inclusion and restore rules.
 
 ## Local assistant and optional providers
 

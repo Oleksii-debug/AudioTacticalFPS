@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 60
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -34,6 +34,7 @@ jobs:
       PYTHONUNBUFFERED: '1'
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
       ORT_DISABLE_TELEMETRY: '1'
+      OMP_THREAD_LIMIT: '1'
       HF_HUB_OFFLINE: '1'
       HF_HUB_DISABLE_TELEMETRY: '1'
       HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
@@ -64,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -105,6 +106,13 @@ jobs:
           & $ocrModels list --profile best --query ukr | Tee-Object 'ci-results/installed-ocr-catalogue-console.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise the installed native OCR catalogue and model manager
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
       - name: Exercise native academic references and reading controls
         timeout-minutes: 3
         run: |
@@ -143,7 +151,7 @@ jobs:
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run required integrated source workflows
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
@@ -155,6 +163,9 @@ jobs:
             'tests/e2e/test_import_batches.py',
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
+            'tests/ui/test_ocr_model_manager.py',
+            'tests/ui/test_ocr_selection.py',
+            'tests/ui/test_ocr_options.py',
             'tests/e2e/test_epub_import.py',
             'tests/extract/test_epub_ordered.py',
             'tests/reader/test_ebook_reader.py',
@@ -181,6 +192,10 @@ jobs:
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
             'tests/extract/test_ocr_model_catalog.py',
+            'tests/extract/test_ocr_model_cli.py',
+            'tests/extract/test_ocr_model_store.py',
+            'tests/extract/test_managed_ocr.py',
+            'tests/e2e/test_managed_ocr_import.py',
             'tests/storage/test_library_backup.py',
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
@@ -270,12 +285,13 @@ jobs:
             'tests/extract/test_ocr_languages.py',
             'tests/reader/test_narration.py',
             'tests/storage/test_backup_reading_state.py',
+            'tests/storage/test_backup_recovery_components.py',
             'tests/storage/test_backup_source_binding_review.py',
             'tests/storage/test_evidence_drafts.py',
             'tests/storage/test_keyboard_preferences.py',
             'tests/ui/test_narration_editor.py',
+            'tests/ui/test_narration_studio_handoff.py',
             'tests/ui/test_ocr_language_dialog.py',
-            'tests/ui/test_ocr_options.py',
             'tests/ui/test_productivity.py',
             'tests/ui/test_command_registry.py',
             'tests/ui/test_evidence_draft_recovery.py',
@@ -299,6 +315,7 @@ jobs:
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 
       - name: Exercise native Import Center and durable batch workflow
         timeout-minutes: 3
@@ -490,7 +507,7 @@ jobs:
           # Finish test-only acquisition before the offline execution boundary.
           $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
           New-Item -ItemType Directory -Force $testWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
@@ -557,13 +574,13 @@ jobs:
 
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
           # Test dependencies are installed only after production installation passes.
-          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
+          & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, pathlib, sys
+          import ctypes, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
@@ -571,6 +588,10 @@ jobs:
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
+          # Test-only command discovery is scoped to this installed-package child.
+          # Production calls bind the verified runtime and never mutate PATH.
+          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
+          os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
           import carr_library.acquisition.service, carr_library.acquisition.transport
@@ -588,7 +609,13 @@ jobs:
                             'tests/acquisition/test_acquisition_security.py',
                             'tests/acquisition/test_acquisition_workflow.py',
                             'tests/acquisition/test_acquisition_cli.py',
-                            'tests/ui/test_native_acquisition.py']
+                            'tests/ui/test_native_acquisition.py',
+                            'tests/extract/test_ocr_model_catalog.py',
+                            'tests/extract/test_ocr_model_cli.py',
+                            'tests/extract/test_ocr_model_store.py',
+                            'tests/extract/test_managed_ocr.py',
+                            'tests/e2e/test_managed_ocr_import.py',
+                            'tests/extract/test_ocr_languages.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)

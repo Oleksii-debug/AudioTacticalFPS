@@ -65,8 +65,8 @@ def atomic_text(path, text, *, replace=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp = tempfile.mkstemp(prefix='.studio-', suffix='.tmp', dir=path.parent)
     try:
-        with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as stream:
-            stream.write(text)
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(text.encode('utf-8'))
             stream.flush()
             os.fsync(stream.fileno())
         if replace:

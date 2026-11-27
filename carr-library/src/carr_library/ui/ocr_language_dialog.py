@@ -75,6 +75,8 @@ class OcrOptionsActions:
         index = self.profile.GetSelection()
         if index not in (0, 1):
             raise OcrLanguageError('Choose a model profile.')
+        if not self.selected_codes:
+            raise OcrLanguageError('Choose at least one text recognition language or script.')
         config = replace(self.initial, languages='+'.join(self.selected_codes),
                          orientation=self.orientation.GetValue(),
                          model_policy=('default', POLICY)[index])
@@ -118,6 +120,8 @@ class OcrOptionsActions:
             if self.busy or self.catalog is None or not 0 <= index < len(self.preset_items):
                 raise OcrLanguageError('Select a preset first.')
             label, settings, _ = self.preset_items[index]
+            if settings.get('model_profile', 'installed') != 'installed':
+                raise OcrLanguageError('This preset uses managed OCR models. Use the Fast/Best profile selector; installed models were not substituted.')
             self.catalog.validate(settings['languages'], orientation=settings['orientation'],
                                   model_policy=settings['model_policy'])
             self.selected_codes = list(split_languages(settings['languages']))
@@ -224,6 +228,8 @@ class OcrOptionsActions:
 
 def create_ocr_dialog(parent, initial=None, *, preset_root=None):
     """Create native controls; caller owns ShowModal/Destroy and result handling."""
+    if initial is not None and initial.model_profile != 'installed':
+        raise OcrLanguageError('Use the Fast/Best profile selector for managed OCR models; this dialog lists the installed runtime only.')
     import wx
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event

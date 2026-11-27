@@ -160,3 +160,19 @@ def test_invalid_preset_file_is_preserved_but_does_not_disable_manual_model_sele
     assert path.read_bytes() == b'not valid presets'
     dialog.accept()
     assert dialog.result == dialog.initial
+
+
+def test_installed_dialog_never_substitutes_a_managed_preset(dialog):
+    store_preset(dialog.preset_root, 'Best model family', Config(languages='fra', model_profile='best'))
+    dialog._presets()
+    dialog.presets.SetSelection(next(i for i, row in enumerate(dialog.preset_items) if row[2] == 'Best model family'))
+    dialog.apply_preset()
+    assert dialog.selected_codes == ['eng']
+    assert 'managed OCR models' in dialog.status.value
+    assert dialog.initial.model_profile == 'installed'
+
+
+def test_installed_dialog_rejects_managed_initial_choice_before_creating_controls():
+    from carr_library.ui.ocr_language_dialog import create_ocr_dialog
+    with pytest.raises(ValueError, match='Fast/Best profile selector'):
+        create_ocr_dialog(None, Config(model_profile='best'))

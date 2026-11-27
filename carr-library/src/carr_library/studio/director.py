@@ -64,7 +64,7 @@ def _checked_digest(path, check):
 def _write_once(path, text):
     path = Path(path)
     if path.exists():
-        if path.is_symlink() or path.read_text(encoding='utf-8') != text:
+        if path.is_symlink() or path.read_bytes() != text.encode('utf-8'):
             raise FileExistsError(f'Existing project output differs: {path.name}')
     else:
         atomic_text(path, text)

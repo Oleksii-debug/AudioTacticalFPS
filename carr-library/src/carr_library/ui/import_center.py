@@ -181,16 +181,12 @@ class ImportCenterActions:
             finish(error=exc)
 
     def plan(self, paths):
-        from dataclasses import replace
-        from ..extract.page_ocr import Config
         self._bound()
         index = self.collection.GetSelection()
-        if not 0 <= index < len(self.collection_ids) or not isinstance(self.ocr_config, Config):
+        if not 0 <= index < len(self.collection_ids):
             raise ValueError('Choose a destination collection and text recognition languages.')
+        config = self._new_plan_ocr_config()
         collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
-        # Capture a complete immutable choice. Later model-dialog changes affect
-        # new plans only; durable existing plans keep their original settings.
-        config = replace(self.ocr_config)
         recursive = self.recursive.GetValue()
 
         def done(batch):
@@ -202,20 +198,51 @@ class ImportCenterActions:
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
             cancelled=self.frame.cancel_event.is_set), done, planning=True)
 
-    def choose_languages(self, event=None):
-        from .ocr_options import choose_model_config, config_summary
+    def _new_plan_ocr_config(self):
+        from ..extract.page_ocr import Config
+        from .ocr_options import LANGUAGES
+        language = self.languages.GetSelection()
+        if 0 <= language < len(LANGUAGES):
+            return Config(languages=LANGUAGES[language][1])
+        custom = getattr(self, 'custom_ocr_config', None)
+        if language == len(LANGUAGES) and isinstance(custom, Config):
+            return custom
+        raise ValueError('Choose a destination collection and text recognition languages.')
+
+    def choose_ocr_models(self, event=None):
+        """Change only the explicit settings captured by future import plans."""
+        from ..extract.page_ocr import Config
+        from .ocr_options import LANGUAGES
+        from .ocr_selection import choose_model_config
+        if self.busy or self.frame.working:
+            self.report('An operation is already running. Wait or choose Cancel operation.')
+            return
         try:
             self._bound()
-            if self.busy or self.frame.working:
-                raise ValueError('Wait for the current operation before changing recognition models.')
-            config = choose_model_config(self, self.ocr_config, preset_root=self.library.root)
-            if config is None:
+            try:
+                initial = self._new_plan_ocr_config()
+            except ValueError:
+                initial = Config()
+            chosen = choose_model_config(self, initial=initial)
+            if chosen is None:
                 return
+            if not isinstance(chosen, Config):
+                raise ValueError('The OCR model selection did not return valid import settings.')
             self._bound()
-            self.ocr_config = config
-            self.languages.SetValue(config_summary(config))
-            self.report('New plans will use ' + config_summary(config) +
-                        '. Existing saved plans keep their previous settings.')
+            if self.busy or self.frame.working:
+                raise ValueError('An import operation started. Choose model settings when it finishes.')
+            profile = {'installed': 'Installed', 'fast': 'Fast', 'best': 'Best'}[chosen.model_profile]
+            identifiers = chosen.languages.split('+')
+            preview = ', '.join(identifiers[:6])
+            if len(identifiers) > 6:
+                preview += f'; {len(identifiers) - 6} more'
+            label = f'Custom — {profile}: {preview}'
+            self.languages.SetItems([text for text, _ in LANGUAGES] + [label])
+            self.languages.SetSelection(len(LANGUAGES))
+            self.custom_ocr_config = chosen
+            orientation = 'on' if chosen.orientation else 'off'
+            self.report(f'OCR settings for new plans: {profile}; {", ".join(identifiers)}. '
+                        f'Page orientation detection: {orientation}.')
         except Exception as exc:
             self.report(str(exc))
 
@@ -334,8 +361,7 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
-    from ..extract.page_ocr import Config
-    from .ocr_options import config_summary
+    from .ocr_options import LANGUAGES
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
@@ -344,6 +370,7 @@ def show_import_center(frame, workspace):
             self.frame, self.library, self.workspace = frame, frame.library, workspace
             self.busy = self.closed = False
             self.batch, self.summaries = None, ()
+            self.custom_ocr_config = None
             self.mutable = []
             layout = wx.BoxSizer(wx.VERTICAL)
             introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
@@ -358,21 +385,20 @@ def show_import_center(frame, workspace):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
             self.collection = wx.Choice(self, choices=collection_labels)
-            self.collection.SetSelection(0)
-            self.ocr_config = Config()
-            self.languages = wx.TextCtrl(self, value=config_summary(self.ocr_config),
-                                         style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 40))
+            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
+                control.SetSelection(0)
                 options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
-            self.mutable.append(self.collection)
+                self.mutable.append(control)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            models = wx.Button(self, label='Recognition &models...')
-            models.Bind(wx.EVT_BUTTON, self.choose_languages)
-            self.mutable.append(models)
-            layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
+            self.ocr_models_button.SetName('Choose installed or managed OCR models for new plans')
+            self.ocr_models_button.Bind(wx.EVT_BUTTON, self.choose_ocr_models)
+            self.mutable.append(self.ocr_models_button)
+            layout.Add(self.ocr_models_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)

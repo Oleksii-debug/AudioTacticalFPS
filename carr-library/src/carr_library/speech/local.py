@@ -352,9 +352,9 @@ def _entries(*, cancelled=None) -> tuple[_Entry, ...]:
     return tuple(entries)
 
 
-def discover_voices() -> tuple[Voice, ...]:
+def discover_voices(*, cancelled=None) -> tuple[Voice, ...]:
     """Discover installed voices only; absence returns an empty tuple, never a fake voice."""
-    return tuple(entry.voice for entry in _entries())
+    return tuple(entry.voice for entry in _entries(cancelled=cancelled))
 
 
 def _entry(voice_id: str, cancelled=None) -> _Entry:

@@ -1,11 +1,14 @@
 """Native keyboard editor for explicitly separate reading/narration copies.
 
-No speech synthesis or automatic linguistic correction is implied. The testable
-controller owns pending text and confirmed saves; wx is imported only to open
-the dialog. Background autosave never steals keyboard or screen-reader focus.
+The testable controller owns pending text and confirmed saves. An explicit
+handoff opens an independent Audio Studio project; it never starts rendering or
+silently applies a pronunciation dictionary. Background work never steals focus.
 """
-from dataclasses import replace
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, replace
 from hashlib import sha256
+import threading
+from uuid import uuid4
 
 from ..reader.narration import (
     NarrationStore, PronunciationRule, comparison_text, encode_project, export_text,
@@ -13,6 +16,89 @@ from ..reader.narration import (
     revise, save_as, undo,
 )
 from .research_actions import NativeDialogs
+
+
+class LocalVoiceDiscovery:
+    """Cancellable local discovery with all UI callbacks dispatched by the host."""
+    def __init__(self, dispatch, *, discover=None):
+        self.dispatch = dispatch
+        if discover is None:
+            from ..speech import discover_voices
+            discover = discover_voices
+        self.discover = discover
+        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-voices')
+        self.cancelled = threading.Event()
+        self.busy = self.closed = False
+        self.generation = 0
+
+    def start(self, ready, failed):
+        if self.closed or self.busy:
+            raise ValueError('Voice discovery is already running or this reading editor is closed.')
+        self.cancelled = threading.Event()
+        cancelled = self.cancelled
+        self.busy = True
+        self.generation += 1
+        generation = self.generation
+        try:
+            future = self.executor.submit(self.discover, cancelled=cancelled.is_set)
+        except BaseException:
+            self.busy = False
+            raise
+
+        def complete(done):
+            def deliver():
+                if self.closed or generation != self.generation:
+                    return
+                self.busy = False
+                try:
+                    if cancelled.is_set():
+                        raise InterruptedError('Local voice discovery cancelled. No audio project was created.')
+                    voices = tuple(done.result())
+                    if not voices:
+                        raise ValueError('No supported local voice is installed. Install a local voice and try again; no replacement voice was selected.')
+                except Exception as exc:
+                    failed(exc)
+                else:
+                    ready(voices)
+            if not self.closed:
+                self.dispatch(deliver)
+
+        future.add_done_callback(complete)
+
+    def cancel(self):
+        self.cancelled.set()
+
+    def close(self):
+        self.closed = True
+        self.generation += 1
+        self.cancelled.set()
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+
+def _validate_studio_source(root, project):
+    """Authorize the exact historical source; no citation approval is inferred."""
+    location = project.source_location
+    if location is None:
+        return
+    from ..application import LibraryApp
+    library = LibraryApp(root)
+    with library.read(location.workspace) as db:
+        row = db.execute('''SELECT p.raw,p.digest FROM revision r
+            JOIN sealed s ON s.revision=r.id
+            JOIN page p ON p.revision=r.id
+            JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition
+                AND e.asset=r.asset
+            WHERE r.workspace=? AND r.edition=? AND r.id=? AND r.asset=?
+                AND p.digest=?
+                AND ((?='physical_page' AND p.physical=?) OR
+                     (?='logical_segment' AND p.physical IS NULL AND p.ordinal=?))''',
+            (location.workspace, location.edition, location.revision,
+             location.asset_sha256, location.text_sha256, location.kind,
+             location.index, location.kind, location.index)).fetchone()
+        if (row is None or row['raw'] != project.original_text
+                or sha256(row['raw'].encode('utf-8')).hexdigest() != location.text_sha256):
+            raise ValueError('This reading copy no longer matches its exact stored source. Reopen the source before creating audio.')
+        library.assets.resolve(location.asset_sha256)
 
 
 class NarrationController:
@@ -33,6 +119,10 @@ class NarrationController:
     def set_text(self, text):
         self.guard()
         self.pending_text = text
+
+    def capture_text(self, native_value, *, rendered_value, rendered_text):
+        """Keep exact saved line endings when the native display is unchanged."""
+        self.set_text(rendered_text if native_value == rendered_value else native_value)
 
     def autosave(self):
         project = self.candidate()
@@ -83,6 +173,37 @@ class NarrationController:
         export_text(candidate, path, private_root=self.store.root, overwrite=overwrite)
         return 'UTF-8 reading text exported. The project remains separate from its original source.'
 
+    def prepare_audio_project(self, voice_id):
+        """Save the exact reading revision and prepare a new, unrendered studio."""
+        from ..studio import ProjectStore, narration_project
+        candidate = self.candidate()
+        # Validate text and explicit voice before saving or creating a folder.
+        audio = narration_project(candidate.current_text, voice_id, title=candidate.title)
+        _validate_studio_source(self.store.root, candidate)
+        self.guard()
+        self.save()
+        self.guard()
+        project = self.project
+        reference = {
+            'kind': 'reading-copy-derivative',
+            'reading_project_id': project.id,
+            'reading_project_sha256': self.saved_digest,
+            'reading_revision': str(project.revisions[project.cursor].number),
+            'handoff_text_sha256': sha256(project.current_text.encode('utf-8')).hexdigest(),
+            'original_text_sha256': project.original_sha256,
+            'source_status': project.provenance,
+            'quotation_approval': 'none; a reading copy is not quotation evidence',
+            'pronunciation': 'only changes already applied to the reading copy; no automatic replacements',
+        }
+        if project.source_location is not None:
+            reference.update({'source_' + key: str(value)
+                              for key, value in asdict(project.source_location).items()})
+        audio = replace(audio, source_reference=reference, authored_script=project.current_text)
+        self.guard()
+        studio = ProjectStore(self.store.root / 'audio-projects' / uuid4().hex)
+        studio.save(audio)
+        return studio
+
 
 def _dictionary_text(rules):
     # JSON interchange makes newlines, tabs and literal arrows unambiguous.
@@ -110,7 +231,7 @@ def _parse_rules(value):
 
 
 def open_narration_editor(parent, store, project, *, expected_digest=None, draft_digest=None,
-                          guard=lambda: None, dialogs=None, on_ready=None):
+                          guard=lambda: None, dialogs=None, on_ready=None, voice_discovery=None):
     """Open one reading-copy editor; source provenance is always readable.
 
     The caller guards the captured workspace/source, not the current global
@@ -147,8 +268,11 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                           readonly=True, height=70)
     buttons = wx.WrapSizer(wx.HORIZONTAL)
     layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
-    state = {'closed': False, 'refreshing': False, 'last_autosaved': None}
+    state = {'closed': False, 'refreshing': False, 'last_autosaved': None,
+             'studio_setup': False, 'close_after_setup': False,
+             'displayed_text': editor.GetValue(), 'displayed_raw_text': project.current_text}
     timer = wx.Timer(dialog)
+    discovery = LocalVoiceDiscovery(wx.CallAfter, discover=voice_discovery)
 
     def say(message, *, focus=True):
         status.ChangeValue(message)
@@ -160,6 +284,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         state['refreshing'] = True
         try:
             editor.ChangeValue(controller.pending_text)
+            state['displayed_text'] = editor.GetValue()
+            state['displayed_raw_text'] = controller.pending_text
             origin.ChangeValue(controller.project.provenance)
             original.ChangeValue(controller.project.original_text)
             dialog.SetTitle('Reading copy — ' + controller.project.title)
@@ -167,10 +293,13 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             state['refreshing'] = False
 
     def capture():
-        controller.set_text(editor.GetValue())
+        # Windows TextCtrl may show CRLF as LF without a user edit. A native
+        # display convention must not silently become a reading-copy revision.
+        controller.capture_text(editor.GetValue(), rendered_value=state['displayed_text'],
+                                rendered_text=state['displayed_raw_text'])
 
     def run(operation, *, focus=True):
-        if state['closed']:
+        if state['closed'] or state['studio_setup']:
             return
         try:
             capture()
@@ -275,8 +404,94 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         finally:
             picker.Destroy()
 
+    def setup_controls(busy):
+        if state['closed']:
+            return
+        state['studio_setup'] = busy
+        editor.Enable(not busy)
+        for button in native_buttons[:-1]:
+            button.Enable(not busy)
+        native_buttons[-2].Enable(busy and discovery.busy)
+
+    def studio_failed(error):
+        if state['closed']:
+            return
+        setup_controls(False)
+        if state['close_after_setup']:
+            state['close_after_setup'] = False
+            close()
+        else:
+            say(str(error))
+
+    def studio_ready(voices):
+        if state['closed']:
+            return
+        audio_store = None
+        try:
+            controller.guard()
+            native_buttons[-2].Disable()
+            choices = tuple(f'{voice.name}; {voice.language or "language not declared"}; '
+                            f'{voice.engine}; {voice.id}' for voice in voices)
+            selected = dialogs.choose(dialog, 'Choose local narration voice',
+                'Choose the voice for this exact reading copy. The copy will be saved and opened in Audio Studio. '
+                'Rendering starts only when you choose Render there.', choices)
+            if selected is None:
+                say('Audio Studio setup cancelled. No audio project was created.')
+                return
+            if type(selected) is not int or not 0 <= selected < len(voices):
+                raise ValueError('Choose one of the discovered local voices.')
+            controller.guard()
+            capture()
+            audio_store = controller.prepare_audio_project(voices[selected].id)
+            refresh()
+            controller.guard()
+            from .studio_actions import StudioDialog
+            studio = StudioDialog(dialog, voices, store=audio_store)
+            studio.show()
+            if not state['closed']:
+                say('The reading copy is saved. Its separate audio project is available at '
+                    + str(audio_store.root) + '. Original source text is unchanged.')
+        except Exception as exc:
+            message = 'Audio Studio was not opened: ' + str(exc)
+            if audio_store is not None:
+                message += ' The prepared project was kept at ' + str(audio_store.root) + '.'
+            if not state['closed']:
+                say(message)
+        finally:
+            setup_controls(False)
+
+    def open_studio(event=None):
+        if state['closed'] or state['studio_setup']:
+            return
+        try:
+            capture()
+            if not controller.pending_text.strip():
+                raise ValueError('Enter reading text before creating a narration project.')
+            timer.Stop()
+            discovery.start(studio_ready, studio_failed)
+            setup_controls(True)
+            say('Discovering installed local voices. Cancel studio setup stops this step. '
+                'No reading changes or audio project have been saved by this action yet.')
+        except Exception as exc:
+            studio_failed(exc)
+
+    def cancel_studio(event=None):
+        if discovery.busy:
+            discovery.cancel()
+            say('Cancelling local voice discovery. No audio will be rendered.')
+
     def close(event=None):
         if state['closed']:
+            return
+        if state['studio_setup']:
+            if discovery.busy:
+                state['close_after_setup'] = True
+                discovery.cancel()
+                say('Cancelling voice discovery before closing the reading copy.')
+            else:
+                say('Close the voice chooser or Audio Studio to return to this reading copy.')
+            if event is not None and hasattr(event, 'Veto'):
+                event.Veto()
             return
         try:
             capture()
@@ -290,6 +505,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                     return
                 controller.save() if choice == 0 else controller.autosave()
             state['closed'] = True
+            discovery.close()
             timer.Stop()
             dialog.EndModal(wx.ID_OK)
         except Exception as exc:
@@ -303,7 +519,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         event.Skip()
 
     def auto(event):
-        if state['closed']:
+        if state['closed'] or state['studio_setup']:
             return
         try:
             capture()
@@ -325,7 +541,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Normalize s&pacing', normalize), ('&Add pronunciation', add_rule),
         ('Pronunciation &dictionary', dictionary), ('Preview pro&nunciation', pronunciation),
         ('&Find and replace', replace_text), ('Compare &original', compare),
-        ('&Export UTF-8 text', export), ('C&lose', close),
+        ('&Export UTF-8 text', export), ('Save and open Audio &Studio...', open_studio),
+        ('Cancel studio set&up', cancel_studio), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -345,6 +562,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     editor.Bind(wx.EVT_TEXT, edited)
     dialog.SetSizer(layout)
     dialog.SetEscapeId(ids[-1])
+    native_buttons[-2].Disable()
     editor.SetFocus()
     editor.SetInsertionPoint(0)
     try:
@@ -353,11 +571,13 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             controls = dict(editor=editor, original=original, origin=origin, status=status,
                             save=native_buttons[0], save_as=native_buttons[1],
                             normalize=native_buttons[4], pronunciation=native_buttons[7],
-                            compare=native_buttons[9], close=native_buttons[-1])
+                            compare=native_buttons[9], studio=native_buttons[-3],
+                            cancel_studio=native_buttons[-2], close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
     finally:
         state['closed'] = True
+        discovery.close()
         timer.Stop()
         dialog.Destroy()
     return controller.project

@@ -138,10 +138,11 @@ def parse_language_report(report):
 def _capture(runtime, option, remaining):
     # A file-backed capture prevents a malformed native inventory from filling
     # Python's memory. The runtime remains bounded by the shared deadline.
+    from .ocr_process import prepare_ocr_query, normalize_ocr_query_output
     remaining()
-    argv = runtime.command([runtime.executable, option])
+    argv, cwd, report_directory = prepare_ocr_query(runtime, [runtime.executable, option])
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
-        with subprocess.Popen(argv, stdout=output, stderr=errors, cwd=runtime.root,
+        with subprocess.Popen(argv, stdout=output, stderr=errors, cwd=cwd,
                               creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)) as process:
             try:
                 while True:
@@ -165,7 +166,7 @@ def _capture(runtime, option, remaining):
                     process.kill()
                 process.wait()
                 raise
-    return raw.decode('utf-8')
+    return normalize_ocr_query_output(raw, report_directory).decode('utf-8')
 
 
 def discover_languages(*, timeout=10, cancelled=lambda: False):
@@ -240,15 +241,20 @@ def validate_presets_bytes(raw):
         raise OcrLanguageError('The saved OCR preset format is unsupported.')
     names = set()
     for item in data['presets']:
-        if type(item) is not dict or set(item) != {'name', 'languages', 'model_policy', 'orientation'}:
+        required = {'name', 'languages', 'model_policy', 'orientation'}
+        if (type(item) is not dict or not required <= set(item)
+                or set(item) - required - {'model_profile'}):
             raise OcrLanguageError('The saved OCR preset fields are invalid.')
         name = _name(item['name']).casefold()
         if name in names:
             raise OcrLanguageError('The saved OCR presets contain repeated names.')
         names.add(name)
         codes = split_languages(item['languages'])
+        profile = item.get('model_profile', 'installed')
         if (type(item['orientation']) is not bool or item['model_policy'] not in ('default', POLICY)
-                or (item['model_policy'] == POLICY and any(code not in MODELS for code in codes))):
+                or profile not in ('installed', 'fast', 'best')
+                or (item['model_policy'] == POLICY and
+                    (profile == 'best' or any(code not in MODELS for code in codes)))):
             raise OcrLanguageError('The saved OCR preset settings are invalid.')
     return data
 
@@ -279,6 +285,9 @@ def store_preset(root, name, config, *, replace=False):
     _name(name)
     item = {'name': name, 'languages': config.languages,
             'orientation': config.orientation, 'model_policy': config.model_policy}
+    profile = getattr(config, 'model_profile', 'installed')
+    if profile != 'installed':
+        item['model_profile'] = profile
     with exclusive_writer(root) as base:
         presets = list(load_presets(base))
         existing = next((i for i, old in enumerate(presets)
@@ -324,3 +333,22 @@ def _write_presets(root, presets):
                 os.close(directory)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+# Low-level syntax API reused by verified model-store/runtime profiles.
+_MODEL_ID = re.compile(r'(?:script/)?[A-Za-z0-9_]+')
+
+
+def is_model_id(value):
+    """Accept a root model or exactly ``script/<model>`` without path traversal."""
+    return isinstance(value, str) and _MODEL_ID.fullmatch(value) is not None
+
+
+def model_ids(languages):
+    """Validate a plus-separated selection without rewriting model identity."""
+    if not isinstance(languages, str):
+        raise ValueError('invalid language selection')
+    selected = tuple(languages.split('+'))
+    if not all(is_model_id(name) for name in selected):
+        raise ValueError('invalid language selection')
+    return selected
