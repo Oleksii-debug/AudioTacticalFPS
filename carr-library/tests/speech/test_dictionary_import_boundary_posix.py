@@ -15,15 +15,37 @@ from carr_library.ui import pronunciation_dialog as ui
 def test_before_open_substitution_is_bounded_and_cannot_read_foreign_bytes(tmp_path, replacement):
     assert os.name == 'posix', 'Select this POSIX boundary suite only in the Linux gate.'
     source = Path(ui.__file__).resolve()
+    selected_root = source.parents[1]
+    selected_proof = tmp_path / 'selected-package-proof.json'
+    proof_bytes = json.dumps({
+        'source_selection': selected_root == (Path(__file__).parents[2] / 'src' / 'carr_library').resolve(),
+        'files': {path.relative_to(selected_root).as_posix(): sha256(path.read_bytes()).hexdigest()
+                  for path in selected_root.rglob('*.py')},
+    }, sort_keys=True).encode('utf-8')
+    selected_proof.write_bytes(proof_bytes)
     child = r'''
 from hashlib import sha256
 import json, os
 from pathlib import Path
-import sys
+import sys, sysconfig
+import carr_library
 from carr_library.ui import pronunciation_dialog as ui
+expected_module = Path(sys.argv[1]).resolve()
+expected_root = expected_module.parents[1]
+actual_root = Path(carr_library.__file__).resolve().parent
+proof_bytes = Path(sys.argv[5]).read_bytes()
+assert sha256(proof_bytes).hexdigest() == sys.argv[6]
+proof = json.loads(proof_bytes)
+allowed_roots = {expected_root}
+if proof['source_selection'] is True:
+    allowed_roots.add((Path(sysconfig.get_path('purelib')) / 'carr_library').resolve())
+assert actual_root in allowed_roots, (actual_root, expected_root)
 selected_module = Path(ui.__file__).resolve()
-assert str(selected_module) == sys.argv[1]
+assert selected_module == actual_root / 'ui' / expected_module.name
 assert sha256(selected_module.read_bytes()).hexdigest() == sys.argv[2]
+actual_files = {path.relative_to(actual_root).as_posix(): sha256(path.read_bytes()).hexdigest()
+                for path in actual_root.rglob('*.py')}
+assert actual_files == proof['files'], 'Selected child package differs from the parent file/hash inventory.'
 root = Path(sys.argv[3])
 target = root / 'rules.json'
 raw = json.dumps({'schema':'carr.pronunciations.v1','rules':[]}).encode()
@@ -60,8 +82,12 @@ except (ValueError, OSError):
 else:
     raise AssertionError('A substituted dictionary was accepted.')
 '''
+    # Normal child imports may select the interpreter's identical installed copy
+    # when pytest selected checkout src. Installed-parent mode stays exact-root;
+    # bind the complete package bytes before the actual substitution begins.
     process = subprocess.Popen([sys.executable, '-B', '-c', child, str(source),
-                                sha256(source.read_bytes()).hexdigest(), str(tmp_path), replacement],
+                                sha256(source.read_bytes()).hexdigest(), str(tmp_path), replacement,
+                                str(selected_proof), sha256(proof_bytes).hexdigest()],
                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         try:

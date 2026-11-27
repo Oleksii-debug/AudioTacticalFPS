@@ -1,0 +1,191 @@
+name: Finite integration fixes with actual recording and child ownership
+on:
+  push:
+    branches: [carr/integration-fixes-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-integration-fixes-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integration-fixes-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    name: Recording and child import corrections / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        run: python -m pip install ".[test,sync]"
+      - name: Prepare actual Linux test audio runtime
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p ci-integration-fixes
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          ffmpeg -version > ci-integration-fixes/ffmpeg-version.txt
+          ffprobe -version > ci-integration-fixes/ffprobe-version.txt
+          ffplay -version > ci-integration-fixes/ffplay-version.txt
+      - name: Prepare pinned Windows test audio runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-integration-fixes' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-integration-fixes-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-integration-fixes/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Prepare exact source and installed acceptance harness
+        run: |
+          mkdir -p ci-integration-fixes
+          cat > ci-integration-fixes/check.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          
+          mode = sys.argv[1]
+          assert mode in ("source", "installed"), mode
+          assert bool(sys.flags.isolated) == (mode == "installed"), mode
+          assert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."
+          root = Path.cwd().resolve()
+          source = (root / "src" / "carr_library").resolve()
+          installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+          assert source != installed and not installed.is_relative_to(root / "src")
+          selected = source if mode == "source" else installed
+          artifacts = root / "ci-integration-fixes"
+          suites = ["tests/audio/test_recording.py","tests/audio/test_recording_controls.py","tests/audio/test_recording_monitor.py","tests/audio/test_cleanup_ownership.py","tests/conversion/test_calibre_process_ownership.py"]
+          suites += ["tests/audio/test_recording_process_windows.py"] if os.name == "nt" else ["tests/speech/test_dictionary_import_boundary_posix.py","tests/audio/test_playback_navigation_posix.py"]
+          names = ["carr_library.audio.recording","carr_library.audio.recording_monitor","carr_library.audio.output_devices","carr_library.audio.process","carr_library.audio.cleanup","carr_library.audio.windows_job","carr_library.audio.dsp","carr_library.conversion.calibre","carr_library.conversion.office","carr_library.ui.pronunciation_dialog","carr_library.ui.playback_navigation","carr_library.speech.player","carr_library.durable_state"]
+          
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              return result
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          (artifacts / (mode + "-package-inventory.json")).write_text(
+              json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,
+                          "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          class Proof:
+              before = None
+              collected = None
+              expected_failure_reports = None
+          
+              def pytest_sessionstart(self, session):
+                  self.before = origins()
+                  self.expected_failure_reports = []
+          
+              def pytest_collection_finish(self, session):
+                  self.collected = {suite: 0 for suite in suites}
+                  for item in session.items:
+                      selector = item.nodeid.split("::", 1)[0].replace("\\", "/")
+                      assert selector in self.collected, selector
+                      self.collected[selector] += 1
+                  assert all(self.collected.values()), self.collected
+          
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, "wasxfail"):
+                      self.expected_failure_reports.append(report.nodeid)
+          
+          proof = Proof()
+          # Source deliberately keeps pyproject's normal parent selection. Ordinary
+          # child imports must choose their own installed/source origin without repair.
+          options = ["-vv", "--durations=20", "-o", "addopts=", "-o", "xfail_strict=true",
+                     "-o", "faulthandler_timeout=60"]
+          if mode == "installed":
+              options += ["-o", "pythonpath="]
+          report = artifacts / (mode + ".xml")
+          with tempfile.TemporaryDirectory(prefix="carr-integration-fixes-") as temporary:
+              status = pytest.main([*options, "--junitxml", str(report), "--basetemp",
+                                    str(Path(temporary) / "pytest"), *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter("testcase"))
+              assert status == 0 and cases and proof.before is not None, (status, len(cases))
+              assert proof.collected and all(proof.collected.values()), proof.collected
+              assert not proof.expected_failure_reports, proof.expected_failure_reports
+              assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))
+                         for case in cases), "Every selected case must pass without a skip or expected failure."
+              assert origins() == proof.before, "Selected module origin/content changed during acceptance."
+              assert package_inventory(source) == expected, "Checkout Python inventory changed."
+              assert package_inventory(installed) == expected, "Installed Python inventory changed."
+              result = {"status": "PASS", "mode": mode, "cases": len(cases),
+                        "selected_suites": proof.collected, "package_python_files": len(expected),
+                        "package_inventory_sha256": inventory_digest, "origins": proof.before,
+                        "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}
+              (artifacts / (mode + "-identity.json")).write_text(
+                  json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require ordinary source-parent and child-import contexts
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -B -X utf8 ci-integration-fixes/check.py source 2>&1 | tee ci-integration-fixes/source.txt
+      - name: Require isolated installed origins and the same actual cases
+        if: "!cancelled()"
+        run: |
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-integration-fixes/check.py installed 2>&1 | tee ci-integration-fixes/installed.txt
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-integration-fixes
+          git rev-parse HEAD > ci-integration-fixes/commit.txt
+          git rev-parse HEAD^{tree} > ci-integration-fixes/tree.txt
+          python -m pip freeze > ci-integration-fixes/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: integration-fixes-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-integration-fixes
+          if-no-files-found: error
