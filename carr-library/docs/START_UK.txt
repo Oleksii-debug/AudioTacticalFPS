@@ -78,7 +78,7 @@ Escape — закрити або скасувати діалог.
 
 МЕТАДАНІ ЗА DOI АБО ISBN
 
-У меню Academic виберіть DOI/ISBN lookup and open-access sources.
+У меню Academic виберіть DOI and ISBN lookup and open-access sources.
 Для наукової статті виберіть DOI, для книги — ISBN. Введіть ідентифікатор
 і дозвольте саме цей онлайн-запит. DOI можна перевірити через Crossref,
 Europe PMC, OpenAlex або Unpaywall; останній потребує вашої контактної

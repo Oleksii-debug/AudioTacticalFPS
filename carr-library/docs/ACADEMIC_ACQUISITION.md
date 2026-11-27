@@ -1,7 +1,7 @@
 # DOI/ISBN metadata and open-access acquisition
 
 This is the V3-08 metadata workflow in the existing Universal Research Library desktop.
-Open **Academic > DOI/ISBN lookup and open-access sources**. Opening this dialog makes
+Open **Academic > DOI and ISBN lookup and open-access sources**. Opening this dialog makes
 no network request. Bibliographic metadata, downloaded documents and approved
 quotations remain separate.
 

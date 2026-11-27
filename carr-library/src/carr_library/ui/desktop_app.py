@@ -484,7 +484,7 @@ class DesktopFrame(WorkspaceFrame):
                 ('Save a topic search', self.save_query), ('Run a saved topic search', self.run_saved_query),
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
-                ('DOI/ISBN lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
+                ('DOI and ISBN lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
         for label, actions in menus:
