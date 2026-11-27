@@ -1,0 +1,55 @@
+name: Windows transcription status collision diagnostic
+on:
+  push:
+    branches: [carr/transcription-status-diagnostic-20261127-137c]
+    paths: ['carr-library/scripts/windows_status_diagnostic.py', '.github/workflows/carr-transcription-status-diagnostic.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    if: github.ref == 'refs/heads/carr/transcription-status-diagnostic-20261127-137c'
+    runs-on: windows-2022
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact source with the existing pinned Windows dependencies
+        run: |
+          git rev-parse HEAD
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Reproduce actual Windows status overlap and repeat the unchanged case
+        timeout-minutes: 4
+        run: |
+          $python = (Get-Command python).Source
+          $rule = 'CARR-status-diagnostic-' + $env:GITHUB_RUN_ID
+          try {
+            New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $python -Action Block -Profile Any | Out-Null
+            & $python -I -B -X utf8 scripts/windows_status_diagnostic.py
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            Get-NetFirewallRule -DisplayName $rule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+          }
