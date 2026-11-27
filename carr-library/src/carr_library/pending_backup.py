@@ -40,7 +40,8 @@ _ID = re.compile(r'[0-9a-f]{32}\Z')
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
-_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result'}
+_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
+                     'publication_watermark'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -268,6 +269,11 @@ def _request(record, request_id, data_dir, db):
             or record['request_id'] != request_id or not _id(request_id)
             or record['data_dir'] != data_dir or record['state'] not in _REQUEST_STATES):
         raise ValueError('Invalid pending request schema or data-directory binding.')
+    # Old journals omit this field; a new launch clears it before the child
+    # records its guarded SQLite rowid boundary. Restore preserves either form.
+    watermark = record.get('publication_watermark')
+    if watermark is not None and (type(watermark) is not int or not 0 <= watermark < 2 ** 63):
+        raise ValueError('Invalid pending request publication watermark.')
     _source(record['source'])
     _workspace(db, record['workspace'])
     _metadata(record['metadata'], db, record['workspace'])

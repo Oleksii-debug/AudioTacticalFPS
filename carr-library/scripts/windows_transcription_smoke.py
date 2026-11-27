@@ -79,9 +79,15 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 class ProfileAnswer(wx.SingleChoiceDialog):
                     def ShowModal(self):
                         self.SetSelection(index)
+                        accept = self.FindWindow(wx.ID_OK)
+                        assert accept is not None, 'Missing native profile confirmation button.'
+                        wx.CallAfter(click, accept)
+                        result = super().ShowModal()
+                        assert result == wx.ID_OK, 'Native profile choice was not accepted.'
+                        assert self.GetSelection() == index
                         expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
                         assert self.GetStringSelection().startswith(expected)
-                        return wx.ID_OK
+                        return result
                 answers = iter((str(Path(sys.executable).resolve()), str(chosen_worker)))
                 class RuntimeAnswer(FolderAnswer):
                     def __init__(self, *args, **kwargs):
