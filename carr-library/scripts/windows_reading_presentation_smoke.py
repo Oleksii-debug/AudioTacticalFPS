@@ -296,6 +296,8 @@ def _native():
             elif stage[0] == 'appearance_closed':
                 if appearance is not None: return
                 check('appearance close restores reader keyboard focus', wx.Window.FindFocus() is evidence['editor'])
+                advance('appearance_focus_verified')
+            elif stage[0] == 'appearance_focus_verified':
                 key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'reader_closing')
             elif stage[0] == 'reset_open':
                 if appearance is not None: key(appearance.buttons['reset'], wx.WXK_SPACE, 'reset_previewed')

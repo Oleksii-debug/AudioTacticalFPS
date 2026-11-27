@@ -777,5 +777,227 @@ def test_real_diagnostic_failure():
         self.assertIn('Synthetic diagnostic descriptor failure', result.stdout + result.stderr)
 
 
+    def _run_direct_pytest_diagnostic_fixture(self, source, preamble, *, interval='.05'):
+        """Run the public diagnostic factory inside a real isolated pytest child."""
+        import json
+        import xml.etree.ElementTree as ET
+        child = r"""import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import socket
+import sys
+import threading
+import types
+import pytest
+
+script = Path(sys.argv.pop(1))
+script_digest = hashlib.sha256(script.read_bytes()).hexdigest()
+spec = importlib.util.spec_from_file_location('direct_ci_diagnostic_factory', script)
+runner = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(runner)
+network = (socket.socket.connect, socket.socket.connect_ex,
+           socket.create_connection, socket.getaddrinfo)
+path_before = list(sys.path)
+telemetry_loaded = 'onnxruntime' in sys.modules
+actual = runner.pytest_diagnostic_plugins()
+wanted = sys.platform == 'win32' and sys.implementation.name == 'cpython' and sys.version_info[:2] == (3, 11)
+assert len(actual) == int(wanted)
+real_sys = runner.sys
+# Inject only the known platform predicate for this portable regression. The
+# actual process, pytest hooks, synchronous native dumper and timer stay real.
+for platform, implementation, version, expected in (
+        ('linux', 'cpython', (3, 11), 0),
+        ('win32', 'pypy', (3, 11), 0),
+        ('win32', 'cpython', (3, 12), 0),
+        ('win32', 'cpython', (3, 11), 1)):
+    selected = types.SimpleNamespace(**vars(sys))
+    selected.platform = platform
+    selected.implementation = types.SimpleNamespace(name=implementation)
+    selected.version_info = version
+    runner.sys = selected
+    diagnostics = runner.pytest_diagnostic_plugins()
+    assert len(diagnostics) == expected
+runner.sys = real_sys
+assert len(diagnostics) == 1
+assert network == (socket.socket.connect, socket.socket.connect_ex,
+                   socket.create_connection, socket.getaddrinfo)
+assert sys.path == path_before and ('onnxruntime' in sys.modules) == telemetry_loaded
+original_child = runner.PYTEST_CHILD
+try:
+    runner.PYTEST_CHILD += '\nclass GilTimedStackDump: pass\n'
+    try:
+        runner.pytest_diagnostic_plugins()
+    except RuntimeError as error:
+        assert 'definitions changed' in str(error)
+    else:
+        raise AssertionError('Ambiguous canonical diagnostic definitions were accepted')
+finally:
+    runner.PYTEST_CHILD = original_child
+
+class CallerPolicy:
+    def __init__(self):
+        self.calls = []
+    def pytest_runtest_logreport(self, report):
+        if report.when == 'call':
+            self.calls.append((report.nodeid, report.outcome))
+caller_policy = CallerPolicy()
+"""
+        ending = r"""
+status = pytest.main(sys.argv[1:], plugins=[caller_policy, *diagnostics])
+alive = [thread.name for thread in threading.enumerate()
+         if thread.name == 'carr-ci-stack-diagnostic']
+assert not alive, 'A direct pytest diagnostic outlived its test run'
+assert hashlib.sha256(script.read_bytes()).hexdigest() == script_digest
+assert network == (socket.socket.connect, socket.socket.connect_ex,
+                   socket.create_connection, socket.getaddrinfo)
+Path('direct-receipt.json').write_text(json.dumps({
+    'exit': int(status), 'caller_reports': caller_policy.calls,
+    'diagnostic_threads': alive, 'source_sha256': script_digest,
+    'socket_policy_unchanged': True, 'platform_selection_checked': True,
+    'ambiguous_definition_refused': True}), encoding='utf-8')
+raise SystemExit(status)
+"""
+        with tempfile.TemporaryDirectory(prefix='CARR direct diagnostic Ž ') as temporary:
+            root = Path(temporary)
+            target, report = root / 'test_sample.py', root / 'junit.xml'
+            script = root / 'ci_check.py'
+            shutil.copyfile(SCRIPT, script)
+            target.write_text(source, encoding='utf-8')
+            env = dict(os.environ)
+            for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
+                env.pop(key, None)
+            env.update(PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTHONDONTWRITEBYTECODE='1')
+            executable = sys.executable
+            if os.name == 'nt' and sys.prefix != sys.base_prefix:
+                executable = sys._base_executable
+                env.pop('PYTHONEXECUTABLE', None)
+                env['__PYVENV_LAUNCHER__'] = sys.executable
+            result = subprocess.run([executable, '-I', '-B', '-X', 'utf8', '-c',
+                child + '\n' + preamble + '\n' + ending, str(script),
+                '-s', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+                '-o', 'faulthandler_timeout=' + interval,
+                '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', str(report),
+                '--basetemp', str(root / 'pytest'), '--', str(target)],
+                cwd=root, env=env, capture_output=True, text=True, encoding='utf-8', timeout=60)
+            cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+            receipt_path = root / 'direct-receipt.json'
+            receipt = json.loads(receipt_path.read_text(encoding='utf-8')) if receipt_path.exists() else {}
+            return result, cases, receipt
+
+    def test_direct_pytest_factory_reuses_real_gil_dump_without_changing_caller_policy(self):
+        preamble = r"""import ctypes
+import faulthandler
+import time
+inside_test = threading.Event()
+dump_complete = threading.Event()
+gil_seen = []
+real_dump = faulthandler.dump_traceback
+def observed_dump(*args, **kwargs):
+    try:
+        assert inside_test.wait(10), 'The direct pytest body never started'
+        gil_seen.append(ctypes.pythonapi.PyGILState_Check())
+        return real_dump(*args, **kwargs)
+    finally:
+        dump_complete.set()
+def forbidden_timer(*args, **kwargs):
+    raise AssertionError('Direct pytest armed the unsafe native timer')
+faulthandler.dump_traceback = observed_dump
+faulthandler.dump_traceback_later = forbidden_timer
+"""
+        source = r"""import __main__
+import faulthandler
+import socket
+import time
+def churn(depth):
+    values = (1, 2, 3)
+    return churn(depth - 1) if depth else sum(values)
+def test_actual_direct_hook(pytestconfig):
+    __main__.inside_test.set()
+    assert faulthandler.is_enabled()
+    assert pytestconfig.getini('faulthandler_timeout') == 0
+    assert __main__.network == (socket.socket.connect, socket.socket.connect_ex,
+                               socket.create_connection, socket.getaddrinfo)
+    deadline = time.monotonic() + 10
+    while not __main__.dump_complete.is_set():
+        assert time.monotonic() < deadline, 'No real direct diagnostic occurred'
+        churn(80)
+    assert __main__.gil_seen == [1]
+    assert faulthandler.is_enabled()
+"""
+        result, cases, receipt = self._run_direct_pytest_diagnostic_fixture(source, preamble)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(cases), 1)
+        self.assertFalse(any(case.find(tag) is not None for case in cases
+                             for tag in ('failure', 'error', 'skipped')))
+        self.assertIn('Timed stack diagnostic (GIL-owned Python thread):', result.stderr)
+        self.assertIn('test_actual_direct_hook', result.stderr)
+        self.assertTrue(receipt['socket_policy_unchanged'])
+        self.assertTrue(receipt['platform_selection_checked'])
+        self.assertTrue(receipt['ambiguous_definition_refused'])
+        self.assertEqual(receipt['diagnostic_threads'], [])
+        self.assertEqual([row[1] for row in receipt['caller_reports']], ['passed'])
+
+    def test_direct_pytest_factory_settles_timer_before_the_next_test(self):
+        preamble = r"""import faulthandler
+dump_calls = []
+def forbidden_dump(*args, **kwargs):
+    dump_calls.append(True)
+    raise AssertionError('Direct diagnostic ran after its cancelled test')
+def forbidden_timer(*args, **kwargs):
+    raise AssertionError('Direct pytest armed the unsafe native timer')
+faulthandler.dump_traceback = forbidden_dump
+faulthandler.dump_traceback_later = forbidden_timer
+"""
+        source = r"""import __main__
+import faulthandler
+import threading
+import time
+def test_a_direct_timer_cancelled():
+    assert __main__.diagnostics[0].timeout == 30
+    __main__.diagnostics[0].timeout = 0
+def test_b_direct_owner_has_settled():
+    time.sleep(.05)
+    assert __main__.dump_calls == []
+    assert not [thread for thread in threading.enumerate()
+                if thread.name == 'carr-ci-stack-diagnostic']
+    assert faulthandler.is_enabled()
+"""
+        result, cases, receipt = self._run_direct_pytest_diagnostic_fixture(
+            source, preamble, interval='30')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(cases), 2)
+        self.assertFalse(any(case.find(tag) is not None for case in cases
+                             for tag in ('failure', 'error', 'skipped')))
+        self.assertNotIn('Timed stack diagnostic', result.stderr)
+        self.assertEqual(receipt['diagnostic_threads'], [])
+        self.assertEqual([row[1] for row in receipt['caller_reports']], ['passed', 'passed'])
+
+    def test_direct_pytest_diagnostic_failure_preserves_nonzero_exit_after_cleanup(self):
+        preamble = r"""import faulthandler
+dump_complete = threading.Event()
+def failed_dump(*args, **kwargs):
+    dump_complete.set()
+    raise OSError('Synthetic direct diagnostic descriptor failure')
+def forbidden_timer(*args, **kwargs):
+    raise AssertionError('Direct pytest armed the unsafe native timer')
+faulthandler.dump_traceback = failed_dump
+faulthandler.dump_traceback_later = forbidden_timer
+"""
+        source = r"""import __main__
+import faulthandler
+def test_direct_diagnostic_failure():
+    assert faulthandler.is_enabled()
+    assert __main__.dump_complete.wait(10)
+"""
+        result, _, receipt = self._run_direct_pytest_diagnostic_fixture(source, preamble)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('The timed stack diagnostic failed.', result.stdout + result.stderr)
+        self.assertIn('Synthetic direct diagnostic descriptor failure', result.stdout + result.stderr)
+        self.assertNotEqual(receipt['exit'], 0)
+        self.assertEqual(receipt['diagnostic_threads'], [])
+        self.assertTrue(receipt['socket_policy_unchanged'])
+
+
 if __name__ == '__main__':
     unittest.main()

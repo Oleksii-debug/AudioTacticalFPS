@@ -284,7 +284,10 @@ jobs:
             'tests/conversion/test_office_admission.py',
             'tests/ui/test_document_conversion.py',
             'tests/extract/test_document_formats_xml.py',
-            'tests/transcription/test_native_profiles_fixture.py'
+            'tests/transcription/test_native_profiles_fixture.py',
+            'tests/ui/test_native_backup_capacity_driver.py',
+            'tests/ui/test_native_studio_book_choices.py',
+            'tests/ui/test_native_book_publication_driver.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -296,7 +299,7 @@ jobs:
             'tests/speech/test_reading_presentation.py' = 32
             'tests/speech/test_reading_presentation_handlers.py' = 20
             'tests/speech/test_reading_presentation_reader_hook.py' = 9
-            'tests/ui/test_native_reading_presentation_driver.py' = 9
+            'tests/ui/test_native_reading_presentation_driver.py' = 14
             'tests/speech/test_voice_preferences.py' = 23
             'tests/storage/test_voice_preferences_backup.py' = 2
             'tests/ui/test_voice_preferences_dialog.py' = 12
@@ -327,7 +330,7 @@ jobs:
             'tests/audio/test_conversion_batch.py' = 42
             'tests/speech/test_publication_validation.py' = 12
             'tests/reader/test_export_reconciliation.py' = 28
-            'tests/packaging/test_ci_check.py' = 32
+            'tests/packaging/test_ci_check.py' = 35
             'tests/storage/test_desktop_preferences.py' = 22
             'tests/ui/test_desktop_integration.py' = 37
             'tests/ui/test_desktop_settings.py' = 4
@@ -395,12 +398,15 @@ jobs:
             'tests/ui/test_book_effects.py' = 5
             'tests/ui/test_book_duration_dialog.py' = 17
             'tests/packaging/test_owner_candidate_archives.py' = 22
-            'tests/conversion/test_selected_conversion.py' = 26
-            'tests/conversion/test_calibre_admission.py' = 44
+            'tests/conversion/test_selected_conversion.py' = 29
+            'tests/conversion/test_calibre_admission.py' = 49
             'tests/conversion/test_office_admission.py' = 19
             'tests/ui/test_document_conversion.py' = 17
             'tests/extract/test_document_formats_xml.py' = 95
             'tests/transcription/test_native_profiles_fixture.py' = 2
+            'tests/ui/test_native_backup_capacity_driver.py' = 6
+            'tests/ui/test_native_studio_book_choices.py' = 14
+            'tests/ui/test_native_book_publication_driver.py' = 8
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -1783,11 +1789,11 @@ jobs:
                   reports.append(item)
           assert len(reports) == 1, 'Native report is missing or ambiguous.'
           report = reports[0]
-          expected_fields = json.loads("{\"status\":\"PASS\",\"native_keyboard\":\"PASS\",\"native_sapi_render\":\"PASS\",\"installed_modules\":\"PASS\",\"manual_keyboard\":\"NOT_RUN\",\"nvda\":\"NOT_RUN\",\"listening_quality\":\"NOT_RUN\",\"physical_device\":\"NOT_RUN\",\"private_model_inference\":\"NOT_RUN\"}")
+          expected_fields = json.loads("{\"status\":\"PASS\",\"native_keyboard\":\"PASS\",\"native_sapi_render\":\"PASS\",\"installed_modules\":\"PASS\",\"manual_keyboard\":\"NOT_RUN\",\"nvda\":\"NOT_RUN\",\"listening_quality\":\"NOT_RUN\",\"physical_device\":\"NOT_RUN\",\"private_model_inference\":\"NOT_RUN\",\"native_failure_cleanup\":\"PASS\"}")
           assert all(type(report.get(key)) is type(value) and report.get(key) == value for key, value in expected_fields.items()), report
           checks = report.get("checks")
           assert isinstance(checks, list) and all(isinstance(name, str) for name in checks)
-          required = set(["real native Windows batch controls","existing Book command uses canonical command_id","existing host owns one serial worker and original scope","real Multiple books action opens the existing batch workspace","actual native library chooser selects two existing books","choosing books does not prepare or synthesize","per-book native review remains nonexecuting","per-book review has native status focus","nested review returns to its owning batch without jobs","whole batch preview contains immutable order and source identities","whole batch preview still starts no jobs or speech","actual default-No batch confirmation creates no jobs","Prepare retains two existing schema2 Studio jobs without speech","native reordered plans retain exact independent voice controls and formats","all reviewed output folders are still empty","actual native Run completes both ordered source-bound jobs","actual SAPI follows the exact reviewed order and controls","literal original texts are narrated without Studio cues","completed batch returns actual native status focus","explicit native resume verifies completed bytes without synthesis","reopened batch has no automatic resume authority","retained original assets remain byte-identical","batch narration creates no quotation approval","native batch close preserves borrowed Book service","native Escape unwinds both existing Book workspaces","native batch host shutdown retains no failed owner","explicit selected audio executable: ffmpeg","pinned audio executable bytes: ffmpeg","explicit selected audio executable: ffprobe","pinned audio executable bytes: ffprobe","actual installed SAPI is available for reviewed book 1","actual rendered batch PCM: 1","exact batch source receipt: 1","actual installed SAPI is available for reviewed book 2","actual rendered batch PCM: 2","exact batch source receipt: 2","confirmation defaults to No: Use reviewed book in batch","confirmation defaults to No: Prepare reviewed batch","confirmation defaults to No: Run reviewed book batch","exact installed source: carr_library.studio.book_batch","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.studio.book_cli","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.book_batch_dialog","exact installed source: carr_library.backup_book_batches","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app"])
+          required = set(["real native Windows batch controls","existing Book command uses canonical command_id","existing host owns one serial worker and original scope","real Multiple books action opens the existing batch workspace","actual native library chooser selects two existing books","choosing books does not prepare or synthesize","per-book native review remains nonexecuting","per-book review has native status focus","nested review returns to its owning batch without jobs","whole batch preview contains immutable order and source identities","whole batch preview still starts no jobs or speech","actual default-No batch confirmation creates no jobs","Prepare retains two existing schema2 Studio jobs without speech","native reordered plans retain exact independent voice controls and formats","all reviewed output folders are still empty","actual native Run completes both ordered source-bound jobs","actual SAPI follows the exact reviewed order and controls","literal original texts are narrated without Studio cues","completed batch returns actual native status focus","explicit native resume verifies completed bytes without synthesis","reopened batch has no automatic resume authority","retained original assets remain byte-identical","batch narration creates no quotation approval","native batch close preserves borrowed Book service","native Escape unwinds both existing Book workspaces","native batch host shutdown retains no failed owner","explicit selected audio executable: ffmpeg","pinned audio executable bytes: ffmpeg","explicit selected audio executable: ffprobe","pinned audio executable bytes: ffprobe","actual installed SAPI is available for reviewed book 1","actual rendered batch PCM: 1","exact batch source receipt: 1","actual installed SAPI is available for reviewed book 2","actual rendered batch PCM: 2","exact batch source receipt: 2","confirmation defaults to No: Use reviewed book in batch","confirmation defaults to No: Prepare reviewed batch","confirmation defaults to No: Run reviewed book batch","exact installed source: carr_library.studio.book_batch","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.studio.book_cli","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.book_batch_dialog","exact installed source: carr_library.backup_book_batches","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app","native batch failure answers only owned question No before unwinding active modal"])
           assert required <= set(checks), sorted(required - set(checks))
           selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
           pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
@@ -3764,7 +3770,10 @@ jobs:
             'tests/conversion/test_calibre_admission.py',
             'tests/conversion/test_office_admission.py',
             'tests/ui/test_document_conversion.py',
-            'tests/transcription/test_native_profiles_fixture.py'
+            'tests/transcription/test_native_profiles_fixture.py',
+            'tests/ui/test_native_backup_capacity_driver.py',
+            'tests/ui/test_native_studio_book_choices.py',
+            'tests/ui/test_native_book_publication_driver.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -3853,7 +3862,7 @@ jobs:
               'tests/speech/test_reading_presentation.py' = 32
               'tests/speech/test_reading_presentation_handlers.py' = 20
               'tests/speech/test_reading_presentation_reader_hook.py' = 9
-              'tests/ui/test_native_reading_presentation_driver.py' = 9
+              'tests/ui/test_native_reading_presentation_driver.py' = 14
               'tests/speech/test_voice_preferences.py' = 23
               'tests/storage/test_voice_preferences_backup.py' = 2
               'tests/ui/test_voice_preferences_dialog.py' = 12
@@ -3884,7 +3893,7 @@ jobs:
               'tests/ingest/test_scan_root_binding.py' = 4
               'tests/ingest/test_large_source_intake.py' = 6
               'tests/reader/test_export_reconciliation.py' = 28
-              'tests/packaging/test_ci_check.py' = 32
+              'tests/packaging/test_ci_check.py' = 35
               'tests/transcription/test_admission_boundaries.py' = 40
               'tests/transcription/test_service.py' = 28
               'tests/storage/test_desktop_preferences.py' = 22
@@ -3954,12 +3963,15 @@ jobs:
               'tests/ui/test_book_effects.py' = 5
               'tests/ui/test_book_duration_dialog.py' = 17
               'tests/packaging/test_owner_candidate_archives.py' = 22
-              'tests/conversion/test_selected_conversion.py' = 26
-              'tests/conversion/test_calibre_admission.py' = 44
+              'tests/conversion/test_selected_conversion.py' = 29
+              'tests/conversion/test_calibre_admission.py' = 49
               'tests/conversion/test_office_admission.py' = 19
               'tests/ui/test_document_conversion.py' = 17
               'tests/extract/test_document_formats_xml.py' = 95
               'tests/transcription/test_native_profiles_fixture.py' = 2
+              'tests/ui/test_native_backup_capacity_driver.py' = 6
+              'tests/ui/test_native_studio_book_choices.py' = 14
+              'tests/ui/test_native_book_publication_driver.py' = 8
             }
             foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'

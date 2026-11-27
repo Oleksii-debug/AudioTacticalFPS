@@ -191,7 +191,7 @@ def main():
     ci_path = ROOT / 'scripts/ci_check.py'
     ci_raw = ci_path.read_bytes()
     require(sha1(b'blob ' + str(len(ci_raw)).encode('ascii') + b'\0' + ci_raw).hexdigest()
-            == '8a23ef36c2df93928b0aff3edd8b59a53c54684c', 'Existing cleanup helper source differs.')
+            == '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473', 'Existing cleanup helper source differs.')
     spec = importlib.util.spec_from_file_location('_existing_ci_native_prepare', ci_path)
     ci = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = ci

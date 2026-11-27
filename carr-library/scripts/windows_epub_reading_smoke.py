@@ -15,7 +15,10 @@ from tempfile import TemporaryDirectory
 from time import monotonic
 from types import SimpleNamespace
 import traceback
+import threading
 import wave
+
+_cleanup_complete = threading.Event()
 
 
 def main():
@@ -51,6 +54,8 @@ def main():
     deadline = monotonic() + 120
     stage, key_pending, finished = 0, False, False
     frame = reader = overlay = service = None
+    modal_loops = []
+    unwind_pending = False
 
     def check(name, condition):
         if not condition:
@@ -60,37 +65,76 @@ def main():
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
+            detail = traceback.format_exc()
+            errors.append(detail)
+            print('FAIL: native recorded EPUB event loop\n' + detail, flush=True)
             abort()
             return True
 
     gui = ProbeApp(False)
     simulator = wx.UIActionSimulator()
     user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
     user32.SetForegroundWindow.argtypes = [wintypes.HWND]
     user32.SetForegroundWindow.restype = wintypes.BOOL
     user32.GetForegroundWindow.argtypes = []
     user32.GetForegroundWindow.restype = wintypes.HWND
 
-    def abort():
-        for owner in (overlay, reader):
-            if owner is not None:
-                try:
-                    owner.close()
-                    if owner.dialog.IsModal():
-                        owner.dialog.EndModal(wx.ID_CANCEL)
-                except Exception:
-                    errors.append(traceback.format_exc())
-        gui.ExitMainLoop()
+    def own_modal(owner):
+        window = owner.dialog
+        loop = wx.EventLoopBase.GetActive()
+        if (loop is None or loop.IsMain() or not loop.IsRunning()
+                or not window.IsModal() or not user32.IsWindow(window.GetHandle())):
+            raise AssertionError('The recorded EPUB owner has no running native modal loop.')
+        handle = window.GetHandle()
+        if not any(previous is owner and native == handle
+                   for previous, _, native, _ in modal_loops):
+            modal_loops.append((owner, window, handle, loop))
 
-    def guarded(callback):
+    def abort():
+        nonlocal unwind_pending
+        if unwind_pending:
+            return
+        unwind_pending = True
+
+        def close_active():
+            nonlocal unwind_pending
+            unwind_pending = False
+            try:
+                active = wx.EventLoopBase.GetActive()
+                for owner, window, handle, loop in reversed(modal_loops):
+                    if (not user32.IsWindow(handle) or not window.IsModal()
+                            or not loop.IsRunning()):
+                        continue
+                    if active != loop:
+                        # Let an already-closing inner loop return before its
+                        # known parent is asked to close. Never end another loop.
+                        wx.CallLater(25, abort)
+                        return
+                    owner.close()
+                    # Product closure keeps ownership until silence and worker
+                    # cleanup are confirmed. Its close veto is never bypassed.
+                    wx.CallLater(25, abort)
+                    return
+                if active is not None and active.IsMain() and active.IsRunning():
+                    active.ScheduleExit(1)
+            except Exception:
+                detail = traceback.format_exc()
+                errors.append(detail)
+                print('FAIL: native recorded EPUB owned cleanup\n' + detail, flush=True)
+
+        wx.CallAfter(close_active)
+
+    def guarded(callback, *, release=False):
         def invoke():
-            if finished or errors:
+            if (finished or errors) and not release:
                 return
             try:
                 callback()
             except Exception:
-                errors.append(traceback.format_exc())
+                detail = traceback.format_exc()
+                errors.append(detail)
+                print('FAIL: native recorded EPUB callback\n' + detail, flush=True)
                 abort()
         return invoke
 
@@ -126,7 +170,7 @@ def main():
             except BaseException:
                 simulator.KeyUp(key)
                 raise
-            wx.CallLater(40, guarded(release))
+            wx.CallLater(40, guarded(release, release=True))
 
         wx.CallAfter(guarded(dispatch))
 
@@ -214,18 +258,33 @@ def main():
                     if key_pending:
                         return
                     if stage == 0 and reader.controller.current is not None and not reader.busy:
+                        own_modal(reader)
                         check('existing Reading Desk presents the exact source', reader.controller.current == expected_page)
                         stage = 1
                         press(named(reader.dialog, 'EPUB synchronized recorded audio...'))
                     elif stage == 1 and reader._audio_dialog is not None:
                         overlay = reader._audio_dialog
+                        own_modal(overlay)
                         if overlay.busy or overlay.transport is None:
                             return
                         check('recorded preparation borrows the current host worker', overlay.host is frame and not hasattr(overlay, 'executor'))
                         check('opening recorded audio does not start playback', overlay.player.state == 'stopped'
                               and not overlay.transport.active)
-                        check('native source highlight is an exact Unicode fragment', overlay.text.GetStringSelection()
-                              == expected_page.raw_text[overlay.session.chapter.cues[0].start:overlay.session.chapter.cues[0].end])
+                        cue = overlay.session.chapter.cues[0]
+                        selected_fragment = overlay.text.GetStringSelection()
+                        expected_fragment = expected_page.raw_text[cue.start:cue.end]
+                        if selected_fragment != expected_fragment:
+                            print('DIAGNOSTIC: recorded EPUB source highlight ' + json.dumps({
+                                'selected': selected_fragment[:4096],
+                                'expected': expected_fragment[:4096],
+                                'native_selection': overlay.text.GetSelection(),
+                                'cue_offsets': [cue.start, cue.end],
+                                'same_source_page': overlay.session.page.raw_text == expected_page.raw_text,
+                                'native_value_exact': overlay.text.GetValue() == expected_page.raw_text,
+                                'status': overlay.status.GetValue()[:4096]},
+                                ensure_ascii=True), flush=True)
+                        check('native source highlight is an exact Unicode fragment',
+                              selected_fragment == expected_fragment)
                         check('existing progress observes the owned transport', overlay.transport.observed
                               in frame.progress_panel.media.players)
                         stage = 2
@@ -321,4 +380,12 @@ def main():
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    def watchdog():
+        if not _cleanup_complete.wait(180):
+            os.write(2, b'FAIL: native recorded EPUB work or owned cleanup exceeded 180 seconds.\n')
+            os._exit(86)
+    threading.Thread(target=watchdog, daemon=True, name='recorded-epub-native-watchdog').start()
+    try:
+        raise SystemExit(main())
+    finally:
+        _cleanup_complete.set()

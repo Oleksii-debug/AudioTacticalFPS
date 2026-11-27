@@ -1,0 +1,343 @@
+{
+  "schema": "resonance-actual-v3-failure-triage/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "run": 46065563791,
+  "job": 140729992383,
+  "job_conclusion": "cancelled",
+  "supersession": {
+    "head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "reason": "Existing workflow concurrency normally superseded the old integration run. No cancellation API or ref operation was performed by this agent."
+  },
+  "log": {
+    "characters": 1760489,
+    "access": "Complete decoded job log read after cancellation."
+  },
+  "artifact": {
+    "id": 15233759206,
+    "bytes": 820934,
+    "sha256": "4cb731cb87838167aa0351ba2876172988beb0cb36f92ec15e8d794fc1a3a1b5"
+  },
+  "source_scan": {
+    "step": 7,
+    "outcome": "FAIL",
+    "whole_suites": 17,
+    "whole_passed": 16,
+    "whole_failed": 1,
+    "passed": 424,
+    "failed": 1,
+    "skipped": 0,
+    "rows": [
+      {
+        "verdict": "PASS",
+        "suite": "tests/catalog/test_streaming_intake.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/e2e/test_raster_import.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/e2e/test_raster_ocr_native.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/extract/test_raster_pages.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "FAIL",
+        "suite": "tests/ingest/test_batch_continuation.py",
+        "passed": 17,
+        "failed": 1,
+        "skipped": 0,
+        "exit": 1
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_batch_continuation_cli.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ui/test_import_center.py",
+        "passed": 42,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/e2e/test_research_search_cli.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/search/test_federated.py",
+        "passed": 100,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ui/test_federated_search.py",
+        "passed": 114,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/search/test_search_paging.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_scan_root_binding.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_large_source_intake.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_import_replay_identity.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_terminal_replay_registration.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_txt_replay_registration.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "verdict": "PASS",
+        "suite": "tests/ingest/test_import_publication_point.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "failure": {
+      "suite": "tests/ingest/test_batch_continuation.py",
+      "case": "test_more_than_5000_actual_sources_continue_after_process_restart",
+      "actual_version": 2,
+      "actual_rows": 4970,
+      "expected_rows": 5000,
+      "fixture_first_page_timeout": 120,
+      "module_seconds": 142.69,
+      "actual_reason_printed": false,
+      "source_analysis": "The real scanner returns and persists a partial unadvanced cursor on its finite deadline. The test checks max_files/restart, not a 120-second performance SLA; its independent cancellation/deadline cases remain. The exact interrupted reason was not printed in this old assertion."
+    }
+  },
+  "installed_recovery": {
+    "step": 8,
+    "outcome": "FAIL",
+    "completed_gate": false,
+    "immediate_test_failure_reports": 0,
+    "current_case": "tests/search/test_search_paging.py::test_actual_501_editions_are_visited_with_bounded_source_windows",
+    "last_displayed_percent": 89,
+    "diagnostic_line": "2026-11-27T21:19:37.8938408Z Timeout (0:02:00)!",
+    "fatal_line": "2026-11-27T21:19:37.8965767Z File ???Windows fatal exception: access violation",
+    "caller": "Direct pytest.main configured faulthandler_timeout=120 without the common runner's GIL-owned diagnostic plugin.",
+    "bounds": "Process failed, so no installed completion/JUnit acceptance is inferred.",
+    "supporting_source_case": "The same source test_search_paging whole27 completed PASS in343.44s under the existing common diagnostic runner."
+  },
+  "publication_source": {
+    "step": 17,
+    "outcome": "FAIL",
+    "cause": "GitHub explicitly reported timeout after45minutes.",
+    "started": "2026-11-27T21:21:24Z",
+    "completed": "2026-11-27T22:06:32Z",
+    "elapsed_seconds": 2708,
+    "old_whole_suites": 163,
+    "completed_child_summaries": 158,
+    "completed_child_seconds": 2628.9300000000007,
+    "completed_child_passed": 3626,
+    "completed_child_failed": 1,
+    "classification": "These are completed pytest/JUnit child summaries. The strict ci_check aggregate was not reached, so the required whole step remains failed.",
+    "incomplete_from": "tests/packaging/test_library_capacity_measurement.py",
+    "uncompleted_paths": [
+      "tests/packaging/test_library_capacity_measurement.py",
+      "tests/storage/test_backup_capacity.py",
+      "tests/storage/test_backup_capacity_cli.py",
+      "tests/ui/test_backup_capacity.py",
+      "tests/storage/test_crash_backup.py"
+    ],
+    "completed_failure": "test_translation_partition.py:25passed/1failed; its genuine Windows rename-refusal fixture has already been corrected by d9204f85.",
+    "partial_capacity_failure": "The old capacity CLI failed while its whole24 suite was still running; the reviewed hot-journal observer/25th test are already in6e95.",
+    "slowest_completed_children": [
+      {
+        "module": "tests/studio/test_book_batch.py",
+        "line": 8091,
+        "time": "2026-11-27T21:43:56.9805106",
+        "summary": "======================= 29 passed in 491.87s (0:08:11) ========================",
+        "seconds": 491.87
+      },
+      {
+        "module": "tests/studio/test_book_audio.py",
+        "line": 6939,
+        "time": "2026-11-27T21:31:00.4660546",
+        "summary": "======================= 46 passed in 194.13s (0:03:14) ========================",
+        "seconds": 194.13
+      },
+      {
+        "module": "tests/storage/test_transcription_backup.py",
+        "line": 8778,
+        "time": "2026-11-27T21:51:35.3730392",
+        "summary": "======================= 143 passed in 190.11s (0:03:10) =======================",
+        "seconds": 190.11
+      },
+      {
+        "module": "tests/academic_integration/test_word_bridge.py",
+        "line": 9487,
+        "time": "2026-11-27T22:00:20.5290274",
+        "summary": "======================= 20 passed in 136.58s (0:02:16) ========================",
+        "seconds": 136.58
+      },
+      {
+        "module": "tests/assistant/test_translation_layout.py",
+        "line": 9251,
+        "time": "2026-11-27T21:54:40.1334924",
+        "summary": "======================= 33 passed in 105.24s (0:01:45) ========================",
+        "seconds": 105.24
+      },
+      {
+        "module": "tests/studio/test_book_cli.py",
+        "line": 8119,
+        "time": "2026-11-27T21:45:30.0294210",
+        "summary": "======================== 18 passed in 92.51s (0:01:32) ========================",
+        "seconds": 92.51
+      },
+      {
+        "module": "tests/assistant/test_translation_partition.py",
+        "line": 9361,
+        "time": "2026-11-27T21:57:21.8553567",
+        "summary": "=================== 1 failed, 25 passed in 87.43s (0:01:27) ===================",
+        "seconds": 87.43
+      },
+      {
+        "module": "tests/storage/test_backup_book_audio.py",
+        "line": 7041,
+        "time": "2026-11-27T21:32:31.9129050",
+        "summary": "======================== 32 passed in 78.71s (0:01:18) ========================",
+        "seconds": 78.71
+      },
+      {
+        "module": "tests/assistant/test_translation_rich_docx.py",
+        "line": 9836,
+        "time": "2026-11-27T22:03:22.1853730",
+        "summary": "============================= 17 passed in 58.19s =============================",
+        "seconds": 58.19
+      },
+      {
+        "module": "tests/storage/test_backup_book_batches.py",
+        "line": 8190,
+        "time": "2026-11-27T21:46:43.1935529",
+        "summary": "============================= 33 passed in 53.19s =============================",
+        "seconds": 53.19
+      },
+      {
+        "module": "tests/storage/test_local_schedules.py",
+        "line": 8540,
+        "time": "2026-11-27T21:47:59.0038360",
+        "summary": "============================= 43 passed in 53.17s =============================",
+        "seconds": 53.17
+      },
+      {
+        "module": "tests/reader/test_ebook_audio.py",
+        "line": 6859,
+        "time": "2026-11-27T21:27:44.5095849",
+        "summary": "============================= 65 passed in 50.53s =============================",
+        "seconds": 50.53
+      },
+      {
+        "module": "tests/assistant/test_translation_epub_layout.py",
+        "line": 9666,
+        "time": "2026-11-27T22:01:32.6435899",
+        "summary": "============================= 31 passed in 48.36s =============================",
+        "seconds": 48.36
+      },
+      {
+        "module": "tests/audio/test_conversion_batch.py",
+        "line": 7635,
+        "time": "2026-11-27T21:35:10.4487415",
+        "summary": "============================= 42 passed in 41.73s =============================",
+        "seconds": 41.73
+      },
+      {
+        "module": "tests/academic_integration/test_word_records.py",
+        "line": 9457,
+        "time": "2026-11-27T21:58:03.6575495",
+        "summary": "============================= 50 passed in 41.05s =============================",
+        "seconds": 41.05
+      }
+    ],
+    "new_source_envelope_evidence": {
+      "current_whole": 174,
+      "new_book_six_windows_child_seconds": 387.42,
+      "book_evidence": "fae8e26d99693d9d83800fed2a46169e0a424743",
+      "five_remaining_linux_child_seconds": 37.5,
+      "linux_head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+      "linux_job": 140760167185,
+      "qualification": "Linux timings are explicitly not Windows timing or PASS transfer. New legacy201 and startup/verdict work are additional. Child600/900 remains unchanged."
+    }
+  },
+  "installed_publication": {
+    "step": 18,
+    "outcome": "CANCELLED",
+    "started": "2026-11-27T22:06:32Z",
+    "cancelled": "2026-11-27T22:09:38Z",
+    "qualification": "Incomplete; no installed/native or later phase acceptance is inferred."
+  },
+  "runtime_package_changes_for_proposed_corrections": 0,
+  "refs_changed": false
+}

@@ -194,11 +194,29 @@ def main():
         shutil.copyfile(test_source, selected_test)
         if sha256(selected_test.read_bytes()).hexdigest() != test_sha:
             raise AssertionError('The staged loopback tests changed.')
+        # Reuse the exact reviewed timed diagnostic without executing its child policy.
+        from hashlib import sha1 as _ci_diagnostic_sha1
+        import stat as _ci_diagnostic_stat
+        _ci_diagnostic_path = checkout / 'scripts/ci_check.py'
+        _ci_diagnostic_info = _ci_diagnostic_path.lstat()
+        assert (_ci_diagnostic_stat.S_ISREG(_ci_diagnostic_info.st_mode)
+                and _ci_diagnostic_info.st_nlink == 1
+                and not getattr(_ci_diagnostic_info, 'st_file_attributes', 0) & 0x400)
+        _ci_diagnostic_raw = _ci_diagnostic_path.read_bytes()
+        assert _ci_diagnostic_sha1(b'blob ' + str(len(_ci_diagnostic_raw)).encode('ascii') + b'\0' + _ci_diagnostic_raw).hexdigest() == '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473', 'Reviewed pytest diagnostic source differs'
+        _ci_diagnostic_scope = {'__name__': '_carr_direct_pytest_diagnostics', '__file__': str(_ci_diagnostic_path)}
+        exec(compile(_ci_diagnostic_raw, str(_ci_diagnostic_path), 'exec'), _ci_diagnostic_scope)
+        _ci_diagnostic_plugins = _ci_diagnostic_scope['pytest_diagnostic_plugins']()
         result = pytest.main(['-v', '-rA', '-c', os.devnull,
             '--rootdir=' + str(root), '--confcutdir=' + str(root),
             '--import-mode=importlib', '-o', 'addopts=', '-o', 'pythonpath=',
             '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
-            '--junitxml=' + str(xml), str(selected_test)], plugins=[policy])
+            '--junitxml=' + str(xml), str(selected_test)], plugins=[policy, *_ci_diagnostic_plugins])
+        assert _ci_diagnostic_path.read_bytes() == _ci_diagnostic_raw, 'Reviewed pytest diagnostic source changed during tests'
+        _ci_diagnostic_after = _ci_diagnostic_path.lstat()
+        assert (_ci_diagnostic_after.st_dev, _ci_diagnostic_after.st_ino, _ci_diagnostic_after.st_size, _ci_diagnostic_after.st_mtime_ns) == (_ci_diagnostic_info.st_dev, _ci_diagnostic_info.st_ino, _ci_diagnostic_info.st_size, _ci_diagnostic_info.st_mtime_ns), 'Reviewed pytest diagnostic identity changed during tests'
+        assert _ci_diagnostic_after.st_nlink == 1 and not getattr(_ci_diagnostic_after, 'st_file_attributes', 0) & 0x400
+        print(json.dumps({'direct_pytest_diagnostic_source': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473', 'selected_plugins': len(_ci_diagnostic_plugins)}, sort_keys=True), flush=True)
     after_origins = origins()
     if before_origins != after_origins:
         raise AssertionError('The package origins changed during actual HTTP/CLI execution.')

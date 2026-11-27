@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
-from time import monotonic
+from time import monotonic, sleep
 import traceback
 import threading
 import wave
@@ -45,8 +45,12 @@ def main():
     checks, errors, pressed, audio_proof, spoken = [], [], set(), {}, []
     frame = primary = batch_dialog = child = service = production = registry = None
     close_primary = None
+    host_handle = host_executor = host_cancel = None
+    modal_loops, question_waits, failure_control = [], {}, {}
+    abort_pending = False
+    question_titles = ('Use reviewed book in batch', 'Prepare reviewed batch', 'Run reviewed book batch')
     ui_thread = threading.get_ident()
-    stage, key_pending, finished, reviewing = 0, False, False, 0
+    stage, key_pending, finished, reviewing = -1, False, False, 0
     deadline = monotonic() + 300
 
     def check(name, condition):
@@ -55,13 +59,28 @@ def main():
         checks.append(name)
         print('PASS:', name, flush=True)
 
+    def remember_failure():
+        exception = sys.exc_info()[1]
+        fixture = failure_control.get('window')
+        fixture_handle = failure_control.get('handle')
+        if (failure_control.get('injecting') and type(exception) is RuntimeError
+                and str(exception) == 'controlled native BookBatch confirmation failure'
+                and fixture and user32.IsWindow(fixture_handle) and fixture.IsModal()):
+            failure_control['handled'] = True
+        else:
+            detail = traceback.format_exc()
+            errors.append(detail)
+            print('FAIL: native BookBatch callback\n' + detail, file=sys.stderr, flush=True)
+        abort()
+
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            abort()
+            remember_failure()
             return True
 
     gui = ProbeApp(False)
+    gui.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
+    gui.SetExitOnFrameDelete(False)
     simulator = wx.UIActionSimulator()
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     user32.GetForegroundWindow.restype = wintypes.HWND
@@ -79,11 +98,164 @@ def main():
     user32.GetDlgCtrlID.argtypes = [wintypes.HWND]
     user32.GetDlgCtrlID.restype = ctypes.c_int
 
+    user32.GetForegroundWindow.argtypes = []
+    user32.GetFocus.argtypes = []
+    user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
+    user32.FindWindowW.argtypes, user32.FindWindowW.restype = [wintypes.LPCWSTR, wintypes.LPCWSTR], wintypes.HWND
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.PostMessageW.restype = wintypes.BOOL
+    native_child_callback = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    user32.EnumChildWindows.argtypes = [wintypes.HWND, native_child_callback, wintypes.LPARAM]
+    user32.EnumChildWindows.restype = wintypes.BOOL
+    user32.IsChild.argtypes, user32.IsChild.restype = [wintypes.HWND, wintypes.HWND], wintypes.BOOL
+    user32.IsWindowVisible.argtypes, user32.IsWindowVisible.restype = [wintypes.HWND], wintypes.BOOL
+    user32.IsWindowEnabled.argtypes, user32.IsWindowEnabled.restype = [wintypes.HWND], wintypes.BOOL
+    user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetClassNameW.restype = ctypes.c_int
+    user32.SetActiveWindow.argtypes, user32.SetActiveWindow.restype = [wintypes.HWND], wintypes.HWND
+
+    def native_question_button(question, label):
+        # wx 4.2.4 uses nested TaskDialog buttons with control ID zero.
+        # The caller first binds the question title, process and owner chain.
+        if label not in ('Yes', 'No'):
+            raise ValueError('Only the explicit native Yes or No control is admitted.')
+        if not question or not user32.IsWindow(question):
+            return None
+        process_id = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(question, ctypes.byref(process_id))
+        if process_id.value != os.getpid():
+            raise AssertionError('Refusing native controls from another process.')
+        matches, failures = [], []
+        visited = 0
+        @native_child_callback
+        def visit(child, unused):
+            nonlocal visited
+            try:
+                visited += 1
+                if visited > 128:
+                    raise AssertionError('The owned native question exceeds the descendant bound.')
+                if (not user32.IsChild(question, child) or not user32.IsWindowVisible(child)
+                        or not user32.IsWindowEnabled(child)):
+                    return True
+                child_process = wintypes.DWORD()
+                user32.GetWindowThreadProcessId(child, ctypes.byref(child_process))
+                if child_process.value != os.getpid():
+                    raise AssertionError('A native question descendant belongs to another process.')
+                class_name = ctypes.create_unicode_buffer(64)
+                if user32.GetClassNameW(child, class_name, len(class_name)) <= 0:
+                    raise OSError(ctypes.get_last_error(), 'Cannot inspect the native button class.')
+                if class_name.value != 'Button':
+                    return True
+                caption = ctypes.create_unicode_buffer(64)
+                length = user32.GetWindowTextW(child, caption, len(caption))
+                if 0 < length < len(caption) - 1 and caption.value in (label, '&' + label):
+                    matches.append(child)
+                return True
+            except BaseException as error:
+                failures.append(error)
+                return False
+        user32.EnumChildWindows(question, visit, 0)
+        if failures:
+            raise failures[0]
+        if len(matches) > 1:
+            raise AssertionError('The owned native question has ambiguous ' + label + ' controls.')
+        if not matches:
+            return None
+        button = matches[0]
+        if not user32.IsWindow(button) or not user32.IsChild(question, button):
+            raise AssertionError('The owned native question button disappeared.')
+        return button
+
+    def own_modal(window):
+        loop = wx.EventLoopBase.GetActive()
+        if loop is None or not loop.IsRunning() or loop.IsMain() or not window.IsModal():
+            raise AssertionError('The owned BookBatch modal has no running native event loop.')
+        record = (window, window.GetHandle(), loop)
+        if not any(item[0] is window and item[1] == record[1] for item in modal_loops):
+            modal_loops.append(record)
+
+    def owned_question(title):
+        handle = user32.FindWindowW(None, title)
+        if not handle:
+            return None
+        process_id = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(handle, ctypes.byref(process_id))
+        owners = {native for window, native, _ in modal_loops
+                  if window and user32.IsWindow(native)}
+        parent = user32.GetWindow(handle, 4)  # GW_OWNER
+        for _ in range(16):
+            if not parent or parent in owners:
+                break
+            parent = user32.GetWindow(parent, 4)
+        if process_id.value != os.getpid() or parent not in owners:
+            raise AssertionError('Refusing a native confirmation not owned by this BookBatch probe.')
+        if not native_question_button(handle, 'No'):
+            return None
+        return handle
+
+    def dismiss_owned_question():
+        # MessageBox has its own native modal loop. Answer only its exact
+        # process/owner-bound question No before touching any suspended wx loop.
+        for title in question_titles:
+            handle = owned_question(title)
+            if not handle:
+                continue
+            no_button = native_question_button(handle, 'No')
+            if not no_button:
+                raise AssertionError('The owned BookBatch confirmation has no native No button.')
+            user32.SetActiveWindow(handle)
+            if not user32.PostMessageW(no_button, 0x00F5, 0, 0):  # BM_CLICK, actual button
+                raise OSError(ctypes.get_last_error(), 'Could not queue owned BookBatch No cleanup.')
+            return True
+        return False
+
     def abort():
-        for window in reversed(tuple(wx.GetTopLevelWindows())):
-            if isinstance(window, wx.Dialog) and window.IsModal():
-                window.EndModal(wx.ID_CANCEL)
-        gui.ExitMainLoop()
+        nonlocal abort_pending
+        if abort_pending:
+            return
+        abort_pending = True
+
+        def close_active():
+            nonlocal abort_pending
+            abort_pending = False
+            try:
+                if dismiss_owned_question():
+                    # Product handlers return after No without calling the
+                    # probe again. Continue real-failure cleanup only after the
+                    # native question has yielded back to its owning wx loop.
+                    if errors:
+                        wx.CallLater(25, abort)
+                    return
+                for window, handle, loop in reversed(modal_loops):
+                    if window and user32.IsWindow(handle) and window.IsModal() and loop.IsRunning():
+                        window.EndModal(wx.ID_CANCEL)
+                        if errors:
+                            wx.CallLater(25, abort)
+                        return
+                active = wx.EventLoopBase.GetActive()
+                if errors and active is not None and active.IsMain():
+                    active.ScheduleExit(1)
+            except Exception:
+                detail = traceback.format_exc()
+                errors.append(detail)
+                print('FAIL: native BookBatch cleanup\n' + detail, file=sys.stderr, flush=True)
+                # Never destroy a suspended parent or an unowned question.
+                # The process watchdog remains active through cleanup.
+        wx.CallAfter(close_active)
+
+    def pump(predicate, message, timeout=20, *, cleanup=False):
+        until = monotonic() + timeout
+        while not predicate():
+            if errors and not cleanup:
+                raise RuntimeError('\n'.join(errors))
+            if monotonic() >= until:
+                raise TimeoutError(message)
+            gui.Yield()
+            sleep(.01)
 
     def guarded(callback):
         def invoke():
@@ -92,8 +264,7 @@ def main():
             try:
                 callback()
             except Exception:
-                errors.append(traceback.format_exc())
-                abort()
+                remember_failure()
         return invoke
 
     def release(key, name):
@@ -139,17 +310,36 @@ def main():
     def confirm(owner, title, *, accepted):
         """Drive the product's actual default-No Windows MessageBox."""
         nonlocal key_pending
-        handle = user32.GetForegroundWindow()
-        label = ctypes.create_unicode_buffer(256)
-        user32.GetWindowTextW(handle, label, len(label))
-        if label.value != title:
+        handle = owned_question(title)
+        if not handle:
+            return False
+        expected_parent = owner.GetHandle()
+        if user32.GetWindow(handle, 4) != expected_parent:
+            raise AssertionError('The actual BookBatch confirmation has a different direct parent.')
+        current_focus = user32.GetFocus()
+        no_button = native_question_button(handle, 'No')
+        key_identity = (stage, title, handle)
+        if key_identity not in question_waits:
+            question_waits[key_identity] = min(deadline, monotonic() + 5)
+            print('DIAG: BookBatch confirmation focus ' + json.dumps({
+                'stage': stage, 'foreground': user32.GetForegroundWindow() == handle,
+                'focused_hwnd': current_focus, 'no_button_hwnd': no_button,
+                'control_id': user32.GetDlgCtrlID(current_focus)}), flush=True)
+        # Appearance precedes focus settlement on some Windows builds. Observe
+        # the actual default; never move focus to No to manufacture this proof.
+        if not no_button or user32.GetForegroundWindow() != handle or current_focus != no_button:
+            if monotonic() >= question_waits[key_identity]:
+                raise AssertionError('Native BookBatch confirmation did not settle on its default No; '
+                                     'observed focus/no HWNDs ' + str((current_focus, no_button)))
             return False
         check('confirmation belongs to the book dialog: ' + title,
-              user32.GetWindow(handle, 4) == owner.GetHandle())
-        check('confirmation defaults to No: ' + title, user32.GetDlgCtrlID(user32.GetFocus()) == 7)
-        key = wx.WXK_ESCAPE
+              user32.GetWindow(handle, 4) == expected_parent)
+        check('confirmation defaults to No: ' + title, bool(no_button) and current_focus == no_button)
+        # Space activates the actually observed No button; Escape is not an
+        # alternative proof of the selected default on a native TaskDialog.
+        key = wx.WXK_SPACE
         if accepted:
-            yes = user32.GetDlgItem(handle, 6)
+            yes = native_question_button(handle, 'Yes')
             check('native Yes button exists: ' + title, bool(yes))
             user32.SetFocus(yes)
             check('native explicit Yes focus: ' + title, user32.GetFocus() == yes)
@@ -159,6 +349,7 @@ def main():
         pressed.add(key)
         wx.CallLater(40, guarded(lambda: release(key, title)))
         return True
+
 
     def verify_audio(runtime):
         for name in ('ffmpeg', 'ffprobe'):
@@ -181,6 +372,80 @@ def main():
         return next((window for window in wx.GetTopLevelWindows()
                      if isinstance(window, wx.Dialog) and window.GetTitle() == title
                      and window.IsShown() and window.IsModal()), None)
+
+    def release_owned():
+        try:
+            if service is not None:
+                service.close()
+        finally:
+            if production is not None:
+                production.close()
+
+
+    def live_book_selections(picker):
+        # wxMultiChoiceDialog.SetSelections writes its live list/checklist.
+        # GetSelections is a result cache until the actual OK transfer.
+        if not isinstance(picker, wx.MultiChoiceDialog):
+            raise AssertionError('The existing-book picker is not a native multi-choice dialog.')
+        lists = [control for control in picker.GetChildren() if isinstance(control, wx.ListBox)]
+        if len(lists) != 1:
+            raise AssertionError('The native book picker has no unique live list.')
+        choices = lists[0]
+        if isinstance(choices, wx.CheckListBox):
+            return tuple(index for index in range(choices.GetCount()) if choices.IsChecked(index))
+        return tuple(index for index in range(choices.GetCount()) if choices.IsSelected(index))
+
+    def native_failure_control():
+        fixture = wx.Dialog(primary, title='Native BookBatch failure cleanup fixture')
+        refused = []
+        failure_control.update(window=fixture, handle=fixture.GetHandle(),
+                               handled=False, injecting=False)
+        until = monotonic() + 5
+
+        def inject_failure():
+            try:
+                if not owned_question(question_titles[0]):
+                    if monotonic() >= until:
+                        raise TimeoutError('The controlled native Book question did not appear.')
+                    wx.CallLater(25, inject_failure)
+                    return
+                failure_control['injecting'] = True
+                try:
+                    raise RuntimeError('controlled native BookBatch confirmation failure')
+                except RuntimeError:
+                    gui.OnExceptionInMainLoop()
+                finally:
+                    failure_control['injecting'] = False
+            except Exception:
+                remember_failure()
+
+        def fixture_opened():
+            try:
+                own_modal(fixture)
+                wx.CallLater(25, inject_failure)
+                refused.append(wx.MessageBox('Synthetic failure cleanup; no book jobs are authorized.',
+                    question_titles[0], wx.YES_NO | wx.NO_DEFAULT, fixture))
+                if (refused != [wx.NO] or not fixture.IsModal() or not primary.IsModal()
+                        or not failure_control.get('handled')):
+                    raise AssertionError('Native Book question cleanup touched a suspended parent.')
+                abort()
+            except Exception:
+                remember_failure()
+
+        try:
+            wx.CallLater(25, fixture_opened)
+            if fixture.ShowModal() != wx.ID_CANCEL:
+                raise AssertionError('The controlled Book modal did not unwind through Cancel.')
+            check('native batch failure answers only owned question No before unwinding active modal',
+                  refused == [wx.NO] and failure_control.get('handled')
+                  and primary.IsModal() and not frame.working and not spoken
+                  and production.jobs() == () and all(not list(output.iterdir()) for output in outputs))
+            failure_control['passed'] = True
+        finally:
+            failure_control['injecting'] = False
+            if user32.IsWindow(failure_control['handle']):
+                fixture.Destroy()
+
 
     with TemporaryDirectory(prefix='resonance-native-book-batch-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
@@ -216,6 +481,8 @@ def main():
             service = book_audio.BookAudioService(library, workspace, production=production)
             groups = book_batch.BookBatchService(service)
             frame = desktop_app.DesktopFrame(library)
+            host_handle, host_executor, host_cancel = frame.GetHandle(), frame.executor, frame.cancel_event
+            frame.register_worker_cleanup(release_owned)
             frame.Show()
             gui.SetTopWindow(frame)
             check('existing Book command uses canonical command_id',
@@ -234,22 +501,28 @@ def main():
                 try:
                     if key_pending:
                         return
-                    if stage == 0:
+                    if stage == -1:
+                        own_modal(primary)
+                        native_failure_control()
+                        stage = 0
+                    elif stage == 0:
                         stage = 1
                         press(named(primary, 'Multiple books...'))
                     elif stage == 1:
                         found = top('Multiple book audio workspace')
                         if found is not None:
                             batch_dialog = found
+                            own_modal(batch_dialog)
                             check('real Multiple books action opens the existing batch workspace', True)
                             stage = 2
                             press(named(batch_dialog, 'Choose library books'))
                     elif stage == 2:
                         picker = titled('Existing library books')
                         if picker is not None:
+                            own_modal(picker)
                             picker.SetSelections([0, 1])
                             check('actual native library chooser selects two existing books',
-                                  tuple(picker.GetSelections()) == (0, 1))
+                                  live_book_selections(picker) == (0, 1))
                             stage = 3
                             press(wx.FindWindowById(wx.ID_OK, picker))
                     elif stage == 3 and not frame.working:
@@ -263,6 +536,7 @@ def main():
                         found = top('Book audio workspace', exclude=primary)
                         if found is not None:
                             child = found
+                            own_modal(child)
                             if not frame.working and 'reading positions; revision' in named(child, 'Selected library source').GetValue():
                                 stage = 5
                                 press(named(child, 'Discover local voices'))
@@ -395,6 +669,7 @@ def main():
                     elif stage == 20:
                         picker = titled('Saved book batches')
                         if picker is not None:
+                            own_modal(picker)
                             picker.SetSelection(0)
                             stage = 21
                             press(wx.FindWindowById(wx.ID_OK, picker))
@@ -419,45 +694,53 @@ def main():
 
             def open_workspace():
                 nonlocal finished
-                wx.CallLater(25, guarded(drive))
-                primary.ShowModal()
-                close_primary()
-                check('native Escape unwinds both existing Book workspaces', stage == 23)
-                finished = True
-                gui.ExitMainLoop()
+                try:
+                    wx.CallLater(25, guarded(drive))
+                    primary.ShowModal()
+                    close_primary()
+                    if not errors:
+                        check('native Escape unwinds both existing Book workspaces', stage == 23)
+                        finished = True
+                except Exception:
+                    remember_failure()
+                finally:
+                    active = wx.EventLoopBase.GetActive()
+                    if active is not None and active.IsMain():
+                        active.ScheduleExit(1 if errors else 0)
+                    elif errors:
+                        abort()
             wx.CallAfter(guarded(open_workspace))
             gui.MainLoop()
         finally:
-            for key in tuple(pressed):
-                simulator.KeyUp(key)
-                pressed.discard(key)
-            if close_primary is not None:
-                close_primary()
-            def release_owned():
+            try:
+                for key in tuple(pressed):
+                    simulator.KeyUp(key)
+                    pressed.discard(key)
                 try:
-                    if service is not None:
-                        service.close()
+                    if close_primary is not None:
+                        close_primary()
                 finally:
-                    if production is not None:
-                        production.close()
-            if frame is not None:
-                frame.cancel_event.set()
-                frame._closing = True
-                frame.register_worker_cleanup(release_owned)
-                frame.executor.shutdown(wait=True, cancel_futures=True)
-                check('native batch host shutdown retains no failed owner', not frame.executor.cleanup_failures)
-                frame.progress_panel.close()
-                if primary is not None:
-                    primary.Destroy()
-                frame.Destroy()
-            else:
-                release_owned()
-            gui.Yield()
-            native_handle.close()
+                    if host_executor is not None:
+                        host_cancel.set()
+                        try:
+                            if user32.IsWindow(host_handle):
+                                frame.Close(force=True)
+                            pump(lambda: not user32.IsWindow(host_handle),
+                                 'Actual BookBatch host Close did not release its native owners.', cleanup=True)
+                        finally:
+                            host_executor.shutdown(wait=True, cancel_futures=True)
+                        check('native batch host shutdown retains no failed owner',
+                              not user32.IsWindow(host_handle) and not host_executor.cleanup_failures)
+                    else:
+                        release_owned()
+                gui.Yield()
+            finally:
+                native_handle.close()
         if errors:
             raise RuntimeError('\n'.join(errors))
     print(json.dumps({'status': 'PASS', 'checks': checks, 'audio_runtime': audio_proof,
         'native_keyboard': 'PASS', 'native_sapi_render': 'PASS', 'installed_modules': 'PASS',
+        'native_failure_cleanup': 'PASS' if failure_control.get('passed') else 'FAIL',
         'entry': 'Existing Book audio workspace, actual Multiple books button and nested reviews',
         'manual_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN', 'listening_quality': 'NOT_RUN',
         'physical_device': 'NOT_RUN', 'private_model_inference': 'NOT_RUN'}, ensure_ascii=True, indent=2))

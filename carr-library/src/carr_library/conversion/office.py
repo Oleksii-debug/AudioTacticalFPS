@@ -295,11 +295,15 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
         if os.name == 'nt' else os.defpath)
     environment.update(TMPDIR=str(stage), TEMP=str(stage), TMP=str(stage),
                        SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1')
-    with TemporaryFile() as stdout, TemporaryFile() as stderr:
+    # Native stdin is an empty owned file. subprocess.DEVNULL opens the null
+    # device O_RDWR, which correctly violates the worker's staging-only audit.
+    with (TemporaryFile(dir=stage) as stdin,
+          TemporaryFile(dir=stage) as stdout,
+          TemporaryFile(dir=stage) as stderr):
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)
         process = subprocess.Popen([str(arg) for arg in args], cwd=stage, env=environment,
-            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, shell=False,
+            stdin=stdin, stdout=stdout, stderr=stderr, shell=False,
             start_new_session=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
             while True:

@@ -1,0 +1,53 @@
+{
+  "schema": "resonance-direct-pytest-diagnostic-reuse/1",
+  "base": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "preimage": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+      "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "preimage": "33d9b62c6aabeea518751aaef3cafb865ab7f919",
+      "sha": "78a59aae58e455c5b2c1d3e369859bd7a32d8c73"
+    }
+  ],
+  "actual_evidence": "4e175e0abc48060180f48db5cbcd8b35d92ea0aa",
+  "api": {
+    "name": "pytest_diagnostic_plugins()",
+    "result": "A fresh list containing the current GilTimedStackDump only on actual Windows CPython3.11; empty elsewhere.",
+    "source": "Exactly the canonical predicate/class AST definitions from unchanged PYTEST_CHILD; missing/duplicate/wrong-order definitions refuse.",
+    "calling": "Load source-bound ci_check script and append this list to the existing direct pytest plugins; retain caller arguments/offline/XFAIL/JUnit and before/after identities. Do not add twice to PYTEST_CHILD, which already contains its own unchanged plugin."
+  },
+  "tests": {
+    "path": "tests/packaging/test_ci_check.py",
+    "old_methods": 32,
+    "expected_methods": 35,
+    "new_methods": [
+      "test_direct_pytest_factory_reuses_real_gil_dump_without_changing_caller_policy",
+      "test_direct_pytest_factory_settles_timer_before_the_next_test",
+      "test_direct_pytest_diagnostic_failure_preserves_nonzero_exit_after_cleanup"
+    ],
+    "scope": "Actual isolated-I-B direct pytest child exercises native synchronous GIL dump, fatal handler, unchanged caller hook/socket policy, timer quiescence and nonzero diagnostic errors. Old32 method bytes unchanged.",
+    "companions": [
+      "scripts/ci_check.py"
+    ]
+  },
+  "preserved": [
+    "PYTEST_CHILD byte-for-byte",
+    "all32 existing tests",
+    "default600 and exact900 whole-suite allowance",
+    "fatal exception handler",
+    "caller offline and expected-failure/JUnit policies",
+    "native process cleanup and byte/source proofs"
+  ],
+  "caller_owner": "progress_completion supplies separate exact main-installed/V3/dedicated-ASR caller hunks and count maps. Standalone helpers still use unchanged PYTEST_CHILD; they require only reviewed source-pin refresh when this factory enters their tree.",
+  "independent_review": {
+    "reviewer": "progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Factory exact-definition isolation and all three real-child source fixtures; no runtime claim."
+  },
+  "no_refs_changed": true
+}

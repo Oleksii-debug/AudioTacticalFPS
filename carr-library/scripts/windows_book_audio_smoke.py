@@ -237,6 +237,9 @@ def main():
                 for window, handle, loop in reversed(modal_loops):
                     if window and user32.IsWindow(handle) and window.IsModal() and loop.IsRunning():
                         window.EndModal(wx.ID_CANCEL)
+                        if errors:
+                            # Let this modal return before closing its resumed parent.
+                            wx.CallLater(25, unwind)
                         return
                 active = wx.EventLoopBase.GetActive()
                 if errors and active is not None and active.IsMain():
@@ -487,6 +490,27 @@ def main():
             production = render.ProductionService(library.root / 'state' / 'studio')
             verify_audio(production._runtime())
             service = book_audio.BookAudioService(library, workspace, production=production)
+            publication_outcome = {}
+            actual_publish_duration = service.publish_duration
+            def observe_publication(values):
+                publication_outcome.update(values)
+                try:
+                    print('DIAG: actual measured Book publication ' + json.dumps(values, ensure_ascii=True),
+                          flush=True)
+                except OSError:
+                    pass
+            def observed_publish_duration(*arguments, **options):
+                observe_publication({'started': True})
+                try:
+                    result = actual_publish_duration(*arguments, **options)
+                except BaseException as error:
+                    observe_publication({'error': type(error).__name__ + ': ' + str(error)[:4096],
+                                         'traceback': traceback.format_exc()[-16384:]})
+                    raise
+                observe_publication({'returned': True, 'receipt_status': result.get('status'),
+                                     'receipt_id': result.get('id')})
+                return result
+            service.publish_duration = observed_publish_duration
             frame = desktop_app.DesktopFrame(library)
             host_handle, host_executor, host_cancel = frame.GetHandle(), frame.executor, frame.cancel_event
             frame.register_worker_cleanup(release_owned)
@@ -718,11 +742,33 @@ def main():
                         press(named('Publish reviewed parts', accepted['duration_dialog']))
                     elif stage == 34 and confirm('Publish reviewed measured audio', accepted=True,
                                                   parent=accepted['duration_dialog']):
+                        accepted['publication_admission_until'] = min(deadline, monotonic() + 10)
                         stage = 35
                     elif stage == 35 and not frame.working:
                         child = accepted['duration_dialog']
                         text = named('Measured audio preview and publication status', child)
-                        if text.GetValue().startswith('Published and verified:'):
+                        message = text.GetValue()
+                        observation = (message, bool(publication_outcome.get('started')),
+                                       bool(publication_outcome.get('returned')),
+                                       publication_outcome.get('error'))
+                        if accepted.get('publication_observation') != observation:
+                            accepted['publication_observation'] = observation
+                            print('DIAG: measured Book idle UI ' + json.dumps({
+                                'status': message[:4096], 'started': observation[1],
+                                'returned': observation[2], 'error': observation[3],
+                                'preview_enabled': named('Preview measured parts', child).IsEnabled(),
+                                'publish_enabled': named('Publish reviewed parts', child).IsEnabled()
+                            }, ensure_ascii=True), flush=True)
+                        if publication_outcome.get('error'):
+                            raise RuntimeError('Actual measured Book publication failed: '
+                                               + publication_outcome['error'])
+                        if (not publication_outcome.get('started')
+                                and monotonic() >= accepted['publication_admission_until']):
+                            raise TimeoutError('The explicit measured publication was not admitted: ' + message[:4096])
+                        if publication_outcome.get('returned') and not message.startswith('Published and verified:'):
+                            raise AssertionError('The actual completed publication did not reach its readable result: '
+                                                 + message[:4096])
+                        if message.startswith('Published and verified:'):
                             manifest = measured_audio.inspect(accepted['parts_zip'])
                             source_state = accepted['effect_states'][0]
                             with wave.open(str(Path(source_state['destination']) / 'master.wav'), 'rb') as audio:

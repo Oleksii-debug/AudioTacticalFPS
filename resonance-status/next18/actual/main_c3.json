@@ -1,0 +1,74 @@
+{
+  "schema": "resonance-actual-c3-main-native-boundaries/1",
+  "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "run_id": 46065563731,
+  "job_id": 140732211222,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46065563731/job/140732211222",
+  "workflow_job_conclusion": "cancelled",
+  "cancellation": "Normal existing PR workflow concurrency after reviewed head6e95fc07 was published. The completed Import Center failure and earlier native block failures are preserved independently.",
+  "job_started_at": "2026-11-27T20:51:38Z",
+  "job_completed_at": "2026-11-27T22:09:48Z",
+  "completed_failure": {
+    "step": 20,
+    "name": "Exercise native Import Center and durable batch workflow",
+    "at": "2026-11-27T20:56:57Z",
+    "script": "tests/ui/native_import_center_smoke.py",
+    "line": 160,
+    "exception": "AttributeError: 'tuple' object has no attribute 'y'",
+    "expression": "dialog.content.GetViewStart().y"
+  },
+  "complete_bundle_step": {
+    "number": 41,
+    "started_at": "2026-11-27T20:59:14Z",
+    "ended_at": "2026-11-27T22:09:39Z",
+    "conclusion": "cancelled",
+    "required_native_failures": [
+      "reader-player",
+      "transcription",
+      "recording",
+      "book-audio",
+      "reading-presentation",
+      "reading-tabs",
+      "book-batch",
+      "studio-persisted-effects",
+      "audio-conversion-batch",
+      "saved-audio-queue"
+    ],
+    "physical_output_boundary": [
+      "Actual output-device qualification requires an identifiable Windows output.",
+      "Actual Windows monitoring output is required; no output was enumerated.",
+      "Real waveOut did not advance."
+    ],
+    "last_recorded_epub_checkpoint": {
+      "at": "2026-11-27T21:18:19.8734331Z",
+      "message": "opening recorded audio does not start playback",
+      "later_output": "No further recorded-EPUB result before22:09:39 cancellation.",
+      "actual_cause": "NOT_ESTABLISHED. No recorded terminal error or successful cleanup. New diagnostic/corrective probe keeps every original assertion."
+    },
+    "final_full_gate": "NOT_REACHED",
+    "owner_input_gate": "NOT_REACHED in this cancelled job",
+    "owner_archive_assembly": "Not implemented in this C3 workflow; the separate assembly helper was added in6e95."
+  },
+  "artifacts": [
+    {
+      "id": 15233824071,
+      "name": "carr-windows-34f51bf95b981931349593552ee80d00b57f737a-1",
+      "bytes": 3166775,
+      "sha256": "34ee7d94da0bf5557bfab199b6c9310dbb5a911dc0567197e41c54d968ce7429",
+      "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233824071"
+    },
+    {
+      "id": 15233673927,
+      "name": "carr-phase-diagnostics-34f51bf95b981931349593552ee80d00b57f737a-1",
+      "bytes": 155050,
+      "sha256": "9da700c94f740d4cc48cbcfd80ecb62070de122d548b5c48c75a1de69bc798ef",
+      "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233673927"
+    }
+  ],
+  "artifact_name_note": "Names carry old PR merge-context34f51; API and checkout bind the actual tested source to b524b3ac3453864903ec415ce7a5f048da09d700. No result is transferred to the merge-context or successor source.",
+  "evidence_method": "Complete actual1,047,444-character job log, final raw job/step metadata and artifact API metadata read; no artifact extraction in this audit.",
+  "success_scope": "Other completed jobs and individual native blocks retain their earlier exact-source evidence. This record makes no complete bundle/native PASS claim."
+}

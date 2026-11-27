@@ -1,0 +1,32 @@
+{
+  "schema": "resonance-selected-converter-diagnostic-factory-repin/1",
+  "status": "STATIC_NOT_RUN",
+  "prerequisites": [
+    "31ef41c298f29b561de15421a6788ecc9e13d7b9",
+    "dd447bb794e533752f90e3e8d67959ae0bc8ac5a"
+  ],
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": "6f6afea73ae3ff24a7d5b1f84c334f29f69f4ba7",
+      "sha": "fc85cebfc0c534ccdae4ba40a271de2d44e6c08a"
+    },
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "preimage": "bfe7c95d27e57859aa458a18caaa5d47dba5a7fb",
+      "sha": "e659599241a3d973a160b223b1d108b99feda7c7"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "590873a86e4b4c42fb60e4ad6d35cc1067f1ab21",
+      "sha": "c2a901d7026068b199253de3a492769e27b95177"
+    }
+  ],
+  "changes": [
+    "Only ci_check8a23→6ad identity in209-case helper and runtime preparer; exact corresponding two helper and two preparer pins in workflow.",
+    "No executable child policy/literal, suite count, native30/14/34 requirement, selected converter source, GUI wait or owned read-only cleanup is changed."
+  ],
+  "scope": "Final coherent integration with reviewed diagnostic factory only. Do not overlay this onto live narrow runs without prerequisite31ef and6ad/tests35.",
+  "supersedes": "3ffbe0e7179c6d651a0f67012dde61748890316a",
+  "no_refs_changed": true
+}

@@ -520,9 +520,17 @@ def main():
                           and max(abs(a - b) for a, b in zip(cut_pcm[right_edge:], new_pcm[right_edge:])) <= 3)
 
                     def choose_original_history(popup):
+                        # wxSingleChoiceDialog's string result is copied only on OK.
+                        # Inspect the unique live list before sending the real key;
+                        # the saved-project assertions below verify the returned choice.
+                        lists = [control for control in popup.GetChildren()
+                                 if isinstance(control, wx.ListBox)]
+                        if len(lists) != 1:
+                            raise AssertionError('The native history picker has no unique live list.')
                         popup.SetSelection(4)
+                        choices = lists[0]
                         check('native history picker targets exact reviewed revision',
-                              popup.GetStringSelection() ==
+                              choices.GetSelection() == 4 and choices.GetStringSelection() ==
                               f'Revision {before_timeline.revision}; identity {before_timeline.fingerprint[:12]}')
                         press(wx.Window.FindWindowById(wx.ID_OK, popup))
                     later('Saved project history', choose_original_history)

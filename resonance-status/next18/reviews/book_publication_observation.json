@@ -1,0 +1,85 @@
+{
+  "schema": "carr.preimage-bound-source-handoff/1",
+  "title": "Book native measured-publication diagnosis and resumed-modal failure cleanup",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "base_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "execution": "NOT_RUN",
+  "static_review": "ACCEPTED_STATIC_NOT_RUN by Progress for native, driver, helper and workflow",
+  "actual_failure_evidence": "d0f8c9f7d4a178cef0f13ed0ee4abb2d8ca4775c",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "before": "fe9bf5de5be698116107f89fd2ea1c872853bcb3",
+      "after": "fe4d7f64686da37557e3913805f8d27a4a130724"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_book_publication_driver.py",
+      "before": null,
+      "after": "f9b2475291eae1724fef366ba59ab86e83a02792"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "21a905ce7877c947a016cbc71dd154d5bc418ffe",
+      "after": "ca2a659632d93d913d2fe8b5fc6113af98ffa63e"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "e8463a2a39b2b088fd2a06ab9bf8212b11c60afb",
+      "after": "33cc07c7aab7865b756ff69abf38f6078f41fae3"
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "blob": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+      "ownership": "Root/Progress shared reviewed successor; compose once."
+    }
+  ],
+  "supersedes": [
+    "02b4594a9014fabb66611baf16a37a061f56441e"
+  ],
+  "changes": [
+    "Queue another owned unwind only after ending a captured running modal when real errors remain. Controlled failure with no real error still leaves its parent alive.",
+    "Observe the exact existing service.publish_duration invocation, return value and original exception without changing its arguments or outcome.",
+    "Log bounded actual idle UI state and refuse terminal domain errors or missing admission promptly. No publication result is fabricated; all old 77 required native checks and 18 source origins remain.",
+    "Add eight portable actual-AST regression cases and the exact native script as their copied/hash-bound companion; all previous 98 source and installed cases remain.",
+    "Compose only the shared ci_check pin, native/test pins, 7-suite/106-case inventory and seventh isolated evidence filenames."
+  ],
+  "new_suite": {
+    "path": "tests/ui/test_native_book_publication_driver.py",
+    "cases": 8,
+    "functions": [
+      "test_failed_publication_unwinds_each_resumed_owned_modal_on_later_turn",
+      "test_controlled_failure_closes_only_running_child_and_keeps_parent_alive",
+      "test_error_unwind_waits_for_owned_question_before_any_wx_modal",
+      "test_modal_exit_error_remains_visible_without_ending_suspended_parent",
+      "test_publication_observer_preserves_actual_arguments_and_returned_receipt",
+      "test_publication_observer_preserves_original_error_and_bounded_diagnostic"
+    ],
+    "parametrization": "The final function covers RuntimeError, InterruptedError and KeyboardInterrupt; the other five functions each have one case.",
+    "companion": "scripts/windows_book_audio_smoke.py",
+    "native_execution_claim": false
+  },
+  "contracts": {
+    "source_whole_suites": 7,
+    "source_cases": 106,
+    "installed_whole_suites": 7,
+    "installed_cases": 106,
+    "prior_cases_unchanged": 98,
+    "native_required_checks": 77,
+    "native_module_origins": 18,
+    "installed_module_inventory": 20,
+    "source_aggregate_seconds": 2000,
+    "each_pytest_child_seconds": 600,
+    "native_parent_seconds": 330,
+    "native_ui_deadline_seconds": 240,
+    "native_cleanup_watchdog_seconds": 300,
+    "helper_minutes": 115,
+    "job_minutes": 145,
+    "firewall": "Unchanged exact Python/pythonw/codec outbound rules and strict owned-rule restoration.",
+    "artifact_policy": "Unchanged closed bounded text/JSON/XML; only seventh installed suite filenames added."
+  },
+  "authority": "No product code, publication/source/origin/backup rule, permission, ref or automation is changed. Native evidence must come from a new exact-head run.",
+  "readback": "All four source blobs and the evidence were retrieved exactly after creation."
+}

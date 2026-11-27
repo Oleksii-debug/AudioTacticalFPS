@@ -211,6 +211,32 @@ raise SystemExit(status)
 """
 
 
+def pytest_diagnostic_plugins():
+    """Reuse the isolated child's exact timed diagnostic in direct pytest runs.
+
+    Callers retain their own offline/XFAIL/JUnit policies and process deadline.
+    Selecting only these two definitions must not execute PYTEST_CHILD's socket
+    policy, optional telemetry import, or pytest invocation in the calling host.
+    """
+    import ast
+    import pytest
+
+    expected = ((ast.FunctionDef, '_needs_gil_stack_dump'),
+                (ast.ClassDef, 'GilTimedStackDump'))
+    names = {name for _, name in expected}
+    definitions = [node for node in ast.parse(PYTEST_CHILD).body
+                   if isinstance(node, (ast.FunctionDef, ast.ClassDef))
+                   and node.name in names]
+    if tuple((type(node), node.name) for node in definitions) != expected:
+        raise RuntimeError('The canonical timed diagnostic definitions changed.')
+    namespace = {'__name__': 'carr_ci_timed_diagnostics', 'sys': sys, 'pytest': pytest}
+    source = ast.Module(body=definitions, type_ignores=[])
+    exec(compile(source, str(Path(__file__).resolve()), 'exec'), namespace)
+    if namespace['_needs_gil_stack_dump']():
+        return [namespace['GilTimedStackDump']()]
+    return []
+
+
 def _cleanup_report_directory(directory) -> None:
     # Windows may still be releasing a terminated child's file handles.
     # Retry only permission failures, briefly; persistent residue is a failure.

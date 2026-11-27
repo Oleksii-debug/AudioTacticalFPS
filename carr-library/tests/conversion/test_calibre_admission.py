@@ -184,6 +184,7 @@ def test_native_invocation_inherits_existing_owner_and_uses_fixed_binary_streams
             return 0
     def launch(args, **options):
         captured.update(args=args, options=options)
+        captured['stdin_eof'] = options['stdin'].read(1)
         options['stdout'].write(b'bounded diagnostic')
         options['stdout'].flush()
         return Process()
@@ -193,7 +194,8 @@ def test_native_invocation_inherits_existing_owner_and_uses_fixed_binary_streams
                           time.monotonic() + 10, environment=environment)
     assert result == (b'bounded diagnostic', False)
     assert captured['options']['start_new_session'] is False
-    assert captured['options']['shell'] is False and captured['options']['stdin'] == subprocess.DEVNULL
+    assert captured['options']['shell'] is False
+    assert captured['stdin_eof'] == b'' and captured['options']['stdin'].closed
     assert captured['options']['env'] is environment and captured['waited']
     assert captured['options']['stdout'].closed and captured['options']['stderr'].closed
 
@@ -263,3 +265,52 @@ def test_prc_palmdoc_family_is_admitted_without_enabling_arbitrary_pdb():
         calibre._input_header(b'\0' * 60 + b'foreign!' + b'\0' * 10, '.prc')
     with pytest.raises(ConversionError):
         calibre._input_header(b'\0' * 60 + b'TEXtREAd' + b'\0' * 10, '.azw3')
+
+
+def test_observed_calibre_creator_banner_keeps_exact_version_identity(tmp_path, monkeypatch):
+    path = installed(tmp_path)
+    selection = calibre.CalibreSelection.capture(path).snapshot()
+    source = tmp_path / 'source.tcr'
+    source.write_bytes(header('.tcr'))
+    original = source.read_bytes()
+    calls = []
+    def run(args, stage, deadline, **options):
+        calls.append(tuple(args))
+        if args[1] == '--version':
+            return (b'ebook-convert.exe (calibre 9.19.0)\r\n'
+                    b'Created by: Kovid Goyal <kovid@kovidgoyal.net>\r\n'), False
+        Path(args[2]).write_bytes(b'Actual observed banner; controlled reading text.')
+        return b'', False
+    monkeypatch.setattr(calibre, '_run', run)
+    result = calibre.calibre_records(source, original, '.tcr', ConversionBudget(),
+                                    time.monotonic() + 10, selection)
+    assert len(calls) == 2 and calls[0] == (path, '--version')
+    assert result[2][0]['logical_locator']['converter'] == 'ebook-convert.exe (calibre 9.19.0)'
+    assert result[2][0]['raw_text'] == 'Actual observed banner; controlled reading text.'
+    assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize('banner', [
+    b'ebook-convert.exe (calibre 9.19.0)\nCreated by: unexpected\n',
+    b'ebook-convert.exe (calibre 9.19.0)\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>\nextra\n',
+    b'other-tool (calibre 9.19.0)\n',
+    b'ebook-convert.exe (calibre unknown)\n',
+], ids=['foreign-creator', 'extra-line', 'foreign-entrypoint', 'invalid-version'])
+def test_unknown_calibre_version_banner_never_reaches_conversion(tmp_path, monkeypatch, banner):
+    path = installed(tmp_path)
+    selection = calibre.CalibreSelection.capture(path).snapshot()
+    source = tmp_path / 'source.tcr'
+    source.write_bytes(header('.tcr'))
+    original = source.read_bytes()
+    calls = []
+    def run(args, stage, deadline, **options):
+        calls.append(tuple(args))
+        assert args[1] == '--version', 'Unrecognized CLI reached document conversion.'
+        return banner, False
+    monkeypatch.setattr(calibre, '_run', run)
+    with pytest.raises(ConversionUnavailable, match='compatible bounded Calibre CLI'):
+        calibre.calibre_records(source, original, '.tcr', ConversionBudget(),
+                                time.monotonic() + 10, selection)
+    assert calls == [(path, '--version')]
+    assert not (tmp_path / 'calibre-reading.txt').exists()
+    assert source.read_bytes() == original

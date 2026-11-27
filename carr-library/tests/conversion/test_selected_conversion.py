@@ -397,7 +397,7 @@ def test_reading_folder_swap_at_actual_import_boundary_refuses_before_ingest(sel
         rows = []
     assert entered == [True]
     assert not any(row.get('state') == 'complete' for row in rows)
-    assert app.browse(workspace) == []
+    assert app.browse(workspace) == ()
     assert not any(path.is_file() for path in app.assets_dir.rglob('*'))
 
 
@@ -420,3 +420,90 @@ def test_import_returned_receipt_survives_late_reader_cleanup_error(selected_cas
     assert caught.value.completed_import[0]['state'] == 'complete'
     assert len(app.browse(workspace)) == 1
     assert result.original_path.read_bytes() == RAW
+
+
+@pytest.mark.parametrize('kind', ['calibre', 'office', 'pandoc'])
+def test_actual_adapter_stdin_and_logs_remain_inside_unchanged_worker_audit(
+        selected_case, monkeypatch, kind):
+    """Real nested Python proves transport/EOF, not a native format conversion."""
+    case = selected_case
+    current_command = selected._worker_command
+    patch = r'''
+import json
+from hashlib import sha256
+import os
+from pathlib import Path
+import subprocess
+import sys
+from carr_library.conversion import calibre, office, selected_adapters
+
+def checked_native_records(source, data, suffix, budget, deadline, selection):
+    outside = source.parent.parent / 'outside-worker-stage.txt'
+    def refuse_external_write():
+        try:
+            outside.write_bytes(b'must never be written')
+        except PermissionError as error:
+            assert str(error) == 'Conversion worker may only write private staging files.'
+        else:
+            raise AssertionError('The actual worker write boundary was weakened.')
+        assert not outside.exists()
+    refuse_external_write()
+    executable = Path(getattr(sys, '_base_executable', sys.executable)).resolve(strict=True)
+    program = ("import sys; from pathlib import Path; "
+               "assert sys.stdin.buffer.read(1) == b''; "
+               "assert Path('source.rtf').read_bytes() == " + repr(data) + "; "
+               "Path('native-empty-stdin').write_bytes(b'EOF'); "
+               "Path('pandoc.txt').write_bytes(" + repr(TEXT.encode('utf-8')) + "); "
+               "sys.stdout.buffer.write(b'actual private EOF'); "
+               "sys.stderr.buffer.write(b'bounded native warning')")
+    command = [str(executable), '-I', '-B', '-c', program]
+    if KIND == 'calibre':
+        result = calibre._run(command, source.parent, deadline,
+                              environment=calibre._environment(source.parent, executable.parent))
+        assert result == (b'actual private EOF', True)
+    elif KIND == 'office':
+        result = office._run(command, source.parent, deadline)
+        assert result == (b'actual private EOF', True)
+    else:
+        real_popen = subprocess.Popen
+        def fixed_pandoc_transport(args, **options):
+            assert args[0] == str(executable)
+            assert args[1:4] == ['--sandbox', '--from=rtf', '--to=plain']
+            assert options['cwd'] == source.parent
+            assert options['shell'] is False and options['start_new_session'] is False
+            return real_popen(command, **options)
+        subprocess.Popen = fixed_pandoc_transport
+        try:
+            result = selected_adapters._pandoc(source, data, budget, deadline,
+                {'path': str(executable), 'bytes': executable.stat().st_size,
+                 'sha256': sha256(executable.read_bytes()).hexdigest()})
+        finally:
+            subprocess.Popen = real_popen
+        assert result[2][0]['raw_text'] == TEXT
+        assert 'converter_reported_warnings_review_source_fidelity' in result[3]
+    assert (source.parent / 'native-empty-stdin').read_bytes() == b'EOF'
+    refuse_external_write()
+    return ('synthetic-real-native-transport', '\n\n',
+            [{'raw_text': TEXT, 'physical_index': None, 'status': 'review_required',
+              'logical_locator': {'synthetic_transport_fixture': True}}],
+            ['actual_python_stdin_and_audit_only_not_format_quality'])
+
+selected_adapters.selected_records = checked_native_records
+'''
+    patch = 'KIND = ' + repr(kind) + '\nTEXT = ' + repr(TEXT) + '\n' + patch
+    def command(request, digest):
+        args, environment = current_command(request, digest)
+        args = list(args)
+        offset = args.index('-c') + 1
+        marker = "runpy.run_module('carr_library.conversion.worker',run_name='__main__')"
+        assert args[offset].count(marker) == 1
+        args[offset] = args[offset].replace(marker, 'exec(' + repr(patch) + '); ' + marker)
+        return args, environment
+    monkeypatch.setattr(selected, '_worker_command', command)
+    result = case.service.extract(case.source, 'reading.txt')
+    assert selected.read_result(result) == TEXT
+    assert len(case.commands) == 1
+    assert result.original_path.read_bytes() == RAW
+    assert sorted(path.name for path in result.path.parent.iterdir()) == [
+        'original.rtf', 'provenance.json', 'reading.txt']
+    clean(case)

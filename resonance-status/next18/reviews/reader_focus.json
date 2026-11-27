@@ -1,0 +1,77 @@
+{
+  "schema": "carr.reviewed-source-delta/1",
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "purpose": "Correct two native reader probe states that repeated a successfully observed editor-focus assertion after their own next-control key helper moved focus.",
+  "actual_failure": {
+    "job_id": 140732211222,
+    "head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "note": "Exact job checkout log confirms C3 b524b3ac3453864903ec415ce7a5f048da09d700; both PASS-then-FAIL observations are from that job.",
+    "observations": [
+      {
+        "label": "appearance close restores reader keyboard focus",
+        "pass_utc": "2026-11-27T21:10:31.7136064Z",
+        "repeated_failure_utc": "2026-11-27T21:10:31.7462355Z"
+      },
+      {
+        "label": "native bookmark navigation restores cursor and reader focus",
+        "pass_utc": "2026-11-27T21:10:33.2614555Z",
+        "repeated_failure_utc": "2026-11-27T21:10:33.2652487Z"
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_reading_presentation_smoke.py",
+      "before": "66c0c971e63bcbbccddeaba30cc467e2f5e4ff0c",
+      "after": "4b827421198d0d5ec76348ed86f8dea5e174b3ec"
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_tabs_smoke.py",
+      "before": "905f5a1a0bb18f02d2ef19914412a22af439d4f0",
+      "after": "be5d893842cb4ce747ec7431ff188cbf6b3e56bf"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_reading_presentation_driver.py",
+      "before": "8b184b29424c4393ec651ce7f3bb076bade35cc2",
+      "after": "946d7f481c463495328c84f3ea9702497cb88926"
+    }
+  ],
+  "tests": {
+    "path": "tests/ui/test_native_reading_presentation_driver.py",
+    "prior_cases": 9,
+    "expected_cases": 14,
+    "functions": [
+      "test_key_release_failure_retains_exact_modifier_tuple_for_final_retry",
+      "test_cleanup_releases_keys_and_restores_fixtures_after_a_failed_timer_stop",
+      "test_cleanup_does_not_swallow_process_control_exceptions",
+      "test_nested_unwind_waits_for_child_destruction_before_ending_reader",
+      "test_unwind_still_closes_owned_modal_when_key_release_raises",
+      "test_failed_modal_exit_still_schedules_the_retained_outer_loop_exit",
+      "test_unwind_has_a_finite_deadline_for_an_owned_child_that_never_destroys",
+      "test_verified_reader_focus_advances_before_next_control_focus_settlement",
+      "test_missing_initial_reader_focus_still_refuses_before_any_native_key",
+      "test_wrong_bookmark_cursor_still_refuses_despite_correct_reader_focus"
+    ],
+    "new_cases": 5,
+    "companions": [
+      "scripts/windows_reading_presentation_smoke.py",
+      "scripts/windows_reading_tabs_smoke.py"
+    ],
+    "claim": "Portable execution of actual AST tick/key functions with controlled native-focus boundary; real Windows native probes remain required."
+  },
+  "preservation": [
+    "All original native check labels, source identities, keyboard actions and deadlines remain.",
+    "Original focus/caret must pass before verified stage; absent initial focus and wrong cursor still fail before a native key.",
+    "No product source, source guard, queue, worker, persistence or authority change."
+  ],
+  "donor_review": {
+    "commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "result": "No relevant correction. Donor reading_desk removes current appearance/recorded-audio integration; ebook reader changes list paging; shortcuts narrows current contexts. No donor product file adopted."
+  },
+  "peer": {
+    "reviewer": "canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact two-state source deltas and five meaningful driver cases; all previous9 retained."
+  }
+}

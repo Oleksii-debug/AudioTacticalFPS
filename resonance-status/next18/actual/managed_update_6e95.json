@@ -1,0 +1,101 @@
+{
+  "schema": "carr.actual-ci-evidence/1",
+  "head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "run_id": 46074881860,
+  "job_id": 140761348493,
+  "status": "SUCCESS",
+  "source": {
+    "whole_modules": 5,
+    "passed": 161,
+    "failed": 0,
+    "skipped": 0,
+    "suites": [
+      {
+        "suite": "tests/security/test_managed_installation.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/security/test_managed_registration.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/packaging/test_standard_installer.py",
+        "passed": 102,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/packaging/test_managed_update_native_policy.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "native_report": {
+    "actual_backup_restore": "PASS",
+    "actual_inno": "PASS",
+    "actual_windows_registration": "PASS",
+    "actual_windows_vault": "PASS",
+    "authenticode": "NOT_CLAIMED",
+    "full_wrapper_rollback": "PASS",
+    "host_package": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+    "live_app_exclusion": "PASS",
+    "nvda": "NOT_RUN",
+    "production_publisher": "NOT_CONFIGURED",
+    "repair": "PASS",
+    "schema": 1,
+    "setup_a_sha256": "c26f97c6aeabd0290b98661cf82588f28185763da15a6e7c30de169ab29733c6",
+    "setup_b_sha256": "6048a5928016e0077cf64bc22d9d36982158f86a71e3bbe4899201a8ea76833a",
+    "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+    "source_b": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "status": "PASS",
+    "target_sha256": "3897d6cb6ba9ea856a349d000619c7fac163c12ae8d8b0e4e2d3ba21dc1e51fa",
+    "uninstall": "PASS",
+    "update": "PASS",
+    "user_source_preserved": "PASS"
+  },
+  "artifact": {
+    "id": 15235666987,
+    "name": "managed-update-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+    "size_in_bytes": 88125,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15235666987",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15235666987/zip",
+    "expired": false,
+    "created_at": "2026-11-27T22:32:24Z",
+    "expires_at": "2026-12-04T22:32:23Z",
+    "updated_at": "2026-11-27T22:32:24Z",
+    "digest": "sha256:a685514ffc9118e740d0518fbce548e4f3423b12ab5ae539562064a8e72033ad",
+    "workflow_run": {
+      "id": 46074881860,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+      "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+    }
+  },
+  "limits": {
+    "full_desktop_gate": "NOT_QUALIFIED",
+    "production_publisher": "NOT_CONFIGURED",
+    "authenticode": "NOT_CLAIMED",
+    "nvda": "NOT_RUN",
+    "qualification_transfers": "NONE"
+  },
+  "basis": "Actual complete job log proves exact original A and B setup builds, explicit native phases, final typed native report and retained artifact."
+}

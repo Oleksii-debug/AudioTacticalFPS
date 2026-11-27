@@ -1,5 +1,8 @@
 """Portable failure-path checks for the native probe; no wx execution claim."""
+import ast
+import ctypes
 import importlib.util
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -121,3 +124,127 @@ def test_unwind_has_a_finite_deadline_for_an_owned_child_that_never_destroys():
         queue.pop(0)()
     assert not queue and calls == [('outer exit', 1)]
     assert reader.modal and foreign.modal and 'did not finish their cleanup' in errors[0]
+
+
+FOCUS_CASES = [
+    ('windows_reading_presentation_smoke.py', 'appearance_closed',
+     'appearance_focus_verified', 'reader_closing',
+     'appearance close restores reader keyboard focus'),
+    ('windows_reading_tabs_smoke.py', 'bookmark_returned',
+     'bookmark_focus_verified', 'split_tools_open',
+     'native bookmark navigation restores cursor and reader focus'),
+]
+
+
+def focus_driver(case):
+    """Execute the actual probe tick/key functions with a controlled HWND focus."""
+    filename, initial, verified, following, label = case
+    script = Path(__file__).resolve().parents[2] / 'scripts' / filename
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    functions = []
+    for name in ('check', 'advance', 'key', 'tick_body'):
+        matches = [node for node in ast.walk(tree)
+                   if isinstance(node, ast.FunctionDef) and node.name == name]
+        assert len(matches) == 1, (filename, name)
+        functions.append(matches[0])
+    focused, pressed, callbacks, checks, held = [None], [], [], [], [None]
+    stage = [initial, 100.0]
+
+    class Control:
+        def __init__(self, name):
+            self.name, self.cursor = name, 5
+
+        def GetHandle(self):
+            return 731
+
+        def Raise(self):
+            pass
+
+        def SetFocus(self):
+            focused[0] = self
+
+    reader, editor, target = Control('reader'), Control('editor'), Control('next button')
+    notebook = Control('notebook')
+    focused[0] = editor
+
+    def owner(handle, pointer):
+        assert handle == reader.GetHandle()
+        pointer._obj.value = os.getpid()
+        return 1
+
+    def foreground(handle):
+        assert handle == reader.GetHandle()
+        return True
+
+    def key_down(code, modifiers):
+        pressed.append((focused[0], code, modifiers))
+        return True
+
+    controls = {
+        'Reading copy (editable; Ctrl+S saves)': editor,
+        'Reading copies; Control+Tab changes reading tab': notebook,
+        'Bookmarks and paragraph tools': target,
+    }
+    wx = SimpleNamespace(
+        MOD_NONE=0, WXK_SPACE=32, ID_CANCEL=2,
+        GetTopLevelParent=lambda control: reader,
+        Window=SimpleNamespace(FindFocus=lambda: focused[0]),
+        FindWindowById=lambda identity, parent: target,
+        CallLater=lambda delay, callback: callbacks.append((delay, callback)))
+    environment = {
+        'wx': wx, 'ctypes': ctypes, 'wintypes': SimpleNamespace(DWORD=ctypes.c_uint32),
+        'os': os, 'monotonic': lambda: 100.0, 'stage': stage, 'deadline': 200.0,
+        'held': held, 'errors': [], 'checks': checks,
+        'evidence': {'editor': editor, 'bookmark_cursor': 5},
+        'user32': SimpleNamespace(GetForegroundWindow=lambda: reader.GetHandle(),
+                                  GetWindowThreadProcessId=owner,
+                                  SetForegroundWindow=foreground),
+        'simulator': SimpleNamespace(KeyDown=key_down),
+        'released': lambda: None,
+        'named': lambda name, parent: controls[name],
+        'window': lambda title: reader if title == 'Voice reader and reading copy' else None,
+        'reader_window': lambda: reader,
+        'reader_module': SimpleNamespace(caret_offset=lambda control: control.cursor),
+    }
+    module = ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[]))
+    exec(compile(module, str(script), 'exec'), environment)
+    return SimpleNamespace(
+        tick=environment['tick_body'], focused=focused, pressed=pressed,
+        callbacks=callbacks, checks=checks, held=held, stage=stage,
+        editor=editor, target=target, label=label, verified=verified, following=following)
+
+
+@pytest.mark.parametrize('case', FOCUS_CASES, ids=('appearance', 'bookmark'))
+def test_verified_reader_focus_advances_before_next_control_focus_settlement(case):
+    probe = focus_driver(case)
+    probe.tick()  # Observe the actual required editor focus once.
+    assert probe.checks == [probe.label] and probe.focused[0] is probe.editor
+    assert probe.stage[0] == probe.verified and not probe.pressed
+
+    probe.tick()  # Existing native key helper focuses the next control and returns.
+    assert probe.focused[0] is probe.target and probe.stage[0] == probe.verified
+    assert probe.checks == [probe.label] and not probe.pressed and not probe.callbacks
+
+    probe.tick()  # Next timer turn sends the same actual key without rechecking old focus.
+    assert probe.stage[0] == probe.following
+    assert probe.pressed == [(probe.target, 32, 0)] and probe.held == [(32, 0)]
+    assert probe.checks == [probe.label] and len(probe.callbacks) == 1
+
+
+@pytest.mark.parametrize('case', FOCUS_CASES, ids=('appearance', 'bookmark'))
+def test_missing_initial_reader_focus_still_refuses_before_any_native_key(case):
+    probe = focus_driver(case)
+    probe.focused[0] = probe.target
+    with pytest.raises(AssertionError, match=probe.label):
+        probe.tick()
+    assert not probe.checks and not probe.pressed and not probe.callbacks
+    assert probe.stage[0] == case[1] and probe.focused[0] is probe.target
+
+
+def test_wrong_bookmark_cursor_still_refuses_despite_correct_reader_focus():
+    probe = focus_driver(FOCUS_CASES[1])
+    probe.editor.cursor = 6
+    with pytest.raises(AssertionError, match=probe.label):
+        probe.tick()
+    assert not probe.checks and not probe.pressed and not probe.callbacks
+    assert probe.stage[0] == 'bookmark_returned' and probe.focused[0] is probe.editor

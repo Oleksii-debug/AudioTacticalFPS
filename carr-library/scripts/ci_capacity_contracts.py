@@ -28,6 +28,7 @@ SUITES = {
     'tests/storage/test_complete_pending_backup.py': 4,
     'tests/storage/test_backup_pending_common4.py': 27,
     'tests/storage/test_backup_schema_identity.py': 36,
+    'tests/ui/test_native_backup_capacity_driver.py': 6,
 }
 PINS = {
     'scripts/benchmark_library_scale.py': '74d8f3669444a7ae28df49c0c1f9636578a8cde7',
@@ -42,7 +43,9 @@ PINS = {
     'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
     'tests/storage/test_backup_pending_common4.py': '20707e52c7a9220df5213668138db552ef74d2b9',
     'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
-    'scripts/ci_check.py': '8a23ef36c2df93928b0aff3edd8b59a53c54684c',
+    'tests/ui/test_native_backup_capacity_driver.py': 'a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c',
+    'scripts/windows_backup_capacity_smoke.py': '3f633a875f8232d4c0cce5cdf40e47d9064f9987',
+    'scripts/ci_check.py': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
     'src/carr_library/backup_capacity.py': '1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
     'src/carr_library/application.py': '4544453f62a96993a2f05ed1522a563649289715',
@@ -53,7 +56,8 @@ PINS = {
     'src/carr_library/storage/revisions.py': '417a9920d4c25eacd36cc81f7441ea321c18d632',
     'src/carr_library/ui/backup_capacity.py': '66555889648ec8b76ac11e7ffe5bd54ece6c29e9',
 }
-COMPANIONS = ('scripts/benchmark_library_scale.py', 'scripts/benchmark_semantic_cache.py')
+COMPANIONS = ('scripts/benchmark_library_scale.py', 'scripts/benchmark_semantic_cache.py',
+              'scripts/windows_backup_capacity_smoke.py')
 
 
 def require(value, message):
@@ -195,8 +199,8 @@ def main():
     benchmark = load('capacity_existing_harness', ROOT / COMPANIONS[0])
     proof_module = load('capacity_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
-    # Five two-suite waves retain 600 s plus the existing 30 s tree cleanup
-    # and 0.2 s report retries; 3200 s also covers aggregate setup/reporting.
+    # Retain the existing aggregate envelope and every 600 s child deadline.
+    # The added portable chooser-driver suite uses the exact pinned script.
     code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
                   '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=3200)
     lines = source_log.read_text(encoding='utf-8').splitlines()

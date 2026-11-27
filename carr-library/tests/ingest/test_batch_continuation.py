@@ -55,8 +55,13 @@ def test_more_than_5000_actual_sources_continue_after_process_restart(peer, monk
     count = 5007
     for number in range(count):
         write(folder, f'{number:05d}.txt')
-    first = store.plan_page(workspace, [folder], max_files=5000, timeout=120, max_bytes=8 * 1024**2)
-    assert first['version'] == 2 and first['total'] == 5000
+    # This checks the file-count page boundary and a real process restart.
+    # The reviewed Windows source run consumed the old 120s at 4970 files;
+    # keep an explicit finite setup allowance inside the unchanged 600s suite.
+    first = store.plan_page(workspace, [folder], max_files=5000, timeout=240, max_bytes=8 * 1024**2)
+    boundary = (first['scan']['reason'], first['total'], first['scan']['limits'])
+    assert first['version'] == 2 and first['total'] == 5000, boundary
+    assert first['scan']['reason'] == 'files', boundary
     assert not first['scan']['cursor']['complete'] and first['scan']['cursor']['planned'] == 5000
     assert app.browse(workspace) == ()
     assert not (app.root / 'imports.sqlite').exists()

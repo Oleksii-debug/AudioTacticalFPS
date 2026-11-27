@@ -127,7 +127,7 @@ def main():
     old_file, old_dir, frame = wx.FileDialog, wx.DirDialog, None
     try:
         with TemporaryDirectory(prefix='resonance-batch-native-') as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve(strict=True)
             output = root / 'outputs'; output.mkdir()
             sources = []
             for index in range(2):
@@ -184,9 +184,16 @@ def main():
 
             def approval(dialog, approved):
                 detail = named(dialog, 'Reviewed audio batch files and settings')
+                observed_review = detail.GetValue()
+                expected_sources = tuple(str(path) for path in sources)
+                if not all(path in observed_review for path in expected_sources):
+                    print('DIAGNOSTIC: native audio batch source review ' + json.dumps({
+                        'expected_sources': expected_sources,
+                        'observed_review': observed_review[:16384],
+                        'observed_characters': len(observed_review)}, ensure_ascii=True), flush=True)
                 check('native batch review is read-only and names both sources',
                     isinstance(detail, wx.TextCtrl) and bool(detail.GetWindowStyleFlag() & wx.TE_READONLY)
-                    and all(str(path) in detail.GetValue() for path in sources))
+                    and all(path in observed_review for path in expected_sources))
                 no = named(dialog, 'Keep audio review without running')
                 check('native batch approval defaults to No', dialog.GetDefaultItem() is no)
                 press(named(dialog, 'Run exactly reviewed audio batch') if approved else no)

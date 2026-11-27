@@ -1,0 +1,34 @@
+{
+  "source_component": "66202b2026cbcb330b9e9a188156b1bc81da192d",
+  "audit": "c9c0d631dccb842d333d5e86e8c9521ca59f67ad",
+  "required_integration_dependency": {
+    "old_source": "194df6f0589c077fac26fc38751d79068c7570ea",
+    "new_source": "6859d406a595e806b78de12969ad681757e34f71",
+    "helper_preimage": "fc85cebfc0c534ccdae4ba40a271de2d44e6c08a",
+    "workflow_preimage": "c2a901d7026068b199253de3a492769e27b95177",
+    "updates": "One exact translation source pin in helper, two translation source pins in workflow, and two resulting helper pins in workflow.",
+    "owner": "root",
+    "status": "Root exact replacements/readbacks complete; independent pin peer review owned by canonical_regression.",
+    "manifest": "1765b4bea9a198eda0a1c75b799857c80360317b",
+    "helper_successor": "4f9ef7774a1e8eaab254223181df7d3ddb9d3a26",
+    "workflow_successor": "791430237558ef1ae715f8f61d56789b3253a9a2",
+    "previous_repin_manifest": "e23bf4153f3786e5d20959591662534b29e0a21a"
+  },
+  "scope": "The one-file handoff is a reviewed component. A coherent executable tree must also compose the source-pinned dependent helper/workflow successors.",
+  "schema": "carr.pytest-acceptance-timer-audit-addendum/1",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "requires_union": "a3cc9ee6c96ced8c4ebbafbd7e86a63cd2fe7d72",
+  "complete_integration": [
+    "a3cc9ee6c96ced8c4ebbafbd7e86a63cd2fe7d72",
+    "31ef41c298f29b561de15421a6788ecc9e13d7b9",
+    "e23bf4153f3786e5d20959591662534b29e0a21a",
+    "66202b2026cbcb330b9e9a188156b1bc81da192d",
+    "1765b4bea9a198eda0a1c75b799857c80360317b"
+  ],
+  "preservation": "The source patch remains one unchanged accepted caller delta. The dependent pin changes are mandatory for source admission and do not change any child, policy, deadline, runtime preparer, test inventory or native contract. The live focused fe2e converter run is untouched.",
+  "transferable": "windows_transferable_bundle_smoke.py1a2dc530 remains byte-identical; this audit does not add a timer to safe no-timer callers.",
+  "execution": "NOT_RUN for the coherent successor; no older source/installed/native PASS transfers.",
+  "refs_changed": false
+}

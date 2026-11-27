@@ -1,0 +1,39 @@
+{
+  "schema": "resonance-native-probe-input-and-cleanup-correction/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "files": [
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "preimage": "cd36b78bab9ca11ec3113f2c6f5f4434da7c1078",
+      "sha": "18cb22d3451921b19b5d440b9da64340fca03b54"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_conversion_batch_smoke.py",
+      "preimage": "72c4ddd2f1281cab8d6a49ed5911ab05438323e3",
+      "sha": "3d01c842b12916372f2a5ec65f2088c6974bec83"
+    },
+    {
+      "path": "carr-library/scripts/windows_epub_reading_smoke.py",
+      "preimage": "f3dfe05c04af1682c3037c6d6f2e4cc66c604b09",
+      "sha": "9f528b70d07b6c3021d42f21ad95e67c39647972"
+    }
+  ],
+  "changes": {
+    "import_center": "One API access .GetViewStart().y -> .GetViewStart()[1]; actual tuple failure and official API agree. All other bytes unchanged.",
+    "audio_batch": "Canonicalize only owned synthetic temporary root, matching the unchanged product's durable_state.local_path. All18 check labels, exact read-only/source-path requirements preserved. Bounded failure-only path diagnostics; original sole cause not yet established.",
+    "recorded_epub": "All25 original check labels, exact Unicode/audio/keyboard and120s work deadline preserved. Immediate failure traceback and bounded source-highlight details. Close one actually captured active reader/overlay modal through product close(), preserve vetoes, release owned keys after failure, add180s hard work/cleanup guard."
+  },
+  "review": {
+    "import_center": "locate_project ACCEPTED_STATIC_NOT_RUN",
+    "audio_batch": "canonical_regression ACCEPTED_STATIC_NOT_RUN",
+    "recorded_epub": "canonical_regression ACCEPTED_STATIC_NOT_RUN",
+    "all_source_readbacks": true
+  },
+  "product_code_changed": false,
+  "source_text_or_pcm_assertions_weakened": false,
+  "actual_success": "NOT_RUN for successor bytes",
+  "references": [
+    "https://docs.wxpython.org/wx.Scrolled.html"
+  ]
+}

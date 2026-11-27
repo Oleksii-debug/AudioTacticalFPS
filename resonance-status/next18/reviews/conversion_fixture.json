@@ -1,0 +1,40 @@
+{
+  "schema": "resonance-selected-converter-fixture-correction/1",
+  "base": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/tests/conversion/test_selected_conversion.py",
+      "preimage": "8030a214a238d6bad568fc2ded2c61021baaca42",
+      "sha": "7732eee3d6f4753efb2fb466315281320649a74c"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": "7dd79e1b8b390bb14479f9be7d2e7c3792fd4333",
+      "sha": "9547792ede0f652e51f4d60e1740d1186c360f7f"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "600b33370927bd77c193aab8ea1bbc4f0abf3de7",
+      "sha": "08beb31dd646b539036ed1b8a162cc28b97e743b"
+    }
+  ],
+  "actual_evidence": "2b813bed0184d4509cecd7bf7b72e27365b21e58",
+  "changes": [
+    "One fixture assertion expects the current actual empty tuple; same real source-swap denial and all26 cases preserved.",
+    "One exact test pin in the helper; exactly two helper pins in workflow.",
+    "No source, worker, runtime, policy, timeout, case count, native check, origin or lifecycle code change."
+  ],
+  "ci_check": "8a23ef36c2df93928b0aff3edd8b59a53c54684c remains exact for this narrow rerun; the separate reviewed diagnostic factory is not composed here.",
+  "required": {
+    "portable_source_per_platform": 201,
+    "portable_installed_per_platform": 201,
+    "native_source_and_installed": {
+      "formats": 14,
+      "old_suite": 34,
+      "gui_checks": 30,
+      "gui_origins": 30
+    }
+  },
+  "no_refs_changed": true
+}

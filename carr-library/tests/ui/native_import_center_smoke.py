@@ -157,7 +157,7 @@ def main():
                     wait_until(lambda: wx.Window.FindFocus() is control
                                and inside(dialog.content, control),
                                'Focused Import Center control was not scrolled into view.')
-                    scroll_positions.append(dialog.content.GetViewStart().y)
+                    scroll_positions.append(dialog.content.GetViewStart()[1])
                 assert scroll_positions[0] > scroll_positions[1] >= 0
                 state['compact_layout'] = True
                 print('PASS: compact viewport retains fixed actions and scrolls focused controls into view', flush=True)
