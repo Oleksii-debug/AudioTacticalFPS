@@ -240,6 +240,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Native EPUB publishing lifetime acceptance failed.' }
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+            & $python -I -B scripts/windows_speech_lifetime_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-lifetime.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native Reader owner and parent destruction acceptance failed.' }
             & $python -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-translation-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls and synthetic protocol acceptance failed.' }
             & $python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'
