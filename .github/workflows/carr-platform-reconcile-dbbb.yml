@@ -222,7 +222,7 @@ jobs:
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         timeout-minutes: 2
         run: |
-          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/transcription_windows/test_protocol_fixture_handles.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
+          python -B scripts/ci_check.py --jobs 2 tests/speech/test_output_devices.py tests/storage/test_reader_presentation_backup.py tests/transcription_windows/test_protocol_fixture_handles.py tests/operations_windows/test_native_lock_release.py 2>&1 | Tee-Object 'ci-appearance-results/strict-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require exact source native reading appearance
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
