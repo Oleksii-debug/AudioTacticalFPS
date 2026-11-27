@@ -605,6 +605,8 @@ class DesktopFrame(WorkspaceFrame):
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
+        from .operations_dialog import install_operations_actions
+        install_operations_actions(self)
         install_keyboard_settings(self)
 
     def build_advanced_query(self, event=None):

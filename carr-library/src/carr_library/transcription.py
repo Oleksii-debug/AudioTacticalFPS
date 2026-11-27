@@ -5,6 +5,7 @@ This service preserves inputs, validates its durable receipts, and reuses the
 application's state, process runner and operation progress infrastructure.
 No model is downloaded and a protocol test is never acoustic qualification.
 """
+from contextlib import ExitStack
 from hashlib import sha256
 import json
 import math
@@ -364,15 +365,68 @@ runpy.run_path(str(worker), run_name='__main__')
 class TranscriptionService:
     """The same retained-input and receipt boundary for native UI and CLI."""
 
-    def __init__(self, app, workspace):
+    def __init__(self, app, workspace, *, broker=None):
         self.app, self.workspace = app, workspace
         self._authorize()
         self.root = local_path(app.root / 'state' / 'transcription')
         self.jobs_root = self.root / sha256(workspace.encode('utf-8')).hexdigest() / 'jobs'
+        self._broker = broker
 
     def _authorize(self):
         with self.app.read(self.workspace):
             pass
+
+    def _admission_broker(self, cancelled):
+        from .operations import ResourceBroker, ResourceStateError
+        if self._broker is None:
+            self._broker = ResourceBroker.for_app(self.app.root, cancelled=cancelled)
+        if (self._broker.root != self.app.root / 'runtime' / 'resources'
+                or self._broker.policy_path != self.app.root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The transcription resource policy belongs to another data folder.')
+        return self._broker
+
+    def _resource_plan(self, job, path, broker):
+        from .operations import ResourceRequest, ResourceUnavailable
+        limits = broker.limits
+        if not limits.memory_bytes:
+            raise ResourceUnavailable('Configure a positive declared memory allowance before transcription.')
+        # This worker has no measured peak or validated physical GPU index.
+        # Reserve the whole declared pool without changing its chosen device,
+        # compute type, language, model, thread environment or parallel files.
+        device = 'cuda' if job['settings']['device'] == 'cuda' else None
+        capacity = dict(limits.gpu_devices).get(device, 0)
+        if device is not None and not capacity:
+            raise ResourceUnavailable('CUDA transcription needs an explicit generic cuda resource allowance.')
+        output_budget = (sum(item['size_bytes'] for item in job['sources'])
+            + sum(sorted((item['size_bytes'] for item in job['sources']), reverse=True)
+                  [:job['settings']['parallel_files']]) + 512 * 1024**2)
+        request = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
+            gpu_device=device, gpu_memory_bytes=capacity,
+            devices=('accelerator:cuda',) if device else (),
+            disk_bytes=output_budget + AudioBudget().reserve_disk_bytes, disk_path=path)
+        return request, {'schema': 1, 'request': request.to_dict(),
+            'cpu_memory_basis': 'whole declared CPU/RAM pool; supplied worker thread count and model peak are not measured',
+            'disk_basis': 'existing bounded worker output/staging allowance plus its free-disk reserve; conservative peak estimate',
+            'gpu_basis': 'whole explicitly configured generic cuda allowance; no physical index or measured VRAM guarantee'}
+
+    @staticmethod
+    def _admission_model(config, job, cancelled):
+        if job['protocol'] != V5_PROTOCOL:
+            # receipts-v1 delegates model resolution to its reviewed worker;
+            # only its existing returned receipt can establish that identity.
+            return None
+        model = local_path(config['models_dir'], exists=True)
+        if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
+            model = local_path(model / job['settings']['model'], root=model, exists=True)
+        return _v5_model(model, cancelled)
+
+    @staticmethod
+    def _release_admission(lease, job):
+        # The existing runner has reaped its child before either return path.
+        # Disposable metadata failure remains a notice, never a lost transcript.
+        lease.release()
+        if lease.cleanup_pending:
+            job['resource_cleanup_notice'] = 'Resource reservation metadata cleanup is pending.'
 
     def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL):
         self._authorize()
@@ -874,7 +928,7 @@ class TranscriptionService:
         finite(timeout, 'Transcription time allowance', .05, 365 * 86400)
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
-        with state_lock(path, 'transcribe'):
+        with state_lock(path, 'transcribe'), ExitStack() as reservations:
             job = self.get(identity)
             if job['status'] == 'completed':
                 self.verify(identity, cancelled=cancelled)
@@ -883,6 +937,32 @@ class TranscriptionService:
             if config['protocol'] != job['protocol']:
                 raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
             self._sources(path, job, cancelled)
+            reviewed_model = self._admission_model(config, job, cancelled)
+            from .operations import ResourceCancelled, ResourceError
+            try:
+                broker = self._admission_broker(cancelled)
+                request, resource_plan = self._resource_plan(job, path, broker)
+                if progress is not None:
+                    try:
+                        progress(None, None, 'Waiting for shared local transcription resources.')
+                    except Exception:
+                        progress = None  # Detach only the optional observer.
+                lease = reservations.enter_context(broker.reserve(request,
+                    operation_id='asr:' + self.jobs_root.parent.name + ':' + identity,
+                    cancelled=cancelled, timeout=60))
+            except ResourceCancelled as exc:
+                raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
+            except ResourceError as exc:
+                raise AudioError(str(exc)) from exc
+            # No DB transaction is held during admission. A queued operation
+            # must regain current workspace, runtime, model and source authority.
+            self._authorize()
+            if self.configuration(verify=True) != config:
+                raise ValueError('The configured transcription runtime changed while waiting; review it again.')
+            cancelled = lease.cancelled
+            self._sources(path, job, cancelled)
+            if self._admission_model(config, job, cancelled) != reviewed_model:
+                raise ValueError('The selected transcription model changed while waiting; review it again.')
             for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                 candidate = path / name
                 if candidate.exists():
@@ -897,10 +977,7 @@ class TranscriptionService:
                        'python_sha256': config['python_sha256']}
             worker_settings, results_root = job['settings'], path / 'results'
             if job['protocol'] == V5_PROTOCOL:
-                model = local_path(config['models_dir'], exists=True)
-                if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
-                    model = local_path(model / job['settings']['model'], root=model, exists=True)
-                model_identity = _v5_model(model, cancelled)
+                model_identity = reviewed_model
                 host_run_id = uuid4().hex
                 results_root = path / 'results' / 'runs' / host_run_id
                 results_root.mkdir(parents=True, mode=0o700)
@@ -911,8 +988,9 @@ class TranscriptionService:
                     source_identities={row['filename']: _v5_file(path / 'input' / row['filename'], cancelled)
                                        for row in job['sources']},
                     result_directory=(results_root / 'Whisper_V5' / path.name).relative_to(path / 'results').as_posix())
+            job.pop('resource_cleanup_notice', None)
             job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
-                       run_context=context, last_error='')
+                       run_context=context, last_error='', resource_plan=resource_plan)
             self._save(path, job)
             for name in ('results', 'temporary', 'runtime-home'):
                 (path / name).mkdir(exist_ok=True, mode=0o700)
@@ -988,6 +1066,7 @@ class TranscriptionService:
             if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
                 job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
                            last_error='Stopped. Saved worker results will be verified on the next resume.')
+                self._release_admission(lease, job)
                 self._save(path, job)
                 if not _LIVE_STATUS_SNAPSHOTS:
                     # run_process has reaped the child. A bounded status read
@@ -1028,6 +1107,7 @@ class TranscriptionService:
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 job.update(status='stopped' if stop_at is not None else 'failed',
                            last_error=str(failure or exc)[:3000])
+            self._release_admission(lease, job)
             self._save(path, job)
             notify(job['done'], len(job['sources']), job['status'])
             return job
