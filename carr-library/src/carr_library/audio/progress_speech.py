@@ -230,7 +230,9 @@ class LocalProgressSpeech:
                     try:
                         player.close()
                         self._possibly_audible = False
-                    except (OSError, RuntimeError):
+                    except Exception:
+                        # Includes a real ffplay subprocess.TimeoutExpired: an
+                        # unsuccessful close never proves native ownership ended.
                         # An error status alone is not proof that a native driver
                         # released its buffers. Retain ownership and keep content
                         # admission closed until silence is actually confirmed.

@@ -3,6 +3,7 @@ from dataclasses import replace
 import json
 from pathlib import Path
 import struct
+import subprocess
 from threading import Event, Thread
 import time
 from types import SimpleNamespace
@@ -52,6 +53,7 @@ class ObservedPlayer:
         self.paths, self.samples = [], []
         self.played, self.closed = Event(), Event()
         self.fail_close, self.hold = False, False
+        self.close_error = RuntimeError('The fixture device still owns its buffers.')
 
     def play(self, path):
         self.paths.append(Path(path))
@@ -68,7 +70,7 @@ class ObservedPlayer:
 
     def close(self):
         if self.fail_close:
-            raise RuntimeError('The fixture device still owns its buffers.')
+            raise self.close_error
         self.closed.set()
 
 
@@ -268,13 +270,16 @@ def test_cancel_playing_notice_confirms_device_close_before_pcm_cleanup(tmp_path
         worker.join(3)
 
 
-def test_error_status_does_not_release_unknown_native_buffers_or_private_pcm(tmp_path):
+@pytest.mark.parametrize('error', [RuntimeError('The fixture device still owns its buffers.'),
+                                  subprocess.TimeoutExpired(['owned-ffplay'], 1)])
+def test_error_status_does_not_release_unknown_native_buffers_or_private_pcm(tmp_path, error):
     player = ObservedPlayer()
-    player.fail_close = True
+    player.fail_close, player.close_error = True, error
     provider, engine, _ = selection(tmp_path, player=player)
     try:
-        with pytest.raises(RuntimeError, match='owns its buffers'):
+        with pytest.raises(type(error)) as caught:
             provider.speak_progress('Working.', volume=.2, cancelled=lambda: False)
+        assert caught.value is error
         assert not provider.quiescent and provider._retained[0] is player
         assert player.paths[0].is_file()
         with pytest.raises(RuntimeError, match='not confirmed silence'):

@@ -518,7 +518,7 @@ class ToneDispatcher:
                     try:
                         self.backend.close()
                         self._tone_uncertain = False
-                    except (OSError, RuntimeError):
+                    except Exception:
                         self._tone_uncertain = True
 
     def silence(self):
@@ -526,9 +526,10 @@ class ToneDispatcher:
             self._voice_cancel.set()
             if self.backend is not None:
                 try:
+                    self._tone_uncertain = True
                     self.backend.stop()
                     self._tone_uncertain = False
-                except (OSError, RuntimeError):
+                except Exception:
                     self._tone_uncertain = True
 
     def close(self):
