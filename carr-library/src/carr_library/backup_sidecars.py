@@ -412,6 +412,8 @@ def normalize_manifest(manifest):
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
+        if backup_transcription.is_cache_file(entry['filename']) and not generated:
+            raise RestoreError('Transcription cache requires explicit manifest inclusion.')
         minimum = 0 if backup_transcription.allows_empty(entry['filename']) else 1
         if not minimum <= entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
