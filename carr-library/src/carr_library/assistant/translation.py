@@ -13,7 +13,7 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from .models import canonical, local_path, text
 from .profiles import ProviderProfile, google_v3_parent
-from .providers import Authorization, Gateway, money, _request
+from .providers import Authorization, Gateway, money, _request, translation_receipt_sha256
 from .state import JobStore, atomic_json, read_json, now, MAX_CHECKPOINT_BYTES
 from ..speech.reading import ReadingDocument, MAX_PROJECT_BYTES
 from ..speech._io import new_output, digest, check_cancelled
@@ -405,7 +405,8 @@ class TranslationService:
                 raise ValueError('A completed translation chunk is damaged.')
             if requests[index] is None:
                 if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None
-                        or row.get('response_sha256') is not None or row.get('detected_source') is not None):
+                        or row.get('response_sha256') is not None or row.get('detected_source') is not None
+                        or 'decoded_translation_sha256' in row):
                     raise ValueError('A whitespace chunk differs from its preserved original.')
                 continue
             text(row['text'], 'completed translation output', maximum=200000)
@@ -433,6 +434,12 @@ class TranslationService:
                     or (type(usage) is dict and 'translation_sha256' in usage))
                     and recorded_text != row['translation_sha256']):
                 raise ValueError('The completed translation text differs from its accepted decoded-output receipt.')
+            key = 'decoded_translation_sha256'
+            if key in row or (type(usage) is dict and key in usage):
+                expected = translation_receipt_sha256(row['text'], row.get('detected_source'))
+                if (type(usage) is not dict or row.get(key) != expected
+                        or usage.get(key) != expected):
+                    raise ValueError('A decoded translation receipt differs from its usage evidence.')
         return job
 
     def _text_binding(self, job):
@@ -499,6 +506,9 @@ class TranslationService:
                         'request_sha256': result.get('request_sha256'), 'response_sha256': result.get('output_sha256')}
                     if profile.adapter == 'google-translation-v3' and chunk.strip():
                         receipt.update(reported_model=result['reported_model'], glossary_config=result['glossary_config'])
+                    if chunk.strip():
+                        receipt['decoded_translation_sha256'] = translation_receipt_sha256(
+                            result['text'], result.get('detected_source'))
                     job['receipts'].append(receipt)
                     # Accepted output precedes later scope/cancel checks: never bill twice.
                     self.jobs.save(job)
@@ -564,6 +574,9 @@ class TranslationService:
                     'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
                     'automated_translation_quality': 'not independently qualified',
                     'decoded_text_binding': text_binding,
+                    'decoded_language_binding': ('usage-ledger-sha256' if all(
+                        not chunk.strip() or 'decoded_translation_sha256' in row
+                        for chunk, row in zip(job['chunks'], job['receipts'])) else 'unrecorded-legacy'),
                     'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
                     'files': {name: digest(target / name) for name in paths}}
                 if binding:
