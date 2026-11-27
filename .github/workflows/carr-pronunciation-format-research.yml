@@ -1,0 +1,28 @@
+name: CARR pronunciation format documentation research
+
+on:
+  push:
+    branches: [carr/pronunciation-format-research-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-pronunciation-docs-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  documentation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Locate bounded system archive parser
+        run: |
+          command -v 7zz || command -v 7z
+      - name: Inspect author documentation without executing or uploading it
+        run: python3 -I -B carr-library/scripts/inspect_pronunciation_help.py
