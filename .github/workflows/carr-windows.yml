@@ -1166,7 +1166,7 @@ jobs:
             'tests/studio/test_publishing_cli.py',
             'tests/assistant/test_translation.py',
             'tests/assistant/test_translation_v3.py',
-            'tests/ingest/test_catalog_asset_copy.py',
+            'tests/ingest/test_catalog_asset_copy.py'
           )
           $previousSourcePath = $env:PATH
           try {
