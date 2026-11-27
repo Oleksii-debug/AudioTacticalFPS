@@ -95,3 +95,76 @@ def test_one_shot_cancel_during_fts_sql_stays_cancelled(source_db, monkeypatch):
 def test_direct_search_rejects_invalid_timeout(source_db, timeout):
     with pytest.raises(ValueError, match='budget'):
         literal.search(source_db, 'library', 'quotation', timeout=timeout)
+
+
+def test_long_unicode_source_keeps_exact_clusters_casefold_and_page_offsets(source_db):
+    phrase = 'Straße\t  архів'
+    tail = 'Київський архів'
+    raw = ('Українська історія. ' + phrase + '.\n') * 3000 + tail + '.'
+    assert len(raw) > 65536 and not raw.isascii()
+    add_source(source_db, raw)
+    first, = literal.search(source_db, 'library', 'STRASSE архів', limit=1)
+    last, = literal.search(source_db, 'library', 'STRASSE архів', limit=1, offset=2999)
+    unique, = literal.search(source_db, 'library', 'КИЇВСЬКИЙ АРХІВ')
+    for hit, expected, at in ((first, phrase, raw.index(phrase)),
+                              (last, phrase, raw.rindex(phrase)),
+                              (unique, tail, raw.index(tail))):
+        assert hit['raw_quote'] == raw[hit['start']:hit['end']] == expected
+        assert (hit['start'], hit['end']) == (at, at + len(expected))
+        assert hit['locator_kind'] == 'logical_segment'
+        assert hit['raw_text_sha256'] == sha256(raw.encode()).hexdigest()
+    assert literal.search(source_db, 'library', 'ss', mode='word') == []
+    assert literal.search(source_db, 'library', 'Киівський', mode='word') == []
+
+
+def test_unicode_mapping_peak_allocation_is_bounded_for_large_source():
+    import tracemalloc
+
+    raw = 'Українська історія. Straße\t  архів.\n' * 2200
+    assert len(raw) > 65536
+    tracemalloc.start()
+    try:
+        folded, starts, ends = literal._mapped(raw)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    # This covers Python allocations in offset mapping, not SQLite or total RSS.
+    # Two per-character dictionaries exceed this budget by several multiples.
+    assert peak < len(raw) * 32 + 2 * 1024 * 1024
+    match, = tuple(literal._spans(folded, starts, ends, literal._fold('STRASSE архів')))[:1]
+    assert raw[match[0]:match[1]] == 'Straße\t  архів'
+
+
+def test_compact_unicode_boundaries_match_existing_small_source_contract(monkeypatch):
+    from random import Random
+
+    random = Random(20261126)
+    clusters = ('a', 'Ж', 'ї', 'é', 'e\u0301', 'ß', 'İ', 'ﬃ', 'Σ', 'ς', '가',
+                '\u0301\u0327', '🧑\u200d🔬', ' ', '\r\n\t', '\u2003', '\x1c')
+    for _ in range(250):
+        raw = 'Ж ' + ''.join(random.choice(clusters) for _ in range(random.randrange(1, 120)))
+        monkeypatch.setattr(literal, '_LONG_ASCII', 65536)
+        expected, expected_starts, expected_ends = literal._mapped(raw)
+        monkeypatch.setattr(literal, '_LONG_ASCII', 1)
+        folded, starts, ends = literal._mapped(raw)
+        assert folded == expected
+        assert dict(starts.items()) == expected_starts
+        assert dict(ends.items()) == expected_ends
+
+
+def test_cancel_during_large_unicode_mapping_remains_cooperative(source_db, monkeypatch):
+    raw = 'Українська історія. Straße\t  архів.\n' * 2200
+    add_source(source_db, raw)
+    original = literal._fold
+    calls = 0
+
+    def fold(value):
+        nonlocal calls
+        if len(value) == 1:
+            calls += 1
+        return original(value)
+
+    monkeypatch.setattr(literal, '_fold', fold)
+    with pytest.raises(TimeoutError):
+        literal.search(source_db, 'library', 'STRASSE архів', cancelled=lambda: calls >= 1)
+    assert 1 <= calls <= 1024
