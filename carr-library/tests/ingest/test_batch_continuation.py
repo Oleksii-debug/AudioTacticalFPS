@@ -16,7 +16,7 @@ import pytest
 import carr_library
 from bootstrap.vendor.cairn_extractors import hasher as bootstrap_hasher
 from carr_library.application import LibraryApp
-from carr_library.ingest import batch_scan, batch_pages
+from carr_library.ingest import batch_scan, batch_pages, batches, worker
 from carr_library.ingest.batches import ImportBatchStore
 from carr_library.library_backup import create_backup, restore_backup
 from carr_library.operations import ResourceBroker
@@ -219,7 +219,8 @@ def test_source_manifest_is_rechecked_by_existing_import_before_any_worker(peer,
     selected = write(folder, 'source.txt', b'Original reviewed bytes.')
     first = store.plan_page(workspace, [selected])
     selected.write_bytes(b'Changed outside the plan.')
-    monkeypatch.setattr(app, 'resume_import', lambda *a, **k: pytest.fail('Changed source reached a worker.'))
+    monkeypatch.setattr(worker.subprocess, 'Popen',
+        lambda *a, **k: pytest.fail('Changed source started an actual native worker.'))
     refused = store.run(workspace, first['batch_id'])
     assert refused['counts']['failed'] == 1 and app.browse(workspace) == ()
     assert selected.read_bytes() == b'Changed outside the plan.'
@@ -349,3 +350,107 @@ def test_actual_admission_consumes_page_budget_before_any_source_scan(peer, monk
         assert saved['rows'][0]['manifest']['sha256'] == sha256((folder / 'source.txt').read_bytes()).hexdigest()
     assert app.browse(workspace) == ()
     assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
+
+
+def test_same_length_changed_source_is_refused_before_actual_child(peer, monkeypatch):
+    app, workspace, folder, store = peer
+    original = b'Exact original alpha.'
+    changed = b'Exact original omega.'
+    assert len(changed) == len(original)
+    selected = write(folder, 'same-length.txt', original)
+    first = store.plan_page(workspace, [selected])
+    selected.write_bytes(changed)
+    monkeypatch.setattr(worker.subprocess, 'Popen',
+        lambda *a, **k: pytest.fail('Same-length changed bytes started a native worker.'))
+    result = store.run(workspace, first['batch_id'])
+    assert result['counts']['failed'] == 1 and 'Source changed' in result['rows'][0]['message']
+    assert app.browse(workspace) == () and selected.read_bytes() == changed
+    assert result['rows'][0]['manifest'] == first['rows'][0]['manifest']
+    assert not (app.root / 'imports.sqlite').exists()
+
+
+def test_cancel_during_actual_source_preflight_keeps_row_queued_without_child(peer, monkeypatch):
+    app, workspace, folder, store = peer
+    selected = write(folder, 'cancel-source.txt', b'Explicit original remains reusable.')
+    first = store.plan_page(workspace, [selected])
+    stopped = threading.Event()
+    actual = batch_scan.planned_snapshot
+    def interrupt(path, *, cancelled):
+        stopped.set()
+        return actual(path, cancelled=cancelled)
+    monkeypatch.setattr(batches, 'planned_snapshot', interrupt)
+    monkeypatch.setattr(worker.subprocess, 'Popen',
+        lambda *a, **k: pytest.fail('Cancelled preflight started a native worker.'))
+    result = store.run(workspace, first['batch_id'], cancelled=stopped.is_set)
+    assert result['state'] == 'paused' and result['rows'][0]['state'] == 'queued'
+    assert result['rows'][0]['result']['state'] == 'cancelled'
+    assert result['rows'][0]['manifest'] == first['rows'][0]['manifest']
+    assert app.browse(workspace) == () and not (app.root / 'imports.sqlite').exists()
+
+
+def test_actual_child_rechecks_mutation_after_the_initial_parent_preflight(peer, monkeypatch):
+    app, workspace, folder, store = peer
+    selected = write(folder, 'changed-after-review.txt', b'Parent reviewed original.')
+    first = store.plan_page(workspace, [selected])
+    actual_snapshot, actual_popen = batch_scan.planned_snapshot, worker.subprocess.Popen
+    children = []
+    changed = b'Changed only after parent snapshot.'
+    def replace_after_snapshot(path, *, cancelled):
+        value = actual_snapshot(path, cancelled=cancelled)
+        selected.write_bytes(changed)
+        return value
+    def observe(*args, **kwargs):
+        process = actual_popen(*args, **kwargs)
+        command = args[0] if args else kwargs.get('args', ())
+        if isinstance(command, (list, tuple)) and '-c' in command:
+            if 'carr_library.ingest.worker' in command[command.index('-c') + 1]:
+                children.append(process)
+        return process
+    monkeypatch.setattr(batches, 'planned_snapshot', replace_after_snapshot)
+    monkeypatch.setattr(worker.subprocess, 'Popen', observe)
+    result = store.run(workspace, first['batch_id'])
+    assert len(children) == 1 and children[0].poll() is not None
+    assert result['counts']['failed'] == 1 and 'Source changed' in result['rows'][0]['message']
+    assert result['rows'][0]['manifest'] == first['rows'][0]['manifest']
+    assert app.browse(workspace) == () and selected.read_bytes() == changed
+    assert not (app.root / 'imports.sqlite').exists()
+
+
+@pytest.mark.parametrize('durable_request', ['complete', 'unfinished-retained'])
+def test_actual_completed_or_retained_resume_needs_no_deleted_external_source(
+        peer, monkeypatch, durable_request):
+    app, workspace, folder, store = peer
+    selected = write(folder, 'retained-original.txt', b'Exact original retained by the real native child.')
+    first = store.plan_page(workspace, [selected])
+    completed = store.run(workspace, first['batch_id'])
+    assert completed['counts']['complete'] == 1
+    expected = completed['rows'][0]['result']
+    request_id = completed['rows'][0]['request_id']
+    request = worker.load_request(app.root, request_id)
+    assert request['asset_sha256'] == first['rows'][0]['manifest']['sha256']
+    if durable_request == 'unfinished-retained':
+        request['state'] = 'pending'
+        request.pop('result', None)
+        worker._store(app.root, request_id, request)
+    selected.unlink()
+    queued = store.get(workspace, first['batch_id'])
+    queued['rows'][0].update(state='queued', message='', result=None)
+    with store._lock(first['batch_id']):
+        store._store(queued)
+    actual_popen, children = worker.subprocess.Popen, []
+    def observe(*args, **kwargs):
+        process = actual_popen(*args, **kwargs)
+        command = args[0] if args else kwargs.get('args', ())
+        if isinstance(command, (list, tuple)) and '-c' in command:
+            if 'carr_library.ingest.worker' in command[command.index('-c') + 1]:
+                children.append(process)
+        return process
+    monkeypatch.setattr(batches, 'planned_snapshot',
+        lambda *a, **k: pytest.fail('A completed or retained request reopened its deleted external source.'))
+    monkeypatch.setattr(worker.subprocess, 'Popen', observe)
+    replay = store.run(workspace, first['batch_id'])
+    assert replay['counts']['complete'] == 1 and replay['rows'][0]['result']['id'] == expected['id']
+    assert replay['rows'][0]['manifest'] == first['rows'][0]['manifest']
+    assert len(children) == (1 if durable_request == 'unfinished-retained' else 0)
+    assert all(process.poll() is not None for process in children)
+    assert len(app.browse(workspace)) == 1 and not selected.exists()
