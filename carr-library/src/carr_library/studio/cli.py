@@ -89,39 +89,67 @@ def main(argv=None):
 def assistant_main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
     parser.add_argument('--data-dir', type=Path)
-    parser.add_argument('--instructions', type=Path)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--instructions', type=Path)
+    source.add_argument('--resume')
+    source.add_argument('--list-local-profiles', action='store_true',
+                        help='List enabled local chat profiles without contacting them')
+    parser.add_argument('--local-profile',
+                        help='Explicit profile ID for a proposal only; save and review its JSON before a separate --run')
     parser.add_argument('--workspace')
     parser.add_argument('--input-root', action='append', type=Path, default=[])
     parser.add_argument('--output-root', type=Path)
     parser.add_argument('--allow-create', action='store_true')
     parser.add_argument('--allow-full-backup', action='store_true')
     parser.add_argument('--run', action='store_true')
-    parser.add_argument('--resume')
     args = parser.parse_args(argv)
-    if bool(args.instructions) == bool(args.resume):
-        parser.error('Choose an instruction file or a saved job ID to resume.')
+    if args.local_profile is not None and (not args.instructions or args.run):
+        parser.error('--local-profile requires --instructions and cannot be combined with --run. '
+                     'Save and review the proposed JSON, then use it as --instructions in a separate invocation.')
+    if args.list_local_profiles and args.run:
+        parser.error('--list-local-profiles does not execute a plan.')
+    production = None
     try:
         from ..application import LibraryApp
         from ..assistant import AssistantService, Scope
+        from ..assistant.credentials import validate_profile_id
+        from ..assistant.models import local_path, text
+        if args.local_profile is not None:
+            validate_profile_id(args.local_profile)
+        instruction = None
+        if args.instructions:
+            path = local_path(args.instructions)
+            maximum = 512 * 1024 if args.local_profile is not None else 4 * 1024**2
+            with path.open('rb') as stream:
+                raw = stream.read(maximum + 1)
+            if len(raw) > maximum:
+                raise ValueError('Instruction file exceeds its budget.')
+            instruction = text(raw.decode('utf-8-sig'), 'assistant instruction', maximum=maximum)
         app = LibraryApp(data_directory(args.data_dir))
         production = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
         def produce(arguments, output_directory, cancelled, progress):
-            # Pure previews, backups and search do not need an audio runtime.
+            # Pure proposals, previews, backups and searches do not activate audio.
             from ..audio.local_runtime import open_local_audio_runtime
             with open_local_audio_runtime(app.root, strict=True, cancelled=cancelled):
                 return production.assistant_callback(arguments, output_directory, cancelled, progress)
         service = AssistantService(app, production=produce)
-        if args.resume:
+        if args.list_local_profiles:
+            result = [{'id': profile.id, 'name': profile.name, 'endpoint': profile.endpoint,
+                       'model': profile.model} for profile in service.local_planner_profiles()]
+        elif args.resume:
             if not args.run:
                 result = asdict(service.get(args.resume))
             else:
                 result = asdict(service.resume(args.resume))
         else:
-            if args.instructions.stat().st_size > 4 * 1024**2:
-                raise ValueError('Instruction file exceeds its budget.')
             scope = Scope(args.workspace, tuple(args.input_root), args.output_root,
                           allow_create=args.allow_create, allow_full_backup=args.allow_full_backup)
-            plan = service.preview(args.instructions.read_text(encoding='utf-8-sig'), scope)
+            if args.local_profile is not None:
+                plan = service.propose_local(instruction, scope, profile_id=args.local_profile)
+                print('Local proposal only. Review this JSON and its exact scope before running it in a separate invocation.',
+                      file=sys.stderr, flush=True)
+            else:
+                plan = service.preview(instruction, scope)
             result = plan.to_dict()
             if args.run:
                 identity = service.submit(plan)
@@ -136,6 +164,9 @@ def assistant_main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Local assistant: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        if production is not None:
+            production.close()
 
 
 if __name__ == '__main__':

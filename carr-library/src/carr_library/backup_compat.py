@@ -21,7 +21,7 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated, recording_backup
+from . import backup_producers, backup_generated, recording_backup, backup_transcription
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
@@ -47,7 +47,8 @@ def portable_name(value):
     path = PurePosixPath(value)
     reserved = {'con', 'prn', 'aux', 'nul', *(f'com{i}' for i in range(1, 10)),
                 *(f'lpt{i}' for i in range(1, 10))}
-    if (path.is_absolute() or str(path) != value or len(path.parts) > 8
+    depth = 12 if backup_transcription.namespace(value) and backup_transcription.limit(value) is not None else 8
+    if (path.is_absolute() or str(path) != value or len(path.parts) > depth
             or any(p in ('.', '..') or p.endswith((' ', '.'))
                    or p.split('.')[0].casefold() in reserved for p in path.parts)):
         raise RestoreError('invalid portable sidecar filename')
@@ -85,6 +86,13 @@ def sidecar_limit(name):
         return _model('progress_preferences').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
+    if name == 'state/operations/resources.json':
+        return 32768
+    if backup_transcription.namespace(name):
+        maximum = backup_transcription.limit(name)
+        if name != name.casefold() or maximum is None:
+            raise RestoreError('Unsupported local-file transcription sidecar path.')
+        return maximum
     if recording_backup.state_path(name):
         return recording_backup.state_limit(name)
     if maximum := backup_generated.limit(name):
@@ -267,7 +275,8 @@ def _validate_engine_settings(value):
 
 def validate_sidecar(db, name, raw):
     maximum = sidecar_limit(name)
-    if type(raw) is not bytes or not 0 < len(raw) <= maximum:
+    if (type(raw) is not bytes or len(raw) > maximum
+            or not raw and not backup_transcription.allows_empty(name)):
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     try:
         if name == 'reading-state.json':
@@ -296,6 +305,11 @@ def validate_sidecar(db, name, raw):
             _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
+        elif name == 'state/operations/resources.json':
+            from .state_recovery import validate_resource_policy
+            validate_resource_policy(_json(raw))
+        elif backup_transcription.namespace(name):
+            backup_transcription.validate(name, raw)
         elif recording_backup.state_path(name):
             recording_backup.validate_receipt(name, _json(raw))
         elif name.startswith(backup_generated.PREFIX):
@@ -410,7 +424,9 @@ def normalize_manifest(manifest):
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
-        if not 0 < entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
+        if (entry['size_bytes'] < 0 or entry['size_bytes'] > maximum
+                or entry['size_bytes'] == 0 and not backup_transcription.allows_empty(entry['filename'])
+                or entry['filename'].casefold() in names):
             raise RestoreError('invalid sidecar size or duplicate filename')
         names.add(entry['filename'].casefold())
         path = PurePosixPath(entry['filename'])
@@ -447,9 +463,9 @@ def _regular(path):
     return info
 
 
-def read_regular(path, maximum):
+def read_regular(path, maximum, *, allow_empty=False):
     before = _regular(path)
-    if not 0 < before.st_size <= maximum:
+    if before.st_size > maximum or before.st_size == 0 and not allow_empty:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
     with os.fdopen(os.open(path, flags), 'rb') as stream:
@@ -472,11 +488,11 @@ def _write(stage, name, raw):
         os.fsync(stream.fileno())
 
 
-def _stream_file(source, *, destination=None, expected=None, maximum, cancelled):
+def _stream_file(source, *, destination=None, expected=None, maximum, cancelled, allow_empty=False):
     """Copy or recheck actual bytes without allocating a complete media file."""
     _check_cancelled(cancelled)
     before = _regular(source)
-    if not 0 < before.st_size <= maximum:
+    if before.st_size > maximum or before.st_size == 0 and not allow_empty:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
     if expected is not None and before.st_size != expected['size_bytes']:
@@ -543,7 +559,8 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
     expected = files | directories
     if len(expected) > (MAX_FILES * 9) + 10:
         raise RestoreError('sidecar namespace exceeds its bounded manifest')
-    seen, pending = set(), [directory]
+    optional = backup_transcription.optional_cache_directories(inventory.entries) - expected
+    seen, optional_seen, pending = set(), set(), [directory]
     while pending:
         _check_cancelled(cancelled)
         parent = pending.pop()
@@ -553,6 +570,13 @@ def check_namespace(directory, inventory, *, cancelled=lambda: False):
         for child in parent.iterdir():
             _check_cancelled(cancelled)
             name = child.relative_to(directory).as_posix()
+            if name in optional:
+                if name in optional_seen:
+                    raise RestoreError('Duplicate optional transcription cache directory.')
+                _plain(child, directory=True)
+                optional_seen.add(name)
+                pending.append(child)
+                continue
             if name not in expected or name in seen:
                 raise RestoreError('incomplete backup or unexpected sidecar entry: ' + name)
             seen.add(name)
@@ -577,7 +601,7 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
-        if recording_backup.is_audio(name):
+        if backup_transcription.is_input(name) or recording_backup.is_audio(name):
             # Retained originals use the existing streaming manifest proof.
             # PCM/retake verification runs against the complete private state;
             # an orphan is preserved without parsing binary bytes as JSON.
@@ -590,9 +614,10 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
         else:
             # Use the same bounded streaming/checksum path for metadata too;
             # structural validation reads only the verified private copy.
+            empty = backup_transcription.allows_empty(name)
             _stream_file(source / name, destination=stage / name, expected=entry,
-                         maximum=sidecar_limit(name), cancelled=cancelled)
-            raw = read_regular(stage / name, sidecar_limit(name))
+                         maximum=sidecar_limit(name), cancelled=cancelled, allow_empty=empty)
+            raw = read_regular(stage / name, sidecar_limit(name), allow_empty=empty)
             validate_sidecar(db, name, raw)
             if name.startswith(backup_generated.PREFIX):
                 receipts[name] = _json(raw)
@@ -604,8 +629,13 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
         # donor format did not record restore markers. Preserve input paths,
         # source hashes and historical receipts, never their old authority.
         from .state_recovery import prepare_restored_state
-        prepare_restored_state(stage / 'state', state, cancelled=cancelled)
+        state = prepare_restored_state(stage / 'state', state, cancelled=cancelled)
+        inventory = Inventory(tuple(
+            [row for row in inventory.entries if not row['filename'].startswith('state/')]
+            + [{**row, 'filename': 'state/' + row['filename']} for row in state]),
+            inventory.empty_roots, inventory.generated_audio_included, inventory.pending)
     _check_cancelled(cancelled)
+    return inventory
 
 
 def publish(stage, destination, inventory, *, sync_directory, cancelled=lambda: False):

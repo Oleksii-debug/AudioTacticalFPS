@@ -90,8 +90,16 @@ def run(arguments, report):
             service._engine_hash = recording_module._digest(runtime.ffmpeg)
             return (device,)
         service.devices = discover
-        service._input_arguments = lambda selected: [
-            '-re', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=24000']
+        production_input = service._input_arguments
+        def synthetic_input(selected):
+            # Keep production options and ordering. Only the actual hardware
+            # source is substituted; newer FFmpeg input/output option changes
+            # must fail this synthetic native gate as well as the device gate.
+            arguments = production_input(selected)
+            arguments[arguments.index('-f') + 1] = 'lavfi'
+            arguments[arguments.index('-i') + 1] = 'sine=frequency=440:sample_rate=24000'
+            return ['-re', *arguments]
+        service._input_arguments = synthetic_input
         real_capture = service.capture
 
         def capture(device_id, **kwargs):

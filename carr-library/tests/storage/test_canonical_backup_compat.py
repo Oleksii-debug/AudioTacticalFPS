@@ -547,3 +547,198 @@ def test_flat_restore_cancellation_never_yields_a_usable_partial_root(library, t
 def test_retained_dordiai_configuration_rejects_invalid_schema_without_io(invalid):
     with pytest.raises(ValueError):
         runtime_settings._settings_document({**_engines(), 'dordiai': invalid})
+
+
+@pytest.fixture(params=['basic', 'advanced', 'advanced-glossary'])
+def translation_checkpoint(tmp_path, request):
+    """PR147 backup cases on the host's real gateway/decoded-ledger contract."""
+    from carr_library.assistant.library_translation import LibrarySelection, capture_library_sources
+    from carr_library.assistant.profiles import ProviderProfile, ProfileStore, google_oauth_credential
+    from carr_library.assistant.providers import Authorization, Gateway, HTTPResult
+    from carr_library.assistant.translation import TranslationService, translation_approval, ENDPOINT
+    app = LibraryApp(tmp_path / 'translation-library')
+    workspace = app.create_workspace('Retained translation backup')
+    original = 'Original retained text.\r\nУкраїнський source &amp; reference.\n' * 150
+    book = app.add_text(workspace, 'Retained original', original)
+    selected = capture_library_sources(app, workspace, (LibrarySelection(book['edition']),))
+    advanced = request.param != 'basic'
+    parent = 'projects/123456789/locations/us-central1'
+    glossary = parent + '/glossaries/reviewed-terms' if request.param == 'advanced-glossary' else None
+    p = ProviderProfile('backup_google', 'Synthetic backup account',
+        'google-translation-v3' if advanced else 'google-translation-v2',
+        'https://translation.googleapis.com/v3/' + parent if advanced else ENDPOINT,
+        'general/nmt' if advanced else 'nmt', capabilities=('translation.text', 'translation.languages'),
+        credential_ref='carr/provider/backup_google/' + 'a' * 32, enabled=True)
+    calls = []
+    class Vault:
+        def get(self, identity, reference):
+            assert (identity, reference) == (p.id, p.credential_ref)
+            return (google_oauth_credential('SYNTHETIC_BACKUP_OAUTH', time() + 3500, p.endpoint)
+                    if advanced else 'SYNTHETIC_BACKUP_API_KEY')
+    class Transport:
+        def request(self, profile, path, payload, headers, *, method='POST', **kwargs):
+            calls.append((method, path, payload))
+            if method == 'GET':
+                languages = [{'language': 'en', 'name': 'English'},
+                             {'language': 'uk', 'name': 'Ukrainian'}]
+                document = ({'languages': [
+                    {'languageCode': row['language'], 'displayName': row['name'],
+                     'supportSource': True, 'supportTarget': True} for row in languages]}
+                    if advanced else {'data': {'languages': languages}})
+            else:
+                body = json.loads(payload)
+                row = {'translatedText': 'Synthetic derivative &amp; ' +
+                       (body['contents'][0] if advanced else body['q'])}
+                if advanced:
+                    row['model'] = body['model']
+                    document = {'translations': [row]}
+                    if 'glossaryConfig' in body:
+                        document['glossaryTranslations'] = [
+                            {**row, 'glossaryConfig': body['glossaryConfig']}]
+                else:
+                    document = {'data': {'translations': [row]}}
+            return HTTPResult('application/json', _json(document), 200)
+    gateway = Gateway(app.root / 'state/translation/provider',
+                      vault=Vault(), mode='APPROVED_REMOTE', _transport=Transport())
+    service = TranslationService(app.root / 'state/translation',
+        library=app, workspace=workspace, gateway=gateway)
+    ProfileStore(app.root / 'state/providers').save(p)
+    language_approval = Authorization('backup_languages', 'backup_languages', ((p.id, p.endpoint),),
+        ('translation.languages',), ('user-instruction',), '0', 1, time() + 3600)
+    service.refresh_languages(p, authorization=language_approval)
+    approval, cost = translation_approval(p, selected.text, 'en', 'uk', '1',
+                                         source_binding=selected.binding, glossary=glossary)
+    identity = service.submit(p, selected.text, 'en', 'uk', authorization=approval,
+        per_call_cost=cost, source_binding=selected.binding, glossary=glossary)
+    stopped = []
+    result = service.resume(identity, cancelled=lambda: bool(stopped),
+                            progress=lambda *args: stopped.append(True))
+    assert result['status'] == 'paused' and result['completed'] == 1 and result['total'] > 1
+    service.jobs.control(identity, 'pause')
+    return SimpleNamespace(app=app, workspace=workspace, original=original, book=book,
+        selected=selected, service=service, profile=p, identity=identity, calls=calls)
+
+
+def test_flat_translation_preserves_paused_receipts_but_revokes_remote_authority(
+        translation_checkpoint, tmp_path, monkeypatch):
+    from carr_library.assistant.models import canonical
+    from carr_library.assistant.providers import Gateway, UsageLedger
+    from carr_library.assistant.translation import TranslationService
+    fixture = translation_checkpoint
+    before = fixture.service.get(fixture.identity)
+    calls = tuple(fixture.calls)
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive translation recovery must not create or call a provider.')
+    monkeypatch.setattr(Gateway, '__init__', forbidden)
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    backup = tmp_path / 'flat-translation'
+    manifest, checksum = _flat_backup(fixture.app, backup)
+    assert type(manifest['sidecars']) is list
+    root = restore_backup(backup, tmp_path / 'restored-translation', checksum)
+    offline = SimpleNamespace(ledger=UsageLedger(root / 'state/translation/provider/usage'),
+                              request=forbidden)
+    restored = TranslationService(root / 'state/translation',
+        library=LibraryApp(root), workspace=fixture.workspace, gateway=offline)
+    after = restored.get(fixture.identity)
+    for name in ('source_text', 'source_sha256', 'source_binding', 'execution_origin',
+                 'chunks', 'receipts', 'authorization', 'glossary'):
+        assert after[name] == before[name]
+    assert after['status'] == 'paused' and len(after['receipts']) == 1
+    assert restored.jobs.control(fixture.identity) == 'pause'
+    assert after['restore_requires_review'] is True
+    assert after['profile'] == {**before['profile'], 'credential_ref': None, 'enabled': False}
+    assert after['original_profile_sha256'] == sha256(canonical(before['profile']).encode()).hexdigest()
+    assert offline.ledger.get(before['authorization']['id'])['restored'] is True
+    with pytest.raises(PermissionError, match='Restored translation'):
+        restored.resume(fixture.identity)
+    assert tuple(fixture.calls) == calls
+    assert fixture.app.assets.resolve(fixture.book['asset']).read_bytes() == fixture.original.encode('utf-8')
+
+
+@pytest.mark.parametrize('translation_checkpoint', ['basic'], indirect=True)
+def test_flat_legacy_basic_translation_without_glossary_remains_readable(
+        translation_checkpoint, tmp_path):
+    from carr_library.assistant.providers import UsageLedger
+    from carr_library.assistant.translation import TranslationService
+    fixture = translation_checkpoint
+    before = fixture.service.jobs.load(fixture.identity)
+    assert before.pop('glossary') is None
+    fixture.service.jobs.save(before)
+    backup = tmp_path / 'legacy-basic'
+    _, checksum = _flat_backup(fixture.app, backup)
+    root = restore_backup(backup, tmp_path / 'legacy-basic-restored', checksum)
+    restored = TranslationService(root / 'state/translation', library=LibraryApp(root),
+        workspace=fixture.workspace,
+        gateway=SimpleNamespace(ledger=UsageLedger(root / 'state/translation/provider/usage')))
+    after = restored.get(fixture.identity)
+    assert 'glossary' not in after and after['receipts'] == before['receipts']
+    assert after['source_binding'] == before['source_binding'] and after['restore_requires_review'] is True
+    with pytest.raises(PermissionError, match='Restored translation'):
+        restored.resume(fixture.identity)
+
+
+@pytest.mark.parametrize('translation_checkpoint', ['advanced', 'advanced-glossary'], indirect=True)
+@pytest.mark.parametrize('damage', [
+    'glossary-resource', 'receipt-model', 'receipt-glossary',
+    'language-direction', 'language-endpoint', 'language-model',
+])
+def test_flat_rehashed_advanced_translation_authority_is_rejected_before_publication(
+        translation_checkpoint, tmp_path, damage):
+    from carr_library.assistant.models import canonical
+    fixture = translation_checkpoint
+    backup = tmp_path / 'damaged-advanced'
+    manifest, _ = _flat_backup(fixture.app, backup)
+    name = ('state/translation/languages-' + fixture.profile.id + '.json'
+            if damage.startswith('language-')
+            else 'state/translation/jobs/' + fixture.identity + '.json')
+    value = json.loads((backup / name).read_bytes())
+    if damage == 'glossary-resource':
+        value['glossary'] = 'projects/999999999/locations/us-central1/glossaries/other-account'
+    elif damage == 'receipt-model':
+        value['receipts'][0]['reported_model'] = 'projects/999999999/locations/us-central1/models/general/nmt'
+    elif damage == 'receipt-glossary':
+        value['receipts'][0]['glossary_config'] = {
+            'glossary': value.get('glossary') or
+                        'projects/123456789/locations/us-central1/glossaries/unrequested',
+            'ignoreCase': 0,
+        }
+    elif damage == 'language-direction':
+        value['languages'][0]['source'] = 'true'
+        value['languages_sha256'] = sha256(canonical(value['languages']).encode()).hexdigest()
+    elif damage == 'language-endpoint':
+        value['endpoint'] = 'https://example.invalid/v3/projects/123456789/locations/us-central1'
+    else:
+        value['model'] = 'general/translation-llm'
+    checksum = _replace_entry(backup, manifest, name, _json(value))
+    destination = tmp_path / 'must-not-restore-advanced'
+    with pytest.raises(ValueError):
+        restore_backup(backup, destination, checksum)
+    assert not destination.exists()
+
+
+@pytest.mark.parametrize('translation_checkpoint', ['advanced-glossary'], indirect=True)
+@pytest.mark.parametrize('damage', ['decoded-digest', 'decoded-operation', 'counter', 'restore-marker'])
+def test_flat_rehashed_translation_usage_evidence_is_rejected(
+        translation_checkpoint, tmp_path, damage):
+    fixture = translation_checkpoint
+    job = fixture.service.get(fixture.identity)
+    backup = tmp_path / 'damaged-translation-usage'
+    manifest, _ = _flat_backup(fixture.app, backup)
+    name = 'state/translation/provider/usage/' + job['authorization']['id'] + '.usage.json'
+    value = json.loads((backup / name).read_bytes())
+    row = value['operations'][fixture.identity + '_0']
+    assert row['usage']['decoded_translation_sha256'] == job['receipts'][0]['decoded_translation_sha256']
+    if damage == 'decoded-digest':
+        row['usage']['decoded_translation_sha256'] = '0' * 63
+    elif damage == 'decoded-operation':
+        row['operation'] = 'translation.languages'
+    elif damage == 'counter':
+        row['usage']['submitted_characters'] = '123'
+    else:
+        value['restored'] = 0
+    checksum = _replace_entry(backup, manifest, name, _json(value))
+    destination = tmp_path / 'must-not-restore-usage'
+    calls = tuple(fixture.calls)
+    with pytest.raises(ValueError):
+        restore_backup(backup, destination, checksum)
+    assert not destination.exists() and tuple(fixture.calls) == calls

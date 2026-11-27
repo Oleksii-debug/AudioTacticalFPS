@@ -591,6 +591,8 @@ class DesktopFrame(WorkspaceFrame):
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
+        from .operations_dialog import install_operations_actions
+        install_operations_actions(self)
         from .command_palette import install_command_palette
         install_command_palette(self)
         from .diagnostics_dialog import install_diagnostics

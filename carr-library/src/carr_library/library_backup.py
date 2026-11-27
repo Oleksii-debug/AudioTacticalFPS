@@ -359,7 +359,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
             sidecars = None
             if flat is not None:
-                backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled)
+                flat = backup_compat.restore(storage.db, source, stage, flat, cancelled=cancelled)
             elif 'sidecars' in manifest:
                 sidecars = backup_sidecars.restore(source / backup_sidecars.DIRECTORY,
                     stage, manifest['sidecars'], destination, db=storage.db, cancelled=cancelled)

@@ -301,7 +301,7 @@ class ImportCenterActions:
 
     def save_report(self, event=None):
         import wx
-        from ..research.export_file import capture_export_destination, write_export
+        from ..research.export_file import capture_export_destination, export_completion, write_export
         try:
             self._bound()
             if self.busy or self.frame.working:
@@ -357,11 +357,12 @@ class ImportCenterActions:
                     batch = library.import_batch(workspace, batch_id)
                     content = batch_report(batch)
                     current()
-                    write_export(path, content, private_root=library.root,
-                                 cancelled=cancelled, approval=approval)
+                    return write_export(path, content, private_root=library.root,
+                                        cancelled=cancelled, approval=approval)
 
                 self._job('Saving import report', publish,
-                          lambda _: self.report('Import report saved.'), token=token)
+                          lambda receipt: self.report(export_completion('Import report saved.', receipt)),
+                          token=token)
 
             self._job('Checking report destination', capture, captured, token=token)
         except Exception as exc:

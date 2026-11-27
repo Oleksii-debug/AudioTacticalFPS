@@ -281,3 +281,89 @@ def test_cancelled_source_capture_keeps_prior_selection(form):
     form.frame.finish(1)
     assert form.controls['selected'].GetValue() == 'Prior manual text'
     assert not any(name in ('submit', 'resume') for name, _ in form.service.calls)
+
+
+@pytest.fixture
+def advanced_form(form):
+    """Same actual handlers/thread guard, with an explicit v3 profile."""
+    form.dialog.on_close()
+    parent = 'projects/123456789/locations/us-central1'
+    profile = ProviderProfile(form.profile.id, form.profile.name, 'google-translation-v3',
+        'https://translation.googleapis.com/v3/' + parent, 'general/nmt',
+        capabilities=('translation.text', 'translation.languages'), enabled=True,
+        credential_ref=form.profile.credential_ref)
+    form.profiles.save(profile)
+    form.profile = profile
+    form.glossary = parent + '/glossaries/approved-terms'
+    form.job['profile'] = profile.to_dict()
+    form.job['glossary'] = form.glossary
+    form.dialog = create_translation_dialog(form.frame, wx_module=form.wx, service=form.service)
+    form.controls = form.dialog.translation_controls
+    fill(form)
+    form.controls['glossary'].ChangeValue(form.glossary)
+    return form
+
+
+def test_v3_preview_runs_on_shared_worker_with_exact_glossary(advanced_form):
+    f = advanced_form
+    f.dialog.on_preview()
+    assert not f.controls['glossary'].enabled and not f.service.calls
+    f.frame.finish(0)
+    operation, arguments = f.service.calls[0]
+    assert operation == 'preview'
+    assert arguments[-1]['glossary'] == f.glossary
+    assert arguments[-1]['source_binding'] is None
+    assert f.controls['glossary'].enabled
+
+
+@pytest.mark.parametrize('field,value', [
+    ('glossary', 'projects/123456789/locations/us-central1/glossaries/other'),
+    ('rate', '999'),
+    ('target', 'de'),
+])
+def test_v3_changed_displayed_glossary_or_price_cannot_reuse_review(advanced_form, field, value):
+    f = advanced_form
+    f.dialog.on_preview()
+    f.frame.finish(0)
+    f.controls[field].ChangeValue(value)  # Native ChangeValue deliberately emits no edit event.
+    f.dialog.on_run()
+    assert len(f.frame.calls) == 1
+    assert not f.messages
+    assert 'Preview this exact' in f.controls['status'].GetValue()
+
+
+def test_v3_native_handler_consent_and_submission_bind_account_model_glossary(advanced_form):
+    f = advanced_form
+    f.dialog.on_preview()
+    f.frame.finish(0)
+    f.dialog.on_run()
+    assert len(f.frame.calls) == 2 and not f.controls['glossary'].enabled
+    prompt = f.messages[-1][0]
+    assert f.profile.endpoint in prompt and f.profile.model in prompt and f.glossary in prompt
+    f.frame.finish(1)
+    operation, arguments = next(call for call in f.service.calls if call[0] == 'submit')
+    args, kwargs = arguments
+    assert kwargs['glossary'] == f.glossary and kwargs['source_binding'] is None
+    assert kwargs['authorization'].profiles == ((f.profile.id, f.profile.endpoint),)
+    assert f.controls['status'].focused
+
+
+def test_v3_modal_consent_change_cannot_queue_unreviewed_glossary(advanced_form):
+    f = advanced_form
+    f.dialog.on_preview()
+    f.frame.finish(0)
+    f.choose[0] = lambda: f.controls['glossary'].ChangeValue(f.glossary + '-changed')
+    f.dialog.on_run()
+    assert len(f.frame.calls) == 1
+    assert 'displayed translation selection changed' in f.controls['status'].GetValue()
+
+
+def test_saved_v3_job_restores_glossary_and_export_rechecks_visible_scope(advanced_form):
+    f = advanced_form
+    choose_saved(f)
+    assert f.controls['glossary'].GetValue() == f.glossary
+    f.controls['glossary'].ChangeValue(f.glossary + '-changed')
+    f.dialog.on_export()
+    f.frame.finish(2)
+    assert not any(name == 'export' for name, _ in f.service.calls)
+    assert 'Visible settings differ' in f.controls['status'].GetValue()

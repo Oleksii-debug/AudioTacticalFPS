@@ -38,10 +38,18 @@ def capture(tmp_path, monkeypatch):
     service._engine_hash = recording._digest(ffmpeg)
     # Explicitly test-only source adapter. Production exposes only enumerated
     # DirectShow devices, never arbitrary lavfi expressions or input argv.
-    monkeypatch.setattr(service, '_input_arguments', lambda selected: [
-        '-re', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=24000'])
+    monkeypatch.setattr(service, '_input_arguments', lambda selected: synthetic_input(selected))
     return SimpleNamespace(app=app, service=service, device=device,
                            options=RecordingOptions(max_seconds=1, sample_rate=24000))
+
+
+def synthetic_input(device, *, frequency=440):
+    # Replace only the device/format. Retain every production input limit and
+    # option position so real selected-version FFmpeg tests validate that argv.
+    arguments = RecordingService._input_arguments(device)
+    arguments[arguments.index('-f') + 1] = 'lavfi'
+    arguments[arguments.index('-i') + 1] = f'sine=frequency={frequency}:sample_rate=24000'
+    return ['-re', *arguments]
 
 
 def test_device_inventory_excludes_video_and_preserves_unique_microphone_identity():
@@ -74,6 +82,28 @@ def test_actual_pcm_publication_is_verified_and_reopenable(capture):
         assert any(audio.readframes(24000))
     assert len(capture.service.list()) == 1
     assert not list(capture.service.root.glob('.pending-*'))
+
+
+def test_actual_selected_ffmpeg_parses_production_input_and_output_limits(capture, monkeypatch):
+    # The selected Windows runtime may reject output-only options before -i.
+    # Keep the real command, supervision and output verification; substitute
+    # only the hardware input through the shared test-only source adapter.
+    real_run = recording.run_process
+    observed = []
+    def launch(command, **options):
+        input_end = command.index('-i') + 2
+        before, after = command[:input_end], command[input_end:]
+        assert before[before.index('-rtbufsize') + 1] == '16M'
+        assert '-thread_queue_size' not in before
+        assert after[after.index('-thread_queue_size') + 1] == '128'
+        observed.append(command[0])
+        return real_run(command, **options)
+    monkeypatch.setattr(recording, 'run_process', launch)
+    result = capture.service.capture(capture.device.id, options=capture.options)
+    assert observed == [capture.service.runtime.ffmpeg]
+    assert result['ffmpeg_sha256'] == recording._digest(observed[0])
+    assert result['audio']['frames'] == 24000
+    assert capture.service.get(result['id']) == result
 
 
 def test_actual_graceful_stop_finalizes_short_pcm(capture):
@@ -288,8 +318,8 @@ def test_actual_retake_and_project_attachment_keep_source_and_original(capture, 
     from carr_library.audio.projects import ProjectStore, Project, Role, Scene, Cue
     original = capture.service.capture(capture.device.id, options=capture.options)
     original_bytes = Path(original['path']).read_bytes()
-    monkeypatch.setattr(capture.service, '_input_arguments', lambda selected: [
-        '-re', '-f', 'lavfi', '-i', 'sine=frequency=660:sample_rate=24000'])
+    monkeypatch.setattr(capture.service, '_input_arguments',
+                        lambda selected: synthetic_input(selected, frequency=660))
     retake = capture.service.capture(capture.device.id, options=capture.options,
                                     retake_of=original['id'])
     assert retake['retake'] == {'origin_id': original['id'], 'previous_id': original['id'],

@@ -27,6 +27,12 @@ def isolated_activation(monkeypatch):
     monkeypatch.setattr(runtime, '_audio_block', None)
     monkeypatch.setattr(runtime, '_binding_owner', None)
     monkeypatch.setenv('PATH', os.environ.get('PATH', ''))
+    # These registration/ownership cases describe an independent library, not
+    # the interpreter's containing application bundle. The installed lane has
+    # a real sealed runtime under sys.prefix; omit only ambient discovery here.
+    # Explicit bundle-root verification and the dedicated fallback test below
+    # continue through the actual production verifier.
+    monkeypatch.setattr(runtime, 'discover_bundled_audio', lambda: None)
 
 
 @pytest.fixture
@@ -340,6 +346,18 @@ def test_verified_bundle_fallback_uses_the_same_inert_preparation_and_owner(pack
              'files': {path.relative_to(bundle).as_posix(): digest(path)
                        for path in directory.rglob('*') if path.is_file()}}
     (bundle / 'bundle-manifest.json').write_text(json.dumps(outer), encoding='utf-8')
+    assert runtime.discover_bundled_audio() is None
+    # The fixture suppresses only omitted/default discovery. An explicit root
+    # must still authenticate this real sealed file inventory and own PATH.
+    monkeypatch.setattr(runtime, 'sys', SimpleNamespace(platform='win32'))
+    previous_path = os.environ['PATH']
+    explicit = runtime.activate_bundled_audio_runtime(bundle_root=bundle)
+    try:
+        assert explicit is not None
+        assert runtime.resolve_active_audio_tool('ffplay') == str(directory / 'bin/ffplay.exe')
+    finally:
+        explicit.close()
+    assert runtime._active is None and os.environ['PATH'] == previous_path
     monkeypatch.setattr(runtime, 'discover_bundled_audio', lambda: bundle)
     binding = local.prepare_local_audio_runtime(pack.library)
     assert not binding.notice and binding.directory == directory and runtime._active is None

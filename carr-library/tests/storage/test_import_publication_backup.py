@@ -77,3 +77,45 @@ def test_bad_execution_receipt_never_becomes_valid_through_rebinding(completed, 
         app.backup(tmp_path / 'rejected')
     assert not (tmp_path / 'rejected').exists()
 
+
+
+@pytest.mark.parametrize('boundary', [None, 0])
+def test_legacy_watermark_is_validated_then_removed_without_replaying_source(completed, tmp_path,
+                                                                           boundary):
+    from carr_library.ingest import worker
+
+    app, workspace, source, request = completed
+    historical = deepcopy(request)
+    historical['publication_watermark'] = boundary
+    historical['state'] = 'running'
+    historical.pop('result')
+    worker._store(app.root, historical['request_id'], historical)
+    target = tmp_path / 'legacy-watermark-backup'
+    checksum = app.backup(target)
+    source.unlink()
+
+    restored_root = restore_backup(target, tmp_path / 'legacy-watermark-restored', checksum)
+    after = load_request(restored_root, historical['request_id'])
+    assert not {'publication_watermark', 'attempt_id', 'publication',
+                'attempt', 'publication_candidate'} & after.keys()
+    reopened = LibraryApp(restored_root)
+    resumed = reopened.resume_import(workspace, historical['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == request['job']
+    with reopened.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 1
+    assert load_request(app.root, historical['request_id']) == historical
+
+
+@pytest.mark.parametrize('boundary', [True, -1, 2 ** 63, '0'])
+def test_invalid_legacy_watermark_prevents_backup(completed, tmp_path, boundary):
+    from carr_library.ingest import worker
+
+    app, _, _, request = completed
+    changed = deepcopy(request)
+    changed['publication_watermark'] = boundary
+    worker._store(app.root, changed['request_id'], changed)
+    target = tmp_path / 'rejected-watermark'
+    with pytest.raises(ValueError, match='publication boundary'):
+        app.backup(target)
+    assert not target.exists()

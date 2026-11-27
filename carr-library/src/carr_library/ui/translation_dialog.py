@@ -16,12 +16,12 @@ from ..assistant.library_translation import (
 
 
 def _matches_saved_scope(job, account, value, source, target, budget, *, offline=False,
-                         source_binding=None):
+                         source_binding=None, glossary=None):
     """PR162: bind execution/export to the exact displayed saved selection."""
     return ((account is None and offline or account is not None and account.to_dict() == job['profile'])
             and value == job['source_text'] and source == job['source_language']
             and target == job['target_language'] and money(budget) == money(job['authorization']['budget'])
-            and source_binding == job.get('source_binding'))
+            and source_binding == job.get('source_binding') and glossary == job.get('glossary'))
 
 
 def create_translation_dialog(frame, *, wx_module=None, service=None):
@@ -32,9 +32,10 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
     library, selected_scope = frame.library, getattr(frame, 'active', None)
     root = library.root / 'state' / 'translation'
     store = ProfileStore(library.root / 'state' / 'providers')
-    profiles = tuple(p for p in store.list() if p.adapter == 'google-translation-v2' and p.enabled)
+    profiles = tuple(p for p in store.list() if p.adapter in ('google-translation-v2', 'google-translation-v3') and p.enabled)
     dialog = wx.Dialog(frame, title='Translation — selected text and linked library sources', size=(900, 940),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    dialog.SetName('Translation workspace')
     layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, current_job, reviewed, binding = True, False, None, None, None
     original_display_text, displayed_text = None, None
@@ -57,8 +58,8 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google Basic v2 &account', wx.Choice,
-                     choices=[f'{p.name} ({p.id})' for p in profiles])
+    provider = field('Google API &account and edition', wx.Choice,
+                     choices=[f'{p.name}; {p.adapter}; {p.id}' for p in profiles])
     if profiles:
         provider.SetSelection(0)
     input_scope = field('Translation input scope', wx.Choice, choices=[
@@ -68,6 +69,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
     title_filter = field('Source title filter for library selection', value='')
     source = field('&Source language code; auto detects', value='auto')
     target = field('Target language co&de', value='uk')
+    glossary = field('Advanced v3 &glossary resource; blank for none', value='')
     selected = field('Selected te&xt; originals remain unchanged', proportion=1, style=wx.TE_MULTILINE)
     rate = field('Optional price per million characters in USD; your current contract rate', value='')
     budget = field('Maximum approved &budget in USD; no default price', value='')
@@ -78,8 +80,10 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         style=wx.TE_MULTILINE | wx.TE_READONLY,
         value='LOCAL ONLY until explicit approval. Choose text, an exact source range, a document or an explicit batch. '
               'Library text is read-only here; corrections belong to a separate reading copy. '
-              'Configure Google Basic v2 under Tools / Translation and assistant service profiles. '
-              'Advanced v3, formatted-document translation, glossaries and local translation engines are unavailable in this adapter.')
+              'Configure Basic v2 API-key or Advanced v3 NMT OAuth accounts under Tools / Translation and assistant service profiles. '
+              'Advanced requires the exact numeric project and region and an unexpired IAM/ADC access token in Windows Credential Manager; '
+              'tokens are never automatically refreshed. An existing glossary requires the same non-global region and an explicit source language. '
+              'Fetch directions for this exact account before preview. Document formatting and local translation models are unavailable.')
     buttons = {}
     for row_items in (
         [('sources', 'Choose library &sources'), ('languages', 'Fetch &languages'),
@@ -105,7 +109,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         if not 0 <= index < len(profiles):
             if optional:
                 return None
-            raise ValueError('Choose an enabled Google Basic v2 account in Tools / Translation and assistant service profiles.')
+            raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 account in Tools / Translation and assistant service profiles.')
         return profiles[index]
 
     def visible(*, optional=False):
@@ -116,7 +120,8 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         exact = original_display_text if original_display_text is not None and current == displayed_text else current
         return (p.to_dict() if p is not None else None, exact,
                 source.GetValue().strip(), target.GetValue().strip(),
-                str(money(budget.GetValue())), deepcopy(binding))
+                str(money(budget.GetValue())), deepcopy(binding), glossary.GetValue().strip() or None,
+                rate.GetValue().strip() or None)
 
     def show_original(value):
         nonlocal original_display_text, displayed_text
@@ -131,7 +136,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
     def controls():
         if not alive:
             return
-        for control in (provider, input_scope, title_filter, source, target, selected, rate, budget, reading_view):
+        for control in (provider, input_scope, title_filter, source, target, glossary, selected, rate, budget, reading_view):
             control.Enable(not busy)
         selected.SetEditable(not busy and input_scope.GetSelection() == 0 and binding is None)
         for name, button in buttons.items():
@@ -284,7 +289,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             guard()
             p = profile()
             if wx.MessageBox('Contact the official Google Translation API to fetch its supported language list? '
-                'No selected text is sent. Your configured account will be used.', 'Approve language discovery',
+                'No selected text is sent. Your configured account will be used.\n' + p.endpoint + '\nModel: ' + p.model, 'Approve language discovery',
                 wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                 return
             guard()
@@ -297,7 +302,9 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             begin('Fetching supported translation languages',
                   lambda: service.refresh_languages(p, authorization=approval, cancelled=stopped),
                   lambda rows: report('Provider-declared NMT languages; translation quality is not independently qualified:\n' +
-                                      '\n'.join(row['language'] + ' — ' + row['name'] for row in rows)))
+                                      '\n'.join(row['language'] + ' — ' + row['name'] +
+                                          ('; source: ' + str(row['source']) + '; target: ' + str(row['target'])
+                                           if 'source' in row else '') for row in rows), True))
         except Exception as exc:
             report(str(exc), True)
 
@@ -325,7 +332,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                        'provider, languages and total budget. The reservation is not a provider-enforced charge guarantee.')
             begin('Previewing exact translation transfer',
                   lambda: service.preview(p, snapshot[1], snapshot[2], snapshot[3],
-                      rate_per_million=price, source_binding=snapshot[5], cancelled=stopped), complete)
+                      rate_per_million=price, source_binding=snapshot[5], glossary=snapshot[6], cancelled=stopped), complete)
         except Exception as exc:
             reviewed = None
             report(str(exc), True)
@@ -335,7 +342,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
         account = None if snapshot[0] is None else next(
             (p for p in profiles if p.to_dict() == snapshot[0]), None)
         if not _matches_saved_scope(job, account, snapshot[1], snapshot[2], snapshot[3], snapshot[4],
-                                    offline=offline, source_binding=snapshot[5]):
+                                    offline=offline, source_binding=snapshot[5], glossary=snapshot[6]):
             raise ValueError('Visible settings differ from saved job ' + identity +
                 '. Select Saved jobs to restore its exact scope, or Preview for a new approval. No operation was started.')
         return job
@@ -354,7 +361,8 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                 details = (f"{len(snapshot[5]['sources'])} library sources; " if snapshot[5] else 'selected text; ')
                 if wx.MessageBox(f'Send exactly {len(snapshot[1])} characters ({details}) to Google Translation? '
                     f'Approved total reservation: {snapshot[4]} USD. The provider may charge under your terms. '
-                    'A linked derivative is created; originals and quotations remain unchanged.',
+                    'A linked derivative is created; originals and quotations remain unchanged.\n' + p.endpoint +
+                    '\nModel: ' + p.model + '\nGlossary: ' + (snapshot[6] or 'none'),
                     'Approve exact translation transfer', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                     return
                 check_visible(snapshot)
@@ -371,9 +379,10 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                 job_id = identity
                 if job_id is None:
                     approval, cost = translation_approval(p, snapshot[1], snapshot[2], snapshot[3],
-                                                         snapshot[4], source_binding=snapshot[5])
+                                                         snapshot[4], source_binding=snapshot[5], glossary=snapshot[6])
                     job_id = service.submit(p, snapshot[1], snapshot[2], snapshot[3],
-                        authorization=approval, per_call_cost=cost, source_binding=snapshot[5], cancelled=stopped)
+                        authorization=approval, per_call_cost=cost, source_binding=snapshot[5],
+                        glossary=snapshot[6], cancelled=stopped)
                 else:
                     saved_job(snapshot, job_id)
                 progress = getattr(frame, 'operation_progress', None)
@@ -388,7 +397,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                 current_job = result['id']
                 controls()
                 report(json.dumps(result, indent=2) +
-                       '\nAccepted chunks are retained. Export or open the original/translation/bilingual reading view.')
+                       '\nAccepted chunks are retained. Export or open the original/translation/bilingual reading view.', True)
             begin('Translating the explicitly approved selection', translate, completed, allow_cancel_result=True)
         except Exception as exc:
             report(str(exc), True)
@@ -403,6 +412,7 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
             show_original(job['source_text'])
             source.ChangeValue(job['source_language'])
             target.ChangeValue(job['target_language'])
+            glossary.ChangeValue(job.get('glossary') or '')
             budget.ChangeValue(str(job['authorization']['budget']))
             rate.ChangeValue('')
             binding = deepcopy(job.get('source_binding'))
@@ -415,7 +425,9 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
                    f"{len(job['source_text'])} characters; budget {job['authorization']['budget']} USD. " +
                    ('Account unavailable or changed: remote resume is blocked; completed output remains readable offline. '
                     if index < 0 else 'Resume uses the exact original approval and accepted chunks. ') +
-                   'An uncertain charge is never retried automatically.', True)
+                   'An uncertain charge is never retried automatically. Model: ' + job['profile']['model'] +
+                   '; glossary: ' + (job.get('glossary') or 'none') + '. '
+                   'Expired Advanced access tokens require explicit re-entry for the unchanged account.', True)
         def choose(rows):
             picker = wx.SingleChoiceDialog(dialog, 'Choose a saved exact translation scope.',
                 'Translation jobs', [
@@ -494,14 +506,14 @@ def create_translation_dialog(frame, *, wx_module=None, service=None):
     for name, handler in handlers.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)
         setattr(dialog, 'on_' + name, handler)
-    for control in (selected, source, target, budget, rate):
+    for control in (selected, source, target, glossary, budget, rate):
         control.Bind(wx.EVT_TEXT, edited)
     provider.Bind(wx.EVT_CHOICE, edited)
     input_scope.Bind(wx.EVT_CHOICE, scope_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     dialog.translation_service = service
     dialog.translation_controls = dict(provider=provider, input_scope=input_scope, title_filter=title_filter,
-        source=source, target=target, selected=selected, rate=rate, budget=budget,
+        source=source, target=target, glossary=glossary, selected=selected, rate=rate, budget=budget,
         reading_view=reading_view, status=status, **buttons)
     dialog.translation_cancel = cancel
     dialog.on_scope_changed = scope_changed

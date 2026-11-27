@@ -18,7 +18,7 @@ import pytest
 from carr_library.assistant.credentials import CredentialUnavailable, WindowsCredentialVault
 from carr_library.assistant.providers import (
     ConnectionStore, HTTPResult, HTTPTransport, PlanApproval, ProviderError, ProviderGateway,
-    ProviderProfile, _addresses, validate_profiles_document,
+    ProviderProfile, _RequestSocket, _addresses, validate_profiles_document,
     validate_ledger_document,
 )
 
@@ -416,34 +416,134 @@ def test_real_tls_cancellation_is_prompt_without_cross_thread_shutdown(store, tl
     assert time.monotonic() - server.received_at < .6
 
 
-@pytest.mark.parametrize('cancel', [True, False])
-def test_stalled_real_tls_handshake_obeys_cancel_and_deadline(store, cancel):
+@pytest.fixture
+def stalled_tls_listener():
+    """A real peer that acknowledges ClientHello and then sends no TLS reply."""
     listener = socket.socket()
     listener.bind(('127.0.0.1', 0))
     listener.listen(1)
-    listener.settimeout(2)
+    listener.settimeout(.05)
     entered, release = threading.Event(), threading.Event()
+    state = {'address': listener.getsockname(), 'entered': entered,
+             'entered_at': None, 'accepted': False, 'client_hello': b''}
+    errors = []
+
+    def read_exact(connection, size):
+        data = bytearray()
+        while len(data) < size and not release.is_set():
+            try:
+                chunk = connection.recv(size - len(data))
+            except socket.timeout:
+                continue
+            if not chunk:
+                raise AssertionError('The TLS client closed before sending its complete ClientHello.')
+            data.extend(chunk)
+        return bytes(data) if len(data) == size else None
+
     def accept():
-        connection, _ = listener.accept()
-        with connection:
-            entered.set()
-            release.wait(2)
+        try:
+            while not release.is_set():
+                try:
+                    connection, _ = listener.accept()
+                    break
+                except socket.timeout:
+                    continue
+            else:
+                return
+            with connection:
+                state['accepted'] = True
+                connection.settimeout(.05)
+                header = read_exact(connection, 5)
+                if header is None:
+                    return
+                assert header[0] == 22 and header[1] == 3, 'Expected a real TLS handshake record.'
+                length = int.from_bytes(header[3:5], 'big')
+                assert length >= 4, 'Expected a complete ClientHello handshake header.'
+                body = read_exact(connection, length)
+                if body is None:
+                    return
+                assert body[0] == 1, 'Expected the ClientHello handshake type.'
+                assert 0 < int.from_bytes(body[1:4], 'big') <= len(body) - 4
+                state['client_hello'] = header + body
+                state['entered_at'] = time.monotonic()
+                entered.set()
+                release.wait(3)
+        except BaseException as error:
+            errors.append(error)
+
     worker = threading.Thread(target=accept, daemon=True)
     worker.start()
-    profile = store.save_profile(ProviderProfile('tls-stall', 'Local TLS stall', 'openai-compatible',
-        f'https://127.0.0.1:{listener.getsockname()[1]}/v1', 'local-model', 'chat', local=True))
-    gateway = ProviderGateway(store, approval=PlanApproval.for_profiles((profile,)))
-    started = time.monotonic()
     try:
-        with pytest.raises(InterruptedError if cancel else TimeoutError):
-            call(gateway, 'tls-stall', cost=0, timeout_seconds=2 if cancel else .15,
-                 cancelled=(lambda: time.monotonic() - started > .12) if cancel else None)
-        assert time.monotonic() - started < .6
-        assert entered.is_set()
+        yield state
     finally:
         release.set()
-        listener.close()
+        # Close the listening handle only after its actual owner has left accept.
+        # Closing it first races Winsock accept and creates an unrelated WinError 10038.
         worker.join(timeout=2)
+        try:
+            assert not worker.is_alive(), 'The owned TLS listener did not stop before cleanup.'
+            assert not errors, repr(errors)
+        finally:
+            listener.close()
+
+
+@pytest.mark.parametrize('cancel', [True, False])
+def test_stalled_real_tls_handshake_obeys_cancel_and_deadline(store, monkeypatch,
+                                                            stalled_tls_listener, cancel):
+    """Gateway cancellation and the production TLS-phase deadline use real sockets."""
+    peer = stalled_tls_listener
+    # Loading the OS trust store is preflight, not the TLS stall being measured.
+    # Keep the real verifying context and the production handshake implementation.
+    context = ssl.create_default_context()
+    assert context.check_hostname and context.verify_mode == ssl.CERT_REQUIRED
+    monkeypatch.setattr(ssl, 'create_default_context', lambda: context)
+    if cancel:
+        profile = store.save_profile(ProviderProfile(
+            'tls-stall', 'Local TLS stall', 'openai-compatible',
+            f'https://127.0.0.1:{peer["address"][1]}/v1', 'local-model', 'chat', local=True))
+        gateway = ProviderGateway(store, approval=PlanApproval.for_profiles((profile,)))
+        with pytest.raises(InterruptedError):
+            call(gateway, 'tls-stall', cost=0, timeout_seconds=2,
+                 cancelled=lambda: (peer['entered'].is_set()
+                                    and time.monotonic() - peer['entered_at'] > .12))
+        finished = time.monotonic()
+        assert peer['entered'].is_set() and peer['client_hello']
+        assert .12 <= finished - peer['entered_at'] < .6
+    else:
+        # The full request deadline tests remain above. This case isolates the
+        # exact production TLS method after a real TCP connect, so a .15 s TLS
+        # budget cannot expire in DNS, ledger persistence or trust-store loading.
+        raw = socket.create_connection(peer['address'], timeout=2)
+        channel = None
+        try:
+            started = time.monotonic()
+            channel = _RequestSocket(raw, deadline=started + .15, cancelled=None)
+            with pytest.raises(TimeoutError):
+                channel.secure('127.0.0.1')
+            finished = time.monotonic()
+            assert peer['entered'].is_set() and peer['client_hello']
+            assert .15 <= finished - started < .6
+            assert 0 <= finished - peer['entered_at'] < .6
+        finally:
+            if channel is not None:
+                channel.sock.close()
+            raw.close()
+
+
+def test_cancel_before_tls_preflight_does_not_connect_or_load_trust(store, monkeypatch,
+                                                                   stalled_tls_listener):
+    peer = stalled_tls_listener
+    profile = store.save_profile(ProviderProfile(
+        'tls-early-cancel', 'Cancelled local TLS', 'openai-compatible',
+        f'https://127.0.0.1:{peer["address"][1]}/v1', 'local-model', 'chat', local=True))
+    gateway = ProviderGateway(store, approval=PlanApproval.for_profiles((profile,)))
+    def forbidden(*args, **kwargs):
+        pytest.fail('An already cancelled request must not enter DNS or TLS preflight.')
+    monkeypatch.setattr('carr_library.assistant.providers._addresses', forbidden)
+    monkeypatch.setattr(ssl, 'create_default_context', forbidden)
+    with pytest.raises(InterruptedError):
+        call(gateway, 'tls-early-cancel', cost=0, timeout_seconds=2, cancelled=lambda: True)
+    assert not peer['accepted'] and not peer['entered'].is_set() and not peer['client_hello']
 
 
 def test_remote_dns_private_address_is_rejected_before_connect(monkeypatch):

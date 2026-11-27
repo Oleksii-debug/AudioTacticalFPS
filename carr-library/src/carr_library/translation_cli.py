@@ -52,13 +52,13 @@ def _source(app, args):
 
 def _preview(service, profile, value, binding, args):
     result = service.preview(profile, value, args.source, args.target,
-        rate_per_million=args.rate_per_million, source_binding=binding)
+        rate_per_million=args.rate_per_million, source_binding=binding, glossary=args.glossary)
     budget = str(money(args.budget))
     if result['estimated_cost'] is not None and money(result['estimated_cost']) > money(budget):
         raise ValueError('The entered price estimate exceeds the approved total budget.')
     envelope = {'profile': profile.to_dict(), 'source_sha256': result['source_sha256'],
         'source_binding_sha256': binding['sha256'] if binding is not None else None,
-        'source_language': args.source, 'target_language': args.target, 'budget': budget,
+        'source_language': args.source, 'target_language': args.target, 'budget': budget, 'glossary': args.glossary,
         'rate_per_million': str(money(args.rate_per_million)) if args.rate_per_million is not None else None}
     return {**result, 'provider_id': profile.id, 'provider_name': profile.name, 'endpoint': profile.endpoint,
             'model': profile.model, 'budget': budget, 'currency': 'USD', 'approval_sha256': _fingerprint(envelope),
@@ -68,12 +68,14 @@ def _preview(service, profile, value, binding, args):
 def job_summary(job):
     immutable = {key: job.get(key) for key in (
         'id', 'profile', 'source_sha256', 'source_binding', 'source_language', 'target_language',
-        'authorization', 'per_call_cost', 'restore_requires_review')}
+        'authorization', 'per_call_cost', 'restore_requires_review', 'glossary')}
     return {'id': job['id'], 'title': job['title'], 'status': job['status'],
         'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
         'target_language': job['target_language'], 'characters': len(job['source_text']),
         'completed': len(job['receipts']), 'total': len(job['chunks']),
         'profile_id': job['profile']['id'], 'profile_name': job['profile']['name'],
+        'provider_adapter': job['profile']['adapter'], 'endpoint': job['profile']['endpoint'],
+        'model': job['profile']['model'], 'glossary': job.get('glossary'),
         'budget': job['authorization']['budget'], 'currency': job['authorization']['currency'],
         'source': source_summary(job['source_binding']) if job.get('source_binding') is not None else None,
         'restore_requires_review': job.get('restore_requires_review', False),
@@ -87,9 +89,11 @@ def parser():
     root.add_argument('--topic', help='Optional current topic permission')
     root.add_argument('--collection', help='Optional current collection membership')
     commands = root.add_subparsers(dest='command', required=True)
-    languages = commands.add_parser('languages', help='Explicitly fetch the provider language inventory')
+    commands.add_parser('profiles', help='List nonsecret translation account identities without accessing credentials')
+    languages = commands.add_parser('languages', help='Read cached declarations or explicitly fetch the provider language inventory')
     languages.add_argument('--profile', required=True)
     languages.add_argument('--allow-remote', action='store_true')
+    languages.add_argument('--cached', action='store_true', help='Read the exact account cache without any external request')
     for name in ('preview', 'submit'):
         command = commands.add_parser(name)
         command.add_argument('--profile', required=True)
@@ -100,6 +104,7 @@ def parser():
         command.add_argument('--last', type=int, help='Last reading-order position for one chapter/range')
         command.add_argument('--source', default='auto')
         command.add_argument('--target', required=True)
+        command.add_argument('--glossary', help='Existing Advanced v3 glossary in the exact project and non-global region')
         command.add_argument('--budget', required=True, help='Explicit total USD reservation bound')
         command.add_argument('--rate-per-million', help='Your current provider contract price; no default quote')
         if name == 'submit':
@@ -128,7 +133,17 @@ def execute(args):
     app = LibraryApp(args.data_dir)
     service = TranslationService(app.root / 'state/translation', library=app, workspace=args.workspace)
     profiles = ProfileStore(app.root / 'state/providers')
+    if args.command == 'profiles':
+        return {'profiles': [{key: profile.to_dict()[key] for key in
+            ('id', 'name', 'adapter', 'endpoint', 'model', 'enabled')}
+            for profile in profiles.list()
+            if profile.adapter in ('google-translation-v2', 'google-translation-v3')]}
     if args.command == 'languages':
+        if args.cached:
+            if args.allow_remote:
+                raise ValueError('Choose cached language review or an explicit remote refresh, not both.')
+            return {'languages': service.languages(profiles.get(args.profile)),
+                    'qualification': 'cached provider declarations; no network request or quality qualification'}
         if not args.allow_remote:
             raise PermissionError('Explicit --allow-remote consent is required for provider language discovery.')
         profile = profiles.get(args.profile)
@@ -147,10 +162,10 @@ def execute(args):
         if not args.allow_remote or args.approve_preview != review['approval_sha256']:
             raise PermissionError('Approve the exact current preview digest and --allow-remote before external transfer.')
         authorization, cost = translation_approval(profile, value, args.source, args.target, args.budget,
-                                                   source_binding=binding)
+                                                   source_binding=binding, glossary=args.glossary)
         service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
         identity = service.submit(profile, value, args.source, args.target, title=args.title,
-            authorization=authorization, per_call_cost=cost, source_binding=binding)
+            authorization=authorization, per_call_cost=cost, source_binding=binding, glossary=args.glossary)
         return service.resume(identity)
     if args.command == 'jobs':
         return {'jobs': [job_summary(job) for job in service.list()]}

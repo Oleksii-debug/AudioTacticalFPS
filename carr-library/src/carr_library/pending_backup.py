@@ -41,7 +41,7 @@ _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
 _REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
-                     'attempt_id', 'publication', 'attempt', 'publication_candidate'}
+                     'attempt_id', 'publication', 'attempt', 'publication_candidate', 'publication_watermark'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -275,6 +275,11 @@ def _request(record, request_id, data_dir, db):
     _config(record['config'])
     if 'expected_manifest' in record:
         _manifest(record['expected_manifest'])
+    # Earlier requests may retain this scalar. It is accepted only for backup
+    # compatibility; import completion is authorized solely by the DB receipt.
+    boundary = record.get('publication_watermark')
+    if boundary is not None and (type(boundary) is not int or not 0 <= boundary < 2 ** 63):
+        raise ValueError('Invalid pending request publication boundary.')
     for key in ('asset_sha256', 'job'):
         if key in record and not _hash(record[key]):
             raise ValueError('Invalid pending request journal identity.')
@@ -995,6 +1000,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 request.pop('publication', None)
                 request.pop('attempt', None)
                 request.pop('publication_candidate', None)
+                request.pop('publication_watermark', None)
                 request.pop('attempt_id', None)
                 request['data_dir'] = str(new_root)
                 request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])

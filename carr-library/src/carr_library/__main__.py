@@ -73,12 +73,15 @@ def main(argv=None, *, delivery=None):
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
-    if arguments and arguments[0] == 'translate':
+    if arguments and arguments[0] in ('translate', 'translation'):
         from .translation_cli import main as translation_main
         return translation_main(arguments[1:])
-    if arguments and arguments[0] == 'transcribe':
+    if arguments and arguments[0] in ('transcribe', 'transcription'):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments[:1] == ['operations']:
+        from .operations_cli import main as operations_main
+        return operations_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])

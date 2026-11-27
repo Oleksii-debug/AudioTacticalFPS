@@ -6,7 +6,9 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
+from functools import lru_cache
 from hashlib import sha256
+import ctypes
 import logging
 from pathlib import Path, PureWindowsPath
 import os
@@ -25,6 +27,12 @@ class ExportReceipt:
 _logger = logging.getLogger(__name__)
 _MAX_OVERWRITE_BYTES = 32 * 1024 * 1024
 _OVERWRITE_CHECK_SECONDS = 0.25
+
+
+def export_completion(message, receipt):
+    """Report a completed publication and any remaining staging cleanup notice."""
+    warning = getattr(receipt, 'cleanup_warning', None)
+    return message + (' ' + warning if isinstance(warning, str) and warning else '')
 
 
 def _filename(name):
@@ -78,8 +86,9 @@ def _content_state(path, info, check_cancelled):
     previous = _file_state(info)
     flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
              | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
-    with os.fdopen(os.open(path, flags), 'rb') as stream:
-        opened = os.fstat(stream.fileno())
+    descriptor = os.open(path, flags)
+    try:
+        opened = os.fstat(descriptor)
         if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
                 or _file_state(opened) != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
@@ -87,19 +96,71 @@ def _content_state(path, info, check_cancelled):
         remaining = info.st_size
         while remaining:
             budget()
-            block = stream.read(min(128 * 1024, remaining))
+            block = os.read(descriptor, min(128 * 1024, remaining))
             if not block:
                 raise ValueError('The export destination changed. Choose the destination again.')
             digest.update(block)
             remaining -= len(block)
         budget()
         current = path.lstat()
-        if (stream.read(1) or _linked(current)
-                or _file_state(os.fstat(stream.fileno())) != previous
+        if (os.read(descriptor, 1) or _linked(current)
+                or _file_state(os.fstat(descriptor)) != previous
                 or _file_state(current) != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
+    finally:
+        os.close(descriptor)
     budget()
-    return (*previous, digest.hexdigest())
+    return (*previous, digest.digest())
+
+
+class _WindowsFileBasicInfo(ctypes.Structure):
+    # FILE_BASIC_INFO: four LARGE_INTEGER values and one DWORD. Fixed-width
+    # fields also make the ABI checks meaningful on non-Windows test hosts.
+    _fields_ = [('CreationTime', ctypes.c_int64), ('LastAccessTime', ctypes.c_int64),
+                ('LastWriteTime', ctypes.c_int64), ('ChangeTime', ctypes.c_int64),
+                ('FileAttributes', ctypes.c_uint32)]
+
+
+@lru_cache(maxsize=1)
+def _windows_file_api():
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create, query, close = (kernel.CreateFileW, kernel.GetFileInformationByHandleEx,
+                            kernel.CloseHandle)
+    create.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32,
+                       ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p]
+    create.restype = ctypes.c_void_p
+    query.argtypes = [ctypes.c_void_p, ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint32]
+    query.restype = ctypes.c_int32
+    close.argtypes = [ctypes.c_void_p]
+    close.restype = ctypes.c_int32
+    return create, query, close
+
+
+def _windows_api_error(operation):
+    return OSError(f'The export destination could not be verified: {operation} '
+                   f'failed (Windows error {ctypes.get_last_error()}).')
+
+
+def _windows_change_time(path):
+    """Read bounded native metadata without reading or locking file contents."""
+    create, query, close = _windows_file_api()
+    # FILE_READ_ATTRIBUTES; share read/write/delete; OPEN_EXISTING; open the
+    # reparse point itself so the handle query can reject redirection.
+    handle = create(str(path), 0x80, 0x7, None, 3, 0x00200000, None)
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        raise _windows_api_error('CreateFileW')
+    try:
+        basic = _WindowsFileBasicInfo()
+        if not query(handle, 0, ctypes.byref(basic), ctypes.sizeof(basic)):
+            raise _windows_api_error('GetFileInformationByHandleEx')
+        if basic.FileAttributes & (0x400 | 0x10):  # reparse point or directory
+            raise ValueError('The export destination must be a regular file without links or reparse points.')
+        if basic.ChangeTime <= 0:
+            raise ValueError('The export destination does not provide a usable Windows change time.')
+        return basic.ChangeTime
+    finally:
+        if not close(handle):
+            raise _windows_api_error('CloseHandle')
 
 
 def _destination(path, private_root, check_cancelled=lambda: None, *, require_absent=False):
@@ -143,7 +204,19 @@ def _destination(path, private_root, check_cancelled=lambda: None, *, require_ab
             # Keep the path/link guards above, then reject before hashing a
             # potentially very large or slow user-selected destination.
             raise FileExistsError('The export destination already exists; replacement was not authorized.')
+        parent_identity = _identity(parent.stat())
+        # Python 3.11 exposes Windows creation time as ctime. Bind native
+        # ChangeTime as well as the full bytes: either timestamp can collide,
+        # while a write followed by restoration of the old bytes still changes
+        # native metadata. A failed native query never falls back to less proof.
+        change_time = _windows_change_time(target) if os.name == 'nt' else None
         state = _content_state(target, info, check_cancelled)
+        after = target.lstat()
+        if (_linked(after) or _file_state(after) != _file_state(info)
+                or _identity(parent.stat()) != parent_identity):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if change_time is not None:
+            state = (*state[:-1], change_time, state[-1])
     return target, _identity(parent.stat()), state
 
 

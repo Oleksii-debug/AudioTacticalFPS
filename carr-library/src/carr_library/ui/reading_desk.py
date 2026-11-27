@@ -15,6 +15,7 @@ from ..reader.reading_state import MAX_BYTES, ReadingState
 from ..research.export_file import write_export
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
+from .export_destination import completion_message, start_export
 
 
 def _chosen(index, values):
@@ -479,7 +480,7 @@ class ReadingDialogs(NativeDialogs):
             'Export reading positions and bookmarks' if save else 'Import reading positions and bookmarks',
             defaultFile='reading-bookmarks.json' if save else '',
             wildcard='Reading state JSON (*.json)|*.json',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
         finally:
@@ -593,13 +594,24 @@ class ReadingActions:
                 return
             self._guard(scope)
 
-            def save():
+            def save(approval, cancelled, check_live):
+                check_live()
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
-                return self._run(scope, lambda: write_export(path, content, private_root=scope.library.root))
-            self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
-                lambda _: self.frame.report('Reading positions and page bookmarks exported.'))
+                # Rendering can dispatch slow work; bind publication to the
+                # same live library and exact pre-confirmation destination.
+                check_live()
+                return write_export(path, content, private_root=scope.library.root,
+                                    cancelled=cancelled, approval=approval)
+
+            start_export(self.frame, path, private_root=scope.library.root,
+                check_scope=lambda: self._guard(scope), operation=save,
+                done=lambda receipt: self.frame.report(completion_message(
+                    'Reading positions and page bookmarks exported.', receipt)),
+                title='Exporting reading state',
+                failed=lambda exc: self.frame.report(f'Reading state was not exported: {exc}'),
+                declined=lambda: self.frame.report('Reading state export cancelled.'))
         except Exception as exc:
             self.frame.report(f'Reading state was not exported: {exc}')
 

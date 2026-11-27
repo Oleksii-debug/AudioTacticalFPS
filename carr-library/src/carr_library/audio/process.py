@@ -181,8 +181,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         finally:
             pipe.close()
 
-    threads = [threading.Thread(target=read_pipe, args=(process.stdout, 'stdout'), daemon=True),
-               threading.Thread(target=read_pipe, args=(process.stderr, 'stderr'), daemon=True)]
+    threads, started_pipes = [], set()
     last_progress = None
 
     def check():
@@ -240,8 +239,13 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             last_progress = latest[0]
 
     try:
-        for thread in threads:
+        # Allocation and startup can both fail after the child is created.
+        # Keep both inside its existing owned-process cleanup boundary.
+        for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
+            thread = threading.Thread(target=read_pipe, args=(pipe, name), daemon=True)
+            threads.append(thread)
             thread.start()
+            started_pipes.add(pipe)
         while process.poll() is None:
             check()
             try:
@@ -275,10 +279,13 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                     process.stdin.close()
                 except OSError:
                     pass
-            for thread, pipe in zip(threads, (process.stdout, process.stderr)):
+            for thread in threads:
                 if thread.ident is not None:
                     thread.join(timeout=2)
-                elif pipe is not None:
+            # A started reader closes its own pipe; allocation/start failures
+            # leave the other streams owned by this cleanup, including retries.
+            for pipe in (process.stdout, process.stderr):
+                if pipe is not None and pipe not in started_pipes:
                     pipe.close()
 
         try:

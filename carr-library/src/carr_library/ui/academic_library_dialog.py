@@ -8,7 +8,7 @@ from pathlib import Path
 import threading
 
 from ..research.academic_library import AcademicLibrary
-from ..research.export_file import capture_export_destination, write_export
+from ..research.export_file import capture_export_destination, export_completion, write_export
 
 
 PAGE_SIZE = 200
@@ -96,6 +96,14 @@ class AcademicController:
 
     def export_to(self, destination, *, identity=None, format='text', include_notes=False,
                   cancelled=lambda: False, approval=None):
+        """Preserve the existing text-returning controller API."""
+        content, _receipt = self.export_with_receipt(destination, identity=identity,
+            format=format, include_notes=include_notes, cancelled=cancelled, approval=approval)
+        return content
+
+    def export_with_receipt(self, destination, *, identity=None, format='text', include_notes=False,
+                            cancelled=lambda: False, approval=None):
+        """Return the text and its committed publication receipt to the UI."""
         if not callable(cancelled):
             raise ValueError('An export cancellation callback is required.')
         if cancelled():
@@ -106,9 +114,9 @@ class AcademicController:
         # Reauthorize after rendering, immediately before the guarded writer.
         with self.library.read(self.workspace):
             pass
-        write_export(destination, content, private_root=self.library.root,
-                     cancelled=cancelled, approval=approval)
-        return content
+        receipt = write_export(destination, content, private_root=self.library.root,
+                               cancelled=cancelled, approval=approval)
+        return content, receipt
 
     def books(self):
         return self.library.browse(self.workspace)
@@ -991,9 +999,10 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 dialog.Destroy()
 
         def export_to(self, path, *, format='text', identity=None, include_notes=False):
-            content = self.controller.export_to(path, identity=identity, format=format, include_notes=include_notes)
-            report(self.status, f'Bibliography exported to {path}. '
-                   + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
+            content, receipt = self.controller.export_with_receipt(
+                path, identity=identity, format=format, include_notes=include_notes)
+            report(self.status, export_completion(f'Bibliography exported to {path}. '
+                   + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'), receipt))
             return content
 
         def on_export(self, event=None):
@@ -1059,12 +1068,13 @@ def create_academic_dialog(parent, controller, *, executor=None):
 
                     def publish():
                         current()
-                        return controller.export_to(path, format=format, identity=identity,
+                        return controller.export_with_receipt(path, format=format, identity=identity,
                             include_notes=include_notes, cancelled=cancelled, approval=approval)
 
-                    def saved(content):
-                        report(self.status, f'Bibliography exported to {path}. '
-                            + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
+                    def saved(result):
+                        _content, receipt = result
+                        report(self.status, export_completion(f'Bibliography exported to {path}. '
+                            + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'), receipt))
 
                     self._run('Exporting bibliography', publish, saved, publication=True)
 

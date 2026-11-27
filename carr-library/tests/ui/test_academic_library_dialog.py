@@ -729,3 +729,41 @@ def test_academic_export_destroyed_during_confirmation_never_touches_dead_contro
     window.executor.finish(0)
     native_handlers.drain()
     assert len(window.executor.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+def test_text_controller_contract_and_receipt_result_use_same_publication(controller, tmp_path):
+    controller.create(form_values(draft()))
+    target, second = tmp_path / 'plain.txt', tmp_path / 'receipt.txt'
+    content = controller.export_to(target)
+    detailed, receipt = controller.export_with_receipt(second)
+    assert content == detailed == controller.export()
+    assert target.read_text(encoding='utf-8') == second.read_text(encoding='utf-8') == content
+    assert receipt.path == second and receipt.cleanup_warning is None
+
+
+@pytest.mark.parametrize('late_cancel', [False, True])
+def test_academic_export_reports_committed_cleanup_warning(
+        controller, native_handlers, tmp_path, monkeypatch, late_cancel):
+    from carr_library.research.export_file import ExportReceipt
+    from carr_library.ui import academic_library_dialog as module
+    controller.create(form_values(draft()))
+    window, target, _ = _academic_export_window(controller, native_handlers, tmp_path, monkeypatch)
+    actual_write = module.write_export
+    warning = 'The file is saved. Temporary-file cleanup is still pending; do not repeat the export.'
+
+    def publish(*args, **kwargs):
+        receipt = actual_write(*args, **kwargs)
+        if late_cancel:
+            window.cancel_event.set()
+        return ExportReceipt(receipt.path, warning)
+
+    monkeypatch.setattr(module, 'write_export', publish)
+    window.on_export()
+    window.executor.finish(0)
+    native_handlers.drain()
+    window.executor.finish(1)
+    native_handlers.drain()
+    assert target.read_text(encoding='utf-8') == controller.export()
+    assert 'Bibliography exported' in window.status.value and warning in window.status.value
+    assert 'not completed' not in window.status.value
+    assert len(window.executor.jobs) == 2

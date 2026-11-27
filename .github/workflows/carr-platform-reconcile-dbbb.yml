@@ -1,0 +1,131 @@
+name: CARR one-off platform reconciliation preflight
+on:
+  push:
+    branches: [carr/platform-reconcile-dbbb-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-platform-reconcile-dbbb.yml']
+permissions:
+  contents: read
+concurrency:
+  group: carr-platform-reconcile-dbbb
+  cancel-in-progress: false
+jobs:
+  portable-platform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Require actual portable media commands
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          ffmpeg -version
+          ffprobe -version
+      - name: Install this exact source and compile every application module
+        id: install
+        run: |
+          git rev-parse HEAD
+          New-Item -ItemType Directory -Force ci-platform-results | Out-Null
+          python -m pip install '.[test]'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B -m compileall -q src scripts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require new contracts and affected existing boundaries
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          $suites = @(
+            'tests/speech/test_reading_tools.py',
+            'tests/ui/test_reading_tools.py',
+            'tests/speech/test_output_devices.py',
+            'tests/ui/test_reader_output.py',
+            'tests/speech/test_spelling.py',
+            'tests/speech/test_spelling_worker.py',
+            'tests/ui/test_reader_spelling.py',
+            'tests/speech/test_presentation.py',
+            'tests/ui/test_reader_presentation.py',
+            'tests/storage/test_reader_presentation_backup.py',
+            'tests/operations/test_resources.py',
+            'tests/operations/test_facade.py',
+            'tests/operations/test_production_admission.py',
+            'tests/operations/test_worker_start_cleanup.py',
+            'tests/e2e/test_operations_cli.py',
+            'tests/e2e/test_transcription_cli.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/ui/test_platform_modal_lifecycle.py',
+            'tests/ui/test_transcription_dialog.py',
+            'tests/transcription/test_admission_boundaries.py',
+            'tests/transcription/test_protocol_fixture.py',
+            'tests/transcription/test_restore.py',
+            'tests/transcription/test_runtime_admission.py',
+            'tests/transcription/test_service.py',
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_planning_handlers.py',
+            'tests/assistant/test_translation_v3.py',
+            'tests/storage/test_atomic_state_publication.py',
+            'tests/storage/test_transcription_backup.py',
+            'tests/reader/test_export_reconciliation.py',
+            'tests/operations/test_transcription_views.py',
+            'tests/storage/test_transcription_composite_backup.py',
+            'tests/transcription/test_owned_admission.py',
+            'tests/transcription/test_protocol_routing.py',
+            'tests/reader/test_export_change_time.py',
+            'tests/speech/test_player_controls.py',
+            'tests/speech/test_session.py',
+            'tests/speech/test_reading.py',
+            'tests/ui/test_reader_keymap_context.py',
+            'tests/ui/test_keyboard_settings.py',
+            'tests/ui/test_keyboard_export.py',
+            'tests/ui/test_keyboard_rename.py',
+            'tests/assistant/test_transcription_workflow.py',
+            'tests/transcription/test_supplied_worker_bridge.py',
+            'tests/storage/test_transcription_recovery.py',
+            'tests/storage/test_import_publication_backup.py',
+            'tests/assistant/test_translation.py',
+            'tests/assistant/test_library_translation.py',
+            'tests/ui/test_translation_selection.py',
+            'tests/ui/test_library_translation_dialog.py',
+            'tests/storage/test_translation_runtime_recovery.py',
+            'tests/storage/test_canonical_backup_compat.py',
+            'tests/assistant/test_provider_policy.py',
+            'tests/assistant/test_local_assistant.py',
+            'tests/ui/test_assistant_voice_preview.py',
+            'tests/ui/test_academic_library_dialog.py',
+            'tests/ui/test_import_center.py',
+            'tests/ui/test_reading_desk_actions.py',
+            'tests/audio/test_local_runtime_setup.py',
+            'tests/reader/test_export_approval_budget.py',
+            'tests/reader/test_export_publication_boundary.py',
+            'tests/reader/test_export_no_clobber.py',
+            'tests/ui/test_export_confirmation.py',
+            'tests/operations_posix/test_fork_ownership.py'
+          )
+          python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-platform-results/strict-source.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve exact-source preflight evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-platform-preflight-${{ github.sha }}
+          path: |
+            carr-library/ci-platform-results/
+            carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7

@@ -119,6 +119,36 @@ class AssistantService:
         self.validate(plan)
         return plan
 
+    def local_planner_profiles(self):
+        """List eligible choices without selecting or contacting a provider."""
+        from .llm import is_local_planner
+        from .profiles import ProfileStore
+        return tuple(profile for profile in ProfileStore(self.app.root / 'state' / 'providers').list()
+                     if is_local_planner(profile))
+
+    def propose_local(self, instruction, scope, *, profile_id, expected_profile=None,
+                      cancelled=lambda: False):
+        """Return a validated proposal only; submission remains a separate user action."""
+        from .llm import propose_local_plan
+        from .models import Step
+        from .profiles import ProfileStore
+        from .providers import Gateway
+        # Revalidate selected workspace/path permissions before any request. No
+        # document or directory contents are added to the instruction payload.
+        self.validate(Plan(scope, (Step('library.list'),)))
+        store = ProfileStore(self.app.root / 'state' / 'providers')
+        profile = store.get(profile_id)
+        if expected_profile is not None and profile != expected_profile:
+            raise PermissionError('The selected planning profile changed. Reopen its selection before requesting a proposal.')
+        plan = propose_local_plan(Gateway(store.directory, mode='LOCAL_ONLY'), profile,
+                                  instruction, scope, cancelled=cancelled)
+        if store.get(profile_id) != profile:
+            raise PermissionError('The selected planning profile changed. Review its settings and request a new proposal.')
+        self.validate(plan)
+        if cancelled():
+            raise InterruptedError('Local plan proposal cancelled; nothing was submitted.')
+        return plan
+
     def validate(self, plan):
         if not isinstance(plan, Plan):
             raise TypeError('A typed plan is required.')

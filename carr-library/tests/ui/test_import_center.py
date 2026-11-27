@@ -442,3 +442,26 @@ def test_import_report_declined_overwrite_never_starts_publication(center, tmp_p
     center.save_report()
     complete(center, center.jobs[0], _report_worker(center.jobs[0]))
     assert len(center.jobs) == 1 and target.read_bytes() == b'Existing target'
+
+
+@pytest.mark.parametrize('late_cancel', [False, True])
+def test_import_report_propagates_saved_cleanup_notice(center, tmp_path, monkeypatch, late_cancel):
+    from carr_library.research import export_file
+    from carr_library.ui.import_center import batch_report
+    target, _, _ = _report_destination(center, tmp_path, monkeypatch)
+    actual_write = export_file.write_export
+    warning = 'The file is saved. Temporary-file cleanup is still pending; do not repeat the export.'
+
+    def publish(*args, **kwargs):
+        receipt = actual_write(*args, **kwargs)
+        if late_cancel:
+            center.frame.cancel_event.set()
+        return export_file.ExportReceipt(receipt.path, warning)
+
+    monkeypatch.setattr(export_file, 'write_export', publish)
+    center.save_report()
+    complete(center, center.jobs[0], _report_worker(center.jobs[0]))
+    complete(center, center.jobs[1], _report_worker(center.jobs[1]))
+    assert target.read_text(encoding='utf-8') == batch_report(center.saved['first'])
+    assert center.status.value == 'Import report saved. ' + warning
+    assert len(center.jobs) == 2

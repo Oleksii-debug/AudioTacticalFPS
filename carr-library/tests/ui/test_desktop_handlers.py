@@ -145,6 +145,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
             ('citation_formatting', 'install_citation_actions'),
             ('operation_progress', 'install_operation_progress'),
             ('transcription_dialog', 'install_transcription_actions'),
+            ('operations_dialog', 'install_operations_actions'),
             ('command_palette', 'install_command_palette'),
             ('diagnostics_dialog', 'install_diagnostics'),
             ('delivery_dialog', 'install_delivery_actions')):

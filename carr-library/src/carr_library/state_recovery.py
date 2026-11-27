@@ -95,9 +95,29 @@ def _dispatch_path(relative):
     return PurePosixPath(relative.casefold())
 
 
+def validate_resource_policy(value):
+    """Passive saved allowances; constructing no broker, lease or device probe."""
+    from .operations.models import ResourceLimits
+    keys = {'cpu_slots', 'memory_bytes', 'disk_bytes', 'min_free_disk_bytes', 'gpu_devices', 'max_leases'}
+    if (type(value) is not dict or set(value) != {'schema', 'limits'}
+            or value['schema'] != 'carr-resource-policy/1'
+            or type(value['limits']) is not dict or set(value['limits']) != keys):
+        raise ValueError('Invalid restored resource policy.')
+    # Every field is explicit: do not use the default CPU-count factory.
+    ResourceLimits(**value['limits'])
+    return value
+
+
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
     path = _dispatch_path(relative)
+    if path == PurePosixPath('speech/presentation.json'):
+        from .speech.presentation import ReadingAppearance
+        ReadingAppearance.from_dict(value)
+        return None
+    if path == PurePosixPath('operations/resources.json'):
+        validate_resource_policy(value)
+        return None
     if _publication_path(path):
         from .studio.publishing import validate_publication_document
         validate_publication_document(value)
@@ -179,12 +199,19 @@ def _prepared(relative, value):
 
 def validate_state_documents(root, entries, *, cancelled=lambda: False, restored=False):
     """Check typed state without touching model paths or external output files."""
-    from . import recording_backup
+    from . import recording_backup, backup_transcription
+    entries = backup_transcription.validate_state(root, entries, cancelled=cancelled, restored=restored)
     recording_backup.validate_state_entries(entries, cancelled=cancelled)
     for entry in entries:
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
         relative = _dispatch_path(entry['filename'])
+        if relative == PurePosixPath('speech/presentation.json'):
+            from .speech.presentation import MAX_BYTES
+            if not 0 < entry['size_bytes'] <= MAX_BYTES:
+                raise ValueError('Reading appearance settings exceed their recovery size limit.')
+        if backup_transcription.namespace('state/' + entry['filename']):
+            continue
         if relative.as_posix().startswith(recording_backup.STATE_PREFIX):
             # The dedicated copied-tree verifier below parses only receipts,
             # streams actual PCM and validates the complete retake graph.
@@ -192,6 +219,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             continue
         if relative.suffix != '.json':
             continue
+        if relative == PurePosixPath('operations/resources.json') and entry['size_bytes'] > 32768:
+            raise ValueError('Resource policy exceeds its bounded state record size.')
         path = root / entry['filename']
         # Opaque state can contain larger JSON exports. Known application JSON
         # uses the bounded durable-state contract; no arbitrary file is executed.
@@ -199,14 +228,16 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             if (relative.as_posix().startswith(('assistant/', 'translation/', 'providers/',
                                               'studio/jobs/', 'studio/publications/', 'speech/', 'transcription/'))
                     or relative.name.endswith(('.profile.json', '.usage.json'))
-                    or relative == PurePosixPath('audio/engines.json')):
+                    or relative in (PurePosixPath('audio/engines.json'), PurePosixPath('operations/resources.json'))):
                 raise ValueError('Typed application state exceeds its recovery JSON budget.')
             continue
         try:
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
             if (_publication_path(relative)
-                    or relative in (PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'))
+                    or relative in (PurePosixPath('speech/presentation.json'),
+                                    PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'),
+                                    PurePosixPath('operations/resources.json'))
                     or len(relative.parts) == 5 and relative.parts[0] == 'transcription'
                     and relative.parts[2] == 'jobs' and relative.name == 'job.json'):
                 raise ValueError('Invalid typed transcription recovery JSON.') from None
@@ -217,7 +248,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
         if restored and updated is not None:
             atomic_json(path, updated, replace=True)
     recording_backup.validate_state_root(root, cancelled=cancelled)
+    return entries
 
 
 def prepare_restored_state(root, entries, *, cancelled=lambda: False):
-    validate_state_documents(root, entries, cancelled=cancelled, restored=True)
+    return validate_state_documents(root, entries, cancelled=cancelled, restored=True)

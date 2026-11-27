@@ -30,3 +30,16 @@ def test_offline_export_does_not_need_available_account():
     assert _matches_saved_scope(job(), None, 'Original A', 'en', 'uk', '1', offline=True)
     assert not _matches_saved_scope(job(), None, 'Original B', 'en', 'uk', '1', offline=True)
     assert not _matches_saved_scope(job(), account('account-b'), 'Original A', 'en', 'uk', '1', offline=True)
+
+
+def test_saved_glossary_is_part_of_the_visible_resume_and_export_scope():
+    from types import SimpleNamespace
+    from carr_library.ui.translation_dialog import _matches_saved_scope
+    declaration = {'id': 'account', 'model': 'general/nmt'}
+    profile = SimpleNamespace(to_dict=lambda: declaration)
+    glossary = 'projects/123456789/locations/us-central1/glossaries/approved'
+    job = {'profile': declaration, 'source_text': 'Original', 'source_language': 'en',
+           'target_language': 'uk', 'authorization': {'budget': '1'}, 'glossary': glossary}
+    assert _matches_saved_scope(job, profile, 'Original', 'en', 'uk', '1', glossary=glossary)
+    assert not _matches_saved_scope(job, profile, 'Original', 'en', 'uk', '1', glossary=None)
+    assert not _matches_saved_scope(job, profile, 'Original', 'en', 'uk', '1', glossary=glossary + '-other')

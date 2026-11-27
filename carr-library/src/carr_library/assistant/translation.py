@@ -15,7 +15,7 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from .models import canonical, local_path, text
-from .profiles import ProviderProfile
+from .profiles import ProviderProfile, google_v3_parent
 from .providers import Authorization, Gateway, money, _request, translation_receipt_sha256
 from .state import JobStore, atomic_json, read_json, now, MAX_CHECKPOINT_BYTES
 from ..speech.reading import ReadingDocument, MAX_PROJECT_BYTES
@@ -80,20 +80,44 @@ def validate_translation_source_record(job):
     return binding
 
 
+def translation_payload(value, source, target, glossary=None):
+    """One typed request shared by preview, approval, submission and recovery."""
+    payload = {'q': value, 'target': target}
+    if source != 'auto':
+        payload['source'] = source
+    if glossary is not None:
+        payload['glossary'] = glossary
+    return payload
+
+
+def _advanced_receipt(profile, glossary, row):
+    """Verify the requested v3 model/glossary independently of saved text."""
+    if profile.adapter != 'google-translation-v3':
+        if 'reported_model' in row or 'glossary_config' in row:
+            raise ValueError('A Basic translation receipt cannot claim Advanced model or glossary provenance.')
+        return
+    if row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model:
+        raise ValueError('The Advanced v3 receipt has no verified model provenance.')
+    observed = row.get('glossary_config')
+    if glossary is None:
+        if observed is not None:
+            raise ValueError('The Advanced v3 receipt has an unapproved glossary.')
+    elif (type(observed) is not dict or set(observed) != {'glossary', 'ignoreCase'}
+          or observed['glossary'] != glossary or observed['ignoreCase'] is not False):
+        raise ValueError('The Advanced v3 receipt has no verified glossary provenance.')
+
+
 def _approved_requests(profile, chunks, source, target, authorization, per_call_cost, *,
-                       source_binding=None, allow_disabled=False):
+                       source_binding=None, glossary=None, allow_disabled=False):
     """Reconstruct the same approved requests for submission and later reads."""
-    if profile.adapter != 'google-translation-v2' or not profile.enabled and not allow_disabled:
-        raise ValueError('Choose an enabled Google Basic v2 NMT profile.')
+    if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled and not allow_disabled:
+        raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
     hashes = []
     for chunk in chunks:
         if not chunk.strip():
             hashes.append(None)
             continue
-        payload = {'q': chunk, 'target': target}
-        if source != 'auto':
-            payload['source'] = source
-        _, body, _ = _request(profile, 'translation.text', payload)
+        _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
         hashes.append(_hash(canonical(body)))
     remote_hashes = tuple(value for value in hashes if value is not None)
     expected_task = (authorization.id + ':source:' + source_binding['sha256']
@@ -137,17 +161,14 @@ def _assemble_translation(chunks, receipts):
     return ''.join(parts)
 
 
-def translation_approval(profile, value, source, target, budget, *, source_binding=None):
+def translation_approval(profile, value, source, target, budget, *, source_binding=None, glossary=None):
     """Create an exact selected-data envelope after the caller obtains consent."""
     binding = validate_source_binding(source_binding, value) if source_binding is not None else None
     identity, hashes = uuid4().hex, []
     for chunk in split_text(value):
         if not chunk.strip():
             continue
-        payload = {'q': chunk, 'target': target}
-        if source != 'auto':
-            payload['source'] = source
-        _, body, _ = _request(profile, 'translation.text', payload)
+        _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
         hashes.append(_hash(canonical(body)))
     task = identity + ':source:' + binding['sha256'] if binding is not None else identity
     approval = Authorization(identity, task, ((profile.id, profile.endpoint),),
@@ -223,12 +244,16 @@ class TranslationService:
         if not path.exists():
             return ()
         data = read_json(path, maximum=1024 * 1024)
-        if (data.get('schema') != 'carr-translation-languages/1' or data.get('profile') != profile.id
+        if (type(data) is not dict or data.get('schema') != 'carr-translation-languages/1' or data.get('profile') != profile.id
                 or data.get('endpoint') != profile.endpoint or data.get('model') != profile.model):
             raise ValueError('Refresh languages for this exact provider and model.')
         rows = data.get('languages')
+        advanced = profile.adapter == 'google-translation-v3'
+        keys = {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'}
         if (not isinstance(rows, list) or not 1 <= len(rows) <= 1000
-                or any(not isinstance(row, dict) or set(row) != {'language', 'name'} for row in rows)
+                or any(type(row) is not dict or set(row) != keys
+                       or type(row.get('language')) is not str or type(row.get('name')) is not str
+                       or (advanced and (type(row['source']) is not bool or type(row['target']) is not bool)) for row in rows)
                 or _hash(canonical(rows)) != data.get('languages_sha256')):
             raise ValueError('The cached language list is damaged; explicitly refresh it.')
         return tuple(rows)
@@ -245,20 +270,20 @@ class TranslationService:
         return rows
 
     def preview(self, profile, value, source, target, *, rate_per_million=None, source_binding=None,
-                cancelled=lambda: False):
-        if profile.adapter != 'google-translation-v2' or not profile.enabled:
-            raise ValueError('Choose an enabled Google Basic v2 NMT profile.')
+                glossary=None, cancelled=lambda: False):
+        if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled:
+            raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
         self._check_source({'source_text': value, 'source_binding': source_binding}, cancelled=cancelled)
         parts = split_text(value)
         first = next(part for part in parts if part.strip())
-        selected = {'q': first, 'target': target}
-        if source != 'auto':
-            selected['source'] = source
+        selected = translation_payload(first, source, target, glossary)
         _request(profile, 'translation.text', selected)
-        codes = {row['language'] for row in self.languages(profile)}
-        if not codes:
+        languages = self.languages(profile)
+        if not languages:
             raise ValueError('Explicitly fetch the supported language list before translating.')
-        if target not in codes or (source != 'auto' and source not in codes):
+        sources = {row['language'] for row in languages if row.get('source', True)}
+        targets = {row['language'] for row in languages if row.get('target', True)}
+        if target not in targets or (source != 'auto' and source not in sources):
             raise ValueError('The chosen source or target is not declared supported by this provider model.')
         if source == target:
             raise ValueError('Choose a target language different from the source.')
@@ -268,22 +293,25 @@ class TranslationService:
         return {'source_sha256': _hash(value), 'characters': len(value),
             'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
             'library_source': source_summary(source_binding) if source_binding is not None else None,
+            'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
+            'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
             'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
-            'preservation': 'plain text derivative; document formatting and glossary not supported by this adapter'}
+            'preservation': 'plain text derivative; document formatting is not retained'}
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost,
-               source_binding=None, cancelled=lambda: False):
+               source_binding=None, glossary=None, cancelled=lambda: False):
         binding = validate_source_binding(source_binding, value) if source_binding is not None else None
-        preview = self.preview(profile, value, source, target, source_binding=binding, cancelled=cancelled)
+        preview = self.preview(profile, value, source, target, source_binding=binding,
+                               glossary=glossary, cancelled=cancelled)
         parts = split_text(value)
         _, cost = _approved_requests(profile, parts, source, target, authorization, per_call_cost,
-                                     source_binding=binding)
+                                     source_binding=binding, glossary=glossary)
         text(title, 'translation title', maximum=512)
         identity = uuid4().hex
         job = {'schema': 'carr-assistant-job/1', 'kind': 'translation/1', 'id': identity,
             'created': now(), 'status': 'queued', 'profile': profile.to_dict(), 'title': title,
             'source_text': value, 'source_sha256': preview['source_sha256'], 'source_language': source,
-            'target_language': target, 'chunks': list(parts), 'receipts': [],
+            'target_language': target, 'chunks': list(parts), 'receipts': [], 'glossary': glossary,
             'authorization': asdict(authorization), 'per_call_cost': str(cost)}
         if binding is not None:
             observed = self.library.root.stat()
@@ -330,7 +358,7 @@ class TranslationService:
             authorization = Authorization(**job['authorization'])
             requests, cost = _approved_requests(profile, job['chunks'], job['source_language'],
                 job['target_language'], authorization, job['per_call_cost'],
-                source_binding=binding, allow_disabled=restored)
+                source_binding=binding, glossary=job.get('glossary'), allow_disabled=restored)
         except (KeyError, TypeError, ValueError, PermissionError):
             raise ValueError('The saved translation authority is invalid.') from None
         operations = {}
@@ -355,12 +383,13 @@ class TranslationService:
             if requests[index] is None:
                 if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None
                         or row.get('response_sha256') is not None or row.get('detected_source') is not None
-                        or 'decoded_translation_sha256' in row):
+                        or any(key in row for key in ('decoded_translation_sha256', 'reported_model', 'glossary_config'))):
                     raise ValueError('A whitespace chunk differs from its preserved original.')
                 if receipt_integrity is not None:
                     receipt_integrity.append('original-whitespace')
                 continue
             text(row['text'], 'completed translation output', maximum=200000)
+            _advanced_receipt(profile, job.get('glossary'), row)
             recorded = operations.get(identity + '_' + str(index))
             if (row.get('request_sha256') != requests[index]
                     or not isinstance(row.get('response_sha256'), str)
@@ -443,9 +472,8 @@ class TranslationService:
                                 self._check_execution_origin(job)
                                 authorize_library_binding(self.library, job['source_binding'])
                             return False
-                        payload = {'q': chunk, 'target': job['target_language']}
-                        if job['source_language'] != 'auto':
-                            payload['source'] = job['source_language']
+                        payload = translation_payload(chunk, job['source_language'],
+                                                      job['target_language'], job.get('glossary'))
                         result = self.gateway.request(profile, 'translation.text', payload,
                             task_id=authorization.task_id, data_class='selected-excerpt', authorization=authorization,
                             max_cost=job['per_call_cost'], operation_id=identity + '_' + str(index),
@@ -457,6 +485,10 @@ class TranslationService:
                         'translation_sha256': _hash(result['text']), 'detected_source': result.get('detected_source'),
                         'request_sha256': result.get('request_sha256'), 'response_sha256': result.get('output_sha256')}
                     if chunk.strip():
+                        if profile.adapter == 'google-translation-v3':
+                            receipt.update(reported_model=result['reported_model'],
+                                           glossary_config=result['glossary_config'])
+                        _advanced_receipt(profile, job.get('glossary'), receipt)
                         receipt['decoded_translation_sha256'] = translation_receipt_sha256(
                             result['text'], result.get('detected_source'))
                     job['receipts'].append(receipt)
@@ -559,6 +591,7 @@ class TranslationService:
                 'source_sha256': job['source_sha256'], 'source_language': job['source_language'],
                 'target_language': job['target_language'], 'provider_adapter': job['profile']['adapter'],
                 'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
+                'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
                 'source_binding': job.get('source_binding'),
                 'original_profile_sha256': job.get('original_profile_sha256'),
                 'automated_translation_quality': 'not independently qualified',

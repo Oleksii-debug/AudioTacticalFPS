@@ -265,3 +265,46 @@ aggregate or the independently qualified canonical preview's wheel. Human
 NVDA, real owner-engine inference, 135-language acoustic quality, signing and
 production update/entitlement authority remain separate requirements from an
 integrated library/audio preview.
+
+
+## Accepted canonical e69 and additive reader reconciliation
+
+The authoritative branch was rechecked at
+`e69ba2403515f21509686d66f4bc8b3673756d81` (accepted PR147). The finalization
+specification remains the exact blob
+`db8adbdc483a03c262885928c7ed214ca70bbaa7`.
+
+The reconciled source adopts the accepted shared resource broker and operations
+view, explicit local-file transcription protocol, Advanced v3 translation and
+literal-loopback local proposals. Existing receipt-bound transcription remains
+in the same public package, with explicit protocol selection and disjoint stores.
+The stricter source/usage-ledger, composite backup format5/schema6, owned-process,
+publication and output-consent contracts remain authoritative. The obsolete
+transcription.py file is removed when its body moves to the package initializer.
+
+The new reader tools extend the existing document, worker, player, keyboard
+preferences and typed recovery: output selection, find/replace, pronunciation
+rules, installed Windows spelling and font/color/zoom. No alternate document,
+player, progress hub or task store is introduced. Native keyboard/selection
+checks remain distinct from human NVDA and listening qualification.
+
+Windows resource selectors contain only actual Windows/portable cases.
+The unchanged native POSIX fork-ownership test is required in the Linux member
+of the transcription protocol workflow, under
+tests/operations_posix/test_fork_ownership.py. This preserves that platform
+contract without a skipped Windows test.
+
+The 9f predecessor passed all 265 integrated source suites. Its installed
+aggregate is ineligible because actual capture rejected FFmpeg input placement,
+two setup tests inherited the real bundled-runtime discovery contrary to their
+fixture assumptions, and the complete installation gate timed out at 20 minutes.
+The corrective source preserves actual input flags, isolates only the setup
+fixtures' ambient discovery, and records installed test failures immediately.
+Each original source and installed selector remains required in the successor;
+the additional platform and reader gates must also pass at that exact head.
+
+No newly composed source is labelled executed merely because its sparse tree
+was saved or independently reviewed. The supplementary portable/reader runs
+are diagnostic evidence. Final application assembly still requires the retained
+application wheel from the complete successful same-head Windows aggregate and
+the other required same-head workflows.

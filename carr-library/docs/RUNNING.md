@@ -340,7 +340,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev2-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.

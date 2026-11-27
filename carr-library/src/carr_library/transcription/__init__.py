@@ -14,12 +14,14 @@ import shutil
 import time
 from uuid import uuid4
 
-from .audio.models import AudioBudget, AudioCancelled, AudioError, finite
-from .audio.process import run_process
-from .durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
+from ..audio.models import AudioBudget, AudioCancelled, AudioError, finite
+from ..audio.process import run_process
+from ..audio.cleanup import AudioCleanupPending
+from .ownership import operation_lock, retained_context
+from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
                             read_json, regular, state_lock, sync_directory)
-from .state_backup import relative_name
-from .transcription_contract import (check_requested_capabilities, declared_capabilities,
+from ..state_backup import relative_name
+from ..transcription_contract import (check_requested_capabilities, declared_capabilities,
     model_inventory, validate_engine_document, validate_job_document, validate_timed_result)
 
 MAX_FILES = 64
@@ -232,8 +234,31 @@ runpy.run_path(str(worker), run_name='__main__')
 class TranscriptionService:
     """The same retained-input and receipt boundary for native UI and CLI."""
 
-    def __init__(self, app, workspace):
+    protocol = 'carr-transcription-receipts/1'
+
+    def __new__(cls, app, workspace=None, *, protocol=None, broker=None,
+                budget=None, stop_grace=2.0):
+        # The constructor shape preserves both published APIs. Selection is
+        # explicit at UI/CLI boundaries; a failed decoder never selects another.
+        selected = (('carr-transcription-receipts/1' if workspace is not None
+                     else 'local-file-job/1') if protocol is None else protocol)
+        if selected not in ('carr-transcription-receipts/1', 'local-file-job/1'):
+            raise ValueError('Select an explicit supported transcription protocol.')
+        if selected == 'local-file-job/1':
+            if workspace is not None or hasattr(app, 'read'):
+                raise ValueError('Local-file jobs require their declared data root, not a workspace.')
+            from .service import TranscriptionService as LocalFileJobService
+            return LocalFileJobService(app, broker=broker, budget=budget, stop_grace=stop_grace)
+        if workspace is None or not hasattr(app, 'read'):
+            raise ValueError('Receipt jobs require an authorized library workspace.')
+        if budget is not None or stop_grace != 2.0:
+            raise ValueError('Receipt jobs use their existing per-run bounded budget.')
+        return super().__new__(cls)
+
+    def __init__(self, app, workspace=None, *, protocol=None, broker=None,
+                 budget=None, stop_grace=2.0):
         self.app, self.workspace = app, workspace
+        self.broker = broker
         self._authorize()
         self.root = local_path(app.root / 'state' / 'transcription')
         self.jobs_root = self.root / sha256(workspace.encode('utf-8')).hexdigest() / 'jobs'
@@ -244,7 +269,7 @@ class TranscriptionService:
 
     def configure(self, python, worker, models_dir):
         self._authorize()
-        from .audio.music import _model_python
+        from ..audio.music import _model_python
         # Keep a virtual environment's lexical path and verify its actual binary.
         python = Path(_model_python(python))
         worker = local_path(worker, exists=True)
@@ -278,7 +303,7 @@ class TranscriptionService:
         if verify:
             if value.get('restore_requires_revalidation', False):
                 raise PermissionError('Restored transcription engine: explicitly select and review the local runtime again.')
-            from .audio.music import _model_python
+            from ..audio.music import _model_python
             for key in ('python', 'worker'):
                 path = (Path(_model_python(value[key])).resolve(strict=True) if key == 'python'
                         else local_path(value[key], exists=True))
@@ -334,7 +359,7 @@ class TranscriptionService:
 
     def submit_folder(self, folder, *, title='Transcription', options=None, cancelled=lambda: False):
         """Retain one explicitly selected folder through the shared bounded scanner."""
-        from .ingest.batch_scan import scan_paths
+        from ..ingest.batch_scan import scan_paths
         self._authorize()
         settings(options)
         if cancelled():
@@ -541,7 +566,7 @@ class TranscriptionService:
             raise ValueError('Supply both expected transcription configuration and model identities.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
-        with state_lock(path, 'transcribe'):
+        with operation_lock(path, 'transcribe'):
             job = self.get(identity)
             if job.get('restore_requires_review', False):
                 raise PermissionError('Restored transcription job: review retained inputs and the current engine before resuming.')
@@ -556,117 +581,148 @@ class TranscriptionService:
             if job['status'] == 'completed':
                 self.verify(identity, cancelled=cancelled)
                 return job
-            for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
-                candidate = path / name
-                if candidate.exists():
-                    regular(candidate)
-                    candidate.unlink()
-            prior = path / 'job_status.json'
-            if prior.exists():
-                regular(prior)
-                prior.unlink()
-            context = {'input_root': str((path / 'input').resolve()),
-                       'worker_sha256': config['worker_sha256'],
-                       'python_sha256': config['python_sha256'], 'model_identity': model}
-            job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
-                       run_context=context, last_error='')
-            self._save(path, job)
-            for name in ('results', 'temporary', 'runtime-home'):
-                (path / name).mkdir(exist_ok=True, mode=0o700)
-            atomic_json(path / 'job_config.json', {
-                'job_name': job['title'], 'folders': [context['input_root']],
-                'results_root': str(path / 'results'), 'models_dir': config['models_dir'],
-                'settings': job['settings'], 'expected_model_identity': model}, replace=True)
-            environment = {key: os.environ[key] for key in (
-                'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
-                'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
-            environment.update({
-                'PATH': os.pathsep.join((str(Path(config['python']).parent), os.defpath)),
-                'HOME': str(path / 'runtime-home'), 'USERPROFILE': str(path / 'runtime-home'),
-                'TEMP': str(path / 'temporary'), 'TMP': str(path / 'temporary'),
-                'TMPDIR': str(path / 'temporary'), 'HF_HOME': str(path / 'runtime-home'),
-                'XDG_CACHE_HOME': str(path / 'runtime-home'),
-                'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-                'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1',
-                'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
-                'OMP_NUM_THREADS': '2', 'OPENBLAS_NUM_THREADS': '2'})
-            stop_at, notice_at = None, 0.0
-            reported_done, observer_available = 0, progress is not None
-            def notify(done, total, phase):
-                nonlocal reported_done, observer_available
-                # Worker-reported files are distinct from verified job.done.
-                # Stop defers receipt verification and must not rewind measured
-                # progress or promote saved files into accepted exports.
-                if type(done) is int and 0 <= done <= len(job['sources']):
-                    reported_done = max(reported_done, done)
-                if observer_available:
-                    try:
-                        progress(reported_done, total, phase)
-                    except Exception:
-                        # A detached UI must not kill the worker or reverse a
-                        # durable result. Disable only this optional observer.
-                        observer_available = False
-            def poll():
-                nonlocal stop_at, notice_at
-                now = time.monotonic()
-                if cancelled() and stop_at is None:
-                    atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
-                    stop_at = now
-                if observer_available and now - notice_at >= .5 and prior.exists():
-                    notice_at = now
-                    try:
-                        current = read_json(prior)
-                        notify(current.get('done', 0), len(job['sources']),
-                               str(current.get('state', 'running'))[:200])
-                    except (ValueError, OSError):
-                        pass
-                return stop_at is not None and now - stop_at >= 3
-            failure = None
-            from .audio.music_runtime import _SITE_BOOTSTRAP
-            try:
-                run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
-                    _SITE_BOOTSTRAP + _WORKER_BOOTSTRAP, config['worker'], str(path)],
-                    cwd=path, env=environment, cancelled=poll, watch=(path,),
-                    budget=AudioBudget(timeout=timeout,
-                        max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
-                            + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
-                            + result_allowance),
-                        max_staging_files=10000))
-            except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
-                failure = exc
-            # A stop must not trigger a second potentially multi-gigabyte read.
-            # Keep worker cache/receipts on disk for the next explicit resume;
-            # do not present these unverified files as completed exports yet.
-            if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
-                job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
-                           last_error='Stopped. Saved worker results will be verified on the next resume.')
+            from ..operations import ResourceBroker, ResourceRequest
+            if job['settings']['device'] == 'cuda' and (
+                    os.environ.get('CUDA_VISIBLE_DEVICES') not in (None, '0')
+                    or os.environ.get('CUDA_DEVICE_ORDER')):
+                raise ValueError('CUDA admission requires the default unmasked cuda:0 device.')
+            memory = max(256 * 1024**2, sum(row['size_bytes'] for row in model['files']) * 2 + 128 * 1024**2)
+            request = ResourceRequest(cpu_slots=job['settings']['parallel_files'],
+                memory_bytes=memory,
+                gpu_device=None if job['settings']['device'] == 'cpu' else 'cuda:0',
+                gpu_memory_bytes=0 if job['settings']['device'] == 'cpu' else memory,
+                disk_bytes=sum(row['size_bytes'] for row in job['sources']) + result_allowance,
+                disk_path=path)
+            broker = self.broker or ResourceBroker.for_app(self.app.root)
+            process_active = False
+            with retained_context(broker.reserve(request,
+                    operation_id='asr-receipts:' + self.jobs_root.parent.name + '.' + identity,
+                    cancelled=lambda: not process_active and cancelled(), timeout=60)) as lease:
+                # Waiting is not authority. Check exact retained/runtime/model
+                # identities again before writing any launch state.
+                if self.configuration(verify=True) != config:
+                    raise PermissionError('The configured transcription engine changed during admission.')
+                if model_inventory(config['models_dir'], job['settings'], cancelled=cancelled) != model:
+                    raise PermissionError('The selected model changed during admission.')
+                self._sources(path, job, cancelled)
+                for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
+                    candidate = path / name
+                    if candidate.exists():
+                        regular(candidate)
+                        candidate.unlink()
+                prior = path / 'job_status.json'
+                if prior.exists():
+                    regular(prior)
+                    prior.unlink()
+                context = {'input_root': str((path / 'input').resolve()),
+                           'worker_sha256': config['worker_sha256'],
+                           'python_sha256': config['python_sha256'], 'model_identity': model}
+                job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
+                           run_context=context, last_error='')
                 self._save(path, job)
-                notify(0, len(job['sources']), 'stopped')
+                for name in ('results', 'temporary', 'runtime-home'):
+                    (path / name).mkdir(exist_ok=True, mode=0o700)
+                atomic_json(path / 'job_config.json', {
+                    'job_name': job['title'], 'folders': [context['input_root']],
+                    'results_root': str(path / 'results'), 'models_dir': config['models_dir'],
+                    'settings': job['settings'], 'expected_model_identity': model}, replace=True)
+                environment = {key: os.environ[key] for key in (
+                    'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
+                    'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
+                environment.update({
+                    'PATH': os.pathsep.join((str(Path(config['python']).parent), os.defpath)),
+                    'HOME': str(path / 'runtime-home'), 'USERPROFILE': str(path / 'runtime-home'),
+                    'TEMP': str(path / 'temporary'), 'TMP': str(path / 'temporary'),
+                    'TMPDIR': str(path / 'temporary'), 'HF_HOME': str(path / 'runtime-home'),
+                    'XDG_CACHE_HOME': str(path / 'runtime-home'),
+                    'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                    'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1',
+                    'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
+                    'OMP_NUM_THREADS': '2', 'OPENBLAS_NUM_THREADS': '2'})
+                stop_at, notice_at = None, 0.0
+                reported_done, observer_available = 0, progress is not None
+                def notify(done, total, phase):
+                    nonlocal reported_done, observer_available
+                    # Worker-reported files are distinct from verified job.done.
+                    # Stop defers receipt verification and must not rewind measured
+                    # progress or promote saved files into accepted exports.
+                    if type(done) is int and 0 <= done <= len(job['sources']):
+                        reported_done = max(reported_done, done)
+                    if observer_available:
+                        try:
+                            progress(reported_done, total, phase)
+                        except Exception:
+                            # A detached UI must not kill the worker or reverse a
+                            # durable result. Disable only this optional observer.
+                            observer_available = False
+                def poll():
+                    nonlocal stop_at, notice_at
+                    lease.checkpoint()
+                    now = time.monotonic()
+                    if cancelled() and stop_at is None:
+                        atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
+                        stop_at = now
+                    if observer_available and now - notice_at >= .5 and prior.exists():
+                        notice_at = now
+                        try:
+                            current = read_json(prior)
+                            notify(current.get('done', 0), len(job['sources']),
+                                   str(current.get('state', 'running'))[:200])
+                        except (ValueError, OSError):
+                            pass
+                    return stop_at is not None and now - stop_at >= 3
+                failure = None
+                from ..audio.music_runtime import _SITE_BOOTSTRAP
+                try:
+                    process_active = True
+                    run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
+                        _SITE_BOOTSTRAP + _WORKER_BOOTSTRAP, config['worker'], str(path)],
+                        cwd=path, env=environment, cancelled=poll, watch=(path,), owned_tree=True,
+                        budget=AudioBudget(timeout=timeout,
+                            max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
+                                + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
+                                + result_allowance),
+                            max_staging_files=10000))
+                except AudioCleanupPending:
+                    job.update(status='stopped', restore_requires_review=True,
+                        last_error='Worker cleanup is pending. Its operation and resource locks remain held; review only after cleanup completes.')
+                    self._save(path, job)
+                    raise
+                except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
+                    failure = exc
+                # A stop must not trigger a second potentially multi-gigabyte read.
+                # Keep worker cache/receipts on disk for the next explicit resume;
+                # do not present these unverified files as completed exports yet.
+                if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
+                    job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                               last_error='Stopped. Saved worker results will be verified on the next resume.')
+                    self._save(path, job)
+                    notify(0, len(job['sources']), 'stopped')
+                    return job
+                try:
+                    status = read_json(prior) if prior.exists() else {}
+                    receipts, artifacts = self._receipts(path, job, status, cancelled)
+                    complete = (failure is None and stop_at is None
+                                and status.get('result_state') == 'completed'
+                                and len(receipts) == len(job['sources'])
+                                and status.get('failed') == 0)
+                    job.update(done=len(receipts), failed=len(job['sources']) - len(receipts),
+                               receipts=receipts, artifacts=artifacts,
+                               status='completed' if complete else (
+                                   'stopped' if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt))
+                                   else 'partial' if receipts else 'failed'),
+                               worker_run_id=status.get('run_id'))
+                    if not complete:
+                        job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
+                except AudioCancelled:
+                    job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                               last_error='Verification stopped. Saved worker results remain available for resume.')
+                except (ValueError, OSError, KeyError, TypeError) as exc:
+                    job.update(status='stopped' if stop_at is not None else 'failed',
+                               last_error=str(failure or exc)[:3000])
+                self._save(path, job)
+                notify(job['done'], len(job['sources']), job['status'])
                 return job
-            try:
-                status = read_json(prior) if prior.exists() else {}
-                receipts, artifacts = self._receipts(path, job, status, cancelled)
-                complete = (failure is None and stop_at is None
-                            and status.get('result_state') == 'completed'
-                            and len(receipts) == len(job['sources'])
-                            and status.get('failed') == 0)
-                job.update(done=len(receipts), failed=len(job['sources']) - len(receipts),
-                           receipts=receipts, artifacts=artifacts,
-                           status='completed' if complete else (
-                               'stopped' if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt))
-                               else 'partial' if receipts else 'failed'),
-                           worker_run_id=status.get('run_id'))
-                if not complete:
-                    job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
-            except AudioCancelled:
-                job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
-                           last_error='Verification stopped. Saved worker results remain available for resume.')
-            except (ValueError, OSError, KeyError, TypeError) as exc:
-                job.update(status='stopped' if stop_at is not None else 'failed',
-                           last_error=str(failure or exc)[:3000])
-            self._save(path, job)
-            notify(job['done'], len(job['sources']), job['status'])
-            return job
 
     def review_restored(self, identity, *, cancelled=lambda: False):
         """Explicitly revalidate retained inputs before granting a fresh attempt."""
@@ -856,3 +912,10 @@ class TranscriptionService:
                     shutil.rmtree(temporary)
             return destination
 
+
+# Compatibility names for the separately tagged, retained local-file protocol.
+# DEFAULT_SETTINGS and all strict-service globals above deliberately remain
+# unchanged for existing callers and monkeypatch seams.
+from .models import FORMATS, DEFAULT_SETTINGS as CHECKPOINT_DEFAULT_SETTINGS
+from .runtime import inspect_runtime
+from .service import expand_sources, prepare_restored_state

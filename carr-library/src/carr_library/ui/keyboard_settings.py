@@ -386,6 +386,24 @@ def reader_commands():
                  for identity, label, key in _READER_ROWS)
 
 
+def voice_reader_commands():
+    """Actual Voice reader controls, stored in the same active preference file."""
+    from ..keybindings import Command
+    rows = (
+        ('voice_reader.read', 'Read selection / all', 'F6'),
+        ('voice_reader.pause', 'Pause / resume speech', 'F7'),
+        ('voice_reader.stop', 'Stop speech or current reader operation', 'F8'),
+        ('voice_reader.save', 'Save reading copy', 'Ctrl+S'),
+        ('voice_reader.save_as', 'Save reading copy as', 'Ctrl+Shift+S'),
+        ('voice_reader.find', 'Find in reading copy', 'Ctrl+F'),
+        ('voice_reader.replace', 'Find and replace in reading copy', 'Ctrl+H'),
+        ('voice_reader.pronunciation', 'Reading pronunciation dictionary', 'Ctrl+Shift+D'),
+        ('voice_reader.settings', 'Voice reader keyboard shortcuts', 'Ctrl+Alt+K'),
+    )
+    return tuple(Command(identity, label, key, context='voice_reader')
+                 for identity, label, key in rows)
+
+
 # Reviewed canonical966 IDs map only to actual current menu paths. Unknown or
 # absent module commands are never guessed, dropped or activated from JSON.
 _CANONICAL_MAIN_PATHS = {
@@ -431,7 +449,9 @@ _CANONICAL_MAIN_PATHS = {
     "help.keyboard": "Help/Keyboard guide",
     "help.installation": "Help/Check this installation",
     "commands.find": "Help/Find a command",
-    "options.keyboard": "Options/Keyboard shortcuts"
+    "options.keyboard": "Options/Keyboard shortcuts",
+    "operations.tasks": "Tools/Tasks and resources",
+    "tools.transcription": "Library/Transcription: local audio and video"
 }
 
 
@@ -489,9 +509,9 @@ def read_shortcut_import(path, commands, current):
     return decode_preferences(raw)
 
 
-def reader_accelerator(shortcut, identifier, wx):
+def reader_accelerator(shortcut, identifier, wx, *, context='reader'):
     from ..keybindings import normalize_context_shortcut
-    shortcut = normalize_context_shortcut(shortcut, 'reader')
+    shortcut = normalize_context_shortcut(shortcut, context)
     *modifiers, key = shortcut.split('+')
     mask = 0
     for modifier in modifiers:
@@ -624,3 +644,87 @@ class ReaderKeyboardAdapter:
                 self.reader.dialog.Unbind(wx.EVT_MENU, id=int(identifier))
             except RuntimeError:
                 break  # The native dialog has already destroyed its bindings.
+
+
+class VoiceReaderKeyboardAdapter:
+    """Borrow the shared registry for the speech reader's actual controls."""
+    def __init__(self, dialog, parent, controls, *, guard, alive, report, wx=None):
+        if wx is None:
+            import wx
+        self.wx, self.dialog, self.parent = wx, dialog, parent
+        self.controls, self.guard, self.alive, self.report = controls, guard, alive, report
+        self.manager = getattr(parent, 'keyboard_actions', None)
+        self.library = getattr(parent, 'library', None)
+        self.root = getattr(self.library, 'root', None)
+        self.closed = False
+        self.commands = tuple(command for command in voice_reader_commands() if command.identity in controls)
+        self.identifiers = {command.identity: wx.NewIdRef() for command in self.commands}
+        for identity, identifier in self.identifiers.items():
+            dialog.Bind(wx.EVT_MENU, lambda event, key=identity: self.invoke(key), id=int(identifier))
+        if self.manager is not None:
+            self.manager._reader_adapters.add(self)
+        self.refresh()
+
+    def _current(self):
+        return (not self.closed and self.alive()
+                and getattr(self.parent, 'library', None) is self.library
+                and getattr(self.library, 'root', None) == self.root
+                and not getattr(self.parent, '_closing', False)
+                and (self.manager is None or getattr(self.parent, 'keyboard_actions', None) is self.manager))
+
+    def invoke(self, identity):
+        if not self._current() or identity not in self.controls:
+            return False
+        control, handler = self.controls[identity]
+        if not control.IsEnabled():
+            return False
+        try:
+            # Stop must remain reachable during a source revocation or active
+            # operation; every other action requires the current source scope.
+            if identity != 'voice_reader.stop':
+                self.guard()
+            handler(None)
+            return True
+        except Exception as exc:
+            self.report(str(exc), focus=True)
+            return False
+
+    def refresh(self, values=None):
+        if not self._current():
+            return
+        from ..keybindings import validate_bindings
+        if values is None:
+            values = (validate_bindings(self.manager.commands, self.manager.overrides)
+                      if self.manager is not None else validate_bindings(self.commands, {}))
+        entries = []
+        labels = {'voice_reader.read': 'Read &selection / all',
+                  'voice_reader.pause': '&Pause / resume', 'voice_reader.stop': 'S&top'}
+        for command in self.commands:
+            shortcut = values[command.identity]
+            if shortcut:
+                entries.append(reader_accelerator(shortcut, self.identifiers[command.identity],
+                                                  self.wx, context='voice_reader'))
+            control = self.controls[command.identity][0]
+            control.SetToolTip(command.label + '. Shortcut: ' + (shortcut or 'not assigned'))
+            if command.identity in labels:
+                control.SetLabel(labels[command.identity] + (f' ({shortcut})' if shortcut else ''))
+            if command.identity == 'voice_reader.settings' and self.manager is None:
+                control.Disable()
+        self.dialog.SetAcceleratorTable(self.wx.AcceleratorTable(entries))
+
+    def settings(self, event=None):
+        if self._current() and self.manager is not None:
+            self.manager.change(context='voice_reader', parent=self.dialog,
+                                report=lambda message: self.report(message, focus=True))
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        if self.manager is not None:
+            self.manager._reader_adapters.discard(self)
+        for identifier in self.identifiers.values():
+            try:
+                self.dialog.Unbind(self.wx.EVT_MENU, id=int(identifier))
+            except RuntimeError:
+                break

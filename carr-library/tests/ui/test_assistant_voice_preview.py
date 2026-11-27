@@ -23,20 +23,21 @@ def _actual_callbacks(state):
     """Compile the production closure, retaining its real module import context."""
     parsed = ast.parse(Path(assistant_dialog.__file__).read_text(encoding='utf-8'))
     owner = next(node for node in parsed.body
-                 if isinstance(node, ast.FunctionDef) and node.name == 'show_assistant')
-    names = {'guard', 'report', 'invalidate', 'preview', 'run', 'review_task', 'close'}
+                 if isinstance(node, ast.FunctionDef) and node.name == 'create_assistant_dialog')
+    names = {'guard', 'report', 'input_identity', 'invalidate', 'preview', 'run', 'review_task', 'close'}
     wrapper = ast.parse("""def build(state):
     frame, library = state.frame, state.library
     active_scope = frame.active
     production, service = state.production, state.service
-    owns_production_registry = production._voices is None
     executor, cancel, wx, dialog = state.executor, state.cancel, state.wx, state.dialog
     workspaces, scope_choice = state.workspaces, state.scope_choice
     input_folder, output_folder = state.input_folder, state.output_folder
     full_backup, saved_name, instruction = state.full_backup, state.saved_name, state.instruction
+    planning_source, profiles = state.planning_source, state.profiles
     review, buttons, folder_buttons = state.review, state.buttons, ()
     alive, busy, running, plan, job_id = True, False, False, None, None
     preview_generation = 0
+    approved_inputs = None
 """).body[0]
     selected = [deepcopy(node) for node in owner.body
                 if isinstance(node, ast.FunctionDef) and node.name in names]
@@ -85,6 +86,9 @@ def scenario(tmp_path, monkeypatch):
             self.enabled = bool(value)
         def Disable(self):
             self.Enable(False)
+        def SetLabel(self, value):
+            self.touch()
+            self.label = value
         def ChangeValue(self, value):
             self.touch()
             self.value = value
@@ -137,6 +141,8 @@ def scenario(tmp_path, monkeypatch):
     state.output_folder = Control(str(output))
     state.full_backup = Control(False)
     state.saved_name = Control('')
+    state.planning_source = Control(selection=0)
+    state.profiles = ()
     state.instruction = Control(json.dumps({'steps': [
         {'tool': 'audio.produce', 'arguments': {'text': 'Synthetic narration.'}}]}))
     state.review = Control()
@@ -347,7 +353,10 @@ def test_a_borrowed_production_registry_is_never_closed_by_the_modal(scenario):
         def close(self):
             calls.append('closed')
     borrowed = VoiceRegistry([BorrowedProvider()])
-    s.production._voices = borrowed
+    # Use the existing constructor's ownership contract, rather than assigning
+    # a borrowed registry to a service that was constructed as its owner.
+    s.production = ProductionService(s.library.root / 'state' / 'studio', voices=borrowed)
+    s.service = AssistantService(s.library, production=s.production.assistant_callback)
     s.callbacks = _actual_callbacks(s)
     s.callbacks.close()
     s.executor.shutdown(wait=True)

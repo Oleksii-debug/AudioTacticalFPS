@@ -451,12 +451,13 @@ class ReadingDocument:
         return digest(target)
 
 
-def export_dictionary(rules, path):
+def export_dictionary(rules, path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     rules = tuple(rules)
     if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
         raise ValueError('Use at most 1000 validated pronunciation rules.')
     payload = json.dumps({'schema': 'carr.pronunciations.v1', 'rules': [asdict(rule) for rule in rules]}, ensure_ascii=False)
-    with new_output(path) as temporary:
+    with new_output(path, cancelled=cancelled) as temporary:
         temporary.write_text(payload, encoding='utf-8')
 
 

@@ -3,7 +3,7 @@
 Only the background job inspects existing file bytes. Native confirmation
 receives that immutable snapshot and performs no filesystem reads.
 """
-from ..research.export_file import ExportDestination, capture_export_destination
+from ..research.export_file import ExportDestination, capture_export_destination, export_completion
 
 
 def confirm_export_destination(parent, approval, *, wx_module=None):
@@ -23,8 +23,7 @@ def confirm_export_destination(parent, approval, *, wx_module=None):
 
 def completion_message(message, receipt):
     """A cleanup warning follows a successful publication, never a retry cue."""
-    warning = getattr(receipt, 'cleanup_warning', None)
-    return message + (' ' + warning if isinstance(warning, str) and warning else '')
+    return export_completion(message, receipt)
 
 
 def start_export(frame, path, *, private_root, check_scope, operation, done,

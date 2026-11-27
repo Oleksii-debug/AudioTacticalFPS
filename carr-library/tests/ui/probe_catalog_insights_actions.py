@@ -112,6 +112,11 @@ class Dialogs:
             self.during['destination']()
         return self.path
 
+    def approve_export(self, parent, path, *, private_root):
+        self._main()
+        from carr_library.research.export_file import capture_export_destination
+        return capture_export_destination(path, private_root=private_root)
+
     def show(self, parent, title, value):
         self._main()
         self.shown.append((title, value))

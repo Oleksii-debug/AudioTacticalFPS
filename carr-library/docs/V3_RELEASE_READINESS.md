@@ -7,7 +7,7 @@ bundle and a signed distribution-cleared release have separate acceptance
 requirements. Existing package, launch filenames and data locations remain
 unchanged until a verified migration; visible application titles use Resonance.
 
-## Implemented and exercised
+## Implemented behavior and qualification boundaries
 
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
@@ -17,11 +17,12 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Local recording | Explicit DirectShow input selection, bounded PCM16 capture, Stop/save, Cancel/discard, retained retakes and attachment to existing Studio assets | Actual FFmpeg fixture capture and composed backup tests pass; Windows controls, native process ownership and measured virtual-input capture are required successor gates; physical microphones, live monitoring and human listening remain separate |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
 | Recovery | Manifest-bound composite backup v5 includes pending import bytes, identities, settings and both accepted project/state formats; historical v1–v4 formats remain readable | Real backup/restore and resumed import tests; restored external engines/jobs require review; externally exported audio and OS credential secrets are separate |
+| Shared resource admission | One persisted CPU/memory/disk/GPU policy and broker for production and transcription, queued admission and a bounded operations view over existing stores | Reservations remain owned through confirmed child cleanup. Declared GPU policy tests are not real model inference or platform-scale performance qualification |
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; recording keeps its quiet hold until confirmed capture cleanup; human NVDA and listening review remain required |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
-| Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
-| Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
-| Supplied transcription | Isolated reviewed worker protocol on shared jobs/progress, bound local model inventory, six validated exports, separate edit revisions, cancellation/resume and restored-job review | Actual Windows native controls and synthetic worker subprocesses pass; the supplied original has a separate private repair adapter; real Whisper acoustic inference remains unqualified |
+| Assistant and providers | Typed scoped tools, durable jobs, explicit literal-loopback model proposal, separate scope review/submission, protected credentials and per-request consent/budget | Actual synthetic HTTP and native proposal gates retain external-egress blocking; selecting a profile does not run a job. Real model quality and paid providers are separate |
+| Translation | Google Basic v2 and Advanced v3 text/source-range derivatives, direction-aware language catalogue, explicit glossary/model fields, protected credentials, per-request consent, decoded receipts/resume and bilingual exports | Synthetic transport exercises the actual gateway, ledger and reading objects; exact-head native and restore gates are required. Paid live API, translation quality and local model inference are separately unqualified |
+| Supplied transcription | Explicit receipt/file-job protocol selection through one menu and CLI, preserved historical stores, bound local models, validated exports, edit revisions, cancellation/resume and restored-job review | Each protocol has its own exact worker/profile/output validator and owned-process cleanup; both must pass the combined source/installed/native gates. Real Whisper acoustic inference remains unqualified |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Versioned entitlement/update protocols, optional worker-based host lifecycle, one-use approval and complete backup before installation; user-data operations remain available | Synthetic provider and real-host/backup gates pass; no production verifier, authority, trust root or operating-system installer is enabled by default |
 
@@ -30,10 +31,35 @@ production, output verification, restart, CSL/DOCX, isolated text conversion and
 named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
-## Current completion pass
+## Canonical reconciliation and additive reader pass
+
+The accepted canonical PR147 head above adds resources, file-job transcription,
+Advanced translation and local model proposals. The combined source retains the
+stronger source/receipt, restore, cancellation, acquisition and publication
+contracts already exercised here. The transcription module/package collision
+is resolved explicitly; two historical protocols never fall back to each other.
+
+Reader output choice, find/replace, pronunciation management, installed Windows
+spelling and font/color/zoom now extend the existing reader. The complete source
+and installed selectors, actual native controls and sealed-bundle checks are
+required at the enclosing source commit. New implementation composed while the
+local execution host was unavailable is source work until those remote Windows
+gates finish; peer review alone is not execution evidence.
+
+The predecessor `9f0ea29e5bcd2fc1f34c1ef1607d08c6bce4fd6a` established actual
+Windows recording controls, owned process cleanup, corrected WinMM layout and
+all 265 required integrated source suites without a failed suite. Its full aggregate is ineligible: native DirectShow capture exposed FFmpeg's
+output-only queue option placement, the complete-bundle step exhausted its
+20-minute budget, and the separate V3 gate exposed cancellation before the TLS
+fixture reached its intended phase. The successor retains the capture options
+in its real-FFmpeg regression, acknowledges the actual TLS handshake phase,
+and gives the complete test inventory an adequate job budget. No failed or
+independently tested predecessor wheel can be used for delivery.
+
+## Earlier completion evidence
 
 The authoritative specification was rechecked against canonical source
-`924ae83316a3cf9482aaf2ec51a6e6a5adb614c3`, with the current finalization
+`e69ba2403515f21509686d66f4bc8b3673756d81`, with the current finalization
 specification at blob `db8adbdc483a03c262885928c7ed214ca70bbaa7`. The next candidate retains the
 full requested platform scope. It adds native A/B and sleep controls, retained
 document/range translation, explicit owner voice profiles, accessible local
@@ -134,17 +160,16 @@ third-party EPUB interoperability remain separate requirements.
 
 The following cannot be labelled DONE by passing the current core tests:
 
-- Remaining implementation in the finite reader checklist: RW-09 per-reader
-  output-device selection, RW-12 complete native find/replace, RW-13 the
-  speech-reader pronunciation manager, RW-15 spell checking, and RW-25 the
-  remaining presentation/tabs workflows. These are code/workflow gaps rather
-  than claims that owner input alone would complete them; see
-  [the bounded reader inventory](READING_WORKFLOW_ACCEPTANCE.md).
-- Professional track/clip editing and live capture monitoring beyond the
-  implemented bounded recording/retake workflow, the remaining shared cross-engine
-  resource-admission work and qualification at the specified platform scale.
-  The implemented production disk allowance and bounded traversal do not
-  constitute a complete platform resource broker.
+- Remaining reader routes include tabs, speed-reading, clipboard/tray automation,
+  the other explicitly Limited/Pending items in the
+  [finite reader inventory](READING_WORKFLOW_ACCEPTANCE.md), and per-engine
+  compatibility. RW-09/12/13/15 and the font/color/zoom part of RW-25 now have
+  source implementations and required native gates; their presence is not an
+  automatic final-wheel, device-matrix, language-quality or NVDA verdict.
+- Professional track/clip editing and live monitoring beyond the bounded
+  recording/retake workflow, further heavy-engine integration with the shared
+  broker, and measured qualification at the specified platform scale.
+  The current broker's declared-capacity tests do not establish those results.
 
 - A signed ResearchLibrary.exe and standard signed installer/uninstall/repair,
   owner-configured publisher trust and a complete private release review.

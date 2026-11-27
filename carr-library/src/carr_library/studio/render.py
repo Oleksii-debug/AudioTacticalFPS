@@ -3,8 +3,10 @@
 Every accepted node is content-addressed and checksum-verified before reuse.
 Source text is data. This module never accepts shell commands or provider URLs.
 """
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, replace
 from hashlib import sha256
+import math
 import os
 from pathlib import Path
 import re
@@ -78,9 +80,31 @@ def _output_name(title):
     return name
 
 
+@contextmanager
+def _production_reservations():
+    """Retain cooperative admission while an owned child still needs cleanup."""
+    from ..audio.cleanup import AudioCleanupPending
+    with ExitStack() as reservations:
+        try:
+            yield reservations
+        except BaseException as exc:
+            # A failed status write can mask the pending-cleanup exception.
+            # Its existing owner still controls native quiescence; walk the
+            # real exception context without following a cyclic custom chain.
+            pending, seen = exc, set()
+            while pending is not None and id(pending) not in seen:
+                seen.add(id(pending))
+                if isinstance(pending, AudioCleanupPending):
+                    retained = reservations.pop_all()
+                    pending.cleanup_owner.add_quiescent_callback(retained.close)
+                    break
+                pending = pending.__context__
+            raise
+
+
 class ProductionService:
     def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),
-                 total_disk_bytes=32 * 1024**3):
+                 total_disk_bytes=32 * 1024**3, broker=None):
         """Bound private state/cache, staging and this job's published copies.
 
         This logical-byte allowance is independent of each AudioBudget output
@@ -103,6 +127,60 @@ class ProductionService:
         self._voices = voices
         self.runtime_factory = runtime_factory
         self.input_roots = tuple(local_path(x, exists=True) for x in input_roots)
+        self._broker = broker
+
+    @property
+    def broker(self):
+        if self._broker is None:
+            from ..operations import ResourceBroker
+            # Canonical app state shares the same broker as ASR and other
+            # admitted engines. Standalone service users may inject one.
+            app_root = (self.root.parent.parent if self.root.name == 'studio'
+                        and self.root.parent.name == 'state' else self.root.parent)
+            self._broker = ResourceBroker.for_app(app_root)
+        return self._broker
+
+    def _resource_plan(self, project, state, runtime):
+        from ..operations import ResourceRequest, ResourceUnavailable
+        limits = self.broker.limits
+        neural = {scene.music.engine for scene in project.scenes if scene.music is not None
+                  and scene.music.engine in ('musicgen', 'ace-step')}
+        devices = set()
+        for engine in neural:
+            if engine not in runtime.music_models:
+                raise ResourceUnavailable(f'Configure the local {engine} model before reserving production resources.')
+            config, _ = runtime.music_models[engine]
+            if config.device != 'cpu':
+                devices.add(config.device + ':0')
+        if len(devices) > 1:
+            raise ResourceUnavailable('Choose one configured GPU device for this production; mixed GPU jobs are not admitted together.')
+        device = next(iter(devices), None)
+        capacity = dict(limits.gpu_devices).get(device, 0)
+        if device is not None and not capacity:
+            raise ResourceUnavailable('The selected music GPU needs an explicit shared resource capacity before rendering.')
+        # These are declared admission estimates, not RAM measurements or
+        # claimed inference requirements. A neural project takes the whole
+        # configured RAM/GPU pool because its peak has not been measured here.
+        memory = limits.memory_bytes if neural else max(512 * 1024 ** 2, 2 * runtime.budget.max_alloc_bytes)
+        if neural and memory == 0:
+            raise ResourceUnavailable('Configure a positive declared memory budget for neural production.')
+        seconds = sum(max(scene.minimum_duration,
+                      sum(len(line.text) * .5 + line.pause_after for line in scene.lines)) for scene in project.scenes)
+        pcm = math.ceil(max(1, seconds) * project.sample_rate * 2 * 2)
+        roles = len(project.roles) if state['stems'] else 0
+        music = int(any(scene.music is not None for scene in project.scenes))
+        cache_bytes = pcm * (6 + 2 * roles + 2 * music) + runtime.budget.reserve_disk_bytes
+        export_bytes = pcm * (2 + roles + music * int(state['stems']) + int(state['format'] != 'wav')) + 1024 ** 2
+        request = ResourceRequest(cpu_slots=runtime.budget.threads, memory_bytes=memory,
+            gpu_device=device, gpu_memory_bytes=capacity, disk_bytes=cache_bytes, disk_path=self.cache,
+            additional_disks=((Path(state['destination']).parent, export_bytes),))
+        return request, {'schema': 1, 'request': request.to_dict(),
+            'cpu_basis': 'actual configured AudioRuntime worker thread count',
+            'memory_basis': ('exclusive configured RAM/GPU pool; model peak is not measured' if neural else
+                             'declared estimate: at least 512 MiB and twice the FFmpeg per-allocation budget'),
+            'disk_basis': 'declared estimate from 0.5 seconds per source character, explicit pauses/durations, '
+                          'PCM bytes and intermediate/stem/export copies; not a measured duration or hard output cap',
+            'enforcement': 'cooperative admission; existing bounded worker checks still apply'}
 
     @property
     def voices(self):
@@ -231,7 +309,7 @@ class ProductionService:
         from ..audio import AudioCancelled, AudioError, Track, MusicSpec
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
-        with state_lock(job_root, 'render'):
+        with state_lock(job_root, 'render'), _production_reservations() as reservations:
             state = self.get(job_id)
             # Restored destinations are historical evidence, not permission to
             # inspect or write that machine's former external output location.
@@ -247,21 +325,49 @@ class ProductionService:
                 self._verify_artifacts(state, cancelled=cancelled)
                 return state
             project = Project.from_dict(state['project'])
-            runtime = self._runtime()
-            capabilities = runtime.capabilities()
+            control = job_root / 'control.json'
+            if control.exists():
+                control.unlink()  # explicit Run/Resume authorizes continuing the saved job
+
+            def admission_cancelled():
+                return bool(cancelled()) or control.exists()
+
+            try:
+                runtime = self._runtime()
+                request, resource_plan = self._resource_plan(project, state, runtime)
+                state['resource_plan'] = resource_plan
+                state['status'], state['progress'], state['error'] = 'queued', 'Waiting for shared local resources.', ''
+                self._save(state)
+                if progress is not None:
+                    progress(state['progress'])
+                lease = reservations.enter_context(self.broker.reserve(request,
+                    operation_id='studio:' + job_id, cancelled=admission_cancelled, timeout=60))
+            except Exception as exc:
+                from ..operations import ResourceCancelled
+                action = read_json(control).get('action') if control.exists() else None
+                state['status'] = ('cancelled' if action == 'cancel' else 'paused'
+                                   if admission_cancelled() or isinstance(exc, ResourceCancelled) else 'attention')
+                state['error'] = str(exc)[:2000]
+                self._save(state)
+                if isinstance(exc, ResourceCancelled):
+                    raise InterruptedError('Production paused or cancelled while waiting for resources.') from exc
+                raise
+            try:
+                capabilities = runtime.capabilities()
+            except BaseException as exc:
+                state['status'], state['error'] = 'failed', str(exc)[:2000]
+                self._save(state)
+                raise
             # Engine inventory is part of the node identity. A different installed
             # FFmpeg/voice version must not silently reuse incompatible work.
             runtime_identity = sha256(encode(capabilities)).hexdigest()
             state['runtime'] = capabilities
             state['total_disk_bytes'] = self.total_disk_bytes
             state['status'], state['error'] = 'running', ''
-            control = job_root / 'control.json'
-            if control.exists():
-                control.unlink()  # explicit Run/Resume authorizes continuing the saved job
             self._save(state)
 
             def requested_stop():
-                return bool(cancelled()) or control.exists()
+                return lease.cancelled()
 
             last_disk_check, retained = 0.0, 0
 
