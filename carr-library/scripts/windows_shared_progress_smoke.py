@@ -107,6 +107,7 @@ def main():
               and sha256(installed.read_bytes()).digest() == sha256(expected.read_bytes()).digest())
 
     frame = None
+    view = None
     commands = Queue()
     release = Event()
     with TemporaryDirectory(prefix='resonance-shared-progress-', ignore_cleanup_errors=True) as temporary:
@@ -230,7 +231,14 @@ def main():
                   and late_output.read_text(encoding='utf-8') == 'Already committed\n')
 
             settings_done = []
+            settings_deadline = min(deadline, monotonic() + 12)
             def save_settings():
+                if monotonic() >= settings_deadline:
+                    errors.append('Native progress settings exceeded its bounded deadline.')
+                    for window in wx.GetTopLevelWindows():
+                        if isinstance(window, wx.Dialog) and window.IsModal():
+                            window.EndModal(wx.ID_CANCEL)
+                    return
                 dialog = next((window for window in wx.GetTopLevelWindows()
                     if isinstance(window, wx.Dialog) and window.GetTitle() == 'Progress feedback settings'), None)
                 if dialog is None:
@@ -259,15 +267,22 @@ def main():
                   == progress_module.ProgressPreferences(interval_seconds=2.5, volume=.17, muted=True))
             check('default-off probe never starts notification audio', view.notifications._thread is None)
         finally:
+            primary_error = sys.exc_info()[0] is not None
             release.set()
             if frame is not None:
-                frame.cancel_event.set()
-                pump(lambda: not frame.working)
-                frame.executor.shutdown(wait=True, cancel_futures=True)
-                frame.Destroy()
-                app.Yield()
-                check('native destruction closes progress lifecycle',
-                      view.closed and view.notifications._closed)
+                try:
+                    frame.cancel_event.set()
+                    pump(lambda: not frame.working)
+                    frame.executor.shutdown(wait=True, cancel_futures=True)
+                    frame.Destroy()
+                    app.Yield()
+                    if view is not None:
+                        check('native destruction closes progress lifecycle',
+                              view.closed and view.notifications._closed)
+                except BaseException:
+                    if not primary_error:
+                        raise
+                    print('Secondary native cleanup failure:\n' + traceback.format_exc(), file=sys.stderr)
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
         'native_UIA_range': True, 'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}, ensure_ascii=False, indent=2))
 
