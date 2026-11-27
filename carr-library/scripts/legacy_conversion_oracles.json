@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "NOT_RUN",
-  "portable_cases": 162,
+  "portable_cases": 179,
   "portable": {
     "tests.conversion.test_conversion": {
       "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
@@ -125,5 +125,7 @@
     }
   },
   "source_and_installed_required": true,
-  "qualifications_advertised": []
+  "qualifications_advertised": [
+    ".djvu"
+  ]
 }

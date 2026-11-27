@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "date": "2026-11-27",
+  "component": "complete-publisher-chm-html-census",
+  "observed": {
+    "commit": "a7c18b8969bce3c0ccce7245825868715da467fc",
+    "run_id": 46025674774,
+    "job_id": 140596314638,
+    "status": "FAIL",
+    "portable_source_cases": 173,
+    "portable_installed_cases": 173,
+    "native_source": {
+      "passed": 3,
+      "failed": 1,
+      "total": 4
+    },
+    "native_installed": "NOT_RUN",
+    "failure": {
+      "member": "cmdline/commands/index.htm",
+      "bytes": 1670,
+      "sha256": "e12aafac94e6e755708f66cbbd4b00e2d6911c3fcca5d8865a5747593b7c1cb4",
+      "tag": "a",
+      "position": [
+        26,
+        10
+      ],
+      "open_elements": [
+        "html",
+        "body",
+        "table",
+        "tr",
+        "td"
+      ]
+    },
+    "artifact": {
+      "id": 15213171697,
+      "bytes": 2405927,
+      "sha256": "7c32cbf0cd898de537ead62fba17c18d7ab52327026c60bb07b21aa3966cc11e"
+    }
+  },
+  "purpose": "Collect every first parser failure across the exact bounded publisher HTML inventory before choosing any further normalization. The prior diagnostic stopped on the first error.",
+  "bounds": {
+    "seconds": 45,
+    "child_seconds": 5,
+    "total_declared_expanded_bytes": 134217728,
+    "member_bytes": 8388608,
+    "max_source_excerpts": 32,
+    "excerpt_characters": 2048
+  },
+  "changes": {
+    "product": 0,
+    "native_case_count": 4,
+    "qualification": ".chm remains NOT_QUALIFIED",
+    "root_metadata_preserved": {
+      "portable_cases": 179,
+      "qualifications_advertised": [
+        ".djvu"
+      ]
+    }
+  },
+  "validation": {
+    "source_review": "COMPLETE",
+    "static_function_count": "UNCHANGED",
+    "python_compilation": "NOT_RUN",
+    "actual_census": "NOT_RUN"
+  }
+}
