@@ -185,6 +185,57 @@ def test_snapshot_detects_changes_to_already_copied_tree(tmp_path, mutation):
     assert modified
 
 
+def test_snapshot_rechecks_copied_bytes_when_metadata_stamps_do_not_change(tmp_path, monkeypatch):
+    from carr_library import state_backup
+
+    # Keep real files, identity, size and link checks. Equal timestamps must
+    # not make a same-length content change invisible on any filesystem.
+    original_stamp = state_backup._stamp
+    monkeypatch.setattr(state_backup, '_stamp', lambda info: original_stamp(info)[:3] + (0, 0))
+    root, target = tmp_path / 'source', tmp_path / 'stage'
+    root.mkdir()
+    target.mkdir()
+    first = root / 'a.json'
+    first.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'b' * (2 * 1024 * 1024))
+    modified = False
+
+    def concurrent_writer():
+        nonlocal modified
+        if not modified and (target / 'a.json').exists() and (target / 'b.json').exists():
+            first.write_bytes(b'new')
+            modified = True
+        return False
+
+    with pytest.raises((ValueError, OSError), match='changed|snapshot|backup'):
+        snapshot_state(root, target, cancelled=concurrent_writer)
+    assert modified and first.read_bytes() == b'new'
+    assert (target / 'a.json').read_bytes() == b'old'
+
+
+@pytest.mark.parametrize('size', [0, 2 * 1024 * 1024])
+def test_snapshot_cancellation_during_final_content_verification(tmp_path, monkeypatch, size):
+    root, target = tmp_path / 'source', tmp_path / 'stage'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'state.json'
+    source.write_bytes(b'x' * size)
+    original_open, reads = Path.open, 0
+
+    def observed_open(path, *args, **kwargs):
+        nonlocal reads
+        stream = original_open(path, *args, **kwargs)
+        if path == source and (args[0] if args else kwargs.get('mode')) == 'rb':
+            reads += 1
+        return stream
+
+    monkeypatch.setattr(Path, 'open', observed_open)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        snapshot_state(root, target, cancelled=lambda: reads >= 2)
+    assert reads == 2
+    assert (target / 'state.json').read_bytes() == b'x' * size
+
+
 @pytest.mark.parametrize('state_kind', ['absent', 'empty', 'zero-byte'])
 def test_cancelled_backup_never_publishes_success_for_empty_state(tmp_path, state_kind):
     app = LibraryApp(tmp_path / 'data')

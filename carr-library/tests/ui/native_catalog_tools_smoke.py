@@ -100,12 +100,15 @@ def run_native(source, timeout):
                 # claimed. All other widgets and handlers are real wx.
                 class SelectedDestination:
                     def __init__(self, *args, **kwargs):
-                        check('export requests overwrite confirmation',
-                              bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
+                        check('export captures the chosen path before replacement approval',
+                              bool(kwargs['style'] & wx.FD_SAVE)
+                              and not bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
-                with patch.object(wx, 'FileDialog', SelectedDestination):
+                check('native export uses a fresh destination', not destination.exists())
+                with patch.object(wx, 'FileDialog', SelectedDestination), patch.object(
+                        wx, 'MessageBox', side_effect=AssertionError('Fresh export requested replacement approval.')):
                     command(button, wx.EVT_BUTTON)
                 check('export started on the desktop worker', dialog.pending and frame.working)
 

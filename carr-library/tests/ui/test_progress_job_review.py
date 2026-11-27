@@ -128,6 +128,48 @@ def test_success_preserves_callback_output_location_and_waits_for_it(desktop):
     assert reports[-1] == 'Saved verified output to the selected private directory.'
 
 
+@pytest.mark.parametrize('target_name', [None, 'Search status', 'Search results'])
+def test_completion_summary_preserves_the_callback_focus_target(desktop, target_name):
+    frame, queued, reports = desktop
+    focused = []
+
+    def control(name):
+        widget = SimpleNamespace(name=name, value='Ready')
+        widget.GetValue = lambda: widget.value
+        widget.SetValue = lambda text: setattr(widget, 'value', text)
+        widget.SetFocus = lambda: focused.append(widget)
+        return widget
+
+    frame.status = control('Library operation status')
+    target = control(target_name) if target_name is not None else frame.status
+
+    def report(message):
+        frame.status.SetValue(message)
+        frame.status.SetFocus()
+        reports.append(message)
+
+    frame.report = report
+    future = Future()
+    frame.executor.submit.return_value = future
+
+    def display_result(result):
+        # The real source-open/search handlers own a panel control, not the
+        # frame status used by run_job's generic completion summary.
+        target.SetValue(result)
+        target.SetFocus()
+
+    frame.run_job('Open source', lambda: 'Readable source result',
+                  display_result if target_name is not None else None)
+    future.set_result('Readable source result')
+    queued.pop()()
+
+    assert frame.status.GetValue() == 'Open source: complete.'
+    assert focused[-1] is target
+    if target_name is not None:
+        assert target.GetValue() == 'Readable source result'
+    assert frame.operation_progress.tracker.event.percent == 100
+
+
 def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     frame, queued, reports = desktop
     first, second = Future(), Future()
@@ -241,12 +283,16 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog')}
+    registries = [Mock(), Mock()]
+    env['owned_registries'] = registries
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'])
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    for registry in registries:
+        registry.close.assert_called_once_with()
     env['audio_files'].cleanup.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
     assert env['alive'] is False

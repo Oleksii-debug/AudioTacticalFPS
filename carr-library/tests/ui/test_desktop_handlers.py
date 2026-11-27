@@ -12,6 +12,7 @@ import pytest
 
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
+from carr_library import application
 from carr_library.catalog.read_views import active_collections
 from carr_library.reader.context import open_context
 from carr_library.research.topic_tree import TopicTree
@@ -31,7 +32,7 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(application.__file__).resolve().parent / 'ui' / 'desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]

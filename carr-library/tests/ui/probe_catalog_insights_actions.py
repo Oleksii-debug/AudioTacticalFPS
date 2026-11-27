@@ -117,6 +117,12 @@ class Dialogs:
         if self.during.get('show'):
             self.during['show']()
 
+    def confirm_export(self, parent, path):
+        self._main()
+        if self.during.get('confirm'):
+            return self.during['confirm']()
+        return True
+
 
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
@@ -474,6 +480,48 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
         self.assertIn('Synthetic disk error', self.frame.messages[-1])
         self.assertEqual(list(self.root.glob('.research-export-*')), [])
+
+    def test_destination_changed_after_selection_survives_matrix_export(self):
+        for existing in (False, True):
+            for phase in ('queued', 'rendering'):
+                with self.subTest(existing=existing, phase=phase):
+                    self.destination.unlink(missing_ok=True)
+                    if existing:
+                        self.destination.write_bytes(b'Previously approved matrix.')
+                    newer = b'A newer independent matrix must remain.'
+                    change = lambda: self.destination.write_bytes(newer)
+                    actions, _ = self.actions(answers=(0, 0))
+                    original = actions._analyze
+                    def render(*args, **kwargs):
+                        result = original(*args, **kwargs)
+                        if phase == 'rendering':
+                            change()
+                        return result
+                    self.frame.before_worker = change if phase == 'queued' else None
+                    with patch.object(actions, '_analyze', side_effect=render):
+                        actions.export_matrix()
+                    self.assertEqual(self.destination.read_bytes(), newer)
+                    self.assertIn('destination changed', self.frame.messages[-1])
+                    self.assertEqual(list(self.root.glob('.research-export-*')), [])
+
+    def test_matrix_changed_during_confirmation_is_not_overwritten(self):
+        self.destination.write_bytes(b'Previously selected matrix.')
+        newer = b'Independent matrix saved during confirmation.'
+        def confirm():
+            self.destination.write_bytes(newer)
+            return True
+        actions, _ = self.actions(answers=(0, 0), during={'confirm': confirm})
+        actions.export_matrix()
+        self.assertEqual(self.destination.read_bytes(), newer)
+        self.assertIn('destination changed', self.frame.messages[-1])
+
+    def test_declined_matrix_replacement_does_not_start_work(self):
+        original = b'Declined replacement must preserve this matrix.'
+        self.destination.write_bytes(original)
+        actions, _ = self.actions(answers=(0, 0), during={'confirm': lambda: False})
+        actions.export_matrix()
+        self.assertEqual(self.frame.jobs, [])
+        self.assertEqual(self.destination.read_bytes(), original)
 
     def test_cancelled_dialog_after_root_change_does_not_focus_old_control(self):
         actions, _ = self.actions((None,), during={1: lambda: setattr(

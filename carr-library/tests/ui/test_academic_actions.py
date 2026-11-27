@@ -14,6 +14,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from carr_library.catalog.read_views import EditionView
+from carr_library import application
 from carr_library.catalog.reference_exchange import preview_references
 
 
@@ -71,14 +72,16 @@ def module():
     names = ('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM',
              'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'VSCROLL', 'TAB_TRAVERSAL',
              'ID_SAVE', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON', 'EVT_CLOSE', 'FD_OPEN',
-             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')
+             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+             'YES', 'NO', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')
     for number, name in enumerate(names):
         setattr(wx, name, 1 << number)
     wx.callbacks = []
     wx.CallAfter = wx.callbacks.append
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
-    root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    wx.MessageBox = Mock(return_value=wx.YES)
+    root = Path(application.__file__).resolve().parent / 'ui'
 
     def load(name, path):
         spec = importlib.util.spec_from_file_location(name, path)
@@ -418,8 +421,8 @@ def test_export_keeps_original_private_root_even_if_active_library_changes(
     other_root = tmp_path / 'another-library'
     other_root.mkdir()
     frame.library = SimpleNamespace(root=other_root)
-    with pytest.raises(ValueError, match='outside the private library'):
-        finish(frame)
+    assert not frame.jobs
+    assert 'outside the private library' in frame.reports[-1]
     assert destination.read_bytes() == b'Original library bytes'
 
 
@@ -464,3 +467,59 @@ def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, editi
     library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
     assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
     assert file.destroyed and 'Research outline exported' in frame.reports[-1]
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('existing', [False, True])
+@pytest.mark.parametrize('phase', ['queued', 'rendering'])
+def test_destination_changed_after_selection_survives_academic_export(
+        module, edition, tmp_path, monkeypatch, action, existing, phase):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'concurrent-export.txt'
+    if existing:
+        destination.write_bytes(b'Previously approved export.')
+    choose(module, monkeypatch, path=destination)
+    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
+    handler(frame)
+    newer = b'A newer independent academic export must remain.'
+    if phase == 'queued':
+        destination.write_bytes(newer)
+    else:
+        backend = library.export_bibliography if action == 'bibliography' else library.export_outline
+        def render(*args, **kwargs):
+            destination.write_bytes(newer)
+            return 'Rendered after an independent save.'
+        backend.side_effect = render
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == newer
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('decision', ['decline', 'change'])
+def test_academic_confirmation_preserves_the_preconfirmation_destination(
+        module, edition, tmp_path, monkeypatch, action, decision):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'confirmed.txt'
+    original = b'Previously selected academic export.'
+    destination.write_bytes(original)
+    choose(module, monkeypatch, path=destination)
+    newer = b'Independently saved during confirmation.'
+    def confirm(*args):
+        if decision == 'change':
+            destination.write_bytes(newer)
+            return module.wx.YES
+        return module.wx.NO
+    module.wx.MessageBox.side_effect = confirm
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    module.wx.MessageBox.assert_called_once()
+    assert module.wx.MessageBox.call_args.args[2] & module.wx.NO_DEFAULT
+    if decision == 'decline':
+        assert not frame.jobs and destination.read_bytes() == original
+        library.export_bibliography.assert_not_called()
+        library.export_outline.assert_not_called()
+    else:
+        with pytest.raises(ValueError, match='destination changed'):
+            finish(frame)
+        assert destination.read_bytes() == newer

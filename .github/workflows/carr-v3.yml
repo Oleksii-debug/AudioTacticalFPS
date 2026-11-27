@@ -2,7 +2,10 @@ name: CARR V3 local studio and assistant
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-integrated-studio-20261126]
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+  push:
+    branches: [carr/v3-dordiai-primary-411a-20261126]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
@@ -48,6 +51,10 @@ jobs:
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require reviewed local voice bridge and saved configuration checks
+        run: |
+          python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/integrations/test_dordiai_probe_cancellation.py tests/integrations/test_dordiai_convergence.py tests/speech/test_discovery_cancellation.py tests/storage/test_state_snapshot_identity.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime

@@ -634,3 +634,26 @@ def test_actual_worker_deadline_and_cancellation_reap_blocked_process(tmp_path, 
         assert caught.value.code == "timeout"
     assert time.monotonic() - began < 2
     assert len(processes) == 1 and processes[0].poll() is not None
+
+
+def test_cooldown_uses_integer_time_at_a_floating_point_boundary(monkeypatch):
+    from carr_library.academic_integration import doi as module
+    now = [27.420876065277096]
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(module.time, 'monotonic_ns', lambda: round(now[0] * 1_000_000_000))
+    transport = Transport(status=429, headers={"Retry-After": "30"})
+    instance = client(transport)
+    for _ in range(2):
+        with pytest.raises(DoiMetadataError) as caught:
+            instance.lookup(DOI)
+        assert caught.value.retry_after_seconds == 30
+    assert len(transport.requests) == 1
+    now[0] += 29.5
+    with pytest.raises(DoiMetadataError) as caught:
+        instance.lookup(DOI)
+    assert caught.value.retry_after_seconds == 1
+    assert len(transport.requests) == 1
+    now[0] += 0.5
+    with pytest.raises(DoiMetadataError):
+        instance.lookup(DOI)
+    assert len(transport.requests) == 2
