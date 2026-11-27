@@ -272,11 +272,12 @@ class AudioRuntime:
             raise ValueError('Unsupported audio output extension.')
         return path
 
-    def _input_args(self, path):
+    def _input_args(self, path, *, cancelled=None, retain_cleanup=False):
         # The MOV demuxer is allowed for local M4A/M4B extraction. Its external
         # data-reference options must stay disabled even if a future build
         # changes a default; other demuxers reject these private options.
-        info = self.inspect(path)
+        info = (self.inspect(path, cancelled=cancelled or (lambda: False), retain_cleanup=True)
+                if retain_cleanup else self.inspect(path))
         options = ['-enable_drefs', '0', '-use_absolute_path', '0'] if 'mov' in info.format.split(',') else []
         return ['-protocol_whitelist', 'file', '-format_whitelist', _DEMUXERS, *options, '-i', str(path)]
 
@@ -324,7 +325,7 @@ class AudioRuntime:
                 raise AudioUnavailable(f'The installed FFmpeg build does not support {effect.kind}.')
         return [value for value in result if value]
 
-    def inspect(self, path, *, cancelled=lambda: False):
+    def inspect(self, path, *, cancelled=lambda: False, retain_cleanup=False):
         path = self._input(path)
         if cancelled():
             raise AudioCancelled('Audio inspection cancelled.')
@@ -337,7 +338,9 @@ class AudioRuntime:
                 '-select_streams', 'a:0',
                 '-show_entries', 'stream=codec_name,sample_rate,channels,duration,duration_ts,time_base:format=format_name,duration',
                 '-of', 'json', str(path)]
-        result = run_process(args, budget=replace(self.budget, timeout=min(30, self.budget.timeout)), cancelled=cancelled)
+        options = {'retain_cleanup': True} if retain_cleanup else {}
+        result = run_process(args, budget=replace(self.budget, timeout=min(30, self.budget.timeout)),
+                             cancelled=cancelled, **options)
         try:
             data = json.loads(result.stdout)
             stream, = data['streams']
