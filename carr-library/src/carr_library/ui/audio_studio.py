@@ -18,6 +18,7 @@ from uuid import uuid4
 from ..audio.runtime import available_tool
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export
+from ..audio.managed import ManagedProjects, MissingInputAssets
 
 
 def _plain(value, label, *, limit=2048, empty=False):
@@ -90,6 +91,7 @@ class StudioController:
     def __init__(self, *, private_root, registry=None, parser=None, renderer=None,
                  ffmpeg=None, loading_budget=64 * 1024 * 1024):
         self.private_root = Path(private_root).absolute()
+        self._managed = ManagedProjects(self.private_root)
         self.registry = registry
         self.parser, self.renderer = parser, renderer
         self.ffmpeg = Path(ffmpeg) if ffmpeg else None
@@ -176,7 +178,13 @@ class StudioController:
         if not candidate.is_dir():
             raise ValueError('Choose an existing output folder.')
         if candidate.resolve().is_relative_to(self.private_root.resolve()):
-            raise ValueError('Choose an audio output folder outside the private library.')
+            self._managed.check_root(self.private_root)
+            managed = (self._managed.locate(self.project_path, self.project_id)
+                       if self.project_path is not None else None)
+            if managed is None or candidate != managed / 'audio':
+                raise ValueError('Choose an external output folder or the saved library project audio folder.')
+        elif self.project_path is not None and self._managed.locate(self.project_path, self.project_id):
+            raise ValueError('A library project uses its owned audio folder. Use Save As before choosing an external folder.')
         for parent in (candidate, *candidate.parents):
             info = parent.lstat()
             if parent.is_symlink() or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -230,6 +238,15 @@ class StudioController:
         return self._saved_value != _json_text(self.to_dict())
 
     def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
+        if not self._render_lock.acquire(blocking=False):
+            raise ValueError('A render is already running in this studio. Save after it stops.')
+        try:
+            return self._save(path, overwrite=overwrite, cancelled=cancelled)
+        finally:
+            self._render_lock.release()
+
+    def _save(self, path=None, *, overwrite=False, cancelled=lambda: False,
+              input_directory=None, require_inputs=False):
         selected = _local_path(path or self.project_path or '', 'project file')
         self._protect_original(selected)
         same = self.project_path is not None and selected == self.project_path
@@ -241,12 +258,55 @@ class StudioController:
                 raise FileExistsError('Choose a new project filename or confirm replacement.')
         elif same and self._file_hash is not None:
             raise ValueError('The saved project was removed. Use Save As to choose a destination.')
-        value = _json_text(self.to_dict())
-        write_export(selected, value, private_root=self.private_root, cancelled=cancelled)
+        managed = self._managed
+        selected_root = managed.locate(selected, self.project_id)
+        value_data = self.to_dict()
+        detach_output = (selected_root is None and self.project_path is not None
+                         and managed.locate(self.project_path, self.project_id) is not None)
+        if detach_output:
+            value_data['output_dir'] = None
+        value = _json_text(value_data)
+        if selected_root is not None:
+            managed.check_root(self.private_root)
+            managed.write(self.project_id, selected, value,
+                          expected_sha256=self._file_hash if same else None, cancelled=cancelled,
+                          input_directory=input_directory, require_inputs=require_inputs)
+        else:
+            write_export(selected, value, private_root=self.private_root, cancelled=cancelled)
+        if detach_output:
+            self.output_dir = None
         self.project_path = selected
         self._file_hash = hashlib.sha256(value.encode('utf-8')).hexdigest()
         self._saved_value = value
         return selected
+
+    def save_in_library(self, *, input_directory=None, cancelled=lambda: False):
+        """Explicitly adopt the current draft; external jobs/files remain external."""
+        if not self._render_lock.acquire(blocking=False):
+            raise ValueError('A render is already running in this studio. Save after it stops.')
+        previous = self.output_dir
+        try:
+            self._managed.check_root(self.private_root)
+            _, path, output = self._managed.paths(self.project_id)
+            self._managed.input_plan(self.to_dict(), input_directory, cancelled=cancelled)
+            self.output_dir = output
+            result = self._save(path, cancelled=cancelled, input_directory=input_directory, require_inputs=True)
+            self.result = None
+            return result
+        except BaseException:
+            self.output_dir = previous
+            raise
+        finally:
+            self._render_lock.release()
+
+    def _rebind_managed_output(self, path, values):
+        managed = self._managed.locate(path, values['project_id'])
+        if managed is not None:
+            self._managed.check_root(self.private_root)
+            # A saved absolute path is inert provenance after a library move.
+            # Preserve its original bytes/hash for recovery authentication.
+            values['output_dir'] = managed / 'audio'
+        return values
 
     def _validated(self, payload):
         keys = {'kind', 'version', 'mode', 'project_id', 'title', 'voice', 'language',
@@ -273,6 +333,9 @@ class StudioController:
         if reference is not None:
             if not isinstance(reference, dict) or len(_json_text(reference)) > self.loading_budget:
                 raise ValueError('The source reference is invalid.')
+            if reference.get('kind') == 'saved-reading-copy-snapshot':
+                from ..audio.narration_bridge import validate_source_reference
+                validate_source_reference(reference, values['draft'])
         values['source_reference'] = reference
         # Legacy independent scripts retain their established interpretation.
         # Imported sources use literal narration, including legacy page breaks.
@@ -287,7 +350,7 @@ class StudioController:
         selected = _local_path(path, 'project file')
         data = read_document(selected, byte_budget=self.loading_budget)
         payload = decode_json(data.decode('utf-8'))
-        values = self._validated(payload)
+        values = self._rebind_managed_output(selected, self._validated(payload))
         for key, value in values.items():
             setattr(self, key, value)
         self.project_path = selected
@@ -298,12 +361,23 @@ class StudioController:
         return self
 
     def save_recovery(self, *, cancelled=lambda: False):
+        if not self._render_lock.acquire(blocking=False):
+            raise ValueError('A render is already running in this studio. Save after it stops.')
+        try:
+            return self._save_recovery(cancelled=cancelled)
+        finally:
+            self._render_lock.release()
+
+    def _save_recovery(self, *, cancelled=lambda: False):
         if self.project_path is None or self._file_hash is None:
             return None
         path = self.project_path.with_name(self.project_path.name + '.recovery.json')
+        previous_sha = None
+        self._protect_original(path)
         if path.exists():
             raw = read_document(path, byte_budget=self.loading_budget)
             actual = hashlib.sha256(raw).hexdigest()
+            previous_sha = actual
             if self._recovery_hash is None:
                 previous = decode_json(raw.decode('utf-8'))
                 if (not isinstance(previous, dict) or previous.get('kind') != 'audio-studio-recovery'
@@ -314,7 +388,13 @@ class StudioController:
         payload = {'kind': 'audio-studio-recovery', 'version': 1, 'project_id': self.project_id,
                    'base_sha256': self._file_hash, 'project': self.to_dict()}
         text = _json_text(payload)
-        write_export(path, text, private_root=self.private_root, cancelled=cancelled)
+        if self._managed.locate(path, self.project_id) is not None:
+            self._managed.check_root(self.private_root)
+            self._managed.write(self.project_id, path, text,
+                expected_sha256=previous_sha, expected_project_sha256=self._file_hash,
+                cancelled=cancelled)
+        else:
+            write_export(path, text, private_root=self.private_root, cancelled=cancelled)
         self._recovery_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
         return path
 
@@ -330,7 +410,7 @@ class StudioController:
                 or payload['base_sha256'] != self._file_hash
                 or _path_digest(self.project_path, budget=self.loading_budget) != self._file_hash):
             raise ValueError('This recovery draft belongs to a different saved project revision.')
-        values = self._validated(payload['project'])
+        values = self._rebind_managed_output(self.project_path, self._validated(payload['project']))
         if values['project_id'] != self.project_id:
             raise ValueError('The recovery draft belongs to a different project.')
         for key, value in values.items():
@@ -348,6 +428,13 @@ class StudioController:
             if self.output_dir is None:
                 raise ValueError('Choose the audio output folder first.')
             folder = self._output_folder(self.output_dir)
+            if self.project_path is not None and self._managed.locate(self.project_path, self.project_id):
+                self._managed.check_root(self.private_root)
+                saved = self._managed._state(self.project_path)
+                if saved is None or saved[1] != self._file_hash:
+                    raise ValueError('The saved library project changed. Open it again before rendering.')
+                if self.dirty:
+                    raise ValueError('Save the library project before rendering its recoverable job.')
             selected_ffmpeg = available_tool('ffmpeg', self.ffmpeg)
             ffmpeg = Path(selected_ffmpeg) if selected_ffmpeg is not None else None
             if ffmpeg is None or not ffmpeg.is_file():
@@ -455,6 +542,10 @@ class AudioStudioDialog:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
         self.cancelled = threading.Event()
         self.busy = self.closed = self.close_pending = False
+        self._window_alive, self._job_epoch, self._disposed = True, 0, False
+        self._owner_scope = self._scope_identity()
+        self._operation_progress = None
+        self._media_panel = getattr(getattr(parent, 'progress_actions', None), 'panel', None)
         self.editing_dirty = False
         self._script_dirty = False
         self.playback = LocalPlayback()
@@ -546,7 +637,9 @@ class AudioStudioDialog:
         self.status.SetMinSize((-1, 80))
         outer.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
         file_buttons = wx.WrapSizer(wx.HORIZONTAL)
-        for label, handler in (('New project', self.new), ('Open project', self.open), ('Save project', self.save),
+        for label, handler in (('New project', self.new), ('Saved library projects', self.open_library),
+                               ('Open project', self.open), ('Save project', self.save),
+                               ('Save in library', self.save_in_library),
                                ('Save project as', self.save_as), ('Recover draft', self.recover),
                                ('Back up audio project', self.backup), ('Restore audio snapshot', self.restore)):
             self._button(self.dialog, file_buttons, label, handler)
@@ -559,6 +652,7 @@ class AudioStudioDialog:
         self.dialog.SetMinSize((740, 580))
         self.dialog.SetEscapeId(wx.ID_CANCEL)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
+        self.dialog.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
         self._accelerators()
         for field in (self.title, self.language, self.script, self.output):
             field.Bind(wx.EVT_TEXT, self._changed)
@@ -659,35 +753,122 @@ class AudioStudioDialog:
         self.dialog.SetTitle('Audio Studio — Local only' + (' — unsaved changes' if self.editing_dirty else ''))
         self._loading = False
 
-    def _run(self, label, action, done):
-        if self.busy or self.closed:
-            return
-        self.busy = True
-        self.cancelled.clear()
+    def _scope_identity(self):
+        library = getattr(self.parent, 'library', None)
+        if library is None:
+            return None
+        root = Path(library.root).absolute()
+        info = root.stat()
+        return library, str(root), info.st_dev, info.st_ino
+
+    def _current(self, epoch=None):
+        if (self.closed or not self._window_alive or getattr(self.parent, '_closing', False)
+                or (epoch is not None and epoch != self._job_epoch)):
+            return False
+        try:
+            current = self._scope_identity()
+            return ((current is None and self._owner_scope is None)
+                    or (current is not None and self._owner_scope is not None
+                        and current[0] is self._owner_scope[0] and current[1:] == self._owner_scope[1:]))
+        except (OSError, ValueError, AttributeError):
+            return False
+
+    def _stop_owned_playback(self):
         self.playback.stop()
+        if self._media_panel is not None:
+            self._media_panel.set_media_state(owner=self)
+
+    def _job_controls(self, busy):
+        self.busy = busy
         for control in self.controls:
-            control.Disable()
-        self.cancel_button.Enable()
+            control.Enable(not busy)
+        self.cancel_button.Enable(busy)
+
+    def _run(self, label, action, done, *, reports_status=False):
+        if self.busy or not self._current():
+            return
+        from .operation_progress import OperationProgress
+        measured = OperationProgress(self.parent, 'Audio Studio: ' + label)
+        self._operation_progress = measured
+        self._job_epoch += 1
+        epoch = self._job_epoch
+        self.cancelled.clear()
+        try:
+            self._stop_owned_playback()
+        except Exception as exc:
+            measured.failed(exc)
+            self._error(exc)
+            return
+        self._job_controls(True)
         self._message(label)
-        future = self.executor.submit(action)
+        pending, lock = {'message': None, 'queued': False, 'active': True}, threading.Lock()
+
+        def deliver_status():
+            with lock:
+                text, pending['queued'] = pending['message'], False
+            if self.busy and self._current(epoch) and not self.cancelled.is_set():
+                self._message(text)
+
+        def status(text):
+            if not self._current(epoch) or self.cancelled.is_set():
+                return
+            with lock:
+                if not pending['active']:
+                    return
+                pending['message'] = str(text)
+                measured.update(phase=str(text))
+                if pending['queued']:
+                    return
+                pending['queued'] = True
+            try:
+                self.wx.CallAfter(deliver_status)
+            except RuntimeError:
+                self.cancelled.set()
+
+        def work():
+            try:
+                if not self._current(epoch) or self.cancelled.is_set():
+                    raise InterruptedError('Audio operation cancelled before execution.')
+                return action(status) if reports_status else action()
+            finally:
+                with lock:
+                    pending['active'] = False
+
+        try:
+            future = self.executor.submit(work)
+        except Exception as exc:
+            with lock:
+                pending['active'] = False
+            self._job_controls(False)
+            measured.failed(exc)
+            self._error(exc)
+            return
 
         def complete(completed):
             def apply():
-                if self.closed:
+                if self.closed or not self._window_alive:
+                    measured.finish(state='cancelled')
                     return
-                self.busy = False
-                for control in self.controls:
-                    control.Enable()
-                self.cancel_button.Disable()
+                self._job_controls(False)
+                if not self._current(epoch):
+                    measured.finish(state='cancelled')
+                    self._message('The data folder changed. Reopen Audio Studio before continuing.', focus=True)
+                    return
                 try:
                     result = completed.result()
                     done(result)
+                    measured.complete(result)
                 except Exception as exc:
+                    measured.failed(exc)
                     self._error(exc)
                 if self.close_pending:
                     self.close_pending = False
                     self.close()
-            self.wx.CallAfter(apply)
+            try:
+                self.wx.CallAfter(apply)
+            except RuntimeError:
+                self.cancelled.set()
+                measured.finish(state='cancelled')
         future.add_done_callback(complete)
 
     def reload_voices(self, event=None):
@@ -787,6 +968,62 @@ class AudioStudioDialog:
         except Exception as exc:
             self._error(exc)
             return False
+
+    def save_in_library(self, event=None):
+        if self.busy:
+            return False
+        try:
+            self._capture()
+            def saved(_path):
+                self._refresh_text()
+                warning = self.controller._managed.last_warning
+                self._message('Project and referenced sound inputs saved in this library. '
+                    'Choose generated audio when backing up to include accepted audio checkpoints.'
+                    + ('\n' + warning if warning else ''), focus=True)
+            try:
+                saved(self.controller.save_in_library())
+            except MissingInputAssets as missing:
+                chooser = self.wx.DirDialog(self.dialog,
+                    'Choose the local folder directly containing these PCM sound inputs: '
+                    + ', '.join(missing.names[:5]), style=self.wx.DD_DIR_MUST_EXIST)
+                try:
+                    if chooser.ShowModal() != self.wx.ID_OK:
+                        return False
+                    folder = Path(chooser.GetPath())
+                finally:
+                    chooser.Destroy()
+                self._run('Copying referenced sound inputs and saving library project',
+                    lambda: self.controller.save_in_library(input_directory=folder,
+                        cancelled=self.cancelled.is_set), saved)
+            return True
+        except Exception as exc:
+            self._error(exc)
+            return False
+
+    def open_library(self, event=None):
+        if self.busy or not self._unsaved():
+            return
+        try:
+            self.controller._managed.check_root(self.controller.private_root)
+            projects = self.controller._managed.projects()
+            if not projects:
+                self._message('There are no saved Audio Studio projects in this library yet.', focus=True)
+                return
+            labels = [f'{title} — project {index}' for index, (title, _) in enumerate(projects, 1)]
+            chooser = self.wx.SingleChoiceDialog(self.dialog, 'Choose a saved audio project.',
+                                                 'Library audio projects', labels)
+            try:
+                if chooser.ShowModal() != self.wx.ID_OK:
+                    return
+                selected = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            self.controller.open(projects[selected][1])
+            self._refresh_text()
+            self.plan_text.ChangeValue('')
+            self._message('Library audio project opened. Its output stays with this library.', focus=True)
+        except Exception as exc:
+            self._error(exc)
 
     def recover(self, event=None):
         if self.busy:
@@ -1073,37 +1310,53 @@ class AudioStudioDialog:
             if not self.save():
                 return
 
-            def progress(status):
-                self.wx.CallAfter(self._message, str(status))
-
             def finished(result):
                 self._message('Audio render completed.\nMaster: ' + result['output'] +
                               '\nDuration: ' + str(result.get('duration_seconds', 'see production report')) +
                               ' seconds.\nChoose Play rendered master to listen.', focus=True)
             self._run('Rendering locally. Completed chunks can be reused after cancellation or restart.',
-                      lambda: self.controller.render(cancelled=self.cancelled.is_set, on_status=progress), finished)
+                      lambda status: self.controller.render(
+                          cancelled=lambda: self.cancelled.is_set() or not self._current(),
+                          on_status=status), finished, reports_status=True)
         except Exception as exc:
             self._error(exc)
 
     def cancel(self, event=None):
         self.cancelled.set()
+        measured = getattr(self, '_operation_progress', None)
+        if self.busy and measured is not None:
+            measured.cancel_requested()
         self._message('Cancellation requested. Waiting for the local worker to checkpoint and stop.', focus=True)
 
     def play(self, event=None):
         try:
+            if self.busy or not self._current():
+                raise ValueError('Wait for the current operation or reopen Audio Studio in the active data folder.')
             if self.controller.result is None:
                 raise ValueError('Render or resume the current script before playing its master.')
             if self.editing_dirty:
                 raise ValueError('The script has unsaved edits. Preview and render it before playing a current result.')
             result_file = Path(self.controller.result['output'])
-            self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file)
+            self._stop_owned_playback()
+            if (self._media_panel is not None
+                    and not self._media_panel.prepare_media(playback=True, owner=self)):
+                self._media_panel.set_media_state(owner=self)
+                raise ValueError('Operation feedback is still stopping. Playback has not started; try Play again.')
+            try:
+                self.playback.play(result_file.parent / 'master.wav' if result_file.suffix.lower() != '.wav' else result_file)
+            except Exception:
+                self._stop_owned_playback()
+                raise
             self._message('Playing the rendered master. Stop playback stops only this studio preview.', focus=True)
         except Exception as exc:
             self._error(exc)
 
     def stop_playback(self, event=None):
-        self.playback.stop()
-        self._message('Studio playback stopped.', focus=True)
+        try:
+            self._stop_owned_playback()
+            self._message('Studio playback stopped.', focus=True)
+        except Exception as exc:
+            self._error(exc)
 
     def close(self, event=None):
         if self.closed:
@@ -1118,11 +1371,9 @@ class AudioStudioDialog:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
             return
-        self.closed = True
-        self.cancelled.set()
-        self.timer.Stop()
-        self.playback.stop()
-        self.executor.shutdown(wait=False, cancel_futures=True)
+        self._dispose()
+        if not self._window_alive:
+            return
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
         else:
@@ -1134,12 +1385,33 @@ class AudioStudioDialog:
             self.script.SetFocus()
             self.dialog.ShowModal()
         finally:
-            self.closed = True
-            self.cancelled.set()
+            self._dispose()
+            if self._window_alive:
+                self.dialog.Destroy()
+
+    def _dispose(self):
+        if self._disposed:
+            return
+        self._disposed = self.closed = True
+        self._job_epoch += 1
+        self.cancelled.set()
+        if self._operation_progress is not None:
+            self._operation_progress.finish(state='cancelled')
+        try:
             self.timer.Stop()
-            self.playback.stop()
-            self.executor.shutdown(wait=False, cancel_futures=True)
-            self.dialog.Destroy()
+        except RuntimeError:
+            pass
+        try:
+            self._stop_owned_playback()
+        except Exception:
+            pass  # Retain suppression when the audio owner has not confirmed stop.
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def _destroyed(self, event):
+        if event.GetEventObject() is self.dialog:
+            self._window_alive = False
+            self._dispose()
+        event.Skip()
 
 
 class AudioStudioActions:

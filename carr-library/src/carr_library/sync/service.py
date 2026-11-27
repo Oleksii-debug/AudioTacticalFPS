@@ -59,6 +59,27 @@ def _message(callback, text):
         callback(text)
 
 
+class _Progress:
+    """Measured phases only; the result consumer owns verified completion."""
+    def __init__(self, callback):
+        self.callback = callback
+
+    def phase(self, phase, completed=None, total=None):
+        if self.callback is not None:
+            try:
+                self.callback(phase=phase, completed=completed, total=total, state='running')
+            except Exception:
+                # Reporting cannot turn a successful durable commit into an
+                # apparent failure. Cancellation has its separate callback.
+                pass
+
+    def bytes(self, phase):
+        return lambda completed, total: self.phase(phase, completed, total)
+
+    def transfer(self, phase):
+        return lambda value: self.phase(phase, value.bytes_completed, value.total_bytes)
+
+
 def _atomic_json(path, value):
     path = local_path(path)
     _regular_if_present(path)
@@ -106,9 +127,12 @@ def _transfer_metadata(unpacked):
     return metadata
 
 
-def _copy_verified_tree(source, destination, cancelled):
+def _copy_verified_tree(source, destination, cancelled, *, on_progress=None, total=None):
     """Copy a privately verified restore in bounded, cancellable blocks."""
     destination.mkdir(mode=0o700)
+    completed = 0
+    from .archive import _progress
+    _progress(on_progress, completed, total)
     for directory, subdirs, names in os.walk(source, followlinks=False):
         cancelled_check(cancelled)
         directory = local_path(directory, exists=True, directory=True)
@@ -124,6 +148,10 @@ def _copy_verified_tree(source, destination, cancelled):
                 while block := incoming.read(1024 * 1024):
                     cancelled_check(cancelled)
                     outgoing.write(block)
+                    completed += len(block)
+                    if total is not None and completed > total:
+                        raise ValueError('The verified restore changed while copying.')
+                    _progress(on_progress, completed, total)
                 if _identity(os.fstat(incoming.fileno())) != _identity(before):
                     raise ValueError('The verified restore changed while copying.')
                 outgoing.flush()
@@ -134,6 +162,8 @@ def _copy_verified_tree(source, destination, cancelled):
                 os.fsync(fd)
             finally:
                 os.close(fd)
+    if total is not None and completed != total:
+        raise ValueError('The verified restore changed while copying.')
 
 
 class SyncService:
@@ -228,8 +258,11 @@ class SyncService:
         return sorted(result, key=lambda row: (row['created_at'], row['id']), reverse=True)
 
     def publish(self, folder, label, expected_head, password=None, *,
-                cancelled=lambda: False, on_status=None):
+                include_generated=False, cancelled=lambda: False, on_status=None, on_progress=None):
         from .vault import Vault
+        measured = _Progress(on_progress)
+        if type(include_generated) is not bool:
+            raise ValueError('Choose explicitly whether to include generated audio saved in this library.')
         label = _label(label)
         if expected_head is not None:
             _token(expected_head)
@@ -251,43 +284,64 @@ class SyncService:
             _atomic_json(self.state_path, state)
             cancelled_check(cancelled)
             _message(on_status, 'Creating a checked backup of all libraries in this data folder.')
+            measured.phase('Creating and verifying the library backup')
             cache = self._cache()
             with TemporaryDirectory(prefix='prepare-', dir=cache) as transient:
                 transient = Path(transient)
                 backup = transient / 'backup'
-                checksum = create_backup(self.app, backup, cancelled=cancelled)
+                checksum = create_backup(self.app, backup, include_generated=include_generated,
+                                         cancelled=cancelled)
                 cancelled_check(cancelled)
-                identity = sha256(json.dumps([key, checksum, label, expected_head,
-                    password is not None], ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+                identity_fields = [key, checksum, label, expected_head, password is not None]
+                identity = sha256(json.dumps(identity_fields + [include_generated],
+                    ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
                 job = cache / identity
+                # Prior releases could prepare only metadata/default backups.
+                # Reuse that exact cache identity only for explicit False. A
+                # True request must prepare its own mode-bound payload.
+                if not include_generated and not os.path.lexists(job):
+                    legacy_identity = sha256(json.dumps(identity_fields, ensure_ascii=False,
+                        separators=(',', ':')).encode()).hexdigest()
+                    legacy_job = cache / legacy_identity
+                    if os.path.lexists(legacy_job):
+                        identity, job = legacy_identity, legacy_job
                 payload = job / 'payload'
                 ready = job / 'ready.json'
                 if os.path.lexists(job):
                     local_path(job, exists=True, directory=True)
                     metadata = read_json(ready)
-                    if (type(metadata) is not dict or set(metadata) != {'identity', 'backup_checksum', 'encrypted', 'archive_sha256', 'payload_sha256'}
+                    current_keys = {'identity', 'backup_checksum', 'encrypted', 'include_generated', 'archive_sha256', 'payload_sha256'}
+                    legacy_keys = current_keys - {'include_generated'}
+                    if (type(metadata) is not dict or (set(metadata) != current_keys
+                            and not (include_generated is False and set(metadata) == legacy_keys))
                             or metadata.get('backup_checksum') != checksum
                             or metadata.get('encrypted') is not (password is not None)
+                            or metadata.get('include_generated', False) is not include_generated
                             or metadata.get('identity') != identity):
                         raise ValueError('The pending transfer cache is inconsistent. No checkpoint was published.')
                     content = local_path(payload / ('snapshot.carr' if password is not None else 'snapshot.zip'), exists=True)
                     if {p.name for p in payload.iterdir()} != {content.name}:
                         raise ValueError('Unexpected pending transfer contents.')
                     _token(metadata['payload_sha256']); _token(metadata['archive_sha256'])
-                    if hash_file(content, cancelled=cancelled) != metadata['payload_sha256']:
+                    if hash_file(content, cancelled=cancelled,
+                            on_progress=measured.bytes('Checking the prepared payload')) != metadata['payload_sha256']:
                         raise ValueError('The prepared transfer changed. No checkpoint was published.')
                     if password is not None:
                         from .crypto import decrypt_file
                         _message(on_status, 'Authenticating the existing encrypted transfer before resuming.')
-                        decrypt_file(content, transient / 'resume-check.zip', password, cancelled=cancelled)
-                        if hash_file(transient / 'resume-check.zip', cancelled=cancelled) != metadata['archive_sha256']:
+                        decrypt_file(content, transient / 'resume-check.zip', password, cancelled=cancelled,
+                                     on_progress=measured.bytes('Authenticating the prepared encrypted payload'))
+                        if hash_file(transient / 'resume-check.zip', cancelled=cancelled,
+                                on_progress=measured.bytes('Checking the prepared archive')) != metadata['archive_sha256']:
                             raise ValueError('The cached encrypted transfer does not match its prepared backup.')
                     archive = transient / 'resume-check.zip' if password is not None else content
-                    cached = unpack_archive(archive, transient / 'resume-unpacked', cancelled=cancelled)
+                    cached = unpack_archive(archive, transient / 'resume-unpacked', cancelled=cancelled,
+                                            on_progress=measured.bytes('Unpacking the prepared checkpoint'))
                     transfer = _transfer_metadata(cached)
                     if (transfer['backup_checksum'] != checksum or transfer['family_id'] != state['family_id']
                             or transfer['label'] != label):
                         raise ValueError('The pending transfer belongs to different library contents or history.')
+                    measured.phase('Verifying the prepared library backup')
                     restore_backup(cached / 'backup', transient / 'resume-verified', checksum, cancelled=cancelled)
                     cancelled_check(cancelled)
                 else:
@@ -302,18 +356,21 @@ class SyncService:
                             'label': label, 'created_at': datetime.now(timezone.utc).isoformat()}
                         write_json(source / INVENTORY, transfer)
                         archive = transient / 'prepared.zip'
-                        archive_info = pack_directory(source, archive, cancelled=cancelled, on_status=on_status)
+                        archive_info = pack_directory(source, archive, cancelled=cancelled, on_status=on_status,
+                                                      on_progress=measured.bytes('Packing the checkpoint'))
                         if password is not None:
                             from .crypto import encrypt_file
                             _message(on_status, 'Encrypting the checkpoint in private local staging.')
                             encrypt_file(archive, payload / 'snapshot.carr', password,
-                                         cancelled=cancelled)
+                                         cancelled=cancelled, on_progress=measured.bytes('Encrypting the checkpoint'))
                         else:
                             os.rename(archive, payload / 'snapshot.zip')
                         content = payload / ('snapshot.carr' if password is not None else 'snapshot.zip')
                         write_json(ready, {'identity': identity, 'backup_checksum': checksum,
                             'encrypted': password is not None, 'archive_sha256': archive_info['sha256'],
-                            'payload_sha256': hash_file(content, cancelled=cancelled)})
+                            'include_generated': include_generated,
+                            'payload_sha256': hash_file(content, cancelled=cancelled,
+                                on_progress=measured.bytes('Checking the payload before publication'))})
                     except BaseException:
                         # This newly created job is entirely owned by this call.
                         # Existing pending jobs are never removed on an error.
@@ -322,10 +379,12 @@ class SyncService:
                 cancelled_check(cancelled)
                 def progress(value):
                     _message(on_status, f'Publishing checkpoint: {value.bytes_completed} of {value.total_bytes} bytes; {value.chunks_reused} verified chunks reused.')
+                    measured.phase('Publishing verified checkpoint chunks', value.bytes_completed, value.total_bytes)
                 receipt = vault.publish(payload, expected_head=expected_head,
                     label='Encrypted checkpoint' if password is not None else label,
                     cancelled=cancelled, on_progress=progress)
                 state['vaults'][key] = {'head': receipt.snapshot_id, 'label': label}
+                measured.phase('Saving the published checkpoint history')
                 try:
                     _atomic_json(self.state_path, state)
                 except (OSError, ValueError) as exc:
@@ -339,13 +398,15 @@ class SyncService:
                     _message(on_status, 'Checkpoint saved. Private transfer cache cleanup will be retried later.')
                 return {'id': receipt.snapshot_id, 'token': receipt.transfer_token,
                     'head': receipt.snapshot_id, 'encrypted': password is not None,
+                    'include_generated': include_generated,
                     'files': receipt.file_count, 'bytes': receipt.total_bytes,
                     'scope': 'All libraries in this data folder',
                     'message': 'Checkpoint published and local history saved. Keep the transfer code separately from the portable folder.'}
 
     @contextmanager
-    def _opened(self, folder, token, password, cancelled, on_status):
+    def _opened(self, folder, token, password, cancelled, on_status, on_progress=None):
         from .vault import Vault
+        measured = _Progress(on_progress)
         self._bound()
         token = _token(token)
         path = self._vault_path(folder)
@@ -353,7 +414,8 @@ class SyncService:
             transient = Path(transient)
             vault = Vault(path)
             materialized = vault.materialize(token, transient / 'payload', expected_token=token,
-                                             cancelled=cancelled)
+                                             cancelled=cancelled,
+                                             on_progress=measured.transfer('Checking and copying snapshot chunks'))
             children = {entry.name for entry in materialized.iterdir()}
             encrypted = children == {'snapshot.carr'}
             if encrypted:
@@ -362,17 +424,20 @@ class SyncService:
                 from .crypto import decrypt_file
                 _message(on_status, 'Authenticating and decrypting the selected checkpoint locally.')
                 archive = transient / 'checked.zip'
-                decrypt_file(materialized / 'snapshot.carr', archive, password, cancelled=cancelled)
+                decrypt_file(materialized / 'snapshot.carr', archive, password, cancelled=cancelled,
+                             on_progress=measured.bytes('Authenticating and decrypting the checkpoint'))
             elif children == {'snapshot.zip'}:
                 if password is not None:
                     raise ValueError('This checkpoint is not encrypted. No password was used.')
                 archive = materialized / 'snapshot.zip'
             else:
                 raise ValueError('This is not a supported portable library checkpoint.')
-            unpacked = unpack_archive(archive, transient / 'unpacked', cancelled=cancelled, on_status=on_status)
+            unpacked = unpack_archive(archive, transient / 'unpacked', cancelled=cancelled, on_status=on_status,
+                                      on_progress=measured.bytes('Unpacking and checking the checkpoint'))
             metadata = _transfer_metadata(unpacked)
             cancelled_check(cancelled)
             _message(on_status, 'Verifying database, originals, citations and backup identities.')
+            measured.phase('Verifying database, originals, citations and backup identities')
             verified = transient / 'verified-library'
             restore_backup(unpacked / 'backup', verified,
                            expected_manifest_sha256=metadata['backup_checksum'], cancelled=cancelled)
@@ -395,6 +460,7 @@ class SyncService:
                     file_count += 1
                     total_bytes += item.stat().st_size
             summary = {'id': token, 'token': token, 'encrypted': encrypted,
+                'include_generated': manifest.get('generated_audio_included', False),
                 'scope': 'All libraries in the published data folder', 'libraries': libraries,
                 'schema_version': manifest['schema_version'], 'files': file_count,
                 'bytes': total_bytes,
@@ -402,12 +468,14 @@ class SyncService:
                 'restore_mode': 'new-folder-only', 'verified': True, 'label': metadata['label']}
             yield verified, metadata, summary
 
-    def inspect(self, folder, token, password=None, *, cancelled=lambda: False, on_status=None):
-        with self._operation(), self._opened(folder, token, password, cancelled, on_status) as (_, _, result):
+    def inspect(self, folder, token, password=None, *, cancelled=lambda: False, on_status=None,
+                on_progress=None):
+        with self._operation(), self._opened(folder, token, password, cancelled, on_status, on_progress) as (_, _, result):
             return result
 
     def restore(self, folder, token, new_destination, password=None, *,
-                cancelled=lambda: False, on_status=None):
+                cancelled=lambda: False, on_status=None, on_progress=None):
+        measured = _Progress(on_progress)
         with self._operation():
             destination = local_path(guard_data_directory(new_destination, purpose='restored library'))
             vault_path = self._vault_path(folder)
@@ -417,7 +485,7 @@ class SyncService:
             if os.path.lexists(destination):
                 raise FileExistsError('The restore destination already exists. Choose a new directory.')
             local_path(destination.parent, exists=True, directory=True)
-            with self._opened(folder, token, password, cancelled, on_status) as (verified, metadata, _):
+            with self._opened(folder, token, password, cancelled, on_status, on_progress) as (verified, metadata, summary):
                 cancelled_check(cancelled)
                 _message(on_status, 'Restoring the checked checkpoint to the new data folder.')
                 cancelled_check(cancelled)
@@ -427,7 +495,9 @@ class SyncService:
                 from .vault import _publish_directory, _sync_directory
                 with TemporaryDirectory(prefix='.carr-portable-restore-', dir=destination.parent) as staging:
                     prepared = Path(staging) / 'library'
-                    _copy_verified_tree(verified, prepared, cancelled)
+                    _copy_verified_tree(verified, prepared, cancelled, total=summary['bytes'],
+                                        on_progress=measured.bytes('Copying the verified library into private staging'))
+                    measured.phase('Publishing the restored library and checking durability')
                     _atomic_json(prepared / STATE, state)
                     cancelled_check(cancelled)
                     _publish_directory(prepared, destination)

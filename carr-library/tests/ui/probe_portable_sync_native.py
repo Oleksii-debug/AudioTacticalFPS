@@ -343,6 +343,10 @@ def run_native(source=None, *, encrypted=False):
             check('paths, code, history, preview and status have accessible names', all(control.GetName()
                   for control in (native.folder, native.token, native.destination, native.history,
                                   native.preview, native.status)))
+            check('generated library audio requires an explicit unchecked native choice',
+                  isinstance(native.include_generated, wx.CheckBox)
+                  and native.include_generated.GetName() == 'Include generated audio saved in this library'
+                  and native.include_generated.GetValue() is False)
             native.folder.SetValue(str(root / 'portable'))
             native.label.SetValue('Native portable checkpoint')
             native.encrypt.SetValue(encrypted)

@@ -35,7 +35,7 @@ def run_native(source=None):
         sys.path.insert(0, str(source / 'src'))
     from carr_library import application as application_module
     from carr_library import progress as progress_module
-    from carr_library.ui import desktop_app, operation_progress
+    from carr_library.ui import desktop_app, operation_progress, audio_studio
     from carr_library.progress import FeedbackPreferences, ProgressPreferenceStore
 
     errors, checks, timers = [], [], []
@@ -68,7 +68,7 @@ def run_native(source=None):
         return False
 
     origins = {module.__name__: str(Path(module.__file__).resolve())
-               for module in (application_module, progress_module, desktop_app, operation_progress)}
+               for module in (application_module, progress_module, desktop_app, operation_progress, audio_studio)}
     if source is None:
         checkout = Path(__file__).resolve().parents[2]
         check('all probe modules come from the installed distribution',
@@ -206,6 +206,77 @@ def run_native(source=None):
                   and panel.hub.snapshot()[-1].state == 'cancelled')
             menu_event('Query current operation progress')
             check('explicit query moves focus to readable progress text', pump(lambda: wx.Window.FindFocus() is panel.text))
+
+            release, started, accepted = Event(), Event(), []
+            def real_query():
+                started.set()
+                if not release.wait(5):
+                    raise TimeoutError('The probe did not release its real library worker.')
+                return library.workspaces()
+            try:
+                frame.run_job('Native worker library query', real_query, accepted.append)
+                check('main desktop job publishes unknown progress from its actual executor',
+                      pump(started.is_set) and panel.hub.snapshot()[-1].total is None
+                      and panel.hub.snapshot()[-1].state == 'running')
+                check('query progress command stays available while main data controls are disabled',
+                      frame.keyboard_commands.available('progress.status') and not frame.choice.IsEnabled())
+                menu_event('Query current operation progress')
+            finally:
+                release.set()
+            check('real main job reports completion only after accepting the library query',
+                  pump(lambda: not frame.working) and bool(accepted) and accepted[0][0].name == 'Native progress library'
+                  and panel.hub.snapshot()[-1].percent == 100)
+
+            cancelled_started, cancelled_errors = Event(), []
+            def cancellable_query():
+                cancelled_started.set()
+                if not frame.cancel_event.wait(5):
+                    raise TimeoutError('The native Cancel event did not reach the worker.')
+                raise InterruptedError('Synthetic query cancelled at its safe stopping point.')
+            frame.run_job('Native cancellable worker', cancellable_query, failed=cancelled_errors.append)
+            check('native cancellation worker starts', pump(cancelled_started.is_set))
+            cancel_event = wx.CommandEvent(wx.EVT_BUTTON.typeId, frame.cancel_button.GetId())
+            cancel_event.SetEventObject(frame.cancel_button)
+            check('real native Cancel button event is handled',
+                  frame.cancel_button.GetEventHandler().ProcessEvent(cancel_event))
+            check('cancelled host worker restores controls without reporting verified completion',
+                  pump(lambda: not frame.working) and frame.choice.IsEnabled()
+                  and len(cancelled_errors) == 1 and isinstance(cancelled_errors[0], InterruptedError)
+                  and panel.hub.snapshot()[-1].state == 'cancelled'
+                  and panel.hub.snapshot()[-1].percent is None)
+
+            studio = audio_studio.AudioStudioDialog(frame,
+                audio_studio.StudioController(private_root=library.root))
+            studio.dialog.Show()
+            studio_accepted, studio_started, studio_release = [], Event(), Event()
+            try:
+                studio._run('Native Studio library query', library.workspaces, studio_accepted.append)
+                check('real Studio controls use their own worker and shared completion panel',
+                      pump(lambda: not studio.busy) and bool(studio_accepted)
+                      and panel.hub.snapshot()[-1].percent == 100
+                      and studio._media_panel is panel)
+                def pending_studio():
+                    studio_started.set()
+                    if not studio_release.wait(5):
+                        raise TimeoutError('Studio destruction probe was not released.')
+                    return library.workspaces()
+                studio._run('Native Studio pending query', pending_studio, studio_accepted.append)
+                check('real Studio worker is pending before forced destruction', pump(studio_started.is_set))
+                accepted_before_destroy = len(studio_accepted)
+                studio.dialog.Destroy()
+                check('actual Studio destruction withdraws callbacks and media ownership',
+                      pump(lambda: not studio._window_alive) and studio.closed and studio.cancelled.is_set())
+                studio_release.set()
+                studio.executor.shutdown(wait=True, cancel_futures=False)
+                application.Yield()
+                check('Studio worker completion cannot touch destroyed native controls or report success',
+                      len(studio_accepted) == accepted_before_destroy
+                      and panel.hub.snapshot()[-1].state == 'cancelled')
+            finally:
+                studio_release.set()
+                studio._dispose()
+                if studio._window_alive:
+                    studio.dialog.Destroy()
 
             choose_preferences()
             menu_event('Operation feedback preferences...')

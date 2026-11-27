@@ -121,20 +121,36 @@ def write_json(path, value):
     return sha256(raw).hexdigest()
 
 
-def hash_file(path, *, cancelled=lambda: False):
+def _progress(callback, completed, total):
+    """An optional observer cannot change a checked transfer's outcome."""
+    if callback is not None:
+        try:
+            callback(completed, total)
+        except Exception:
+            pass
+
+
+def hash_file(path, *, cancelled=lambda: False, on_progress=None):
     cancelled_check(cancelled)
     digest = sha256()
     stream, before = _open_regular(path)
+    completed = 0
     with stream:
+        _progress(on_progress, 0, before.st_size)
         while chunk := stream.read(CHUNK):
             cancelled_check(cancelled)
             digest.update(chunk)
+            completed += len(chunk)
+            if completed > before.st_size:
+                raise ValueError('Snapshot file changed while hashing.')
+            _progress(on_progress, completed, before.st_size)
         if _identity(os.fstat(stream.fileno())) != _identity(before):
             raise ValueError('Snapshot file changed while hashing.')
     return digest.hexdigest()
 
 
-def pack_directory(source, destination, *, cancelled=lambda: False, on_status=None):
+def pack_directory(source, destination, *, cancelled=lambda: False, on_status=None,
+                   on_progress=None):
     source = local_path(source, exists=True, directory=True)
     destination = local_path(destination)
     if destination.is_relative_to(source):
@@ -152,22 +168,25 @@ def pack_directory(source, destination, *, cancelled=lambda: False, on_status=No
             if alias in aliases:
                 raise ValueError('Snapshot contains duplicate portable path identities.')
             aliases.add(alias)
+            size = 0 if is_directory else path.stat().st_size
             if not is_directory:
-                total += path.stat().st_size
+                total += size
                 file_aliases.add(alias)
-            entries.append((relative, path, is_directory))
+            entries.append((relative, path, is_directory, size))
             if len(entries) > MAX_FILES or total > MAX_TOTAL:
                 raise ValueError('Snapshot exceeds the portable archive resource budget.')
     if INVENTORY not in file_aliases:
         raise ValueError('Portable snapshot metadata is missing.')
     _check_parent_aliases(file_aliases, aliases)
     output_owned = False
+    completed = 0
+    _progress(on_progress, 0, total)
     try:
         with destination.open('xb') as outer:
             output_owned = True
             os.chmod(destination, 0o600)
             with ZipFile(outer, 'w', compression=ZIP_STORED, allowZip64=True) as archive:
-                for index, (relative, path, is_directory) in enumerate(sorted(entries), 1):
+                for index, (relative, path, is_directory, size) in enumerate(sorted(entries), 1):
                     cancelled_check(cancelled)
                     info = ZipInfo(relative + ('/' if is_directory else ''), date_time=(1980, 1, 1, 0, 0, 0))
                     info.create_system = 3
@@ -178,9 +197,15 @@ def pack_directory(source, destination, *, cancelled=lambda: False, on_status=No
                         continue
                     incoming, before = _open_regular(path)
                     with incoming, archive.open(info, 'w', force_zip64=True) as outgoing:
+                        if before.st_size != size:
+                            raise ValueError('Snapshot file changed while archiving.')
                         while block := incoming.read(CHUNK):
                             cancelled_check(cancelled)
                             outgoing.write(block)
+                            completed += len(block)
+                            if completed > total:
+                                raise ValueError('Snapshot file changed while archiving.')
+                            _progress(on_progress, completed, total)
                         if _identity(os.fstat(incoming.fileno())) != _identity(before):
                             raise ValueError('Snapshot file changed while archiving.')
                     if on_status:
@@ -269,7 +294,8 @@ def _preflight(stream, size, cancelled):
     return count
 
 
-def unpack_archive(source, new_destination, *, cancelled=lambda: False, on_status=None):
+def unpack_archive(source, new_destination, *, cancelled=lambda: False, on_status=None,
+                   on_progress=None):
     source = local_path(source, exists=True)
     target = local_path(new_destination)
     if os.path.lexists(target):
@@ -280,12 +306,14 @@ def unpack_archive(source, new_destination, *, cancelled=lambda: False, on_statu
     try:
         with incoming_archive:
             expected_count = _preflight(incoming_archive, before.st_size, cancelled)
-            return _unpack_open(incoming_archive, before, expected_count, target, cancelled, on_status)
+            return _unpack_open(incoming_archive, before, expected_count, target, cancelled,
+                                on_status, on_progress)
     except (BadZipFile, RuntimeError, struct.error) as exc:
         raise ValueError('Invalid or damaged portable snapshot archive.') from exc
 
 
-def _unpack_open(incoming_archive, before, expected_count, target, cancelled, on_status):
+def _unpack_open(incoming_archive, before, expected_count, target, cancelled, on_status,
+                 on_progress=None):
     with ZipFile(incoming_archive, 'r') as archive:
         entries = archive.infolist()
         if len(entries) != expected_count:
@@ -310,6 +338,8 @@ def _unpack_open(incoming_archive, before, expected_count, target, cancelled, on
         if INVENTORY not in file_aliases:
             raise ValueError('Portable snapshot metadata is absent.')
         _check_parent_aliases(file_aliases, aliases)
+        completed = 0
+        _progress(on_progress, 0, total)
         target.mkdir(mode=0o700)
         for index, item in enumerate(entries, 1):
             cancelled_check(cancelled)
@@ -329,6 +359,8 @@ def _unpack_open(incoming_archive, before, expected_count, target, cancelled, on
                     if size > item.file_size:
                         raise ValueError('Archive member exceeds its declared length.')
                     outgoing.write(block)
+                    completed += len(block)
+                    _progress(on_progress, completed, total)
                 outgoing.flush(); os.fsync(outgoing.fileno())
             if size != item.file_size:
                 raise ValueError('Archive member was truncated.')

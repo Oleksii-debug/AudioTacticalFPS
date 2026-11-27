@@ -1,0 +1,51 @@
+{
+  "processor": {
+    "name": "citeproc",
+    "package_version": "2.4.63",
+    "reported_engine_version": "1.4.61",
+    "url": "https://registry.npmjs.org/citeproc/-/citeproc-2.4.63.tgz",
+    "git_revision": "73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9",
+    "tarball_sha256": "7f2b7714bfd1f4480aad9c34972eb5d48dc1b85876ba21b5aa9aee74156e2ccf",
+    "license": "CPAL-1.0 (upstream also offers AGPL-3.0-or-later)",
+    "notices_revision": "56e7ef310154748368665cc8a2be124e3c141832"
+  },
+  "styles": {
+    "repo": "citation-style-language/styles",
+    "revision": "e27b9b7e204b1a40998f774ff05c8a6ed6a5f7d8",
+    "license": "CC-BY-SA-3.0"
+  },
+  "locales": {
+    "repo": "citation-style-language/locales",
+    "revision": "2a7d750cb8b1d01ad838b42a2309d58a4d695c1b",
+    "license": "CC-BY-SA-3.0"
+  },
+  "sha256": {
+    "_vendor_citeproc/AGPLv3": "57c8ff33c9c0cfc3ef00e650a1cc910d7ee479a8bc509f6c9209a7c2a11399d6",
+    "_vendor_citeproc/CPAL": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+    "_vendor_citeproc/LICENSE": "b96ca8e1716f93449b480083c7510c18d129fa9afa4644d62c6347c06177ce30",
+    "_vendor_citeproc/citeproc.js": "55abba1a8b8b48c14323fd053f9646013b4b7a0c977938064ecf5195a502b9f1",
+    "styles/UPSTREAM_LOCALES_README.md": "f8e1b34d3e1b66f101b45bc45e5fca0397aa923fe4abeab6f98139c8f731c320",
+    "styles/UPSTREAM_STYLES_README.md": "eeda35e6ab1c71ef74ba98e8d63f3f5c07e1b1c458b92d54cdd7515afcb1b04e",
+    "styles/apa.csl": "3917def5fc951b104d64216c3373096042368b9704ba269ca83c14ebaba889fc",
+    "styles/chicago-author-date.csl": "002fade78d7e4fe9d42936a16b43a8066b097013f6255df40b1bfba6631eff9b",
+    "styles/chicago-notes-bibliography.csl": "4b6be4bceaf8f3c31b49331c9f9e38c977f666d6ab80e19a2ac8482c7511abeb",
+    "styles/harvard-cite-them-right.csl": "0ca3d2c7c881cd98cdd81098b5349f5921edf430498aa9a5a41918621cf7cc45",
+    "styles/ieee.csl": "b4c7619fc16c45a31e4cc3271eab94ffe83192d3b4c7fc729470a3b459448de3",
+    "styles/locales-en-GB.xml": "e4a1fed9cec04b5fed5e9027b4055925cd4d8f7c9fe233eb0ceca6d4be3999f6",
+    "styles/locales-en-US.xml": "ac864c7c21166b4390d82c31792cdc509400727fa0060b43d8aa17e07f9cb079",
+    "styles/locales-sk-SK.xml": "51600e20de1f57ab128af5f6a8b1a79b3a65bb1c03d39f075a73a484bdf573e0",
+    "styles/locales-uk-UA.xml": "e967c8d1a13606d918c1074e0fc4d10add62f5eff56eadb42c25b3dad78e580d",
+    "styles/modern-language-association.csl": "e1432698ef28938d044b06bd45ddcc57d6b974cec25f71007075646a11f99484",
+    "styles/nlm-citation-sequence.csl": "492f7935df42054b33d515f7275122f419780df990ea35925dcbbff0fecf1137",
+    "_vendor_citeproc/QUICKJS_NG_LICENSE": "1d98bbf860c3c0f04281941e41e5534a4e5c3588daa7356b065c2a182de27c2a",
+    "_vendor_citeproc/QUICKJS_CORE_NOTICES": "2aaf0f987107f843d2eea75f53e331703738a7165a136f6db47cd4b610c4597f"
+  },
+  "quickjs": {
+    "version": "0.18.0.2",
+    "source_archive_sha256": "a1a890300a5c460d7735481bc38e8ab10e6f06b733a517f7fa9887f6d121df40",
+    "source_url": "https://files.pythonhosted.org/packages/a8/1d/70ad022abc62a1cdacac1c5b50947e48453d4a3af88724cc5d04a3851247/quickjs_ng-0.18.0.2.tar.gz",
+    "license": "MIT",
+    "python_binding_source": "https://github.com/genotrance/quickjs-ng",
+    "note": "Compiler-input source notices retained; Windows wheel hash in dependency locks."
+  }
+}

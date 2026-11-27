@@ -9,7 +9,8 @@ import sys
 import pytest
 
 from carr_library.progress import FeedbackPreferences, ProgressPreferenceStore
-from carr_library.ui.operation_progress import ProgressActions, ProgressPanel, install_progress_actions
+from carr_library.ui.operation_progress import (OperationProgress, ProgressActions, ProgressPanel,
+                                                install_progress_actions)
 
 
 class Control:
@@ -121,6 +122,8 @@ class Feedback:
         self.background = value
     def close(self):
         self.closed = True
+    def wait_quiet(self, timeout=1.0):
+        return True
 
 
 @pytest.fixture
@@ -290,6 +293,36 @@ def test_parent_background_and_media_state_reach_independent_audio_worker(tmp_pa
         actions.panel.dispose()
 
 
+def test_same_path_folder_replacement_rejects_old_preferences_and_worker(tmp_path):
+    root, previous = tmp_path / 'library', tmp_path / 'previous-library'
+    root.mkdir()
+    saved = ProgressPreferenceStore(root).save(FeedbackPreferences('Beep', volume=19))
+    frame = make_frame(root)
+
+    class ReplacedDialog:
+        def __init__(self, *args, **kwargs):
+            pass
+        def show(self):
+            root.rename(previous)
+            root.mkdir()
+            return FeedbackPreferences('Speech')
+
+    actions = make_actions(frame, dialog_factory=ReplacedDialog)
+    try:
+        old = actions.panel.start('old', 'Previous folder operation')
+        old_feedback = actions.panel.feedback
+        actions.configure()
+        assert 'not saved' in actions.panel.text.value
+        assert (previous / 'operation-progress.json').read_bytes() == saved
+        assert not (root / 'operation-progress.json').exists()
+        assert actions.panel.update(old, completed=2) is None
+        actions.panel._tick()
+        assert old_feedback.closed and actions.preferences.mode == 'Off'
+        assert actions.panel.hub.snapshot() == ()
+    finally:
+        actions.panel.dispose()
+
+
 def test_foreground_child_dialog_is_not_mistaken_for_background_app(tmp_path):
     frame = make_frame(tmp_path)
     actions = make_actions(frame)
@@ -371,9 +404,75 @@ def test_installer_uses_existing_options_and_status_position_without_shortcuts(t
         assert frame.progress_actions is actions
         assert frame.layout.items == [frame.status, actions.panel.window]
         assert frame.menu_bar.GetMenuCount() == 2 and len(old_menu.items) == 3
+        assert [spec.command_id for spec, item in frame._pending_keyboard_commands] == [
+            'progress.status', 'progress.settings', 'progress.mute']
         assert all('\t' not in item.label for item in old_menu.items)
         query_binding = next(args for args in frame.bindings if args[2] is old_menu.items[0])
         query_binding[1]()
         assert actions.panel.text.focus == 1
     finally:
         actions.panel.dispose()
+
+
+def test_playback_owners_survive_root_reload_until_each_owner_stops(tmp_path):
+    frame = make_frame(tmp_path)
+    actions = make_actions(frame)
+    try:
+        first, second = object(), object()
+        actions.panel.set_media_state(playback=True, owner=first)
+        actions.panel.set_media_state(recording=True, owner=second)
+        actions.reload()
+        assert actions.panel.feedback.media == (True, True)
+        actions.panel.set_media_state(owner=first)
+        assert actions.panel.feedback.media == (False, True)
+        actions.panel.set_media_state(owner=second)
+        assert actions.panel.feedback.media == (False, False)
+    finally:
+        actions.panel.dispose()
+
+
+def test_old_feedback_output_must_quiesce_even_after_a_root_reload(panel):
+    old = panel.feedback
+    still_active = [True]
+    old.wait_quiet = lambda timeout=1: not still_active[0]
+    panel.rebind(FeedbackPreferences('Beep'), current=lambda: True)
+    assert old.closed and panel.feedback.media == (True, False)
+    owner = object()
+    assert not panel.prepare_media(playback=True, owner=owner, timeout=0)
+    still_active[0] = False
+    assert panel.prepare_media(playback=True, owner=owner, timeout=0)
+    panel._tick()
+    assert panel.feedback.media == (True, False)
+    panel.set_media_state(owner=owner)
+    assert panel.feedback.media == (False, False)
+
+
+def test_operation_count_cannot_complete_until_host_accepts_result(panel):
+    frame = SimpleNamespace(progress_actions=SimpleNamespace(panel=panel))
+    task = OperationProgress(frame, 'Publish checkpoint')
+    task.update(phase='Copying verified chunks', completed=40, total=40)
+    event, = panel.hub.snapshot()
+    assert event.awaiting_verification and event.percent is None
+    task.complete({'verified': True})
+    event, = panel.hub.snapshot()
+    assert event.state == 'completed' and event.percent == 100
+    task.update(phase='Stale producer', completed=1, total=99)
+    assert panel.hub.snapshot() == (event,)
+
+
+@pytest.mark.parametrize('outcome,state', [({'state': 'paused'}, 'paused'),
+    ({'state': 'cancelled'}, 'cancelled'), ({'status': 'failed'}, 'failed')])
+def test_operation_noncomplete_outcomes_never_report_verified_completion(panel, outcome, state):
+    task = OperationProgress(SimpleNamespace(progress_actions=SimpleNamespace(panel=panel)), 'Import')
+    task.complete(outcome)
+    event, = panel.hub.snapshot()
+    assert event.state == state and not event.verified and event.percent is None
+
+
+def test_feedback_observer_failure_cannot_change_an_operation_result():
+    class BrokenPanel:
+        def start(self, *args):
+            raise RuntimeError('Native feedback is unavailable')
+    task = OperationProgress(SimpleNamespace(progress_actions=SimpleNamespace(panel=BrokenPanel())), 'Save')
+    assert task.update(phase='Committing') is None
+    assert task.complete({'status': 'complete'}) is None

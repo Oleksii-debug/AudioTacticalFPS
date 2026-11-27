@@ -118,6 +118,7 @@ class Service:
     def publish(self, folder, label, expected_head, password=None, **options):
         self._call('publish', folder=folder, label=label, head=expected_head, password=password, **options)
         return dict(id=TOKEN, token=TOKEN, head=TOKEN, encrypted=password is not None,
+                    include_generated=options.get('include_generated', False),
                     scope='All libraries in this data folder', message='Published')
 
     def inspect(self, folder, token, password=None, **options):
@@ -487,6 +488,37 @@ def test_native_options_change_during_password_prompt_does_not_start_stale_verif
     native.dialogs = SimpleNamespace(password=password)
     native._verify()
     assert state.service.calls == [] and not state.controller.running
+    assert 'options changed' in state.view.messages[-1]
+
+
+@pytest.mark.parametrize('include_generated', [False, True])
+def test_publication_audio_scope_is_explicit_and_returned_in_the_receipt(state, include_generated):
+    state.controller.history_folder = state.folder
+    state.controller.publish(state.folder, 'Snapshot', confirmed=True, include_generated=include_generated)
+    finish(state)
+    assert state.service.calls[-1][1]['include_generated'] is include_generated
+    assert ('Generated audio saved in this library: ' +
+            ('Included' if include_generated else 'Not included')) in state.view.preview
+
+
+def test_native_generated_audio_change_during_confirmation_invalidates_publication(state):
+    native = object.__new__(NativePortableSync)
+    native._window_alive, native.window, native.controller = True, object(), state.controller
+    state.controller.history_folder = state.folder
+    native.folder = SimpleNamespace(GetValue=lambda: str(state.folder))
+    native.label = SimpleNamespace(GetValue=lambda: 'Snapshot')
+    native.encrypt = SimpleNamespace(GetValue=lambda: False)
+    choice = {'include': False}
+    native.include_generated = SimpleNamespace(GetValue=lambda: choice['include'])
+    messages = []
+    def confirm(parent, title, message):
+        messages.append(message)
+        choice['include'] = True
+        return True
+    native.dialogs = SimpleNamespace(confirm=confirm)
+    native._publish()
+    assert 'Generated audio is not included' in messages[0]
+    assert not state.service.calls and not state.controller.running
     assert 'options changed' in state.view.messages[-1]
 
 

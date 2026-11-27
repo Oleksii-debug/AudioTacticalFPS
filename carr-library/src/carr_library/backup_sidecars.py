@@ -21,7 +21,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json')
+           'evidence-drafts.json', 'ocr-language-presets.json', 'operation-progress.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -69,6 +69,12 @@ def sidecar_limit(name):
         return _model('evidence_drafts').MAX_BYTES
     if name == 'ocr-language-presets.json':
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
+    if name == 'operation-progress.json':
+        return _model('progress').MAX_BYTES
+    if name.startswith('state/assistant/'):
+        return _model('assistant.backup').limit(name)
+    if name.startswith('audio-projects/'):
+        return _model('audio.library_sidecars').limit(name)
     if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return _model('reader.narration').MAX_PROJECT_BYTES
     if re.fullmatch(r'reading-copies/[0-9a-f]{32}\.json', name):
@@ -134,6 +140,12 @@ def validate_sidecar(db, name, raw):
             _model('evidence_drafts').validate_evidence_drafts(raw)
         elif name == 'ocr-language-presets.json':
             _model('extract.ocr_languages').validate_presets_bytes(raw)
+        elif name == 'operation-progress.json':
+            _model('progress').validate_preferences_bytes(raw)
+        elif name.startswith('state/assistant/'):
+            _model('assistant.backup').validate(name, raw)
+        elif name.startswith('audio-projects/'):
+            _model('audio.library_sidecars').validate_metadata(db, name, raw)
         elif name.startswith('narration-projects/'):
             project = _model('reader.narration').validate_narration_payload(name, raw)
             _validate_original_text(db, project.source_location, project.original_text)
@@ -159,15 +171,25 @@ class Inventory:
     entries: tuple
     empty_roots: frozenset = frozenset()
     generated_audio_included: bool = False
+    payload_root: str = ''
 
 
 def _collection_budgets(entries):
+    entries = tuple(entries)
     narration = [(name, size) for name, size in entries if name.startswith('narration-projects/')]
     if narration:
         model = _model('reader.narration')
         if (len(narration) > model.MAX_PROJECTS * 2
                 or sum(size for _, size in narration) > model.MAX_SNAPSHOT_BYTES):
             raise RestoreError('narration producer snapshot budget exceeded')
+    projects = {PurePosixPath(name).parts[1] for name, _ in entries if name.startswith('audio-projects/')}
+    if projects and len(projects) > _model('audio.managed').MAX_PROJECTS:
+        raise RestoreError('managed audio project count limit')
+
+
+def maximum_bytes(include_generated=False):
+    # Validated PCM inputs are preserved even without derived audio outputs.
+    return MAX_BYTES + _model('audio.library_sidecars').MAX_BYTES
 
 
 def normalize_manifest(manifest):
@@ -179,7 +201,7 @@ def normalize_manifest(manifest):
     if version >= 2:
         fields.add('schema_fingerprint')
     extra = set(manifest) - fields
-    entries, roots, generated = [], frozenset(), False
+    entries, roots, generated, payload_root = [], frozenset(), False, ''
     if version <= 2:
         if set(manifest) != fields:
             raise RestoreError('unsupported library manifest fields')
@@ -204,20 +226,47 @@ def normalize_manifest(manifest):
         roots = frozenset({'state'})
     elif version == 4 and extra == {'sidecars', 'generated_audio_included'}:
         entries, generated = manifest['sidecars'], manifest['generated_audio_included']
+    elif version == 4 and extra == {'sidecars'}:
+        # Exact historical PR99 managed-audio layout. Its disjoint fields and
+        # path descriptors distinguish it from the current filename/root writer.
+        legacy = manifest['sidecars']
+        if type(legacy) is not list or not 1 <= len(legacy) <= MAX_FILES:
+            raise RestoreError('invalid legacy managed-audio manifest')
+        entries = []
+        for value in legacy:
+            if type(value) is not dict or set(value) != {'path', 'size_bytes', 'sha256'}:
+                raise RestoreError('invalid legacy managed-audio descriptor')
+            name = value['path']
+            portable_name(name)
+            if (not name.startswith('audio-projects/')
+                    and name not in ('reading-state.json', 'keybindings.json', 'ocr-language-presets.json')
+                    and re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name) is None):
+                raise RestoreError('unsupported legacy managed-audio sidecar')
+            entries.append(dict(filename=name, size_bytes=value['size_bytes'], sha256=value['sha256']))
+        payload_root = 'sidecars'
+        audio = _model('audio.library_sidecars')
+        generated = any(audio.generated(value['filename']) for value in entries
+                        if value['filename'].startswith('audio-projects/'))
     else:
         raise RestoreError('ambiguous or unsupported library manifest fields')
     if set(manifest) != fields | extra or not fields <= set(manifest) or type(generated) is not bool:
         raise RestoreError('invalid library manifest fields')
     if type(entries) is not list or len(entries) > MAX_FILES:
         raise RestoreError('invalid sidecar manifest')
-    names, portable_paths, total, copied = set(), {}, 0, []
+    names, portable_paths, total, media_total, copied = set(), {}, 0, 0, []
     for entry in entries:
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
                 or type(entry['size_bytes']) is not int
                 or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
             raise RestoreError('invalid sidecar manifest entry')
         maximum = sidecar_limit(entry['filename'])
-        if not 0 < entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
+        audio = _model('audio.library_sidecars') if entry['filename'].startswith('audio-projects/') else None
+        minimum = audio.minimum(entry['filename']) if audio is not None else 1
+        is_media = audio is not None and audio.streamed(entry['filename'])
+        if ((audio is not None and version != 4)
+                or (audio is not None and audio.generated(entry['filename']) and not generated)):
+            raise RestoreError('managed audio needs its explicit version-4 manifest declaration')
+        if not minimum <= entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
         names.add(entry['filename'].casefold())
         path = PurePosixPath(entry['filename'])
@@ -228,12 +277,17 @@ def normalize_manifest(manifest):
             previous = portable_paths.setdefault(name.casefold(), name)
             if previous != name:
                 raise RestoreError('sidecar paths collide on a case-insensitive filesystem')
-        total += entry['size_bytes']
+        if is_media:
+            media_total += entry['size_bytes']
+            if media_total > audio.MAX_BYTES:
+                raise RestoreError('generated audio manifest byte limit')
+        else:
+            total += entry['size_bytes']
         if total > MAX_BYTES:
             raise RestoreError('sidecar manifest byte limit')
         copied.append(dict(entry))
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
-    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated)
+    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, payload_root)
 
 
 def _identity(info):
@@ -265,6 +319,8 @@ def read_regular(path, maximum):
 
 
 def _ignored(name):
+    if name.startswith('state/assistant/'):
+        return _model('assistant.backup').ignored(name)
     path = PurePosixPath(name)
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
@@ -311,7 +367,7 @@ def _write(stage, name, raw):
         os.fsync(stream.fileno())
 
 
-def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
+def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):
     _check_cancelled(cancelled)
     before = _capture(root, cancelled=cancelled)
     _collection_budgets((name, identity[4]) for name, identity in before[0].items())
@@ -327,37 +383,59 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
         entries.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
     if _capture(root, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
+    entries.extend(_model('audio.library_sidecars').snapshot(db, root, stage,
+        include_generated=include_generated, max_bytes=max_bytes - total, cancelled=cancelled))
+    if len(entries) > MAX_FILES:
+        raise RestoreError('combined sidecar inventory exceeds its file budget')
     _check_cancelled(cancelled)
     return entries
 
 
 def check_namespace(directory, inventory):
     names = {entry['filename'] for entry in inventory.entries}
+    payload = directory / inventory.payload_root if inventory.payload_root else directory
     expected_dirs = set(inventory.empty_roots)
     for name in names:
         expected_dirs.update(str(p) for p in PurePosixPath(name).parents if str(p) != '.')
     roots = {name.split('/')[0] for name in names} | set(inventory.empty_roots)
-    if set(path.name for path in directory.iterdir()) != {'library.sqlite', 'originals', 'manifest.json'} | roots:
+    expected_roots = {'library.sqlite', 'originals', 'manifest.json'}
+    expected_roots |= {inventory.payload_root} if inventory.payload_root else roots
+    if set(path.name for path in directory.iterdir()) != expected_roots:
         raise RestoreError('incomplete backup or unexpected files')
+    if inventory.payload_root:
+        _plain(payload, directory=True)
+        if {path.name for path in payload.iterdir()} != roots:
+            raise RestoreError('incomplete legacy sidecar backup or unexpected files')
     for name in expected_dirs:
-        _plain(directory / name, directory=True)
-        actual = {path.relative_to(directory).as_posix() for path in (directory / name).iterdir()}
+        _plain(payload / name, directory=True)
+        actual = {path.relative_to(payload).as_posix() for path in (payload / name).iterdir()}
         expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}
         if actual != expected:
             raise RestoreError('incomplete sidecar backup or unexpected files')
     for name in names:
-        _regular(directory / name)
+        _regular(payload / name)
 
 
-def restore(db, source, stage, inventory, *, cancelled=lambda: False):
+def restore(db, source, stage, inventory, *, cancelled=lambda: False, copy_files=True):
+    source = source / inventory.payload_root if inventory.payload_root else source
+    audio_entries = []
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
+        if name.startswith('audio-projects/'):
+            audio_entries.append(entry)
+            continue
         raw = read_regular(source / name, sidecar_limit(name))
         if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
             raise RestoreError('sidecar digest or size mismatch')
         validate_sidecar(db, name, raw)
-        _write(stage, name, raw)
+        if copy_files:
+            if name.startswith('state/assistant/'):
+                raw = _model('assistant.backup').restored_bytes(name, raw)
+            _write(stage, name, raw)
+    if audio_entries:
+        _model('audio.library_sidecars').restore(db, source, stage, audio_entries,
+            include_generated=inventory.generated_audio_included, cancelled=cancelled, copy_files=copy_files)
     _check_cancelled(cancelled)
 
 

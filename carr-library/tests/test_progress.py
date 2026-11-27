@@ -428,3 +428,50 @@ def test_actual_notification_timeout_is_bounded_and_reaps_child(monkeypatch):
         _run_notification([sys.executable, '-I', '-c', 'import time; time.sleep(30)'], b'',
                           cancelled=lambda: False, timeout=0.05)
     assert time.monotonic() - started < 2 and children[0].poll() is not None
+
+
+def test_media_handoff_waits_for_the_actual_notification_child_to_exit(tmp_path, monkeypatch):
+    from carr_library.progress import _run_notification
+    started = tmp_path / 'notification-started'
+    children, original = [], subprocess.Popen
+    def spawn(*args, **kwargs):
+        child = original(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr('carr_library.progress.subprocess.Popen', spawn)
+    class ChildAdapter:
+        def play(self, raw, *, cancelled):
+            program = ('import pathlib,sys,time; pathlib.Path(sys.argv[1]).write_text("started"); '
+                       'time.sleep(30)')
+            _run_notification([sys.executable, '-I', '-c', program, str(started)], raw,
+                              cancelled=cancelled, timeout=2)
+    feedback = ProgressFeedback(FeedbackPreferences('Beep'), adapter=ChildAdapter())
+    try:
+        assert feedback.submit(event_at())
+        wait_for(started.exists)
+        assert not feedback.wait_quiet(0)
+        feedback.set_media_state(playback=True)
+        assert feedback.wait_quiet(2)
+        assert children and all(child.poll() is not None for child in children)
+        assert not feedback.submit(event_at(50), manual=True)
+    finally:
+        feedback.close()
+
+
+def test_uncooperative_notification_cannot_approve_media_start():
+    class SlowAdapter:
+        entered, release = Event(), Event()
+        def play(self, raw, *, cancelled):
+            self.entered.set()
+            self.release.wait(2)  # Simulate output that has not acknowledged cancellation.
+    adapter = SlowAdapter()
+    feedback = ProgressFeedback(FeedbackPreferences('Beep'), adapter=adapter)
+    try:
+        assert feedback.submit(event_at()) and adapter.entered.wait(1)
+        feedback.set_media_state(recording=True)
+        assert not feedback.wait_quiet(0.01)
+        adapter.release.set()
+        assert feedback.wait_quiet(1)
+    finally:
+        adapter.release.set()
+        feedback.close()

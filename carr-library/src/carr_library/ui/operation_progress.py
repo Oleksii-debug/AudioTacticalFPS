@@ -6,9 +6,69 @@ every producer or every audio owner is already connected.
 """
 from dataclasses import replace
 from pathlib import Path
+import time
+from uuid import uuid4
 
 from ..progress import (FeedbackPreferences, MODES, ProgressFeedback, ProgressHub,
                         ProgressPreferenceStore, TERMINAL)
+
+
+class OperationProgress:
+    """A generation-bound, optional observer of one real host operation.
+
+    Feedback failure cannot roll back or hide a file/database commit. Only the
+    host that accepts the returned result calls ``complete``; count callbacks
+    never authorize completion, including when their last count equals total.
+    """
+    def __init__(self, frame, label, *, phase='Starting'):
+        self.panel = getattr(getattr(frame, 'progress_actions', None), 'panel', None)
+        self.handle = None
+        if self.panel is not None:
+            try:
+                self.handle = self.panel.start(uuid4().hex, self._label(label), self._label(phase))
+            except Exception:
+                pass
+
+    @staticmethod
+    def _label(value):
+        return ' '.join(str(value).split())[:160] or 'Working'
+
+    def update(self, *, phase, completed=None, total=None, state='running'):
+        if self.handle is not None:
+            try:
+                return self.panel.update(self.handle, phase=self._label(phase),
+                                         completed=completed, total=total, state=state)
+            except Exception:
+                pass
+
+    def finish(self, *, state='completed', verified=False):
+        if self.handle is not None:
+            try:
+                return self.panel.finish(self.handle, state=state, verified=verified)
+            except Exception:
+                pass
+
+    def complete(self, result=None):
+        """Call after a host's result validator/acceptance callback succeeds."""
+        state = (result.get('state', result.get('status')) if isinstance(result, dict) else None)
+        if state in ('cancelled', 'canceled'):
+            return self.finish(state='cancelled')
+        if state in ('failed', 'error', 'rejected'):
+            return self.finish(state='failed')
+        if state == 'paused':
+            return self.update(phase='Paused; continuation is required', state='paused')
+        phase = ('Processing finished; source review is required' if state == 'review_required'
+                 else 'Result confirmed')
+        self.update(phase=phase)
+        return self.finish(verified=True)
+
+    def failed(self, error):
+        from concurrent.futures import CancelledError
+        return self.finish(state='cancelled' if isinstance(error, (InterruptedError, CancelledError))
+                           else 'failed')
+
+    def cancel_requested(self):
+        return self.update(phase='Cancellation requested; waiting for the operation to stop')
 
 
 class ProgressPanel:
@@ -24,6 +84,8 @@ class ProgressPanel:
         self.feedback_factory = feedback_factory
         self.hub = ProgressHub()
         self.feedback = feedback_factory(preferences or FeedbackPreferences())
+        self._media_owners = {}
+        self._retired_feedback = []
         self.window = wx.Panel(parent)
         self.window.SetName('Operation progress')
         layout = wx.BoxSizer(wx.VERTICAL)
@@ -73,10 +135,33 @@ class ProgressPanel:
         hub = self.hub
         return hub.finish(handle, state=state, verified=verified) if self._bound() else None
 
-    def set_media_state(self, *, playback=False, recording=False):
-        feedback = self.feedback
-        if self._bound():
-            feedback.set_media_state(playback=playback, recording=recording)
+    def set_media_state(self, *, playback=False, recording=False, owner=None):
+        if self.alive and (not (playback or recording) or self._bound()):
+            if playback or recording:
+                self._media_owners[owner] = (bool(playback), bool(recording))
+            else:
+                self._media_owners.pop(owner, None)
+            self._apply_media_state()
+
+    def _apply_media_state(self):
+        self.feedback.set_media_state(
+            playback=bool(self._retired_feedback) or any(value[0] for value in self._media_owners.values()),
+            recording=any(value[1] for value in self._media_owners.values()))
+
+    def prepare_media(self, *, playback=False, recording=False, owner=None, timeout=1.0):
+        """Suppress notifications and acknowledge released output before play."""
+        if (type(timeout) not in (int, float) or not 0 <= timeout <= 2
+                or type(playback) is not bool or type(recording) is not bool
+                or not (playback or recording)):
+            raise ValueError('A media owner and a bounded quiet handoff are required.')
+        if not self._bound():
+            return False
+        self.set_media_state(playback=playback, recording=recording, owner=owner)
+        deadline = time.monotonic() + timeout
+        for feedback in (*self._retired_feedback, self.feedback):
+            if not feedback.wait_quiet(max(0, min(2, deadline - time.monotonic()))):
+                return False
+        return self._bound()
 
     def set_background(self, background):
         if self.alive:
@@ -87,9 +172,15 @@ class ProgressPanel:
         if not self.alive:
             return
         self.hub.close()
-        self.feedback.close()
+        previous = self.feedback
+        previous.close()
+        if not previous.wait_quiet(0):
+            self._retired_feedback.append(previous)
         self.hub = ProgressHub()
         self.feedback = self.feedback_factory(preferences)
+        # A library/preferences reload must not unmute an already playing
+        # local audio owner. Owners withdraw their own flag on stop/close.
+        self._apply_media_state()
         self.current, self.notice = current, notice
         self._displayed = None
         self._render()
@@ -101,6 +192,10 @@ class ProgressPanel:
             self.on_tick()
         if not self._bound():
             return
+        remaining = [feedback for feedback in self._retired_feedback if not feedback.wait_quiet(0)]
+        if len(remaining) != len(self._retired_feedback):
+            self._retired_feedback = remaining
+            self._apply_media_state()
         for item in self.hub.drain():
             self.feedback.submit(item)
         self._render()
@@ -222,14 +317,16 @@ class ProgressActions:
 
     def _identity(self):
         library = self.frame.library
-        return library, str(Path(library.root).absolute())
+        root = Path(library.root).absolute()
+        info = root.stat()
+        return library, str(root), info.st_dev, info.st_ino
 
     def _current(self):
         if self._binding is None or getattr(self.frame, '_closing', False):
             return False
         try:
-            library, root = self._identity()
-            return library is self._binding[0] and root == self._binding[1]
+            identity = self._identity()
+            return identity[0] is self._binding[0] and identity[1:] == self._binding[1:]
         except Exception:
             return False
 
@@ -324,6 +421,8 @@ class ProgressActions:
 
 def install_progress_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     actions = ProgressActions(frame, wx_module=wx)
     # Locate the real status item, rather than assuming a fixed panel index.
     index = next((index for index, item in enumerate(frame.layout.GetChildren())
@@ -341,11 +440,13 @@ def install_progress_actions(frame):
     if menu is None:
         menu = wx.Menu()
         frame.menu_bar.Append(menu, '&Options')
-    for label, handler in (('Query current operation progress', actions.query_current),
-                           ('Operation feedback preferences...', actions.configure),
-                           ('Toggle operation feedback mute', actions.mute)):
+    for identity, label, handler in (
+            ('progress.status', 'Query current operation progress', actions.query_current),
+            ('progress.settings', 'Operation feedback preferences...', actions.configure),
+            ('progress.mute', 'Toggle operation feedback mute', actions.mute)):
         item = menu.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, CommandSpec(identity, label, 'main', ''), item)
     frame.progress_actions = actions
     frame.host.Layout()
     return actions

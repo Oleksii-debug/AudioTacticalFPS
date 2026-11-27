@@ -62,7 +62,7 @@ jobs:
           git rev-parse HEAD
           & $binary -version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Observe actual MP3 framing before the unchanged acceptance gate
+      - name: Observe raw MP3 codec framing before export acceptance
         run: |
           python -I -B scripts/windows_mp3_verification_probe.py 2>&1 | Tee-Object 'ci-audio/mp3-framing.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

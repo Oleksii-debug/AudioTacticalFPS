@@ -42,6 +42,8 @@ def main(argv=None):
         command.add_argument('--folder', required=True, type=Path, help='Separate local portable snapshot folder')
         if name == 'publish':
             command.add_argument('--label', default='Portable checkpoint')
+            command.add_argument('--include-generated-audio', action='store_true',
+                help='Include generated audio from projects explicitly saved in this library; external exports stay excluded')
             parent = command.add_mutually_exclusive_group(required=True)
             parent.add_argument('--empty', action='store_true', help='Require an empty portable history')
             parent.add_argument('--parent', help='Require this previously reviewed current snapshot ID')
@@ -69,7 +71,8 @@ def main(argv=None):
             result = {'snapshots': service.list(args.folder), 'trusted': False,
                       'notice': 'Listed IDs do not replace an independently retained transfer code.'}
         elif args.command == 'publish':
-            result = service.publish(args.folder, args.label, args.parent, password)
+            result = service.publish(args.folder, args.label, args.parent, password,
+                                     include_generated=args.include_generated_audio)
         elif args.command == 'inspect':
             result = service.inspect(args.folder, args.token, password)
         else:

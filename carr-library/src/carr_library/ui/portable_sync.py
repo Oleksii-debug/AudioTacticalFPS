@@ -122,6 +122,7 @@ class PortableSyncController:
         self.epoch = 0
         self.history, self.history_folder, self.expected_head = (), None, None
         self.inspection, self.inspected_input = None, None
+        self.progress = None
 
     def _identity(self):
         app = self.frame.library
@@ -172,6 +173,11 @@ class PortableSyncController:
         self.cancel_event.clear()
         self.epoch += 1
         epoch = self.epoch
+        from .operation_progress import OperationProgress
+        measured = OperationProgress(self.frame, {'list': 'Portable snapshot history',
+            'publish': 'Publish portable snapshot', 'inspect': 'Verify portable snapshot',
+            'restore': 'Restore portable snapshot'}[kind])
+        self.progress = measured
         secret = _Secret(password)
         password = None
         self.view.set_busy(True)
@@ -182,21 +188,31 @@ class PortableSyncController:
 
         def worker():
             credential = secret.take()
+            callbacks_active = True
             try:
                 if self._cancelled() or self.epoch != epoch:
                     return _Outcome(cancelled=True)
 
                 def status(message):
+                    if not callbacks_active:
+                        return
                     safe = ' '.join(_text(message, credential).split())[:1000]
                     self.dispatch(self._status, epoch, safe)
 
-                value = operation(credential, status)
+                def progress(*, phase, completed=None, total=None, state='running'):
+                    if (callbacks_active and self._same_scope() and self.epoch == epoch
+                            and not self.cancel_event.is_set()):
+                        measured.update(phase=_text(phase, credential), completed=completed,
+                                        total=total, state=state)
+
+                value = operation(credential, status, progress)
                 return _Outcome(value=_redact(value, credential))
             except Exception as error:
                 return _Outcome(error=_failure(error), cancelled=(
                     self._cancelled() or isinstance(error, InterruptedError)),
                     recovery=_recovery(error, credential))
             finally:
+                callbacks_active = False
                 credential = None
                 secret.take()
 
@@ -206,20 +222,21 @@ class PortableSyncController:
             except Exception:
                 outcome = _Outcome(error='The snapshot worker stopped unexpectedly. Check history before retrying.')
             try:
-                self.dispatch(self._complete, epoch, kind, outcome, complete)
+                self.dispatch(self._complete, epoch, kind, outcome, complete, measured)
             except RuntimeError:
                 # A terminating wx application may no longer accept CallAfter.
-                pass
+                measured.finish(state='cancelled')
 
         try:
             self.executor.submit(worker).add_done_callback(returned)
         except Exception:
             secret.take()
-            self._complete(epoch, kind, _Outcome(error='The snapshot worker could not start.'), complete)
+            self._complete(epoch, kind, _Outcome(error='The snapshot worker could not start.'), complete, measured)
 
-    def _complete(self, epoch, kind, outcome, complete):
+    def _complete(self, epoch, kind, outcome, complete, measured):
         self.running = False
         if not self.alive:
+            measured.finish(state='cancelled')
             return
         if self.closing:
             self.dispose()
@@ -227,9 +244,11 @@ class PortableSyncController:
             return
         self.view.set_busy(False)
         if not self._same_scope() or self.epoch != epoch:
+            measured.finish(state='cancelled')
             self.view.report('The data folder or inputs changed. Results were not displayed; check snapshot history before retrying.', focus=True)
             return
         if outcome.recovery is not None:
+            measured.finish(state='failed')
             self.history_folder = None
             try:
                 recovery = outcome.recovery
@@ -256,20 +275,24 @@ class PortableSyncController:
                 self.view.report('An output exists, but its recovery receipt could not be displayed. Check the snapshot folder or destination before retrying.', focus=True)
             return
         if outcome.cancelled or (self.cancel_event.is_set() and kind in ('list', 'inspect')):
+            measured.finish(state='cancelled')
             self.view.report('Operation cancelled. No verification preview was accepted; refresh history before retrying.', focus=True)
             if kind == 'publish':
                 self.history_folder = None
             return
         if outcome.error:
+            measured.finish(state='failed')
             if kind == 'publish':
                 self.history_folder = None
             self.view.report(outcome.error, focus=True)
             return
         try:
             complete(outcome.value)
+            measured.complete()
             if self.cancel_event.is_set():
                 self.view.report('The operation completed before cancellation took effect. Review its receipt below.', focus=True)
         except Exception:
+            measured.finish(state='failed')
             self._clear_inspection()
             self.history_folder = None
             self.view.report('The operation returned an unsupported receipt. Verify the output before retrying.', focus=True)
@@ -296,16 +319,18 @@ class PortableSyncController:
                 self.view.show_history(tuple(history_label(row) for row in rows))
                 self.view.report(f'{len(rows)} snapshot(s) listed. History is unverified; enter a separately obtained transfer code to verify or restore.')
 
-            self._start('list', lambda password, status: self.service.list(folder), complete)
+            self._start('list', lambda password, status, progress: self.service.list(folder), complete)
         except Exception as error:
             self._error(error)
 
-    def publish(self, folder, label, *, password=None, confirmed=False):
+    def publish(self, folder, label, *, password=None, confirmed=False, include_generated=False):
         try:
             self._ready()
             folder = _path(folder, 'snapshot folder')
             if not confirmed:
                 raise InputError('Confirm the complete data-folder backup scope before publishing.')
+            if type(include_generated) is not bool:
+                raise InputError('Choose explicitly whether to include generated audio saved in this library.')
             if self.history_folder != folder:
                 raise InputError('Refresh this snapshot folder before publishing, so history conflicts can be checked.')
             if not isinstance(label, str) or not 1 <= len(label.strip()) <= 200:
@@ -317,16 +342,20 @@ class PortableSyncController:
                 token = _token(receipt['token'])
                 if receipt.get('head') != snapshot or type(receipt.get('encrypted')) is not bool:
                     raise ValueError('publication receipt')
+                if receipt.get('include_generated', False) is not include_generated:
+                    raise ValueError('publication audio scope')
                 self.expected_head = snapshot
                 self.view.show_preview('Snapshot published. Keep this transfer code separately from the snapshot folder.\n'
                     f'Transfer code: {token}\nSnapshot: {snapshot}\n'
                     f'Encrypted: {"Yes" if receipt["encrypted"] else "No"}\n'
+                    f'Generated audio saved in this library: {"Included" if include_generated else "Not included"}\n'
                     f'Scope: {_text(receipt.get("scope", SCOPE))}\n'
                     f'{_text(receipt.get("message", ""))}', verified=False)
                 self.view.report('Snapshot published. Its transfer code is displayed for manual copying; nothing was placed on the clipboard.', focus=True)
 
-            self._start('publish', lambda secret, status: self.service.publish(folder, label, head,
-                password=secret, cancelled=self._cancelled, on_status=status), complete, password)
+            self._start('publish', lambda secret, status, progress: self.service.publish(folder, label, head,
+                password=secret, include_generated=include_generated, cancelled=self._cancelled,
+                on_status=status, on_progress=progress), complete, password)
         except Exception as error:
             self._error(error)
         finally:
@@ -347,8 +376,8 @@ class PortableSyncController:
                 self.view.show_preview(inspection_text(receipt), verified=True)
                 self.view.report('Snapshot verified against the entered transfer code. Review its scope and warnings, then choose a new restore folder.', focus=True)
 
-            self._start('inspect', lambda secret, status: self.service.inspect(folder, token,
-                password=secret, cancelled=self._cancelled, on_status=status), complete, password)
+            self._start('inspect', lambda secret, status, progress: self.service.inspect(folder, token,
+                password=secret, cancelled=self._cancelled, on_status=status, on_progress=progress), complete, password)
         except Exception as error:
             self._error(error)
         finally:
@@ -389,8 +418,8 @@ class PortableSyncController:
                     + _text(receipt.get('message', '')), verified=False)
                 self.view.report('Restore completed into the new folder. The current library and notebook remain open.', focus=True)
 
-            self._start('restore', lambda secret, status: self.service.restore(folder, token, destination,
-                password=secret, cancelled=self._cancelled, on_status=status), complete, password)
+            self._start('restore', lambda secret, status, progress: self.service.restore(folder, token, destination,
+                password=secret, cancelled=self._cancelled, on_status=status, on_progress=progress), complete, password)
         except Exception as error:
             self._error(error)
         finally:
@@ -399,6 +428,8 @@ class PortableSyncController:
     def cancel(self):
         if self.alive and self.running:
             self.cancel_event.set()
+            if self.progress is not None:
+                self.progress.cancel_requested()
             self.view.report('Cancellation requested. Waiting for the current safe stopping point…', focus=True)
 
     def request_close(self):
@@ -413,6 +444,8 @@ class PortableSyncController:
             return
         self.alive = False
         self.cancel_event.set()
+        if self.progress is not None:
+            self.progress.finish(state='cancelled')
         self.inspection, self.inspected_input = None, None
         self.executor.shutdown(wait=False, cancel_futures=False)
 
@@ -429,6 +462,7 @@ def inspection_text(receipt):
     warnings = '\n'.join('• ' + _text(item) for item in receipt.get('warnings', ())) or 'None reported by this backup format.'
     return (f'Verified snapshot: {receipt["id"]}\nScope: {_text(receipt.get("scope", SCOPE))}\n'
             f'Encrypted: {"Yes" if receipt["encrypted"] else "No"}\n'
+            f'Generated audio saved in the source library: {"Included" if receipt.get("include_generated") is True else "Not included"}\n'
             f'Schema version: {receipt.get("schema_version", "Unknown")}\n'
             f'Files: {receipt.get("files", "Unknown")}; bytes: {receipt.get("bytes", "Unknown")}\n'
             f'Backup checksum: {receipt.get("backup_checksum", "Unknown")}\n\n'
@@ -528,6 +562,10 @@ class NativePortableSync:
         self.label = self._field(layout, 'Label for a new snapshot')
         self.encrypt = wx.CheckBox(self.window, label='Encrypt a new snapshot with an operation-only password')
         layout.Add(self.encrypt, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        self.include_generated = wx.CheckBox(self.window, label='Include generated audio saved in this library')
+        self.include_generated.SetName('Include generated audio saved in this library')
+        self.include_generated.SetValue(False)
+        layout.Add(self.include_generated, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         self.token = self._field(layout, 'Transfer code obtained separately (64 hexadecimal characters)')
         self.destination = self._field(layout, 'New restore folder (must not exist)')
         self.parent_button = wx.Button(self.window, label='Choose restore parent folder…')
@@ -561,6 +599,7 @@ class NativePortableSync:
             raise
         self.folder.Bind(wx.EVT_TEXT, lambda event: self.controller.inputs_changed(folder=True))
         self.token.Bind(wx.EVT_TEXT, lambda event: self.controller.inputs_changed())
+        self.include_generated.Bind(wx.EVT_CHECKBOX, lambda event: self.controller.inputs_changed())
         self.set_busy(False)
         self.report('Choose a snapshot folder and refresh its history. No network service is used.')
 
@@ -616,18 +655,23 @@ class NativePortableSync:
         try:
             folder, label = self.folder.GetValue(), self.label.GetValue()
             encrypted = self.encrypt.GetValue()
-            expected = ((self.folder, folder), (self.label, label), (self.encrypt, encrypted))
+            include_generated = self.include_generated.GetValue()
+            expected = ((self.folder, folder), (self.label, label), (self.encrypt, encrypted),
+                        (self.include_generated, include_generated))
             self.controller._ready()
             if self.controller.history_folder != _path(folder, 'snapshot folder'):
                 raise InputError('Refresh this snapshot folder before publishing, so history conflicts can be checked.')
             confirmed = self.dialogs.confirm(self.window, 'Publish all saved libraries in this data folder?',
-                f'Source: {self.controller.app.root}\nSnapshot folder: {folder}\n\n{SCOPE}')
+                f'Source: {self.controller.app.root}\nSnapshot folder: {folder}\n\n{SCOPE}\n\n'
+                + ('Include generated audio already saved in this library. External exports are excluded.'
+                   if include_generated else 'Generated audio is not included. Keep finished exports separately.'))
             if not confirmed or not self._same_inputs(expected):
                 return
             accepted, password = (self.dialogs.password(self.window, publish=True)
                                   if encrypted else (True, None))
             if accepted and self._same_inputs(expected):
-                self.controller.publish(folder, label, password=password, confirmed=True)
+                self.controller.publish(folder, label, password=password, confirmed=True,
+                                        include_generated=include_generated)
         except Exception as error:
             self.controller._error(error)
         finally:
@@ -675,7 +719,7 @@ class NativePortableSync:
     def set_busy(self, busy):
         if not self._window_alive:
             return
-        for control in (self.folder, self.browse, self.history, self.label, self.encrypt, self.token,
+        for control in (self.folder, self.browse, self.history, self.label, self.encrypt, self.include_generated, self.token,
                         self.destination, self.parent_button, self.refresh_button, self.publish_button,
                         self.verify_button):
             control.Enable(not busy)

@@ -476,6 +476,7 @@ The external busy callback must only inspect thread-safe host state, never wx.
         self._closed = self._background = self._playback = self._recording = False
         self._notice = ''
         self._thread = None
+        self._active = False
 
     @property
     def notice(self):
@@ -501,6 +502,24 @@ The external busy callback must only inspect thread-safe host state, never wx.
                 self._generation += 1
                 self._pending.clear()
             self._condition.notify_all()
+
+    def wait_quiet(self, timeout=1.0):
+        """Confirm that an invalidated notification has released its output.
+
+        Media owners set their suppression flag first. This bounded handoff is
+        used only when starting real playback/recording, never by producer
+        updates. A slow/uncooperative output leaves media start unapproved.
+        """
+        if type(timeout) not in (int, float) or not 0 <= timeout <= 2 or not math.isfinite(timeout):
+            raise ValueError('Choose a quiet handoff timeout between zero and two seconds.')
+        deadline = time.monotonic() + timeout
+        with self._condition:
+            while self._active:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or threading.current_thread() is self._thread:
+                    return False
+                self._condition.wait(timeout=remaining)
+            return True
 
     def set_background(self, background):
         if type(background) is not bool:
@@ -561,6 +580,7 @@ The external busy callback must only inspect thread-safe host state, never wx.
                 self._pending.pop(key)
                 preferences, generation = self.preferences, self._generation
                 self._last = self.clock()
+                self._active = True
             cancelled = lambda: self._cancelled(generation)
             try:
                 if 'Beep' in preferences.mode and not cancelled():
@@ -575,6 +595,10 @@ The external busy callback must only inspect thread-safe host state, never wx.
                     self._notice = (str(exc) if type(exc) is FeedbackUnavailable else
                                     'Operation audio feedback is unavailable; visual progress remains active.')
                     self._pending.clear()
+            finally:
+                with self._condition:
+                    self._active = False
+                    self._condition.notify_all()
 
     def close(self):
         with self._condition:

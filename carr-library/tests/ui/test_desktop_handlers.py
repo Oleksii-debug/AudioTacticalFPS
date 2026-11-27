@@ -128,7 +128,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_academic_comparison_actions', 'install_portable_sync_actions',
-        'install_audio_studio_actions', 'install_api_connection_actions')}
+        'install_audio_studio_actions', 'install_api_connection_actions', 'install_assistant_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -234,7 +234,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
     env, _ = classes
     wx = env['wx']
     wx.Menu, wx.MenuBar, wx.Dialog, wx.Button = Menu, MenuBar, object, Mock(return_value=Mock())
-    wx.ID_ANY, wx.ALL, wx.EVT_MENU, wx.EVT_BUTTON = -1, 1, 'menu', 'button'
+    wx.ID_ANY, wx.ALL, wx.EVT_MENU, wx.EVT_BUTTON, wx.NOT_FOUND = -1, 1, 'menu', 'button', -1
     monkeypatch.setitem(sys.modules, 'wx', wx)
     existing_modules = set(sys.modules)
     try:
@@ -258,6 +258,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         for module_name, action_name in (
                 ('audio_studio', 'install_audio_studio_actions'),
                 ('api_connections', 'install_api_connection_actions'),
+                ('assistant_dialog', 'install_assistant_actions'),
                 ('portable_sync', 'install_portable_sync_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
@@ -282,6 +283,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
             'academic.open': 'Ctrl+Shift+B',
             'reading.open': 'Ctrl+R',
             'library.epub_reader': 'Ctrl+Shift+R',
+            'assistant.open': 'Ctrl+Alt+J',
         }
         assert all(bindings.get(name) == shortcut for name, shortcut in required.items())
         assert 'file.open_reading_copy' in bindings

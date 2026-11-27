@@ -123,7 +123,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; text='\n'.join(pathlib.Path(p).read_text() for p in ('packaging/windows-semantic-cp311.lock','packaging/windows-sync-cp311.lock')); pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',text,re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; text='\n'.join(pathlib.Path(p).read_text() for p in ('packaging/windows-semantic-cp311.lock','packaging/windows-sync-cp311.lock')); pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',text,re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==53 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -175,6 +175,20 @@ jobs:
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
+            'tests/packaging/test_ci_check.py',
+            'tests/test_progress.py',
+            'tests/ui/test_operation_progress.py',
+            'tests/ui/test_progress_producers.py',
+            'tests/ui/test_audio_progress.py',
+            'tests/sync',
+            'tests/ui/test_portable_sync.py',
+            'tests/audio',
+            'tests/ui/test_audio_studio.py',
+            'tests/assistant',
+            'tests/ui/test_assistant_actions.py',
+            'tests/ui/test_assistant_menu.py',
+            'tests/ui/test_backup_options.py',
+            'tests/e2e/test_library_backup_cli.py',
             'tests/packaging/test_install_bytecode.py',
             'tests/packaging/test_windows_profile.py',
             'tests/packaging/test_native_launcher_bundle.py',
@@ -229,6 +243,14 @@ jobs:
             'tests/storage/test_backup_schema_identity.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
+            'tests/research/test_bibtex_import.py',
+            'tests/research/test_csl_author_boundaries.py',
+            'tests/citations/test_csl.py',
+            'tests/citations/test_custom_csl.py',
+            'tests/citations/test_bibliography_workbench.py',
+            'tests/citations/test_custom_workbench.py',
+            'tests/ui/test_citation_styles_jobs.py',
+            'tests/reader/test_export_no_clobber.py',
             'tests/e2e/test_academic_workflow.py',
             'tests/citations/test_finish_label_integrity.py',
             'tests/storage/test_printed_label_integrity.py',
@@ -301,7 +323,6 @@ jobs:
             'tests/citations/test_pdf_mapping_contradiction.py',
             'tests/storage/test_research_schema.py',
             'tests/packaging/test_source_wheel.py',
-            'tests/packaging/test_ci_check.py',
             'tests/catalog/test_application_metadata_integrity.py',
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
@@ -324,12 +345,12 @@ jobs:
             'tests/storage/test_backup_v3_compatibility.py',
             'tests/extract/test_ocr_languages.py',
             'tests/ui/test_ocr_language_dialog.py',
-            'tests/ui/test_ocr_options.py',
             'tests/ui/test_federated_labels.py',
             'tests/search/test_literal_unicode_memory.py',
             'tests/e2e/test_search_deadline.py',
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/storage/test_backup_v4_sidecars.py',
+            'tests/storage/test_backup_publication_recovery.py',
             'tests/e2e/test_search_operation_budget_reading_review.py',
             'tests/research/test_academic_library_reading_review.py',
             'tests/ui/test_federated_search_reading_review.py',
@@ -342,6 +363,24 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+
+      - name: Exercise installed native assistant approval and restart recovery
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_assistant_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-assistant.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native progress and keyboard availability
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_operation_progress_native.py --native 2>&1 | Tee-Object 'ci-results/native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native citation formatting and BibTeX import
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/native-citation-styles.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native Import Center and durable batch workflow
         timeout-minutes: 3
@@ -572,6 +611,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_v3_reading_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-v3-reading-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_assistant_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -611,6 +652,11 @@ jobs:
                             carr_library.acquisition.providers, carr_library.ui.acquisition_dialog):
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
+          # Test doubles are shared by several UI suites. Admit only that
+          # trusted test-helper directory, never the checkout's application src.
+          ui_helpers = pathlib.Path('tests/ui').resolve()
+          assert not (ui_helpers / 'carr_library').exists()
+          sys.path.insert(0, str(ui_helpers))
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
@@ -631,7 +677,27 @@ jobs:
                             'tests/extract/test_managed_ocr.py',
                             'tests/e2e/test_managed_ocr_import.py',
                             'tests/extract/test_ocr_identifiers.py',
-                            'tests/ui/test_ocr_profile_options.py', 'tests/sync']
+                            'tests/ui/test_ocr_profile_options.py', 'tests/sync',
+                            'tests/research/test_bibtex_import.py',
+                            'tests/research/test_csl_author_boundaries.py',
+                            'tests/citations/test_bibliography_workbench.py',
+                            'tests/citations/test_custom_workbench.py',
+                            'tests/reader/test_export_no_clobber.py',
+                            'tests/test_progress.py',
+                            'tests/ui/test_operation_progress.py',
+                            'tests/ui/test_progress_producers.py',
+                            'tests/ui/test_audio_progress.py',
+                            'tests/audio/test_encoded_verification.py',
+                            'tests/audio/test_production_commit.py',
+                            'tests/assistant',
+                            'tests/ui/test_assistant_actions.py',
+                            'tests/ui/test_assistant_menu.py',
+                            'tests/ui/test_backup_options.py',
+                            'tests/audio/test_managed_projects.py',
+                            'tests/audio/test_managed_input_adoption.py',
+                            'tests/audio/test_library_sidecars.py',
+                            'tests/audio/test_input_asset_backup.py',
+                            'tests/storage/test_backup_publication_recovery.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)

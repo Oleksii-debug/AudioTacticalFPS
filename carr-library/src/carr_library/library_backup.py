@@ -83,6 +83,21 @@ def _check_budget(total, maximum):
         raise RestoreError('complete backup exceeds the requested byte budget')
 
 
+def _release_staging_links(stage, entries, sidecars):
+    """Remove this operation's payload twins before the completion marker.
+
+    Even a process exit immediately after publishing the manifest must leave
+    ordinary one-link files that independent verification can safely reopen.
+    """
+    paths = [stage / DATABASE]
+    paths.extend(stage / ORIGINALS / entry.filename for entry in entries)
+    paths.extend(stage / entry['filename'] for entry in sidecars)
+    for path in paths:
+        path.unlink()
+    for parent in sorted({path.parent for path in paths}, key=lambda path: len(path.parts), reverse=True):
+        _sync_directory(parent)
+
+
 def _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cancelled=lambda: False):
     """Use the canonical catalog validator, with bounded cancellable file copying."""
     limits = dict(include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=max(1, max_bytes))
@@ -119,9 +134,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
     backup_sidecars._check_cancelled(cancelled)
     if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 1):
         raise RestoreError('backup byte budget must be a positive integer')
-    if type(include_generated) is not bool or include_generated:
-        raise RestoreError('Generated audio needs its producer\'s typed backup adapter; '
-                           'use its project export before requesting complete library backup.')
+    if type(include_generated) is not bool:
+        raise RestoreError('Choose whether to include managed generated audio.')
     destination = _destination(destination, app.root)
     with exclusive_writer(app.root):
         _plain(app.database)
@@ -142,13 +156,13 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                                           max_bytes=asset_budget, cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
-                state_budget = backup_sidecars.MAX_BYTES if max_bytes is None else max_bytes - total
+                state_budget = backup_sidecars.maximum_bytes(include_generated) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
-                    max_bytes=state_budget, cancelled=cancelled)
+                    max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
             manifest = dict(version=4, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
-                assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=False)
+                assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
             backup_sidecars.normalize_manifest(manifest)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
@@ -167,7 +181,10 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             backup_sidecars.publish(stage, destination, sidecars, sync_directory=_sync_directory)
             _sync_directory(destination / ORIGINALS)
-            os.link(stage / MANIFEST, destination / MANIFEST)
+            _release_staging_links(stage, entries, sidecars)
+            # Exclusive creation preserves competing destinations. Interrupted
+            # manifest bytes cannot pass the mandatory independent digest.
+            _sync_file(destination / MANIFEST, raw)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
@@ -259,6 +276,42 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
             raise RestoreError('backup schema fingerprint mismatch')
 
 
+def _verify_contents(source, stage, manifest, *, copy_files, cancelled):
+    inventory = backup_sidecars.normalize_manifest(manifest)
+    snapshot = stage / DATABASE
+    _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
+    with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
+        storage.check()
+        original_store = RetainedAssets(source / ORIGINALS)
+        entries = verify_catalog_assets(storage.db, original_store,
+            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        if _asset_manifest(entries) != manifest['assets']:
+            raise RestoreError('asset manifest disagrees with the database')
+        if copy_files:
+            _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
+        backup_sidecars.restore(storage.db, source, stage, inventory,
+                                cancelled=cancelled, copy_files=copy_files)
+    backup_sidecars._check_cancelled(cancelled)
+    return inventory, entries
+
+
+def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
+    """Authenticate a backup without copying its media or granting job approval.
+
+    SQLite is checked on a private database copy. Original documents and typed
+    media are streamed from the source; all sidecars use the restore validators.
+    Keep the expected digest independently, as required for restoration.
+    """
+    backup_sidecars._check_cancelled(cancelled)
+    source = guard_data_directory(source, purpose='backup verification')
+    _plain(source, directory=True)
+    source = source.resolve(strict=True)
+    manifest = _read_manifest(source, expected_manifest_sha256)
+    with TemporaryDirectory(prefix='carr-backup-verify-') as temporary:
+        _verify_contents(source, Path(temporary), manifest, copy_files=False, cancelled=cancelled)
+    return manifest
+
+
 def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
     """Restore a trusted backup into a new data root; return that root's Path.
 
@@ -277,16 +330,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE
-        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
-        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
-            storage.check()
-            original_store = RetainedAssets(source / ORIGINALS)
-            entries = verify_catalog_assets(storage.db, original_store,
-                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
-            if _asset_manifest(entries) != manifest['assets']:
-                raise RestoreError('asset manifest disagrees with the database')
-            _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
-            backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
+        inventory, entries = _verify_contents(source, stage, manifest,
+                                              copy_files=True, cancelled=cancelled)
         backup_sidecars._check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -296,6 +341,9 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
+        from .audio.library_sidecars import initialize_restored
+        initialize_restored(destination, [entry for entry in inventory.entries
+                                         if entry['filename'].startswith('audio-projects/')])
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

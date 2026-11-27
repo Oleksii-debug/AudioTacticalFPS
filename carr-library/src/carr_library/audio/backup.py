@@ -75,12 +75,13 @@ def _allowed(name):
         return True
     if name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name):
         return True
-    if re.fullmatch(r'audio/assets/[^/]+\.wav', name):
+    # The typed input resolver owns suffix-independent PCM references.
+    if re.fullmatch(r'audio/assets/[^/]+', name):
         return True
     if re.fullmatch('audio/cache/' + _HEX + r'\.(wav|json|mid|music\.json)', name):
         return True
     if re.fullmatch('audio/music-jobs/' + _HEX
-            + r'/(?:cue\.(?:wav|mid|music\.json)|cue\.music-work/(?:state\.json|part-[0-9]{8}\.wav))', name):
+            + r'/(?:cue\.(?:wav|mid|music\.json)|cue\.music-work/(?:state\.json|part-[0-9]{8}\.wav|score\.partial\.mid|provenance\.partial\.json))', name):
         return True
     if re.fullmatch('audio/renders/' + _HEX + r'/[^/]+\.(wav|mp3|flac|ogg|opus|aac|m4a|m4b|aiff|wma|srt|vtt|json|ffmeta|mid)', name):
         return True
@@ -109,9 +110,13 @@ def _studio(payload):
     for name in ('title', 'voice', 'language'):
         if not isinstance(payload[name], str) or not payload[name].strip():
             raise ValueError('The saved Audio Studio settings are invalid.')
-    NarrationDraft.from_dict(payload['draft'])
+    draft = NarrationDraft.from_dict(payload['draft'])
     reference = payload['source_reference']
     if reference is not None:
+        if type(reference) is dict and reference.get('kind') == 'saved-reading-copy-snapshot':
+            from .narration_bridge import validate_source_reference
+            validate_source_reference(reference, draft)
+            return payload
         if type(reference) is not dict or reference.get('kind') not in ('local-text', 'library-source-reading-copy'):
             raise ValueError('Unknown source-reference settings are not exported.')
         allowed = ({'kind', 'filename', 'original_path', 'bytes_sha256'} if reference['kind'] == 'local-text'
@@ -267,6 +272,127 @@ def _music_inventory(project_dir, include, *, file_budget, byte_budget, cancelle
                 raise ValueError('Completed music does not match its accepted provenance.')
             if settings['engine'] == 'procedural':
                 include(prefix + 'cue.mid', job / 'cue.mid')
+            # The composer retains these exact accepted hard-link twins. They
+            # are portable only after their corresponding final artifact exists
+            # and independently matches; arbitrary partial work stays excluded.
+            for name, final in (('score.partial.mid', job / 'cue.mid'),
+                                ('provenance.partial.json', provenance_path)):
+                twin = job / 'cue.music-work' / name
+                if os.path.lexists(twin) and os.path.lexists(final):
+                    if (_safe(twin).st_size == _safe(final).st_size
+                            and _checked_hash(twin, maximum=byte_budget, cancelled=cancelled)
+                            == _checked_hash(final, maximum=byte_budget, cancelled=cancelled)):
+                        include(prefix + 'cue.music-work/' + name, twin)
+
+
+def _asset_references(project, *, file_budget, cancelled):
+    """Read only sound directives, keeping unrelated unfinished edits portable."""
+    legacy_kind = 'narration' if project['source_reference'] is not None else 'script'
+    if project.get('input_kind', legacy_kind) != 'script':
+        return set()
+    from .models import Sound
+    from .production import parse_script
+    names = set()
+    draft = NarrationDraft.from_dict(project['draft'])
+    historical = False
+    scanned = 0
+    while True:
+        check_cancelled(cancelled)
+        scanned += len(draft.text)
+        if scanned > 256 * 1024 ** 2:
+            raise ValueError('Sound input history exceeds its bounded scan budget.')
+        for line in draft.text.splitlines():
+            check_cancelled(cancelled)
+            line = line.strip()
+            if not re.match(r'\[sound(?:\s|\])', line):
+                continue
+            # The production parser and Sound model own quoting, names and
+            # controls. shlex does not expand variables or execute anything.
+            try:
+                plan = parse_script(line, voice=project['voice'], language=project['language'])
+            except ValueError:
+                if historical:
+                    # Incomplete older edits remain undoable text, not invented
+                    # asset references. The current script still fails closed.
+                    continue
+                raise
+            names.update(event.asset for scene in plan.scenes for event in scene.events
+                         if isinstance(event, Sound))
+            if len(names) > file_budget:
+                raise ValueError('Sound inputs exceed the snapshot file budget.')
+        # Work only on our fully validated private reconstruction. Public undo
+        # reaches every accepted saved edit and the immutable source text.
+        if not draft.undo():
+            break
+        historical = True
+    return names
+
+
+def input_assets(project_file, project_dir, *, strict=False,
+                 file_budget=DEFAULT_FILE_BUDGET, cancelled=lambda: False):
+    """Return checked input WAVs regardless of generated-output inclusion.
+
+    Referenced names come from saved/recovery scripts and their validated undo
+    history, including immutable source text. Existing WAV-named inputs remain
+    included; other neighboring files are not collected.
+    Strict mode validates an archive's asset directory without allowing extras.
+    """
+    _budget(DEFAULT_BYTE_BUDGET, file_budget)
+    project_file = Path(project_file)
+    project = _studio(_read_json(project_file))
+    projects = [project]
+    recovery = project_file.with_name(project_file.name + '.recovery.json')
+    if recovery.exists() or recovery.is_symlink():
+        value = _read_json(recovery)
+        if (type(value) is not dict or set(value) != {'kind', 'version', 'project_id', 'base_sha256', 'project'}
+                or value['kind'] != 'audio-studio-recovery' or type(value['version']) is not int
+                or value['version'] != 1 or value['project_id'] != project['project_id']):
+            raise ValueError('The recovery draft is invalid or belongs to another project.')
+        recovered = _studio(value['project'])
+        if recovered['project_id'] != project['project_id']:
+            raise ValueError('The recovery draft belongs to another project.')
+        projects.append(recovered)
+    required = set()
+    for payload in projects:
+        required.update(_asset_references(payload, file_budget=file_budget, cancelled=cancelled))
+    if len(required) > file_budget:
+        raise ValueError('Sound inputs exceed the snapshot file budget.')
+    if project_dir is None:
+        if required:
+            raise ValueError('Choose the audio project folder to include its referenced sound inputs.')
+        return {}
+    directory = Path(project_dir) / 'assets'
+    if not directory.exists() and not directory.is_symlink():
+        if required:
+            raise ValueError('A referenced sound input is missing from the project assets folder.')
+        return {}
+    _safe(directory, directory=True)
+    names = set(required)
+    for count, path in enumerate(directory.iterdir(), 1):
+        check_cancelled(cancelled)
+        if count > file_budget:
+            raise ValueError('Sound inputs exceed the snapshot file budget.')
+        if path.name.lower().endswith('.wav'):
+            names.add(path.name)
+        elif strict and path.name not in required:
+            raise ValueError('An archived asset is not a referenced sound input.')
+    if len(names) > file_budget:
+        raise ValueError('Sound inputs exceed the snapshot file budget.')
+    from .ffmpeg import wav_info
+    files, folded = {}, set()
+    for name in sorted(names):
+        check_cancelled(cancelled)
+        member = _member('audio/assets/' + name)
+        if name.casefold() in folded:
+            raise ValueError('Sound input filenames collide on a case-insensitive filesystem.')
+        folded.add(name.casefold())
+        path = directory / name
+        if not path.exists() and not path.is_symlink():
+            raise ValueError('A referenced sound input is missing from the project assets folder.')
+        _safe(path)
+        wav_info(path)  # Same bounded PCM16 RIFF/RF64 validation as the renderer.
+        files[member] = path
+    return files
 
 
 def _inventory(project_file, project_dir, *, include_cache, include_audio,
@@ -297,6 +423,9 @@ def _inventory(project_file, project_dir, *, include_cache, include_audio,
             raise ValueError('The recovery draft is invalid or belongs to another project.')
         _studio(data['project'])
         include('studio/project.json.recovery.json', recovery)
+    for name, path in input_assets(project_file, project_dir,
+            file_budget=file_budget, cancelled=cancelled).items():
+        include(name, path)
     if project_dir is None:
         return files
     def visit(directory, relative=()):
@@ -306,7 +435,7 @@ def _inventory(project_file, project_dir, *, include_cache, include_audio,
             for entry in entries:
                 check_cancelled(cancelled)
                 path = directory / entry.name
-                permitted = {'assets'} | ({'cache'} if include_cache else set()) | ({'renders'} if include_audio else set())
+                permitted = ({'cache'} if include_cache else set()) | ({'renders'} if include_audio else set())
                 is_directory = (not relative and entry.name in permitted) or (
                     relative == ('renders',) and re.fullmatch(_HEX, entry.name))
                 if is_directory:
@@ -610,6 +739,10 @@ def restore_project(snapshot, destination, *, byte_budget=DEFAULT_BYTE_BUDGET,
         project = _studio(_read_json(project_path))
         if project['project_id'] != manifest['project_id']:
             raise ValueError('The snapshot project identity does not match its manifest.')
+        assets = input_assets(project_path, stage / 'audio', strict=True,
+                              file_budget=file_budget, cancelled=cancelled)
+        if set(assets) != {name for name in records if name.startswith('audio/assets/')}:
+            raise ValueError('The snapshot sound inputs do not match its saved and recovery scripts.')
         output_root = target / 'project' / 'audio'
         (stage / 'audio').mkdir(exist_ok=True)
         old_hash = records['studio/project.json']['sha256']

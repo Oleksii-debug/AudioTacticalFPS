@@ -114,7 +114,7 @@ def test_unvalidated_jobs_and_settings_fail_instead_of_disappearing(reading, tmp
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text('{"status":"running","secret":"synthetic-only"}')
     before = files(app.root)
-    with pytest.raises(ValueError, match='validated backup adapter'):
+    with pytest.raises(ValueError, match='validated backup adapter|installed data validator|Unknown assistant backup document'):
         create_backup(app, tmp_path / 'rejected')
     assert not (tmp_path / 'rejected').exists()
     assert all((app.root / name).read_bytes() == data for name, data in before.items()

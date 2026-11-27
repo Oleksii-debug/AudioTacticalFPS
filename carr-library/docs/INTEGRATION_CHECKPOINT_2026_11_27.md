@@ -88,53 +88,77 @@ The separate runtime-identity gate keeps the same actual engine on PATH and
 removes the explicit portable override only while testing PATH discovery and
 TESSDATA_PREFIX changes.
 
-## Larger local integration awaiting recovery and publication
+## Recovered integrated source and current evidence
 
-The development executor disconnected after the clean integrated local commit
-`cccae8c8f480537551a7034d62bf3dae51f02558`
-(tree `d21516b372108e526a4e3d79dd74a6c7743eff6d`) had been prepared for
-publication. That larger tree was **not published** before the disconnect.
+The disconnected executor recovered with local commit
+`cccae8c8f480537551a7034d62bf3dae51f02558` intact. Its complete source was composed
+with the published correction checkpoint, preserving the MP3 policy identity.
+The integrated additions now include:
 
-Its implemented additions include:
+- Pinned CSL and BibTeX implementations, custom-style workbench and reviewed
+  academic export destinations.
+- A local allowlisted assistant with explicit approval, restart reapproval and
+  an exact-boolean generated-audio backup choice bound into the reviewed plan.
+- Owned Studio projects with explicit bounded adoption of referenced PCM inputs,
+  history/recovery inventories, cancellation and no-clobber publication.
+- Streamed common backups; optional generated derivatives in Main and portable
+  GUI/CLI workflows; mode-bound snapshot and legacy-resume identities.
+- Shared Desktop/Studio/Sync/Assistant progress with bounded callbacks, playback
+  notification quiescence, root/window lifetime guards and persisted settings.
+- Installed native assistant and extended Studio/progress acceptance probes.
 
-- Actual pinned CSL rendering and BibTeX parsing; citation style and custom-style
-  workbench; structured academic metadata; reviewed export destinations.
-- A local, allowlisted assistant with read-only plan preview, explicit approval,
-  durable restart reapproval, bounded operations and verified runtime reuse.
-- One owned Audio Studio project namespace, typed input/history inventories,
-  streamed common-format backups and publication-crash recovery.
-- Main backup GUI/CLI options with generated derivatives excluded by default.
-- Shared operation progress, source-preserving producer callbacks and focus
-  handling, plus the corresponding integrated packaging and test registration.
+The composed local verification after these merges completed **653 cases across
+21 required suites, with zero failures or skips**. It exercised the actual
+assistant, adoption and backup/recovery services, sync/encryption, progress/UI
+protocols and packaging policy. Earlier CSL/bibliography gates passed 519 cases
+across ten suites. These overlapping component totals are not a complete Windows
+release total.
 
-Component gates were run locally before the disconnect, including 519 CSL and
-bibliography cases, 79 assistant core cases, 197 managed-audio/common-backup
-cases in the independent integration worktree, and focused backup GUI/CLI gates.
-These overlapping component results are not an exact-head complete Windows
-acceptance total. A prior 22-case actual-codec gate tested the MP3 delivery
-mapping locally; the new historical-completion regression in this checkpoint
-still needs its own execution.
+### Exact published Windows checkpoint c28015d1
 
-Two additional source commits also await composition with that larger
-tree:
+- [Audio 45919953061](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45919953061)
+  succeeded: all 259 audio cases passed, including the new independent MP3
+  decoded-duration cases and historical-completion regression; separate provider,
+  UI, CLI and packaging suites passed. The actual native smoke synthesized two
+  installed SAPI voices, rendered stereo/procedural music, measured duration,
+  clipping and loudness, retained source text, and exercised Credential Manager.
+  Human listening, neural music and NVDA were not run.
+- [Portable snapshots 45919953063](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45919953063)
+  succeeded: 246 source cases, real installed native plain/encrypted publish and
+  restore, followed by 151 installed-only cases outside the source checkout.
+- [Integrated Windows 45919953126](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45919953126)
+  passed 3,776 cases over 164 required suites, managed Unicode OCR and actual
+  runtime fingerprints, native Main/Reader/draft controls, and the corrected
+  27-check document-format navigation. It then failed on an obsolete total menu
+  count in the academic comparison probe. The source now checks exact-once
+  presence of its four required actions; later native/full-bundle acceptance
+  still requires a new exact-source run.
 
-- `306686c06f1d80c08bcfddf33aeb739ea23c94b7`: explicit generated-audio scope in
-  portable snapshots and the sync CLI, mode-bound resume/cache identity and
-  actual plain/encrypted generated-audio roundtrips.
-- `94d4ffeeb86920a038839b1cd516ef71dd748183`: installed native assistant probe.
-  Compilation and review passed; its local execution correctly returned
-  NOT_RUN because there was no native display.
+Counts from these overlapping jobs must not be added into a unique total.
 
-The progress/media follow-up is verified but uncommitted in its isolated
-worktree. The explicit external-input adoption follow-up is uncommitted and
-untested. The assistant's optional generated-audio backup argument was designed
-but not implemented before the disconnect. Do not silently treat any of these
-as part of the published package.
+### Decoder qualification boundary
 
-After executor recovery, recover the exact local commits/diffs, compose this
-published correction checkpoint without losing its MP3 cache-policy fix,
-finish the outstanding targeted work, and rerun the composed required gates and
-source-wheel/installed-package checks.
+The supported pinned Windows FFmpeg 9.1 gate passed every new MP3 case. The
+local Debian FFmpeg 7.1.5 decoder has an additional observed small-tail boundary:
+for 4,321-frame inputs at 8/12/24 kHz, its 32-kHz MP3 decode was respectively
+43/44/46 frames longer than the expected resampled duration. The strict gate
+rejected these artifacts; it was not relaxed and no output was trimmed to hide
+the discrepancy. That older runtime is not qualified for general MP3 export by
+this checkpoint. Passing longer local fixtures is not universal qualification.
+
+The complete application wheel and installed package must be checked again
+for the final composed source. Component commits and a passing predecessor do
+not establish acceptance for later feature composition.
+
+## Current specification and reuse
+
+The requirements now follow canonical
+`33dcc42edd6781b9aeb02dcaaf016b386bcf37b6`: Resonance by Sceneria Innovative
+Technologies, with the supplied Whisper Transcribe review included. Existing
+internal filenames remain compatible pending a tested migration. This branch is
+reconciling the newer canonical and PR99 reader/player, language, conversion and
+translation modules through the existing tested services; it does not claim
+those modules complete merely because another source branch contains them.
 
 ## Remaining product acceptance
 
@@ -152,8 +176,10 @@ private authority; no issuer secrets or invented production endpoint may enter
 the public repository. These requirements are separate from preserving access
 to user-owned data, exports and recovery.
 
-Standalone transcription remains the explicitly deferred integration from the
-owner's separate project; it is not replaced here with another ASR stack.
+Transcription is now approved platform scope and the owner's implementation
+has been supplied for review. Its exact private source, runtime, model rights
+and corrected integration still require acceptance; no competing ASR stack is
+introduced. A bounded library/audio preview is not the complete platform.
 
 Public changes contain source and synthetic test evidence only. No installers,
 model weights, private voices, user books, credentials or generated recordings

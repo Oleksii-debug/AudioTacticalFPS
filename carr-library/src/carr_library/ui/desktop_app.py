@@ -40,6 +40,7 @@ from .query_manager import install_query_manager_actions
 from .portable_sync import install_portable_sync_actions
 from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
+from .assistant_dialog import install_assistant_actions
 from .acquisition_dialog import show_acquisition_dialog
 
 
@@ -500,6 +501,9 @@ class DesktopFrame(WorkspaceFrame):
         from .keyboard_settings import install_keyboard_settings
         install_productivity_actions(self)
         keyboard = install_keyboard_settings(self)
+        from .operation_progress import install_progress_actions
+        install_progress_actions(self)
+        self.Bind(wx.EVT_WINDOW_DESTROY, self._progress_destroyed)
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
@@ -553,7 +557,7 @@ class DesktopFrame(WorkspaceFrame):
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
         cancel = wx.Button(self.host, label='Cancel current operation')
-        cancel.Bind(wx.EVT_BUTTON, lambda e: self.cancel_event.set())
+        cancel.Bind(wx.EVT_BUTTON, self.cancel_current_operation)
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)
         self.cancel_button = cancel
         cancel.Disable()
@@ -571,6 +575,7 @@ class DesktopFrame(WorkspaceFrame):
         install_portable_sync_actions(self)
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
+        install_assistant_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -672,9 +677,10 @@ class DesktopFrame(WorkspaceFrame):
             except Exception as exc:
                 self.report(f'Search collections unavailable: {exc}')
 
-    def report(self, text):
+    def report(self, text, *, focus=True):
         self.status.SetValue(text)
-        self.status.SetFocus()
+        if focus:
+            self.status.SetFocus()
 
     def run_job(self, title, operation, done=None, failed=None):
         if self._closing:
@@ -684,16 +690,23 @@ class DesktopFrame(WorkspaceFrame):
             return
         self.working = self.busy = True
         self.cancel_event.clear()
+        from carr_library.ui.operation_progress import OperationProgress
+        progress = OperationProgress(self, title)
+        self._operation_progress = progress
         self.cancel_button.Enable()
         self.choice.Disable()
         if self.book is not None:
             self.book.Disable()
         for i in range(self.menu_bar.GetMenuCount()):
-            self.menu_bar.EnableTop(i, False)
+            # Query/mute remain reachable during work. Options only changes
+            # preferences; data and operation menus stay disabled.
+            label = self.menu_bar.GetMenuLabel(i).replace('&', '').strip().casefold()
+            self.menu_bar.EnableTop(i, label == 'options')
         self.report(title + '…')
         try:
             future = self.executor.submit(operation)
         except Exception as exc:
+            progress.failed(exc)
             self._finish_job_controls()
             self.report(f'{title}: could not start: {exc}')
             if failed is not None:
@@ -709,15 +722,27 @@ class DesktopFrame(WorkspaceFrame):
                 self._finish_job_controls()
                 try:
                     result = future.result()
-                    self.report(title + ': complete.')
+                    self.report(title + ': complete.', focus=done is None)
                     if done is not None:
                         done(result)
+                    progress.complete(result)
                 except Exception as exc:
+                    progress.failed(exc)
                     self.report(f'{title}: {exc}')
                     if failed is not None:
                         failed(exc)
-            wx.CallAfter(apply)
+            try:
+                wx.CallAfter(apply)
+            except RuntimeError:
+                # A terminating native application may reject queued work.
+                progress.finish(state='cancelled')
         future.add_done_callback(finish)
+
+    def cancel_current_operation(self, event=None):
+        self.cancel_event.set()
+        progress = getattr(self, '_operation_progress', None)
+        if self.working and progress is not None:
+            progress.cancel_requested()
 
     def _finish_job_controls(self):
         self.working = self.busy = False
@@ -746,6 +771,9 @@ class DesktopFrame(WorkspaceFrame):
         self._drop()
         self.library = candidate
         self.list_scopes = candidate.list_scopes
+        progress = getattr(self, 'progress_actions', None)
+        if progress is not None:
+            progress.reload()
         keyboard = getattr(self, 'keyboard_commands', None)
         if keyboard is not None:
             keyboard.change_root(candidate.root)
@@ -1099,6 +1127,18 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
+        if self.working or self._closing:
+            return
+        from .backup_options import choose_backup_options
+        library, root = self.library, self.library.root
+        include_generated = choose_backup_options(self)
+        if include_generated is None:
+            return
+        def current():
+            return not self._closing and self.library is library and library.root == root
+        if not current():
+            self.report('The library folder changed. Choose the backup again.')
+            return
         dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -1106,15 +1146,27 @@ class DesktopFrame(WorkspaceFrame):
             parent = Path(dialog.GetPath())
         finally:
             dialog.Destroy()
+        if not current():
+            self.report('The library folder changed. Choose the backup again.')
+            return
         from datetime import datetime
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
+            if not current():
+                return
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
                 'All completed libraries, original files, saved evidence, notes, tags, searches, '
-                'reading positions, bookmarks and saved reading-copy projects are included. '
+                'reading positions, bookmarks, saved reading and audio projects and their input audio are included. '
                 'Unfinished imports and their pending reviews are excluded.\n\n'
+                + ('Generated audio is included.\n\n' if include_generated
+                   else 'Generated audio is omitted; saved projects can regenerate it.\n\n') +
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
+        def write_backup():
+            if not current():
+                raise ValueError('The library folder changed before backup started.')
+            return library.backup(destination, include_generated=include_generated,
+                                  cancelled=self.cancel_event.is_set)
+        self.run_job('Backing up all libraries', write_backup, done)
 
     def restore_backup(self, event):
         dialog = wx.DirDialog(self, 'Select the backup folder')
@@ -1234,5 +1286,18 @@ class DesktopFrame(WorkspaceFrame):
         if not event.GetVeto():
             self._closing = True
             self.cancel_event.set()
+            progress = getattr(self, 'progress_actions', None)
+            if progress is not None:
+                progress.panel.dispose()
             self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def _progress_destroyed(self, event):
+        if event.GetEventObject() is self:
+            self._closing = True
+            self.cancel_event.set()
+            progress = getattr(self, 'progress_actions', None)
+            if progress is not None:
+                progress.panel.dispose()
+            self.executor.shutdown(wait=False, cancel_futures=True)
+        event.Skip()
 

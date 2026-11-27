@@ -11,7 +11,7 @@ conflicting locks or extra/missing wheels, and produces one exact runtime lock a
 a CycloneDX inventory of the actual wheel bytes, versions, dependency edges and
 publisher license expressions when available. It does not run a resolver or
 download packages. The original locks remain the inputs; there is no separately
-editable third list. The current complete profile has 50 dependency wheels.
+editable third list. The current complete profile has 53 dependency wheels.
 
 Example on the authorized build host, with a dedicated wheelhouse and fresh output:
 

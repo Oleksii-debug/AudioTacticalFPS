@@ -76,6 +76,8 @@ def main(argv=None):
     parser.add_argument('--model-manifest', type=Path, help='Pinned model manifest outside the model directory')
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
+    parser.add_argument('--include-generated-audio', action='store_true',
+                        help='With --backup, include generated audio owned by this library')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
     ocr = parser.add_mutually_exclusive_group()
     ocr.add_argument('--list-ocr-models', action='store_true',
@@ -118,6 +120,8 @@ def main(argv=None):
     from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
     add_audio_arguments(parser)
     args = parser.parse_args(arguments)
+    if args.include_generated_audio and not args.backup:
+        parser.error('--include-generated-audio requires --backup.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
@@ -235,7 +239,7 @@ def main(argv=None):
                               for group in session.groups]}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            checksum = app.backup(args.backup, include_generated=args.include_generated_audio)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
         try:

@@ -16,6 +16,9 @@ dependencies = [
   "filelock==3.29.0",
   "Pillow==13.0.0",
   "defusedxml==0.7.1",
+  "bibtexparser==2.1.0",
+  "pylatexenc==2.11",
+  "quickjs-ng==0.18.0.2",
 ]
 license-files = [
   "bootstrap/vendor/cairn_extractors/LICENSE",
@@ -24,6 +27,9 @@ license-files = [
   "src/carr_library/research/_vendor_rispy/LICENSE",
   "src/carr_library/search/_vendor/rifflux/LICENSE",
   "src/carr_library/ui/_vendor/wx_grid/LICENSE",
+  "src/carr_library/citations/_vendor_citeproc/LICENSE",
+  "src/carr_library/citations/_vendor_citeproc/CPAL",
+  "src/carr_library/citations/_vendor_citeproc/AGPLv3",
   "src/carr_library/extract/TESSDATA_FAST_LICENSE",
   "src/carr_library/extract/TESSDATA_BEST_LICENSE",
 ]
@@ -54,6 +60,7 @@ test = [
 
 [project.scripts]
 research-library = "carr_library.__main__:main"
+research-library-bibliography = "carr_library.bibliography_cli:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 
 [project.gui-scripts]
@@ -67,6 +74,7 @@ include-package-data = true
 packages = [
   "carr_library",
   "carr_library.audio",
+  "carr_library.assistant",
   "carr_library.acquisition",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
@@ -95,6 +103,7 @@ bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
 "*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
+"carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 
 [tool.pytest.ini_options]

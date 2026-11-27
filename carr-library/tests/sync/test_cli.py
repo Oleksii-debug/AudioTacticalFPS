@@ -68,3 +68,30 @@ def test_missing_library_does_not_initialize_data_on_read_request(tmp_path):
     result = invoke(tmp_path / 'missing-data', 'list', '--folder', str(tmp_path / 'portable'))
     assert result.returncode == 2
     assert not (tmp_path / 'missing-data').exists()
+
+
+def test_cli_publish_explicit_audio_flag_reaches_the_verified_manifest(tmp_path):
+    app = LibraryApp(tmp_path / 'data')
+    folder = str(tmp_path / 'portable')
+    published = invoke(app.root, 'publish', '--folder', folder, '--empty', '--plain',
+                       '--include-generated-audio')
+    assert published.returncode == 0, published.stderr
+    receipt = json.loads(published.stdout)
+    assert receipt['include_generated'] is True
+    inspected = invoke(app.root, 'inspect', '--folder', folder, '--token', receipt['token'], '--plain')
+    assert inspected.returncode == 0, inspected.stderr
+    verified = json.loads(inspected.stdout)
+    assert verified['verified'] and verified['include_generated'] is True
+
+
+@pytest.mark.parametrize('command', ['list', 'inspect', 'restore'])
+def test_generated_audio_flag_is_rejected_outside_sync_publication(tmp_path, command):
+    app = LibraryApp(tmp_path / 'data')
+    arguments = [command, '--folder', str(tmp_path / 'portable'), '--include-generated-audio']
+    if command != 'list':
+        arguments += ['--token', '0' * 64, '--plain']
+    if command == 'restore':
+        arguments += ['--destination', str(tmp_path / 'restored')]
+    result = invoke(app.root, *arguments)
+    assert result.returncode == 2 and 'unrecognized arguments: --include-generated-audio' in result.stderr
+    assert not (tmp_path / 'portable').exists() and not (tmp_path / 'restored').exists()
