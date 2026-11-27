@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -42,7 +43,7 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False, wait_until_ready=False):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
     code = f'''
@@ -94,7 +95,22 @@ LibraryApp._import_file = _replay
             return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-        return popen(command, **options)
+        process = popen(command, **options)
+        if wait_until_ready:
+            # Establish the selected real commit boundary before the unchanged
+            # supervisor starts its timeout. Cold imports/extraction must not
+            # decide whether this test reaches the race it is meant to prove.
+            ready_deadline = time.monotonic() + 30.0
+            try:
+                while not marker.exists():
+                    assert process.poll() is None, 'Import exited before the publication barrier.'
+                    assert time.monotonic() < ready_deadline, 'Import did not reach the publication barrier.'
+                    time.sleep(.02)
+            except BaseException:
+                # Until Popen returns, the production supervisor cannot own it.
+                worker._stop(process)
+                raise
+        return process
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
 
@@ -121,13 +137,16 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+             wait_until_ready=termination == 'timeout')
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=3.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
+    if termination == 'timeout':
+        assert result['worker_state'] == 'timed_out'
     assert result['verified'] is (kind == 'txt')
     record = worker.load_request(app.root, result['request_id'])
     assert record['state'] == 'complete' and record['result'] == result
@@ -156,7 +175,8 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+             wait_until_ready=termination == 'timeout')
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=3.0 if termination == 'timeout' else 15.0)

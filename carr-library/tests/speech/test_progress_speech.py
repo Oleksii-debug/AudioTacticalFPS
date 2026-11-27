@@ -239,7 +239,7 @@ def test_failed_owned_device_cleanup_preserves_uncertainty_and_blocks_new_audio(
 def test_explicit_activation_reauthorizes_current_settings_and_detects_revocation(tmp_path):
     fixture = PCMProvider()
     registry, calls = VoiceRegistry((fixture,)), []
-    def configured(state_root):
+    def configured(state_root, **_ignored):
         calls.append(state_root)
         return registry
     speech = activate_progress_voice(tmp_path, fixture.voice.id, _registry_factory=configured)

@@ -189,6 +189,12 @@ def inspect_media_state(root, entries, *, independent, cancelled=lambda: False):
                     _json(read_bytes(root / name, MAX_JSON)),
                     recording_id=Path(name).stem)
                 audio = by_name.get(name.removesuffix('.json') + '.wav')
+                if record.get('status') == 'prepared' and audio is None:
+                    # A durable intent can outlive an exit before publication.
+                    # Retain only that declaration; it grants no completed PCM
+                    # or authority to open paths on the source machine.
+                    media['studio_recordings'].append(name)
+                    continue
                 if (audio is None or audio['size_bytes'] != record['audio']['size_bytes']
                         or audio['sha256'] != record['audio']['sha256']):
                     raise RestoreError('A recording receipt differs from its retained original.')

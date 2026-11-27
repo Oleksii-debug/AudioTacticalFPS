@@ -4,24 +4,46 @@ Only the file-picker result is supplied by the probe. Real Windows keyboard
 events activate buttons; a real wx event loop handles background completion.
 Physical recording devices, native file pickers and NVDA are separate gates.
 """
-from hashlib import file_digest, sha256
+import argparse
+from hashlib import sha256
 import json
 import math
 import os
 from pathlib import Path
 import struct
+import threading
 from tempfile import TemporaryDirectory
 from time import monotonic, sleep
 import traceback
 import wave
 
 
+def _acceptance_bindings():
+    import importlib.util
+    path = Path(__file__).with_name('windows_publishing_smoke.py')
+    spec = importlib.util.spec_from_file_location('_media_acceptance_bindings', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def main():
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Native Windows session required', 'nvda': 'NOT_RUN'}))
         return 77
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--audio-evidence', type=Path, required=True)
+    arguments = parser.parse_args()
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
+    try:
+        return _run_native(arguments)
+    finally:
+        if native_handle is not None:
+            native_handle.close()
+
+
+def _run_native(arguments):
     import ctypes
     from ctypes import wintypes
     import wx
@@ -37,18 +59,12 @@ def main():
         checks.append(name)
         print('PASS:', name, flush=True)
 
+    binding = _acceptance_bindings()
     def verify_audio(runtime):
-        bundle = Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR') else None
-        manifest = json.loads((bundle / 'bundle-manifest.json').read_text(encoding='utf-8')) if bundle else None
-        for name in ('ffmpeg', 'ffprobe'):
-            binary = Path(getattr(runtime, name)).resolve(strict=True)
-            with binary.open('rb') as stream:
-                digest = file_digest(stream, 'sha256').hexdigest()
-            audio_proof[name] = {'path': str(binary), 'sha256': digest}
-            if bundle:
-                entry = 'audio/bin/' + name + '.exe'
-                check('exact bundled executable: ' + name, binary == (bundle / entry).resolve(strict=True))
-                check('sealed executable bytes: ' + name, digest == manifest['files'][entry])
+        checked = binding.verify_audio_evidence(runtime, arguments.audio_evidence)
+        if audio_proof and audio_proof != checked:
+            raise AssertionError('External audio executable identity changed during native acceptance.')
+        audio_proof.update(checked)
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
@@ -89,9 +105,8 @@ def main():
         gui.Yield()
 
     check('real wx Windows controls', wx.Platform == '__WXMSW__')
-    for module in (ui, clips):
-        check('installed module: ' + module.__name__,
-              'site-packages' in [part.casefold() for part in Path(module.__file__).resolve().parts])
+    source_identity = binding.verify_installed_sources(ui, clips)
+    check('exact current installed clip source', bool(source_identity))
     actual_picker = wx.FileDialog
     frame = dialog = None
     with TemporaryDirectory(prefix='carr-native-clips-') as temporary:
@@ -118,10 +133,83 @@ def main():
             frame.Show()
             gui.SetTopWindow(frame)
             editor = clips.ClipEditor(frame.library.root)
-            verify_audio(editor.service._runtime())
+            proof_runtime = editor.service._runtime()
+            verify_audio(proof_runtime)
             project = editor.create('Native scene clips')
             dialog = ui.ClipDialog(frame, editor=editor)
             dialog.Show()
+            def lifecycle_checks():
+                class NativeParent(wx.Frame):
+                    @property
+                    def working(self):
+                        return frame.working
+                for destruction in ('direct', 'native-parent'):
+                    parent = NativeParent(frame, title='Owned clip lifetime fixture')
+                    parent.library = frame.library
+                    parent.cancel_event = frame.cancel_event
+                    parent.operation_progress = frame.operation_progress
+                    parent.run_job, parent.report = frame.run_job, frame.report
+                    parent.Show()
+                    selected_editor = clips.ClipEditor(frame.library.root)
+                    project = selected_editor.create('Owned preview lifetime')
+                    project = selected_editor.add(project, project.scenes[0].id, source,
+                                                   trim_start=.5, duration=.25)
+                    selected = ui.ClipDialog(parent, editor=selected_editor)
+                    selected.Show()
+                    selected._accept(project)
+                    native_id, events = selected._native_id, []
+                    def native_destroy(event, events=events):
+                        events.append(event.GetId())
+                        event.Skip()
+                    selected.Bind(wx.EVT_WINDOW_DESTROY, native_destroy)
+                    ready, release, completed_paths = threading.Event(), threading.Event(), []
+                    original_preview = selected_editor.preview
+                    def held_preview(*args, **kwargs):
+                        # Actual installed ClipEditor/FFmpeg creates and verifies
+                        # its preview before this test-only completion barrier.
+                        path = original_preview(*args, **kwargs)
+                        completed_paths.append(path)
+                        ready.set()
+                        if not release.wait(20):
+                            raise TimeoutError('Owned preview completion barrier was not released')
+                        return path
+                    selected_editor.preview = held_preview
+                    try:
+                        press(selected.buttons['preview'])
+                        pump(ready.is_set, 'Actual preview did not reach native lifetime barrier')
+                        check('actual verified preview is pending before ' + destruction + ' destruction',
+                              selected.pending and frame.working and completed_paths[0].is_file())
+                        if destruction == 'direct':
+                            selected.Destroy()
+                        else:
+                            parent.DestroyChildren()
+                        pump(lambda: not bool(selected), 'Native clip wrapper was not deleted', timeout=10)
+                        check('real cached-ID clip destruction latches cancellation: ' + destruction,
+                              events.count(native_id) == 1 and selected.closed and selected._cancelled()
+                              and not parent.cancel_event.is_set())
+                        selected.message('Late progress after native deletion')
+                        release.set()
+                        pump(lambda: not frame.working and not selected.pending,
+                             'Actual preview worker completion did not release')
+                        gui.Yield()
+                        selected.message('Late report after actual completion')
+                        check('owned late preview is cleaned without native access: ' + destruction,
+                              not completed_paths[0].exists() and not selected.previews)
+                        check('preview teardown preserves exact input: ' + destruction,
+                              sha256(source.read_bytes()).hexdigest() == original
+                              and Path(project.scenes[0].cues[0].path).read_bytes() == source.read_bytes())
+                    finally:
+                        release.set()
+                        parent.cancel_event.set()
+                        if frame.working:
+                            pump(lambda: not frame.working, 'Owned fixture worker cleanup', timeout=25)
+                        if selected:
+                            selected.Destroy()
+                        if parent:
+                            parent.DestroyChildren()
+                            parent.Destroy()
+                        gui.Yield()
+
             def scenario():
                 try:
                     check('real native main loop is active', gui.GetMainLoop() is not None)
@@ -171,6 +259,7 @@ def main():
                           and sha256(source.read_bytes()).hexdigest() == original)
                     press(dialog.buttons['close'])
                     check('native keyboard close finishes cleanly', dialog.closed)
+                    lifecycle_checks()
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
@@ -185,17 +274,18 @@ def main():
                 frame.cancel_event.set()
                 frame._closing = True
                 frame.executor.shutdown(wait=True, cancel_futures=True)
-            if dialog is not None:
+            if dialog is not None and dialog:
                 dialog.stop()
                 dialog.Destroy()
             if frame is not None:
                 frame.Destroy()
             gui.Yield()
-            if native_handle is not None:
-                native_handle.close()
+    verify_audio(proof_runtime)
     print(json.dumps({'result': 'PASS', 'checks': checks, 'native_keyboard': 'PASS',
+        'source_identity': source_identity,
         'fixture': 'synthetic PCM rendered by actual FFmpeg', 'audio_runtime': audio_proof, 'nvda': 'NOT_RUN',
-        'native_file_pickers': 'NOT_RUN', 'physical_microphone': 'NOT_RUN'}), flush=True)
+        'native_file_pickers': 'NOT_RUN', 'physical_microphone': 'NOT_RUN',
+        'direct_parent_destruction': 'PASS', 'late_preview_completion': 'PASS'}), flush=True)
     return 0
 
 

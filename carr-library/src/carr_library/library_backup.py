@@ -120,16 +120,23 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
-            if os.path.lexists(app.root / 'state'):
+            state_root = app.root / 'state'
+            # lexists suppresses access errors, which could omit all user work.
+            # Only genuine absence is optional; disappearance after this probe fails.
+            try:
+                state_root.lstat()
+            except FileNotFoundError:
+                pass
+            else:
                 from .state_backup import snapshot_state
                 from .backup_extensions import scoped_state_selection
                 selected = (None if authorized_workspaces is None else
-                    scoped_state_selection(app.root / 'state', snapshot, included))
+                    scoped_state_selection(state_root, snapshot, included))
                 (stage / 'state').mkdir()
-                state = snapshot_state(app.root / 'state', stage / 'state',
+                state = snapshot_state(state_root, stage / 'state',
                                        include_generated=include_generated, cancelled=cancelled,
-                                       include_paths=selected)
-                if selected is not None and selected != scoped_state_selection(app.root / 'state', snapshot, included):
+                                       include_paths=selected, missing_ok=False)
+                if selected is not None and selected != scoped_state_selection(state_root, snapshot, included):
                     raise RestoreError('Source-bound reading drafts changed during backup; retry after saving.')
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
             if any(os.path.lexists(app.root / name) for name in

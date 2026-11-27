@@ -47,7 +47,7 @@ Evidence: [audio source-lock](https://github.com/Oleksii-debug/AudioTacticalFPS/
 
 ## Reused synchronized publication and conformance tool
 
-The bounded Studio publishing component is selected from [existing PR112](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/112), reviewed at donor commit [6da794a2ef83c77d160e7f89a1b457a5f375cf6a](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6da794a2ef83c77d160e7f89a1b457a5f375cf6a). Only its publisher, native dialog, CLI/menu additions and relevant schema-1 regressions are composed with the current canonical services. Its unrelated transcription, clip-editing and competing-stack changes are not adopted.
+The bounded Studio publishing component is selected from [existing PR112](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/112), reviewed at donor commit [6da794a2ef83c77d160e7f89a1b457a5f375cf6a](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6da794a2ef83c77d160e7f89a1b457a5f375cf6a). Only its publisher, native dialog, CLI/menu additions and relevant schema-1 regressions are composed with the current canonical services. Its competing transcription/source/provider stacks are not adopted. The subsequent bounded recording/clip and reader selection is recorded separately below.
 
 The publisher reuses the current completed-production receipts, FFmpeg adapter, resource broker, destination approval and atomic writer. The adaptation verifies already committed output after late interruption, permits explicit read-only verification of the writer's residual hard link, and preserves publication metadata through the current full backup. No second render engine, catalog, job format or backup producer is introduced.
 
@@ -57,6 +57,35 @@ The publisher reuses the current completed-production receipts, FFmpeg adapter, 
 | Java | Existing CI runtime, executable path/hash and actual version recorded before the conformance process | Not an application dependency. The actual Java executable is included in the tested outbound-firewall scope. |
 | Native and audio execution | Current CPython 3.11 / wxPython Windows gates, installed source-origin checks and the existing external pinned FFmpeg/ffprobe runtime | Native SAPI production and synthetic production have distinct evidence. No owner recordings, model weights, new audio package or validator JAR is added to the application bundle. |
 | Required acceptance | Actual WAV-to-MP3 publication, byte-preserving existing-MP3 reuse, rejection of deliberately malformed EPUB, real process interruption, complete backup/restore and native controls | Evaluate the exact current commit's reports. Package conformance does not establish synchronized-reader interoperability, word alignment, listening quality, NVDA, DAISY or Braille support. |
+
+## Recording, reader, dordiai, local planning and DAISY composition
+
+Source selection: [PR112 donor6da794a2](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6da794a2ef83c77d160e7f89a1b457a5f375cf6a), reconciled with [shared composition6a28a7e](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6a28a7ecdcfdf7dab2d5b948608c42803fe3e8a0) and canonical4b6f816 (including OCR predecessor c5323234 and the bounded music inventory). The former selected snapshot042e448 is a review input, not a replacement of later accepted contracts.
+This is selective reuse on the current canonical implementation. It does not
+replace accepted schema1–5 definitions, the supplied ASR stack, translation
+receipts, source reading dialects, the common resource broker or atomic writers.
+
+| Selected component | Integration decision and dependencies | Required evidence / remaining limit |
+| --- | --- | --- |
+| Recording and schema2 clips | Existing FFmpeg DirectShow adapter, scene model, process runner, wave playback and typed backup producers; shared microphone/CPU/RAM/disk admission. Ordinary narration remains schema1. | Actual synthetic capture, trim/fade/preview, child interruption and backup/restore; physical microphone, monitoring latency and listening remain unqualified. No new audio binaries or native libraries. |
+| dordiai public bridge | Public JSONL adapter, the current per-library `speech/dordiai_settings.py` declaration, `speech/dordiai.py` provider and owned voice-registry lifecycle. The competing earlier engines.json declaration is not adopted. Reviewed worker identity and upstream contract remain in [DORDIAI_LOCAL_SPEECH.md](DORDIAI_LOCAL_SPEECH.md). Root asset traversal is bounded, cancellable and fails on unreadable entries. | Real synthetic child processes validate transport/lifetime/cache boundaries. Private worker, model/profile rights, CPU/GPU/VRAM benchmarks, actual acoustic output and 135-language quality remain separate. No private engine bytes are vendored. |
+| Measured M4B and LRC | Selected PR112 adapter slice over the existing FFmpeg/DSP, current Studio cache and shared create-only writer; bounded FFmetadata and actual ffprobe inspection. | No new renderer, model, dependency or backup store. Exact inspected-byte/owned-link proof precedes completion; measured line onsets produce LRC. Actual FFmpeg/Flite, crash/resume and retained-native-owner cases require exact-head execution. |
+| EPUB recorded reading | Existing EPUB parser, exact imported text normalization and fragment offsets; one shared broker around isolated parsing, source writes, extraction and current FFmpeg conversion. | Unsupported SMIL structures, encrypted/remote media and unverified source revisions fail explicitly. Native WavePlayer and lifetime checks require the exact installed build; interoperability/NVDA are not inferred. |
+| Pronunciation and command palette | Existing pronunciation rules and menu command registry; native wx controls, stable action identity and conflict-aware preference migration. | Actual handler and native keyboard/destruction gates; original text, reading formats and saved shortcuts remain covered by regression. |
+| Local LLM proposal | Existing provider profile, gateway, scope and typed Plan executor; explicit local profile, preview, then separate Run. No shell or new general agent framework. | Real loopback HTTP fixture and native controls execute before the outbound runtime firewall. Actual model inference/performance and paid provider quality are unqualified. |
+| DAISY2.02 | Format-only NCC/XHTML/SMIL/MP3 generation over the same Studio publication authority, approvals and receipts; [DAISY2.02 official specification](https://daisy.org/activities/standards/daisy/daisy-2/daisy-format-2-02-specification/). | Exact source/timeline, no-clobber, actual child death, metadata restore and native format choice. DTD validation is only structural evidence; reader devices, full rules and Braille remain separate. |
+| DAISY structural validator | Existing production-locked lxml6.1.3/libxml runtime; [five pinned validation files](../packaging/daisy-validation-schemas.json). W3C XHTML1.0 DTD/entities and SMIL1.0 DTD retained from [DAISY pipeline88d39392](https://github.com/daisy/pipeline-modules/tree/88d39392e9a3e10c1f55f1a82e5e7ea12b0b28b6). | Download only to CI temporary storage before blocking egress, require exact size/SHA256, preserve upstream notices unchanged, resolve only pinned local files. DTDs and generated books are excluded from the application and uploads. The actual validation result belongs to the tested head, not this reuse decision. |
+
+The current live reader, advanced search/acquisition, source-range Google v3 translation,
+archive-v5 extensions, owned native process tree and standard Inno installer from
+PR149/PR165 are preserved. Standard installation reuses the exact sealed bundle
+and existing Python environment installer; it does not create a signed updater
+or entitlement authority. See [the installation contract](STANDARD_WINDOWS_INSTALLER.md).
+
+The source composition requires fresh portable and installed execution. A donor
+result does not qualify new glue or the installed wheel. The dependency/model
+rights and distribution profiles described earlier are unchanged; this selection
+does not authorize publishing private implementations, references, voices or packs.
 
 ## Historical prototype evidence — preserved, not current readiness
 

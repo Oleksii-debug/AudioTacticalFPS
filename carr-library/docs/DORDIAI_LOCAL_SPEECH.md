@@ -1,8 +1,11 @@
 # Optional dordiai provider in the canonical speech and Studio services
 
-Status: implemented public adapter with synthetic protocol acceptance. Actual
-private neural inference, Windows private-worker execution, pronunciation,
-physical playback and NVDA acceptance remain **NOT_RUN** for this integration.
+Status: the canonical public adapter and ownership reconciliation are prepared
+for integrated acceptance. The earlier component results below are historical;
+the new combined source and installed/native gates remain **NOT_RUN** until
+their exact commit completes CI. Actual private neural inference, Windows
+private-worker execution, pronunciation, physical playback and NVDA acceptance
+also remain **NOT_RUN** for this integration.
 An installed voice inventory is evidence of resources, not voice quality or
 qualification of the complete selected 135-language catalog.
 
@@ -83,10 +86,13 @@ The provider's fingerprint hashes the actual interpreter executable, reviewed
 worker and runtime helper files, model tree, runtime-local Python tree, optional
 runtime manifest and the complete public adapter dependencies. Those include
 the provider, registry, process boundary, declaration validator, public bridge,
-probe and state/writer helpers. Inventory is limited to 100,000 assets and
-64 GiB of hashed bytes. Every hash chunk checks cancellation. File and
-directory identities are rechecked to reject changes during inspection. No
-stat-only memoization makes preserved timestamps sufficient for reuse.
+probe and state/writer helpers. Inventory is limited to 100,000 entries and
+64 GiB of hashed bytes. Incremental directory enumeration checks cancellation
+and the budget for every encountered entry, including ignored root files and
+empty directories. Unreadable directories fail the fingerprint; they are not
+silently omitted. Every hash chunk also checks cancellation. File and directory
+identities are rechecked to reject changes during inspection. No stat-only
+memoization makes preserved timestamps sufficient for reuse.
 
 When an external interpreter is selected, the fingerprint does **not** seal
 every package in its external global installation. A runtime-local Python tree
@@ -115,13 +121,54 @@ Changing a model invalidates reused speech while preserving earlier outputs.
 Production nodes also include actual FFmpeg/FFprobe bytes and the canonical
 audio/production implementation bytes, not only a version banner.
 
+## Worker and registry ownership
+
+Each canonical provider retains one adapter and serializes its own operations.
+Successful requests can reuse that provider's warm process. A changed content
+fingerprint refreshes the inventory and stops that exact old worker before a
+new request can use changed model bytes. A different library's registry and
+workers remain separate. The canonical profile/language voice IDs and the
+root-level declaration format are unchanged.
+
+The transport retains both an unfinished metadata probe and a warm worker
+until their native process and reader/writer threads confirm termination.
+A failed cleanup cannot replace the retained handle with a new child. Closing
+attempts both retained owners, even if one raises. Child execution uses the
+canonical speech boundary's explicit host-environment allowance together with
+offline and no-bytecode flags; unrelated ambient report/cache settings are not
+inherited.
+
+`VoiceRegistry.close()` returns `True` only when all its providers have
+confirmed cleanup. An exception, `KeyboardInterrupt`, or explicit `False`
+from a provider leaves that exact owner retained, records a notice and registers
+one shutdown retry. Failed discovery preserves its original error; adding a
+provider does not close unrelated active providers when the new one fails.
+Both cancellable fingerprint and expected-fingerprint synthesis capabilities
+are explicit, so older injected registry interfaces can keep their existing
+call signatures while the real registry retains all identity checks.
+
+Studio closes registries it created, retains an unconfirmed owned registry for
+retry, and does not close a registry borrowed from another view. Closing during
+cold discovery cancels the operation and prevents late adoption. Explicit
+progress-voice activation owns its registry; copies share that ownership until
+the last selection closes, when bounded cleanup runs away from the GUI thread.
+A directly supplied progress registry remains borrowed.
+
+The live reader adapter closes each registry it creates for discovery or
+rendering on success and failure. A cleanup notice cannot change an already
+committed WAV into a failed render. Unconfirmed real-registry cleanup still has
+its retained owner and shutdown retry. The reader does not take ownership of
+another window's registry or start a second speech implementation.
+
 These are resource and process boundaries around deliberately selected local
 code. They are not an operating-system sandbox for a malicious installation.
 
-## Measured acceptance on 2026-11-27
+## Historical component acceptance recorded on 2026-11-27
 
-The following are overlapping measured batches and must not be added into a
-single invented total:
+The following overlapping batches were recorded for earlier canonical component
+work before the current ownership and integration reconciliation. They are
+retained as historical evidence, must not be added together, and do not qualify
+the newly composed provider, transport, reader, Studio or installed wheel:
 
 | Batch | Observed result | Meaning |
 | --- | --- | --- |
@@ -138,6 +185,20 @@ tests cover exact text and controls, same-size model changes, cancellable
 fingerprinting, real worker timeout, streamed output budget, publication
 invalidation, library-scoped disable and reuse through the actual canonical
 production service.
+
+The reconciled regression selection also includes
+`tests/integrations/test_dordiai_convergence.py`,
+`tests/integrations/test_dordiai_ownership.py`,
+`tests/integrations/test_dordiai_probe_cancellation.py`, and
+`tests/speech/test_progress_speech.py`. These preserve the actual synthetic
+child-process checks for warm reuse, content-change restart, scoped cold
+cancellation, failed cleanup retaining the exact process, explicit
+`close() is False`, last-owner release, service-owned versus borrowed registries,
+and live-reader completion/error cleanup. The transport tests retain real
+descendant termination and environment isolation. Their fixture uses the
+canonical saved connection, with no duplicate provider or second settings
+format. These new compositions are source-reviewed; no new runtime pass count
+is claimed here.
 
 Native Windows acceptance must run against the eventual integrated commit.
 The preceding old-stack Windows run `45918580963` failed on an obsolete FFmpeg

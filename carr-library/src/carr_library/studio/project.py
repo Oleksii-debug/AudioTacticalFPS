@@ -139,8 +139,6 @@ class Scene:
             raise ValueError('Invalid music cue.')
         if not isinstance(self.cues, tuple) or not all(isinstance(x, Cue) for x in self.cues):
             raise ValueError('Scene cues must be typed.')
-        if len({cue.id for cue in self.cues}) != len(self.cues):
-            raise ValueError('Duplicate scene clip ID.')
         if not self.lines and not self.cues and not self.music and self.minimum_duration <= 0:
             raise ValueError('A scene needs text, a local cue, music, or an explicit silence duration.')
         _number(self.minimum_duration, 'Scene duration', 0, 31_536_000)
@@ -177,6 +175,9 @@ class Project:
             raise ValueError('Duplicate role or scene ID.')
         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
             raise ValueError('A line uses an unknown role.')
+        if self.schema >= 2 and any(len({cue.id for cue in scene.cues}) != len(scene.cues)
+                                    for scene in self.scenes):
+            raise ValueError('Duplicate scene clip ID.')
         if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
                 cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
                 for scene in self.scenes for cue in scene.cues):

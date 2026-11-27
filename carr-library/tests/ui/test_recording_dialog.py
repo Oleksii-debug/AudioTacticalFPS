@@ -74,7 +74,8 @@ def handlers(values):
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
     names = {'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
-             'start', 'close', 'stop_recording', 'cancel_recording', 'detach', 'on_destroy'}
+             'start', 'close', 'stop_recording', 'cancel_recording', 'detach', 'on_destroy',
+             'report', 'preview', 'use', 'stop_playback'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names))
@@ -101,7 +102,7 @@ def view():
     buttons = {name: Control() for name in ('refresh', 'start', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
     values = dict(native_id=71, busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
         cleanup_owner=None, cleanup_future=None, cleanup_retry=None, hold_guard=threading.RLock(), frame=Mock(),
-        selected_result=None, controllers=(progress, parent), progress=progress, player=Mock(),
+        selected_result=None, on_selected=None, controllers=(progress, parent), progress=progress, player=Mock(),
         executor=executor, service=service, cancelled=threading.Event(), stopped=threading.Event(),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
         sample_rate=Control('24000'), channels=Control(selection=0), saved=Control(selection=-1),
@@ -311,4 +312,63 @@ def test_pending_native_cleanup_retains_holds_after_future_and_modal_completion(
         callback()
     assert not view.progress.holds[0].closed
     owner.confirm()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def poison_controls(view):
+    def deleted(*args, **kwargs):
+        raise AssertionError('A deleted native control was accessed')
+    for key in ('microphone', 'title', 'minutes', 'sample_rate', 'channels', 'saved', 'details', 'status'):
+        control = view.values[key]
+        for name in ('Enable', 'GetSelection', 'SetSelection', 'SetItems', 'GetValue', 'SetValue',
+                     'GetStringSelection'):
+            setattr(control, name, deleted)
+    for control in view.values['buttons'].values():
+        control.Enable = deleted
+    view.values['dialog'].EndModal.side_effect = deleted
+
+
+def test_matching_native_destroy_event_cancels_pending_capture_and_late_completion_is_inert(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    event = Mock()
+    event.GetId.return_value = view.values['native_id']
+    event.GetEventObject.return_value = object()  # A rewrapped matching event.
+    view.handlers.on_destroy(event)
+    assert view.values['cancelled'].is_set() and view.values['stopped'].is_set()
+    assert view.values['dialog'].recording_alive is False
+    assert not view.progress.holds[0].closed
+    view.handlers.release_when_stopped()
+    poison_controls(view)
+    view.executor.finish()
+    for name in ('refresh', 'start', 'preview', 'use', 'close', 'stop_playback',
+                 'stop_recording', 'cancel_recording', 'controls', 'display_record'):
+        getattr(view.handlers, name)()
+    view.handlers.report('Late progress')
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    view.values['dialog'].EndModal.assert_not_called()
+    event.Skip.assert_called_once()
+
+
+def test_unrelated_child_destroy_event_does_not_cancel_recording_selection(view):
+    event = Mock()
+    event.GetId.return_value = view.values['native_id'] + 1
+    view.handlers.on_destroy(event)
+    assert not view.values['cancelled'].is_set()
+    discovered(view)
+    assert view.values['microphone'].GetSelection() == 0
+    assert view.values['microphone'].items
+    event.Skip.assert_called_once()
+
+
+def test_destroy_while_waiting_for_silence_prevents_capture_and_controls(view):
+    discovered(view)
+    view.handlers.start()
+    assert view.deferred
+    view.handlers.detach()
+    view.handlers.release_when_stopped()
+    poison_controls(view)
+    view.deferred.pop(0)()
+    assert not view.captures and not view.executor.pending
     assert view.progress.holds[0].closed and view.parent.holds[0].closed

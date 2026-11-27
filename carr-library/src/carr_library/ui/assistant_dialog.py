@@ -18,8 +18,20 @@ def create_assistant_dialog(frame, *, wx_module=None):
     from ..studio.render import ProductionService
     production = ProductionService(frame.library.root / 'state' / 'studio')
     service = AssistantService(frame.library, production=production.assistant_callback)
-    dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    class AssistantDialog(wx.Dialog):
+        def Destroy(self):
+            callback = getattr(self, '_assistant_dispose', None)
+            if callback is not None:
+                callback()
+            if getattr(self, '_assistant_destroy_requested', False) or not self:
+                return False
+            self._assistant_destroy_requested = True
+            return super().Destroy()
+
+    dialog = AssistantDialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
+                             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    native_id = dialog.GetId()
+    dialog._assistant_destroy_requested = False
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     cancel = threading.Event()
@@ -27,6 +39,42 @@ def create_assistant_dialog(frame, *, wx_module=None):
     revision, approved_inputs = 0, None
     library_root = frame.library.root
     workspaces = frame.library.workspaces()
+
+    def discover_voice_inventory():
+        # Reuse the production's registry. Older services already expose voices;
+        # the lifecycle-aware service also accepts cancellation during discovery.
+        if cancel.is_set():
+            raise InterruptedError('Voice inventory cancelled.')
+        discover = getattr(production, 'discover_voices', None)
+        registry = discover(cancelled=cancel.is_set) if discover is not None else production.voices
+        if cancel.is_set():
+            raise InterruptedError('Voice inventory cancelled.')
+        return registry
+
+    def close_production():
+        closer = getattr(production, 'close', None)
+        if closer is not None:
+            closer()
+
+    def dispose():
+        nonlocal alive
+        if not alive:
+            return
+        alive = False
+        cancel.set()
+        # The shared cancellation callback makes a running assistant job pause.
+        # Queue registry cleanup after this dialog's already-owned worker.
+        executor.submit(close_production)
+        executor.shutdown(wait=False, cancel_futures=False)
+
+    def on_destroy(event):
+        if event.GetId() == native_id:
+            dialog._assistant_destroy_requested = True
+            dispose()
+        event.Skip()
+
+    dialog._assistant_dispose = dispose
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, on_destroy)
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 5)
@@ -47,12 +95,16 @@ def create_assistant_dialog(frame, *, wx_module=None):
         button = wx.Button(dialog, label=label)
         folder_buttons.append(button)
         def choose(event, target=target):
+            if not alive:
+                return
             picker = wx.DirDialog(dialog, 'Choose a local folder')
             try:
-                if picker.ShowModal() == wx.ID_OK:
+                result = picker.ShowModal()
+                if alive and picker and result == wx.ID_OK:
                     target.SetValue(picker.GetPath())
             finally:
-                picker.Destroy()
+                if picker:
+                    picker.Destroy()
         button.Bind(wx.EVT_BUTTON, choose)
         choose_row.Add(button, 0, wx.ALL, 4)
     layout.Add(choose_row)
@@ -103,6 +155,10 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def invalidate(event=None):
         nonlocal plan, job_id, revision, approved_inputs
+        if not alive:
+            if event is not None:
+                event.Skip()
+            return
         revision += 1
         approved_inputs = None
         plan, job_id = None, None
@@ -114,6 +170,8 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def accept_candidate(candidate, selected_inputs, source_label, *, voice_inventory=None):
         nonlocal plan, job_id, approved_inputs, busy
+        if not alive:
+            return
         try:
             if selected_inputs != input_identity():
                 raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
@@ -130,7 +188,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                     buttons['pause'].SetLabel('Cancel voice &discovery')
                     buttons['pause'].Enable()
                     report('Checking configured local voices before the explicit voice choice. Nothing has been submitted.')
-                    future = executor.submit(production.discover_voices, cancelled=cancel.is_set)
+                    future = executor.submit(discover_voice_inventory)
                     def discovered(done):
                         def apply():
                             nonlocal busy
@@ -157,11 +215,15 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
                                                 'Production voice', [v.name + '; ' + v.language for v in voices])
                 try:
-                    if choice.ShowModal() != wx.ID_OK:
+                    result = choice.ShowModal()
+                    if not alive or not choice or result != wx.ID_OK:
                         return
                     selected = choice.GetSelection()
                 finally:
-                    choice.Destroy()
+                    if choice:
+                        choice.Destroy()
+                if not alive:
+                    return
                 if not 0 <= selected < len(voices):
                     raise ValueError('Install and choose a local voice before narration.')
                 steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
@@ -180,11 +242,12 @@ def create_assistant_dialog(frame, *, wx_module=None):
         except Exception as exc:
             invalidate()
             report(str(exc))
-            review.SetFocus()
+            if alive:
+                review.SetFocus()
 
     def preview(event=None):
         nonlocal busy
-        if busy:
+        if not alive or busy:
             return
         invalidate()
         try:
@@ -257,7 +320,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def run(event=None):
         nonlocal busy, job_id
-        if busy or (plan is None and job_id is None):
+        if not alive or busy or (plan is None and job_id is None):
             return
         try:
             if frame.library.root != library_root:
@@ -307,35 +370,36 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def jobs(event=None):
         nonlocal job_id, plan, approved_inputs
+        if not alive:
+            return
         rows = service.jobs()
         choice = wx.SingleChoiceDialog(dialog, 'Choose a saved local plan.', 'Assistant jobs',
             [f'{row.id}; {row.status}; {row.completed}/{row.total}' for row in rows])
         try:
-            if choice.ShowModal() == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
+            result = choice.ShowModal()
+            if alive and choice and result == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
                 row = rows[choice.GetSelection()]
                 job_id, plan = row.id, None
                 approved_inputs = None
                 report(f'{row.status}: {row.completed}/{row.total}. {row.message}\nResume uses the original reviewed scope.')
                 buttons['run'].Enable()
         finally:
-            choice.Destroy()
+            if choice:
+                choice.Destroy()
 
     def close(event=None):
-        nonlocal alive
         if not alive:
             return
-        cancel.set()
-        if busy == 'run' and job_id:
-            service.pause(job_id)
-        alive = False
-        executor.submit(production.close)
-        executor.shutdown(wait=False, cancel_futures=False)
-        if dialog.IsModal():
-            dialog.EndModal(wx.ID_CLOSE)
-        else:
-            dialog.Hide()
+        dispose()
+        if dialog:
+            if dialog.IsModal():
+                dialog.EndModal(wx.ID_CLOSE)
+            else:
+                dialog.Hide()
 
     def help_text(event):
+        if not alive:
+            return
         from .desktop_app import show_text
         show_text(dialog, 'Local assistant commands', HELP)
 
@@ -363,7 +427,8 @@ def show_assistant(frame):
         dialog.ShowModal()
     finally:
         dialog.assistant_handlers['close']()
-        dialog.Destroy()
+        if dialog:
+            dialog.Destroy()
 
 
 def show_provider_settings(frame):

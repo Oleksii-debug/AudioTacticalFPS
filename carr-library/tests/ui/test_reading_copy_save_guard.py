@@ -2,6 +2,7 @@
 import ast
 from concurrent.futures import Future
 from hashlib import sha256
+from importlib.util import find_spec
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
@@ -13,26 +14,28 @@ from carr_library.speech.reading import ReadingDocument
 
 
 def _host_callbacks(template, names):
-    path = Path(__file__).parents[2] / 'src/carr_library/ui/speech_dialog.py'
+    path = Path(find_spec('carr_library.ui.speech_dialog').origin)
     source = ast.parse(path.read_text(encoding='utf-8'))
     host = next(node for node in source.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     factory = ast.parse(template)
     callbacks = {node.name: node for node in host.body if isinstance(node, ast.FunctionDef)}
     factory.body[0].body[-1:-1] = [callbacks[name] for name in names]
-    environment = {'__package__': 'carr_library.ui', 'with_recovery_warning': lambda message: message}
+    environment = {'__package__': 'carr_library.ui', 'with_recovery_warning': lambda message: message,
+                   'Event': Event, 'SimpleNamespace': SimpleNamespace, 'Path': Path,
+                   'ReadingDocument': ReadingDocument}
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), environment)
     return environment['build']
 
 
 @pytest.mark.parametrize('revocation', ['before_dialog', 'inside_dialog', 'none'])
 def test_reading_copy_save_as_reauthorizes_after_native_chooser(tmp_path, revocation):
-    source = Path(__file__).parents[2] / 'src/carr_library/ui/speech_dialog.py'
+    source = Path(find_spec('carr_library.ui.speech_dialog').origin)
     tree = ast.parse(source.read_text(encoding='utf-8'))
     host = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     save = next(node for node in host.body if isinstance(node, ast.FunctionDef) and node.name == 'save_project')
     factory = ast.parse('''
 def build(source_guard, sync_document, draft_store, save_recovery, document, wx, dialog, Path, report):
-    save_path = None
+    save_path, alive = None, True
     return save_project
 ''')
     factory.body[0].body.insert(1, save)
@@ -51,6 +54,7 @@ def build(source_guard, sync_document, draft_store, save_recovery, document, wx,
         def __init__(self, *args, **kwargs): dialogs.append(self)
         def __enter__(self): return self
         def __exit__(self, *args): pass
+        def Destroy(self): pass
         def ShowModal(self):
             if revocation == 'inside_dialog':
                 authorized[0] = False
@@ -108,6 +112,7 @@ def test_wav_completion_reports_real_publication_before_late_stop_or_revoke(tmp_
         def __init__(self, *args, **kwargs): pass
         def __enter__(self): return self
         def __exit__(self, *args): pass
+        def Destroy(self): pass
         def ShowModal(self): return 1
         def GetPath(self): return str(target)
 
@@ -180,6 +185,7 @@ def test_saved_project_is_reported_when_later_recovery_update_fails(tmp_path):
         def __init__(self, *args, **kwargs): pass
         def __enter__(self): return self
         def __exit__(self, *args): pass
+        def Destroy(self): pass
         def ShowModal(self): return 1
         def GetPath(self): return str(target)
 
@@ -188,7 +194,7 @@ def test_saved_project_is_reported_when_later_recovery_update_fails(tmp_path):
 
     build = _host_callbacks('''
 def build(source_guard, sync_document, draft_store, save_recovery, document, wx, dialog, Path, report):
-    save_path = None
+    save_path, alive = None, True
     return save_project
 ''', ['save_project'])
     callback = build(lambda: None, lambda: None, object(), unavailable, document,
@@ -197,3 +203,86 @@ def build(source_guard, sync_document, draft_store, save_recovery, document, wx,
     assert ReadingDocument.load(target).source_text == document.source_text
     assert reports[-1].startswith(f'Reading copy and undo history saved: {target}')
     assert 'The recovery draft could not be updated' in reports[-1]
+
+
+@pytest.mark.parametrize('action', ['save_project', 'open_project', 'save_audio'])
+@pytest.mark.parametrize('boundary', ['modal_return', 'chooser_destruction'])
+def test_reader_file_chooser_cannot_resume_into_deleted_owner(tmp_path, action, boundary):
+    """Run actual save/open/export handlers through a successful stale modal."""
+    forbidden, reports, paths = [], [], []
+    state = SimpleNamespace(dead=False, detach=None)
+    target = tmp_path / 'must-not-publish.json'
+    document = ReadingDocument('Immutable original for a detached modal.')
+    original = tmp_path / 'original.reading.json'
+    document.save(original)
+    original_bytes = original.read_bytes()
+
+    def touch(label):
+        if state.dead:
+            forbidden.append(label)
+            raise RuntimeError('Deleted native control: ' + label)
+
+    def detach():
+        state.detach()
+        state.dead = True
+
+    class Chooser:
+        def __init__(self, *args, **kwargs):
+            touch('construct chooser')
+            self.dead = False
+        def __bool__(self):
+            return not self.dead
+        def ShowModal(self):
+            touch('ShowModal')
+            if boundary == 'modal_return':
+                detach()
+                self.dead = True  # Native parent deletion already removed it.
+            return 1
+        def GetPath(self):
+            touch('GetPath')
+            paths.append(True)
+            return str(target)
+        def Destroy(self):
+            touch('Destroy')
+            assert not self.dead
+            if boundary == 'chooser_destruction':
+                detach()
+            self.dead = True
+
+    build = _host_callbacks("""
+def build(document, wx, state, touch, reports, root):
+    alive, busy, source_loaded = True, False, True
+    save_path, source_loader, draft_store = None, None, None
+    source_locations, recovery_notice = (), ''
+    cancel = Event()
+    dialog = object()
+    source_guard = lambda: touch('source guard')
+    sync_document = lambda: touch('editor sync')
+    save_recovery = lambda **kwargs: touch('recovery write')
+    display_document = lambda: touch('editor display')
+    current = lambda: (1, document.text)
+    editor = SimpleNamespace(GetSelection=lambda: (0, 0), SetFocus=lambda: touch('editor focus'))
+    live = SimpleNamespace(core=SimpleNamespace(busy=False),
+        stop=lambda: touch('live stop'), _voice_settings=lambda: ('fixture:voice', 1., 1.))
+    reading_range = lambda editor, raw, mode: (0, len(raw))
+    def report(message, **kwargs):
+        if alive:
+            reports.append(message)
+    def run(*args, **kwargs):
+        touch('submit after modal')
+        raise AssertionError('Detached modal submitted new work.')
+    return SimpleNamespace(save_project=save_project, open_project=open_project,
+        save_audio=save_audio, detach=detach_reader)
+""", ['detach_reader', 'save_project', 'open_project', 'save_audio'])
+    wx = SimpleNamespace(FileDialog=Chooser, ID_OK=1, FD_SAVE=2, FD_OPEN=4,
+                         FD_FILE_MUST_EXIST=8)
+    handlers = build(document, wx, state, touch, reports, tmp_path)
+    state.detach = handlers.detach
+    if action == 'save_project':
+        assert handlers.save_project(choose=True) is False
+    else:
+        getattr(handlers, action)()
+    assert state.dead and not forbidden and not reports
+    assert paths == ([True] if boundary == 'chooser_destruction' else [])
+    assert not target.exists() and original.read_bytes() == original_bytes
+    assert document.text == document.source_text and document.revision == 0

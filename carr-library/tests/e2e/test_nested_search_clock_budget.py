@@ -31,7 +31,7 @@ def research(tmp_path, monkeypatch):
     ranker.tokenizer = CharacterTokenizer()
     calls = []
 
-    def rank(query, candidates, *, timeout, cancelled):
+    def rank(query, candidates, *, timeout, cancelled, cache=None):
         calls.append(timeout)
         assert 0 < timeout <= 60
         return [identity for identity, _ in candidates]

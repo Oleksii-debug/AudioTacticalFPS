@@ -17,8 +17,6 @@ from carr_library.application import LibraryApp
 from carr_library.assistant import AssistantService, ProfileStore, ProviderProfile, Scope
 
 
-pytestmark = pytest.mark.requires_loopback
-
 
 def cli(root, *arguments):
     # Follow the package already selected by the source/installed test runner.

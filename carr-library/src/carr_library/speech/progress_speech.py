@@ -31,11 +31,46 @@ _NOTICES = {
 }
 
 
+class _RegistryOwnership:
+    """Share one explicitly activated registry without borrowing another view's."""
+    def __init__(self, registry):
+        self.registry, self.references = registry, 0
+        self._lock = threading.Lock()
+        self._closing = False
+        self.finished = threading.Event()
+        self.error = None
+
+    def acquire(self):
+        with self._lock:
+            if self._closing:
+                raise ValueError('This progress voice selection is closed. Select it again.')
+            self.references += 1
+
+    def release(self):
+        with self._lock:
+            self.references -= 1
+            if self.references or self._closing:
+                return
+            self._closing = True
+        def close():
+            try:
+                if self.registry.close() is False:
+                    self.error = 'Local voice worker cleanup needs attention; its owner is retained for shutdown retry.'
+            except Exception as exc:
+                self.error = str(exc)
+            finally:
+                self.finished.set()
+        # Closing a warm native worker may wait for bounded process cleanup.
+        # Notification preferences and window Close never wait for that here.
+        threading.Thread(target=close, name='progress-voice-cleanup', daemon=True).start()
+
+
 class LocalProgressSpeech:
     """One selected voice, bounded private PCM, and an independently owned player."""
 
     def __init__(self, registry, voice_id, *, library_root=None,
-                 _player_factory=WavePlayer, _clock=time.monotonic, _guard=lambda: None):
+                 _player_factory=WavePlayer, _clock=time.monotonic, _guard=lambda: None,
+                 _ownership=None):
         if not isinstance(registry, VoiceRegistry):
             raise ValueError('Use the configured local voice registry for progress speech.')
         voice = registry.get(voice_id)
@@ -51,6 +86,9 @@ class LocalProgressSpeech:
         self._run_lock, self._closed = threading.Lock(), threading.Event()
         self._possibly_audible = False
         self._retained = None
+        self._ownership, self._ownership_released = _ownership, False
+        if _ownership is not None:
+            _ownership.acquire()
 
     @property
     def quiescent(self):
@@ -61,12 +99,25 @@ class LocalProgressSpeech:
     def close(self):
         """Cancel this selection without touching any other audio device/session."""
         self._closed.set()
+        if self._run_lock.acquire(blocking=False):
+            try:
+                self._release_ownership()
+            finally:
+                self._run_lock.release()
+
+    def _release_ownership(self):
+        if self._ownership is not None and not self._ownership_released:
+            self._ownership_released = True
+            self._ownership.release()
 
     def copy_selection(self):
         """An independent notification player for another native progress view."""
+        if self._closed.is_set():
+            raise ValueError('This progress voice selection is closed. Select it again.')
         self._guard()
         return LocalProgressSpeech(self.registry, self.voice.id, library_root=self.library_root,
-            _player_factory=self._player_factory, _clock=self._clock, _guard=self._guard)
+            _player_factory=self._player_factory, _clock=self._clock, _guard=self._guard,
+            _ownership=self._ownership)
 
     def notification_text(self, event, *, state=None):
         words = _NOTICES[self.language]
@@ -96,6 +147,8 @@ class LocalProgressSpeech:
             return False
         temporary = player = None
         try:
+            if self._closed.is_set():
+                return False
             if not self.quiescent:
                 raise RuntimeError('The previous progress audio device has not confirmed silence.')
             self._guard()
@@ -166,10 +219,12 @@ class LocalProgressSpeech:
                     if temporary is not None:
                         temporary.cleanup()
                 finally:
+                    if self._closed.is_set():
+                        self._release_ownership()
                     self._run_lock.release()
 
 
-def activate_progress_voice(library_root, voice_id, *, _registry_factory=None):
+def activate_progress_voice(library_root, voice_id, *, cancelled=lambda: False, _registry_factory=None):
     """Explicitly reauthorize the selected ID against this library's settings."""
     from ..runtime_settings import load_settings, voice_registry
 
@@ -177,14 +232,22 @@ def activate_progress_voice(library_root, voice_id, *, _registry_factory=None):
     regular(root, directory=True)
     state_root = root / 'state'
     settings = load_settings(state_root)
-    registry = (_registry_factory or voice_registry)(state_root)
+    from ._io import check_cancelled
+    check_cancelled(cancelled)
+    registry = (_registry_factory or voice_registry)(state_root, cancelled=cancelled)
 
     def guard():
         if load_settings(state_root) != settings:
             raise ValueError('Local engine settings changed. Select the progress voice again.')
 
-    guard()
-    return LocalProgressSpeech(registry, voice_id, library_root=root, _guard=guard)
+    try:
+        check_cancelled(cancelled)
+        guard()
+        return LocalProgressSpeech(registry, voice_id, library_root=root, _guard=guard,
+                                   _ownership=_RegistryOwnership(registry))
+    except BaseException:
+        registry.close()
+        raise
 
 
 def play_when_quiet(controllers, start, *, schedule, alive, on_error, _clock=time.monotonic):

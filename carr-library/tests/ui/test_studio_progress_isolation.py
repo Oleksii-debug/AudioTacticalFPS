@@ -4,6 +4,7 @@ These are headless business/feedback-boundary tests, not native audio or NVDA
 acceptance. Files represent only purpose-written synthetic publication data.
 """
 import ast
+from importlib.util import find_spec
 from concurrent.futures import Future
 from pathlib import Path
 import threading
@@ -49,7 +50,7 @@ class Progress:
 
 @pytest.fixture
 def studio():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    source = Path(find_spec('carr_library.ui.studio_dialog').origin)
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     run = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
@@ -210,18 +211,21 @@ def test_start_failure_never_finalizes_callback_started_new_operation(studio, mo
 
 def test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail():
     """A local view cannot hide uncertain native audio from the surviving parent."""
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    source = Path(find_spec('carr_library.ui.studio_dialog').origin)
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    close = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'close')
+    names = {'close', 'cleanup', 'dispose', 'release_service'}
+    handlers = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in handlers} == names
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
-    alive, busy = True, False
+    alive, busy, cleanup_started = True, False, False
     current_job = None
+    frame = SimpleNamespace(report=report)
     return close
 ''')
-    factory.body[0].body.insert(-1, close)
-    environment = {'wx': SimpleNamespace(ID_CLOSE=321)}
+    factory.body[0].body[-1:-1] = handlers
+    environment = {'wx': SimpleNamespace(ID_CLOSE=321), 'SimpleNamespace': SimpleNamespace}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), environment)
     autosave, service, timer, dialog, progress, parent_progress, executor = [Mock() for _ in range(7)]
     cancel, reports = threading.Event(), []
@@ -238,5 +242,145 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     assert 'native device did not confirm silence' in diagnostic
     assert 'local progress view is detached' in diagnostic
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+    assert executor.submit.call_count == 1
+    assert executor.submit.call_args.args[0].__name__ == 'release_service'
     dialog.EndModal.assert_called_once_with(321)
+
+
+
+@pytest.mark.parametrize(('case', 'handler_name', 'modal_kind'), [
+    ('open', 'open_project', 'file'),
+    ('save-as', 'save_as', 'file'),
+    ('save-approval', 'save_as', 'approval'),
+    ('roles-choice', 'edit_roles', 'single'),
+    ('roles-detail', 'edit_roles', 'detail'),
+    ('new-output', 'render', 'directory'),
+    ('restored-inputs', 'render', 'message'),
+    ('restored-output', 'render', 'directory'),
+    ('jobs', 'jobs', 'single'),
+])
+def test_studio_nested_modal_owner_destruction_stops_native_reads_and_admission(tmp_path, case, handler_name, modal_kind):
+    """Extract actual bound handlers; every forbidden access is recorded, even if caught."""
+    from dataclasses import replace
+    from carr_library.durable_state import encode, read_json
+    from carr_library.studio.project import Project, Role, Scene
+    source = Path(find_spec('carr_library.ui.studio_dialog').origin)
+    parsed = ast.parse(source.read_text(encoding='utf-8'))
+    window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
+    names = {'dispose', 'destroyed', 'report', 'open_project', 'save_as', 'edit_roles', 'render', 'jobs'}
+    handlers = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in handlers} == names
+    factory = ast.parse('''
+def make(wx, frame, dialog, service, controller, project, status, editor, title,
+         format_choice, stems, run, controls, initial_job):
+    alive, busy, current_job = True, False, initial_job
+    native_id = 431
+    cancel = threading.Event()
+    formats = ['wav']
+    voices = (SimpleNamespace(id='voice-1', name='Fixture', language='en', capabilities=()),)
+    save = lambda: project
+    return SimpleNamespace(open_project=open_project, save_as=save_as, edit_roles=edit_roles,
+                           render=render, jobs=jobs, destroyed=destroyed,
+                           is_alive=lambda: alive, cancel=cancel)
+''')
+    factory.body[0].body[-1:-1] = handlers
+    forbidden, peers = [], []
+    destroyed = False
+    bound = None
+    project = Project('project-1', 'Synthetic project', (Role('narrator', 'Narrator', 'voice-1'),),
+                      (Scene('scene-1', 'Scene', (), minimum_duration=1),), original_script='Synthetic prose')
+    selected_path = tmp_path / 'selected.txt'
+    selected_path.write_text('Synthetic selected prose', encoding='utf-8')
+
+    def touch(name, result=None):
+        if destroyed:
+            forbidden.append(name)
+        return result
+
+    class Control:
+        def SetName(self, *args): touch('control SetName')
+        def SetSelection(self, *args): touch('control SetSelection')
+        def SetValue(self, *args): touch('control SetValue')
+        def ChangeValue(self, *args): touch('control ChangeValue')
+        def SetFocus(self, *args): touch('control SetFocus')
+        def GetSelection(self): return touch('control GetSelection', 0)
+        def GetValue(self): return touch('control GetValue', 0)
+
+    def destroy_owner():
+        nonlocal destroyed
+        destroyed = True
+        for peer in peers:
+            peer.live = False
+        event = Mock()
+        event.GetId.return_value = 431
+        event.GetEventObject.return_value = object()
+        bound.destroyed(event)
+        event.Skip.assert_called_once()
+
+    class Peer:
+        def __init__(self, kind):
+            touch('construct peer ' + kind)
+            self.kind, self.live = kind, True
+            peers.append(self)
+        def __bool__(self): return self.live
+        def ShowModal(self):
+            if self.kind == modal_kind:
+                destroy_owner()
+            return 3 if self.kind == 'message' else 1
+        def GetPath(self): return touch('chooser GetPath', str(selected_path))
+        def GetSelection(self): return touch('chooser GetSelection', 0)
+        def CreateButtonSizer(self, *args): return touch('detail CreateButtonSizer', object())
+        def SetSizerAndFit(self, *args): touch('detail SetSizerAndFit')
+        def Destroy(self):
+            touch('chooser Destroy')
+            self.live = False
+
+    def peer_factory(kind):
+        return lambda *args, **kwargs: Peer(kind)
+
+    wx = SimpleNamespace(
+        ID_OK=1, ID_YES=3, NOT_FOUND=-1, FD_OPEN=4, FD_FILE_MUST_EXIST=8, FD_SAVE=16,
+        YES_NO=32, NO_DEFAULT=64, ICON_QUESTION=128, VERTICAL=1, ALL=2, EXPAND=4,
+        OK=8, CANCEL=16, FileDialog=peer_factory('file'), DirDialog=peer_factory('directory'),
+        SingleChoiceDialog=peer_factory('single'), MessageDialog=peer_factory('message'),
+        Dialog=peer_factory('detail'), BoxSizer=lambda *args: SimpleNamespace(Add=lambda *args: touch('sizer Add')),
+        StaticText=lambda *args, **kwargs: Control(), Choice=lambda *args, **kwargs: Control(),
+        SpinCtrlDouble=lambda *args, **kwargs: Control(), SpinCtrl=lambda *args, **kwargs: Control())
+    row = {'id': 'saved-job', 'project': project.to_dict(), 'status': 'paused', 'progress': 'Ready', 'error': ''}
+    service = SimpleNamespace(
+        register_project_inputs=lambda *args, **kwargs: touch('register imported paths'),
+        projects=SimpleNamespace(save=lambda *args, **kwargs: touch('save project'),
+                                 load=lambda *args: touch('load project', project)),
+        submit=lambda *args, **kwargs: touch('submit output', 'new-job'),
+        restored_inputs_to_review=lambda *args: touch('review restored inputs',
+            ('/explicit/legacy-input.wav',) if case == 'restored-inputs' else ()),
+        get=lambda *args: touch('read saved job', {'recovery': {'requires_output_directory': case == 'restored-output'}}),
+        relocate_restored_job=lambda *args: touch('relocate restored job'),
+        approve_restored_inputs=lambda *args, **kwargs: touch('approve restored inputs'),
+        run=lambda *args, **kwargs: touch('execute production'),
+        jobs=lambda: touch('list jobs', [row]))
+    frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path / 'library'))
+    controller = SimpleNamespace(service=service, project=project,
+                                 draft=frame.library.root / 'state' / 'studio' / 'draft.json')
+    def approve(*args, **kwargs):
+        if modal_kind == 'approval':
+            destroy_owner()
+        return object()
+    def write(*args, **kwargs):
+        touch('write exported project')
+        return object()
+    environment = dict(threading=threading, SimpleNamespace=SimpleNamespace, Path=Path,
+                       Project=Project, replace=replace, encode=encode, read_json=read_json,
+                       confirm_export_destination=approve, write_binary_export=write,
+                       export_completion=lambda *args: 'Exported')
+    exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), environment)
+    initial_job = 'saved-job' if case in ('restored-inputs', 'restored-output') else None
+    bound = environment['make'](wx, frame, object(), service, controller, project,
+                               Control(), Control(), Control(), Control(), Control(),
+                               lambda *args, **kwargs: touch('queue production'),
+                               lambda: touch('refresh controls'), initial_job)
+    getattr(bound, handler_name)()
+    assert destroyed and not bound.is_alive() and bound.cancel.is_set()
+    assert peers and all(not peer for peer in peers)
+    assert forbidden == []

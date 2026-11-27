@@ -59,11 +59,13 @@ class NativeDialogs:
             first = next(iter(controls.values()))
             first.SetFocus()
             first.SetInsertionPoint(0)
-            if dialog.ShowModal() != wx.ID_OK:
+            answer = dialog.ShowModal()
+            if not dialog or (parent is not None and not parent) or answer != wx.ID_OK:
                 return None
             return {key: control.GetValue() for key, control in controls.items()}
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
     def text(self, parent, title, label, value='', *, multiline=False):
         result = self.fields(parent, title, (('value', label, value, multiline),))
@@ -74,14 +76,16 @@ class NativeDialogs:
 
         dialog = wx.SingleChoiceDialog(parent, label, title, list(choices))
         try:
-            if dialog.ShowModal() != wx.ID_OK:
+            answer = dialog.ShowModal()
+            if not dialog or (parent is not None and not parent) or answer != wx.ID_OK:
                 return None
             index = dialog.GetSelection()
             if not 0 <= index < len(choices):
                 raise ValueError('Choose one item from the list.')
             return index
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
     def show(self, parent, title, value):
         import wx
@@ -99,7 +103,8 @@ class NativeDialogs:
             reader.SetFocus()
             dialog.ShowModal()
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
 
 def _tag_lines(value):

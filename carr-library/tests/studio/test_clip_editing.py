@@ -573,3 +573,79 @@ def test_render_cleanup_exception_survives_failed_journal_and_retains_ownership(
     assert not editor.service.broker.snapshot()['leases']
     with lock:
         pass
+
+
+def test_literal_legacy_duplicate_cue_ids_remain_readable_without_promoting_schema(tmp_path):
+    value = {'id': 'legacy-duplicates', 'title': 'Accepted old project', 'roles': [], 'schema': 1,
+        'revision': 7, 'original_script': 'Exact old source.', 'mode': 'faithful', 'sample_rate': 24000,
+        'scenes': [{'id': 'scene', 'title': 'Scene', 'lines': [], 'music': None,
+            'minimum_duration': 1, 'cues': [
+                {'id': 'accepted-duplicate', 'path': '/old-selected.wav', 'start': 0,
+                 'gain_db': -6, 'pan': 0, 'role': 'sfx'},
+                {'id': 'accepted-duplicate', 'path': '/other-old-selected.wav', 'start': .5,
+                 'gain_db': -6, 'pan': 0, 'role': 'sfx'}]}]}
+    expected = sha256(encode(value)).hexdigest()
+    project = Project.from_dict(value)
+    assert project.schema == 1 and project.fingerprint == expected
+    assert json.loads(encode(project.to_dict())) == value
+    from carr_library.studio.project import ProjectStore
+    store = ProjectStore(tmp_path / 'projects')
+    store.save(project)
+    path = store.directory(project.id) / 'project.json'
+    before = path.read_bytes()
+    assert store.load(project.id) == project and path.read_bytes() == before
+    with pytest.raises(ValueError, match='Duplicate scene clip'):
+        replace(project, schema=2)
+
+
+def test_clip_admission_failure_preserves_source_and_project(editor, tmp_path):
+    from carr_library.operations import ResourceUnavailable
+    source = audio(tmp_path / 'selected.wav')
+    before = source.read_bytes()
+    project = editor.create()
+    broker = editor.service.broker
+    broker.configure(replace(broker.limits, memory_bytes=1))
+    with pytest.raises(ResourceUnavailable):
+        editor.add(project, project.scenes[0].id, source)
+    assert source.read_bytes() == before and editor.service.projects.load(project.id) == project
+    assert not list(editor.service.inputs.glob('*.audio'))
+    assert not list(editor.service.inputs.glob('.pending-*')) and broker.snapshot()['leases'] == []
+
+
+def test_selected_clip_work_is_admitted_by_the_current_shared_policy(editor, tmp_path):
+    source = audio(tmp_path / 'selected.wav')
+    project = editor.create()
+    observations = []
+    def observed(message):
+        observations.append(editor.service.broker.snapshot())
+    saved = editor.add(project, project.scenes[0].id, source, progress=observed)
+    assert saved.schema == 2 and observations
+    request = observations[0]['leases'][0]['request']
+    assert request['cpu_slots'] >= 1 and request['memory_bytes'] >= 512 * 1024**2
+    assert request['disk_bytes'] >= source.stat().st_size
+    assert editor.service.broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('kind', ['epub', 'daisy-2.02'])
+def test_schema_two_recorded_clip_exports_through_existing_publication_commit_path(editor, tmp_path, kind):
+    from carr_library.studio.publishing import PublicationService, inspect_epub
+    from carr_library.studio.daisy import inspect_daisy
+    source = audio(tmp_path / 'recorded-synthetic-input.wav')
+    project = editor.create('Recorded scene without an invented transcript')
+    project = editor.add(project, project.scenes[0].id, source, role='microphone',
+                         trim_start=.5, duration=.5, title='Synthetic recording')
+    output = tmp_path / 'rendered'; output.mkdir()
+    state = editor.service.run(editor.service.submit(project, output, stems=False))
+    assert project.schema == 2 and state['result']['lines'] == []
+    publisher = PublicationService(editor.service)
+    destination = tmp_path / ('recorded-scene.epub' if kind == 'epub' else 'recorded-scene.zip')
+    export = publisher.export_epub if kind == 'epub' else publisher.export_daisy
+    inspect = inspect_epub if kind == 'epub' else inspect_daisy
+    options = {'publisher': 'Synthetic recorded-clip fixture'} if kind == 'daisy-2.02' else {}
+    result = export(state['id'], destination, **options)
+    provenance = inspect(destination)
+    assert result['status'] == 'complete'
+    assert provenance['source']['project_sha256'] == project.fingerprint
+    assert provenance['original_script'] == project.original_script
+    assert provenance['intervals'] and all(row['kind'] != 'line' for row in provenance['intervals'])
+    assert Path(project.scenes[0].cues[0].path).read_bytes() == source.read_bytes()

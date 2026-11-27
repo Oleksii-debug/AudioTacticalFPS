@@ -15,17 +15,154 @@ import os
 from pathlib import Path
 import re
 import shutil
-from tempfile import mkdtemp
+import stat
 import threading
+import wave
 from uuid import uuid4
 
 from .models import AudioBudget, AudioCancelled, AudioCleanupPending, AudioError, AudioUnavailable, integer
 from .process import publish_file, run_process
-from ..durable_state import atomic_json, local_path, read_json, regular
+from ..durable_state import atomic_json, local_path, read_json, regular, state_lock, sync_directory
 
 _CAPTURE = threading.Lock()
 _ID = re.compile(r'[0-9a-f]{32}')
 _HASH = re.compile(r'[0-9a-f]{64}')
+_MAX_RECORDINGS = 10000
+_MAX_RECORDING_ENTRIES = 30000
+
+
+def _notice(result, message):
+    result.setdefault('warnings', []).append(message)
+
+
+def _stage_entries(directory):
+    # A capture owns only one known basename. Never enumerate an unbounded
+    # injected directory or recursively remove unrelated entries.
+    with os.scandir(directory) as listing:
+        names = []
+        for item in listing:
+            names.append(item.name)
+            if len(names) > 1:
+                break
+    return names
+
+
+def _cleanup_recording_stage(root, directory, owner, completed):
+    observed = regular(local_path(directory, exists=True), directory=True)
+    if (observed.st_dev, observed.st_ino) != (owner.st_dev, owner.st_ino):
+        raise ValueError('The capture staging directory changed; all entries were preserved.')
+    entries = _stage_entries(directory)
+    if entries == ['capture.wav']:
+        if completed.get('status') == 'complete':
+            raise OSError('The owned capture staging link still needs receipt recovery.')
+        regular(directory / 'capture.wav')
+        (directory / 'capture.wav').unlink()
+    elif entries:
+        raise ValueError('Unexpected capture staging entries were preserved.')
+    directory.rmdir()
+    sync_directory(root)
+
+
+def _audio_stamp(value):
+    return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns,
+            value.st_ctime_ns, value.st_nlink)
+
+
+def _read_recording(path, expected, maximum, cancelled=lambda: False, *, owner=None):
+    """Bounded receipt-specific PCM verification; ordinary source guards stay strict."""
+    path = Path(path)
+    parent = local_path(path.parent, exists=True)
+    parent_owner = regular(parent, directory=True)
+
+    def check():
+        if cancelled():
+            raise AudioCancelled('Recording verification cancelled.')
+
+    def validate(info):
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or info.st_nlink not in (1, 2) or info.st_size != expected['size_bytes']
+                or not 44 <= info.st_size <= maximum
+                or (owner is not None and ((info.st_dev, info.st_ino) !=
+                    (owner.st_dev, owner.st_ino) or info.st_nlink != 2))):
+            raise ValueError('The retained recording differs from its verified receipt or publication identity.')
+        return _audio_stamp(info)
+
+    before = validate(path.lstat())
+
+    def stable(stream):
+        observed = regular(local_path(parent, exists=True), directory=True)
+        if ((observed.st_dev, observed.st_ino) != (parent_owner.st_dev, parent_owner.st_ino)
+                or validate(path.lstat()) != before or validate(os.fstat(stream.fileno())) != before):
+            raise ValueError('The retained recording changed during verification.')
+
+    def digest(stream):
+        stream.seek(0)
+        hasher, count = sha256(), 0
+        while block := stream.read(1024 * 1024):
+            check()
+            count += len(block)
+            if count > expected['size_bytes']:
+                raise ValueError('The retained recording grew during verification.')
+            hasher.update(block)
+        if count != expected['size_bytes'] or hasher.hexdigest() != expected['sha256']:
+            raise ValueError('The retained recording differs from its verified receipt.')
+        stable(stream)
+
+    check()
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    flags |= getattr(os, 'O_NONBLOCK', 0)
+    with os.fdopen(os.open(path, flags), 'rb') as stream:
+        stable(stream)
+        digest(stream)
+        stream.seek(0)
+        with wave.open(stream, 'rb') as audio:
+            if (audio.getcomptype() != 'NONE'
+                    or (audio.getframerate(), audio.getnchannels(), audio.getnframes(), audio.getsampwidth()) !=
+                       (expected['sample_rate'], expected['channels'], expected['frames'], expected['sample_width'])):
+                raise ValueError('The retained PCM format differs from its verified receipt.')
+            count = 0
+            pcm_bytes = expected['frames'] * expected['channels'] * expected['sample_width']
+            while block := audio.readframes(65536):
+                check()
+                count += len(block)
+                if count > pcm_bytes:
+                    raise ValueError('The retained PCM exceeds its verified frame count.')
+            if count != pcm_bytes:
+                raise ValueError('The retained recording contains truncated PCM.')
+        digest(stream)
+        check()
+    return before
+
+
+def _recording_result(value):
+    return dict(value, output_verified=True,
+                receipt_status=value.get('status', 'complete'),
+                receipt_finalized=value.get('status', 'complete') == 'complete')
+
+
+def _complete_recording(path, previous):
+    complete_receipt = dict(previous, status='complete')
+    completed = _recording_result(complete_receipt)
+    try:
+        saved = read_json(path)
+        if saved not in (previous, complete_receipt):
+            raise ValueError('The prepared recording receipt changed before finalization.')
+        if saved != complete_receipt:
+            atomic_json(path, complete_receipt, replace=True)
+    except (Exception, KeyboardInterrupt) as exc:
+        saved = None
+        try:
+            saved = read_json(path)
+        except (ValueError, OSError):
+            pass
+        known = saved == previous or saved == complete_receipt
+        completed['receipt_status'] = saved.get('status', 'complete') if known else 'unconfirmed'
+        completed['receipt_finalized'] = saved == complete_receipt
+        _notice(completed, 'The recorded WAV is saved and verified, but receipt finalization '
+                'needs attention: ' + str(exc)[:1000] + '. Reopen this saved recording; do not record it again.')
+    return completed
+
 
 
 def _text(value, label, maximum=512):
@@ -119,8 +256,10 @@ def validate_recording_receipt(value, *, recording_id=None):
     if (type(identity) is not str or _ID.fullmatch(identity) is None
             or (recording_id is not None and recording_id != identity)):
         raise ValueError('Invalid recording receipt identity.')
-    if (set(value) != {'schema', 'id', 'filename', 'title', 'created',
-            'source', 'ffmpeg_sha256', 'audio', 'limits', 'completion'}
+    fields = {'schema', 'id', 'filename', 'title', 'created',
+              'source', 'ffmpeg_sha256', 'audio', 'limits', 'completion'}
+    if (set(value) not in (fields, fields | {'status'})
+            or value.get('status', 'complete') not in ('prepared', 'complete')
             or value['schema'] != 'carr-recording/1'
             or value['filename'] != identity + '.wav'
             or type(value['limits']) is not dict
@@ -159,7 +298,7 @@ def validate_recording_receipt(value, *, recording_id=None):
     return value
 
 
-def unverified_recording_files(library_root):
+def unverified_recording_files(library_root, *, cancelled=lambda: False):
     """List owned final WAVs without receipts; never inspect or activate audio."""
     library = local_path(library_root, exists=True)
     root = local_path(library / 'state' / 'studio' / 'recordings', root=library)
@@ -167,16 +306,22 @@ def unverified_recording_files(library_root):
         return ()
     regular(root, directory=True)
     result = []
-    for count, entry in enumerate(root.iterdir()):
-        if count >= 10000:
-            raise ValueError('The recording inventory exceeds its item allowance.')
-        if entry.suffix != '.wav' or _ID.fullmatch(entry.stem) is None:
-            continue
-        if os.path.lexists(root / (entry.stem + '.json')):
-            continue
-        path = local_path(entry, root=root, exists=True)
-        regular(path)
-        result.append(path)
+    with os.scandir(root) as listing:
+        for count, entry in enumerate(listing, 1):
+            if cancelled():
+                raise AudioCancelled('Recording inventory cancelled.')
+            if count > _MAX_RECORDING_ENTRIES:
+                raise ValueError('The recording inventory exceeds its total entry allowance.')
+            name = entry.name
+            if not name.endswith('.wav') or _ID.fullmatch(name[:-4]) is None:
+                continue
+            if os.path.lexists(root / (name[:-4] + '.json')):
+                continue
+            path = local_path(root / name, root=root, exists=True)
+            regular(path)
+            result.append(path)
+            if len(result) > _MAX_RECORDINGS:
+                raise ValueError('The recording inventory exceeds its item allowance.')
     return tuple(sorted(result))
 
 
@@ -192,16 +337,18 @@ class _CaptureReservation:
     submitting executor worker has returned. This is the same recording lock
     path and global admission lock used for ordinary captures.
     """
-    def __init__(self, root):
+    def __init__(self, root, completed):
         from filelock import FileLock, Timeout
         self.root = local_path(root, exists=True)
         self.directory = None
+        self.directory_owner = None
+        self.completed = completed
         self.owner = None
         self.deferred = False
         self.closed = False
         self.cleanup_error = None
         self._guard = threading.Lock()
-        self.lock = None
+        self.lock = self.state_lock = None
         if not _CAPTURE.acquire(blocking=False):
             raise RuntimeError('Another microphone recording or cleanup is active. Confirm it has stopped first.')
         try:
@@ -213,15 +360,31 @@ class _CaptureReservation:
                 self.lock.acquire()
             except Timeout:
                 raise RuntimeError('Another microphone recording or cleanup owns this library.') from None
+            state_path = self.root.parent.parent / '.studio-recording.lock'
+            if os.path.lexists(state_path):
+                regular(state_path)
+            self.state_lock = FileLock(state_path, timeout=0, mode=0o600, thread_local=False)
+            try:
+                self.state_lock.acquire()
+            except Timeout:
+                raise RuntimeError('This project is already being changed by another operation.') from None
         except BaseException:
+            if self.state_lock is not None:
+                self.state_lock.release()
+            if self.lock is not None:
+                self.lock.release()
             _CAPTURE.release()
             raise
         with _PENDING_CAPTURE_LOCK:
             _PENDING_CAPTURES.add(self)
 
-    def staging(self):
+    def staging(self, identity):
         if self.directory is None:
-            self.directory = Path(mkdtemp(prefix='.pending-recording-', dir=self.root))
+            if _ID.fullmatch(identity) is None:
+                raise ValueError('Invalid capture staging identity.')
+            directory = self.root / ('.pending-recording-' + identity)
+            directory.mkdir(mode=0o700)
+            self.directory, self.directory_owner = directory, regular(directory, directory=True)
         return self.directory
 
     def retain(self, owner):
@@ -240,16 +403,16 @@ class _CaptureReservation:
                 return False
             try:
                 if self.directory is not None and os.path.lexists(self.directory):
-                    local_path(self.directory, root=self.root, exists=True)
-                    regular(self.directory, directory=True)
-                    shutil.rmtree(self.directory)
-            except (OSError, ValueError) as exc:
+                    _cleanup_recording_stage(self.root, self.directory,
+                                             self.directory_owner, self.completed)
+            except (OSError, ValueError, KeyboardInterrupt) as exc:
                 # Native silence is already established. Leave failed cleanup
                 # exact and inert; it must not erase a committed original.
                 self.cleanup_error = str(exc)
             try:
                 self.lock.release()
-            except Exception as exc:
+                self.state_lock.release()
+            except (Exception, KeyboardInterrupt) as exc:
                 self.cleanup_error = str(exc)
                 return False
             self.closed = True
@@ -323,42 +486,62 @@ class RecordingService:
             raise ValueError('Refresh microphones and explicitly select a current device before Start.')
         if cancelled() or stop_requested():
             raise AudioCancelled('Recording stopped before opening the microphone.')
-        reservation = _CaptureReservation(self.root)
+        completed = {}
+        reservation = _CaptureReservation(self.root, completed)
         from ..operations import ResourceCancelled, ResourceRequest
-        waiting = True
+        waiting, lease = True, None
         def admission_cancelled():
             return bool(cancelled()) or (waiting and bool(stop_requested()))
-        with ExitStack() as admission:
-            try:
-                broker = self._admission_broker(admission_cancelled)
-                budget = AudioBudget(threads=1)
-                pcm = options.max_seconds * options.sample_rate * options.channels * 2 + 4096
-                request = ResourceRequest(cpu_slots=1,
-                    memory_bytes=max(512 * 1024**2, 2 * budget.max_alloc_bytes),
-                    disk_bytes=2 * pcm + budget.reserve_disk_bytes, disk_path=self.root,
-                    devices=('microphone:' + device.id,))
-                lease = admission.enter_context(broker.reserve(request,
-                    operation_id='recording:' + uuid4().hex, cancelled=admission_cancelled, timeout=60))
-                if admission_cancelled():
-                    raise AudioCancelled('Recording stopped before opening the microphone.')
-                # Stop after admission means finalize captured PCM through the
-                # fixed quit command; it is not a discard/cancellation request.
-                waiting = False
-                return self._capture(device, title, options, stop_requested,
-                                     lease.cancelled, progress, reservation)
-            except AudioCleanupPending as exc:
-                reservation.retain(exc.cleanup_owner)
-                exc.recording_reservation = reservation
-                retained = admission.pop_all()
-                exc.cleanup_owner.add_quiescent_callback(retained.close)
+        try:
+            with ExitStack() as admission:
+                try:
+                    broker = self._admission_broker(admission_cancelled)
+                    budget = AudioBudget(threads=1)
+                    pcm = options.max_seconds * options.sample_rate * options.channels * 2 + 4096
+                    request = ResourceRequest(cpu_slots=1,
+                        memory_bytes=max(512 * 1024**2, 2 * budget.max_alloc_bytes),
+                        disk_bytes=2 * pcm + budget.reserve_disk_bytes, disk_path=self.root,
+                        devices=('microphone:' + device.id,))
+                    lease = admission.enter_context(broker.reserve(request,
+                        operation_id='recording:' + uuid4().hex, cancelled=admission_cancelled,
+                        timeout=60, run_timeout=options.max_seconds + 20))
+                    if admission_cancelled():
+                        raise AudioCancelled('Recording stopped before opening the microphone.')
+                    waiting = False  # Stop now finalizes PCM; cancellation still discards.
+                    self._capture(device, title, options, stop_requested,
+                                  lease.cancelled, progress, reservation, completed)
+                except AudioCleanupPending as exc:
+                    reservation.retain(exc.cleanup_owner)
+                    exc.recording_reservation = reservation
+                    retained = admission.pop_all()
+                    exc.cleanup_owner.add_quiescent_callback(retained.close)
+                    raise
+                except ResourceCancelled as exc:
+                    raise AudioCancelled('Recording cancelled while waiting for shared local resources.') from exc
+                finally:
+                    if not reservation.deferred:
+                        released = reservation.close()
+                        if completed.get('status') == 'complete':
+                            if released is False:
+                                completed['state_release_confirmed'] = False
+                            if reservation.cleanup_error is not None:
+                                completed['cleanup_pending'] = True
+                                _notice(completed, 'The recorded WAV is saved and verified. Capture cleanup '
+                                        'or state lock release needs attention: ' + reservation.cleanup_error[:1000])
+        except (Exception, KeyboardInterrupt) as exc:
+            if completed.get('status') != 'complete':
                 raise
-            except ResourceCancelled as exc:
-                raise AudioCancelled('Recording cancelled while waiting for shared local resources.') from exc
-            finally:
-                if not reservation.deferred:
-                    reservation.close()
+            completed['resource_release_confirmed'] = False
+            _notice(completed, 'The recorded WAV is saved and verified. Shared resource release '
+                    'or final notification was not confirmed: ' + type(exc).__name__ + ': ' + str(exc)[:1000])
+        finally:
+            if lease is not None and lease.cleanup_pending and completed.get('status') == 'complete':
+                completed['resource_cleanup_pending'] = True
+                _notice(completed, 'The microphone resource lock was released; stale coordination '
+                        'metadata awaits normal cleanup.')
+        return completed
 
-    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation):
+    def _capture(self, device, title, options, stop_requested, cancelled, progress, reservation, completed):
         identity = uuid4().hex
         output, receipt = self.root / (identity + '.wav'), self.root / (identity + '.json')
         if os.path.lexists(output) or os.path.lexists(receipt):
@@ -378,8 +561,9 @@ class RecordingService:
                 except Exception:
                     progress = None  # An observer cannot destroy captured audio.
 
-        temporary = reservation.staging()
-        staged = Path(temporary) / 'capture.wav'
+        parent_owner = regular(self.root, directory=True)
+        temporary = reservation.staging(identity)
+        staged = temporary / 'capture.wav'
         command = [self.runtime.ffmpeg, '-hide_banner', '-loglevel', 'error', '-n', '-nostats',
             '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1',
             '-filter_threads', '1', '-filter_complex_threads', '1', '-stats_period', '0.1',
@@ -395,18 +579,46 @@ class RecordingService:
             'title': title, 'created': datetime.now(timezone.utc).isoformat(),
             'source': {'kind': 'microphone', 'backend': 'dshow', 'device_id': device.id, 'name': device.name},
             'ffmpeg_sha256': self._engine_hash, 'audio': audio, 'limits': asdict(options),
-            'completion': 'stopped' if result.stopped else 'duration-limit' if audio['duration_seconds'] >= options.max_seconds - .1 else 'device-ended'}
-        # This is the commit boundary. A late Stop/Cancel cannot erase a
-        # validated published original. A receipt failure leaves that WAV
-        # available for explicit recovery, never claims successful capture.
+            'completion': 'stopped' if result.stopped else 'duration-limit' if audio['duration_seconds'] >= options.max_seconds - .1 else 'device-ended',
+            'status': 'prepared'}
+        # Prepared metadata precedes the create-only publication. Process
+        # death can leave it prepared, but never invents a completed WAV.
         validate_recording_receipt(value, recording_id=identity)
-        publish_file(staged, output, cancelled=cancelled)
-        staged.unlink()
+        atomic_json(receipt, value)
+        owner = regular(staged)
+        observed_parent = regular(local_path(self.root, exists=True), directory=True)
+        if (observed_parent.st_dev, observed_parent.st_ino) != (parent_owner.st_dev, parent_owner.st_ino):
+            raise ValueError('The recording directory changed before publication.')
+        publication_error = None
         try:
-            atomic_json(receipt, value)
-        except (OSError, ValueError) as exc:
-            raise AudioError(f'The recorded WAV was retained at {output}, but its receipt could not be saved. Preserve the file for recovery.') from exc
-        return {**value, 'path': str(output)}
+            publish_file(staged, output, cancelled=cancelled)
+        except (AudioCancelled, FileExistsError):
+            raise
+        except (Exception, KeyboardInterrupt) as exc:
+            publication_error = exc
+        try:
+            stamp = _read_recording(output, audio, options.max_bytes, owner=owner)
+            current_parent = regular(local_path(self.root, exists=True), directory=True)
+            if (current_parent.st_dev, current_parent.st_ino) != (parent_owner.st_dev, parent_owner.st_ino):
+                raise ValueError('The recording directory changed during publication.')
+            if _audio_stamp(staged.lstat()) != stamp:
+                raise ValueError('The retained WAV is not this capture attempt\'s linked staging file.')
+        except Exception:
+            if publication_error is not None:
+                raise publication_error
+            raise
+        completed.update(_complete_recording(receipt, value))
+        completed['path'] = str(output)
+        if publication_error is not None:
+            _notice(completed, 'The recorded WAV was published and its exact PCM verified, '
+                    'but the writer reported a later interruption: ' + str(publication_error)[:1000])
+        try:
+            staged.unlink()
+        except (OSError, KeyboardInterrupt) as exc:
+            completed['cleanup_pending'] = True
+            _notice(completed, 'The recorded WAV is saved and verified. Its known temporary '
+                    'link needs cleanup: ' + str(exc)[:1000])
+        return completed
 
     @staticmethod
     def _audio(path, options, cancelled):
@@ -431,18 +643,84 @@ class RecordingService:
         return validate_recording_receipt(
             read_json(self.root / (identity + '.json')), recording_id=identity)
 
+    def _recover_owned_stage(self, identity, output, stamp, *, cancelled=lambda: False):
+        """Only a UUID-named, otherwise empty capture staging directory is owned.
+
+        The receipt provides no cleanup path. A foreign alias, extra directory
+        entry or equal-byte different inode cannot grant deletion authority.
+        """
+        if stamp[-1] == 1:
+            return
+        directory = self.root / ('.pending-recording-' + identity)
+        if not directory.exists():
+            raise ValueError('The recorded WAV bytes are verified, but its other link is not '
+                             'the known capture staging file. All names were preserved.')
+        parent = regular(local_path(directory, exists=True), directory=True)
+        staged = directory / 'capture.wav'
+        if _stage_entries(directory) != ['capture.wav']:
+            raise ValueError('The recording staging directory has unrelated entries; all names were preserved.')
+        info = staged.lstat()
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or _audio_stamp(info) != stamp):
+            raise ValueError('The retained recording and known staging file have different identities; '
+                             'all names were preserved.')
+        if cancelled():
+            raise AudioCancelled('Recording recovery cancelled before staging cleanup.')
+        observed = regular(local_path(directory, exists=True), directory=True)
+        if ((observed.st_dev, observed.st_ino) != (parent.st_dev, parent.st_ino)
+                or _audio_stamp(output.lstat()) != stamp or _audio_stamp(staged.lstat()) != stamp
+                or _stage_entries(directory) != ['capture.wav']):
+            raise ValueError('The recording staging identity changed; all names were preserved.')
+        staged.unlink()
+        directory.rmdir()
+        sync_directory(self.root)
+        info = regular(output)
+        if (info.st_dev, info.st_ino, info.st_size) != stamp[:3]:
+            raise ValueError('The retained recording changed during staging recovery.')
+
     def get(self, identity, *, cancelled=lambda: False):
-        value = self._receipt(identity)
-        options = RecordingOptions(**value['limits'])
-        output = self.root / value['filename']
-        if self._audio(output, options, cancelled) != value['audio']:
-            raise ValueError('The retained recording differs from its verified receipt.')
-        return {**value, 'path': str(output)}
+        with state_lock(self.library_root / 'state', 'studio-recording'):
+            value = self._receipt(identity)
+            options = RecordingOptions(**value['limits'])
+            output = self.root / value['filename']
+            stamp = _read_recording(output, value['audio'], options.max_bytes, cancelled)
+            result = _recording_result(value)
+            try:
+                self._recover_owned_stage(identity, output, stamp, cancelled=cancelled)
+            except OSError as exc:
+                result['cleanup_pending'] = True
+                _notice(result, 'The recorded WAV is verified, but its owned temporary link '
+                        'cleanup needs another attempt: ' + str(exc)[:1000])
+            # Recovery only removes the known staging alias. Re-read the same
+            # retained bytes after any cleanup attempt before finalizing metadata.
+            _read_recording(output, value['audio'], options.max_bytes, cancelled)
+            # Source metadata was valid before publication; a prepared receipt
+            # is finalized only after reading the actual exact PCM again.
+            if value.get('status') == 'prepared':
+                finalized = _complete_recording(self.root / (identity + '.json'), value)
+                for key in ('cleanup_pending', 'warnings'):
+                    if key in result:
+                        if key == 'warnings':
+                            finalized.setdefault(key, []).extend(result[key])
+                        else:
+                            finalized[key] = result[key]
+                result = finalized
+            return {**result, 'path': str(output)}
 
     def list(self, *, cancelled=lambda: False):
-        paths = sorted(self.root.glob('*.json'))
-        if len(paths) > 10000:
-            raise ValueError('The recording list exceeds its item allowance.')
+        paths = []
+        with os.scandir(self.root) as listing:
+            for count, entry in enumerate(listing, 1):
+                if cancelled():
+                    raise AudioCancelled('Recording list cancelled.')
+                if count > _MAX_RECORDING_ENTRIES:
+                    raise ValueError('The recording directory exceeds its total entry allowance.')
+                if entry.name.casefold().endswith('.json'):
+                    paths.append(self.root / entry.name)
+                    if len(paths) > _MAX_RECORDINGS:
+                        raise ValueError('The recording list exceeds its item allowance.')
+        paths.sort(key=lambda path: path.name)
         records = []
         for path in paths:
             if cancelled():

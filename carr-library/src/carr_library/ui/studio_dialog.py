@@ -91,13 +91,40 @@ def show_studio(frame):
     import wx
     controller = StudioController(frame.library)
     service = controller.service
-    dialog = wx.Dialog(frame, title='Audio Studio — script, voices and production', size=(980, 850),
+    class StudioDialog(wx.Dialog):
+        def Destroy(self):
+            if getattr(self, '_destroy_requested', False):
+                return False
+            self._destroy_requested = True
+            callback = getattr(self, 'dispose', None)
+            if callback is not None:
+                callback()
+            return super().Destroy() if self else False
+
+    dialog = StudioDialog(frame, title='Audio Studio — script, voices and production', size=(980, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
+    cleanup_started = False
+    native_id = dialog.GetId()
+    dialog._native_id = native_id
+    dialog._destroy_requested = False
+
+    def dispose():
+        nonlocal alive
+        alive = False
+        cancel.set()
+
+    def destroyed(event):
+        if event.GetId() == native_id:
+            dispose()
+        event.Skip()
+
+    dialog.dispose = dispose
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 6)
@@ -155,6 +182,8 @@ def show_studio(frame):
             report(f'Select a progress voice again: {exc}')
 
     def selected_voices():
+        if not alive:
+            return ()
         selected = voice_choice.GetSelection()
         if 0 <= selected < len(voices):
             # One chosen voice is the safe default; distinct casting is explicit.
@@ -162,6 +191,8 @@ def show_studio(frame):
         return ()
 
     def controls():
+        if not alive:
+            return
         for name in ('render', 'open', 'roles', 'jobs'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
@@ -204,7 +235,7 @@ def show_studio(frame):
                     pass
 
         def observe(method, *args, **kwargs):
-            if observer_available:
+            if alive and observer_available:
                 try:
                     return getattr(progress, method)(*args, **kwargs)
                 except Exception as exc:
@@ -259,11 +290,24 @@ def show_studio(frame):
             failed_operation(exc)
             return
 
+        def discard_result(done):
+            try:
+                result = done.result()
+            except Exception:
+                return
+            release = getattr(result, 'close', None)
+            if callable(release):
+                release()
+
         def finish(done):
+            if not alive:
+                discard_result(done)
+                return
             def apply():
                 nonlocal busy
                 finished.set()
                 if not alive:
+                    discard_result(done)
                     return
                 busy = False
                 controls()
@@ -299,6 +343,8 @@ def show_studio(frame):
         future.add_done_callback(finish)
 
     def select_progress_voice(event=None):
+        if not alive:
+            return
         selected = voice_choice.GetSelection()
         if not 0 <= selected < len(voices):
             return
@@ -319,10 +365,13 @@ def show_studio(frame):
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(root, voice_id), activated, phase='Selecting a local progress voice')
+        run(lambda: activate_progress_voice(root, voice_id, cancelled=cancel.is_set), activated,
+            phase='Selecting a local progress voice')
 
     def save(event=None):
         nonlocal draft_dirty
+        if not alive:
+            return
         try:
             result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
             draft_dirty = False
@@ -334,12 +383,16 @@ def show_studio(frame):
 
     def changed(event):
         nonlocal draft_dirty, current_job
+        if not alive:
+            return
         draft_dirty = True
         current_job = None
         event.Skip()
 
     def autosave(event=None):
         nonlocal draft_dirty
+        if not alive:
+            return
         if not draft_dirty or busy:
             return
         try:
@@ -349,11 +402,13 @@ def show_studio(frame):
             report(f'Automatic draft save failed: {exc}', True)
 
     def open_project(event=None):
+        if not alive:
+            return
         chooser = wx.FileDialog(dialog, 'Open project JSON or UTF-8 script',
                                 wildcard='Project and script (*.json;*.txt;*.md)|*.json;*.txt;*.md',
                                 style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
-            if chooser.ShowModal() != wx.ID_OK:
+            if chooser.ShowModal() != wx.ID_OK or not alive or not chooser:
                 return
             path = Path(chooser.GetPath())
             if path.stat().st_size > 16 * 1024**2:
@@ -373,9 +428,12 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
         finally:
-            chooser.Destroy()
+            if chooser:
+                chooser.Destroy()
 
     def save_as(event=None):
+        if not alive:
+            return
         library = frame.library
         project = save()
         if project is None:
@@ -383,13 +441,13 @@ def show_studio(frame):
         chooser = wx.FileDialog(dialog, 'Save audio project as', defaultFile='audio-project.json',
                                 wildcard='Project JSON (*.json)|*.json', style=wx.FD_SAVE)
         try:
-            if chooser.ShowModal() == wx.ID_OK:
+            if chooser.ShowModal() == wx.ID_OK and alive and chooser:
                 path = Path(chooser.GetPath())
                 if controller.draft.resolve() != (library.root / 'state' / 'studio' / 'draft.json').resolve():
                     raise ValueError('The library changed. Reopen the studio before exporting.')
                 approval = confirm_export_destination(dialog, path, private_root=library.root,
                                                        title='Replace audio project')
-                if approval is None:
+                if not alive or approval is None:
                     return
                 if frame.library is not library:
                     raise ValueError('The library changed. Reopen the studio before exporting.')
@@ -399,22 +457,26 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
         finally:
-            chooser.Destroy()
+            if chooser:
+                chooser.Destroy()
 
     def edit_roles(event=None):
         nonlocal current_job
+        if not alive:
+            return
         project = save()
         if project is None:
             return
         chooser = wx.SingleChoiceDialog(dialog, 'Choose a speaking role.', 'Voice and position',
                                         [f'{r.name}; voice {r.voice_id}; pan {r.pan}; gain {r.gain_db} dB' for r in project.roles])
         try:
-            if chooser.ShowModal() != wx.ID_OK:
+            if chooser.ShowModal() != wx.ID_OK or not alive or not chooser:
                 return
             index = chooser.GetSelection()
         finally:
-            chooser.Destroy()
-        if not 0 <= index < len(project.roles):
+            if chooser:
+                chooser.Destroy()
+        if not alive or not 0 <= index < len(project.roles):
             return
         role = project.roles[index]
         detail = wx.Dialog(dialog, title='Role: ' + role.name)
@@ -433,7 +495,7 @@ def show_studio(frame):
         box.Add(detail.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 5)
         detail.SetSizerAndFit(box)
         try:
-            if detail.ShowModal() != wx.ID_OK:
+            if detail.ShowModal() != wx.ID_OK or not alive or not detail:
                 return
             selection = choice.GetSelection()
             if not 0 <= selection < len(voices):
@@ -452,10 +514,13 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
         finally:
-            detail.Destroy()
+            if detail:
+                detail.Destroy()
 
     def render(event=None):
         nonlocal current_job
+        if not alive:
+            return
         if busy:
             return
         if current_job is None:
@@ -464,7 +529,7 @@ def show_studio(frame):
                 return
             chooser = wx.DirDialog(dialog, 'Choose the parent folder for new audio outputs')
             try:
-                if chooser.ShowModal() != wx.ID_OK:
+                if chooser.ShowModal() != wx.ID_OK or not alive or not chooser:
                     return
                 current_job = service.submit(project, Path(chooser.GetPath()),
                     format=formats[format_choice.GetSelection()], stems=stems.GetValue())
@@ -472,26 +537,70 @@ def show_studio(frame):
                 report(str(exc), True)
                 return
             finally:
-                chooser.Destroy()
+                if chooser:
+                    chooser.Destroy()
+        if not alive:
+            return
+        approved_inputs = ()
+        try:
+            pending_inputs = service.restored_inputs_to_review(current_job)
+            if pending_inputs:
+                review = wx.MessageDialog(dialog,
+                    'This older backup did not retain these audio inputs. Review their local paths:\n\n'
+                    + '\n'.join(pending_inputs)
+                    + '\n\nAllow this project to read these local files and include them in future backups?',
+                    'Review restored audio inputs', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                try:
+                    if review.ShowModal() != wx.ID_YES or not alive or not review:
+                        return
+                    approved_inputs = pending_inputs
+                finally:
+                    if review:
+                        review.Destroy()
+            if not alive:
+                return
+            restored = service.get(current_job).get('recovery', {}).get('requires_output_directory') is True
+            if restored:
+                chooser = wx.DirDialog(dialog, 'Choose a new output folder for the restored production job')
+                try:
+                    if chooser.ShowModal() != wx.ID_OK or not alive or not chooser:
+                        return
+                    service.relocate_restored_job(current_job, Path(chooser.GetPath()))
+                finally:
+                    if chooser:
+                        chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
+        if not alive:
+            return
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+        def render_selected(measured):
+            if approved_inputs:
+                measured('Verifying explicitly approved restored audio inputs')
+                service.approve_restored_inputs(approved_inputs, cancelled=cancel.is_set)
+            return service.run(identity, cancelled=cancel.is_set, progress=measured)
+        run(render_selected,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
         nonlocal current_job
+        if not alive:
+            return
         try:
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
                 [f'{row["project"]["title"]}; {row["status"]}; {row["progress"]}' for row in rows])
             try:
-                if chooser.ShowModal() != wx.ID_OK:
+                if chooser.ShowModal() != wx.ID_OK or not alive or not chooser:
                     return
                 index = chooser.GetSelection()
             finally:
-                chooser.Destroy()
-            if not 0 <= index < len(rows):
+                if chooser:
+                    chooser.Destroy()
+            if not alive or not 0 <= index < len(rows):
                 return
             row = rows[index]
             project = Project.from_dict(row['project'])
@@ -505,6 +614,8 @@ def show_studio(frame):
             report(str(exc), True)
 
     def preview(event=None):
+        if not alive:
+            return
         try:
             if current_job is None:
                 return
@@ -527,16 +638,37 @@ def show_studio(frame):
             report(str(exc), True)
 
     def help_text(event=None):
+        if not alive:
+            return
         from .desktop_app import show_text
         show_text(dialog, 'Audio Studio keyboard and script guide', SCRIPT_HELP)
 
-    def close(event=None):
-        nonlocal alive
-        autosave()
-        cancel.set()
-        if current_job is not None and busy:
-            service.request_pause(current_job)
-        timer.Stop()
+    def release_service():
+        # This runs behind owned work on the existing executor.
+        try:
+            if service.close() is False:
+                raise RuntimeError('An owned voice worker has not confirmed closure.')
+        except Exception as exc:
+            notice = 'Studio voice cleanup needs attention: ' + str(exc)[:1000]
+            def notify():
+                try:
+                    frame.report(notice)
+                except (RuntimeError, AttributeError):
+                    pass
+            try:
+                wx.CallAfter(notify)
+            except RuntimeError:
+                pass
+
+    def cleanup():
+        nonlocal cleanup_started
+        if cleanup_started:
+            return
+        cleanup_started = True
+        try:
+            timer.Stop()
+        except RuntimeError:
+            pass
         close_notices = []
         if getattr(dialog, '_audio_player', None):
             silence_confirmed = False
@@ -555,12 +687,28 @@ def show_studio(frame):
                         close_notices.append(f'Playback progress feedback could not be refreshed: {exc}')
         if close_notices:
             report(' '.join(close_notices))
+
+        progress.close()
+        # The same executor owns discovery/render and its registry cleanup.
+        # Do not cancel the queued close or close an active borrowed registry.
+        try:
+            executor.submit(release_service)
+        finally:
+            executor.shutdown(wait=False, cancel_futures=False)
+
+    def close(event=None):
+        if not alive:
+            return
+        autosave()
+        cancel.set()
+        if current_job is not None and busy:
+            service.request_pause(current_job)
         if busy:
             progress.pause('Audio production paused; completed chunks retained')
-        progress.close()
-        alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
-        dialog.EndModal(wx.ID_CLOSE)
+        cleanup()
+        dispose()
+        if dialog:
+            dialog.EndModal(wx.ID_CLOSE)
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
@@ -585,6 +733,8 @@ def show_studio(frame):
 
     def loaded(result):
         nonlocal voices, draft_dirty
+        if not alive:
+            return
         voices = result
         voice_choice.SetItems([v.name + '; ' + v.language for v in voices])
         if voices:
@@ -610,13 +760,19 @@ def show_studio(frame):
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
-    run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
+    run(lambda: service.discover_voices(cancelled=cancel.is_set).voices(), loaded,
+        phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
-        if alive:
-            close()
-        dialog.Destroy()
+        try:
+            if alive:
+                close()
+        finally:
+            dispose()
+            cleanup()
+            if dialog:
+                dialog.Destroy()
 
 
 def show_audio_conversion(frame):
@@ -689,18 +845,20 @@ def show_audio_conversion(frame):
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
-    from .transcription_dialog import show_transcription
     from .studio_clips import show_clip_editor
     from .recording_dialog import show_recording
+    from .transcription_dialog import show_transcription
     from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
                             ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
                             ('Record microphone...', lambda e: show_recording(frame)),
-                            ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
+                            ('Publish synchronized EPUB3 / DAISY...', lambda e: show_publishing(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local transcription...', lambda e: show_transcription(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
+        if title == 'Publish synchronized EPUB3 / DAISY...':
+            item.carr_command_name = 'publish synchronized epub3'
         frame.Bind(wx.EVT_MENU, handler, item)
     frame.menu_bar.Append(menu, 'Audio St&udio')

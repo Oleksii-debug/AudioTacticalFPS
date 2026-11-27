@@ -6,6 +6,7 @@ controls are mapped to SpeechSettings' discrete native controls explicitly.
 from dataclasses import dataclass
 import math
 from pathlib import Path
+import sys
 from time import monotonic
 
 from ._io import check_cancelled, text_value
@@ -47,10 +48,32 @@ def _registry(configuration_root, cancelled, *, timeout_seconds=60):
                           timeout_seconds=timeout_seconds)
 
 
+def _close_registry(registry):
+    """Keep saved speech truthful while the registry retains failed cleanup."""
+    close = getattr(registry, 'close', None)
+    if not callable(close):
+        return
+    message = None
+    try:
+        if close() is False:
+            message = 'The local voice worker still awaits confirmed cleanup.'
+    except (Exception, KeyboardInterrupt) as exc:
+        message = f'Local voice cleanup needs attention: {exc}'
+    if message is not None:
+        try:
+            print(message, file=sys.stderr)
+        except (OSError, ValueError):
+            pass
+
+
 def discover_voices(*, cancelled=None, configuration_root=None):
     callback = cancelled if cancelled is not None else lambda: False
     check_cancelled(callback)
-    return _registry(configuration_root, callback).voices()
+    registry = _registry(configuration_root, callback)
+    try:
+        return registry.voices()
+    finally:
+        _close_registry(registry)
 
 
 def render_speech(request, target, *, cancelled=None, timeout_seconds=600,
@@ -72,7 +95,10 @@ def render_speech(request, target, *, cancelled=None, timeout_seconds=600,
         return False
     check()
     registry = _registry(configuration_root, check, timeout_seconds=min(60, timeout_seconds))
-    selected = registry.get(request.voice_id)
-    if request.language is not None and request.language.lower().replace('_', '-') != selected.language.lower().replace('_', '-'):
-        raise ValueError('The requested language differs from the selected installed voice. Select its explicit language profile.')
-    return registry.synthesize(request.text, request.voice_id, target, settings=options, cancelled=check)
+    try:
+        selected = registry.get(request.voice_id)
+        if request.language is not None and request.language.lower().replace('_', '-') != selected.language.lower().replace('_', '-'):
+            raise ValueError('The requested language differs from the selected installed voice. Select its explicit language profile.')
+        return registry.synthesize(request.text, request.voice_id, target, settings=options, cancelled=check)
+    finally:
+        _close_registry(registry)

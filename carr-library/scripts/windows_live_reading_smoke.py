@@ -112,7 +112,7 @@ def canonical_copy_probe(wx, library, desk, discover, render):
             live, document = ui['live'], ui['document']()
             view = live.core.status()
             if view.state == 'error':
-                raise AssertionError(view.message)
+                raise AssertionError(f'Canonical reading-copy stage {context["stage"]}: {view.message!r}; {view!r}')
             if context['stage'] == 0:
                 if not live.ready() or live.core.busy or not live._voices:
                     return
@@ -202,6 +202,8 @@ def main():
     with TemporaryDirectory(prefix='carr-native-live-reader-') as temporary:
         root = Path(temporary) / 'Українська бібліотека'
         library = LibraryApp(root)
+        # Windows TEMP may use an 8.3 alias; the real library owns the canonical path.
+        root = library.root
         workspace = library.create_workspace('Native live-reader probe')
         raw = 'Є 🚂.\r\nRepeat source words.\r\nRepeat Ω only.\fNext source location.'
         book = library.add_text(workspace, 'Actual native source', raw, language='uk')
@@ -213,16 +215,19 @@ def main():
         observed = {'discovery_roots': [], 'render_roots': [], 'requests': [], 'renders': []}
 
         def discover(**kwargs):
-            assert Path(kwargs['configuration_root']) == root
+            assert Path(kwargs['configuration_root']) == root, (
+                f'Discovery used {kwargs["configuration_root"]!s}, expected canonical library {root!s}')
             observed['discovery_roots'].append(str(kwargs['configuration_root']))
             return discover_voices(**kwargs)
 
         def render(request, target, **kwargs):
-            assert Path(kwargs['configuration_root']) == root
+            assert Path(kwargs['configuration_root']) == root, (
+                f'Rendering used {kwargs["configuration_root"]!s}, expected canonical library {root!s}')
             observed['render_roots'].append(str(kwargs['configuration_root']))
             observed['requests'].append(request.text)
             result = render_speech(request, target, **kwargs)
-            assert request.voice_id.startswith('sapi5-') and result.duration_seconds > 0
+            assert request.voice_id.startswith('sapi5-') and result.duration_seconds > 0, (
+                f'Expected real SAPI5 PCM, got voice={request.voice_id!r}, duration={result.duration_seconds!r}')
             observed['renders'].append({'sha256': result.sha256,
                                         'duration_seconds': result.duration_seconds,
                                         'voice_id': result.voice_id})
@@ -256,7 +261,7 @@ def main():
                 assert time.monotonic() - started < 180, 'The native live-reader probe timed out.'
                 view = controls.core.status()
                 if view.state == 'error':
-                    raise AssertionError(view.message)
+                    raise AssertionError(f'Native source-reader stage {state["stage"]}: {view.message!r}; {view!r}')
                 stage = state['stage']
                 if stage == 0:
                     if reader.controller.current is None or not controls._voices or controls.core.busy:

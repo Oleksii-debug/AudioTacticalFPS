@@ -4,6 +4,7 @@ Synthetic fixtures and enumerated local voice output do not qualify speech
 quality, EPUBCheck, reader interoperability or NVDA.
 """
 import argparse
+import importlib.util
 from pathlib import Path
 from hashlib import file_digest
 import json
@@ -99,6 +100,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--audio-evidence', required=True, type=Path,
                         help='Explicit path/hash binding for the external test-only FFmpeg runtime')
+    parser.add_argument('--daisy-schemas', required=True, type=Path,
+                        help='Explicit directory containing the pinned offline validation DTDs')
     parser.add_argument('--require-sapi', action='store_true',
                         help='Also render and publish a short job with an actually enumerated local SAPI voice')
     args = parser.parse_args(argv)
@@ -118,7 +121,7 @@ def _run(args):
     from ctypes import wintypes
     import wx
     from carr_library.application import LibraryApp
-    from carr_library.studio import publishing, render
+    from carr_library.studio import daisy, publishing, render
     from carr_library.studio.render import ProductionService
     from carr_library.speech import runtime as speech_runtime
     from carr_library.studio.publishing import PublicationService, inspect_epub
@@ -126,6 +129,7 @@ def _run(args):
     from carr_library.ui.desktop_app import DesktopFrame
     errors, checks, audio_proof = [], [], {}
     sapi_proof = {'status': 'NOT_RUN'}
+    daisy_proof = {}
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc()); return False
@@ -261,9 +265,9 @@ def _run(args):
     with TemporaryDirectory(prefix='resonance-native-epub-') as temporary:
         root = Path(temporary)
         try:
-            source_bindings = verify_installed_sources(ui, publishing, render, speech_runtime)
+            source_bindings = verify_installed_sources(ui, publishing, daisy, render, speech_runtime)
             check('publication and native speech modules match the exact installed checkout sources',
-                  len(source_bindings) == 4)
+                  len(source_bindings) == 5)
             check('real native Windows widgets', wx.Platform == '__WXMSW__')
             library = LibraryApp(root/'library')
             service = ProductionService(library.root/'state'/'studio', voices=SyntheticTones())
@@ -301,6 +305,34 @@ def _run(args):
                     original = target.read_bytes(); press(dialog.buttons['export']); until(lambda: not dialog.busy)
                     check('native duplicate export cannot overwrite completed bytes',target.read_bytes()==original
                           and 'not be overwritten' in dialog.status.GetValue())
+                    daisy_target = root / 'publication-daisy.zip'
+                    dialog.format_choice.SetSelection(1)
+                    dialog.publisher.ChangeValue('Explicit synthetic DAISY publisher')
+                    dialog.output.ChangeValue(str(daisy_target))
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('native DAISY export uses explicit publisher and shared receipt authority',
+                          daisy_target.exists() and len(dialog.receipts) == 2
+                          and dialog.receipts[-1]['format'] == 'daisy-2.02'
+                          and 'DAISY saved and its bytes verified' in dialog.status.GetValue())
+                    daisy_source = daisy.inspect_daisy(daisy_target)
+                    check('DAISY retains the exact original script and measured narration',
+                          daisy_source['original_script'] == script
+                          and daisy_source['publisher'] == 'Explicit synthetic DAISY publisher'
+                          and sum(row['kind'] == 'line' for row in daisy_source['intervals']) == 2)
+                    dialog.format_choice.SetSelection(0)
+                    press(dialog.buttons['verify']); until(lambda: not dialog.busy)
+                    check('native verification follows saved DAISY format despite changed export preference',
+                          'Verified exact saved DAISY bytes' in dialog.status.GetValue())
+                    validation_path = Path(__file__).with_name('daisy_schema_acceptance.py')
+                    specification = importlib.util.spec_from_file_location('daisy_validation_acceptance', validation_path)
+                    validator = importlib.util.module_from_spec(specification)
+                    specification.loader.exec_module(validator)
+                    daisy_proof.update(validator.validate(daisy_target, args.daisy_schemas))
+                    check('actual offline DAISY DTD validation includes malformed XHTML negative control',
+                          daisy_proof['status'] == 'PASS' and daisy_proof['invalid_xhtml_rejected']
+                          and len(daisy_proof['documents']) == 4)
+                    check('EPUB bytes remain unchanged beside the separate DAISY publication',
+                          target.read_bytes() == original)
                     press(dialog.buttons['close'])
                     check('native keyboard close completes', not dialog.alive)
                     exercise_native_lifetime()
@@ -362,7 +394,8 @@ def _run(args):
             gui.Yield()
         if errors: raise RuntimeError('\n'.join(errors))
     print(json.dumps({'result':'PASS','checks':checks,'audio':'Synthetic PCM tones through actual FFmpeg',
-        'audio_runtime':audio_proof,'sapi_publication':sapi_proof,'installed_sources':source_bindings,
+        'audio_runtime':audio_proof,'sapi_publication':sapi_proof,'daisy_structural_validation':daisy_proof,
+        'installed_sources':source_bindings,
         'native_keyboard':'PASS','native_direct_and_parent_destruction':'PASS','epubcheck':'NOT_RUN',
         'reader_interoperability':'NOT_RUN','manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
     return 0

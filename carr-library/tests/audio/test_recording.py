@@ -2,6 +2,9 @@
 from dataclasses import replace
 from hashlib import sha256
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 import shutil
 import threading
@@ -280,6 +283,8 @@ def test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_loc
             assert not list(capture.service.root.glob('*.wav'))
             assert not list(capture.service.root.glob('*.json'))
             assert capture.service._broker.snapshot()['exclusive_devices'] == ['microphone:' + capture.device.id]
+            with pytest.raises(RuntimeError, match='another operation'):
+                capture.app.backup(capture.app.root.parent / 'blocked-pending-native-backup')
             with pytest.raises(RuntimeError, match='cleanup'):
                 capture.service.capture(capture.device.id, options=capture.options)
             code = ("from filelock import FileLock, Timeout\nimport sys\n"
@@ -337,3 +342,357 @@ def test_foreign_data_folder_policy_cannot_open_a_microphone(capture, tmp_path, 
     with pytest.raises(ResourceStateError, match='another data folder'):
         capture.service.capture(capture.device.id, options=capture.options)
     assert not capture.service._broker.snapshot()['leases']
+
+
+def test_capture_holds_shared_audio_budget_and_microphone_until_native_completion(capture):
+    from carr_library.operations import ResourceBroker
+    broker = ResourceBroker.for_app(capture.app.root)
+    seen = []
+    def inspect_resources(seconds):
+        if not seen:
+            seen.append(broker.snapshot())
+    result = capture.service.capture(capture.device.id, options=capture.options, progress=inspect_resources)
+    assert result['output_verified'] and result['receipt_finalized']
+    assert seen and len(seen[0]['leases']) == 1
+    request = seen[0]['leases'][0]['request']
+    assert request['devices'] == ['microphone:' + capture.device.id]
+    assert request['cpu_slots'] == 1 and request['memory_bytes'] >= 512 * 1024**2
+    assert request['disk_bytes'] >= 24000 * 2 + 32 * 1024**2
+    assert broker.snapshot()['leases'] == []
+
+
+def test_refused_shared_budget_never_opens_a_microphone(capture, monkeypatch):
+    from carr_library.operations import ResourceBroker, ResourceUnavailable
+    broker = ResourceBroker.for_app(capture.app.root)
+    broker.configure(replace(broker.limits, memory_bytes=1))
+    monkeypatch.setattr(recording, 'run_process', lambda *a, **k: pytest.fail('Admission opened a microphone'))
+    with pytest.raises(ResourceUnavailable):
+        capture.service.capture(capture.device.id, options=capture.options)
+    assert broker.snapshot()['leases'] == []
+    assert not list(capture.service.root.glob('*.wav'))
+
+
+def test_complete_backup_refuses_an_active_capture_then_retains_completed_input(capture, tmp_path):
+    denied, unexpected = [], []
+    backup = tmp_path / 'during-capture'
+    def attempt_backup(seconds):
+        if denied or unexpected:
+            return
+        try:
+            unexpected.append(capture.app.backup(backup))
+        except RuntimeError as exc:
+            denied.append(str(exc))
+    result = capture.service.capture(capture.device.id, options=capture.options, progress=attempt_backup)
+    assert denied and not unexpected
+    assert 'another operation' in denied[0]
+    digest = capture.app.backup(tmp_path / 'after-capture')
+    restored = restore_backup(tmp_path / 'after-capture', tmp_path / 'restored-capture', digest)
+    reopened = RecordingService(restored).get(result['id'])
+    assert reopened['audio'] == result['audio'] and reopened['output_verified']
+
+
+@pytest.mark.parametrize('exception', [OSError, KeyboardInterrupt])
+def test_post_link_writer_interruption_reports_the_verified_saved_recording(capture, monkeypatch, exception):
+    actual = recording.publish_file
+    def interrupted(staged, output, **options):
+        actual(staged, output, **options)
+        raise exception('Synthetic writer interruption after publication')
+    monkeypatch.setattr(recording, 'publish_file', interrupted)
+    result = capture.service.capture(capture.device.id, options=capture.options)
+    assert result['status'] == 'complete' and result['output_verified']
+    assert result['receipt_finalized'] and result['receipt_status'] == 'complete'
+    assert any('writer reported a later interruption' in text for text in result['warnings'])
+    assert Path(result['path']).stat().st_nlink == 1
+    reopened = capture.service.get(result['id'])
+    assert reopened['audio'] == result['audio']
+    assert not list(capture.service.root.glob('.pending-*'))
+
+
+def test_cancel_after_publication_preserves_verified_output_without_starting_another_capture(capture, monkeypatch):
+    actual, cancel = recording.publish_file, threading.Event()
+    def late_cancel(staged, output, **options):
+        actual(staged, output, **options)
+        cancel.set()
+    monkeypatch.setattr(recording, 'publish_file', late_cancel)
+    result = capture.service.capture(capture.device.id, options=capture.options, cancelled=cancel.is_set)
+    assert cancel.is_set() and result['status'] == 'complete' and result['output_verified']
+    assert capture.service.get(result['id'])['audio'] == result['audio']
+
+
+@pytest.mark.parametrize('after_replace', [False, True])
+def test_recording_receipt_finalization_is_distinct_from_saved_pcm(capture, monkeypatch, after_replace):
+    actual = recording.atomic_json
+    def finalization(path, value, **options):
+        if value.get('schema') == 'carr-recording/1' and value.get('status') == 'complete':
+            if after_replace:
+                actual(path, value, **options)
+            raise OSError('Synthetic receipt interruption')
+        return actual(path, value, **options)
+    monkeypatch.setattr(recording, 'atomic_json', finalization)
+    result = capture.service.capture(capture.device.id, options=capture.options)
+    assert result['status'] == 'complete' and result['output_verified']
+    assert result['receipt_finalized'] is after_replace
+    assert result['receipt_status'] == ('complete' if after_replace else 'prepared')
+    assert Path(result['path']).is_file()
+    monkeypatch.setattr(recording, 'atomic_json', actual)
+    monkeypatch.setattr(recording, 'run_process', lambda *a, **k: pytest.fail('Recovery started a new capture'))
+    recovered = capture.service.get(result['id'])
+    assert recovered['receipt_finalized'] and recovered['output_verified']
+    assert recovered['audio'] == result['audio']
+
+
+def test_other_equal_byte_file_cannot_complete_this_capture_attempt(capture, monkeypatch):
+    def unrelated_copy(staged, output, **options):
+        shutil.copyfile(staged, output)
+        raise OSError('A competing actor wrote a different inode')
+    monkeypatch.setattr(recording, 'publish_file', unrelated_copy)
+    with pytest.raises(OSError, match='different inode'):
+        capture.service.capture(capture.device.id, options=capture.options)
+    saved, = capture.service.list()
+    assert saved['status'] == 'prepared'
+    assert Path(saved['path']).stat().st_nlink == 1
+    assert not list(capture.service.root.glob('.pending-*'))
+
+
+def test_actual_resource_release_error_does_not_erase_recording_completion(capture, monkeypatch):
+    from carr_library.operations.broker import ResourceLease
+    from carr_library.operations import ResourceBroker
+    actual = ResourceLease.release
+    def interrupted(lease):
+        actual(lease)
+        raise OSError('Synthetic release notification failure after the lock closed')
+    monkeypatch.setattr(ResourceLease, 'release', interrupted)
+    result = capture.service.capture(capture.device.id, options=capture.options)
+    assert result['status'] == 'complete' and result['output_verified']
+    assert result['resource_release_confirmed'] is False
+    assert any('Shared resource release' in message for message in result['warnings'])
+    assert ResourceBroker.for_app(capture.app.root).snapshot()['leases'] == []
+    assert capture.service.get(result['id'])['audio'] == result['audio']
+
+
+def killed_capture(capture, tmp_path, boundary):
+    marker = tmp_path / 'native-capture-boundary.json'
+    child = r'''
+import json, os, sys
+from hashlib import sha256
+from pathlib import Path
+from carr_library.audio import AudioRuntime
+from carr_library.audio import recording
+
+root, ffmpeg, ffprobe, marker, boundary, expected_origin = sys.argv[1:]
+origin = Path(recording.__file__).resolve()
+assert origin == Path(expected_origin).resolve(), (origin, expected_origin)
+service = recording.RecordingService(root, runtime=AudioRuntime(Path(root) / "runtime" / "capture",
+    ffmpeg=ffmpeg, ffprobe=ffprobe))
+alternative = "@device_synthetic_boundary"
+device = recording.RecordingDevice(sha256(alternative.encode()).hexdigest(), "Synthetic child", alternative)
+service._devices = {device.id: device}
+service._engine_hash = recording._digest(ffmpeg)
+service._input_arguments = lambda selected: ["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=24000"]
+publish = recording.publish_file
+def exit_at_publication(staged, output, **options):
+    if boundary == "after-link":
+        publish(staged, output, **options)
+        assert os.path.samefile(staged, output) and output.stat().st_nlink == 2
+    Path(marker).write_text(json.dumps({"origin": str(origin), "staged": str(staged),
+        "output": str(output), "id": output.stem}), encoding="utf-8")
+    os._exit(73)
+recording.publish_file = exit_at_publication
+service.capture(device.id, options=recording.RecordingOptions(max_seconds=1, sample_rate=24000))
+raise AssertionError("The publication boundary was not reached")
+'''
+    result = subprocess.run([sys.executable, '-B', '-c', child,
+        str(capture.app.root), str(capture.service.runtime.ffmpeg), str(capture.service.runtime.ffprobe),
+        str(marker), boundary, str(Path(recording.__file__).resolve())],
+        cwd=Path(recording.__file__).resolve().parents[2],
+        capture_output=True, text=True, timeout=90, check=False)
+    assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)
+    observed = json.loads(marker.read_text(encoding='utf-8'))
+    assert Path(observed['origin']) == Path(recording.__file__).resolve()
+    return observed
+
+
+@pytest.mark.parametrize('boundary', ['before-link', 'after-link'])
+def test_real_child_exit_recovers_only_the_published_owned_wav(capture, tmp_path, monkeypatch, boundary):
+    observed = killed_capture(capture, tmp_path, boundary)
+    staged, output = Path(observed['staged']), Path(observed['output'])
+    receipt = capture.service.root / (observed['id'] + '.json')
+    assert json.loads(receipt.read_text())['status'] == 'prepared'
+    monkeypatch.setattr(recording, 'run_process', lambda *a, **k: pytest.fail('Recovery opened a microphone'))
+    if boundary == 'before-link':
+        assert staged.is_file() and not output.exists()
+        before = staged.read_bytes()
+        with pytest.raises(FileNotFoundError):
+            capture.service.get(observed['id'])
+        assert staged.read_bytes() == before and not output.exists()
+        assert json.loads(receipt.read_text())['status'] == 'prepared'
+        return
+    original = output.read_bytes()
+    assert output.stat().st_nlink == 2 and os.path.samefile(staged, output)
+    recovered = RecordingService(capture.app.root).get(observed['id'])
+    assert recovered['status'] == 'complete' and recovered['output_verified']
+    assert recovered['receipt_finalized'] and not staged.exists() and not staged.parent.exists()
+    assert output.stat().st_nlink == 1 and output.read_bytes() == original
+    # The recovered input is accepted by ordinary strict source/backup guards.
+    backup = tmp_path / 'recovered-capture-backup'
+    digest = capture.app.backup(backup)
+    shutil.rmtree(capture.app.root)
+    restored = restore_backup(backup, tmp_path / 'restored-after-process-death', digest)
+    saved = RecordingService(restored).get(observed['id'])
+    assert Path(saved['path']).read_bytes() == original and saved['audio'] == recovered['audio']
+
+
+@pytest.mark.parametrize('alteration', ['foreign-alias', 'extra-entry', 'third-link', 'changed-bytes'])
+def test_restart_preserves_foreign_aliases_and_unowned_staging_entries(
+        capture, tmp_path, monkeypatch, alteration):
+    observed = killed_capture(capture, tmp_path, 'after-link')
+    staged, output = Path(observed['staged']), Path(observed['output'])
+    foreign = tmp_path / 'unrelated-owner.wav'
+    extra = staged.parent / 'unrelated-owner.txt'
+    if alteration in ('foreign-alias', 'third-link'):
+        os.link(output, foreign)
+        if alteration == 'foreign-alias':
+            staged.unlink()
+    elif alteration == 'extra-entry':
+        extra.write_bytes(b'Preserve this unrelated content')
+    else:
+        with staged.open('ab') as stream:
+            stream.write(b'changed through the surviving alias')
+    paths = [path for path in (staged, output, foreign, extra) if path.exists()]
+    before = {path: path.read_bytes() for path in paths}
+    monkeypatch.setattr(recording, 'run_process', lambda *a, **k: pytest.fail('Recovery opened a microphone'))
+    with pytest.raises(ValueError):
+        capture.service.get(observed['id'])
+    assert {path: path.read_bytes() for path in paths} == before
+    assert json.loads((capture.service.root / (observed['id'] + '.json')).read_text())['status'] == 'prepared'
+
+
+def test_legacy_complete_recording_receipt_is_read_without_rewriting(capture):
+    result = capture.service.capture(capture.device.id, options=capture.options)
+    path = capture.service.root / (result['id'] + '.json')
+    value = json.loads(path.read_text())
+    value.pop('status')
+    raw = json.dumps(value, ensure_ascii=False, indent=2).encode('utf-8')
+    path.write_bytes(raw)
+    verified = capture.service.get(result['id'])
+    assert verified['output_verified'] and verified['receipt_finalized']
+    assert verified['receipt_status'] == 'complete' and path.read_bytes() == raw
+
+
+def test_recording_inventory_checks_all_entries_incrementally(capture, monkeypatch):
+    # Non-receipt files still count; filtering cannot bypass the total bound.
+    for number in range(4):
+        (capture.service.root / ('unrelated-' + str(number))).write_bytes(b'Preserve')
+    monkeypatch.setattr(recording, '_MAX_RECORDING_ENTRIES', 3)
+    with pytest.raises(ValueError, match='total entry allowance'):
+        capture.service.list()
+    assert len(tuple(capture.service.root.iterdir())) == 4
+
+
+def test_recording_inventory_cancellation_and_scandir_failure_are_explicit(capture, monkeypatch):
+    (capture.service.root / 'unrelated').write_bytes(b'Preserve')
+    with pytest.raises(AudioCancelled, match='list cancelled'):
+        capture.service.list(cancelled=lambda: True)
+    actual = recording.os.scandir
+    def denied(path):
+        if Path(path) == capture.service.root:
+            raise PermissionError('Synthetic directory enumeration denial')
+        return actual(path)
+    monkeypatch.setattr(recording.os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='enumeration denial'):
+        capture.service.list()
+    assert (capture.service.root / 'unrelated').read_bytes() == b'Preserve'
+
+
+def test_owned_stage_read_failure_preserves_both_names_and_reports_cleanup(capture, tmp_path, monkeypatch):
+    observed = killed_capture(capture, tmp_path, 'after-link')
+    staged, output = Path(observed['staged']), Path(observed['output'])
+    before = output.read_bytes()
+    actual = recording.os.scandir
+    def denied(path):
+        if Path(path) == staged.parent:
+            raise PermissionError('Synthetic owned staging enumeration denial')
+        return actual(path)
+    monkeypatch.setattr(recording.os, 'scandir', denied)
+    recovered = capture.service.get(observed['id'])
+    assert recovered['status'] == 'complete' and recovered['output_verified']
+    assert recovered['cleanup_pending']
+    assert os.path.samefile(staged, output) and output.read_bytes() == before
+    monkeypatch.setattr(recording.os, 'scandir', actual)
+    final = capture.service.get(observed['id'])
+    assert final['output_verified'] and output.stat().st_nlink == 1 and not staged.parent.exists()
+
+
+def test_failed_owned_unlink_is_saved_output_with_recoverable_cleanup(capture, monkeypatch):
+    actual = Path.unlink
+    def deny_owned(path, *args, **kwargs):
+        if path.name == 'capture.wav':
+            raise PermissionError('Synthetic owned capture-link cleanup denial')
+        return actual(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'unlink', deny_owned)
+    saved = capture.service.capture(capture.device.id, options=capture.options)
+    assert saved['status'] == 'complete' and saved['output_verified']
+    assert saved['cleanup_pending'] and saved['receipt_finalized']
+    output = Path(saved['path'])
+    staged = capture.service.root / ('.pending-recording-' + saved['id']) / 'capture.wav'
+    assert os.path.samefile(output, staged) and output.stat().st_nlink == 2
+    monkeypatch.setattr(Path, 'unlink', actual)
+    recovered = capture.service.get(saved['id'])
+    assert recovered['output_verified'] and output.stat().st_nlink == 1
+    assert not staged.parent.exists()
+
+
+
+@pytest.mark.parametrize('published', [False, True])
+def test_prepared_receipt_full_backup_preserves_only_actual_pcm_and_restart_truth(capture, tmp_path, monkeypatch, published):
+    if published:
+        actual_write = recording.atomic_json
+        def interrupt_finalization(path, value, **kwargs):
+            if Path(path).parent == capture.service.root and value.get('status') == 'complete':
+                raise OSError('Synthetic receipt remains prepared after actual WAV publication')
+            return actual_write(path, value, **kwargs)
+        with monkeypatch.context() as isolated:
+            isolated.setattr(recording, 'atomic_json', interrupt_finalization)
+            value = capture.service.capture(capture.device.id, options=capture.options)
+        identity = value['id']
+        assert value['output_verified'] and value['receipt_status'] == 'prepared'
+        expected_audio = Path(value['path']).read_bytes()
+    else:
+        observed = killed_capture(capture, tmp_path, 'before-link')
+        identity = observed['id']
+        assert not Path(observed['output']).exists()
+        expected_audio = None
+    receipt = capture.service.root / (identity + '.json')
+    original = receipt.read_bytes()
+    assert json.loads(original)['status'] == 'prepared'
+    backup = tmp_path / 'prepared-backup'
+    digest = capture.app.backup(backup)
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    relative = 'studio/recordings/' + identity + '.json'
+    assert manifest['version'] == 5 and relative in manifest['extensions']['studio_recordings']
+    names = {item['filename'] for item in manifest['state']}
+    assert (relative.removesuffix('.json') + '.wav' in names) is published
+    restored = restore_backup(backup, tmp_path / 'prepared-restored', digest)
+    reopened = RecordingService(restored)
+    assert (reopened.root / (identity + '.json')).read_bytes() == original
+    monkeypatch.setattr(recording, 'run_process', lambda *a, **k: pytest.fail('Receipt recovery opened a microphone'))
+    if published:
+        recovered = reopened.get(identity)
+        assert recovered['status'] == 'complete' and recovered['output_verified']
+        assert Path(recovered['path']).read_bytes() == expected_audio
+    else:
+        assert reopened.list()[0]['status'] == 'prepared'
+        with pytest.raises(FileNotFoundError):
+            reopened.get(identity)
+        assert (reopened.root / (identity + '.json')).read_bytes() == original
+        assert not (reopened.root / (identity + '.wav')).exists()
+
+
+@pytest.mark.parametrize('status', [None, 'published', True, 1])
+def test_recording_declaration_rejects_unknown_status_without_opening_pcm(capture, monkeypatch, status):
+    value = capture.service.capture(capture.device.id, options=capture.options)
+    saved = json.loads((capture.service.root / (value['id'] + '.json')).read_text())
+    saved['status'] = status
+    monkeypatch.setattr(recording, '_read_recording', lambda *a, **k: pytest.fail('Invalid declaration opened PCM'))
+    with pytest.raises(ValueError, match='receipt'):
+        recording.validate_recording_receipt(saved)

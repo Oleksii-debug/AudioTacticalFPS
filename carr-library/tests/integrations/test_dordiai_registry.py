@@ -30,13 +30,25 @@ ACTOR, runtime, requests = (_fixture_module.ACTOR, _fixture_module.runtime, _fix
 def configured(runtime, tmp_path):
     root = tmp_path / 'library'
     root.mkdir()
-    connect_runtime(root, str(runtime), python_executable=sys.executable,
+    connect_runtime(root, str(runtime), python_executable=str(Path(sys.executable).resolve()),
                     expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
     return root
 
 
+_REGISTRIES = []
+
+
+@pytest.fixture(autouse=True)
+def close_created_registries():
+    yield
+    while _REGISTRIES:
+        assert _REGISTRIES.pop().close() is True
+
+
 def registry(root):
-    return VoiceRegistry([dordiai.DordiaiProvider(root)])
+    value = VoiceRegistry([dordiai.DordiaiProvider(root)])
+    _REGISTRIES.append(value)
+    return value
 
 
 def selected(value, language='uk'):
@@ -57,13 +69,16 @@ def test_disabled_library_ignores_ambient_enable_and_never_probes(tmp_path, monk
 def test_native_connection_checks_worker_without_launching(runtime, tmp_path, monkeypatch):
     root = tmp_path / 'library'
     root.mkdir()
+    # filelock imports asyncio, whose Windows Popen subclasses the real class.
+    # Initialize that dependency before forbidding private process launches.
+    import filelock
     monkeypatch.setattr(bridge.subprocess, 'Popen', lambda *a, **k: pytest.fail('Connection launched private code'))
-    value = connect_runtime(root, str(runtime), python_executable=sys.executable,
+    value = connect_runtime(root, str(runtime), python_executable=str(Path(sys.executable).resolve()),
                             expected_worker_sha256=sha256(ACTOR.encode()).hexdigest())
     assert dordiai_settings.load_settings(root) == value
     before = (root / dordiai_settings.FILENAME).read_bytes()
     with pytest.raises(bridge.DordiaiProtocolError, match='fingerprint'):
-        connect_runtime(root, str(runtime), python_executable=sys.executable, expected_worker_sha256='0' * 64)
+        connect_runtime(root, str(runtime), python_executable=str(Path(sys.executable).resolve()), expected_worker_sha256='0' * 64)
     assert (root / dordiai_settings.FILENAME).read_bytes() == before
 
 
@@ -133,7 +148,7 @@ def test_foreign_os_path_cannot_become_a_current_directory_lookup(monkeypatch):
     value = dordiai_settings.default_settings()
     value.update(enabled=True, runtime_directory='/other/runtime' if os.name == 'nt' else r'C:\Other\runtime')
     monkeypatch.setattr(bridge, 'DordiaiVoicesAdapter', lambda *a, **k: pytest.fail('Foreign path reached bridge'))
-    with pytest.raises(ValueError, match='absolute runtime path'):
+    with pytest.raises(ValueError, match=r'absolute (?:local )?runtime path'):
         dordiai.validate_connection(value)
 
 
@@ -304,17 +319,23 @@ def test_reader_adapter_uses_same_registry_and_explicit_root(configured, tmp_pat
     value = registry(configured)
     voice = selected(value)
     seen = []
+    obtained = []
     def obtain(root, cancelled, *, timeout_seconds=60):
         seen.append(root)
         assert cancelled() is False
-        return value
+        current = registry(root)
+        obtained.append(current)
+        return current
     monkeypatch.setattr(live_adapter, '_registry', obtain)
     result = live_adapter.render_speech(live_adapter.SpeechRequest('A synthetic reading chunk.', voice.id,
         language='uk', rate=2, volume=.6), tmp_path / 'read.wav', configuration_root=configured)
     assert seen == [configured] and result.frames == 6
+    assert not obtained[0].voices()
     with pytest.raises(ValueError, match='language differs'):
         live_adapter.render_speech(live_adapter.SpeechRequest('Wrong language.', voice.id, language='ja'),
             tmp_path / 'wrong.wav', configuration_root=configured)
+    assert seen == [configured, configured]
+    assert not obtained[1].voices() and not (tmp_path / 'wrong.wav').exists()
 
 
 def test_canonical_production_cache_changes_with_private_model_bytes(configured, runtime, tmp_path):

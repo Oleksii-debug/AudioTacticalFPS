@@ -119,3 +119,27 @@ def test_invalid_profile_identity_cannot_silently_fall_back_to_guided_mode(tmp_p
     instruction = tmp_path / 'goal.txt'; instruction.write_text('List libraries.')
     result = cli(root, '--instructions', instruction, '--local-profile', identity)
     assert result.returncode == 1 and not result.stdout and not root.exists()
+
+
+
+def test_assistant_cli_cleanup_interruption_preserves_validated_profile_result(
+        configured, planner_server, monkeypatch, capsys):
+    from carr_library.studio import cli as entry
+    app, _, profile = configured
+    actual_close = getattr(entry.ProductionService, 'close', None)
+    closed = []
+
+    def interrupted_close(production):
+        if callable(actual_close):
+            actual_close(production)
+        closed.append(production)
+        raise KeyboardInterrupt('Synthetic final voice cleanup interruption')
+
+    monkeypatch.setattr(entry.ProductionService, 'close', interrupted_close, raising=False)
+    code = entry.assistant_main(['--data-dir', str(app.root), '--list-local-profiles'])
+    captured = capsys.readouterr()
+    assert code == 0 and [row['id'] for row in json.loads(captured.out)] == [profile.id]
+    assert closed and 'Local voice cleanup was not confirmed' in captured.err
+    assert 'KeyboardInterrupt' in captured.err
+    assert not planner_server['requests'] and app.workspaces() == ()
+    assert AssistantService(app).jobs() == ()

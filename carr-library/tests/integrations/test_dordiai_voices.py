@@ -133,7 +133,7 @@ def compatible_voice_ids(models, language, allowed_voice_ids):
 
 @pytest.fixture
 def adapter(runtime):
-    with api.DordiaiVoicesAdapter(runtime, python_executable=sys.executable,
+    with api.DordiaiVoicesAdapter(runtime, python_executable=str(Path(sys.executable).resolve()),
                                  expected_worker_sha256=hashlib.sha256(ACTOR.encode()).hexdigest(),
                                  request_timeout=3.0) as value:
         yield value
@@ -141,6 +141,56 @@ def adapter(runtime):
 
 def requests(runtime):
     return [json.loads(line) for line in (runtime / "requests.jsonl").read_text().splitlines()]
+
+
+def test_actual_child_is_isolated_without_ambient_reports_or_bytecode(tmp_path, monkeypatch):
+    module = tmp_path / 'synthetic_runtime_module.py'
+    module.write_text('VALUE = 1\n')
+    monkeypatch.setenv('FFREPORT', 'file=unrelated-private.txt')
+    monkeypatch.setenv('PYTHONPYCACHEPREFIX', str(tmp_path / 'forbidden-cache'))
+    monkeypatch.setenv('CARR_PRIVATE_SENTINEL', 'must-not-be-inherited')
+    source = ('import json,os,sys; '
+              f'sys.path.insert(0,{str(tmp_path)!r}); import synthetic_runtime_module; '
+              'print(json.dumps({"isolated":sys.flags.isolated,"no_bytecode":sys.flags.dont_write_bytecode,'
+              '"ambient":[key for key in ("FFREPORT","PYTHONPYCACHEPREFIX","CARR_PRIVATE_SENTINEL") if key in os.environ],'
+              '"offline":os.environ.get("HF_HUB_OFFLINE")} ),flush=True)')
+    child = api._JsonLinesProcess([sys.executable, '-I', '-B', '-u', '-c', source], tmp_path)
+    try:
+        assert child.receive(5) == {'isolated': 1, 'no_bytecode': 1, 'ambient': [], 'offline': '1'}
+    finally:
+        child.close()
+    assert not (tmp_path / '__pycache__').exists() and not (tmp_path / 'forbidden-cache').exists()
+    assert os.environ['CARR_PRIVATE_SENTINEL'] == 'must-not-be-inherited'
+
+
+@pytest.mark.parametrize('path', ['//host/private/runtime', r'\\host\private\runtime'])
+def test_adapter_rejects_network_path_before_inspection(path):
+    with pytest.raises(api.DordiaiUnavailable, match='local'):
+        api.DordiaiVoicesAdapter(path)
+
+
+def test_owned_process_tree_stops_before_worker_input_is_closed(tmp_path):
+    heartbeat = tmp_path / 'synthetic-child-heartbeat'
+    child_source = ('from pathlib import Path; from time import monotonic,sleep\n'
+        f'target=Path({str(heartbeat)!r}); deadline=monotonic()+10\n'
+        'while monotonic()<deadline:\n'
+        '    with target.open("ab") as stream: stream.write(b"x")\n'
+        '    sleep(.02)\n')
+    source = ('import json,subprocess,sys; from pathlib import Path; from time import sleep,monotonic\n'
+        f'child=subprocess.Popen([sys.executable,"-I","-B","-c",{child_source!r}],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\n'
+        'deadline=monotonic()+5\n'
+        f'while not Path({str(heartbeat)!r}).exists() and monotonic()<deadline: sleep(.01)\n'
+        'print(json.dumps({"started":True}),flush=True)\n'
+        'sys.stdin.readline()\n')
+    child = api._JsonLinesProcess([sys.executable, '-I', '-B', '-u', '-c', source], tmp_path)
+    try:
+        assert child.receive(6) == {'started': True} and heartbeat.exists()
+    finally:
+        child.close()
+    before = heartbeat.read_bytes()
+    sleep(.2)
+    assert heartbeat.read_bytes() == before
+    assert child.process.poll() is not None and not child._reader.is_alive() and not child._writer.is_alive()
 
 
 def test_private_probe_dynamic_catalogue_policy_and_managed_roles(adapter):
@@ -305,7 +355,7 @@ def test_unavailable_voice_language_or_unverified_accent_fails_explicitly(adapte
 
 def test_changed_worker_cannot_be_silently_used(runtime):
     with pytest.raises(api.DordiaiProtocolError, match="fingerprint"):
-        api.DordiaiVoicesAdapter(runtime, python_executable=sys.executable)
+        api.DordiaiVoicesAdapter(runtime, python_executable=str(Path(sys.executable).resolve()))
 
 
 def test_remote_path_and_missing_interpreter_are_rejected(runtime):

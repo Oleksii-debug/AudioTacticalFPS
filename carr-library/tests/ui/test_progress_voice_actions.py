@@ -3,6 +3,7 @@
 import ast
 from concurrent.futures import Future
 from contextlib import contextmanager
+from importlib.util import find_spec
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -18,10 +19,13 @@ from carr_library.speech.session import ReaderDraftStore, ReaderResume
 
 def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=False):
     """Retain the real nested callback bodies and their mutable closure cells."""
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui' / filename
+    source = Path(find_spec('carr_library.ui.' + Path(filename).stem).origin)
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body
                   if isinstance(node, ast.FunctionDef) and node.name == window_name)
+    names = set(names)
+    if filename == 'speech_dialog.py':
+        names.update(('detach_reader', 'transfer_owner', 'release_owner'))
     definitions = [node for node in window.body
                    if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == set(names)
@@ -128,13 +132,14 @@ def reader(tmp_path, monkeypatch):
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
 
-    def registry_factory(state_root):
+    def registry_factory(state_root, **_ignored):
         roots.append(Path(state_root))
         return registry
 
-    def activate(root, voice_id):
+    def activate(root, voice_id, *, cancelled):
         activations.append((Path(root), voice_id))
-        provider = activate_progress_voice(root, voice_id, _registry_factory=registry_factory)
+        provider = activate_progress_voice(root, voice_id, cancelled=cancelled,
+                                           _registry_factory=registry_factory)
         created.append(provider)
         return provider
 
@@ -150,6 +155,7 @@ def reader(tmp_path, monkeypatch):
     live = SimpleNamespace(voice=choice, _voices=registry.voices(), core=Mock(busy=False),
                            close=Mock(), stop=Mock(), rate=Mock(), volume=Mock())
     values = dict(parent=parent, progress=progress, voice_choice=choice,
+        owned_registries=set(), ownership_lock=threading.RLock(),
         voices=registry.voices(), registry=registry, run=work, report=report,
         alive=True, busy=False, playback_generation=0, cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1, NOT_FOUND=-1),
@@ -309,6 +315,7 @@ def _replace_document(reader, tmp_path, monkeypatch, replacement, accepted, docu
             def __init__(self, *args, **kwargs): pass
             def __enter__(self): return self
             def __exit__(self, *args): pass
+            def Destroy(self): pass
             def ShowModal(self): return selected.ID_OK if accepted else selected.ID_CANCEL
             def GetPath(self): return str(path)
 
@@ -395,6 +402,7 @@ def test_source_bound_reader_open_project_preserves_lineage_before_replacing_pla
         def __init__(self, *args, **kwargs): pass
         def __enter__(self): return self
         def __exit__(self, *args): pass
+        def Destroy(self): pass
         def ShowModal(self): return selected.ID_OK
         def GetPath(self): return str(path)
 
@@ -435,11 +443,13 @@ def test_studio_explicit_voice_selection_creates_independent_parent_selection(re
     local, parent = Progress('studio', events), Progress('parent', events)
     reader.choice.selection = 1
     values = dict(voice_choice=reader.choice, voices=reader.registry.voices(),
+        alive=True, cancel=threading.Event(),
         dialog=reader.parent, progress=local, parent_progress=parent, run=reader.work,
         report=lambda message, focus=False: reader.reports.append(message))
     handler = callbacks('studio_dialog.py', 'show_studio', ['select_progress_voice'],
-        values, globals_={'activate_progress_voice': lambda root, voice_id:
-            activate_progress_voice(root, voice_id, _registry_factory=lambda state: reader.registry)})
+        values, globals_={'activate_progress_voice': lambda root, voice_id, **options:
+            activate_progress_voice(root, voice_id, **options,
+                _registry_factory=lambda state, **_ignored: reader.registry)})
     assert events == []
     handler.select_progress_voice()
     assert events == []
@@ -463,12 +473,12 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     dialog = Mock()
     dialog._audio_player = player
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+        get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
-        timer=Mock(), executor=Mock())
-    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close'], values)
+        timer=Mock(), executor=Mock(), cleanup_started=False, frame=Mock())
+    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close', 'dispose', 'cleanup', 'release_service'], values)
     handlers.preview()
     assert local.players == parent.players == [player]
     player.play.assert_not_called()
@@ -655,7 +665,7 @@ def test_reader_late_progress_voice_activation_is_closed_without_touching_destro
     handlers.run(lambda: None, completed, discard=lambda provider: provider.close())
     handlers.close_resources()
     provider = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
-        _registry_factory=lambda state: reader.registry)
+        _registry_factory=lambda state, **_ignored: reader.registry)
     future.set_result(provider)
     assert provider._closed.is_set() and queued == []
     completed.assert_not_called()
@@ -683,7 +693,89 @@ def test_reader_rewrapped_native_destruction_ignores_children_and_discards_late_
     reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     reader.values['dialog'].GetId.assert_not_called()
     provider = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
-        _registry_factory=lambda state: reader.registry)
+        _registry_factory=lambda state, **_ignored: reader.registry)
     future.set_result(provider)
     assert provider._closed.is_set() and queued == []
     completed.assert_not_called()
+
+
+def test_reader_pending_progress_voice_activation_uses_reader_cancellation(reader):
+    reader.choice.selection = 1
+    reader.handlers.select_progress_voice()
+    assert reader.work.pending
+    reader.values['cancel'].set()
+    with pytest.raises(InterruptedError):
+        reader.work.finish()
+    assert not reader.created and reader.progress.provider is None
+    assert not reader.roots
+
+
+def test_reader_final_cleanup_releases_unapplied_progress_selection_even_without_gui_delivery(reader):
+    selection = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
+        _registry_factory=lambda state_root, **options: reader.registry)
+    reader.values['owned_registries'].add(selection)
+    try:
+        reader.handlers.cleanup()
+        assert selection._closed.is_set()
+        assert selection._ownership.finished.wait(5)
+        assert not reader.registry._providers
+        assert not reader.values['owned_registries']
+        assert reader.progress.provider is None
+    finally:
+        selection.close()
+
+
+@pytest.mark.parametrize('cleanup_failure', ['returns-false', 'raises', 'interrupted'])
+def test_reader_rejected_progress_handoff_retains_actual_selection_until_retry(reader, cleanup_failure):
+    reader.progress.reject_selection = True
+    reader.handlers.select_progress_voice()
+    work, accepted, _ = reader.work.pending.pop(0)
+    selection = work()
+    # The real run() completion registers this owned result before UI delivery;
+    # the separate real-future cases exercise that registration boundary.
+    reader.values['owned_registries'].add(selection)
+    actual_close = selection.close
+    attempts = []
+    def failed_close():
+        attempts.append(True)
+        if cleanup_failure == 'raises':
+            raise OSError('Selected progress worker cleanup is unconfirmed.')
+        if cleanup_failure == 'interrupted':
+            raise KeyboardInterrupt('Selected progress cleanup interrupted.')
+        return False
+    selection.close = failed_close
+    try:
+        with pytest.raises(ValueError, match='Library folder changed'):
+            accepted(selection)
+        assert attempts == [True]
+        assert reader.values['owned_registries'] == {selection}
+        assert reader.progress.provider is None and reader.progress.events == []
+        assert not selection._closed.is_set() and reader.registry._providers
+        selection.close = actual_close
+        reader.handlers.cleanup()
+        assert selection._closed.is_set() and selection._ownership.finished.wait(5)
+        assert not reader.values['owned_registries'] and not reader.registry._providers
+    finally:
+        selection.close = actual_close
+        selection.close()
+
+
+def test_reader_accepted_progress_owner_survives_nested_settings_destruction(reader):
+    reader.handlers.select_progress_voice()
+    work, accepted, _ = reader.work.pending.pop(0)
+    selection = work()
+    reader.values['owned_registries'].add(selection)
+    def settings_destroy_reader():
+        reader.handlers.cleanup()
+        raise RuntimeError('The settings modal lost its parent.')
+    reader.progress.settings_dialog = settings_destroy_reader
+    try:
+        with pytest.raises(RuntimeError, match='settings modal'):
+            accepted(selection)
+        assert reader.progress.provider is selection
+        assert not reader.values['owned_registries']
+        assert not selection._closed.is_set()
+        assert reader.registry.get('fixture:selected').id == 'fixture:selected'
+    finally:
+        selection.close()
+        assert selection._ownership.finished.wait(5)

@@ -129,12 +129,19 @@ class _CancellableProvider:
 
 class VoiceRegistry:
     """A registry only of actually enumerated voices; no imaginary catalog."""
+    cancellable_fingerprint = True
+    supports_expected_fingerprint = True
+
     def __init__(self, providers=(), *, cancelled=lambda: False, timeout_seconds=60):
         self._providers = list(providers)
         self._voices = {}
         self._owners = {}
         self.notices = []
-        self.reload(cancelled=cancelled, timeout_seconds=timeout_seconds)
+        try:
+            self.reload(cancelled=cancelled, timeout_seconds=timeout_seconds)
+        except BaseException:
+            self.close()
+            raise
 
     @classmethod
     def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False,
@@ -199,12 +206,55 @@ class VoiceRegistry:
         return self.voices()
 
     def add_provider(self, provider, *, cancelled=lambda: False, timeout_seconds=60):
-        check_cancelled(cancelled)
+        if any(owner is provider for owner in self._providers):
+            raise ValueError('This local voice provider is already registered.')
         self._providers.append(provider)
-        return self.reload(cancelled=cancelled, timeout_seconds=timeout_seconds)
+        try:
+            check_cancelled(cancelled)
+            return self.reload(cancelled=cancelled, timeout_seconds=timeout_seconds)
+        except BaseException:
+            close = getattr(provider, 'close', None)
+            try:
+                if callable(close) and close() is False:
+                    raise RuntimeError('Local voice worker cleanup remains unconfirmed.')
+            except (Exception, KeyboardInterrupt) as exc:
+                # Keep the discovery error and the exact failed cleanup owner;
+                # other providers remain available to their current views.
+                self.notices.append(f'{provider.name}: {exc}')
+                if not getattr(self, '_cleanup_registered', False):
+                    import atexit
+                    atexit.register(self.close)
+                    self._cleanup_registered = True
+            else:
+                self._providers.remove(provider)
+            raise
 
     def voices(self):
         return tuple(self._voices.values())
+
+    def close(self):
+        """Close all owned workers and retain unconfirmed owners for retry."""
+        import atexit
+        providers, self._providers = self._providers, []
+        self._voices, self._owners = {}, {}
+        errors = []
+        for provider in providers:
+            close = getattr(provider, 'close', None)
+            if callable(close):
+                try:
+                    if close() is False:
+                        raise RuntimeError('Local voice worker cleanup remains unconfirmed.')
+                except (Exception, KeyboardInterrupt) as exc:
+                    errors.append(f'{provider.name}: {exc}')
+                    self._providers.append(provider)
+        self.notices.extend(errors)
+        if self._providers and not getattr(self, '_cleanup_registered', False):
+            atexit.register(self.close)
+            self._cleanup_registered = True
+        elif not self._providers and getattr(self, '_cleanup_registered', False):
+            atexit.unregister(self.close)
+            self._cleanup_registered = False
+        return not self._providers
 
     def get(self, voice_id):
         try:
@@ -236,6 +286,9 @@ class VoiceRegistry:
         elif isinstance(provider, LocalHelperProvider):
             provider._verify(cancelled=cancelled)
             identity['helper_contract'] = 'carr.local-voice.v1'
+            if provider.script is not None:
+                identity['helper_script_sha256'] = provider.expected_script_hash
+                identity['helper_launch'] = 'isolated-python-script.v1'
         elif isinstance(provider, SapiProvider):
             identity.update(token=provider._tokens[voice_id], architecture=provider.architecture,
                             model_identity='opaque-installed-SAPI-token')
@@ -595,11 +648,16 @@ class LocalHelperProvider(_CancellableProvider):
     """
     name = 'Opt-in local voice helper'
 
-    def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024):
+    def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024,
+                 script=None, script_sha256=None):
         if enabled is not True:
             raise ValueError('Explicitly enable a reviewed local voice helper before running it.')
         self.executable = local_file(executable)
         self.expected_hash = sha256
+        if (script is None) != (script_sha256 is None):
+            raise ValueError('A Python helper script and its SHA256 must be configured together.')
+        self.script = local_file(script) if script is not None else None
+        self.expected_script_hash = script_sha256
         self.engine_name = text_value(engine_name, 'engine name', maximum=128)
         if type(max_voices) is not int or not 1 <= max_voices <= 10000:
             raise ValueError('Set a voice catalog limit from 1 to 10000.')
@@ -611,11 +669,22 @@ class LocalHelperProvider(_CancellableProvider):
         if (not isinstance(self.expected_hash, str) or not re.fullmatch('[0-9a-f]{64}', self.expected_hash)
                 or digest(local_file(self.executable), cancelled=cancelled) != self.expected_hash):
             raise ValueError('Local voice helper hash verification failed.')
+        if self.script is not None and (
+                not isinstance(self.expected_script_hash, str)
+                or not re.fullmatch('[0-9a-f]{64}', self.expected_script_hash)
+                or digest(local_file(self.script), cancelled=cancelled) != self.expected_script_hash):
+            raise ValueError('Local voice helper script hash verification failed.')
 
     def _request(self, payload, *, cancelled=lambda: False, timeout=30, output=None, budget=512*1024*1024):
         self._verify(cancelled=cancelled)
         raw = json.dumps({'schema': 'carr.local-voice.v1', **payload}, ensure_ascii=False).encode('utf-8')
-        reply, _, _ = run_process([self.executable], input_bytes=raw, cancelled=cancelled,
+        command = [self.executable]
+        if self.script is not None:
+            # A reviewed, self-contained stdlib bridge uses a fixed interpreter
+            # invocation. Source text stays in JSON; no caller-supplied argv,
+            # shell, user site, startup hooks or bytecode writes are introduced.
+            command.extend(('-I', '-B', '-S', str(self.script)))
+        reply, _, _ = run_process(command, input_bytes=raw, cancelled=cancelled,
                                  timeout=timeout, output_file=output, max_output=budget)
         data = json.loads(reply.decode('utf-8'))
         if not isinstance(data, dict) or data.get('schema') != 'carr.local-voice.v1':

@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 import re
 import unicodedata
 
-from .durable_state import local_path, regular, sync_directory
+from .durable_state import local_path, regular, state_lock, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
@@ -44,20 +44,38 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _walk_error(error):
+    # os.walk silently suppresses directory enumeration errors by default.
+    # An unreadable subtree is not evidence that it contains no user state.
+    raise error
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False, include_paths=None):
+                   cancelled=lambda: False, include_paths=None, missing_ok=True):
     if include_paths is not None:
         include_paths = frozenset(relative_name(name).as_posix() for name in include_paths)
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
-    if not os.path.lexists(root):
+    try:
+        root.lstat()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)
+    # The same cross-thread lock remains held by a capture, including pending
+    # native cleanup. Do not publish a complete backup while its PCM is staged.
+    with state_lock(root, 'studio-recording'):
+        return _snapshot_locked_state(root, target, include_generated=include_generated,
+            max_bytes=max_bytes, cancelled=cancelled, include_paths=include_paths)
+
+
+def _snapshot_locked_state(root, target, *, include_generated, max_bytes, cancelled, include_paths):
     def inventory():
         found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False):
+        for directory, dirs, files in os.walk(root, followlinks=False, onerror=_walk_error):
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
             for name in dirs:
@@ -194,8 +212,8 @@ def restore_state(source, target, entries, *, cancelled=lambda: False):
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
-    found = []
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    missing = {item['filename'] for item in entries}
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=_walk_error):
         if cancelled():
             raise InterruptedError('Restore cancelled.')
         for name in dirs:
@@ -203,8 +221,13 @@ def restore_state(source, target, entries, *, cancelled=lambda: False):
         for name in files:
             path = Path(directory) / name
             regular(path)
-            found.append(path.relative_to(source).as_posix())
-    if set(found) != {item['filename'] for item in entries}:
+            # Reject the first unexpected file rather than accumulating an
+            # attacker-controlled inventory beyond the manifest's file budget.
+            relative = path.relative_to(source).as_posix()
+            if relative not in missing:
+                raise ValueError('Backup has missing or unlisted application state.')
+            missing.remove(relative)
+    if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)

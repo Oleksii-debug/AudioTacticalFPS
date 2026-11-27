@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 import random
 import re
-import stat
 import struct
 import tempfile
 
@@ -22,7 +21,7 @@ from .models import (AudioCancelled, AudioError, AudioUnavailable, LocalModelCon
                      MusicSpec, finite, integer)
 from .process import publish_file, run_process
 from .cleanup import retained_temporary_directory
-from ..durable_state import local_path
+from ..durable_state import local_path, regular
 
 
 MUSICGEN_REVISION = '896ec7c47f5e5d1e5aa1e4b260c4405328bf009d'
@@ -248,6 +247,46 @@ def _fluidsynth(runtime, spec, output, *, sample_rate, channels, cancelled, prog
                                duration=spec.duration, cancelled=cancelled, progress=progress)
 
 
+_MAX_INVENTORY_ENTRIES = 100000
+
+
+def _inventory(root, *, cancelled, python_only=False):
+    """Enumerate every directory or fail; bound all entries, including empty dirs."""
+    found = set()
+    pending = [root]
+    count = 0
+
+    def check_cancel():
+        if cancelled():
+            raise AudioCancelled('Model verification cancelled.')
+
+    try:
+        while pending:
+            check_cancel()
+            directory = pending.pop()
+            regular(directory, directory=True)
+            # scandir propagates enumeration errors that pathlib.rglob can suppress.
+            # Count all entries even when only Python files are retained.
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    check_cancel()
+                    count += 1
+                    if count > _MAX_INVENTORY_ENTRIES:
+                        raise ValueError('Local music inventory exceeds its entry limit.')
+                    path = directory / entry.name
+                    if entry.is_dir(follow_symlinks=False):
+                        regular(path, directory=True)
+                        pending.append(path)
+                    else:
+                        regular(path)
+                        if not python_only or path.name.lower().endswith('.py'):
+                            found.add(path.relative_to(root).as_posix())
+        check_cancel()
+    except OSError as exc:
+        raise ValueError('Local music inventory is unreadable or incomplete.') from exc
+    return found
+
+
 def validate_model(config, *, cancelled=lambda: False):
     """Verify a user-installed model bundle, including complete file inventory."""
     from .dsp import _digest
@@ -275,17 +314,7 @@ def validate_model(config, *, cancelled=lambda: False):
     if not isinstance(files, dict) or not files or len(files) > 100000:
         raise ValueError('Model manifest must contain its bounded complete SHA256 file inventory.')
     root = config.directory.resolve(strict=True)
-    actual = set()
-    for path in root.rglob('*'):
-        if cancelled():
-            raise AudioCancelled('Model verification cancelled.')
-        if path.is_symlink():
-            raise ValueError('Local model bundles must contain materialized files, not links.')
-        info = path.lstat()
-        if not stat.S_ISDIR(info.st_mode) and not stat.S_ISREG(info.st_mode):
-            raise ValueError('Local model bundles must contain regular files and directories only.')
-        if stat.S_ISREG(info.st_mode):
-            actual.add(path.relative_to(root).as_posix())
+    actual = _inventory(root, cancelled=cancelled)
     if config.manifest.resolve().is_relative_to(root):
         actual.discard(config.manifest.resolve().relative_to(root).as_posix())
     if actual != set(files):
@@ -357,12 +386,7 @@ def probe_model(runtime, engine, *, cancelled=lambda: False):
     if not isinstance(origin, str):
         raise AudioUnavailable(f'The selected Python does not contain the {package} package.')
     root = local_path(Path(origin).parent, exists=True)
-    actual = set()
-    for path in root.rglob('*.py'):
-        local_path(path, exists=True)
-        actual.add(path.relative_to(root).as_posix())
-        if len(actual) > 100000:
-            raise ValueError('The installed engine exceeds the reviewed code inventory allowance.')
+    actual = _inventory(root, cancelled=cancelled, python_only=True)
     if actual != set(records):
         raise ValueError('The installed engine Python file inventory differs from the reviewed manifest.')
     for name, expected_hash in records.items():

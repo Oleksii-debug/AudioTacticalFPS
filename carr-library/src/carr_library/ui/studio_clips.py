@@ -22,6 +22,8 @@ class ClipDialog(wx.Dialog):
         super().__init__(frame, title='Scene audio clips', size=(950, 860),
                          style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self._native_id = self.GetId()
+        self._destroy_requested = False
+        self.cleanup_error = ''
         self.frame = frame
         self.editor = editor or ClipEditor(frame.library.root)
         self.projects = ()
@@ -88,8 +90,8 @@ class ClipDialog(wx.Dialog):
         self.project_choice.Bind(wx.EVT_CHOICE, self.select_project)
         self.scene_choice.Bind(wx.EVT_CHOICE, self.select_scene)
         self.clip_choice.Bind(wx.EVT_CHOICE, self.select_clip)
-        self.Bind(wx.EVT_CLOSE, self.close)
         self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
+        self.Bind(wx.EVT_CLOSE, self.close)
         self.Bind(wx.EVT_CHAR_HOOK, self.key)
         self._enable()
 
@@ -97,20 +99,63 @@ class ClipDialog(wx.Dialog):
         return self.closed or self.frame.cancel_event.is_set()
 
     def dispose(self):
-        # Native parents can destroy this window without running guarded Close.
-        # Detach callbacks and let the owned worker observe cancellation; never
-        # cancel an unrelated operation through the shared frame event here.
-        self.closed = True
+        # Pure Python latch: parent destruction can use a different wrapper.
+        if self.closed:
+            return
+        self.closed = self.closing = True
         self.playback_generation += 1
+        # The worker observes this owner's closed flag; never cancel a
+        # different operation through the shared frame event on destruction.
 
     def on_destroy(self, event):
         if event.GetId() == self._native_id:
             self.dispose()
+            wx.CallAfter(self._cleanup)
         event.Skip()
 
     def Destroy(self):
+        if self._destroy_requested:
+            return False
+        self._destroy_requested = True
         self.dispose()
+        self._cleanup()
         return super().Destroy() if self else False
+
+    def _discard_preview(self, value):
+        if isinstance(value, Path) and value.name.startswith('clip-preview-'):
+            try:
+                value.unlink(missing_ok=True)
+            except OSError as exc:
+                self.cleanup_error = str(exc)
+
+    def _cleanup(self):
+        # No native controls are accessed here; this also runs after deletion.
+        if self.player is not None:
+            silence = False
+            try:
+                self.player.close()
+                silence = True
+            except (OSError, RuntimeError) as exc:
+                self.cleanup_error = str(exc)
+            progress = getattr(self.frame, 'operation_progress', None)
+            if progress is not None:
+                try:
+                    progress.unregister_player(self.player, silence_confirmed=silence)
+                except Exception as exc:
+                    self.cleanup_error = str(exc)
+            if silence:
+                self.player = None
+        if not self.pending:
+            for path in self.previews:
+                self._discard_preview(path)
+            self.previews = []
+            service = getattr(getattr(self, 'editor', None), 'service', None)
+            if service is not None:
+                try:
+                    if service.close() is False:
+                        self.cleanup_error = 'An owned voice worker has not confirmed closure.'
+                except Exception as exc:
+                    self.cleanup_error = str(exc)
 
     def message(self, text):
         if not self.closed:
@@ -118,6 +163,8 @@ class ClipDialog(wx.Dialog):
             self.status.SetFocus()
 
     def _enable(self):
+        if self.closed:
+            return
         for control in self.controls:
             control.Enable(not self.pending)
         for name, button in self.buttons.items():
@@ -125,7 +172,7 @@ class ClipDialog(wx.Dialog):
                           or (name != 'cancel' and not self.pending))
 
     def _run(self, title, operation, done):
-        if self.closed or self.pending or self.frame.working:
+        if self.closed or self.closing or self.pending or self.frame.working:
             return False
         self.stop()
         self.pending = True
@@ -134,13 +181,14 @@ class ClipDialog(wx.Dialog):
         def finish(value=None, error=None):
             self.pending = False
             if self.closed:
+                self._discard_preview(value)
+                self._cleanup()
                 return
             self._enable()
             if error is not None:
                 self.message(error)
             elif self.closing:
-                if isinstance(value, Path) and value.name.startswith('clip-preview-'):
-                    value.unlink(missing_ok=True)
+                self._discard_preview(value)
             else:
                 done(value)
             if self.closing:
@@ -148,9 +196,18 @@ class ClipDialog(wx.Dialog):
         def work():
             from ..audio.models import AudioCancelled
             try:
-                return operation()
+                value = operation()
+                if self.closed:
+                    self._discard_preview(value)
+                return value
             except AudioCancelled as exc:
                 raise InterruptedError(str(exc)) from exc
+            finally:
+                if self.closed:
+                    # The parent may suppress its UI completion callback after
+                    # native destruction. Release only our finished work.
+                    self.pending = False
+                    self._cleanup()
         try:
             self.frame.run_job(title, work, lambda result: finish(result), lambda error: finish(error=error))
             if self.pending and not self.frame.working:
@@ -160,6 +217,8 @@ class ClipDialog(wx.Dialog):
         return True
 
     def _accept(self, project):
+        if self.closed:
+            return
         scene_id = clip_id = None
         old_clips = set()
         try:
@@ -186,6 +245,8 @@ class ClipDialog(wx.Dialog):
         self.message(f'Saved {project.title}, revision {project.revision}. Original audio is retained.')
 
     def reload(self, event=None):
+        if self.closed:
+            return
         def loaded(projects):
             self.projects = projects
             self.project_choice.Set([f'{item.title}; revision {item.revision}' for item in projects])
@@ -194,16 +255,23 @@ class ClipDialog(wx.Dialog):
         return self._run('Loading Studio projects', self.editor.service.projects.list, loaded)
 
     def new(self, event=None):
+        if self.closed:
+            return
         chooser = wx.TextEntryDialog(self, 'Title for a new clip project', 'New audio project')
         try:
-            if chooser.ShowModal() != wx.ID_OK:
+            if chooser.ShowModal() != wx.ID_OK or self.closed or not chooser:
                 return
             title = chooser.GetValue()
         finally:
-            chooser.Destroy()
+            if chooser:
+                chooser.Destroy()
+        if self.closed:
+            return
         self._run('Creating audio project', lambda: self.editor.create(title), self._accept)
 
     def select_project(self, event=None):
+        if self.closed:
+            return
         index = self.project_choice.GetSelection()
         self.project = self.projects[index] if 0 <= index < len(self.projects) else None
         scenes = self.project.scenes if self.project else ()
@@ -212,12 +280,16 @@ class ClipDialog(wx.Dialog):
         self.select_scene()
 
     def _scene(self):
+        if self.closed:
+            raise ValueError('The clip editor is closed.')
         index = self.scene_choice.GetSelection()
         if self.project is None or not 0 <= index < len(self.project.scenes):
             raise ValueError('Choose or create a project and select its scene.')
         return self.project.scenes[index]
 
     def _clip(self):
+        if self.closed:
+            raise ValueError('The clip editor is closed.')
         scene = self._scene()
         index = self.clip_choice.GetSelection()
         if not 0 <= index < len(scene.cues):
@@ -225,6 +297,8 @@ class ClipDialog(wx.Dialog):
         return scene.cues[index]
 
     def select_scene(self, event=None):
+        if self.closed:
+            return
         try:
             scene = self._scene()
         except ValueError:
@@ -238,6 +312,8 @@ class ClipDialog(wx.Dialog):
         self.select_clip()
 
     def select_clip(self, event=None):
+        if self.closed:
+            return
         try:
             cue = self._clip()
         except ValueError:
@@ -249,6 +325,8 @@ class ClipDialog(wx.Dialog):
         self.clip_title.ChangeValue(cue.title)
 
     def _settings(self):
+        if self.closed:
+            raise ValueError('The clip editor is closed.')
         values = {name: (None if name == 'duration' and not control.GetValue().strip()
                         else float(control.GetValue())) for name, control in self.fields.items()}
         index = self.role.GetSelection()
@@ -257,50 +335,63 @@ class ClipDialog(wx.Dialog):
         return dict(values, role=ROLES[index], title=self.clip_title.GetValue())
 
     def add(self, event=None):
+        if self.closed:
+            return
         try:
             project, scene, settings = self.project, self._scene(), self._settings()
             chooser = wx.FileDialog(self, 'Choose original local audio', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
-                if chooser.ShowModal() != wx.ID_OK:
+                if chooser.ShowModal() != wx.ID_OK or self.closed or not chooser:
                     return
                 source = Path(chooser.GetPath())
             finally:
-                chooser.Destroy()
+                if chooser:
+                    chooser.Destroy()
+            if self.closed:
+                return
             self._run('Retaining and adding audio clip', lambda: self.editor.add(project, scene.id, source,
                 cancelled=self._cancelled, **dict(settings, title=source.name)), self._accept)
         except (ValueError, OSError) as exc:
             self.message(exc)
 
     def recording(self, event=None):
+        if self.closed:
+            return
         try:
             from ..audio.recording import RecordingService
             project, scene, settings = self.project, self._scene(), self._settings()
             service = RecordingService(self.frame.library.root)
             def choose(rows):
+                if self.closed:
+                    return
                 if not rows:
                     self.message('No completed recording is saved. Use Record microphone in Audio Studio first.')
                     return
                 chooser = wx.SingleChoiceDialog(self, 'Choose a saved recording', 'Add microphone recording',
                                                [row['title'] for row in rows])
                 try:
-                    if chooser.ShowModal() != wx.ID_OK:
+                    if chooser.ShowModal() != wx.ID_OK or self.closed or not chooser:
                         return
                     selected = chooser.GetSelection()
                 finally:
-                    chooser.Destroy()
-                if not 0 <= selected < len(rows):
+                    if chooser:
+                        chooser.Destroy()
+                if self.closed or not 0 <= selected < len(rows):
                     return
                 def retain():
-                    record = service.get(rows[selected]['id'])
+                    record = service.get(rows[selected]['id'], cancelled=self._cancelled)
                     return self.editor.add(project, scene.id, record['path'],
                         expected_sha256=record['audio']['sha256'], cancelled=self._cancelled,
                         **dict(settings, role='microphone', title=record['title']))
                 self._run('Verifying and adding saved recording', retain, self._accept)
-            self._run('Loading saved recordings', service.list, choose)
+            self._run('Loading saved recordings',
+                lambda: service.list(cancelled=self._cancelled), choose)
         except (ValueError, OSError, ImportError) as exc:
             self.message(exc)
 
     def save(self, event=None):
+        if self.closed:
+            return
         try:
             project, scene, cue, settings = self.project, self._scene(), self._clip(), self._settings()
             self._run('Saving clip settings', lambda: self.editor.edit(project, scene.id, cue.id,
@@ -309,6 +400,8 @@ class ClipDialog(wx.Dialog):
             self.message(exc)
 
     def remove(self, event=None):
+        if self.closed:
+            return
         try:
             project, scene, cue = self.project, self._scene(), self._clip()
             self._run('Removing clip from scene', lambda: self.editor.remove(project, scene.id, cue.id), self._accept)
@@ -316,6 +409,8 @@ class ClipDialog(wx.Dialog):
             self.message(exc)
 
     def duration(self, event=None):
+        if self.closed:
+            return
         try:
             project, scene, seconds = self.project, self._scene(), float(self.minimum.GetValue())
             self._run('Saving minimum scene duration',
@@ -324,6 +419,8 @@ class ClipDialog(wx.Dialog):
             self.message(exc)
 
     def move(self, event=None):
+        if self.closed:
+            return
         try:
             project, scene, cue = self.project, self._scene(), self._clip()
             destinations = tuple(item for item in project.scenes if item.id != scene.id)
@@ -332,12 +429,13 @@ class ClipDialog(wx.Dialog):
             chooser = wx.SingleChoiceDialog(self, 'Choose the destination scene', 'Move audio clip',
                                            [item.title for item in destinations])
             try:
-                if chooser.ShowModal() != wx.ID_OK:
+                if chooser.ShowModal() != wx.ID_OK or self.closed or not chooser:
                     return
                 index = chooser.GetSelection()
             finally:
-                chooser.Destroy()
-            if not 0 <= index < len(destinations):
+                if chooser:
+                    chooser.Destroy()
+            if self.closed or not 0 <= index < len(destinations):
                 return
             self._run('Moving clip to another scene', lambda: self.editor.move(
                 project, scene.id, cue.id, destinations[index].id), self._accept)
@@ -345,6 +443,8 @@ class ClipDialog(wx.Dialog):
             self.message(exc)
 
     def preview(self, event=None):
+        if self.closed:
+            return
         try:
             project, scene, cue = self.project, self._scene(), self._clip()
             def play(path):
@@ -366,17 +466,24 @@ class ClipDialog(wx.Dialog):
             self.message(exc)
 
     def stop(self, event=None):
+        if self.closed:
+            return
         self.playback_generation += 1
         if self.player is not None:
             self.player.close()
 
     def cancel(self, event=None):
+        if self.closed:
+            return
         if self.pending:
             self.frame.cancel_event.set()
             self.message('Cancellation requested; waiting for the owned audio operation to finish.')
 
     def close(self, event=None):
-        self.stop()
+        if self.closed:
+            return
+        self.playback_generation += 1
+        self._cleanup()
         if self.pending:
             self.closing = True
             self.cancel()
@@ -384,14 +491,16 @@ class ClipDialog(wx.Dialog):
                 event.Veto()
             return
         self.closed = True
-        for path in self.previews:
-            path.unlink(missing_ok=True)
+        self._cleanup()
         if self.IsModal():
             self.EndModal(wx.ID_CANCEL)
         else:
             self.Hide()
 
     def key(self, event):
+        if self.closed:
+            event.Skip()
+            return
         if event.GetKeyCode() == wx.WXK_ESCAPE:
             self.close()
         else:
@@ -408,8 +517,11 @@ def show_clip_editor(frame):
         dialog.ShowModal()
     finally:
         dialog.dispose()
-        try:
-            dialog.stop()
-        finally:
-            if dialog:
-                dialog.Destroy()
+        dialog._cleanup()
+        if dialog:
+            dialog.Destroy()
+        if dialog.cleanup_error:
+            try:
+                frame.report('Clip cleanup needs attention: ' + dialog.cleanup_error)
+            except (RuntimeError, AttributeError):
+                pass
