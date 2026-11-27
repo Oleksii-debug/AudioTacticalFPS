@@ -47,7 +47,11 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
-    monkeypatch.setattr(desktop_app.wx, 'MessageBox', lambda *args: desktop_app.wx.YES)
+    def approve(message, title, style, parent):
+        assert destination.name in message and title == 'Replace export'
+        assert style == desktop_app.wx.YES_NO | desktop_app.wx.NO_DEFAULT | desktop_app.wx.ICON_QUESTION
+        return desktop_app.wx.YES
+    monkeypatch.setattr(desktop_app.wx, 'MessageBox', approve)
     reports = []
 
     def run_job(title, operation, done=None, failed=None):
