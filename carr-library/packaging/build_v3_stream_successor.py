@@ -328,10 +328,13 @@ def build(args):
     work.mkdir(mode=0o700)
     log, commands = work / 'build.log', []
     source = work / 'source'
+    run([sys.executable, '-m', 'pip', '--version'], cwd=work, log=log, commands=commands)
     git = ['git', '--no-replace-objects']
     run(git + ['clone', '--shared', '--no-checkout', str(repository), str(source)],
         cwd=work, log=log, commands=commands)
     run(git + ['checkout', '--detach', commit], cwd=source, log=log, commands=commands)
+    run(git + ['diff', '--exit-code', '--no-ext-diff', 'HEAD', '--'],
+        cwd=source, log=log, commands=commands)
     if run(git + ['rev-parse', 'HEAD'], cwd=source, log=log, commands=commands) != commit:
         raise ValueError('The frozen source differs from the published commit.')
     tree = run(git + ['rev-parse', 'HEAD^{tree}'], cwd=source, log=log, commands=commands)
@@ -370,8 +373,13 @@ def build(args):
     with delivery._file(historical_path) as stream:
         historical = json.load(stream, object_pairs_hook=delivery._unique)
     pins = builder.read_lock(packaging / 'windows-semantic-cp311.lock')
-    dependency_dir, wheel_dir, minimal = work / 'dependency-wheels', work / 'application-wheel', work / 'minimal-bundle'
-    dependency_dir.mkdir()
+    dependency_dir = (args.dependency_wheelhouse.absolute() if args.dependency_wheelhouse
+                      else work / 'dependency-wheels')
+    wheel_dir, minimal = work / 'application-wheel', work / 'minimal-bundle'
+    if args.dependency_wheelhouse:
+        delivery._directories(dependency_dir)
+    else:
+        dependency_dir.mkdir()
     wheel_dir.mkdir()
     dependency_records, old_application, old_licenses = [], None, None
     with delivery._file(parent) as stream, ZipFile(stream) as archive:
@@ -389,7 +397,12 @@ def build(args):
                 old_licenses = wheel_licenses(io.BytesIO(read_member(archive, name, previous['files'], limit=64 * CHUNK)))
                 continue
             target = dependency_dir / Path(name).name
-            copy_member(archive, name, target, previous['files'][name])
+            if args.dependency_wheelhouse:
+                delivery._plain(target)
+                if digest(target) != previous['files'][name]:
+                    raise ValueError('Reused dependency differs from the pinned parent: ' + name)
+            else:
+                copy_member(archive, name, target, previous['files'][name])
             distribution, version, _metadata = builder.wheel_metadata(target)
             if (distribution not in pins or str(version) != pins[distribution][0]
                     or previous['files'][name] not in pins[distribution][1]):
@@ -399,6 +412,8 @@ def build(args):
     if (old_application is None or len(dependency_records) != len(pins)
             or {record['name'] for record in dependency_records} != set(pins)):
         raise ValueError('The parent lacks the exact current dependency closure.')
+    if {path.name for path in dependency_dir.iterdir()} != {record['file'] for record in dependency_records}:
+        raise ValueError('The dedicated dependency input contains unlisted files.')
 
     print('Building and verifying the exact-source application wheel and minimal production bundle.', flush=True)
     run([sys.executable, '-m', 'pip', '--isolated', '--disable-pip-version-check', 'wheel',
@@ -514,7 +529,8 @@ def build(args):
     verified['sources'].update(path=str(companion), reused=True)
     report = {'schema': 1, 'kind': 'private-streamed-successor-delivery', 'status': 'PASS',
         'source_commit': commit, 'source_tree': tree, 'source_checkout': str(source),
-        'assembler_sha256': digest(Path(__file__)),
+        'assembler_sha256': digest(Path(__file__)), 'build_python': sys.executable,
+        'source_materialization': 'Local Git clone; exact commit/tree and clean tracked checkout verified. Source objects may be acquired separately.',
         'output': str(output), 'manifest_sha256': hashlib.sha256(manifest_raw).hexdigest(),
         'manifest_payload_files': len(files), 'archive_prefix': PREFIX, 'archives': verified,
         'application_wheel': source_identity, 'dependency_wheels': dependency_records,
@@ -532,12 +548,14 @@ def build(args):
         'assembly': {'mode': 'ZIP member streaming; no full runtime expansion',
             'buffer_bytes': CHUNK, 'duplicate_minimal_dependency_bytes_removed': removed_bytes,
             'extracted_dependency_bytes_retained': sum(item['bytes'] for item in dependency_records),
+            'dependency_inputs_reused': bool(args.dependency_wheelhouse),
+            'dependency_input_directory': str(dependency_dir),
             'estimated_output_and_reserve_bytes': required_free, 'free_bytes_before_output': free},
         'instructions': delivery.INSTRUCTIONS,
         'boundaries': {'both_archives_required': True, 'native_windows_execution': 'NOT_RUN',
             'model_inference': 'NOT_RUN', 'manual_nvda': 'NOT_RUN',
             'whole_expanded_bundle_installer_verifier': 'NOT_RUN; production minimal builder and exact archive union verified',
-            'historical_native_evidence_relabelled': False, 'network_downloads': False,
+            'historical_native_evidence_relabelled': False, 'runtime_model_downloads': False,
             'public_binary_distribution': False}}
     write_new(stage / 'bundle-manifest.json', manifest_raw)
     write_new(stage / 'archive-inventory.json', json_bytes(records))
@@ -561,6 +579,8 @@ def main(argv=None):
     parser.add_argument('--output', required=True, type=Path, help='New delivery directory, atomically published after verification')
     parser.add_argument('--source-companion', required=True, type=Path)
     parser.add_argument('--filename', help='Optional simple application ZIP filename')
+    parser.add_argument('--dependency-wheelhouse', type=Path,
+                        help='Reuse a dedicated extracted dependency input after exact current pin/hash verification')
     parser.add_argument('--work', type=Path, help='Fresh small source/wheel build directory, retained')
     parser.add_argument('--parent-application', type=Path, default=HERE / 'reuse-v3-core' / PARENT_NAME)
     parser.add_argument('--parent-application-sha256', default=PARENT_SHA)
