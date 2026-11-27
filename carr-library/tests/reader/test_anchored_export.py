@@ -69,7 +69,7 @@ def test_source_drift(case):
 
 @pytest.mark.parametrize('locator, expected', [
     (Locator('logical_segment', 4), 'Segment 4 (unpaginated)'),
-    (Locator('physical_page', 7, 'candidate', False), 'PDF page 7; printed page unknown')])
+    (Locator('physical_page', 7, 'candidate', False), 'Physical page 7; printed page unknown')])
 def test_locator_preserved(locator, expected):
     row, _ = sample()
     row = replace(row, anchor=replace(row.anchor, locator=locator))

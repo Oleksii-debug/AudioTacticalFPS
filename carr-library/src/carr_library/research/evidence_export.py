@@ -88,7 +88,7 @@ def _locator(row):
     if row.kind == "logical_segment":
         return f"Segment {row.segment_index} (unpaginated)"
     printed = row.printed_label if row.printed_label_verified else "unknown"
-    return f"PDF page {row.physical_index}; printed page {printed}"
+    return f"Physical page {row.physical_index}; printed page {printed}"
 
 
 def _records(workspace_id, topic_id, rows):

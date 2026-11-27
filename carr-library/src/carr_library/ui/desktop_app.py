@@ -151,7 +151,7 @@ class DesktopSearchPanel(PagedSearchPanel):
         save = wx.Button(self, label='Save selected quotation to &topic')
         save.Bind(wx.EVT_BUTTON, self.save_selected)
         self.GetSizer().Add(save, 0, wx.ALL, 4)
-        review = wx.Button(self,label='Record independent review of selected PDF page')
+        review = wx.Button(self,label='Record independent review of selected physical page')
         review.Bind(wx.EVT_BUTTON, self.review_selected)
         self.GetSizer().Add(review,0,wx.ALL,4)
         original = wx.Button(self, label='Open &original source file')
@@ -1212,10 +1212,10 @@ class DesktopFrame(WorkspaceFrame):
                     self.report('This import has no page awaiting review. Choose Resume interrupted import to continue it.')
                     return
                 show_text(self,'Imported page to compare with the original',
-                    f'{selected["file"]}\nPhysical PDF page {page["physical"]}\n\n'
-                    'Compare the entire extracted text below with the same physical page of the original PDF.\n\n' +
+                    f'{selected["file"]}\nPhysical page {page["physical"]}\n\n'
+                    'Compare the entire extracted text below with the same physical page or image frame of the original source.\n\n' +
                     page['raw_text'])
-                if wx.MessageBox('Have you independently compared all the extracted text with this original PDF page? '
+                if wx.MessageBox('Have you independently compared all the extracted text with this original physical page or image frame? '
                         'Confirm only after that comparison. Printed page numbers remain unverified.',
                         'Confirm independent imported-page review',
                         wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,self) != wx.YES:
@@ -1483,14 +1483,14 @@ class DesktopFrame(WorkspaceFrame):
             'Use the builder for operator words or phrases containing quotation marks. Other search modes keep their own meaning.\n'
             'Both modes show exact source text. Thematic excerpts includes more context on the same page or segment.\n'
             'Original quotations cannot be edited. Put your commentary in Evidence and Notes.\n'
-            'TXT quotations are checked against original bytes. PDF pages may require independent review.\n'
+            'TXT quotations are checked against original bytes. PDF pages and image frames may require independent review.\n'
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
-            'The Source menu records or withdraws an independent review of the selected PDF page.\n'
+            'The Source menu records or withdraws an independent review of the selected physical page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
             'Complete backups include retained libraries, supported application checkpoints, pending import inputs, reading positions and bookmarks.\n'
             'Restoration creates a new folder; external engines and models require a fresh review before transcription resumes.\n'
             'Restored source reviews remain subject to their original authority and receipt checks. Reading menu export/import also supports selective transfer.\n'
-            'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
+            'Printed pages are shown only when verified; otherwise physical pages or unpaginated segments are identified.')
 
     def on_close(self, event):
         if self.working:

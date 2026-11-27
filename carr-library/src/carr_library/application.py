@@ -37,7 +37,7 @@ from .search import literal, thematic
 from .storage.revisions import (Storage, Page, CURRENT_SCHEMA_VERSION,
                                 _schema_signature, _expected_signature)
 from .data_paths import guard_data_directory
-from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
+from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES, PHYSICAL_MIMES
 
 
 @dataclass(frozen=True)
@@ -743,11 +743,11 @@ class LibraryApp:
                             'message': f'{source_format} imported as unverified logical segments; '
                                        'printed pages are unknown. ' + (
                                            FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
-                engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
+                engine = RuntimeBoundIngest if asset.mime in PHYSICAL_MIMES else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id),
                               review_asset=source_snapshot(retained.parent, retained.name, cancelled=cancelled)
                               if isinstance(asset, FileSnapshot) else asset.data)
-                         if asset.mime == 'application/pdf' else {})
+                         if asset.mime in PHYSICAL_MIMES else {})
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
                         publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
@@ -1269,7 +1269,7 @@ class LibraryApp:
                 TopicTree(db, workspace)._visible(authorized_topic)
             _, identity, locator, raw, _ = self._selected(db, workspace, ref, revision)
             if locator.kind != 'physical_page':
-                raise ValueError('This review workflow is for physical PDF pages only.')
+                raise ValueError('This review workflow is for physical PDF pages or retained image frames only.')
             data = self._asset_bytes(db, workspace, identity, cancelled=cancelled)
             renderer, fingerprint = isolated_render_fingerprint(data, locator.index, cancelled=cancelled)
             raw_hash = sha256(raw.encode('utf-8')).hexdigest()
@@ -1279,7 +1279,7 @@ class LibraryApp:
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
             if cancelled():
-                raise InterruptedError('PDF page review cancelled.')
+                raise InterruptedError('Physical-page review cancelled.')
             _, current, current_loc, current_raw, _ = self._selected(db, workspace, ref, revision)
             if (current, current_loc, current_raw) != (identity, locator, raw):
                 raise ValueError('The source changed during review.')

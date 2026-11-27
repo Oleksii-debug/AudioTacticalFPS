@@ -90,6 +90,7 @@ jobs:
             tests/extract/test_document_formats_text.py \
             tests/extract/test_document_formats_xml.py \
             tests/e2e/test_extended_document_workflows.py \
+            tests/extract/test_raster_pages.py tests/e2e/test_raster_import.py \
             tests/acquisition/test_acquisition_cli.py \
             tests/acquisition/test_acquisition_security.py \
             tests/acquisition/test_acquisition_workflow.py \

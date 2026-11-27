@@ -17,6 +17,7 @@ import tempfile
 from carr_library.catalog.intake import (source_snapshot as snapshot, IntakeError, FileSnapshot,
     TextSegments, source_stream, copy_snapshot)
 from carr_library.extract.page_ocr import Config, extract_page
+from carr_library.extract.document_formats import RASTER_MIMES, RASTER_BY_MIME, MIME_SUFFIXES
 from carr_library.storage.revisions import Page
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 
@@ -100,6 +101,16 @@ class Ingest:
                             pypdf=importlib.metadata.version('pypdf'),
                             pdfium=importlib.metadata.version('pypdfium2'))
             segments = None
+        elif asset.mime in RASTER_MIMES:
+            from carr_library.extract.raster_pages import frame_inventory, inventory_sha256, NORMALIZATION
+            frames = frame_inventory(asset.data, config,
+                cancelled=getattr(self, '_cancelled', lambda: False))
+            count = len(frames)
+            settings = dict(adapter='raster_ocr-v1', kind='physical_page',
+                config=asdict(config), format=RASTER_BY_MIME[asset.mime].name,
+                pillow=importlib.metadata.version('Pillow'), normalization=NORMALIZATION,
+                frame_inventory_sha256=inventory_sha256(frames))
+            segments = None
         else:
             raise IngestError('unsupported source format')
         if not 1 <= count <= 1000:
@@ -147,6 +158,10 @@ class Ingest:
                 raise IngestError('checkpoint identity mismatch')
             if not isinstance(p['raw_text'], str) or '\x00' in p['raw_text']:
                 raise IngestError('invalid raw text')
+            settings = json.loads(row['config'])
+            if settings.get('adapter') == 'raster_ocr-v1':
+                from carr_library.extract.raster_pages import validate_checkpoint
+                validate_checkpoint(p, settings, i, row['count'])
             records.append(p)
         if len(records) > row['count']:
             raise IngestError('checkpoint count mismatch')
@@ -219,7 +234,7 @@ class Ingest:
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
         with tempfile.TemporaryDirectory(prefix='carr-ingest-') as tmp:
-            staged = Path(tmp) / ('source.pdf' if segments is None else 'source.txt')
+            staged = Path(tmp) / ('source' + MIME_SUFFIXES[asset.mime])
             staged_asset = copy_snapshot(asset, staged, cancelled=cancelled)
             if isinstance(segments, TextSegments):
                 segments.rebind(staged_asset)
@@ -254,7 +269,10 @@ class Ingest:
                             self._set(job, 'complete')
                             break
                         i = len(records) + 1
-                        if segments is None:
+                        if asset.mime in RASTER_MIMES:
+                            from carr_library.extract.raster_pages import extract_raster_page
+                            p = extract_raster_page(staged, i, config, cancelled=cancelled)
+                        elif segments is None:
                             p = extract_page(staged, i, config)
                         else:
                             p = dict(physical_index=None, printed_label=None, printed_label_verified=False,
