@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "tested_commit": "175bbb7c6b26763f73170ee4836f718f8ec86b66",
+  "tested_tree": "23957dc179802c08a5b5bd7518d7509db422db09",
+  "status": "FAIL",
+  "run_id": 46032268761,
+  "job_id": 140618761735,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46032268761/job/140618761735",
+  "evidence_source": "Returned completed installed Windows native probe log.",
+  "failure": {
+    "driver": "scripts/windows_reading_tabs_smoke.py",
+    "assertion": "restart restores saved cursor with no installed voice",
+    "observed_predicate": "editor.GetInsertionPoint() == 1",
+    "diagnosis": "The added Ctrl+A policy-selection scenario did not re-establish the original cursor=1 precondition before Save/Close. The existing save path intentionally records the selection's active native insertion endpoint."
+  },
+  "qualification": {
+    "native_reading_acceptance": "FAILED",
+    "human_nvda": "NOT_RUN",
+    "new_correction_execution": "NOT_RUN"
+  },
+  "reviewed_correction": {
+    "commit": "08345a93158d419387468476acccdf14f6bc181f",
+    "scope": "Test driver only: actual native End, empty-selection/cursor assertion and saved cursor assertion before Close. Original restart assertion is retained.",
+    "execution": "NOT_RUN"
+  }
+}

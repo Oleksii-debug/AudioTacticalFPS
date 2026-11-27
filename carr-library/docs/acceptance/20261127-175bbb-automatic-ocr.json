@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "tested_commit": "175bbb7c6b26763f73170ee4836f718f8ec86b66",
+  "tested_tree": "23957dc179802c08a5b5bd7518d7509db422db09",
+  "status": "PASS",
+  "run_id": 46032268581,
+  "job_id": 140618761470,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46032268581/job/140618761470",
+  "evidence_source": "Returned completed job logs, exact checkout identity and JUnit-derived strict suite summary.",
+  "strict_suite_origin": "Checkout source; ci_check.py sets PYTHONPATH to src.",
+  "suites": [
+    {
+      "suite": "tests/extract/test_language_detection.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_ocr_language_regions.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_automatic_ocr_native.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_ocr_language_presets.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_ocr_selection.py",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_ocr_native.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 133,
+    "failed": 0,
+    "skipped": 0
+  },
+  "qualification": {
+    "later_composed_candidate": "NOT_ESTABLISHED_BY_THIS_RECORD",
+    "human_nvda": "NOT_RUN",
+    "full_platform_acceptance": "NOT_ESTABLISHED_BY_THIS_COMPONENT"
+  }
+}

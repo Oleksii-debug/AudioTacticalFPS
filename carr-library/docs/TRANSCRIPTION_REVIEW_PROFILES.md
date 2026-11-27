@@ -134,3 +134,50 @@ At component publication the executor is unavailable: new source and tests are
 **NOT_RUN**. Exact composed source, installed and native CI gates must qualify
 them. No private worker/model, physical audio, hardware or acoustic result is
 claimed by this component.
+
+
+## Additional installed dependencies and existing bytecode (PR197 convergence)
+
+The same flat service now seals every distribution with a valid
+`.dist-info/METADATA` and `RECORD` in the selected environment, including
+transitive dependencies outside the seven worker-declared packages. The seven
+`runtime_distributions` names, their existing file-label/hash dialect, and
+explicit missing-package records stay unchanged. Additional package summaries
+are carried in the optional outer `runtime_additional_distributions` field.
+
+Raw RECORD rows are bounded and checked before use. The review rejects duplicate
+or aliased entries, out-of-environment paths, links, malformed rows, missing
+ordinary recorded files, missing METADATA/RECORD inventory rows, and metadata
+name/version changes during inspection. Present recorded files historically
+excluded from the worker hash (including files under `__pycache__`) still bind
+the host review. Missing generated `.pyc`/`.pyo` files are allowed only when
+their resolved location remains inside the selected environment.
+
+Python's `-I -B` options do not prohibit reading existing bytecode. A bounded
+walk therefore also seals unrecorded `.pyc`/`.pyo` files in selected
+site-package trees, including sourceless modules. Their exact path/size/SHA
+records, together with the present recorded cache exclusions, are stored in the
+optional passive `runtime_bytecode` field. This does not change worker
+receipt or V5 checkpoint formats and does not copy bytecode into library backups.
+
+The existing aggregate installed-file bound remains 100,000 files and 16 GiB;
+recorded distribution files and the separate bytecode inventory share it.
+The bytecode sub-bound is 65,536 files / 4 GiB, and the directory walk stops after
+100,000 entries. Existing path-configuration files keep their separate
+256-file / 16 MiB bound. No inspection imports the selected packages.
+
+Old seals without these optional fields remain valid passive historical data.
+A newly detected package or bytecode change changes the outer fingerprint;
+unfinished execution still requires the existing explicit review and cannot
+silently upgrade an older cache. All before/after-admission and publication
+checks, permanent rejection records, and restore trust revocation remain in the
+same service. The typed backup adapter validates these optional fields through
+the same passive runtime validator, without opening their recorded external paths.
+Completed retained results remain readable after the selected runtime is removed.
+
+`tests/transcription/test_runtime_record_inventory.py` ports the applicable
+PR197 RECORD, metadata, bytecode and bound checks to the flat service. It adds
+actual harmless CPython imports, actual receipts/V5 publication-drift rejection,
+and actual completed backup/restore with the external runtime removed. The
+synthetic peers establish file-protocol behavior only. New component source and
+tests are **NOT_RUN** until the exact composed CI gate completes.

@@ -3,10 +3,12 @@ from copy import deepcopy
 from dataclasses import asdict
 from decimal import Decimal
 from hashlib import sha256
+import importlib.util
 import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import threading
 
 import pytest
@@ -22,8 +24,38 @@ from carr_library.library_backup import restore_backup
 from carr_library.operations.facade import OperationFacade
 from carr_library.speech.reading import ReadingDocument
 
-from test_translation_source import source_library, select
-from test_translation_v3 import transport, GLOSSARY, TOKEN
+def _fixture_module(name, filename):
+    # Load only this selected sibling fixture file. Installed-package tests must
+    # not add either the tests directory or the checkout to sys.path.
+    path = Path(__file__).with_name(filename).resolve()
+    existing = sys.modules.get(name)
+    if existing is not None:
+        if Path(existing.__file__).resolve() != path:
+            raise ImportError('Fixture module name is already bound to another file.')
+        return existing
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ImportError('Could not load the selected sibling fixture file.')
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        if sys.modules.get(name) is module:
+            del sys.modules[name]
+        raise
+    return module
+
+
+_source_fixtures = _fixture_module(
+    '_carr_fixture_translation_source', 'test_translation_source.py')
+_google_fixtures = _fixture_module(
+    '_carr_fixture_translation_v3', 'test_translation_v3.py')
+source_library = _source_fixtures.source_library
+select = _source_fixtures.select
+transport = _google_fixtures.transport
+GLOSSARY = _google_fixtures.GLOSSARY
+TOKEN = _google_fixtures.TOKEN
 
 
 def item(e, selected, **changes):

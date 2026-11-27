@@ -221,3 +221,92 @@ retains all161 scenarios and guards both Path.open and the actual os.open sideca
 reader during the new cache-omission/refusal checks. Those guards end before
 legitimate source-directory cleanup. Independent production and test reviews
 approve the final source; no new runtime result is inferred from that review.
+
+## Reviewed completion updates after 175bbb7
+
+The next composition starts from `cdcde47065bb3909bd93ca2a26985f5c0305449b`.
+Its isolated Linux loopback acceptance correction is retained exactly; ordinary
+source checks still deny network access. Canonical main
+`e5c64a5245583f8f8b404a0f042f6ca438c24d7f` merges PR183 and changes only
+the two Save All paths, whose blobs exactly match the reviewed component below.
+Main ancestry is retained. No other canonical source is substituted.
+
+These are implementation and source-review decisions. Fresh execution of the
+assembled successor is required; historical passes in the table below remain
+bound to their recorded commits.
+
+| Component | Final reviewed component | Integration decision |
+| --- | --- | --- |
+| Portable Office archive intake | `10e73e54979a37d3e42f467e0c6b0cb64415579e` | Share ordinary Windows filename checks between retained-byte and streaming archive admission; keep size, cancellation and source-identity boundaries. Both new actual ZIP/reader suites are selected. |
+| Durable production replay | `5be418c3247c9914cf4c89b21dfecdf833710d42` | Bound output names to full job identity; retain existing destinations, reject unowned orphan publications and verify every expected artifact before replay. Bind optional operation digest to the submitted revision and options. Restore explicitly rebinds pending inputs/output authority. |
+| Academic acquisition publication | `07262f28b394906b283aeb119cb70c35e83653dc` | Recheck exact duplicates and save their reference membership in one transaction. Retain durable new imports if later reference work needs repair. Preserve existing streaming import, DOI/ISBN equivalence and cancellation. |
+| Native unheld lock race | `25e30b1aff0368edcb42edc2820e46c4f2032bd9` | Tolerate only the precise disappearing or zero-link regular leaf before ownership; strict parents, held descriptors, native identity and hardlink refusal remain. |
+| Save All identity | `d0bd5ee2f14bcfd0e36df45532911276815557a0` | Attribute replies to the original registration, preserve confirmed durable writes after late Stop and focus the first still-live failed draft. Reuse the exact canonical PR183 blobs. |
+| Saved Studio output options | `39e07bc72f250669de41aae4d197a20566246ac5` | Restore saved format/stems; changed options explicitly create a new job from the saved revision, preserving newer drafts and old receipts. Keep real restored-input approval before cue reads. All24 prepared controller/ProjectStore cases are selected; this is not acoustic-render evidence. |
+| Pending and manifest cancellation | `d26017319cb75e2361b39db6d71d7c14cc550d9d` | Bound total directory traversal, reject unexpected entries as encountered and propagate cancellation before staging/publication. Preserve streaming source/hash/restore limits. Prefix legacy state paths before their kind-specific depth check. Retain all161 earlier transcription-backup cases and add24 controls. |
+| Recorded Python runtime | `16a0b5d7366f1be14459e0ba18872f797361a0ba` | Seal raw METADATA/RECORD, additional distributions and executable bytecode without importing selected packages. Preserve the seven-package worker digest dialect. Extended outer inventories participate in profile identity and permanent stale-result rejection; historical seals remain passive restore data. |
+| Generic Python voice helper | `80b04a312ba28bac4a80991d1e57cbf1c969074d` | Add a pinned script/hash pair with fixed isolated invocation. The child compiles one bounded hash-verified byte snapshot, closing the host-verification/path-reopen race. Preserve bare executable helpers, owned cancellation and passive backup. All39 prepared helper cases are selected. |
+| Local translation workflow | `f5cf3fbc20e1d77aef48067e877001959417d862` | Add the pinned LibreTranslate wire mapping to the existing profile/Gateway/service/batch/UI/CLI and typed backup. Require explicit loopback profile, zero external cost, separate selected-data approval and directed-language review. Preserve remote approvals, current source/profile rechecks, decoded receipt/ledger binding and no automatic uncertain retry. |
+| Exact loopback acceptance | `8c9b75b325dad41f94b7bdd46f38f8a94cc9ca99` | Extend only the closed selection to the exact local-planning and local-translation suites, in order and with one worker. Keep Linux non-root loopback-only namespace, ordinary offline socket denial, JUnit/skip policy, deadlines and process cleanup byte-identical. |
+| Native cursor precondition | `08345a93158d419387468476acccdf14f6bc181f` | After the new Ctrl+A policy flow, use real End to re-establish the intended collapsed cursor before Save/Close. Check live and durable cursor, retaining the original restart assertion. The observed175 native failure remains recorded until a fresh corrected probe passes. |
+
+The two independent additions to `test_v3_state_backup.py` retain the exact
+original test prefix and both append blocks. Helper sidecar validation is applied
+after the pending-backup component, preserving its cancellation and traversal
+changes. New source and installed selectors are additive; native origin checks,
+strict JUnit failure/skip policy, network isolation, process cleanup and existing
+time budgets are unchanged. In particular, the V3 installed-recovery step still
+has its ten-minute deadline.
+
+### Exact earlier execution newly recorded
+
+| Tested commit and gate | Actual outcome | Record |
+| --- | --- | --- |
+| 175bbb7 quick source | 2114 passed, 22 failed, zero skipped; all failures were the real loopback suite selected into the offline runner. The cdc namespace correction requires its own execution. | [Quick source](acceptance/20261127-175bbb-expanded-reader.json) |
+| 175bbb7 reading source | 239 passed, zero failed/skipped,12 strict suites. Native keyboard/Read-Skip result is separate. | [Reading source](acceptance/20261127-175bbb-reading-content.json) |
+| 175bbb7 OCR | 133 passed, zero failed/skipped,8 strict suites. | [OCR](acceptance/20261127-175bbb-automatic-ocr.json) |
+| 175bbb7 workflow templates source | 182 strict cases plus12 identity/parser cases passed, zero failed/skipped. | [Template source](acceptance/20261127-175bbb-templates-source.json) |
+| 175bbb7 bibliography | 1154 Windows source cases and69 installed native checks passed. Controlled file choices are not native-picker or human NVDA evidence. | [Bibliography](acceptance/20261127-175bbb-bibliography.json) |
+| 175bbb7 academic reconciliation | 2894 passed,64 failed, zero skipped; only the legacy transcription-backup depth matrix failed. The reviewed d260 prefix correction requires new execution. | [Reconciliation](acceptance/20261127-175bbb-reconciled.json) |
+| 5604f1 portable lifetime | 262 filesystem source cases,26 native source cases and26 installed native cases passed. Nine real executable-launcher checks use a synthetic child, not an actual Python installation. | [Portable lifetime](acceptance/20261127-5604f1-portable-lifetime.json) |
+
+Private runtime/model quality, human Windows11/NVDA acceptance, per-feature
+qualification for all135 languages, real large-corpus qualification and signed
+distribution are not established by these records. Explicitly unsupported legacy
+input formats and optional ASR-cache inclusion remain product limitations; this
+composition does not relabel them as passing qualifications.
+
+### Local workflow acceptance selection
+
+The local backend and UI tests are included in the strict quick, V3 source and
+Windows source/installed selections. Actual HTTP/CLI cases run in the dedicated
+loopback namespace and the existing explicit transport/installed protocol gates.
+The new native local-translation probe accompanies the existing Advanced v3 probe;
+its real wx focus/keyboard/worker and derivative checks use synthetic REST
+responses and do not claim a live LibreTranslate model, linguistic quality or
+whole-machine offline egress. Existing Google v2/v3, batch, source, deadline,
+resolution and typed-backup selections remain intact.
+
+The complete175 production job additionally passed2064 strict source cases in109
+suites and865 explicit provider/trust cases (one Windows-only test deselected,
+still retained in Windows gates), then completed the official EPUB and local DAISY
+schema controls. See [the exact production record](acceptance/20261127-175bbb-production.json).
+The installed175 reader reached the post-restart cursor assertion and failed;
+see [the failed native record](acceptance/20261127-175bbb-native-reading.json).
+Neither result is silently reassigned to the assembled successor.
+
+Installed fixture loading is also reconciled in the test-only four-file component
+`af325639547eefc3ee115d6f2c2dd8d0db1dbd9f`. Its acyclic source/v3/batch/CLI/UI
+fixture imports load exact sibling files using private module names and verify
+cached file identity. All test and fixture bodies are retained byte-for-byte;
+no test directory, checkout root or production source is added to Python's import
+path. The new local UI fixture uses the same loader. Installed collection and
+execution still require the assembled Windows gates.
+
+The immediate parent `cdcde470` subsequently completed its corrected quick gate:
+2134 ordinary offline source cases plus25 actual isolated-loopback source cases,
+all passing with zero failures/skips. Its bibliography gate separately passed1154
+Windows source and69 installed native checks. See the [parent quick record](acceptance/20261127-cdcde4-expanded-reader.json)
+and [parent bibliography record](acceptance/20261127-cdcde4-bibliography.json).
+These records confirm the existing namespace infrastructure and parent component;
+they do not qualify the newly added translation suite or the assembled successor.

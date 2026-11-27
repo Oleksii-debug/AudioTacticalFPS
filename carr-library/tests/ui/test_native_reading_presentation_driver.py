@@ -147,7 +147,9 @@ def _reading_tabs_transition():
     class Control:
         def __init__(self):
             self.cursor, self.value = 5, 'Original reader text'
+            self.selection = (0, 0)
         def GetValue(self): return self.value
+        def GetStringSelection(self): return self.value[slice(*self.selection)]
         def GetInsertionPoint(self): return self.cursor
         def GetLastPosition(self): return len(self.value)
         def GetRange(self, first, last): return self.value[first:last]
@@ -161,7 +163,7 @@ def _reading_tabs_transition():
     def owner(handle, pointer):
         assert handle == 7
         pointer._obj.value = os.getpid()
-    wx = SimpleNamespace(MOD_NONE=0, WXK_SPACE=32,
+    wx = SimpleNamespace(MOD_NONE=0, MOD_CONTROL=2, WXK_SPACE=32, WXK_END=312,
         GetTopLevelParent=lambda control: top,
         Window=SimpleNamespace(FindFocus=lambda: focus[0]),
         CallLater=lambda delay, action: scheduled.append((delay, action)))
@@ -200,3 +202,73 @@ def test_native_tabs_does_not_bypass_an_incorrect_bookmark_return(damage):
     with pytest.raises(AssertionError, match='restores cursor and reader focus'):
         context['tick_body']()
     assert context['stage'][0] == 'bookmark_returned' and not keys and not scheduled
+
+
+@pytest.mark.parametrize('selection_endpoint', [0, 1])
+def test_native_tabs_positions_policy_cursor_before_the_actual_save_dispatch(selection_endpoint):
+    context, focus, editor, button, scheduled, keys = _reading_tabs_transition()
+    editor.value, editor.cursor, editor.selection = 'b', selection_endpoint, (0, 1)
+    context['stage'][0] = 'policy_tools_closed'
+    saved = []
+    wx = context['wx']
+
+    def press(code, modifiers):
+        keys.append((code, modifiers))
+        if code == wx.WXK_END:
+            assert modifiers == wx.MOD_NONE
+            editor.cursor = len(editor.value)
+            editor.selection = (editor.cursor, editor.cursor)
+        elif code == ord('S'):
+            assert modifiers == wx.MOD_CONTROL
+            assert editor.GetStringSelection() == ''
+            saved.append(editor.GetInsertionPoint())
+        else:
+            pytest.fail('Unexpected command while establishing the saved cursor.')
+        return True
+
+    context['simulator'].KeyDown = press
+    context['simulator'].KeyUp = lambda *args: True
+    context['released'] = lambda: driver._release_key(context['simulator'], context['held'])
+    context['tick_body']()
+    assert context['stage'][0] == 'policy_cursor_positioned'
+    assert keys == [(wx.WXK_END, wx.MOD_NONE)] and not saved
+    scheduled.pop(0)[1]()  # Actual driver releases End before dispatching Save.
+    context['tick_body']()
+    assert context['stage'][0] == 'policy_saved'
+    assert saved == [1]
+    assert keys == [(wx.WXK_END, wx.MOD_NONE), (ord('S'), wx.MOD_CONTROL)]
+    scheduled.pop(0)[1]()
+    assert context['held'] == [None] and not scheduled
+    assert context['checks'] == [
+        'closing category tools restores actual reader keyboard focus',
+        'native End positions the cursor after the reviewed selection',
+    ]
+
+
+@pytest.mark.parametrize('damage', ['cursor', 'selection'])
+def test_native_tabs_refuses_save_if_the_policy_cursor_was_not_positioned(damage):
+    context, focus, editor, button, scheduled, keys = _reading_tabs_transition()
+    context['stage'][0] = 'policy_cursor_positioned'
+    editor.value, editor.cursor, editor.selection = 'b', 1, (1, 1)
+    if damage == 'cursor':
+        editor.cursor = 0
+    else:
+        editor.selection = (0, 1)
+    with pytest.raises(AssertionError, match='positions the cursor after the reviewed selection'):
+        context['tick_body']()
+    assert context['stage'][0] == 'policy_cursor_positioned'
+    assert not keys and not scheduled
+
+
+def test_native_tabs_refuses_close_when_saved_policy_cursor_does_not_match():
+    context, focus, editor, button, scheduled, keys = _reading_tabs_transition()
+    context['stage'][0] = 'policy_saved'
+    context['evidence'].update(policy_round=1, region_id='reviewed-region')
+    document = SimpleNamespace(
+        to_dict=lambda: {'schema': 'carr.reading-copy.v4'},
+        narration_policy={'regions': [{'id': 'reviewed-region'}]}, source_text='')
+    context['drafts'] = lambda: (None, [None, SimpleNamespace(document=document, cursor=0)])
+    with pytest.raises(AssertionError, match='explicitly positioned saved cursor'):
+        context['tick_body']()
+    assert context['stage'][0] == 'policy_saved'
+    assert not keys and not scheduled

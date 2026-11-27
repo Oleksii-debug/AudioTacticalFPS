@@ -6,7 +6,7 @@ from time import time
 from uuid import uuid4
 
 from ..assistant.profiles import ProfileStore
-from ..assistant.providers import Authorization, Gateway, money
+from ..assistant.providers import Authorization, Gateway, money, translation_authorization_type
 from ..assistant.translation import TranslationService, translation_approval
 from ..assistant.translation_source import source_options
 
@@ -17,7 +17,7 @@ def show_translation(frame):
     root = anchored_root / 'state' / 'translation'
     service = TranslationService(root, library=frame.library)
     profiles = tuple(p for p in ProfileStore(frame.library.root / 'state' / 'providers').list()
-                     if p.adapter in ('google-translation-v2', 'google-translation-v3') and p.enabled)
+                     if p.adapter in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local') and p.enabled)
     dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(850, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     dialog.SetName('Translation workspace')
@@ -34,7 +34,8 @@ def show_translation(frame):
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google API &account and edition', wx.Choice,
+    provider = field('Translation provider &profile' if any(p.local for p in profiles) else
+                     'Google API &account and edition', wx.Choice,
                      choices=[p.name + '; ' + p.adapter for p in profiles])
     if profiles:
         provider.SetSelection(0)
@@ -50,7 +51,9 @@ def show_translation(frame):
               'in AI and API connections. Advanced requires your numeric project and region, and an unexpired IAM/ADC '
               'access token in Windows Credential Manager; tokens are never automatically refreshed. '
               'A selected existing glossary must share the project and non-global region; choose an explicit source language. '
-              'Fetch languages for the exact account before preview. Document formatting and offline translation remain unavailable.')
+              'Fetch languages for the exact account before preview. Document formatting is not preserved. '
+              'An explicitly configured local LibreTranslate profile uses only its loopback endpoint, no credential, '
+              'and an explicit zero cost bound. No local server/model is installed or started; declared pairs and quality are not independently qualified.')
     buttons = {}
     row = wx.BoxSizer(wx.HORIZONTAL)
     for name, label in [('load_source', 'Load library so&urce'), ('paste', 'Use &pasted text'),
@@ -76,7 +79,7 @@ def show_translation(frame):
     def profile():
         index = provider.GetSelection()
         if not 0 <= index < len(profiles):
-            raise ValueError('Create and enable a Google Basic v2 or Advanced v3 account in AI and API connections, then reopen this window.')
+            raise ValueError('Create and enable a Google Basic v2, Advanced v3 or local LibreTranslate profile in AI and API connections, then reopen this window.')
         return profiles[index]
 
     def check_library():
@@ -232,20 +235,25 @@ def show_translation(frame):
         try:
             check_library()
             p = profile()
-            if wx.MessageBox('Contact the official Google Translation API to fetch its supported language list? '
-                'No selected text is sent. Your configured account will be used.\n' + p.endpoint + '\nModel: ' + p.model, 'Approve language discovery',
+            prompt = ('Contact this explicitly selected local LibreTranslate service for declared language pairs? '
+                'No selected text or credentials are sent; no server or model is started.\n'
+                if p.adapter == 'libretranslate-local' else
+                'Contact the official Google Translation API to fetch its supported language list? '
+                'No selected text is sent. Your configured account will be used.\n')
+            if wx.MessageBox(prompt + p.endpoint + '\nModel label: ' + p.model, 'Approve language discovery',
                 wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                 return
             identity = uuid4().hex
-            approval = Authorization(identity, identity, ((p.id, p.endpoint),), ('translation.languages',),
+            approval = translation_authorization_type(p)(identity, identity, ((p.id, p.endpoint),), ('translation.languages',),
                                       ('user-instruction',), '0', 1, time() + 600)
-            service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
+            service.gateway = Gateway(root / 'provider', mode='LOCAL_ONLY' if p.local else 'APPROVED_REMOTE')
             begin('Fetching supported translation languages',
                   lambda: service.refresh_languages(p, authorization=approval,
                       cancelled=stopped),
-                  lambda rows: report('Provider-declared NMT languages; no quality or 135-language qualification claim:\n' +
+                  lambda rows: report('Provider-declared languages; no model, quality or language-count qualification claim:\n' +
                                       '\n'.join(row['language'] + ' — ' + row['name'] +
-                                          ('; source: ' + str(row['source']) + '; target: ' + str(row['target']) if 'source' in row else '') for row in rows)))
+                                          ('; targets: ' + ', '.join(row['targets']) if 'targets' in row else
+                                           '; source: ' + str(row['source']) + '; target: ' + str(row['target']) if 'source' in row else '') for row in rows)))
         except Exception as exc:
             report(str(exc))
 
@@ -255,6 +263,8 @@ def show_translation(frame):
             check_library()
             p = profile()
             total = money(budget.GetValue())
+            if p.local and total != 0:
+                raise ValueError('Enter an explicit zero external cost bound for local translation.')
             values = (p.id, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total),
                       glossary.GetValue().strip() or None, rate.GetValue().strip() or None,
                       json.dumps(source_arguments(), sort_keys=True))
@@ -294,9 +304,13 @@ def show_translation(frame):
                 if reviewed != values:
                     raise ValueError('Preview this exact text, languages and budget before approving translation.')
                 context = json.loads(values[7])
-                if wx.MessageBox(f'Send exactly {len(values[1])} selected characters to Google Translation? '
+                prompt = (f'Send exactly {len(values[1])} selected characters to the explicitly selected local LibreTranslate service? '
+                    'No external charge is reserved. No model is installed or started, and local server egress and quality are not attested.\n'
+                    if p.adapter == 'libretranslate-local' else
+                    f'Send exactly {len(values[1])} selected characters to Google Translation? '
                     f'Approved total reservation: {values[4]} USD. Translation is a derived reading copy. '
-                    'The provider may charge your account under its terms.\n' + p.endpoint + '\nModel: ' + p.model +
+                    'The provider may charge your account under its terms.\n')
+                if wx.MessageBox(prompt + p.endpoint + '\nModel label: ' + p.model +
                     '\nGlossary: ' + (values[5] or 'none'), 'Approve selected text transfer',
                     wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                     return
@@ -324,8 +338,10 @@ def show_translation(frame):
 
     def resume(identity):
         try:
-            service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
             def translate():
+                saved = service._load(identity)
+                service.gateway = Gateway(root / 'provider',
+                    mode='LOCAL_ONLY' if saved['profile']['local'] else 'APPROVED_REMOTE')
                 from ..progress import current_progress
                 progress = current_progress()
                 def advanced(done, total, phase):

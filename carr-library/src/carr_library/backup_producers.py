@@ -91,9 +91,11 @@ def artifacts(values):
 
 def _studio_job(value, identity):
     from .studio.project import Project
+    from .studio.render import _operation_sha256
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'total_disk_bytes'})
+                   'updated', 'error', 'runtime'}, {'result', 'resource_plan', 'recovery', 'total_disk_bytes',
+                                                   'operation_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
@@ -105,6 +107,10 @@ def _studio_job(value, identity):
         raise ValueError('Invalid production output format.')
     if type(value['stems']) is not bool or type(value['nodes']) is not dict or len(value['nodes']) > 100000:
         raise ValueError('Invalid production options or nodes.')
+    if 'operation_sha256' in value:
+        digest(value['operation_sha256'])
+        if value['operation_sha256'] != _operation_sha256(value):
+            raise ValueError('Production operation options changed.')
     if 'recovery' in value:
         _studio_recovery(value['recovery'])
     if value['destination'] == '':
@@ -370,15 +376,35 @@ def _usage(value):
                 raise ValueError('Invalid provider usage.')
             for key, count in row['usage'].items():
                 text(key, 128)
-                number(count, integer=True)
+                if key in ('translation_sha256', 'decoded_translation_sha256'):
+                    if row['operation'] != 'translation.text':
+                        raise ValueError('Decoded translation evidence belongs only to translation usage.')
+                    digest(count)
+                else:
+                    number(count, integer=True)
 
 
 def _translation_languages(value, identity):
     from .assistant.models import canonical
     from .assistant.translation import ENDPOINT
-    from .assistant.profiles import google_v3_parent
+    from .assistant.profiles import google_v3_parent, endpoint
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
-                   'languages_sha256', 'qualification'})
+                   'languages_sha256', 'qualification'}, {'adapter'})
+    if 'adapter' in value:
+        from .assistant.translation_local import ADAPTER, validate_languages
+        if (value['adapter'] != ADAPTER or value['schema'] != 'carr-translation-languages/1'
+                or value['profile'] != identity
+                or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
+            raise ValueError('Invalid local translation language inventory identity.')
+        target = endpoint(value['endpoint'], local=True)
+        if target.path not in ('', '/'):
+            raise ValueError('Local translation language declarations need their exact base endpoint.')
+        text(value['model'], 256)
+        text(value['fetched_at'], 128)
+        rows = validate_languages(value['languages'])
+        if sha256(canonical(rows).encode()).hexdigest() != value['languages_sha256']:
+            raise ValueError('Translation language inventory checksum changed.')
+        return
     advanced = value['endpoint'] != ENDPOINT
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
             or value['model'] != ('general/nmt' if advanced else 'nmt')
@@ -412,7 +438,7 @@ def _translation_language(value, *, auto=False):
 
 def _translation_job(db, value, identity):
     from .assistant.profiles import ProviderProfile, google_v3_parent
-    from .assistant.providers import Authorization
+    from .assistant.providers import translation_authorization_type, translation_receipt_sha256
     from .assistant.translation import split_text, _approved_requests
     from .assistant.translation_source import source_context
 
@@ -443,7 +469,7 @@ def _translation_job(db, value, identity):
         from .backup_studio import validate_source_snapshot
         if validate_source_snapshot(db, context['source_anchor']) != value['source_text']:
             raise ValueError('Translation no longer matches its retained source positions.')
-    approval = Authorization(**value['authorization'])
+    approval = translation_authorization_type(profile)(**value['authorization'])
     # The same pure request reconstruction is used for submission and resume.
     # It does not open a gateway, renew approval or perform a provider request.
     try:
@@ -457,10 +483,13 @@ def _translation_job(db, value, identity):
         raise ValueError('Invalid translation receipt inventory.')
     for index, row in enumerate(receipts):
         advanced = profile.adapter == 'google-translation-v3' and by_chunk[index] is not None
+        local = profile.adapter == 'libretranslate-local' and by_chunk[index] is not None
         required = {'index', 'source_sha256', 'text', 'translation_sha256', 'detected_source',
                     'request_sha256', 'response_sha256'}
         if advanced:
             required |= {'reported_model', 'glossary_config'}
+        if local:
+            required.add('decoded_translation_sha256')
         fields(row, required)
         if (type(row['index']) is not int or row['index'] != index
                 or row['source_sha256'] != sha256(chunks[index].encode()).hexdigest()
@@ -476,6 +505,14 @@ def _translation_job(db, value, identity):
         elif (row['response_sha256'] is not None or row['text'] != chunks[index]
               or row['detected_source'] is not None):
             raise ValueError('Whitespace-only translation receipt changed.')
+        if local:
+            from .assistant.translation_local import language
+            if value['source_language'] == 'auto':
+                language(row['detected_source'])
+            elif row['detected_source'] is not None:
+                raise ValueError('The local receipt contains unrequested language detection.')
+            if row['decoded_translation_sha256'] != translation_receipt_sha256(row['text'], row['detected_source']):
+                raise ValueError('The local decoded-output receipt changed.')
         if advanced:
             glossary = {'glossary': value['glossary'], 'ignoreCase': False} if value.get('glossary') else None
             if (row['reported_model'] != google_v3_parent(profile.endpoint) + '/models/' + profile.model
@@ -500,7 +537,8 @@ def validate_collection(db, stage, entries, *, cancelled):
     from pathlib import Path
     from .durable_state import read_json
     from .assistant.models import canonical
-    from .assistant.providers import Authorization, money
+    from .assistant.providers import money, translation_authorization_type, translation_receipt_sha256
+    from .assistant.profiles import ProviderProfile
 
     inventory = {entry['filename'] for entry in entries}
     for name in sorted(inventory):
@@ -525,7 +563,7 @@ def validate_collection(db, stage, entries, *, cancelled):
         accepted = [row for row in job['receipts'] if row['request_sha256'] is not None]
         if not accepted:
             continue
-        approval = Authorization(**job['authorization'])
+        approval = translation_authorization_type(ProviderProfile(**job['profile']))(**job['authorization'])
         names = ('state/translation/provider/usage/' + approval.id + '.usage.json',
                  'state/providers/usage/' + approval.id + '.usage.json')
         candidates = [item for item in names if item in inventory]
@@ -547,6 +585,13 @@ def validate_collection(db, stage, entries, *, cancelled):
                     or recorded.get('output_sha256') != row['response_sha256']
                     or money(recorded.get('reserved_cost')) != money(job['per_call_cost'])):
                 raise ValueError('Translation receipt differs from its accepted provider usage.')
+            if profile['adapter'] == 'libretranslate-local':
+                decoded = translation_receipt_sha256(row['text'], row['detected_source'])
+                retained = recorded.get('usage')
+                if (type(retained) is not dict or retained.get('translation_sha256') != row['translation_sha256']
+                        or retained.get('decoded_translation_sha256') != decoded
+                        or row.get('decoded_translation_sha256') != decoded):
+                    raise ValueError('Local translation decoded-output differs from its retained provider usage.')
 
 
 def validate(db, name, value):

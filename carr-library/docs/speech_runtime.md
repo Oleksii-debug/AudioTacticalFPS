@@ -32,7 +32,7 @@ contains only entries actually enumerated by installed engines.
 | FFmpeg Flite | Actual runtime voice enumeration, CMU English voices, PCM rendering and gain; no invented native rate/pitch controls | FFmpeg 7.1.5 Debian, five discovered voices; three distinct voices rendered and measured |
 | eSpeak/eSpeak NG | Installed CLI enumeration and rendering, native rate/volume/pitch/punctuation | Adapter implemented; executable unavailable in this environment |
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
-| Local JSON helper | Explicit opt-in, executable SHA256, configurable catalog budget, JSON v1 enumerate/render contract | Contract boundary implemented; no claim of a particular vendor implementation |
+| Local JSON helper | Explicit opt-in, executable SHA256, optional separately pinned Python script, configurable catalog budget, JSON v1 enumerate/render contract | Generic contract; owner-engine adapter and acoustic qualification are separate |
 | SAPI 4 | No available verified Windows 11 32-bit engine contract | Unavailable; no simulated voice or promised obsolete-driver compatibility |
 | dordiai-voices | Exact-name integration remains dependent on its actual private/local contract | Not claimed; a reviewed bridge may implement the JSON contract below |
 
@@ -192,6 +192,50 @@ absolute local `output` WAV path and validated `settings`. It returns
 `{"schema":"carr.local-voice.v1","status":"rendered"}` only after producing PCM.
 The host independently validates the actual file. A helper cannot claim
 success by returning JSON without valid audio.
+
+### A reviewed Python bridge on Windows and POSIX
+
+The existing engine-settings dialog accepts a reviewed helper JSON declaration.
+An executable-only helper retains the original single-executable launch.
+A self-contained Python bridge additionally supplies both `script` and
+`script_sha256`; `executable` and `sha256` identify its Python interpreter.
+All paths and digests below must be replaced with the actual reviewed files:
+
+```json
+{
+  "executable": "C:\\Engines\\Python\\python.exe",
+  "sha256": "<SHA256 of the interpreter>",
+  "engine_name": "Reviewed local voice bridge",
+  "enabled": true,
+  "script": "C:\\Engines\\Bridge\\configured_bridge.py",
+  "script_sha256": "<SHA256 of the configured script>"
+}
+```
+
+The host verifies both files before catalog enumeration, rendering and cache
+fingerprinting. It launches a fixed `python -I -B -S -c` bootstrap with the
+reviewed script path and SHA256. The child reads at most 8 MiB plus one growth
+sentinel, verifies the exact source bytes, then compiles and executes that
+retained snapshot. It never reopens the path to execute unchecked source.
+The bridge retains its own `__file__`, `__main__` module and single script
+`sys.argv` entry. It accepts no additional interpreter arguments or shell command. JSON input
+continues to carry speech text, settings and the private output path. The fixed
+flags isolate user-site/startup paths and prevent changes to sealed Python
+bytecode; the bridge must use the standard library or explicitly launch its
+separately reviewed engine runtime.
+
+The configured script digest also participates in the voice cache identity.
+A bridge with embedded, pinned engine configuration can use this path without
+a new speech registry or a compiled launcher. External model, reference and
+runtime admission remains the bridge's responsibility; the generic host does
+not infer those identities from an interpreter hash. A mutable sidecar is not
+covered merely by hashing the script that reads it. Keep the reviewed
+configuration inside the pinned script, or implement independently verified
+asset admission in the bridge.
+
+This generic launch path is distinct from the existing dedicated dordiai-voices
+adapter and does not replace it. It does not include a private engine, model or
+voice pack, and does not establish acoustic, language, rights or NVDA acceptance.
 
 ## Verification
 

@@ -100,9 +100,14 @@ to a different CDN needs a fresh supported source, not a silently expanded grant
 
 Download publication uses exclusive new-folder reservation, an incomplete marker,
 file hashes and durable writes. A failed or cancelled download leaves no completed
-document. Once a verified download is saved, an import/quarantine/reference-link
-failure is reported as a **partial result** with the PDF and receipt retained.
-Retry that local file through Import Center; it need not be downloaded again.
+document. The download SHA-256, PDF MIME and byte count are bound to the existing
+durable import request before isolated parsing. A file changed after download is
+not imported as that source; restore the exact bytes matching the receipt and
+resume the same request in Import Center, rather than importing changed bytes.
+A failed or quarantined import retains the local file and receipt for review.
+If import already committed but reference linking stopped, the result
+`imported_reference_pending` retains the edition ID; review or link that existing
+edition in the academic library. Do not import or download it again.
 On a crash, a remaining `.acquisition-incomplete` marks a folder that must not be
 treated as a completed acquisition.
 

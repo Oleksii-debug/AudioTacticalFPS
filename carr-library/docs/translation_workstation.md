@@ -1,4 +1,4 @@
-# Optional selected-text translation: Google Basic v2 and Advanced v3
+# Optional selected-text translation: Google Basic/Advanced and explicit local LibreTranslate
 
 Tools → Translate selected text uses the existing provider profiles, Windows
 Credential Manager, permission envelope, usage ledger, JobStore and reversible
@@ -324,3 +324,100 @@ exact installed build; source tests do not establish it.
 
 The Advanced REST/authentication references above were reviewed on 2026-11-27.
 No live provider pricing or account capability was inferred from them.
+
+
+## Explicit local LibreTranslate profile
+
+The same translation workspace, source selection, document batches, job store
+and provider ledger also support the bounded LibreTranslate client protocol.
+This adds no server process, model installer, fallback provider or separate job
+queue. The selected protocol was reviewed against LibreTranslate v1.10.0,
+commit `29aea44cc80100401497fb62db813a3f3a504e84`.
+
+Create an enabled `libretranslate-local` profile in **AI and API connections**.
+Select an explicit loopback IP base URL, for example the address of your own
+already running service, and a descriptive model-set label. Hostnames, remote
+addresses, URL subpaths, credentials and voice settings are refused. The
+profile permits only `translation.text` and `translation.languages`.
+The label is your declaration; the API does not attest installed model files.
+No language count, offline egress, translation quality or actual LibreTranslate
+installation is qualified by synthetic client tests.
+
+Opening the workspace, saving a profile, previewing, preparing a batch and
+reading existing jobs make no network request. **Fetch languages** asks
+permission to contact the exact local endpoint without selected text.
+The cached response declares directed source/target pairs. **auto** is only
+the source-detection request sentinel; it is never a target or a declared
+language. An automatic response must identify a real declared source that
+supports the chosen target. Glossaries are unavailable for this protocol.
+
+Review the exact selected text or existing source revision and use an explicit
+zero external cost bound. Local transfer needs its own approval; remote
+approval alone does not authorize a local job, and local approval cannot
+authorize a cloud request. A mixed batch requires both approvals for the exact
+reviewed per-document endpoints and settings. The normal bounded requests,
+timeouts, cancellation, source lineage and no-clobber exports remain in force.
+
+Local calls use the existing ledger at zero reserved external cost.
+A response is accepted only after its schema, decoded text/detected-language
+digest, source and current profile have been checked. Paused jobs retain
+accepted chunks. Uncertain or already-attempted calls are not silently sent
+again, including when a local response detects an undeclared translation
+direction. Re-enable or repair a changed profile explicitly; that does not
+erase its existing uncertain-call record.
+
+Typed backup retains local profiles, declared-pair caches, exact source-bound
+jobs, immutable batch templates and their existing usage receipts. Restoring
+does not start a server, obtain credentials or transmit text. Completed reads
+and fresh-directory exports use retained receipts without the profile or
+language cache. A coherently edited job cannot replace decoded output while
+its independent ledger still binds the accepted result. Original source text
+and quotation authority remain unchanged.
+
+The executable client checks are `tests/assistant/test_translation_local.py`
+(no network) and `tests/assistant/test_translation_local_loopback.py` (explicit
+synthetic localhost HTTP and CLI children). The latter must use the existing
+strict direct-pytest loopback gate, never the all-connections-denied
+`ci_check.py` selection. Native control checks and real model/linguistic
+qualification remain separate evidence.
+
+
+### Local CLI and native controls
+
+Use the existing installed entry point, with an existing private library:
+
+```text
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY languages --profile LOCAL_PROFILE --approve-local
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY preview --profile LOCAL_PROFILE --input SELECTED.txt --source en --target uk --budget 0
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY submit --profile LOCAL_PROFILE --input SELECTED.txt --source en --target uk --budget 0 --review-sha256 REVIEW_SHA --approve-local
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY resume JOB_ID
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY export JOB_ID --output NEW_DIRECTORY
+```
+
+`LOCAL_PROFILE` is the explicitly configured enabled profile ID; no command
+accepts a credential or starts a server. Reading a language cache omits the
+approval flag. `--approve-remote` refuses a local discovery or submission.
+Source-bound `--workspace/--edition` and reading-position options remain
+available instead of `--input`; their exact lineage is included in the review.
+A batch uses the existing `carr-translation-batch-input/1` description,
+`batch-preview`, `batch-submit`, `batch-resume` and `batch-export`.
+Pass `--approve-local` for its local rows and `--approve-remote` for any
+remote rows, with the unchanged full batch review hash. Preparation sends no text.
+
+In the existing native workspace, a configured local profile appears in
+**Translation provider profile** alongside enabled Google accounts. Tab and
+Shift+Tab reach the same named text, language, preview, run, pause and export
+controls. Local discovery and selected-text transfer show separate confirmations
+containing the exact loopback endpoint. The existing **Document batches** view
+shows every local/remote endpoint and reservation before its confirmation.
+An unsupported local glossary, nonzero price or **auto** target is rejected;
+it never selects another adapter.
+
+`scripts/windows_translation_local_smoke.py` exercises real native named
+controls, Space/foreground focus, the existing serial worker and ordinary batch
+jobs with synthetic local protocol responses. It checks exported bytes and
+decoded receipts, rejects changed review settings, forbids every DNS lookup
+and credential read, and reports hashes of the actual installed modules.
+Its confirmation/file picker seams are controlled test fixtures; actual
+LibreTranslate models, translation quality, screen-reader listening and
+server egress remain explicitly unqualified.

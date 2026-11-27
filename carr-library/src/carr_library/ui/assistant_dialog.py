@@ -584,7 +584,8 @@ def show_provider_settings(frame):
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     layout.Add(wx.StaticText(dialog, label='Local operation is the default. Saving a profile makes no network request.\n'
-        'Remote use requires a separate scoped job authorization and budget.'), 0, wx.ALL, 6)
+        'Remote use requires a separate scoped job authorization and budget.\n'
+        'Local LibreTranslate uses an explicit loopback base URL, no credential and a declared model-set label.'), 0, wx.ALL, 6)
     listing = wx.ListBox(dialog)
     listing.SetName('Provider accounts')
     layout.Add(listing, 1, wx.EXPAND | wx.ALL, 6)
@@ -640,9 +641,18 @@ def show_provider_settings(frame):
                 capability.ChangeValue('translation.text,translation.languages')
                 voice.ChangeValue('')
                 local.SetValue(False)
+            elif adapter.GetStringSelection() == 'libretranslate-local':
+                endpoint.ChangeValue('http://127.0.0.1:5000')
+                model.ChangeValue('explicit-local-models')
+                capability.ChangeValue('translation.text,translation.languages')
+                voice.ChangeValue('')
+                local.SetValue(True)
+                secret.ChangeValue('')
+            secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
             token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
             event.Skip()
         adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
+        secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
         token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
         box.Add(local, 0, wx.ALL, 4)
         box.Add(enabled, 0, wx.ALL, 4)
@@ -652,9 +662,13 @@ def show_provider_settings(frame):
             if form.ShowModal() != wx.ID_OK:
                 return
             identity = current.id if current else uuid4().hex
+            selected_adapter = adapter.GetStringSelection()
+            if selected_adapter == 'libretranslate-local' and secret.GetValue():
+                raise ValueError('Local LibreTranslate accepts no credential; nothing was stored or sent.')
             profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
                 model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
+                current.credential_ref if current and selected_adapter != 'libretranslate-local' else None,
+                local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
             authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
             if authority_changed:
                 profile = replace(profile, credential_ref=None, enabled=False)
@@ -676,7 +690,9 @@ def show_provider_settings(frame):
                 vault.delete(current.id, current.credential_ref)
             secret.ChangeValue('')
             refresh()
-            status.ChangeValue('Saved. Credentials are held by Windows Credential Manager. No provider was contacted.' +
+            status.ChangeValue(('Saved explicit local translation profile. No credential, server or model was used. No provider was contacted.'
+                if profile.adapter == 'libretranslate-local' else
+                'Saved. Credentials are held by Windows Credential Manager. No provider was contacted.') +
                 (' OAuth token expiry: ' + token_expiry.GetValue() + '. Re-enter explicitly before expiry; no automatic refresh.' if oauth_saved else ''))
         except Exception as exc:
             status.ChangeValue(str(exc))

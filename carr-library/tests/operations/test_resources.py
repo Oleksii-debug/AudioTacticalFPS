@@ -410,3 +410,189 @@ if __name__ == '__main__':
         test_actual_process_contention_has_no_overlapping_admission(Path(sys.argv[3]))
     else:
         raise SystemExit('Unknown resource process fixture scenario.')
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_native_release_can_remove_the_file_during_unheld_preflight(tmp_path, monkeypatch, phase):
+    """Release a real held native lock exactly before the waiter's path check."""
+    from carr_library.operations import _locks
+    path = tmp_path / 'contended.lock'
+    holder = _locks.NativeLock(path)
+    assert holder.acquire()
+    waiter = _locks.NativeLock(path) if phase == 'acquisition' else None
+    contender = None
+    requested, released = threading.Event(), threading.Event()
+    errors = []
+    caller = threading.current_thread()
+    actual_regular = _locks.regular
+    reached = []
+
+    def release_holder():
+        try:
+            if not requested.wait(10):
+                raise AssertionError('The waiter did not reach its pre-acquisition boundary.')
+            holder.release()
+            assert not holder.held
+            assert not os.path.lexists(path)
+        except BaseException as exc:
+            errors.append(exc)
+        finally:
+            released.set()
+
+    def checked(candidate, *arguments, **keywords):
+        if (Path(candidate) == path and threading.current_thread() is caller
+                and not reached):
+            reached.append(True)
+            requested.set()
+            assert released.wait(10), 'The actual native holder did not release.'
+            assert not errors, errors
+        return actual_regular(candidate, *arguments, **keywords)
+
+    thread = threading.Thread(target=release_holder, name='resource-release-race')
+    thread.start()
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', checked)
+            if waiter is None:
+                waiter = _locks.NativeLock(path)
+            assert waiter.acquire()
+            assert reached == [True] and released.is_set() and not errors
+            assert waiter.held
+            info = path.lstat()
+            held = os.fstat(waiter.lock._context.lock_file_fd)
+            assert (info.st_dev, info.st_ino) == (held.st_dev, held.st_ino)
+            contender = _locks.NativeLock(path)
+            assert contender.acquire() is False
+            assert waiter.held and not contender.held
+            waiter.release()
+            assert contender.acquire()
+    finally:
+        requested.set()
+        thread.join(12)
+        if contender is not None:
+            contender.release()
+        if waiter is not None:
+            waiter.release()
+        holder.release()
+    assert not thread.is_alive() and not errors
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes(tmp_path, phase):
+    from carr_library.operations._locks import NativeLock
+    outside = tmp_path / 'retained-original'
+    original = b'This retained file must not become a mutable resource lock.'
+    outside.write_bytes(original)
+    path = tmp_path / 'untrusted.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    os.link(outside, path)
+    try:
+        with pytest.raises(ValueError):
+            if lock is None:
+                NativeLock(path)
+            else:
+                lock.acquire()
+        assert outside.read_bytes() == original and path.read_bytes() == original
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_lock_leaf_disappears_inside_local_path(tmp_path, monkeypatch, phase):
+    """Exercise the earlier leaf lstat boundary from the Windows traceback."""
+    from carr_library import durable_state
+    from carr_library.operations._locks import NativeLock
+    path = tmp_path / 'released.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    original = durable_state.regular
+    removed = []
+    def disappear(candidate, **kwargs):
+        if Path(candidate) == path and not removed:
+            path.unlink()
+            removed.append(True)
+        return original(candidate, **kwargs)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(durable_state, 'regular', disappear)
+            if lock is None:
+                lock = NativeLock(path)
+            assert lock.acquire()
+        assert removed == [True] and lock.held
+        peer = NativeLock(path)
+        assert not peer.acquire()
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+@pytest.mark.parametrize('boundary', ['local_path', 'direct'])
+def test_unheld_lock_can_observe_zero_links_during_release(tmp_path, monkeypatch, phase, boundary):
+    """Reproduce the observed regular zero-link stat at either unheld check."""
+    from carr_library import durable_state
+    from carr_library.operations import _locks
+    path = tmp_path / 'released-zero-links.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    module = durable_state if boundary == 'local_path' else _locks
+    original = module.regular
+    lstat = Path.lstat
+    observed = []
+
+    def released_stat(candidate, *args, **kwargs):
+        value = lstat(candidate, *args, **kwargs)
+        if candidate == path and not observed:
+            path.unlink()
+            observed.append(True)
+            return SimpleNamespace(st_mode=value.st_mode, st_nlink=0,
+                                   st_file_attributes=getattr(value, 'st_file_attributes', 0))
+        return value
+
+    def checked(candidate, **kwargs):
+        if Path(candidate) == path and not observed:
+            with monkeypatch.context() as scoped:
+                scoped.setattr(Path, 'lstat', released_stat)
+                return original(candidate, **kwargs)
+        return original(candidate, **kwargs)
+
+    peer = None
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(module, 'regular', checked)
+            if lock is None:
+                lock = _locks.NativeLock(path)
+            assert lock.acquire()
+        assert observed == [True] and lock.held
+        peer = _locks.NativeLock(path)
+        assert not peer.acquire()
+        lock.release()
+        assert peer.acquire()
+    finally:
+        if peer is not None:
+            peer.release()
+        if lock is not None:
+            lock.release()
+
+
+def test_zero_link_stat_remains_invalid_for_general_state(tmp_path, monkeypatch):
+    from carr_library import durable_state
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{}')
+    original = Path.lstat
+
+    def stale(candidate, *args, **kwargs):
+        value = original(candidate, *args, **kwargs)
+        if candidate == path:
+            return SimpleNamespace(st_mode=value.st_mode, st_nlink=0,
+                                   st_file_attributes=getattr(value, 'st_file_attributes', 0))
+        return value
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, 'lstat', stale)
+        with pytest.raises(durable_state.UnlinkedRegularFile) as exc:
+            durable_state.regular(path)
+        assert isinstance(exc.value, ValueError) and exc.value.path == path
+        with pytest.raises(ValueError):
+            durable_state.local_path(path)
+    assert path.read_bytes() == b'{}'

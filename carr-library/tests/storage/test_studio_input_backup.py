@@ -22,7 +22,7 @@ from carr_library.speech import VoiceRegistry
 from carr_library.state_backup import snapshot_state
 from carr_library.studio.backup_inputs import RECEIPT, review_project_inputs
 from carr_library.studio.project import Cue, Project, ProjectStore, Scene
-from carr_library.studio.render import ProductionService
+from carr_library.studio.render import ProductionService, _operation_sha256
 
 
 def tone(path, *, frequency=220, seconds=.5):
@@ -138,6 +138,10 @@ def test_real_render_backup_delete_original_state_restore_and_render_again(tmp_p
     assert Path(historical.scenes[0].cues[0].path).read_bytes() == original_inputs[str(first)]
     for job_id in (first_job, pending_job):
         job = recovered.get(job_id)
+        original = read_json(backup / 'state/studio/jobs' / job_id / 'job.json')
+        assert job['operation_sha256'] == _operation_sha256(job)
+        assert job['operation_sha256'] != original['operation_sha256']
+        assert original['operation_sha256'] == _operation_sha256(original)
         assert job['status'] == 'waiting-input' and job['destination'] == ''
         assert job['artifacts'] == [] and job['nodes'] == {} and 'result' not in job
         assert job['recovery']['requires_output_directory'] is True
@@ -448,3 +452,28 @@ def test_invalid_typed_project_fails_before_backup_publication(tmp_path):
     with pytest.raises(ValueError, match='Invalid typed Studio project'):
         create_backup(app, target)
     assert not target.exists()
+
+
+def test_complete_clip_stem_receipt_cannot_omit_a_published_role(tmp_path, monkeypatch):
+    if not shutil.which('ffmpeg') or not shutil.which('ffprobe'):
+        pytest.skip('Actual Studio receipt verification requires installed FFmpeg and ffprobe.')
+    source = tone(tmp_path / 'selected' / 'clip.wav')
+    service = production(tmp_path / 'state/studio', inputs=(source.parent,))
+    project = replace(project_for(source), schema=2)
+    output = tmp_path / 'outputs'
+    output.mkdir()
+    job = service.submit(project, output, stems=True)
+    complete = service.run(job)
+    stem = next(row for row in complete['artifacts'] if '/stems/clips/' in Path(row['path']).as_posix())
+    receipt = service.jobs_root / job / 'job.json'
+    retained = Path(stem['path']).read_bytes()
+    damaged = {**complete, 'artifacts': [row for row in complete['artifacts'] if row != stem]}
+    atomic_json(receipt, damaged, replace=True)
+    def no_runtime(**kwargs):
+        pytest.fail('Completed replay must validate receipts before opening the audio runtime.')
+    monkeypatch.setattr(service, '_runtime', no_runtime)
+    with pytest.raises(ValueError, match='missing required artifacts'):
+        service.run(job)
+    assert read_json(receipt) == damaged and Path(stem['path']).read_bytes() == retained
+    atomic_json(receipt, complete, replace=True)
+    assert service.run(job) == complete

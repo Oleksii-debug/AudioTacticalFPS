@@ -1,0 +1,1072 @@
+{
+  "schema": 1,
+  "tested_commit": "175bbb7c6b26763f73170ee4836f718f8ec86b66",
+  "tested_tree": "23957dc179802c08a5b5bd7518d7509db422db09",
+  "status": "PASS",
+  "run_id": 46032268696,
+  "job_id": 140618762026,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46032268696/job/140618762026",
+  "evidence_source": "Returned completed exact-head Linux job logs.",
+  "strict_suite_origin": "Checkout source with ci_check.py offline subprocesses.",
+  "suites": [
+    {
+      "suite": "tests/assistant/test_workflow_templates.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_template_handlers.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_template_parameters.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_templates_cli.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_workflow_template_editor.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_player_tools.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_local_tools.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/assistant/test_search_paging.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_capture_admission.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_conversion_batch.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_audio_conversion_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_recording_dialog.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_audio_conversion_cli.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_clip_dialog.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_project_effects.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_studio_controller.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_source.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_clip_editing.py",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_book_audio_dialog.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_worker_lifetime.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_trust_lifetime.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_player_controls.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_wave_output.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_playlist.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_playlist_recovery.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_audio_playback.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_playback.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_playback_actions.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_audio.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_publishing_boundaries.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_publishing.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_publishing_handlers.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_publishing_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_daisy_publishing.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_installer_process.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_daisy_boundaries.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_standard_installer.py",
+      "passed": 78,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_pronunciation_review.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_pronunciation_handlers.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_pronunciation_reader_hook.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_voice_preferences.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_voice_preferences_backup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_voice_preferences_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_presentation.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_presentation_handlers.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_presentation_reader_hook.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_reader_preferences_backup.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_tabs.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_marks.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_focus.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_focus.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_focus_hook.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_narration_policy.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_narration.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_session.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_listening_hook.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_worker_start_cleanup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_ebook_audio.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_book_duration_dialog.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_listening.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_voice_recovery.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_measured_audio.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_monitor.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_controls.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_cli.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_landmarks.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_batch.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_book_batch_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_publications.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_backup_incremental_dialog.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_clipboard_reader.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_integration.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_settings.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_desktop_preferences.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_playback_devices.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_spelling.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_spelling_handlers.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_incremental.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_spelling_reader_hook.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_native_reading_presentation_driver.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_hunspell_build.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_pronunciation_dialog.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_pronunciation.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_pronunciation_render.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_effect_presets.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_audiobook.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_navigation.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_navigation.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_audiobook_publication.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_find_replace.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_player_transport.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_find_replace_reader_hook.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_find_replace_dialog.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_facade.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_import_admission.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_production_admission.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_resources.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_operations_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_operations_policy.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_operations_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_resources_posix.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_state_replacement.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_windows_bundle.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_prepare_publication_tools.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/operations/test_transcription_admission.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 2064,
+    "failed": 0,
+    "skipped": 0
+  },
+  "provider_trust_selection": {
+    "passed": 865,
+    "failed": 0,
+    "skipped": 0,
+    "deselected": 1,
+    "deselection": "test_real_windows_vault_anchor_roundtrip, platform-specific Windows test; distinct Windows gates retain it.",
+    "scope": "Existing explicit transport, real loopback, signed client and boundary tests; no paid or private provider calls."
+  },
+  "reports": [
+    {
+      "status": "PASS",
+      "passed": 865,
+      "actual_provider_calls": "NOT_RUN",
+      "windows_nvda": "NOT_RUN"
+    },
+    {
+      "schema": 1,
+      "status": "PASS",
+      "epub_specification": "3.3",
+      "validator_version": "5.3.0",
+      "validator_archive_sha256": "6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5",
+      "publisher_module_sha256": "7f62a1869ebce4f1eedb917f9c6eaf0cf669182f4968c28b0978f6140d525bcc",
+      "audio_binaries": {
+        "ffmpeg": "/usr/bin/ffmpeg",
+        "ffprobe": "/usr/bin/ffprobe"
+      },
+      "audio_sha256": {
+        "ffmpeg": "856d2b220ec4e6c84ec5d428b121e216cf6508806818cd93bf7c0722f7cf49f5",
+        "ffprobe": "d7fe41ea9bee52ca58a94428c7ab00f36dc7267d3f32506ac5fac99329acbd83"
+      },
+      "publications": [
+        {
+          "file": "narrated-from-wav.epub",
+          "sha256": "590e06e3eb09c587649b79942cea064c890d0f5320b71bf04067a1927cfd3318",
+          "checker_version": "5.3.0",
+          "exit_code": 0,
+          "counts": {
+            "nFatal": 0,
+            "nError": 0,
+            "nWarning": 0,
+            "nUsage": 0
+          },
+          "expected_valid": true,
+          "messages": []
+        },
+        {
+          "file": "reused-job-mp3.epub",
+          "sha256": "8c3f540f22c56e02a2cbe532ecba8768517a9f64d64992d90f64416281e21ba1",
+          "checker_version": "5.3.0",
+          "exit_code": 0,
+          "counts": {
+            "nFatal": 0,
+            "nError": 0,
+            "nWarning": 0,
+            "nUsage": 0
+          },
+          "expected_valid": true,
+          "messages": []
+        },
+        {
+          "file": "audio-only.epub",
+          "sha256": "a4f73615b10ebe798b26f7198540e95f9f2f6eb68fd3576f393ddfc9503721a8",
+          "checker_version": "5.3.0",
+          "exit_code": 0,
+          "counts": {
+            "nFatal": 0,
+            "nError": 0,
+            "nWarning": 0,
+            "nUsage": 0
+          },
+          "expected_valid": true,
+          "messages": []
+        }
+      ],
+      "deliberately_invalid_rejected": {
+        "file": "deliberately-invalid.epub",
+        "sha256": "6ec43a90d1267b3d2a1ecfef5fd6d315c4386c6d893d6c6b133e91162ffd6666",
+        "checker_version": "5.3.0",
+        "exit_code": 1,
+        "counts": {
+          "nFatal": 0,
+          "nError": 1,
+          "nWarning": 0,
+          "nUsage": 0
+        },
+        "expected_valid": false,
+        "messages": [
+          {
+            "ID": "PKG-007",
+            "severity": "ERROR",
+            "message": "Mimetype file should only contain the string \"application/epub+zip\" and should not be compressed.",
+            "additionalLocations": 0,
+            "locations": [
+              {
+                "url": {
+                  "opaque": false,
+                  "hierarchical": true
+                },
+                "path": "/tmp/resonance-epubcheck-rv2b7_bs/deliberately-invalid.epub",
+                "line": -1,
+                "column": -1,
+                "context": null
+              }
+            ],
+            "suggestion": null
+          }
+        ]
+      },
+      "audio_fixture": "Synthetic PCM tones through actual FFmpeg",
+      "reader_interoperability": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "wcag_conformance": "NOT_CLAIMED"
+    },
+    {
+      "schema": 1,
+      "status": "PASS",
+      "publications": [
+        {
+          "schema": 1,
+          "status": "PASS",
+          "publication_sha256": "5c4ffe6c66479283933f185ec1c5cc06d8049e36b0dc25de97d619b4d4fe5068",
+          "publisher_module_sha256": "7f62a1869ebce4f1eedb917f9c6eaf0cf669182f4968c28b0978f6140d525bcc",
+          "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+          "lxml_version": [
+            6,
+            2,
+            0,
+            0
+          ],
+          "libxml_version": [
+            2,
+            14,
+            6
+          ],
+          "schema_sha256": {
+            "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+            "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+            "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+            "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+            "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+          },
+          "documents": [
+            {
+              "file": "ncc.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "content.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "source.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "book.smil",
+              "dtd_valid": true
+            }
+          ],
+          "invalid_xhtml_rejected": true,
+          "original_script_sha256": "5caff6883682071d272fb27018f877d0cad5c6cf112983f228b66ee6f3a353ad",
+          "full_daisy_rule_conformance": "NOT_RUN",
+          "reader_interoperability": "NOT_RUN",
+          "nvda": "NOT_RUN",
+          "case": "narrated-from-wav"
+        },
+        {
+          "schema": 1,
+          "status": "PASS",
+          "publication_sha256": "c30207bf291f90bd29777f7843bb7c86c7af1462d73932d4740d1461bd70a2ae",
+          "publisher_module_sha256": "7f62a1869ebce4f1eedb917f9c6eaf0cf669182f4968c28b0978f6140d525bcc",
+          "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+          "lxml_version": [
+            6,
+            2,
+            0,
+            0
+          ],
+          "libxml_version": [
+            2,
+            14,
+            6
+          ],
+          "schema_sha256": {
+            "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+            "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+            "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+            "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+            "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+          },
+          "documents": [
+            {
+              "file": "ncc.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "content.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "source.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "book.smil",
+              "dtd_valid": true
+            }
+          ],
+          "invalid_xhtml_rejected": true,
+          "original_script_sha256": "5caff6883682071d272fb27018f877d0cad5c6cf112983f228b66ee6f3a353ad",
+          "full_daisy_rule_conformance": "NOT_RUN",
+          "reader_interoperability": "NOT_RUN",
+          "nvda": "NOT_RUN",
+          "case": "reused-job-mp3"
+        },
+        {
+          "schema": 1,
+          "status": "PASS",
+          "publication_sha256": "89e8e29ce792a06aee5398323e39a7c6f860df7ccff218c7c8271568d4ce6953",
+          "publisher_module_sha256": "7f62a1869ebce4f1eedb917f9c6eaf0cf669182f4968c28b0978f6140d525bcc",
+          "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+          "lxml_version": [
+            6,
+            2,
+            0,
+            0
+          ],
+          "libxml_version": [
+            2,
+            14,
+            6
+          ],
+          "schema_sha256": {
+            "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+            "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+            "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+            "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+            "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+          },
+          "documents": [
+            {
+              "file": "ncc.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "content.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "source.html",
+              "dtd_valid": true
+            },
+            {
+              "file": "book.smil",
+              "dtd_valid": true
+            }
+          ],
+          "invalid_xhtml_rejected": true,
+          "original_script_sha256": "e61dd242bd1531000f28a48d6b03d4b57d80630d9557023ca2f2590b3b09bdde",
+          "full_daisy_rule_conformance": "NOT_RUN",
+          "reader_interoperability": "NOT_RUN",
+          "nvda": "NOT_RUN",
+          "case": "untranscribed-retained-clip"
+        }
+      ],
+      "audio_binaries": {
+        "ffmpeg": {
+          "path": "/usr/bin/ffmpeg",
+          "sha256": "856d2b220ec4e6c84ec5d428b121e216cf6508806818cd93bf7c0722f7cf49f5"
+        },
+        "ffprobe": {
+          "path": "/usr/bin/ffprobe",
+          "sha256": "d7fe41ea9bee52ca58a94428c7ab00f36dc7267d3f32506ac5fac99329acbd83"
+        }
+      },
+      "installed_required": true,
+      "audio_fixture": "Synthetic PCM tones through actual canonical Studio and FFmpeg",
+      "publisher_module_sha256": "7f62a1869ebce4f1eedb917f9c6eaf0cf669182f4968c28b0978f6140d525bcc",
+      "daisy_module_sha256": "1a9c6fe6992e4ec431da664b45ba6954ce0683bd74b288cb0149f2a3bbea0949",
+      "full_daisy_rule_conformance": "NOT_RUN",
+      "reader_interoperability": "NOT_RUN",
+      "speech_quality": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    }
+  ],
+  "qualification": {
+    "later_composed_candidate": "NOT_ESTABLISHED_BY_THIS_RECORD",
+    "human_nvda": "NOT_RUN",
+    "daisy_full_interoperability": "NOT_ESTABLISHED_BY_LOCAL_DTD_VALIDATION",
+    "linguistic_and_acoustic_quality": "NOT_ESTABLISHED_BY_THIS_COMPONENT"
+  }
+}
