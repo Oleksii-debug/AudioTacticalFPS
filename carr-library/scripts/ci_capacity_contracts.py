@@ -40,7 +40,7 @@ PINS = {
     'tests/storage/test_library_backup.py': 'd14b278b356bb47fe66e822125a257807f2cd895',
     'tests/storage/test_crash_backup.py': '5e84ede7eee0b7406c687b5a6020b0fcd535ec2c',
     'tests/storage/test_complete_pending_backup.py': '36fe4b61a3a61351fecc1a88016c1e1db32275d5',
-    'tests/storage/test_backup_pending_common4.py': 'b7583313b0c30d57fc031832e2fd486803604f00',
+    'tests/storage/test_backup_pending_common4.py': 'bbed36da78265d635317880b264fd90b59ed4235',
     'tests/storage/test_backup_schema_identity.py': 'ebed1d823de241c639877dd747de9aa4ce2085ed',
     'scripts/ci_check.py': '8a23ef36c2df93928b0aff3edd8b59a53c54684c',
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
@@ -173,6 +173,9 @@ raise SystemExit(code)
 
 
 def main():
+    # Isolated Python ignores PYTHONUTF8; display the retained UTF-8 child log.
+    # This changes only this orchestrator's stream, not child/test encodings.
+    sys.stdout.reconfigure(encoding='utf-8', errors='backslashreplace')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--evidence', type=Path, required=True)
     parser.add_argument('--expected-head', required=True)

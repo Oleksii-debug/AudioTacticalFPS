@@ -1,4 +1,5 @@
 """Common backup closure using the canonical interrupted-import producer."""
+from contextlib import closing
 from hashlib import sha256
 import json
 import os
@@ -28,14 +29,25 @@ def partial(tmp_path):
         volume=None, collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     planned = snapshot(source.parent, source.name).manifest()
     request = prepare_request(app.root, workspace, source, metadata, Config(), expected_manifest=planned)
-    calls = 0
     def stop():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Reach a real durable checkpoint, independently of how many times
+        # retained-source hashing and streamed intake check cancellation.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with closing(sqlite3.connect(journal)) as observer:
+            return observer.execute('SELECT count(*) FROM checkpoint').fetchone()[0] >= 1
     result = app._import_file(workspace, source, **metadata, cancelled=stop,
         _request_id=request['request_id'], _expected_manifest=planned)
     assert result['state'] == 'cancelled' and result['completed'] == 1
+    with closing(sqlite3.connect(app.root / 'imports.sqlite')) as observer:
+        saved, = observer.execute(
+            'SELECT ordinal,payload,digest FROM checkpoint WHERE job=?', (result['id'],)).fetchall()
+    assert saved[0] == 1 and json.loads(saved[1])['raw_text'] == 'First exact page.'
+    assert saved[2] == sha256(saved[1].encode('utf-8')).hexdigest()
+    assert source.read_text(encoding='utf-8') == 'First exact page.\fSecond railway page.\fThird exact page.'
+    with app.read(workspace) as catalog:
+        assert catalog.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
     record_progress(app.root, request['request_id'], state='cancelled', result=result)
     return app, workspace, source, load_request(app.root, request['request_id']), result
 

@@ -1,0 +1,181 @@
+{
+  "schema": "carr-capacity-c2-actual-evidence/1",
+  "run_id": 46063728818,
+  "source_commit": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+  "source_tree": "37b723f6aa4f69381cdabcb793aa461dc5633b0e",
+  "source_verified": "Run API metadata and actual checkout log on both platforms show this exact commit; helper source/runtime pins passed before child invocation.",
+  "linux": {
+    "job_id": 140723909571,
+    "status": "FAIL",
+    "source_suites": [
+      {
+        "suite": "tests/packaging/test_library_scale_benchmark.py",
+        "status": "PASS",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4792258Z PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/packaging/test_library_capacity_measurement.py",
+        "status": "PASS",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4792513Z PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/storage/test_backup_capacity.py",
+        "status": "PASS",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4792753Z PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/storage/test_backup_capacity_cli.py",
+        "status": "PASS",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4793103Z PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/ui/test_backup_capacity.py",
+        "status": "PASS",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4793330Z PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/storage/test_library_backup.py",
+        "status": "PASS",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4793551Z PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/storage/test_crash_backup.py",
+        "status": "PASS",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4793755Z PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/storage/test_complete_pending_backup.py",
+        "status": "PASS",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4794009Z PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "suite": "tests/storage/test_backup_pending_common4.py",
+        "status": "FAIL",
+        "passed": 1,
+        "failed": 26,
+        "skipped": 0,
+        "pytest_exit": 1,
+        "log_line": "2026-11-27T20:30:11.4794249Z FAIL: tests/storage/test_backup_pending_common4.py: junit_passed=1, failed=26, skipped=0, pytest_exit=1"
+      },
+      {
+        "suite": "tests/storage/test_backup_schema_identity.py",
+        "status": "PASS",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "log_line": "2026-11-27T20:30:11.4794476Z PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+      }
+    ],
+    "passed": 151,
+    "failed": 26,
+    "skipped": 0,
+    "strict_summary": "Required suites complete: 10; passed=9; failed=1",
+    "cause": "Old common4 partial() fixture cancels on callback count before a durable checkpoint exists, then indexes absent result.completed. All26 failed cases share that fixture.",
+    "installed": "NOT_RUN"
+  },
+  "windows": {
+    "job_id": 140723909297,
+    "status": "FAIL",
+    "cause": "Helper printed the completed UTF-8 source log through isolated parent cp1252 stdout and raised UnicodeEncodeError. Source verdicts were not displayed; retained source-contracts.txt still needs extraction.",
+    "source_counts": "NOT_YET_VERIFIED_FROM_RETAINED_ARTIFACT",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "exact_error": "2026-11-27T20:35:51.1142243Z UnicodeEncodeError: 'charmap' codec can't encode characters in position 21432-21438: character maps to <undefined>\r"
+  },
+  "profiles": [
+    {
+      "books": 1000,
+      "segments_per_book": 20,
+      "source_segments": 20000,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN",
+      "reason": "Required Linux validation failed; job placeholder140725004948 was skipped.",
+      "measurements": null
+    },
+    {
+      "books": 10000,
+      "segments_per_book": 20,
+      "source_segments": 200000,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN",
+      "reason": "Required Linux validation failed; job placeholder140725004948 was skipped.",
+      "measurements": null
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 20,
+      "source_segments": 1000000,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN",
+      "reason": "Required Linux validation failed; job placeholder140725004948 was skipped.",
+      "measurements": null
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 40,
+      "source_segments": 2000000,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN",
+      "reason": "Required Linux validation failed; job placeholder140725004948 was skipped.",
+      "measurements": null
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15230820480,
+      "name": "capacity-profile-contracts-windows-2022-e6e869794ae4437d965ae8f9260d40eccb085b44-1",
+      "bytes": 9681,
+      "sha256": "424764aadf1ec62d3f8c1372a9f586466a0bde47a31125a703dbd3149e617c96",
+      "run": 46063728818,
+      "head": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+      "verification": "GitHub artifact API digest and actual upload-log digest/size match; archive has not been downloaded/rehash-verified here."
+    },
+    {
+      "id": 15229443467,
+      "name": "capacity-profile-contracts-ubuntu-24.04-e6e869794ae4437d965ae8f9260d40eccb085b44-1",
+      "bytes": 8973,
+      "sha256": "5129e5fe53422d37027e51b6cbe02951ba2578985d1478d00d31a54050461f4f",
+      "run": 46063728818,
+      "head": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+      "verification": "GitHub artifact API digest and actual upload-log digest/size match; archive has not been downloaded/rehash-verified here."
+    }
+  ],
+  "qualification": "No installed, native or corpus PASS. Linux source151 PASS/26FAIL/0SKIP only; no baseline97 verdict transfer."
+}
