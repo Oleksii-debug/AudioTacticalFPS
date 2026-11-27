@@ -55,7 +55,14 @@ def harness(*, saved=None, closed=False, reject_submit=False, deferred=False):
             except BaseException as error:
                 future.set_exception(error)
             return future
-    environment = SimpleNamespace(closed=closed, dialog=SimpleNamespace(working=False),
+    class Dialog:
+        dead = False
+        working = False
+        def __setattr__(self, name, value):
+            if name == 'working' and self.dead:
+                raise AssertionError('Completion touched a destroyed native dialog')
+            object.__setattr__(self, name, value)
+    environment = SimpleNamespace(closed=closed, dialog=Dialog(),
         cancel=Event(), controls=Mock(), progress=panel, executor=Executor(),
         wx=SimpleNamespace(CallAfter=lambda call, *args: call(*args)), report=Mock(),
         service=SimpleNamespace(get=lambda identity: saved))
@@ -113,7 +120,7 @@ def test_pending_work_finishes_pure_shared_task_after_view_destruction():
     env.detach()
     env.progress.closed = True
     env.controls.reset_mock()
-    env.dialog = None
+    env.dialog.dead = True
     env.future.set_result(env.result)
     assert task.snapshot().state == ProgressState.SUCCEEDED
     complete.assert_not_called()

@@ -254,7 +254,7 @@ def test_studio_explicit_voice_selection_creates_independent_parent_selection(re
     local, parent = Progress('studio', events), Progress('parent', events)
     reader.choice.selection = 1
     values = dict(voice_choice=reader.choice, voices=reader.registry.voices(),
-        dialog=reader.parent, progress=local, parent_progress=parent, run=reader.work,
+        dialog=reader.parent, progress=local, parent_progress=parent, run=reader.work, alive=True,
         report=lambda message, focus=False: reader.reports.append(message),
         owned_progress_voices=set())
     handler = callbacks('studio_dialog.py', 'show_studio', ['select_progress_voice'],
@@ -286,12 +286,14 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     dialog = Mock()
     dialog._audio_player = player
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+        get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
-        timer=Mock(), executor=CleanupQueue(), owned_progress_voices=set())
-    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close'], values)
+        timer=Mock(), executor=CleanupQueue(), owned_progress_voices=set(),
+        cleanup_started=False, playback_owner=[player])
+    handlers = callbacks('studio_dialog.py', 'show_studio',
+        ['preview', 'close', 'retire_playback', 'retire_worker'], values)
     handlers.preview()
     assert local.players == parent.players == [player]
     player.play.assert_not_called()
@@ -490,3 +492,76 @@ def test_reader_detached_progress_observer_does_not_prevent_actual_resource_clea
     reader.values['audio_files'].cleanup.assert_called_once()
     assert any('Progress observer detached' in message for message in reader.reports)
     assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+@pytest.mark.parametrize('origin', ['dialog', 'parent'])
+def test_studio_native_destroy_detaches_without_autosave_or_dead_window_calls(origin):
+    local, parent, player = Progress('studio'), Progress('parent'), Mock()
+    executor, service, provider = CleanupQueue(), SimpleNamespace(close=Mock()), Mock()
+    owner_id, parent_id = 701, 702
+    dialog, frame = Mock(), Mock()
+    dialog.Destroy.side_effect = AssertionError('Native dialog was destroyed twice')
+    dialog.EndModal.side_effect = AssertionError('EndModal called during native destruction')
+    close = Mock(side_effect=AssertionError('Normal close must not autosave a dead dialog'))
+    values = dict(alive=True, destroyed=False, parent_destroyed=False, cleanup_started=False,
+        owner_id=owner_id, parent_id=parent_id, playback_owner=[player],
+        progress=local, parent_progress=parent, timer=Mock(), cancel=threading.Event(),
+        executor=executor, service=service, owned_progress_voices={provider},
+        dialog=dialog, frame=frame, unregister=Mock(), close=close,
+        wx=SimpleNamespace(EVT_WINDOW_DESTROY='destroy'), report=Mock())
+    handlers = callbacks('studio_dialog.py', 'show_studio',
+        ['on_destroy', 'retire_playback', 'retire_worker'], values, cleanup=True)
+    child = SimpleNamespace(GetId=lambda: 999, Skip=Mock(),
+        GetEventObject=Mock(side_effect=AssertionError('Native wrapper identity queried')))
+    handlers.on_destroy(child)
+    assert not values['cancel'].is_set() and not local.closed
+    player.close.assert_not_called()
+    event = SimpleNamespace(GetId=lambda: owner_id if origin == 'dialog' else parent_id,
+        Skip=Mock(), GetEventObject=child.GetEventObject)
+    handlers.on_destroy(event)
+    assert values['cancel'].is_set() and local.closed
+    player.close.assert_called_once()
+    values['timer'].Stop.assert_called_once()
+    child.GetEventObject.assert_not_called()
+    values['report'].assert_not_called()
+    handlers.cleanup()
+    close.assert_not_called()
+    dialog.EndModal.assert_not_called()
+    dialog.Destroy.assert_not_called()
+    if origin == 'parent':
+        frame.Unbind.assert_not_called()
+    else:
+        frame.Unbind.assert_called_once_with('destroy', handler=handlers.on_destroy)
+    service.close.assert_not_called()
+    provider.close.assert_not_called()
+    executor.finish().result()
+    provider.close.assert_called_once()
+    service.close.assert_called_once()
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+
+
+def test_studio_destroyed_playback_failure_has_an_independent_retry_owner(monkeypatch):
+    from carr_library.audio import cleanup
+    retained = []
+    class Thread:
+        def __init__(self, **options):
+            self.target = options['target']
+            retained.append(self.target.__self__)
+        def start(self):
+            pass  # Drive the real owner deterministically.
+    monkeypatch.setattr(cleanup.threading, 'Thread', Thread)
+    player = Mock()
+    player.close.side_effect = [RuntimeError('Native close pending'), False, True]
+    values = dict(playback_owner=[player], progress=Progress(), parent_progress=Progress(),
+                  report=Mock())
+    handlers = callbacks('studio_dialog.py', 'show_studio', ['retire_playback'], values)
+    handlers.retire_playback(notify=False)
+    assert values['playback_owner'] == [None] and len(retained) == 1
+    owner = retained[0]
+    assert owner in cleanup._RETAINED and not owner.quiescent
+    values['report'].assert_not_called()
+    assert not owner.close()
+    assert owner in cleanup._RETAINED and not owner.quiescent
+    assert owner.close()
+    assert owner.quiescent and owner not in cleanup._RETAINED
+    assert player.close.call_count == 3
