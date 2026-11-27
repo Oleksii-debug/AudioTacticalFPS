@@ -425,3 +425,123 @@ def test_missing_previous_installation_cannot_be_reported_as_rolled_back(setup_u
     assert not (transaction.work / record['failed']).exists()
     assert (transaction.work / record['backup'] / 'manifest.json').is_file()
     assert_preserved(setup_update)
+
+
+@pytest.mark.parametrize('moved', [False, True], ids=['before-first-move', 'after-first-move'])
+def test_first_program_move_failure_keeps_verified_a_and_allows_retry(setup_update, monkeypatch, moved):
+    from carr_library.security import installation
+    *_, package, transaction, anchor, adapter = setup_update
+    original = installation.os.rename
+    identity = transaction.installed.stat()
+    observed = []
+
+    def interrupted(source, destination):
+        if Path(source) == transaction.installed and not observed:
+            observed.append(True)
+            if moved:
+                original(source, destination)
+            raise PermissionError('Synthetic first program rename denied')
+        return original(source, destination)
+
+    monkeypatch.setattr(installation.os, 'rename', interrupted)
+    with pytest.raises(PermissionError, match='first program rename denied'):
+        transaction.apply(package)
+    record = json.loads(transaction.journal.read_bytes())
+    assert observed == [True] and record['phase'] == 'rolled-back'
+    current = transaction.installed.stat()
+    assert (current.st_dev, current.st_ino) == (identity.st_dev, identity.st_ino)
+    assert (transaction.installed / 'version.txt').read_bytes() == b'A'
+    assert not (transaction.installed.parent / record['previous']).exists()
+    assert not (transaction.work / record['failed']).exists()
+    assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    assert anchor.load().sequence == 1 and adapter.activated_path is None
+    assert_preserved(setup_update)
+
+    monkeypatch.undo()
+    restarted = UpdateTransaction(transaction.app, transaction.installed, transaction.work,
+        transaction.policy, anchor, adapter, idle_lease=idle, clock=transaction.clock)
+    assert restarted.recover() == 'rolled-back'
+    result = restarted.apply(package)
+    assert result['status'] == 'complete'
+    assert (restarted.installed / 'version.txt').read_bytes() == b'B'
+    assert (Path(result['previous']) / 'version.txt').read_bytes() == b'A'
+    assert anchor.load().sequence == 2
+    assert json.loads(restarted.journal.read_bytes())['transaction'] != record['transaction']
+    assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    assert_preserved(setup_update)
+
+
+@pytest.mark.parametrize('replacement', ['new-directory', 'new-manifest', 'modified-file'])
+def test_failed_first_move_cannot_attest_a_different_or_modified_program(
+        setup_update, monkeypatch, replacement):
+    from carr_library.security import installation
+    *_, package, transaction, anchor, adapter = setup_update
+    original = installation.os.rename
+    observed = []
+
+    def interrupted(source, destination):
+        if Path(source) == transaction.installed:
+            observed.append(True)
+            if replacement == 'new-directory':
+                original(source, transaction.work / 'externally-retained-A')
+            if replacement == 'modified-file':
+                (transaction.installed / 'version.txt').write_bytes(b'C')
+            else:
+                with zipfile.ZipFile(io.BytesIO(bundle('C'))) as archive:
+                    archive.extractall(transaction.installed)
+            raise PermissionError('Synthetic ambiguous first rename failure')
+        return original(source, destination)
+
+    monkeypatch.setattr(installation.os, 'rename', interrupted)
+    with pytest.raises(ValueError):
+        transaction.apply(package)
+    raw = transaction.journal.read_bytes()
+    record = json.loads(raw)
+    assert observed == [True] and record['phase'] == 'prepared'
+    assert (transaction.installed / 'version.txt').read_bytes() == b'C'
+    assert not (transaction.installed.parent / record['previous']).exists()
+    assert not (transaction.work / record['failed']).exists()
+    assert (transaction.work / record['stage'] / 'version.txt').read_bytes() == b'B'
+    assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+    assert anchor.load().sequence == 1 and adapter.activated_path is None
+    if replacement == 'new-directory':
+        assert (transaction.work / 'externally-retained-A' / 'version.txt').read_bytes() == b'A'
+    monkeypatch.undo()
+    with pytest.raises(TrustError, match='Previous installation is unavailable'):
+        transaction.recover()
+    assert transaction.journal.read_bytes() == raw
+    assert_preserved(setup_update)
+
+
+def test_failed_move_terminal_journal_error_preserves_strict_restart_recovery(setup_update, monkeypatch):
+    from carr_library.security import installation
+    *_, package, transaction, anchor, adapter = setup_update
+    write, rename = transaction._write, installation.os.rename
+
+    def denied(source, destination):
+        if Path(source) == transaction.installed:
+            raise PermissionError('Synthetic first program rename denied')
+        return rename(source, destination)
+
+    def journal_error(record, phase):
+        if phase == 'rolled-back':
+            raise OSError('Synthetic failed-move terminal journal error')
+        return write(record, phase)
+
+    monkeypatch.setattr(installation.os, 'rename', denied)
+    monkeypatch.setattr(transaction, '_write', journal_error)
+    with pytest.raises(OSError, match='failed-move terminal journal error'):
+        transaction.apply(package)
+    raw = transaction.journal.read_bytes()
+    record = json.loads(raw)
+    assert record['phase'] == 'prepared'
+    assert (transaction.installed / 'version.txt').read_bytes() == b'A'
+    assert not (transaction.installed.parent / record['previous']).exists()
+    assert anchor.load().sequence == 1 and adapter.activated_path is None
+    monkeypatch.undo()
+    with pytest.raises(TrustError, match='Previous installation is unavailable'):
+        transaction.recover()
+    assert transaction.journal.read_bytes() == raw
+    assert_preserved(setup_update)
