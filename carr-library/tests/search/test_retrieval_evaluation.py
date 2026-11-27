@@ -73,3 +73,30 @@ def test_aggregation_separates_negatives():
         'recall': 1, 'mrr': 1, 'negative_false_positive_rate': 0, 'p50_ms': 1.5, 'p95_ms': 2}
     only_negative = evaluation.aggregate(rows[1:])
     assert only_negative['recall'] is None and only_negative['mrr'] is None
+
+@pytest.mark.parametrize('language,relevant', [('uk', ['a']), ('uk', []),
+                                               ('en', []), ('en', ['a']), ('UK', ['a'])])
+def test_exact_query_cannot_repeat(language, relevant):
+    data = fixture()
+    data['queries'].append({'language': language, 'text': data['queries'][0]['text'],
+                            'relevant': relevant})
+    with pytest.raises(ValueError, match='Duplicate gold query text'):
+        load(data)
+
+
+def test_distinct_multilingual_queries_keep_labels():
+    data = fixture()
+    data['queries'].append({'language': 'SK', 'text': 'Otázka', 'relevant': ['a']})
+    assert load(data)[1] == [
+        ('uk', 'Питання', {'a'}), ('en', 'No match', set()), ('sk', 'Otázka', {'a'})]
+
+
+def test_independent_smoke_fixture_identity_and_schema():
+    from hashlib import sha256
+    raw = (Path(__file__).parent / 'fixtures/retrieval_smoke_uk_en_sk.json').read_bytes()
+    assert sha256(raw).hexdigest() == 'fba3139eaf29a3cb70fa300f392ab8441579878eecd6399ec4bad9e6cae7ed71'
+    documents, queries = evaluation.load_gold(raw)
+    assert len(documents) == 12 and len(queries) == 18
+    for language in ('uk', 'en', 'sk'):
+        labels = [relevant for lang, _, relevant in queries if lang == language]
+        assert len(labels) == 6 and sum(bool(label) for label in labels) == 5

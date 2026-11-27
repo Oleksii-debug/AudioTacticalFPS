@@ -6,6 +6,8 @@ Windows: set PYTHONPATH=src in the shell or use the installed application.
 The fixture has schema carr-retrieval-gold/1, documents [{id,text}], queries
 [{language,text,relevant:[document IDs]}]. Empty relevant means a negative query.
 Use short, lawful, single-line documents and gold labels fixed before model use.
+Exact query text must be unique across all languages; language tags are grouped
+case-insensitively. Use actual search concepts, not punctuation-only queries.
 Only aggregate metrics and ordinal case evidence are printed, not source/query text.
 No downloads, no engine substitution, no model tuning, no release verdict.
 Python socket blocking is not native/OS firewall evidence. Run behind the existing
@@ -56,6 +58,7 @@ def load_gold(raw):
             raise ValueError('Invalid or duplicate gold document.')
         docs[item['id']] = item['text']
     queries = []
+    seen_text = set()
     for item in data['queries']:
         if (type(item) is not dict or set(item) != {'language', 'text', 'relevant'}
                 or type(item['language']) is not str or not re.fullmatch(r'[A-Za-z0-9-]{2,24}', item['language'])
@@ -63,7 +66,12 @@ def load_gold(raw):
                 or any(type(i) is not str or i not in docs for i in item['relevant'])
                 or len(set(item['relevant'])) != len(item['relevant'])):
             raise ValueError('Invalid gold query or relevance identity.')
-        queries.append((item['language'], item['text'], set(item['relevant'])))
+        # Language is reporting metadata, not an input to app.search.
+        # Count each exact retrieval input once, even across language labels.
+        if item['text'] in seen_text:
+            raise ValueError('Duplicate gold query text.')
+        seen_text.add(item['text'])
+        queries.append((item['language'].lower(), item['text'], set(item['relevant'])))
     if not any(q[2] for q in queries) or not any(not q[2] for q in queries):
         raise ValueError('Include positive and negative queries.')
     return docs, queries
