@@ -84,6 +84,10 @@ def _model(module):
 def sidecar_limit(name):
     """Resolve only explicit formats; also fail early if a producer is absent."""
     portable_name(name)
+    if backup_transcription.is_cache_file(name):
+        raise RestoreError('Optional transcription cache inclusion is not supported by the installed '
+                           'worker-profile adapter. Use include_generated=False to omit only the '
+                           'recognized cache directories; retained inputs and accepted results remain required.')
     if name == 'reading-state.json':
         return READING_BYTES
     if name == 'keybindings.json':
@@ -462,6 +466,8 @@ def normalize_manifest(manifest):
             raise RestoreError('invalid sidecar manifest entry')
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
+        if backup_transcription.is_cache_file(entry['filename']) and not generated:
+            raise RestoreError('Transcription cache requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
         if not minimum_size(entry['filename']) <= entry['size_bytes'] <= maximum or _portable_key(entry['filename']) in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
@@ -588,7 +594,9 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
             info = path.lstat()
             if stat.S_ISDIR(info.st_mode):
                 _plain(path, directory=True)
-                if relative != 'state/studio/cache' or include_generated:
+                optional_cache = (relative == 'state/studio/cache'
+                                  or backup_transcription.is_cache_directory(relative))
+                if include_generated or not optional_cache:
                     pending.append(relative)
             else:
                 _regular(path)
