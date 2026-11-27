@@ -69,6 +69,20 @@ class KeyboardManager:
                 self._pending_saved = loaded
                 self.overrides = self.registry.validate(loaded)
                 self._pending_saved = None
+                if not loaded:
+                    try:
+                        self.store.path.lstat()
+                    except FileNotFoundError:
+                        legacy = self.store.path.parent / 'state' / 'ui' / 'shortcuts.json'
+                        try:
+                            legacy.lstat()
+                        except FileNotFoundError:
+                            pass
+                        else:
+                            self.load_notice = (
+                                'Earlier keyboard settings were kept for review. Default shortcuts are active. '
+                                'Open Options, Keyboard shortcuts to choose assignments. '
+                                'Older menu-name bindings are not applied automatically.')
             except (ValueError, OSError) as exc:
                 self.load_notice = ('Keyboard settings could not be loaded. Default shortcuts are active. '
                                     'The existing file was kept. Open Options, Keyboard shortcuts to repair it. '
