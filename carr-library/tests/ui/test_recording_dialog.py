@@ -80,7 +80,10 @@ def actual_host(wx, root):
                and node.name in ('run_job', '_finish_job_controls')]
     assert len(methods) == 2
     factory = ast.ClassDef(name='Host', bases=[], keywords=[], body=methods, decorator_list=[])
-    namespace = {'wx': wx}
+    # The real method imports its sibling progress module. Preserve the
+    # production package context while replacing only the native window shell.
+    namespace = {'wx': wx, '__package__': 'carr_library.ui',
+                 '__name__': 'carr_library.ui._recording_test_host'}
     exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
                  str(source), 'exec'), namespace)
     frame = namespace['Host']()
@@ -169,6 +172,7 @@ def view(tmp_path):
             count += 1
             assert count < 100
     def finish():
+        assert frame.executor.pending, (values['status'].value, frame.messages)
         frame.executor.finish()
         pump()
     return SimpleNamespace(handlers=handlers(values), values=values, progress=progress,
