@@ -31,7 +31,7 @@ jobs:
         with:
           python-version: '3.11.9'
           architecture: x64
-      - name: Run four interleaved controls with unchanged one-shot writes
+      - name: Compare retained one-shot controls with the existing public publisher
         run: |
           python -I -B carr-library/scripts/windows_status_replace_diagnostic.py --trials 12 --generations 50 --output windows-status-diagnostic
           if ($LASTEXITCODE -ne 0) { throw 'At least one diagnostic trial failed; all completed trial reports are retained.' }

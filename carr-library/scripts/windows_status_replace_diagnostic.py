@@ -1,7 +1,8 @@
-"""Isolated Windows rename-collision controls; never retries or waives a write.
+"""Isolated Windows rename controls and the existing bounded publisher.
 
-This diagnostic does not modify production code or replace a worker API. Every
-trial starts a fresh real child. The parent observes only synthetic files.
+The four original controls never retry. The fifth calls public atomic_bytes.
+This diagnostic does not modify production code or intercept a worker API.
+Every trial starts a fresh real child and observes only synthetic files.
 """
 from __future__ import annotations
 
@@ -19,7 +20,8 @@ import time
 
 BASE = "8fa68b9d9041dd2f4f501f4084a5c9c50998c6f9"
 PROCESS_SHA256 = "d9c5be71768b235831a45ff88e7aa1f37d660ef9b2c649ee3be7d4d534465fba"
-MODES = ("poll_only", "scandir_only", "attributes_only", "run_process")
+DURABLE_SHA256 = "22a1ad62bd8a69eaeea957061b0b2fe42e5e8fe4c887901089bf9ed70ba36493"
+MODES = ("poll_only", "scandir_only", "attributes_only", "run_process", "run_process_atomic")
 CHILD = r"""
 import json, os, sys, time
 from pathlib import Path
@@ -65,6 +67,39 @@ finally:
 raise SystemExit(exit_code)
 """
 
+
+
+def atomic_child():
+    """Use the existing public publisher only in the additional fifth mode."""
+    setup = """
+import hashlib
+sys.path.insert(0, sys.argv[5])
+from carr_library import durable_state
+publisher_origin = Path(durable_state.__file__).resolve()
+expected_origin = Path(sys.argv[5]).resolve() / 'carr_library' / 'durable_state.py'
+publisher_hash = hashlib.sha256(publisher_origin.read_bytes()).hexdigest()
+assert publisher_origin == expected_origin
+assert publisher_hash == %r
+""" % DURABLE_SHA256
+    code = CHILD.replace("from pathlib import Path\n", "from pathlib import Path\n" + setup, 1)
+    marker = "phase, generation = 'initial_write', None"
+    code = code.replace(marker,
+        "result['publisher'] = dict(name='carr_library.durable_state.atomic_bytes', "
+        "origin=str(publisher_origin), sha256=publisher_hash)\n" + marker, 1)
+    old = """        phase = 'closed_pending_write'
+        pending.write_bytes(('generation-' + str(generation)).encode('ascii'))
+        phase = 'one_shot_replace'
+        started = time.monotonic_ns()
+        try:
+            os.replace(pending, status)"""
+    new = """        phase = 'public_atomic_bytes'
+        started = time.monotonic_ns()
+        try:
+            durable_state.atomic_bytes(status,
+                ('generation-' + str(generation)).encode('ascii'), replace=True)"""
+    if code.count(old) != 1:
+        raise RuntimeError("The unchanged one-shot control preimage was not found.")
+    return code.replace(old, new, 1)
 
 def error_info(error):
     return dict(type=type(error).__name__, message=str(error)[:4000],
@@ -225,18 +260,21 @@ def actual_runner(command, stage, release, trace, runner, timeout):
                 errors=errors, **output)
 
 
-def trial(mode, index, generations, runner, output):
+def trial(mode, index, generations, runner, output, project):
     temporary = tempfile.TemporaryDirectory(prefix="carr-status-diagnostic-")
     root = Path(temporary.name)
     stage, release, child_report = root / "worker", root / "release", root / "child.json"
     stage.mkdir()
     trace = Trace(stage)
-    command = [str(Path(sys.executable).resolve()), "-I", "-B", "-c", CHILD,
+    child_code = atomic_child() if mode == "run_process_atomic" else CHILD
+    command = [str(Path(sys.executable).resolve()), "-I", "-B", "-c", child_code,
                str(stage), str(release), str(child_report), str(generations)]
+    if mode == "run_process_atomic":
+        command.append(str(project / "src"))
     result = dict(mode=mode, iteration=index, started_ns=time.monotonic_ns(),
                   child=None, parent=None, final_payload=None, errors=[])
     try:
-        if mode == "run_process":
+        if mode in ("run_process", "run_process_atomic"):
             result["parent"] = actual_runner(command, stage, release, trace, runner, 8)
         else:
             result["parent"] = control(mode, command, stage, release, trace,
@@ -289,6 +327,9 @@ def main():
     actual_hash = hashlib.sha256(source.read_bytes()).hexdigest()
     if actual_hash != PROCESS_SHA256:
         raise RuntimeError("Production process source differs from the exact 8fa baseline.")
+    durable_source = project / "src" / "carr_library" / "durable_state.py"
+    if hashlib.sha256(durable_source.read_bytes()).hexdigest() != DURABLE_SHA256:
+        raise RuntimeError("Public publisher differs from the exact 8fa baseline.")
     sys.path.insert(0, str(project / "src"))
     from carr_library.audio import process as runner
     if Path(runner.__file__).resolve() != source:
@@ -299,14 +340,17 @@ def main():
                    native_windows=os.name == "nt", production_source=str(source),
                    production_sha256=actual_hash, generations=args.generations,
                    trials_per_mode=args.trials, parent_control_poll_seconds=.005,
-                   production_poll_seconds=.05, replacement_retries=0,
+                   production_poll_seconds=.05, public_publisher_sha256=DURABLE_SHA256,
+                   prior_control_run=45953624408, prior_control_commit="806e270b10b9b9410dc9b205e2e8a802dc230fca",
+                   replacement_policy={mode: ("existing public atomic_bytes, native Windows 5/32/33, half-second bound"
+                       if mode == "run_process_atomic" else "one-shot os.replace; zero retries") for mode in MODES},
                    interpretation="Diagnostic only; zero observed failures does not prove absence of races.",
                    trials=[])
     for index in range(args.trials):
         # Rotate order to avoid assigning one mode only to cold/warm filesystem state.
         order = MODES[index % len(MODES):] + MODES[:index % len(MODES)]
         for mode in order:
-            summary["trials"].append(trial(mode, index, args.generations, runner, args.output))
+            summary["trials"].append(trial(mode, index, args.generations, runner, args.output, project))
     summary["by_mode"] = {
         mode: dict(passed=sum(row["status"] == "PASS" for row in summary["trials"] if row["mode"] == mode),
                    failed=sum(row["status"] == "FAIL" for row in summary["trials"] if row["mode"] == mode))
