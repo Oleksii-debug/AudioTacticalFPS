@@ -118,15 +118,24 @@ class _CatalogPublisher:
         self.review_records = lambda: ()
         self.published_here = False
         self.before_commit = lambda workspace, revision: None
+        self._default_before_commit = self.before_commit
+        self._receipt_binding = None
+
+    def bind_receipt(self, root, request_id, *, publication_attempt, config):
+        if self._receipt_binding is not None:
+            raise ValueError('An import publication receipt is already bound.')
+        self._receipt_binding = (root, request_id, publication_attempt, config)
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
             raise ValueError('Import identity changed.')
-        with self.storage.transaction():
-            LibraryApp._authorize(self.db, workspace)
-            register_batch(Catalog(self.db, workspace), (self.record,))
+        with self.storage.publication_transaction(
+                workspace, edition, revision, asset, config) as publication:
+            db = publication.db
+            LibraryApp._authorize(db, workspace)
+            register_batch(Catalog(db, workspace), (self.record,))
             self.storage.stage_revision(workspace, edition, revision, asset, config, pages)
-            self.db.execute('INSERT INTO source_metadata '
+            db.execute('INSERT INTO source_metadata '
                 '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
                 (workspace, edition, revision, '; '.join(self.record.authors) or None,
                  self.record.title or 'Unknown title', self.record.volume, self.record.edition))
@@ -134,21 +143,30 @@ class _CatalogPublisher:
                 if (review.get('workspace') != workspace or review.get('edition') != edition
                         or review.get('job') != revision or review.get('asset_sha256') != asset):
                     raise ValueError('Reviewed import publication identity changed.')
-                row = self.db.execute('SELECT digest FROM page WHERE revision=? AND physical=?',
+                row = db.execute('SELECT digest FROM page WHERE revision=? AND physical=?',
                                       (revision, review['physical'])).fetchone()
                 if row is None or row[0] != review['raw_sha256']:
                     raise ValueError('Reviewed source text changed before publication.')
-                self.db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
+                db.execute('INSERT INTO source_page_review VALUES(?,?,?,?,?,?,?,?,1)',
                     (workspace, edition, revision, review['physical'], review['raw_sha256'],
                      review['render_sha256'], review['renderer'], review['reviewer']))
             # Reject inconsistent candidates while this publication can still
             # roll back every catalog, source, review and search-index write.
-            self.storage._check()
+            publication.validate_candidate()
+            if self._receipt_binding is not None:
+                from .ingest.worker import record_publication_candidate
+                root, request_id, attempt, selected_config = self._receipt_binding
+                with publication.receipt() as receipt_db:
+                    record_publication_candidate(
+                        root, request_id, receipt_db, workspace, revision,
+                        publication_attempt=attempt, config=selected_config)
+            if self.before_commit is not self._default_before_commit:
+                publication.require_full_check()
             self.before_commit(workspace, revision)
         self.published_here = True
 
     def check(self):
-        return self.storage.check()
+        return self.storage.check_publication_snapshot()
 
 
 class LibraryApp:
@@ -665,8 +683,8 @@ class LibraryApp:
                                             record_publication_candidate)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
                 publisher = _CatalogPublisher(storage, record)
-                publisher.before_commit = lambda scope, revision: record_publication_candidate(
-                    self.root, _request_id, storage.db, scope, revision,
+                publisher.bind_receipt(
+                    self.root, _request_id,
                     publication_attempt=_publication_attempt, config=config or Config())
                 if asset.mime in EXTENDED_MIMES or asset.mime in (
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
