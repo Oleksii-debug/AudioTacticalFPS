@@ -1,12 +1,13 @@
 """Real wx controls and the existing isolated worker; synthetic ASR protocol only."""
 import importlib.util
 import json
+import os
 from pathlib import Path
-import sys
 from tempfile import TemporaryDirectory
 import time
 import traceback
 from unittest.mock import patch
+import venv
 
 import wx
 
@@ -32,6 +33,13 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     service = library.transcription(workspace)
     models = root / 'models'
     models.mkdir()
+    # Both admitted peers use only the standard library. Keep wx/application
+    # imports in this installed host; select a real private peer interpreter
+    # through the same visible runtime-inspection and trust controls below.
+    environment = root / 'selected-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                    symlinks=os.name != 'nt').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
     worker = root / 'synthetic-worker.py'
     worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
     v5_runtime = root / 'synthetic-v5-runtime'
@@ -103,7 +111,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 protocol.GetEventHandler().ProcessEvent(event)
                 assert dialog.inspection is None
                 find('Runtime profile name').SetValue(name)
-                find('Python executable').SetValue(str(Path(sys.executable)))
+                find('Python executable').SetValue(str(python))
                 find('Reviewed transcription worker').SetValue(str(chosen_worker))
                 find('Existing local model directory').SetValue(str(models))
                 assert not find('Explicit trust of inspected runtime, worker and model files').GetValue()
@@ -114,6 +122,11 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 details = json.loads(find('Runtime inspection and fingerprint').GetValue())
                 assert details['protocol'] == protocol and details['fingerprint']
                 assert details['inference_qualified'] is False
+                inventory = details['runtime_inventory']
+                assert inventory['python_executable'] == str(python.absolute())
+                assert inventory['python_configuration']
+                assert all(row == {'present': False}
+                           for row in inventory['runtime_distributions'].values())
                 assert not list(library.root.rglob('job_status.json'))
                 assert service.list() == ()
                 # Registration cannot be admitted until the real trust control is checked.

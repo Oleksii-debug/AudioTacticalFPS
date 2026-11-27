@@ -4,9 +4,10 @@ No inference package/model is loaded; these tests do not establish acoustic or
 language quality. They reuse the existing admitted worker protocol fixture.
 """
 import json
+import os
 from pathlib import Path
 import runpy
-import sys
+import venv
 
 import pytest
 
@@ -31,13 +32,24 @@ def prepare(tmp_path, capsys, *, mode='complete'):
     models.mkdir()
     app = LibraryApp(tmp_path / 'дані')
     workspace = app.create_workspace('CLI synthetic protocol')
-    values = ['--python', Path(sys.executable), '--worker', worker, '--models-dir', models]
+    # The CLI still runs through the actual installed application above. Its
+    # standard-library protocol peer gets an explicitly reviewed own runtime.
+    environment = tmp_path / 'selected-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                    symlinks=os.name != 'nt').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    values = ['--python', python, '--worker', worker, '--models-dir', models]
     inspected, _ = call(app, workspace, capsys, 'inspect-runtime', *values)
     assert inspected['inference_qualified'] is False
     assert not list(app.root.rglob('job_status.json'))
     profile, _ = call(app, workspace, capsys, 'register-runtime', '--name', 'Synthetic protocol fixture',
                       *values, '--trust-runtime', '--fingerprint', inspected['fingerprint'])
     assert profile['qualification'] == 'unqualified' and profile['trusted']
+    inventory = profile['configuration']['runtime_inventory']
+    assert inventory['python_executable'] == str(python.absolute())
+    assert inventory['python_configuration']
+    assert all(row == {'present': False}
+               for row in inventory['runtime_distributions'].values())
     return app, workspace, worker, profile
 
 
@@ -113,7 +125,7 @@ def test_cli_requires_exact_review_fingerprint_before_creating_library(tmp_path,
 
 def test_cli_keeps_explicit_configure_create_folder_and_edit_entrypoints(tmp_path, capsys):
     app, workspace, worker, profile = prepare(tmp_path, capsys)
-    configured, _ = call(app, workspace, capsys, 'configure', '--python', Path(sys.executable),
+    configured, _ = call(app, workspace, capsys, 'configure', '--python', profile['configuration']['python'],
                          '--worker', worker, '--models-dir', tmp_path / 'models')
     assert configured['protocol'] == 'receipts-v1'
     folder = tmp_path / 'recordings'
