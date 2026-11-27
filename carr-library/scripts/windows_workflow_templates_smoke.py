@@ -1,6 +1,7 @@
 """Actual installed Windows workflow controls, current-scope run and passive recovery."""
 import argparse
 import ctypes
+import faulthandler
 from ctypes import wintypes
 from hashlib import sha256
 import importlib
@@ -8,7 +9,7 @@ import json
 import os
 from pathlib import Path
 import sys
-from time import monotonic, sleep
+from time import monotonic
 import traceback
 
 MODULES = (
@@ -34,6 +35,7 @@ def module_identities():
 def run(work):
     if os.name != 'nt' or not sys.flags.isolated:
         raise RuntimeError('Actual isolated Windows execution is required.')
+    print('PHASE importing actual installed native controls', flush=True)
     import wx
     from carr_library.application import LibraryApp
     from carr_library.assistant import AssistantService, Scope
@@ -44,6 +46,7 @@ def run(work):
 
     work = Path(work).absolute()
     work.mkdir(mode=0o700)
+    print('PHASE creating native app and synthetic library', flush=True)
     gui = wx.App(False)
     library = LibraryApp(work / 'library')
     first = library.create_workspace('A first selected scope')
@@ -60,20 +63,20 @@ def run(work):
     frame.Show()
     gui.SetTopWindow(frame)
     checks, failures, timers = [], [], []
-    metrics = {}
+    metrics, chosen = {}, {}
     deadline = monotonic() + 150
-    chosen = {}
-    source_before = {row.id: library.browse(row.id)
-                     for row in library.workspaces()}
+    source_before = {row.id: library.browse(row.id) for row in library.workspaces()}
 
     def check(name, value):
         if not value:
             raise AssertionError(name)
         checks.append(name)
+        print('CHECK ' + name, flush=True)
 
     def press(button):
         if not isinstance(button, wx.Button) or not button.IsEnabled():
             raise AssertionError('Required native button is disabled.')
+        print('ACTION ' + button.GetName(), flush=True)
         event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
         event.SetEventObject(button)
         if not button.GetEventHandler().ProcessEvent(event):
@@ -89,39 +92,49 @@ def run(work):
             except RuntimeError:
                 pass
 
-    def scheduled(callback):
+    def failed():
+        failures.append(traceback.format_exc())
+        print(failures[-1], file=sys.stderr, flush=True)
+        stop_modals()
+
+    def later(callback):
         def invoke():
+            if failures:
+                return
             try:
+                if monotonic() >= deadline:
+                    raise TimeoutError('Actual workflow controls exceeded their bounded deadline.')
                 callback()
             except Exception:
-                failures.append(traceback.format_exc())
-                stop_modals()
-        timers.append(wx.CallLater(20, invoke))
+                failed()
+        timers.append(wx.CallLater(25, invoke))
 
-    def wait(condition):
-        while not condition():
-            if failures:
-                raise AssertionError(failures[-1])
-            if monotonic() >= deadline:
-                raise TimeoutError('Actual workflow controls exceeded their bounded deadline.')
-            wx.YieldIfNeeded()
-            sleep(.01)
+    def until(condition, completed, description):
+        # Return to the real modal event loop between observations. A nested
+        # wx.Yield/sleep loop can suppress the very CallAfter worker completion
+        # that this probe must observe.
+        print('WAIT ' + description, flush=True)
+        def observe():
+            if condition():
+                completed()
+            else:
+                later(observe)
+        later(observe)
 
     def answer_name(parent, value):
         def accept():
             candidates = [window for window in wx.GetTopLevelWindows()
                           if isinstance(window, wx.TextEntryDialog) and window.GetParent() is parent]
             if not candidates:
-                if monotonic() >= deadline:
-                    raise TimeoutError('The actual workflow name dialog did not appear.')
-                scheduled(accept)
+                later(accept)
                 return
             if len(candidates) != 1:
                 raise AssertionError('Expected one owned native workflow name dialog.')
             candidate = candidates[0]
             candidate.SetValue(value)
+            print('ACTION accept owned workflow name', flush=True)
             candidate.EndModal(wx.ID_OK)
-        scheduled(accept)
+        later(accept)
 
     def answer_remove(parent):
         api = ctypes.WinDLL('user32', use_last_error=True)
@@ -135,66 +148,117 @@ def run(work):
         def accept():
             handle = api.FindWindowW(None, 'Remove workflow template')
             if not handle:
-                if monotonic() >= deadline:
-                    raise TimeoutError('The actual removal confirmation did not appear.')
-                scheduled(accept)
+                later(accept)
                 return
             if api.GetWindow(handle, 4) != owner:  # GW_OWNER
                 raise AssertionError('The native removal prompt belongs to another window.')
+            print('ACTION confirm owned native removal prompt', flush=True)
             api.SendMessageW(handle, 0x0111, 6, 0)  # WM_COMMAND / IDYES
-        scheduled(accept)
+        later(accept)
 
     def template_window():
         result = [window for window in wx.GetTopLevelWindows()
                   if hasattr(window, 'template_controls') and window.GetTitle() == 'Saved workflow templates']
-        if len(result) != 1:
+        if len(result) > 1:
             raise AssertionError('Expected exactly one owned template settings window.')
-        return result[0]
+        return result[0] if result else None
 
     def edit_templates():
         child = template_window()
+        if child is None:
+            later(edit_templates)
+            return
         controls = child.template_controls
         buttons, rows = controls['buttons'], controls['rows']
-        wait(lambda: buttons['refresh'].IsEnabled())
-        check('native_template_controls_named', all(
-            isinstance(button, wx.Button) and button.GetName() for button in buttons.values())
-            and rows.GetName() and controls['status'].GetName())
-        check('native_empty_inventory_no_job', rows.GetCount() == 0 and service.jobs() == ())
-        answer_name(child, 'Початковий пошук')
-        press(buttons['save'])
-        summaries = []
-        check('save_all_observes_pending_settings', frame._save_coordinator.has_unsaved()
-              and frame._save_coordinator.save_all(summaries.append) and not summaries)
-        wait(lambda: buttons['refresh'].IsEnabled())
-        values = service.workflow_templates().list()
-        check('native_save_publishes_inert_draft', len(values) == 1
-              and values[0].revision == 1 and 'scope' not in values[0].draft and service.jobs() == ())
-        check('save_all_waits_for_durable_completion', len(summaries) == 1
-              and summaries[0].complete and not frame._save_coordinator.has_unsaved())
-        rows.SetSelection(0)
-        answer_name(child, 'Current native workflow')
-        press(buttons['rename'])
-        wait(lambda: buttons['refresh'].IsEnabled())
-        values = service.workflow_templates().list()
-        check('native_rename_uses_same_identity_revision', len(values) == 1
-              and values[0].name == 'Current native workflow' and values[0].revision == 2)
-        rows.SetSelection(0)
-        answer_name(child, 'Current native workflow')
-        press(buttons['update'])
-        wait(lambda: buttons['refresh'].IsEnabled())
-        value = service.workflow_templates().list()[0]
-        check('native_update_commits_reviewed_revision', value.revision == 3
-              and value.steps[0].tool == 'library.search' and value.steps[0].arguments['query'] == 'Shared')
-        metrics['saved_revision'] = value.revision
-        chosen['saved'] = value
-        rows.SetSelection(0)
-        press(buttons['load'])
+
+        def after_update():
+            value = service.workflow_templates().list()[0]
+            check('native_update_commits_reviewed_revision', value.revision == 3
+                  and value.steps[0].tool == 'library.search' and value.steps[0].arguments['query'] == 'Shared')
+            metrics['saved_revision'] = value.revision
+            chosen['saved'] = value
+            rows.SetSelection(0)
+            press(buttons['load'])
+
+        def after_rename():
+            values = service.workflow_templates().list()
+            check('native_rename_uses_same_identity_revision', len(values) == 1
+                  and values[0].name == 'Current native workflow' and values[0].revision == 2)
+            rows.SetSelection(0)
+            answer_name(child, 'Current native workflow')
+            press(buttons['update'])
+            until(lambda: buttons['refresh'].IsEnabled(), after_update, 'updated workflow revision')
+
+        def after_save():
+            values = service.workflow_templates().list()
+            check('native_save_publishes_inert_draft', len(values) == 1
+                  and values[0].revision == 1 and 'scope' not in values[0].draft and service.jobs() == ())
+            summaries = chosen['save_all_summaries']
+            check('save_all_waits_for_durable_completion', len(summaries) == 1
+                  and summaries[0].complete and not frame._save_coordinator.has_unsaved())
+            rows.SetSelection(0)
+            answer_name(child, 'Current native workflow')
+            press(buttons['rename'])
+            until(lambda: buttons['refresh'].IsEnabled(), after_rename, 'renamed workflow revision')
+
+        def opened():
+            check('native_template_controls_named', all(
+                isinstance(button, wx.Button) and button.GetName() for button in buttons.values())
+                and rows.GetName() and controls['status'].GetName())
+            check('native_empty_inventory_no_job', rows.GetCount() == 0 and service.jobs() == ())
+            answer_name(child, 'Початковий пошук')
+            press(buttons['save'])
+            summaries = []
+            chosen['save_all_summaries'] = summaries
+            check('save_all_observes_pending_settings', frame._save_coordinator.has_unsaved()
+                  and frame._save_coordinator.save_all(summaries.append) and not summaries)
+            until(lambda: buttons['refresh'].IsEnabled(), after_save, 'durable initial workflow save')
+
+        until(lambda: buttons['refresh'].IsEnabled(), opened, 'initial workflow inventory')
 
     def ready(dialog, controls):
         try:
             check('native_main_template_action_named', controls['templates'].GetName() == 'Templates...'
                   and controls['templates'].IsEnabled())
             workspaces = library.workspaces()
+
+            def completed_run():
+                jobs = service.jobs()
+                check('native_explicit_run_completes_current_scope', len(jobs) == 1
+                      and jobs[0].status == 'complete' and jobs[0].completed == 1)
+                record = service.store.load(jobs[0].id)
+                hits = record['steps'][0]['result']['results']
+                check('native_results_use_only_new_workspace', bool(hits)
+                      and all(hit['workspace'] == second for hit in hits)
+                      and record['plan']['scope']['workspace_id'] == second)
+                metrics['fresh_run_completed_steps'] = jobs[0].completed
+                chosen['job_id'] = jobs[0].id
+                press(controls['close'])
+
+            def fresh_preview():
+                check('native_fresh_scope_preview_creates_no_job', controls['run'].IsEnabled()
+                      and service.jobs() == () and second in controls['review'].GetValue())
+                press(controls['run'])
+                until(lambda: controls['preview'].IsEnabled(), completed_run, 'explicit current-scope run')
+
+            def original_preview():
+                check('native_original_plan_preview_only', controls['run'].IsEnabled() and service.jobs() == ())
+                later(edit_templates)
+                # The product owns this ordinary nested modal dialog. Every
+                # child phase above returns to its event loop before waiting.
+                press(controls['templates'])
+                if failures:
+                    return
+                check('native_load_clears_previous_permissions', controls['scope'].GetSelection() == 0
+                      and controls['input'].GetValue() == controls['output'].GetValue() == ''
+                      and controls['full_backup'].GetValue() is False
+                      and controls['budget'].GetValue() == '1024')
+                check('native_loaded_draft_cannot_run_before_preview', not controls['run'].IsEnabled()
+                      and service.jobs() == () and 'scope' not in json.loads(controls['instruction'].GetValue()))
+                controls['scope'].SetSelection(next(i + 1 for i, row in enumerate(workspaces) if row.id == second))
+                press(controls['preview'])
+                until(lambda: controls['preview'].IsEnabled(), fresh_preview, 'new explicit scope preview')
+
             controls['scope'].SetSelection(next(i + 1 for i, row in enumerate(workspaces) if row.id == first))
             controls['input'].ChangeValue(str(inputs))
             controls['output'].ChangeValue(str(outputs))
@@ -202,46 +266,18 @@ def run(work):
             controls['budget'].ChangeValue('64')
             controls['instruction'].ChangeValue('Search "Shared"')
             press(controls['preview'])
-            wait(lambda: controls['preview'].IsEnabled())
-            check('native_original_plan_preview_only', controls['run'].IsEnabled() and service.jobs() == ())
-            scheduled(edit_templates)
-            press(controls['templates'])
-            if failures:
-                raise AssertionError(failures[-1])
-            check('native_load_clears_previous_permissions', controls['scope'].GetSelection() == 0
-                  and controls['input'].GetValue() == controls['output'].GetValue() == ''
-                  and controls['full_backup'].GetValue() is False
-                  and controls['budget'].GetValue() == '1024')
-            check('native_loaded_draft_cannot_run_before_preview', not controls['run'].IsEnabled()
-                  and service.jobs() == () and 'scope' not in json.loads(controls['instruction'].GetValue()))
-            controls['scope'].SetSelection(next(i + 1 for i, row in enumerate(workspaces) if row.id == second))
-            press(controls['preview'])
-            wait(lambda: controls['preview'].IsEnabled())
-            check('native_fresh_scope_preview_creates_no_job', controls['run'].IsEnabled()
-                  and service.jobs() == () and second in controls['review'].GetValue())
-            press(controls['run'])
-            wait(lambda: controls['preview'].IsEnabled())
-            jobs = service.jobs()
-            check('native_explicit_run_completes_current_scope', len(jobs) == 1
-                  and jobs[0].status == 'complete' and jobs[0].completed == 1)
-            record = service.store.load(jobs[0].id)
-            hits = record['steps'][0]['result']['results']
-            check('native_results_use_only_new_workspace', bool(hits)
-                  and all(hit['workspace'] == second for hit in hits)
-                  and record['plan']['scope']['workspace_id'] == second)
-            metrics['fresh_run_completed_steps'] = jobs[0].completed
-            chosen['job_id'] = jobs[0].id
+            until(lambda: controls['preview'].IsEnabled(), original_preview, 'original plan preview')
         except Exception:
-            failures.append(traceback.format_exc())
-        finally:
-            press(controls['close'])
+            failed()
 
     try:
+        print('PHASE first native assistant modal', flush=True)
         show_assistant(frame, on_ready=ready)
         if failures:
             raise AssertionError('\n'.join(failures))
         saved = chosen['saved']
         export = work / 'explicit-template.json'
+        print('PHASE actual template import/export and complete backup recovery', flush=True)
         receipt = run_templates(['export', saved.id, str(export)], service)
         check('actual_selected_template_export', receipt['status'] == 'complete'
               and json.loads(export.read_bytes()) == saved.to_dict())
@@ -275,32 +311,39 @@ def run(work):
 
         def remove_current():
             child = template_window()
+            if child is None:
+                later(remove_current)
+                return
             controls = child.template_controls
-            wait(lambda: controls['buttons']['refresh'].IsEnabled())
-            values = service.workflow_templates().list()
-            controls['rows'].SetSelection(next(i for i, value in enumerate(values) if value.id == saved.id))
-            answer_remove(child)
-            press(controls['buttons']['remove'])
-            wait(lambda: controls['buttons']['refresh'].IsEnabled())
-            remaining = service.workflow_templates().list()
-            check('native_remove_keeps_other_settings_and_jobs', len(remaining) == 1
-                  and remaining[0].id == imported['id'] and len(service.jobs()) == 1)
-            press(controls['buttons']['close'])
+            buttons = controls['buttons']
+            def removed():
+                remaining = service.workflow_templates().list()
+                check('native_remove_keeps_other_settings_and_jobs', len(remaining) == 1
+                      and remaining[0].id == imported['id'] and len(service.jobs()) == 1)
+                press(buttons['close'])
+            def opened():
+                values = service.workflow_templates().list()
+                controls['rows'].SetSelection(next(i for i, value in enumerate(values) if value.id == saved.id))
+                answer_remove(child)
+                press(buttons['remove'])
+                until(lambda: buttons['refresh'].IsEnabled(), removed, 'durable explicit template removal')
+            until(lambda: buttons['refresh'].IsEnabled(), opened, 'removal inventory')
 
         def remove_ready(dialog, controls):
             try:
-                scheduled(remove_current)
+                later(remove_current)
                 press(controls['templates'])
+                if not failures:
+                    press(controls['close'])
             except Exception:
-                failures.append(traceback.format_exc())
-            finally:
-                press(controls['close'])
+                failed()
+
+        print('PHASE second native assistant modal with owned removal confirmation', flush=True)
         show_assistant(frame, on_ready=remove_ready)
         if failures:
             raise AssertionError('\n'.join(failures))
         check('actual_original_catalog_unchanged',
-              source_before == {row.id: library.browse(row.id)
-                                for row in library.workspaces()})
+              source_before == {row.id: library.browse(row.id) for row in library.workspaces()})
         check('native_all_settings_writes_settled', not frame._save_coordinator.has_unsaved()
               and not frame._save_coordinator.participants)
         return {'status': 'PASS', 'actual_windows': True, 'isolated': True,
@@ -320,13 +363,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', required=True, type=Path)
     args = parser.parse_args()
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(200, exit=True)
+    print('PHASE native workflow probe started', flush=True)
     handle = None
     report = None
     try:
         if sys.platform != 'win32' or not sys.flags.isolated:
             raise ValueError('Use an actual isolated installed Windows interpreter.')
         from carr_library.native_runtime import activate_bundled_runtime
+        print('PHASE activating installed runtime', flush=True)
         handle = activate_bundled_runtime()
+        print('PHASE verifying installed module identities', flush=True)
         before = module_identities()
         report = run(args.work)
         if report['module_origins'] != before:
@@ -343,6 +391,7 @@ def main():
             except Exception as error:
                 report = {'status': 'FAIL', 'reason': 'Native-runtime cleanup: ' + str(error),
                           'nvda': 'NOT_RUN'}
+    faulthandler.cancel_dump_traceback_later()
     print(json.dumps(report, ensure_ascii=False), flush=True)
     return 0 if report['status'] == 'PASS' else 1
 
