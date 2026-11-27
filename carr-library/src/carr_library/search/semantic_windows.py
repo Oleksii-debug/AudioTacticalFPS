@@ -3,6 +3,8 @@
 A separately loaded, approved local tokenizer must have padding and truncation
 disabled. Only the prefixless 128-token MiniLM contract is supported here.
 """
+from .paging import MAX_TIMEOUT_SECONDS
+
 from dataclasses import replace
 from hashlib import sha256
 from time import monotonic
@@ -62,6 +64,50 @@ def source_windows(tokenizer, raw, *, max_windows=MAX_WINDOWS, check=lambda: Non
     return tuple(result)
 
 
+
+def iter_source_windows(tokenizer, raw, *, check=lambda: None, chunk_characters=16_384):
+    """Stream complete existing-tokenizer windows without a total count limit.
+
+    Only the input given to one native tokenizer call is bounded. Adjacent
+    chunks partition the original codepoints; no whitespace, combining marks
+    or joined emoji are dropped at a boundary. A single indivisible cluster
+    beyond the working allowance is refused explicitly.
+    """
+    if (not isinstance(raw, str) or not raw or "\x00" in raw
+            or type(chunk_characters) is not int or not 1024 <= chunk_characters <= 200_000):
+        raise ValueError("Invalid bounded tokenizer input.")
+    for position in range(0, len(raw), 4096):
+        check()
+        if any(category(c) == "Cs" for c in raw[position:position + 4096]):
+            raise ValueError("Invalid source codepoint.")
+    begin = 0
+    while begin < len(raw):
+        check()
+        end = min(len(raw), begin + chunk_characters)
+        while end < len(raw) and (category(raw[end]).startswith("M") or
+                                  raw[end] == "\u200d" or raw[end - 1] == "\u200d"):
+            end -= 1
+            if end <= begin:
+                raise ValueError("One joined source cluster exceeds the tokenizer working allowance.")
+        pending = [(begin, end)]
+        while pending:
+            check()
+            a, b = pending.pop()
+            count, starts = _encoding(tokenizer, raw[a:b])
+            check()
+            if count <= TOKEN_LIMIT:
+                yield a, b
+                continue
+            cuts = [i for i in set(starts) if 0 < i < b - a
+                    and not category(raw[a + i]).startswith("M")
+                    and raw[a + i] != "\u200d" and raw[a + i - 1] != "\u200d"]
+            if not cuts:
+                raise ValueError("One source cluster exceeds the model's complete token allowance.")
+            cut = a + min(cuts, key=lambda i: (abs(2 * i - (b - a)), i))
+            pending.extend(((cut, b), (a, cut)))
+        begin = end
+
+
 def search_windowed(workspace, passages, query, *, tokenizer=None,
                     semantic_ranker=None, limit=20, timeout=5.0,
                     cancelled=lambda: False):
@@ -80,7 +126,7 @@ def search_windowed(workspace, passages, query, *, tokenizer=None,
     if (tokenizer is None or not callable(semantic_ranker) or not callable(cancelled)
             or not isinstance(workspace, str) or not workspace
             or type(limit) is not int or not 1 <= limit <= 100
-            or type(timeout) not in (int, float) or not 0 < timeout <= 60):
+            or type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS):
         raise ValueError('invalid semantic window scope or budget')
     deadline = monotonic() + timeout
     latched = False

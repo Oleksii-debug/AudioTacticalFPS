@@ -734,6 +734,8 @@ def test_native_checklist_preserves_checked_library_identity_with_distinct_label
     native.query.GetValue.return_value = 'history'
     for control in native.filters.values():
         control.GetValue.return_value = ''
+    for control, value in ((native.timeout, '300'), (native.memory, '64'), (native.disk, '2048')):
+        control.GetValue.return_value = value
     native._search()
     options, = native.controller.search.call_args.args
     assert options.workspaces == ('library-1',)
@@ -885,7 +887,7 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
                               groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),))
     controller = SimpleNamespace(view=View(), epoch=0, _ready=Mock(), _clear_rows=Mock(),
         selection_changed=Mock(), _report_error=Mock(), _cancelled=lambda: False,
-        _refresh_navigation=Mock(),
+        _refresh_navigation=Mock(), source_history=[],
         service=SimpleNamespace(search=Mock(return_value=session)))
     controller._job = lambda title, operation, done, **kwargs: done(operation())
     SearchCenter.search(controller, SearchOptions(('w',), 'test'))
@@ -895,3 +897,24 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
     assert 'Unknown edition' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.messages[-1]
+
+
+def test_ranked_center_uses_full_scope_with_one_existing_worker(center):
+    center.app.add_text(center.one, "Many pages", "\f".join(
+        f"Needle exact source {number:04d}." for number in range(205)))
+    center.controller.search(SearchOptions((center.one,), "Needle", mode="thematic", limit_per_library=100))
+    first = center.controller.rows
+    assert len(first) == 100 and center.view.navigation == (False, True)
+    assert center.controller.options.effective_ranking_scope == "all"
+    assert "complete selected scope" in center.view.messages[-1]
+    assert not any(cursor is not None for _, cursor in center.controller.next_source_cursors)
+    center.controller.navigate(1)
+    second = center.controller.rows
+    assert len(second) == 100 and center.view.navigation == (True, True)
+    assert {row.result.page for row in first}.isdisjoint({row.result.page for row in second})
+    center.controller.navigate(1)
+    assert len(center.controller.rows) == 5 and center.view.navigation == (True, False)
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == "An unsaved notebook draft — retain exactly."
+    assert len(center.frame.jobs) == 3 and all(t != get_ident() for t in center.frame.worker_threads)
+    center.controller.dispose()

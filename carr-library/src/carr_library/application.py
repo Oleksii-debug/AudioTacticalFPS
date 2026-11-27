@@ -83,7 +83,8 @@ def _name(value):
 class _SearchBudget:
     """One cooperative deadline, including source loading and verification."""
     def __init__(self, timeout, cancelled):
-        if (type(timeout) not in (int, float) or not 0 < timeout <= 60
+        from .search.paging import MAX_TIMEOUT_SECONDS
+        if (type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS
                 or not callable(cancelled)):
             raise ValueError('Invalid search operation budget.')
         self.timeout = timeout
@@ -168,6 +169,8 @@ class LibraryApp:
         self.semantic_ranker = semantic_ranker
         self.semantic_cache = None
         self._selections = {}
+        from .search.paging import CursorOwner
+        self._search_cursor_owner = CursorOwner(self)
         with exclusive_writer(self.root):
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=CURRENT_SCHEMA)) as storage:
@@ -937,10 +940,76 @@ class LibraryApp:
             raise ValueError('Historical source metadata is missing.')
         return selected, identity, locator, row['raw'], Metadata(*meta)
 
+    def _ranked_model_identity(self):
+        ranker = self.semantic_ranker
+        return None if ranker is None else (
+            id(ranker), id(getattr(ranker, 'engine', None)), id(getattr(ranker, 'tokenizer', None)),
+            getattr(ranker, 'minimum_similarity', None), str(getattr(ranker, 'directory', '')))
+
+    def _search_ranked_page(self, workspace, query, continuation, owner, scope, epoch,
+                            resources, budget, limit, offset, options, model_identity):
+        """Complete selected-scope order; all quotation authority stays below."""
+        from .search.paging import SearchPage
+        from .search.ranked_scope import RankedScope
+        allowed_options = {'mode', 'result_mode', 'collection', 'title', 'author',
+                           'language', 'edition', 'authorized_topic', 'on_status'}
+        if set(options) - allowed_options:
+            raise TypeError('Unexpected complete-scope search option.')
+        mode, result_mode = options.get('mode', 'phrase'), options.get('result_mode')
+        if mode not in ('thematic', 'semantic'):
+            raise ValueError('Complete relevance ranking requires thematic or semantic mode.')
+        if result_mode not in (None, 'short', 'thematic'):
+            raise ValueError('Choose Short quotations or Thematic excerpts.')
+        report = options.get('on_status')
+        if report is not None and not callable(report):
+            raise ValueError('Search status callback must be callable.')
+        thematic._groups(query)
+        if self._ranked_model_identity() != model_identity:
+            raise ValueError('The local ranking model changed. Restart search.')
+        filters = {key: options.get(key) for key in ('collection', 'title', 'author', 'language', 'edition')}
+        ranked, created = None, False
+        try:
+            with self._search_read(workspace, budget.remaining(), budget.stopped) as (db, active_budget):
+                if options.get('authorized_topic') is not None:
+                    TopicTree(db, workspace)._visible(options['authorized_topic'])
+                catalog = Catalog(db, workspace)
+                if continuation is None:
+                    ranked = RankedScope(self, resources, available_bytes=owner.available_disk(resources))
+                    created = True
+                    ranked.build(self, db, catalog, workspace, query, mode, filters, scope,
+                                 active_budget, report)
+                else:
+                    ranked = owner.ranked(continuation)
+                hits, more = ranked.read(db, catalog, workspace, query, mode, filters,
+                                         offset=offset, limit=limit, budget=active_budget)
+                results, selections = self._search_results(
+                    db, workspace, query, hits, mode, filters['collection'], result_mode, active_budget)
+            budget.check()
+            owner.check(self, epoch)
+            if self._ranked_model_identity() != model_identity:
+                raise ValueError('The local ranking model changed during retrieval. Restart search.')
+            current_value = owner.retain_ranked(ranked) if created else continuation
+            current = owner.issue(scope, epoch, current_value, resources)
+            self._selections.update(selections)
+            while len(self._selections) > 2000:
+                del self._selections[next(iter(self._selections))]
+            return SearchPage(tuple(results), current, None, more, offset,
+                ranked.source_pages, ranked.source_editions, ranked.source_characters,
+                ranked.identity, 'all', ranked.total, ranked.index_bytes, ranked.changed_rows)
+        except BaseException:
+            if created and ranked is not None:
+                try:
+                    ranked.close()
+                except BaseException:
+                    # Keep failed or interrupted private cleanup with this same guarded owner;
+                    # no completed cursor or source handle is published.
+                    owner.retain_ranked(ranked)
+            raise
+
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None, offset=0):
+               result_mode=None, offset=0, _source_page=None, _page_info=None, _resources=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -949,91 +1018,198 @@ class LibraryApp:
             raise ValueError('Invalid search operation budget.')
         if type(offset) is not int or offset < 0:
             raise ValueError('Invalid search page offset.')
-        if offset and mode not in ('terms', 'advanced'):
-            raise ValueError('Result pages are available for All words and Advanced searches.')
+        if offset and mode not in ('terms', 'advanced') and _page_info is None:
+            raise ValueError('Use search_page for bounded result/source navigation in this mode.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
             catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
-            budget.check()
-            if len(views) == 500:
-                more = browse_editions(catalog, collection=collection, title=title, author=author,
-                    language=language, edition=edition, after=views[-1].edition_id, limit=1)
+            window = None
+            if _page_info is not None:
+                if type(_page_info) is not dict:
+                    raise ValueError('Invalid source navigation receiver.')
+                from .search.paging import scope_identity, select_window
+                filters = dict(collection=collection, title=title, author=author,
+                               language=language, edition=edition)
+                scope = scope_identity(self.root, workspace, query, mode, result_mode,
+                                       {**filters, 'authorized_topic': authorized_topic,
+                                        'resources': _resources.identity if _resources is not None else None})
+                window = select_window(db, catalog, scope=scope, cursor=_source_page,
+                                       check=budget.check, resources=_resources, **filters)
+                allowed = window.editions
+            else:
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
                 budget.check()
-                if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
-            allowed = {v.edition_id: v.work_id for v in views}
+                if len(views) == 500:
+                    more = browse_editions(catalog, collection=collection, title=title, author=author,
+                        language=language, edition=edition, after=views[-1].edition_id, limit=1)
+                    budget.check()
+                    if more:
+                        raise ValueError('Use source-page navigation to search beyond this bounded legacy selection.')
+                allowed = {v.edition_id: v.work_id for v in views}
+            source_options = ({'page_ids': window.page_ids, 'resources': _resources}
+                              if window is not None else {})
+            ranking_limit = 100 if window is not None and mode in ('thematic', 'semantic') else limit
             if mode in ('thematic', 'semantic'):
                 if mode == 'semantic' and self.semantic_ranker is not None:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
+                                           limit=ranking_limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                                           on_status=on_status, cache=self.semantic_cache, **source_options)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
+                    hits = thematic.search_active(db, workspace, allowed, query, limit=ranking_limit,
+                                                  timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
+                if window is not None:
+                    hits = hits[offset:offset + limit]
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
                                       mode=mode, limit=limit, offset=offset,
-                                      timeout=budget.remaining(), cancelled=budget.stopped)
-            # Catalog selection, active source selection, and metadata materialization
-            # all share this read transaction. No cached edition filters cross snapshots.
-            loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
-            results = []
-            selections = {}
-            shown = set()
-            checked_assets = {}
-            for hit in hits:
-                budget.check()
-                row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
-                    (hit['page_id'], hit['revision_id'])).fetchone()
-                if row is None:
-                    raise ValueError('The search returned an invalid source page.')
-                ref = uuid4().hex
-                selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
-                    row[0], hit['start'], hit['end'], collection)
-                selected, identity, locator, raw, meta = self._resolve_selection(
-                    db, workspace, selections[ref], hit['revision_id'],
-                    checked_assets=checked_assets, cancelled=budget.stopped)
-                if raw[selected.start:selected.end] != hit['raw_quote']:
-                    raise ValueError('Search quotation differs from the original source.')
-                if result_mode is not None:
-                    from .search.presentation import presentation_span
-                    start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
-                    selected = _Selection(workspace, selected.edition, selected.revision,
-                                          selected.ordinal, start, end, collection)
-                    selections[ref] = selected
-                    identity_span = (identity, locator, start, end)
-                    if identity_span in shown:
-                        del selections[ref]
-                        continue
-                    shown.add(identity_span)
-                verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
-                budget.check()
-                if verified:
-                    anchor = make_anchor(identity, locator, raw, selected.start, selected.end, meta, text_verified=True)
-                    citation = format_citation(anchor)
-                else:
-                    citation = ', '.join(filter(None, [meta.author or 'Unknown author', meta.title,
-                        meta.edition, locator.display()])) + ' [extracted text requires independent review]'
-                reason = hit.get('reason', 'literal source match')
-                if mode == 'semantic' and self.semantic_ranker is None:
-                    reason = 'Semantic model unavailable; using lexical thematic search.'
-                results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
-                    meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
-                    raw[selected.start:selected.end], citation, verified, reason))
+                                      timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
+            results, selections = self._search_results(
+                db, workspace, query, hits, mode, collection, result_mode, budget)
+        if _page_info is not None:
+            _page_info.update(window=window, raw_hits=len(hits))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
         return tuple(results)
+
+
+    def _search_results(self, db, workspace, query, hits, mode, collection, result_mode, budget):
+        # Catalog selection, active source selection, and metadata materialization
+        # all share this read transaction. No cached edition filters cross snapshots.
+        loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
+        results = []
+        selections = {}
+        shown = set()
+        checked_assets = {}
+        for hit in hits:
+            budget.check()
+            row = db.execute('SELECT ordinal FROM page WHERE id=? AND revision=?',
+                (hit['page_id'], hit['revision_id'])).fetchone()
+            if row is None:
+                raise ValueError('The search returned an invalid source page.')
+            ref = uuid4().hex
+            selections[ref] = _Selection(workspace, hit['edition_id'], hit['revision_id'],
+                row[0], hit['start'], hit['end'], collection)
+            selected, identity, locator, raw, meta = self._resolve_selection(
+                db, workspace, selections[ref], hit['revision_id'],
+                checked_assets=checked_assets, cancelled=budget.stopped)
+            if raw[selected.start:selected.end] != hit['raw_quote']:
+                raise ValueError('Search quotation differs from the original source.')
+            if result_mode is not None:
+                from .search.presentation import presentation_span
+                start, end = presentation_span(raw, hit, query, result_mode, check=budget.check)
+                selected = _Selection(workspace, selected.edition, selected.revision,
+                                      selected.ordinal, start, end, collection)
+                selections[ref] = selected
+                identity_span = (identity, locator, start, end)
+                if identity_span in shown:
+                    del selections[ref]
+                    continue
+                shown.add(identity_span)
+            verified = attestor(identity, locator, sha256(raw.encode('utf-8')).hexdigest()) is True
+            budget.check()
+            if verified:
+                anchor = make_anchor(identity, locator, raw, selected.start, selected.end, meta, text_verified=True)
+                citation = format_citation(anchor)
+            else:
+                citation = ', '.join(filter(None, [meta.author or 'Unknown author', meta.title,
+                    meta.edition, locator.display()])) + ' [extracted text requires independent review]'
+            reason = hit.get('reason', 'literal source match')
+            if mode == 'semantic' and self.semantic_ranker is None:
+                reason = 'Semantic model unavailable; using lexical thematic search.'
+            results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
+                meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
+                raw[selected.start:selected.end], citation, verified, reason))
+        return tuple(results), selections
+
+    def search_page(self, workspace, query, *, cursor=None, limit=100, offset=0,
+                    timeout=None, resources=None, ranking_scope='window', cancelled=lambda: False, **options):
+        """Read a bounded result page from source windows or complete ranking.
+
+        Cursors are issued by this search owner and are valid only while the
+        database, exact options and selected source scope remain unchanged.
+        ranking_scope="all" completes scoped relevance ordering on disk before
+        publication; the compatible "window" mode identifies its source window.
+        """
+        from copy import copy
+        from dataclasses import replace
+        from .search.paging import CursorOwner, SearchPage, SearchResources, scope_identity
+        if any(key in options for key in ('_source_page', '_page_info', '_resources')):
+            raise ValueError('Internal source-page receivers cannot be supplied.')
+        if resources is None:
+            resources = SearchResources(timeout=300.0 if timeout is None else timeout)
+        elif type(resources) is not SearchResources:
+            raise ValueError('A validated search resource budget is required.')
+        elif timeout is not None:
+            resources = replace(resources, timeout=timeout)
+        if not callable(cancelled):
+            raise ValueError('A search cancellation callback is required.')
+        if ranking_scope not in ('window', 'all'):
+            raise ValueError('Choose source-window or complete-scope ranking.')
+        if type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or offset < 0:
+            raise ValueError('Invalid bounded result page.')
+        owner = self._search_cursor_owner
+        if owner.closed:
+            if cursor is not None:
+                raise ValueError('This search cursor has no current owner. Restart search.')
+            if not owner.reopen():
+                raise RuntimeError('The previous search is still releasing its observer. Wait for it to finish.')
+        model_identity = self._ranked_model_identity()
+        filters = {key: options.get(key) for key in
+                   ('collection', 'title', 'author', 'language', 'edition', 'authorized_topic')}
+        scope = scope_identity(self.root, workspace, query, options.get('mode', 'phrase'),
+                               options.get('result_mode'), {**filters, 'resources': resources.identity,
+                               'ranking_scope': ranking_scope,
+                               'model': model_identity if ranking_scope == 'all' else None})
+        budget = _SearchBudget(resources.timeout, lambda: owner.closed or cancelled())
+        budget.check()
+        with owner.operation(self, scope, cursor, resources) as (continuation, epoch):
+            if ranking_scope == 'all':
+                return self._search_ranked_page(workspace, query, continuation, owner, scope, epoch,
+                                                resources, budget, limit, offset, options, model_identity)
+            working = copy(self)
+            working._selections = {}
+            info = {}
+            results = working.search(workspace, query, limit=limit, offset=offset,
+                timeout=budget.remaining(), cancelled=budget.stopped,
+                _source_page=continuation, _page_info=info, _resources=resources, **options)
+            window = info['window']
+            more = False
+            if info['raw_hits'] == limit:
+                probe = copy(working)
+                probe._selections = {}
+                probe_info = {}
+                found = probe.search(workspace, query, limit=1, offset=offset + limit,
+                    timeout=budget.remaining(), cancelled=budget.stopped,
+                    _source_page=continuation, _page_info=probe_info, _resources=resources, **options)
+                if probe_info['window'].identity != window.identity:
+                    raise ValueError('The source window changed during result lookahead. Restart search.')
+                more = bool(found)
+            budget.check()
+            owner.check(self, epoch)
+            current = owner.issue(scope, epoch, window.cursor, resources)
+            following = owner.issue(scope, epoch, window.next_cursor, resources)
+            # Publication follows every cursor/snapshot check. A failed attempt
+            # neither publishes partial handles nor evicts the previous page.
+            self._selections.update(working._selections)
+            while len(self._selections) > 2000:
+                del self._selections[next(iter(self._selections))]
+            return SearchPage(tuple(results), current, following, more,
+                              offset, len(window.page_ids), window.source_editions,
+                              window.characters, window.identity)
+
+    def close_search(self):
+        """Withdraw this owner's cursors; current source action checks remain."""
+        return self._search_cursor_owner.close()
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(
