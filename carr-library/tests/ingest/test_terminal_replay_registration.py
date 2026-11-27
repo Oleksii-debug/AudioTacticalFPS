@@ -3,11 +3,12 @@ from contextlib import closing
 from hashlib import sha256
 import json
 import sqlite3
+from threading import Event
 
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.ingest.pipeline import canonical
+from carr_library.ingest.pipeline import Ingest, canonical
 from carr_library.storage.revisions import Storage
 
 
@@ -130,3 +131,63 @@ def test_forged_terminal_journal_without_published_source_does_not_register(tmp_
     assert app.search(workspace, 'railway') == ()
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('kind', ('txt', 'pdf'))
+def test_fresh_post_commit_cancellation_returns_committed_source(tmp_path, monkeypatch, kind):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Post-commit cancellation')
+    collection = app.create_collection(workspace, 'Committed collection')
+    source = tmp_path / ('source.' + kind)
+    if kind == 'pdf':
+        from reportlab.pdfgen.canvas import Canvas
+        canvas = Canvas(str(source))
+        canvas.drawString(72, 700, 'Original railway history.')
+        canvas.save()
+    else:
+        source.write_bytes('Original railway history.\r\nУкраїнський текст.'.encode('utf-8'))
+    raw = source.read_bytes()
+    digest = sha256(raw).hexdigest()
+    stopped = Event()
+    observed = []
+    run = Ingest.run
+
+    def run_then_cancel(ingest, *args, **kwargs):
+        result = run(ingest, *args, **kwargs)
+        assert result['state'] == 'complete'
+        # Observe the actual durable publication on an independent connection
+        # before cancelling, rather than substituting a terminal ingest result.
+        with closing(sqlite3.connect(app.database)) as reader:
+            published = reader.execute(
+                'SELECT r.workspace,r.edition,r.asset FROM revision r '
+                'JOIN sealed s ON s.revision=r.id JOIN active a '
+                'ON a.workspace=r.workspace AND a.edition=r.edition AND a.revision=r.id '
+                'WHERE r.id=?', (result['id'],)).fetchone()
+            assert published == (workspace, 'late-edition', digest)
+            assert reader.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+            assert reader.execute(
+                'SELECT count(*) FROM catalog_membership '
+                'WHERE workspace=? AND collection=? AND edition=?',
+                (workspace, collection, 'late-edition')).fetchone()[0] == 1
+            assert 'railway history' in reader.execute(
+                'SELECT raw FROM page WHERE revision=? ORDER BY ordinal',
+                (result['id'],)).fetchone()[0]
+        observed.append(result['id'])
+        stopped.set()
+        return result
+
+    monkeypatch.setattr(Ingest, 'run', run_then_cancel)
+    result = app._import_file(workspace, source, title='Original title',
+        work_id='late-work', edition_id='late-edition', collections=(collection,),
+        cancelled=stopped.is_set)
+    assert stopped.is_set() and observed == [result['id']]
+    assert result['state'] == 'complete' and result['verified'] is (kind == 'txt')
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM sealed').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM catalog_membership').fetchone()[0] == 1
+    hit, = app.search(workspace, 'railway history', collection=collection)
+    assert hit.revision == result['id'] and hit.verified is (kind == 'txt')
+    assert source.read_bytes() == raw
+    assert app.assets.resolve(digest).read_bytes() == raw
+

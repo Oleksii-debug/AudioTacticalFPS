@@ -40,6 +40,7 @@ from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
 from .assistant_dialog import install_assistant_actions
 from .document_conversion import install_conversion_actions
+from .translation_dialog import install_translation_actions
 from .acquisition_dialog import show_acquisition_dialog
 
 
@@ -607,6 +608,7 @@ class DesktopFrame(WorkspaceFrame):
         install_api_connection_actions(self)
         install_assistant_actions(self)
         install_conversion_actions(self)
+        install_translation_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -761,12 +763,20 @@ class DesktopFrame(WorkspaceFrame):
                 self._finish_job_controls()
                 try:
                     result = future.result()
-                    self.report(title + ': complete.')
+                    # A typed result decides whether publication already committed.
+                    # Late cancellation must not mislabel an accepted result; a
+                    # paused/cancelled result must never announce completion.
+                    outcome = (progress_outcome(result) if progress_outcome is not None else
+                               'cancelled' if self.cancel_event.is_set() else 'completed')
+                    if outcome not in ('completed', 'cancelled', 'failed', 'paused'):
+                        raise ValueError('The operation returned an invalid progress outcome.')
+                    self.report(title + ': ' + ('complete' if outcome == 'completed' else outcome) + '.')
                     if done is not None:
                         done(result)
-                    outcome = ('cancelled' if self.cancel_event.is_set() else
-                               progress_outcome(result) if progress_outcome is not None else 'completed')
-                    tracker.finish(outcome, verified=outcome == 'completed')
+                    if outcome == 'paused':
+                        tracker.pause()
+                    else:
+                        tracker.finish(outcome, verified=outcome == 'completed')
                 except Exception as exc:
                     tracker.finish('cancelled' if self.cancel_event.is_set() else 'failed', phase=str(exc))
                     self.report(f'{title}: {exc}')
@@ -1246,6 +1256,8 @@ class DesktopFrame(WorkspaceFrame):
             'Audio projects and outputs are saved outside the research-library data folder.\n'
             'Settings, AI and API connections manages named profiles and OS-vault credentials. Opening or saving settings '
             'sends nothing. Run a reviewed task requires exact request and cost approval; local rendering stays local.\n'
+            'Tools, Translate selected text opens plain-text Google Basic v2 translation. Fetch languages and Preview first, '
+            'then approve the exact selected text, account, language pair and reservation. Exports remain unapproved derivatives.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
             'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
@@ -1291,7 +1303,7 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
+            'Complete backups include libraries, unfinished import requests, batches, pending reviews and their retained source bytes.\n'
             'Reading positions, bookmarks and reading-copy projects are included in complete library backups. '
             'Progress preferences, disconnected API profiles and the operation ledger are included when present. '
             'After restore, reconnect credentials and explicitly approve new API work. '

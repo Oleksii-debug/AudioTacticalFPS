@@ -89,9 +89,10 @@ segments, warnings, `original_modified=false`,
 
 Root integration must call
 `carr_library.ui.document_conversion.install_conversion_actions(frame)`
-after installing the native menu bar. It registers stable commands
-`conversion.documents` and `conversion.formats`, so the existing keyboard
-settings and command launcher can discover them. It uses the current
+after installing the native menu bar. It adds the conversion and format-help
+items to the existing Tools or Documents menu. The current productivity menu
+collector discovers those actions for keyboard settings and the command launcher.
+It uses the current
 `DesktopFrame.run_job`, Cancel event, and close-safe completion callbacks; it
 does not own a second executor. Source and output selection use native dialogs.
 PDF model choices use the existing OCR selection UI.

@@ -10,7 +10,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.ingest.restore import RestoreError
 from carr_library.library_backup import create_backup, restore_backup
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from carr_library.storage.schema_identity import (
     expected_schema_fingerprint, schema_fingerprint,
 )
@@ -61,14 +61,14 @@ def legacy_manifest(directory, manifest, version):
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
     assert manifest['version'] == 5
-    assert manifest['schema_version'] == 4
+    assert manifest['schema_version'] == CURRENT_SCHEMA_VERSION
     assert set(manifest) == {'version', 'kind', 'schema_version',
                              'schema_fingerprint', 'database', 'assets',
                              'sidecars', 'provider_restore_mode', 'pending'}
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
-    assert manifest['schema_fingerprint'] == expected_schema_fingerprint(4)
+    assert manifest['schema_fingerprint'] == expected_schema_fingerprint(CURRENT_SCHEMA_VERSION)
     original = bundle_bytes(directory)
     target = restore_backup(directory, tmp_path / 'restored', write_manifest(directory, manifest))
     restored = LibraryApp(target)
@@ -110,7 +110,7 @@ def test_legacy_v1_backup_restores_exact_current_schema(backup, tmp_path):
     'ALTER TABLE workspace_meta RENAME TO workspace_profile',
     'CREATE TABLE unknown_extension(value TEXT)',
     'DROP TRIGGER source_metadata_no_update',
-    'PRAGMA user_version=5',
+    'PRAGMA user_version=99',
 ])
 def test_different_layout_is_rejected_before_writable_open(
         backup, tmp_path, monkeypatch, version, sql):

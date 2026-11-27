@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 75
     defaults:
       run:
         shell: pwsh
@@ -177,7 +177,7 @@ jobs:
           "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run required integrated source workflows
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           # Only this trusted test step needs command discovery for real fixtures.
@@ -358,6 +358,11 @@ jobs:
             'tests/audio/test_reading_copy_backup.py',
             'tests/assistant/test_local_assistant.py',
             'tests/assistant/test_local_llm.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/e2e/test_google_translation_gateway.py',
+            'tests/assistant/test_translation.py',
+            'tests/ui/test_translation_dialog.py',
+            'tests/storage/test_backup_translation.py',
             'tests/assistant/test_audio_bridge.py',
             'tests/assistant/test_backup_receipt.py',
             'tests/assistant/test_backup_late_recovery.py',
@@ -505,7 +510,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -619,6 +624,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_translation_smoke.py --bundle $bundle --output 'ci-results/full-bundle-translation-native.json' 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report 'ci-results/full-bundle-native-launcher.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -724,6 +731,11 @@ jobs:
               'tests/audio/test_reading_copy_backup.py',
               'tests/assistant/test_local_assistant.py',
             'tests/assistant/test_local_llm.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/e2e/test_google_translation_gateway.py',
+            'tests/assistant/test_translation.py',
+            'tests/ui/test_translation_dialog.py',
+            'tests/storage/test_backup_translation.py',
               'tests/assistant/test_audio_bridge.py',
               'tests/assistant/test_backup_receipt.py',
               'tests/assistant/test_backup_late_recovery.py',

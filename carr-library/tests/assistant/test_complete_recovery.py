@@ -22,7 +22,7 @@ def test_actual_complete_backup_includes_running_plan_and_checks_database_on_res
     backup = outputs / 'complete'
     saved = result.results[0]
     manifest = json.loads((backup / 'manifest.json').read_text())
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert any(row['filename'] == 'state/assistant/' + identity + '.json'
                for row in manifest['sidecars'])
     restored = tmp_path / 'restored'

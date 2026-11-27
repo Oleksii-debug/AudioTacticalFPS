@@ -133,7 +133,7 @@ def test_sparse_physical_pdf_bookmark_keeps_its_actual_page_and_unverified_state
     book = app.import_file(workspace, source, title='PDF reading fixture')
     assert book['state'] == 'complete'
     # A retained partial extraction can have reading ordinal 1 at PDF page 2.
-    with closing(Storage(app.database, schema_version=4)) as storage:
+    with closing(Storage(app.database)) as storage:
         with storage.transaction():
             raw = storage.db.execute('SELECT raw FROM page WHERE revision=? AND physical=2',
                                      (book['id'],)).fetchone()[0]

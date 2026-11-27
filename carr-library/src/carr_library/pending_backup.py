@@ -42,7 +42,8 @@ _ID = re.compile(r'[0-9a-f]{32}\Z')
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
-_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result'}
+_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
+                     'attempt', 'publication_candidate'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -206,7 +207,7 @@ def _catalog(path):
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
         version = db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (3, 4) or schema_fingerprint(db) != expected_schema_fingerprint(version):
+        if version not in (3, 4, 5) or schema_fingerprint(db) != expected_schema_fingerprint(version):
             raise ValueError('Pending imports require the canonical catalog schema.')
     except BaseException:
         db.close()
@@ -283,6 +284,22 @@ def _request(record, request_id, data_dir, db):
     if ('asset_sha256' in record and 'expected_manifest' in record
             and record['asset_sha256'] != record['expected_manifest']['sha256']):
         raise ValueError('Pending request source identity changed.')
+    if 'attempt' in record and not _id(record['attempt']):
+        raise ValueError('Invalid pending import attempt identity.')
+    candidate = record.get('publication_candidate')
+    if candidate is not None:
+        if (not isinstance(candidate, dict)
+                or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
+                or not _id(candidate['attempt']) or candidate['attempt'] != record.get('attempt')
+                or not _hash(candidate['revision']) or not _hash(candidate['sha256'])
+                or type(candidate['completed']) is not int or candidate['completed'] < 1):
+            raise ValueError('Invalid pending import publication candidate.')
+        manifest = _manifest(candidate['manifest'])
+        if (manifest['sha256'] != record.get('asset_sha256')
+                or (record.get('expected_manifest') is not None
+                    and manifest != record['expected_manifest'])
+                or (record.get('job') is not None and candidate['revision'] != record['job'])):
+            raise ValueError('Pending publication candidate has a foreign source or journal identity.')
     if record['state'] == 'complete' and 'asset_sha256' not in record:
         raise ValueError('Completed pending request is missing its original identity.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
@@ -959,7 +976,8 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
 
     stage/library.sqlite is already the enclosing verified catalog. Source paths
     inside saved records are data, never opened. Only explicit locations rebind;
-    status, job/checkpoint identity, review and publication evidence are retained.
+    Status, job/checkpoint identity, reviews and durable SQLite receipts remain;
+    process-bound attempts and candidate hints are cleared before explicit resume.
     """
     _check(cancelled)
     validate_pending(metadata)
@@ -1001,6 +1019,11 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
             binding = bindings[name, None]
             request['data_dir'] = str(new_root)
             request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])
+            # A restored request has no live supervising child. Historical
+            # receipts stay in SQLite; a future explicit resume gets a new
+            # attempt and revalidates the retained source and existing journal.
+            request.pop('attempt', None)
+            request.pop('publication_candidate', None)
             # Prepared requests can predate the first child and its asset pin.
             # Bind exactly the verified backup bytes before any future resume.
             if 'asset_sha256' not in request and 'expected_manifest' not in request:

@@ -12,7 +12,8 @@ import tempfile
 import uuid
 
 from ..providers import (BudgetLedger, JobApproval, ProfileStore, ProviderGateway,
-                         ProviderProfile, ProviderRequest, ProviderError)
+                         ProviderProfile, ProviderRequest, ProviderError,
+                         GOOGLE_TRANSLATION_ENDPOINT)
 from ..research.export_file import _filename, _destination
 
 
@@ -148,16 +149,27 @@ def show_api_connections(frame):
                 dialog.Destroy()
 
         def configure(self, previous=None):
-            provider_index = self.choose('Provider adapter', ['Local or remote OpenAI-compatible text model', 'ElevenLabs speech, music and sound effects'])
+            provider_index = self.choose('Provider adapter', [
+                'Local or remote OpenAI-compatible text model',
+                'ElevenLabs speech, music and sound effects',
+                'Google Cloud Translation Basic v2 (NMT)'])
             if provider_index is None:
                 return
-            provider = ('openai-compatible', 'elevenlabs')[provider_index]
+            provider = ('openai-compatible', 'elevenlabs', 'google-translation-v2')[provider_index]
             fields = {}
-            for key, label, default in [('name', 'Friendly account name', ''),
+            prompts = [('name', 'Friendly account name', '')]
+            if provider == 'google-translation-v2':
+                # This adapter never accepts an arbitrary host, model or API key URL.
+                fields.update(endpoint=GOOGLE_TRANSLATION_ENDPOINT, model='nmt')
+            else:
+                prompts.extend([
                     ('endpoint', 'API base URL (loopback IP for local service)',
                      'http://127.0.0.1:8080/v1' if provider_index == 0 else 'https://api.elevenlabs.io/v1'),
-                    ('model', 'Installed model ID or provider model ID', '')]:
-                value = self.prompt('Connection profile', label, getattr(previous, key, default))
+                    ('model', 'Installed model ID or provider model ID', '')])
+            for key, label, default in prompts:
+                unchanged_adapter = previous is not None and previous.provider == provider
+                value = self.prompt('Connection profile', label,
+                    getattr(previous, key, default) if unchanged_adapter or key == 'name' else default)
                 if value is None:
                     return
                 fields[key] = value.strip()
@@ -166,6 +178,8 @@ def show_api_connections(frame):
                 if kind is None:
                     return
                 local, capabilities = kind == 0, ('llm',)
+            elif provider_index == 2:
+                local, capabilities = False, ('translation',)
             else:
                 cap = self.choose('Capability for this profile and model', ['Speech synthesis', 'Music generation', 'Sound effects'])
                 if cap is None:
@@ -180,7 +194,8 @@ def show_api_connections(frame):
             controller.store.save(profile, secret=key or None)
             key = ''
             self.refresh()
-            self.status.SetValue('Profile saved. No credential test or generation request was sent.')
+            self.status.SetValue('Profile saved. No credential test or generation request was sent.'
+                                 + (' ' + controller.store.warning if controller.store.warning else ''))
             self.status.SetFocus()
 
         def add(self, event):
@@ -224,6 +239,11 @@ def show_api_connections(frame):
         def run(self, event):
             try:
                 profile = self.selected()
+                if profile.provider == 'google-translation-v2':
+                    from .translation_dialog import show_translation
+                    self.EndModal(wx.ID_OK)
+                    wx.CallAfter(show_translation, frame)
+                    return
                 index = self.choose('Task', list(profile.capabilities))
                 if index is None:
                     return

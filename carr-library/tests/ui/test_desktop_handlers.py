@@ -126,7 +126,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions', 'install_audio_studio_actions',
-        'install_api_connection_actions', 'install_assistant_actions', 'install_conversion_actions')}
+        'install_api_connection_actions', 'install_assistant_actions', 'install_conversion_actions', 'install_translation_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -232,7 +232,9 @@ def test_main_job_shared_progress_requires_accepted_success_and_help_stays_avail
             raise ValueError('result validation failed')
 
     f.run_job('Import', lambda: None, done, progress_tracker=tracker,
-              progress_outcome=lambda result: 'failed' if ending == 'partial-result' else 'completed')
+              progress_outcome=lambda result: (
+                  'cancelled' if ending == 'cancelled' else
+                  'failed' if ending == 'partial-result' else 'completed'))
     assert f.menu_bar.EnableTop.call_args_list[2].args == (2, True)
     f.progress_view.track.assert_called_once_with(tracker, audible=False)
     if ending == 'worker-error':
@@ -779,3 +781,45 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
     chooser.return_value.Destroy.assert_called_once()
+
+
+@pytest.mark.parametrize('status,cancelled,expected', [
+    ('paused', False, 'paused'), ('paused', True, 'paused'),
+    ('attention', False, 'failed'), ('complete', False, 'completed'),
+    ('complete', True, 'completed'),
+])
+def test_translation_progress_reports_actual_result_before_announcing_completion(
+        classes, status, cancelled, expected):
+    from carr_library.progress import ProgressTracker
+    from carr_library.ui.translation_dialog import translation_outcome
+    value = frame(classes)
+    future = Future()
+    value.executor.submit.return_value = future
+    tracker = ProgressTracker('Translation', total=1)
+    tracker.update(completed=1, total=1)
+    result = {'status': status}
+    accepted = Mock()
+    value.run_job('Translation', lambda: result, accepted, progress_tracker=tracker,
+                  progress_outcome=translation_outcome)
+    if cancelled:
+        value.cancel_event.set()
+    future.set_result(result)
+    classes[1].pop()()
+    accepted.assert_called_once_with(result)
+    snapshot = tracker.snapshot()
+    assert snapshot.state == expected
+    assert (snapshot.percent == 100) is (expected == 'completed')
+    messages = [call.args[0] for call in value.report.call_args_list]
+    assert any(message == 'Translation: complete.' for message in messages) is (expected == 'completed')
+    assert messages[-1] == 'Translation: ' + ('complete' if expected == 'completed' else expected) + '.'
+
+
+def test_untyped_cancelled_job_still_cannot_announce_completion(classes):
+    value = frame(classes)
+    future = Future()
+    value.executor.submit.return_value = future
+    value.run_job('Unverified operation', lambda: None)
+    value.cancel_event.set()
+    future.set_result(None)
+    classes[1].pop()()
+    assert value.report.call_args.args == ('Unverified operation: cancelled.',)

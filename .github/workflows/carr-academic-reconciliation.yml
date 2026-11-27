@@ -1,7 +1,7 @@
 name: CARR academic reconciliation acceptance
 on:
   push:
-    branches: [carr/academic-search-20261126, carr/citation-document-reuse-a49c-20261127, carr/document-conversion-reuse-a49c-20261127]
+    branches: [carr/academic-search-20261126, carr/citation-document-reuse-a49c-20261127, carr/document-conversion-reuse-a49c-20261127, carr/v3-reading-foundation-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   reconciled-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: carr-library
@@ -43,7 +43,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
       - name: Verify every reconciled path with strict isolated suites
-        timeout-minutes: 8
+        timeout-minutes: 15
         run: |
           set -euo pipefail
           python -m compileall -q src bootstrap
@@ -84,5 +84,21 @@ jobs:
             tests/reader/test_export_publication_boundary.py \
             tests/reader/test_export_no_clobber.py \
             tests/conversion/test_conversion.py \
-            tests/conversion/test_conversion_ui.py
+            tests/conversion/test_conversion_ui.py \
+            tests/e2e/test_import_worker_publication.py \
+            tests/e2e/test_google_translation_gateway.py \
+            tests/assistant/test_translation.py \
+            tests/ui/test_translation_dialog.py \
+            tests/storage/test_backup_translation.py \
+            tests/ingest/test_terminal_replay_registration.py \
+            tests/storage/test_pending_backup.py \
+            tests/storage/test_complete_pending_backup.py \
+            tests/storage/test_backup_schema_identity.py \
+            tests/storage/test_saved_query_v4_upgrade.py \
+            tests/storage/test_finish_workspace_integrity.py \
+            tests/catalog/test_application_metadata_integrity.py \
+            tests/assistant/test_complete_recovery.py \
+            tests/assistant/test_backup_late_recovery.py \
+            tests/storage/test_backup_operation_budget.py \
+            tests/e2e/test_provider_gateway.py
       # This source-only job supplements the complete native Windows/bundle gate.
