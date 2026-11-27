@@ -66,7 +66,7 @@ jobs:
                   target.hostname.endswith('.actions.githubusercontent.com') or
                   target.hostname.endswith('.githubusercontent.com'))
               # Authorization is intentionally never forwarded to the signed storage URL.
-              response = urllib.request.urlopen(urllib.request.Request(location), timeout=30)
+              response = opener.open(urllib.request.Request(location), timeout=30)
           with response:
               raw = response.read(SIZE + 1)
           assert len(raw) == SIZE and hashlib.sha256(raw).hexdigest() == DIGEST
