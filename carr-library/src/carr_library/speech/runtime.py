@@ -81,7 +81,10 @@ class SpeechResult:
     chunks: int
 
 
-def _wave_info(path):
+def _wave_info(path, *, cancelled=lambda: False, max_output_bytes=None):
+    check_cancelled(cancelled)
+    if max_output_bytes is not None and Path(path).stat().st_size > max_output_bytes:
+        raise ValueError('Speech exceeds the selected audio-output budget.')
     with wave.open(str(path), 'rb') as audio:
         if (audio.getcomptype() != 'NONE' or audio.getsampwidth() not in (1, 2, 3, 4)
                 or audio.getnchannels() not in (1, 2) or not 8000 <= audio.getframerate() <= 192000
@@ -91,6 +94,7 @@ def _wave_info(path):
                                        audio.getnframes(), audio.getsampwidth())
         total = 0
         while block := audio.readframes(65536):
+            check_cancelled(cancelled)
             total += len(block)
         if total != frames * channels * width:
             raise ValueError('The voice produced truncated audio.')

@@ -26,6 +26,19 @@ def main(argv=None):
     operations.add_parser('voices', help='List actually installed local voices')
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
+    operations.add_parser('publications', help='List saved EPUB publication receipts; explicit verification checks bytes')
+    publish = operations.add_parser('publish-epub', help='Publish a completed Studio job with measured line synchronization')
+    publish.add_argument('job_id')
+    publish.add_argument('--output', type=Path, required=True)
+    publish.add_argument('--language', default='und')
+    publish.add_argument('--creator', default='')
+    publish.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    publish.add_argument('--timeout', type=float, default=3600)
+    verify_publication = operations.add_parser('verify-publication', help='Verify an existing EPUB against its exact receipt')
+    verify_publication.add_argument('publication_id')
+    verify_publication.add_argument('--file', type=Path, help='Explicit existing EPUB after relocation')
+    verify_publication.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify_publication.add_argument('--timeout', type=float, default=3600)
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
@@ -36,9 +49,15 @@ def main(argv=None):
     render.add_argument('--output', type=Path, required=True, help='Existing parent folder; a new project subfolder is created')
     render.add_argument('--format', default='wav', choices=('wav','flac','mp3','ogg','opus','m4a','m4b','aiff','wma'))
     render.add_argument('--no-stems', action='store_true')
+    render.add_argument('--approve-input', action='append', type=Path, default=[],
+                        help='Explicit exact local input to approve after reviewing an imported project; repeat as needed')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
+    resume.add_argument('--output', type=Path, help='Explicit new output parent for a restored job')
+    resume.add_argument('--approve-input', action='append', type=Path, default=[],
+                        help='Explicit exact local input to approve for this restored job; repeat as needed')
     args = parser.parse_args(argv)
+    service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
@@ -50,6 +69,19 @@ def main(argv=None):
         elif args.operation == 'jobs':
             result = [{'id': job['id'], 'title': job['project']['title'], 'status': job['status'],
                        'progress': job['progress'], 'destination': job['destination']} for job in service.jobs()]
+        elif args.operation in ('publications', 'publish-epub', 'verify-publication'):
+            from ..audio.models import AudioBudget
+            from .publishing import PublicationService
+            if args.operation == 'publications':
+                result = PublicationService(service).publications()
+            else:
+                publisher = PublicationService(service, budget=AudioBudget(
+                    max_output_bytes=args.max_bytes, timeout=args.timeout))
+                if args.operation == 'publish-epub':
+                    result = publisher.export_epub(args.job_id, args.output, language=args.language,
+                        creator=args.creator, progress=lambda text: print(text, file=sys.stderr, flush=True))
+                else:
+                    result = publisher.verify(args.publication_id, output=args.file)
         elif args.operation == 'capabilities':
             runtime = service._runtime()
             result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
@@ -57,6 +89,7 @@ def main(argv=None):
             if args.operation == 'render':
                 if args.project:
                     project = Project.from_dict(read_json(args.project))
+                    service.register_project_inputs(project, imported=True)
                 else:
                     if args.script.stat().st_size > 16 * 1024**2:
                         raise ValueError('Script exceeds the project text budget; split by chapters.')
@@ -65,6 +98,14 @@ def main(argv=None):
                 identity = service.submit(project, args.output, format=args.format, stems=not args.no_stems)
             else:
                 identity = args.job_id
+                if args.output is not None:
+                    service.relocate_restored_job(identity, args.output)
+            if args.approve_input:
+                pending = set(service.restored_inputs_to_review(identity))
+                selected = tuple(str(path) for path in args.approve_input)
+                if not set(selected) <= pending:
+                    raise ValueError('Approve only exact inputs listed for this selected production job.')
+                service.approve_restored_inputs(selected)
             print('Production job: ' + identity, file=sys.stderr, flush=True)
             job = service.run(identity, progress=lambda text: print(text, file=sys.stderr, flush=True))
             result = {'id': job['id'], 'status': job['status'], 'destination': job['destination'],
