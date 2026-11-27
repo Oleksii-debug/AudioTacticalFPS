@@ -22,7 +22,7 @@ from uuid import uuid4
 
 from .durable_state import (atomic_bytes, atomic_json, local_path,
                             read_json, regular, state_lock, sync_directory)
-from .speech._io import stop_process
+from .speech._io import poll_process, stop_process
 from .state_backup import relative_name
 
 PROTOCOL = 'carr-asr-v43-hardened-1'
@@ -569,19 +569,20 @@ class TranscriptionService:
                     process = subprocess.Popen([engine.python_path, '-I', '-B', str(entrypoint), '--job-dir', str(root)],
                         cwd=root, env=environment, stdin=subprocess.DEVNULL, stdout=outgoing,
                         stderr=errors, shell=False, **options)
-                    # Stop owned children before their private runtime directory
-                    # and diagnostic files leave their context, even on error.
-                    children.callback(stop_process, process)
+                    # Attempt bounded cleanup before the runtime contexts close.
+                    # Unconfirmed group shutdown remains a failed job, never a
+                    # verified completion; context cleanup still runs on error.
+                    children.callback(stop_process, process, wait_for_group=True)
                     started, status_stamp = time.monotonic(), None
                     progress(0, len(job['inputs']), 'Starting reviewed local transcription')
-                    while process.poll() is None:
+                    while poll_process(process) is None:
                         now = time.monotonic()
                         if cancelled() and stopping is None:
                             atomic_bytes(root / 'stop.flag', b'stop\n', replace=True)
                             stopping, cancelled_run = now, True
                             progress(None, len(job['inputs']), 'Stopping local transcription')
                         if stopping is not None and now - stopping >= stop_grace:
-                            stop_process(process)
+                            stop_process(process, wait_for_group=True)
                             break
                         if now - started > timeout:
                             raise TimeoutError('The reviewed transcription worker exceeded its time budget.')
@@ -606,6 +607,7 @@ class TranscriptionService:
                                 progress(update['done'], len(job['inputs']), phase)
                                 status_stamp = current_stamp
                         time.sleep(.04)
+                    stop_process(process, wait_for_group=True)
                     process.wait(timeout=5)
                     if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_DIAGNOSTIC_BYTES:
                         raise ValueError('The transcription worker exceeded its diagnostic byte budget.')
@@ -644,7 +646,7 @@ class TranscriptionService:
                 raise
             finally:
                 if process is not None:
-                    stop_process(process)
+                    stop_process(process, wait_for_group=True)
 
     def _selected_artifact(self, root, job, name, *, cancelled=lambda: False):
         name = _relative(name)

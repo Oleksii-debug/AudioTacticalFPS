@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import sys
 import threading
 import time
@@ -38,6 +39,21 @@ def status(phase, done=0, state=None):
     write('job_status.json', {'schema_version':1,'protocol':protocol,'job_id':config['job_id'],
       'run_id':run_id,'phase':phase,'result_state':state,'done':done})
 status('starting')
+if MODE in {'parent-exits-child-lives', 'parent-exits-child-bad-result'}:
+    child_code = """
+import json, os, pathlib, sys, time
+ready = pathlib.Path(sys.argv[1])
+fields = (pathlib.Path('/proc') / str(os.getpid()) / 'stat').read_text().rsplit(') ', 1)[1].split()
+pending = ready.with_suffix('.pending')
+pending.write_text(json.dumps({'pid':os.getpid(), 'starttime':fields[19]}))
+os.replace(pending, ready)
+time.sleep(90)
+"""
+    subprocess.Popen([sys.executable, '-I', '-B', '-c', child_code, str(root / 'test_child.json')])
+    deadline = time.monotonic() + 5
+    while not (root / 'test_child.json').exists():
+        if time.monotonic() > deadline: raise RuntimeError('Synthetic child did not start')
+        time.sleep(.01)
 if MODE == 'flood':
     sys.stdout.write('x' * (3 * 1024 * 1024)); sys.stdout.flush(); time.sleep(30)
 if MODE in {'unresponsive','cooperative','pause'}:
@@ -76,6 +92,7 @@ artifacts=[item for row in records for item in row['artifacts']]
 value={'schema_version':1,'protocol':protocol,'job_id':config['job_id'],'run_id':run_id,
     'state':'succeeded','done':len(records),'failed':0,'total':len(config['files']),
     'effective_parallel_files':1,'results_dir':str(results),'files':records,'artifacts':artifacts,'errors':[]}
+if MODE=='parent-exits-child-bad-result': value['job_id']='0'*32
 if MODE=='wrong-job': value['job_id']='0'*32
 if MODE=='stale-run': value['run_id']='0'*32
 if MODE=='wrong-count': value['done']=0
@@ -555,3 +572,58 @@ def test_nested_same_basename_outputs_keep_receipt_and_revision_identity(service
     assert not (tmp_path / 'tampered.txt').exists()
     with pytest.raises(ValueError, match='receipt'):
         reopened.get(identity)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux owned-group lifetime regression.')
+@pytest.mark.parametrize('invalid_receipt', [False, True])
+def test_exited_worker_descendant_is_stopped_before_return(service, source, engine, invalid_receipt):
+    """A synchronized live descendant survives the leader until the service cleans its group."""
+    identity = service.submit([source])
+    root = service.jobs / identity
+    child = None
+
+    def owned_child_state():
+        if child is None:
+            return None
+        try:
+            fields = (Path('/proc') / str(child['pid']) / 'stat').read_text().rsplit(') ', 1)[1].split()
+        except FileNotFoundError:
+            return None
+        return fields[0] if fields[19] == child['starttime'] else None
+
+    try:
+        mode = 'parent-exits-child-bad-result' if invalid_receipt else 'parent-exits-child-lives'
+        if invalid_receipt:
+            with pytest.raises(ValueError, match='reviewed terminal protocol'):
+                service.run(identity, engine=engine(mode))
+            assert service.get(identity, verify=False)['state'] == 'failed'
+        else:
+            assert service.run(identity, engine=engine(mode))['state'] == 'succeeded'
+        child = read_json(root / 'test_child.json')
+        assert owned_child_state() in {None, 'Z', 'X', 'x'}
+    finally:
+        # The baseline intentionally leaves this process alive. Clean up only
+        # the exact fixture PID/start time, including when an assertion fails.
+        if child is None and (root / 'test_child.json').exists():
+            child = read_json(root / 'test_child.json')
+        if owned_child_state() not in {None, 'Z', 'X', 'x'}:
+            os.kill(child['pid'], signal.SIGKILL)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux owned-group confirmation failure.')
+@pytest.mark.parametrize('error_type', [TimeoutError, RuntimeError])
+def test_unconfirmed_group_shutdown_never_admits_completion(service, source, engine, monkeypatch, error_type):
+    from carr_library.speech import _io
+    identity = service.submit([source])
+    events = []
+
+    def unconfirmed(*args, **kwargs):
+        raise error_type('Synthetic group shutdown could not be confirmed.')
+
+    monkeypatch.setattr(_io, '_wait_linux_group', unconfirmed)
+    with pytest.raises(error_type, match='could not be confirmed'):
+        service.run(identity, engine=engine(), progress=lambda *event: events.append(event))
+    job = service.get(identity, verify=False)
+    assert job['state'] == 'failed' and job['receipt'] is None
+    assert 'could not be confirmed' in job['error']
+    assert not any(phase == 'Verified every requested transcript output' for done, total, phase in events)

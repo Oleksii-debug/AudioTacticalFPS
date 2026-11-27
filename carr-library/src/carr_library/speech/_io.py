@@ -11,6 +11,7 @@ from pathlib import Path, PureWindowsPath
 import signal
 import stat
 import subprocess
+import sys
 from tempfile import TemporaryDirectory, TemporaryFile
 import time
 
@@ -143,9 +144,68 @@ def new_output(destination, *, cancelled=lambda: False):
         _sync_directory(target.parent)
 
 
-def stop_process(process):
-    if process.poll() is not None:
+def poll_process(process):
+    """Observe a Linux worker exit without releasing its owned group identity.
+
+    The caller must stop the group before wait() reaps its leader. Retaining
+    that leader prevents its PID/PGID from being reused during cleanup.
+    """
+    if sys.platform == 'linux' and process.returncode is None:
+        status = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        if status is None:
+            return None
+        return status.si_status if status.si_code == os.CLD_EXITED else -status.si_status
+    return process.poll()
+
+
+def _wait_linux_group(group, *, timeout=5):
+    """Wait for execution to end, without waiting for orphan zombies to be reaped."""
+    deadline = time.monotonic() + timeout
+    expected = str(group).encode('ascii')
+    while True:
+        active = False
+        with os.scandir('/proc') as entries:
+            for entry in entries:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('The owned worker group did not terminate in time.')
+                if not entry.name.isdigit():
+                    continue
+                try:
+                    fields = (Path(entry.path) / 'stat').read_bytes().rsplit(b') ', 1)[1].split()
+                except (FileNotFoundError, ProcessLookupError):
+                    continue
+                except PermissionError:
+                    # Unrelated users may hide their process details. An owned
+                    # group member must remain observable before completion.
+                    try:
+                        member = os.getpgid(int(entry.name)) == group
+                    except ProcessLookupError:
+                        continue
+                    if member:
+                        raise RuntimeError('Cannot verify termination of an owned worker.')
+                    continue
+                if fields[2] == expected and fields[0] not in {b'Z', b'X', b'x'}:
+                    active = True
+                    break
+        if not active:
+            return
+        time.sleep(min(.01, max(0, deadline - time.monotonic())))
+
+
+def stop_process(process, *, wait_for_group=False):
+    """Request bounded shutdown; opt-in success requires observed group exit.
+
+    An error remains unconfirmed shutdown. The direct child is still reaped;
+    callers must propagate that error instead of admitting completion.
+    """
+    linux = wait_for_group and sys.platform == 'linux'
+    if process.returncode is not None or (not linux and process.poll() is not None):
         return
+    if linux:
+        try:
+            os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        except ChildProcessError:
+            raise RuntimeError('The owned worker leader was reaped outside its lifecycle.') from None
     if os.name == 'nt':
         try:
             system = Path(os.environ.get('SystemRoot', 'C:/Windows')) / 'System32' / 'taskkill.exe'
@@ -161,11 +221,16 @@ def stop_process(process):
         except ProcessLookupError:
             pass
     try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=5)
-
+        if linux:
+            # Keep the leader unreaped until its group has stopped executing.
+            # Waiting only for Popen's direct child does not wait for descendants.
+            _wait_linux_group(process.pid)
+    finally:
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
 
 def run_process(args, *, cwd=None, input_bytes=None, cancelled=lambda: False,
                 timeout=120, output_file=None, max_output=256 * 1024 * 1024,
