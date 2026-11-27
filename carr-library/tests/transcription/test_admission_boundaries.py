@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import py_compile
 import threading
+import time
 
 import pytest
 
@@ -55,13 +56,15 @@ def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeyp
     accepted = dict(state['results'][0])
     pending = next(source for source in state['sources'] if source['id'] != accepted['source_id'])
     target = service._source_path(state, pending)
+    before_starts = starts(runtime)
     runtime.options.write_text(json.dumps({'hold_after_checkpoint': 10, 'ignore_stop': True}), encoding='utf-8')
-    entered, release = threading.Event(), threading.Event()
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
     original = module.file_identity
-    callbacks, outcome = [], {}
+    callbacks, outcome, progress = [], {}, []
 
     def controlled_hash(path, *, cancel=None, maximum=64 * 1024**3):
         if Path(path) == target and service._load(state['id'])['status'] == 'running':
+            assert starts(runtime) == before_starts + 1, 'Admission must follow the new actual child checkpoint.'
             callbacks.append(cancel)
             entered.set()
             # Simulate many read blocks without a multi-GiB fixture. A missing
@@ -73,19 +76,44 @@ def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeyp
     monkeypatch.setattr(module, 'file_identity', controlled_hash)
     def run():
         try:
-            outcome['state'] = service.resume(state['id'])
+            outcome['state'] = service.resume(state['id'], progress=lambda event: progress.append(dict(event)))
         except BaseException as error:
             outcome['error'] = error
+        finally:
+            finished.set()
+
     runner = threading.Thread(target=run)
+    # Windows inventories the real base interpreter twice before Popen. Bound
+    # that readiness separately from the 1.5-second stop requirement below;
+    # neither the five-second child budget nor stop_grace is increased.
+    ready_deadline = time.monotonic() + 30
+
+    def await_ready(predicate, phase):
+        while not predicate():
+            ended = finished.wait(.02)
+            if ended or time.monotonic() >= ready_deadline:
+                pytest.fail(
+                    f'{phase}: runner_finished={ended}; actual_starts={starts(runtime)} '
+                    f'(previous={before_starts}); admission_entered={entered.is_set()}; '
+                    f'last_progress={progress[-1:]!r}; outcome={outcome!r}'
+                )
+
     runner.start()
     promptly_stopped = False
+    stop_requested = False
     try:
-        assert entered.wait(4), 'The actual child never reached checkpoint source verification.'
+        await_ready(lambda: starts(runtime) > before_starts, 'Waiting for the new actual child start')
+        assert starts(runtime) == before_starts + 1
+        await_ready(entered.is_set, 'Waiting for checkpoint source verification')
         getattr(service, intent)(state['id'])
+        stop_requested = True
         runner.join(1.5)
         promptly_stopped = not runner.is_alive()
     finally:
         release.set()
+        if not stop_requested and runner.is_alive():
+            # A readiness failure must also stop preflight hashing/a live child.
+            getattr(service, intent)(state['id'])
         runner.join(6)
     assert not runner.is_alive(), 'The child runner was not cleaned up.'
     assert promptly_stopped, 'Checkpoint hashing prevented stop/grace handling.'

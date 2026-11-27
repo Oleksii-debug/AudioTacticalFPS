@@ -24,8 +24,8 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    # Retain the prior job budget and add the new 15-minute core acceptance gate.
-    timeout-minutes: 70
+    # Include runner variance for the complete installed and source acceptance gates.
+    timeout-minutes: 80
     defaults:
       run:
         shell: pwsh
@@ -343,10 +343,9 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        # Exact c112 bundle acceptance reached 93% after 18 minutes, with
-        # 1,648 real cases and no observed failure before its superseding commit.
-        # Keep every case; allow the final source-lineage and seal checks to finish.
-        timeout-minutes: 25
+        # The f35bbe installed gate passed in 23m29s under its 25-minute ceiling.
+        # Keep every case and allow normal runner variance through the final seal check.
+        timeout-minutes: 35
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
