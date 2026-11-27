@@ -1,0 +1,107 @@
+name: Resonance transcription and translation
+
+on:
+  pull_request:
+    branches: [carr-library, carr/v3-integrated-private-ce034-20261126]
+    paths:
+      - carr-library/src/carr_library/audio/transcription*
+      - carr-library/src/carr_library/*translation*
+      - carr-library/src/carr_library/*transcription*
+      - carr-library/src/carr_library/providers.py
+      - carr-library/src/carr_library/ui/*translation*
+      - carr-library/src/carr_library/ui/*transcription*
+      - carr-library/tests/**
+      - .github/workflows/resonance-language-tools.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resonance-language-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  language-tools:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve source bytes
+        working-directory: ${{ github.workspace }}
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install existing application and test dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Install native Windows desktop dependency
+        if: runner.os == 'Windows'
+        run: python -m pip install 'wxPython==4.2.4'
+      - name: Compile new entrypoints and native controls
+        run: python -m compileall -q src/carr_library/audio/transcription.py src/carr_library/audio/transcription_models.py src/carr_library/transcription_cli.py src/carr_library/translation.py src/carr_library/ui/transcription_dialog.py src/carr_library/ui/transcription_results.py src/carr_library/ui/translation_dialog.py
+      - name: Build and install the actual application wheel
+        run: |
+          python -m pip wheel --no-deps --wheel-dir language-wheel .
+          python -m pip install --no-deps --force-reinstall language-wheel/*.whl
+      - name: Verify installed entrypoints without source imports
+        run: |
+          python -I -c "import pathlib,carr_library.audio.transcription as a,carr_library.audio.transcription_models as m,carr_library.transcription_cli as c,carr_library.translation as t,carr_library.ui.transcription_dialog as u,carr_library.ui.transcription_results as r; modules=(a,m,c,t,u,r); assert all('site-packages' in pathlib.Path(x.__file__).parts for x in modules); print('PASS: installed language modules imported from wheel')"
+          python -I -m carr_library.transcription_cli --help
+          python -I -m carr_library --self-test
+      - name: Exercise native Windows language dialogs from the installed wheel
+        if: runner.os == 'Windows'
+        run: python -I tests/ui/native_language_tools_smoke.py --native
+      - name: Run required isolated offline regression suites
+        run: >-
+          python scripts/ci_check.py
+          tests/audio/test_transcription.py
+          tests/audio/test_transcription_models.py
+          tests/audio/test_model_manifest.py
+          tests/ui/test_transcription_controller.py
+          tests/ui/test_transcription_results.py
+          tests/e2e/test_transcription_cli.py
+          tests/e2e/test_google_translation.py
+          tests/e2e/test_provider_gateway.py
+          tests/e2e/test_provider_transport_boundaries.py
+          tests/ui/test_api_connections.py
+          tests/ui/test_audio_menu_registry.py
+          tests/ui/test_translation_busy_guard.py
+          tests/ui/test_citation_styles_jobs.py
+          tests/citations/test_bibliography_workbench.py
+          tests/reader/test_export_no_clobber.py
+          tests/reader/test_file_export.py
+          tests/reader/test_binary_file_export.py
+          tests/e2e/test_academic_document_export.py
+          tests/packaging/test_native_checks.py
+          tests/packaging/test_audio_bundle.py
+          tests/packaging/test_windows_bundle.py
+      - name: Install optional transcription runtime without model weights
+        run: python -m pip install 'faster-whisper==1.2.1' 'av==17.1.0'
+      - name: Exercise actual installed CPU transcription dependencies
+        run: python -I scripts/transcription_runtime_smoke.py
+      - name: Record exact tested source
+        run: |
+          git rev-parse HEAD
+          git rev-parse HEAD^{tree}

@@ -17,7 +17,7 @@ def bundle(tmp_path, *, model=False, ocr=False):
 
 
 def controlled_imports(monkeypatch, events, *, failure=None, telemetry_failure=False,
-                       ocr_status='PASS', native_handle=None):
+                       ocr_status='PASS', native_handle=None, audio_tools=None):
     def activate(*, bundle_root):
         events.append(('activate_bundled_runtime', str(bundle_root)))
         return native_handle
@@ -31,8 +31,13 @@ def controlled_imports(monkeypatch, events, *, failure=None, telemetry_failure=F
         events.append(('canonical_ocr_check', timeout, os.environ.get('CARR_OCR_DIR')))
         return {'status': ocr_status, 'runtime': 'portable', 'synthetic_recognition': 'RESEARCH'}
 
+    def audio(*, bundle_root):
+        events.append(('verify_bundled_audio', str(bundle_root)))
+        return audio_tools
+
     modules = {name: SimpleNamespace() for _, name in native_checks.NATIVE_MODULES}
     modules.update({'carr_library.native_runtime': SimpleNamespace(activate_bundled_runtime=activate),
+                    'carr_library.audio_runtime': SimpleNamespace(bundled_audio_tools=audio),
                     'carr_library.offline_policy': SimpleNamespace(disable_native_telemetry=telemetry),
                     'tokenizers.tokenizers': SimpleNamespace(),
                     'carr_library.extract.ocr_runtime': SimpleNamespace(check_runtime=ocr)})
@@ -56,11 +61,13 @@ def test_base_native_extensions_are_loaded_without_optional_engines(tmp_path, mo
     report = native_checks.check_native_dependencies(tmp_path)
     assert report['status'] == 'PASS'
     assert events == ['carr_library.native_runtime', ('activate_bundled_runtime', str(tmp_path)),
+                      'carr_library.audio_runtime', ('verify_bundled_audio', str(tmp_path)),
                       *[name for _, name in native_checks.NATIVE_MODULES]]
     assert report['platform'] == 'linux'
     assert report['windows_execution'] == 'NOT_RUN'
     assert report['windows_nvda'] == report['native_gui'] == 'NOT_RUN'
     assert report['semantic']['status'] == report['ocr']['status'] == 'NOT_INCLUDED'
+    assert report['audio'] == {'status': 'NOT_INCLUDED', 'native_execution': 'NOT_RUN'}
 
 
 @pytest.mark.parametrize('failure', [None, 'pypdfium2.raw'])
@@ -111,6 +118,37 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+def test_exact_source_and_audio_flags_reach_canonical_runtime_checks(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest.update(source_tree='c' * 40, bundled_native_runtime=True, bundled_audio_runtime=True)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    tools = {name: str(tmp_path / 'audio-runtime/bin' / (name + '.exe'))
+             for name in ('ffmpeg', 'ffprobe', 'ffplay')}
+    controlled_imports(monkeypatch, events, audio_tools=tools)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert ('verify_bundled_audio', str(tmp_path)) in events
+    assert report['audio'] == {'status': 'PASS', 'integrity': 'sha256', 'native_execution': 'NOT_RUN'}
+    assert report['checks'][0] == 'bundled audio runtime'
+    assert report['native_gui'] == report['windows_nvda'] == 'NOT_RUN'
+
+
+def test_audio_verifier_failure_blocks_extension_imports_and_retains_handle_cleanup(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest['bundled_audio_runtime'] = True
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    handle = SimpleNamespace(close=lambda: events.append('close_native_handle'))
+    controlled_imports(monkeypatch, events, failure='carr_library.audio_runtime', native_handle=handle)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'bundled audio runtime'
+    assert report['audio']['status'] == 'FAIL'
+    assert not any(name in events for _, name in native_checks.NATIVE_MODULES)
+    assert events[-1] == 'close_native_handle'
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []
@@ -150,7 +188,8 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'integer_audio_flag', 'bad_tree',
+    'tree_without_commit',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +211,15 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio_runtime'] = 'true'
+    elif change == 'integer_audio_flag':
+        manifest['bundled_audio_runtime'] = 1
+    elif change == 'bad_tree':
+        manifest['source_tree'] = 'HEAD^{tree}'
+    elif change == 'tree_without_commit':
+        manifest['source_tree'] = 'c' * 40
+        del manifest['source_commit']
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]

@@ -1,0 +1,81 @@
+{
+  "artifacts": {
+    "backup-6352-broad.log": {
+      "sha256": "85c9c72ee7b4b7c39c5fce1e4a51448fef8b4152089757c296682e61d89d8330",
+      "size_bytes": 421
+    },
+    "backup-6352-broad.xml": {
+      "sha256": "7d2fec579d6bbd4ed3cbb218b45f8c9c0b724b50789edb663013bb89845156d7",
+      "size_bytes": 56133
+    }
+  },
+  "core_blobs": {
+    "src/carr_library/__main__.py": "bb4fc90c96eaacce84e0e9e5766139a9edc01dc0",
+    "src/carr_library/application.py": "72fa3c131f481f4ac2cd64c54405c11afa079c2a",
+    "src/carr_library/backup_sidecars.py": "d992946a702a19c36a2fc32252ee58690dc87dd5",
+    "src/carr_library/durable_state.py": "b2a05f907dd4fe95c61013964c1b36e37e28597e",
+    "src/carr_library/library_backup.py": "e93c475c2083d692ad733461a702abcbb15aac84",
+    "src/carr_library/pending_backup.py": "459c4ed16b93b498702d5515a556b2095e3124e7",
+    "src/carr_library/ui/desktop_app.py": "c0cf1aef14a5a36522c26f7fdccd5313f9829ce9"
+  },
+  "limitations": [
+    "No native Windows or NVDA qualification from this Linux run",
+    "Canonical studio/provider state without its typed validator remains unsupported",
+    "No merge of alternative PR125 runtimes"
+  ],
+  "packages": {
+    "Pillow": "13.0.0",
+    "filelock": "3.29.0",
+    "pypdf": "7.1.1",
+    "pypdfium2": "5.13.0",
+    "pytest": "9.0.2",
+    "reportlab": "4.4.9"
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "scope": "Selected backup, desktop event protocol and CLI regressions on Linux",
+  "source_commit": "6352d98f8c70fe407d69d3432f047cea7f4fda3c",
+  "source_tree": "d81709f8e6ec181128d5e878ccde601e9ff2d4fc",
+  "specific_checks": [
+    "test_registered_original_also_pending_is_published_once[canonical-v4]",
+    "test_registered_original_also_pending_is_published_once[host-v5]",
+    "test_completed_backup_survives_cleanup_and_diagnostic_failures[callback]",
+    "test_completed_backup_survives_cleanup_and_diagnostic_failures[logging]",
+    "test_completed_backup_survives_cleanup_and_diagnostic_failures[broken-reporters]",
+    "test_prepublication_error_is_not_replaced_by_cleanup_failure",
+    "test_backup_cli_reports_completed_digest_and_cleanup_path",
+    "test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes",
+    "test_backup_cleanup_notice_is_reported_on_the_completion_callback"
+  ],
+  "status": "PASS",
+  "tests": {
+    "exit_code": 0,
+    "failed": 0,
+    "passed": 359,
+    "policy": "scripts/ci_check.py PYTEST_CHILD; strict XFAIL/XPASS rejection; Python socket offline hooks; plugin autoload disabled",
+    "pytest_seconds": 23.17,
+    "skipped": 0,
+    "suites": [
+      "tests/storage/test_backup_audio_composition.py",
+      "tests/storage/test_backup_boundary.py",
+      "tests/storage/test_backup_generated_audio.py",
+      "tests/storage/test_backup_keyboard_drafts.py",
+      "tests/storage/test_backup_pending_compatibility.py",
+      "tests/storage/test_backup_publication_recovery.py",
+      "tests/storage/test_backup_reading_state.py",
+      "tests/storage/test_backup_schema_identity.py",
+      "tests/storage/test_backup_source_binding_review.py",
+      "tests/storage/test_backup_v4_sidecars.py",
+      "tests/storage/test_complete_pending_backup.py",
+      "tests/storage/test_crash_backup.py",
+      "tests/storage/test_library_backup.py",
+      "tests/storage/test_library_backup_reading_state.py",
+      "tests/storage/test_pending_backup.py",
+      "tests/assistant/test_backup_receipt.py",
+      "tests/catalog/test_metadata_backup_roundtrip.py",
+      "tests/ui/test_desktop_handlers.py",
+      "tests/e2e/test_offline_startup.py"
+    ],
+    "wall_seconds": 23.996095323996997
+  }
+}

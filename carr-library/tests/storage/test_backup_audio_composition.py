@@ -98,7 +98,7 @@ def test_actual_research_and_studio_producers_survive_verified_backup_reopen(com
     folder = tmp_path / 'complete'
     digest = s.app.backup(folder)
     inventory = verify_backup(folder, digest)
-    assert inventory['version'] == 4
+    assert inventory['version'] == 5 and inventory['layout'] == 'sidecars-pending-v1'
     assert not inventory['generated_audio_included']  # No render has been produced.
     names = {entry['filename'] for entry in inventory['sidecars']}
     assert {'keyboard-shortcuts.json', 'evidence-drafts.json', 'reading-state.json',
@@ -238,7 +238,7 @@ def test_read_only_verification_streams_audio_without_a_second_audio_copy(comple
         verified.append(relative)
         return copy_record(root, relative, target, identity, cancelled)
     monkeypatch.setattr(backup_audio, 'copy_record', inspect)
-    assert verify_backup(folder, digest)['version'] == 4
+    assert verify_backup(folder, digest)['version'] == 5
     assert any('/audio/assets/' in name for name in verified)
     assert _file_bytes(folder) == before
 

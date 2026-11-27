@@ -15,7 +15,7 @@ import shutil
 import stat
 import sys
 
-from .ocr_languages import is_model_id, model_ids
+from .ocr_languages import OcrLanguageError, is_model_id, model_ids, parse_language_report
 
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
@@ -316,8 +316,10 @@ def check_runtime(*, timeout=30):
     if not version.startswith('tesseract '):
         raise OcrRuntimeError('The OCR engine returned an unexpected version.')
     report = run('--list-langs')
-    languages = [line.strip() for line in report.splitlines()
-                 if is_model_id(line.strip())]
+    try:
+        languages = list(parse_language_report(report))
+    except OcrLanguageError as exc:
+        raise OcrRuntimeError('The OCR engine returned an invalid model inventory.') from exc
     if 'eng' not in languages:
         raise OcrRuntimeError('The OCR engine cannot load English language data.')
     try:

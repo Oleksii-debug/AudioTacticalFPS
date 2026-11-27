@@ -49,11 +49,11 @@ def forbid_writable_storage(monkeypatch):
 
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5 and manifest['layout'] == 'sidecars-pending-v1'
     assert manifest['schema_version'] == 4
     assert set(manifest) == {'version', 'kind', 'schema_version',
                              'schema_fingerprint', 'database', 'assets', 'sidecars',
-                             'generated_audio_included'}
+                             'generated_audio_included', 'layout', 'pending'}
     assert manifest['sidecars'] == []
     assert manifest['generated_audio_included'] is False
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
@@ -84,8 +84,9 @@ def test_fingerprint_is_layout_identity_not_database_content(tmp_path):
 
 
 @pytest.mark.parametrize('version', [1, 2])
-def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
+def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version, legacy_layout):
     app, workspace, topic, directory, manifest = backup
+    legacy_layout(directory, manifest)
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']
@@ -109,8 +110,9 @@ def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     'PRAGMA user_version=5',
 ])
 def test_different_layout_is_rejected_before_writable_open(
-        backup, tmp_path, monkeypatch, version, sql):
+        backup, tmp_path, monkeypatch, version, sql, legacy_layout):
     app, _, _, directory, manifest = backup
+    legacy_layout(directory, manifest)
     source_before = app.database.read_bytes()
     database = directory / 'library.sqlite'
     with closing(sqlite3.connect(database)) as db:
@@ -144,7 +146,7 @@ def test_different_layout_is_rejected_before_writable_open(
     'duplicate_asset', 'boolean_asset_size',
 ])
 def test_manifest_fields_are_strict_before_writable_open(
-        backup, tmp_path, monkeypatch, change):
+        backup, tmp_path, monkeypatch, change, legacy_layout):
     _, _, _, directory, manifest = backup
     if change == 'missing_fingerprint':
         del manifest['schema_fingerprint']
@@ -159,6 +161,7 @@ def test_manifest_fields_are_strict_before_writable_open(
     elif change == 'unexpected_field':
         manifest['allow_unknown_schema'] = True
     elif change == 'legacy_extra_field':
+        legacy_layout(directory, manifest)
         manifest['version'] = 1
     elif change == 'duplicate_asset':
         manifest['assets'].append(dict(manifest['assets'][0]))

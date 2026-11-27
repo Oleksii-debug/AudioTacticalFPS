@@ -30,8 +30,11 @@ import uuid
 
 MAX_REQUEST = 512 * 1024
 MAX_RESPONSE = 128 * 1024 * 1024
+MAX_TRANSLATION_CHARACTERS = 5000
+MAX_TRANSLATION_RESPONSE = 1024 * 1024
 _ID = re.compile(r'[a-zA-Z0-9_-]{1,100}')
-CAPABILITIES = {'llm', 'tts', 'music', 'sound_effects'}
+_LANGUAGE = re.compile(r'[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}')
+CAPABILITIES = {'llm', 'tts', 'music', 'sound_effects', 'translation'}
 
 
 class ProviderError(ValueError):
@@ -91,15 +94,18 @@ class ProviderProfile:
         for text in (self.name, self.model):
             if not isinstance(text, str) or not 1 <= len(text) <= 200 or any(ord(c) < 32 for c in text):
                 raise ProviderError('Profile name and model must be plain text.')
-        if self.provider not in ('elevenlabs', 'openai-compatible'):
+        if self.provider not in ('elevenlabs', 'openai-compatible', 'google-translate-v2'):
             raise ProviderError('This provider adapter is not installed.')
         if (not isinstance(self.capabilities, tuple) or not self.capabilities
                 or set(self.capabilities) - CAPABILITIES or len(set(self.capabilities)) != len(self.capabilities)):
             raise ProviderError('Select supported, distinct capabilities.')
         if self.provider == 'openai-compatible' and self.capabilities != ('llm',):
             raise ProviderError('The compatible adapter currently supports text reasoning only.')
-        if self.provider == 'elevenlabs' and 'llm' in self.capabilities:
-            raise ProviderError('The speech/music adapter does not support text reasoning.')
+        if self.provider == 'elevenlabs' and set(self.capabilities) - {'tts', 'music', 'sound_effects'}:
+            raise ProviderError('The speech/music adapter supports speech, music and sound effects only.')
+        if self.provider == 'google-translate-v2' and (
+                self.capabilities != ('translation',) or self.model != 'nmt'):
+            raise ProviderError('Google Basic v2 currently supports plain-text translation with the nmt model.')
         if type(self.local) is not bool:
             raise ProviderError('Invalid local-service setting.')
         if not isinstance(self.endpoint, str) or len(self.endpoint) > 2048:
@@ -127,6 +133,10 @@ class ProviderProfile:
                 self.local or parts.hostname != 'api.elevenlabs.io' or port not in (None, 443)
                 or parts.path.rstrip('/') != '/v1'):
             raise ProviderError('ElevenLabs credentials are restricted to its official API host and /v1 base.')
+        if self.provider == 'google-translate-v2' and (
+                self.local or parts.hostname != 'translation.googleapis.com'
+                or port not in (None, 443) or parts.path not in ('', '/')):
+            raise ProviderError('Google Translation credentials are restricted to https://translation.googleapis.com.')
         if self.credential_ref is not None and not re.fullmatch(r'url-api-[0-9a-f]{32}', self.credential_ref):
             raise ProviderError('Invalid opaque credential reference.')
 
@@ -286,6 +296,8 @@ class ProviderRequest:
     text: str
     voice: str | None = None
     duration_seconds: int | None = None
+    source_language: str | None = None
+    target_language: str | None = None
 
     def __post_init__(self):
         if self.capability not in CAPABILITIES or not isinstance(self.text, str) or not self.text.strip():
@@ -306,9 +318,27 @@ class ProviderRequest:
                 raise ProviderError('This provider accepts at most 4100 prompt characters per music request.')
         elif self.duration_seconds is not None:
             raise ProviderError('Duration does not apply to this task.')
+        if self.capability == 'translation':
+            if (not isinstance(self.target_language, str) or not _LANGUAGE.fullmatch(self.target_language)
+                    or self.target_language.lower() == 'auto'):
+                raise ProviderError('Choose an explicit target language code supported by Google Translation.')
+            if self.source_language is not None and (
+                    not isinstance(self.source_language, str) or not _LANGUAGE.fullmatch(self.source_language)
+                    or self.source_language.lower() == 'auto'):
+                raise ProviderError('Use a source language code, or leave the source language empty for automatic detection.')
+            if len(self.text) > MAX_TRANSLATION_CHARACTERS:
+                raise ProviderError(f'Translate at most {MAX_TRANSLATION_CHARACTERS} characters per reviewed excerpt.')
+        elif self.source_language is not None or self.target_language is not None:
+            raise ProviderError('Language selection applies only to translation tasks.')
 
     def fingerprint(self, profile):
-        return _digest({'profile': profile.fingerprint, 'request': asdict(self)})
+        data = asdict(self)
+        if self.capability != 'translation':
+            # Keep already approved speech/music/LLM jobs valid after this
+            # additive feature. Their historical request hashes are unchanged.
+            data.pop('source_language')
+            data.pop('target_language')
+        return _digest({'profile': profile.fingerprint, 'request': data})
 
 
 @dataclass(frozen=True)
@@ -409,6 +439,7 @@ class DirectTransport:
         if not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route):
             raise ProviderError('Invalid adapter route.')
         host = parts.hostname
+        response_limit = MAX_TRANSLATION_RESPONSE if profile.provider == 'google-translate-v2' else MAX_RESPONSE
         try:
             addresses = sorted({item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)})
             if not addresses or any(not (ipaddress.ip_address(ip).is_loopback if profile.local
@@ -431,20 +462,21 @@ class DirectTransport:
                 raise ProviderError('Provider operation cancelled before transmission.')
             connection.request('POST', parts.path.rstrip('/') + route, body=payload,
                 headers={**headers, 'Host': host_header, 'Content-Type': 'application/json',
-                         'Accept': 'application/json' if route.endswith('/completions') else 'audio/mpeg',
+                         'Accept': 'application/json' if (route.endswith('/completions')
+                             or profile.provider == 'google-translate-v2') else 'audio/mpeg',
                          'Connection': 'close'})
             response = connection.getresponse()
             if response.status != 200:
                 raise ProviderError(f'Provider returned HTTP {response.status}; no automatic retry was made.')
             declared = response.getheader('Content-Length')
-            if declared and (not declared.isdecimal() or int(declared) > MAX_RESPONSE):
+            if declared and (not declared.isdecimal() or int(declared) > response_limit):
                 raise ProviderError('Provider response exceeds its resource budget.')
             data = bytearray()
             while block := response.read(65536):
                 if cancelled():
                     raise ProviderError('Provider operation cancelled; reconcile any possible charge before retrying.')
                 data.extend(block)
-                if len(data) > MAX_RESPONSE:
+                if len(data) > response_limit:
                     raise ProviderError('Provider response exceeds its resource budget.')
             if not data:
                 raise ProviderError('Provider returned an empty result.')
@@ -483,6 +515,12 @@ class ProviderGateway:
         if profile.provider == 'openai-compatible':
             route = '/chat/completions'
             body = {'model': profile.model, 'messages': [{'role': 'user', 'content': request.text}], 'stream': False}
+        elif profile.provider == 'google-translate-v2':
+            route = '/language/translate/v2'
+            body = {'q': [request.text], 'target': request.target_language,
+                    'format': 'text', 'model': profile.model}
+            if request.source_language is not None:
+                body['source'] = request.source_language
         elif request.capability == 'tts':
             route = '/text-to-speech/' + quote(request.voice, safe='')
             body = {'text': request.text, 'model_id': profile.model}
@@ -504,8 +542,14 @@ class ProviderGateway:
                 raise ProviderError('Reconnect this profile: its securely stored credential could not be read.') from None
             if not isinstance(secret, str) or not secret or any(ord(c) < 33 for c in secret):
                 raise ProviderError('Reconnect this profile: the stored credential is invalid.')
-            headers['xi-api-key' if profile.provider == 'elevenlabs' else 'Authorization'] = (
-                secret if profile.provider == 'elevenlabs' else 'Bearer ' + secret)
+            if profile.provider == 'elevenlabs':
+                headers['xi-api-key'] = secret
+            elif profile.provider == 'google-translate-v2':
+                # Google documents this header for Basic v2. Never put an API
+                # key in the URL, profile JSON, request body or budget ledger.
+                headers['X-Goog-Api-Key'] = secret
+            else:
+                headers['Authorization'] = 'Bearer ' + secret
         elif not profile.local:
             raise ProviderError('Reconnect this profile before using an external provider.')
         self.ledger.reserve(operation_id, approval, request.fingerprint(profile), estimated_micros)
@@ -521,6 +565,9 @@ class ProviderGateway:
                         raise ValueError
                 except (ValueError, TypeError, KeyError, IndexError):
                     raise ProviderError('Unsupported model response; no returned commands were executed.') from None
+            elif request.capability == 'translation':
+                from .translation import decode_google_translation
+                decode_google_translation(output, request)
             self.ledger.finish(operation_id, output_sha256=sha256(output).hexdigest())
             return output
         except BaseException as exc:
