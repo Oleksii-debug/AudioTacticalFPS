@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_DIAGNOSTIC_PREPARED",
+  "component_base": "9cd60ad11dc1301a8b307db9e362dd9f1452806e",
+  "observed": {
+    "source_commit": "3ddbe286a7c4525641b00865adb83ac9c9e7eb07",
+    "run": 46051486127,
+    "job": 140683626061,
+    "source_pass": 6,
+    "source_fail": 1,
+    "installed": "NOT_RUN",
+    "failed_suffix": ".xls",
+    "phase": "extracting-text",
+    "error": "ValueError: Hidden document text requires review.",
+    "artifact": {
+      "id": 15225511489,
+      "bytes": 4585271,
+      "sha256": "785530fc6c960a154a34e14bfa6d7afaa2de4355fe0bb82eb9b5658d12c32b35"
+    }
+  },
+  "change": "Instrument only the existing public synthetic XLS native test. Once the existing isolated owner returns a failed result, inspect its still-owned fixed ODS intermediate through a bounded regular immutable reader. Parse only fixed content.xml/styles.xml in memory with defusedxml and record bounded SHA, style references and exact visibility-node/ancestor attributes into the existing raw log before parent stage cleanup.",
+  "limits": [
+    "No output is executed, extracted to arbitrary paths or used to pass acceptance.",
+    "No product, reader visibility policy, runtime pin, process owner, timeout or seven-case oracle is changed.",
+    "The actual offending XML node remains unknown until this diagnostic executes."
+  ],
+  "runtime": "NOT_RUN"
+}
