@@ -154,6 +154,7 @@ def test_state_restore_rejects_unlisted_file_before_scanning_later_subtree(tmp_p
 
 @pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
 def test_state_root_lookup_error_is_not_absence(tmp_path, monkeypatch, failure):
+    import os
     from pathlib import Path
 
     root = tmp_path / 'source'
@@ -167,6 +168,10 @@ def test_state_root_lookup_error_is_not_absence(tmp_path, monkeypatch, failure):
             raise failure('state lookup failed')
         return original(path, *args, **kwargs)
 
+    # Model lexists' documented error suppression independently of OS implementation.
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == root else lexists(path))
     monkeypatch.setattr(Path, 'lstat', denied)
     with pytest.raises(failure, match='state lookup failed'):
         snapshot_state(root, target)

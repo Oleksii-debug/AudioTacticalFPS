@@ -315,6 +315,17 @@ def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkey
                 raise failure('state lookup failed')
         return original(path, *args, **kwargs)
 
+    lexists = os.path.lexists
+    legacy_probes = 0
+
+    def suppressed(path):
+        nonlocal legacy_probes
+        if Path(path) == root:
+            legacy_probes += 1
+            return failure is FileNotFoundError and legacy_probes == 1
+        return lexists(path)
+
+    monkeypatch.setattr(os.path, 'lexists', suppressed)
     monkeypatch.setattr(Path, 'lstat', denied)
     with pytest.raises(failure, match='state lookup failed'):
         create_backup(app, destination)
