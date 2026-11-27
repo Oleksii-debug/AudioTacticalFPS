@@ -268,7 +268,20 @@ class WindowsBundleAdapter:
             # back before the owned child stops could retarget a live installer.
             # This wait occurs off the desktop thread, with the owner still
             # retrying its bounded native cleanup. There is no success fallback.
-            error.cleanup_owner.quiescent_event.wait()
+            interrupted = None
+            while True:
+                try:
+                    if error.cleanup_owner.quiescent_event.wait():
+                        break
+                except BaseException as interruption:
+                    # Ctrl+C/SystemExit cannot release the caller's update,
+                    # idle or library-writer locks while the owned child lives.
+                    # Preserve the first interruption; the same cleanup owner
+                    # remains the only authority for native quiescence.
+                    if interrupted is None:
+                        interrupted = interruption
+            if interrupted is not None:
+                raise interrupted from None
             raise TrustError('The installer needed deferred native cleanup. The update was not accepted.') from None
         except (AudioError, OSError, subprocess.SubprocessError):
             raise TrustError('The owned installer could not complete within its selected limits.') from None
