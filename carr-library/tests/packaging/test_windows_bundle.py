@@ -119,7 +119,7 @@ class WindowsBundleTests(unittest.TestCase):
         path = self.root / "input-sbom.json"
         path.write_text(json.dumps({
             "bomFormat": "CycloneDX", "specVersion": "1.5",
-            "components": [{"name": "fixture", "version": version}],
+            "components": [{"type": "library", "name": "fixture", "version": version}],
         }, indent=2) + "\n", encoding="utf-8")
         return path
 
@@ -338,6 +338,326 @@ package-dir = {"" = "src"}
             with self.assertRaises(ValueError):
                 self.build()
 
+
+
+class SbomInventoryTests(unittest.TestCase):
+    """Current release profiles and real bytes, without importing model code."""
+
+    def setUp(self):
+        self.validator = module("sbom_inventory")
+        self.temp = tempfile.TemporaryDirectory(prefix="sbom model Ω ")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+
+    def profile(self, semantic=False):
+        prefix = "windows-semantic" if semantic else "windows"
+        lock = ROOT / "packaging" / (prefix + "-cp311.lock")
+        pins = {name: version for name, (version, _hashes) in builder.read_lock(lock).items()}
+        raw = (ROOT / "packaging" / (prefix + "-sbom.cdx.json")).read_bytes()
+        return pins, raw
+
+    def test_current_base_profile_has_22_libraries_and_exact_model(self):
+        pins, raw = self.profile()
+        result = self.validator.validate(raw, pins)
+        self.assertEqual(len(result["libraries"]), 22)
+        self.assertEqual(result["libraries"], pins)
+        self.assertEqual(len(result["files"]), 1)
+        self.assertEqual(result["files"][0]["name"], "py3langid/data/model.npz.xz")
+        self.assertEqual(result["files"][0]["hashes"], [{
+            "alg": "SHA-256",
+            "content": "f4f4a2c3465ca1f081541037f9cac23021d68151c2f709c55ae5eedfca522963",
+        }])
+
+    def test_current_semantic_profile_has_57_libraries_and_exact_model(self):
+        pins, raw = self.profile(semantic=True)
+        result = self.validator.validate(raw, pins)
+        self.assertEqual(len(result["libraries"]), 57)
+        self.assertEqual(result["libraries"], pins)
+        self.assertEqual(len(result["files"]), 1)
+        base_pins, base_raw = self.profile()
+        self.assertEqual(result["files"], self.validator.validate(base_raw, base_pins)["files"])
+        self.assertEqual(pins["numpy"], "2.3.5")
+        self.assertEqual(base_pins["numpy"], "2.4.6")
+
+    def test_current_profiles_refuse_missing_extra_changed_and_duplicate_libraries(self):
+        for semantic in (False, True):
+            for change in ("missing", "extra", "duplicate", "normalized_duplicate",
+                           "version", "unknown_type", "missing_type", "duplicate_ref"):
+                with self.subTest(semantic=semantic, change=change):
+                    pins, raw = self.profile(semantic)
+                    bom = json.loads(raw)
+                    item = next(value for value in bom["components"] if value["type"] == "library")
+                    if change == "missing":
+                        bom["components"].remove(item)
+                    elif change == "extra":
+                        bom["components"].append({"type": "library", "name": "unexpected", "version": "1"})
+                    elif change == "duplicate":
+                        bom["components"].append(dict(item))
+                    elif change == "normalized_duplicate":
+                        item = next(value for value in bom["components"]
+                                    if "-" in value["name"] and value["type"] == "library")
+                        extra = dict(item, name=item["name"].upper().replace("-", "_"))
+                        extra.pop("bom-ref", None)
+                        bom["components"].append(extra)
+                    elif change == "version":
+                        item["version"] = "0.invalid"
+                    elif change == "unknown_type":
+                        item["type"] = "operating-system"
+                    elif change == "missing_type":
+                        del item["type"]
+                    else:
+                        other = next(value for value in bom["components"]
+                                     if value is not item and "bom-ref" in value)
+                        other["bom-ref"] = item["bom-ref"]
+                    with self.assertRaises(ValueError):
+                        self.validator.validate(json.dumps(bom).encode(), pins)
+
+    def test_model_missing_duplicate_or_extra_file_is_not_ignored(self):
+        for semantic in (False, True):
+            for change in ("missing", "duplicate", "extra"):
+                with self.subTest(semantic=semantic, change=change):
+                    pins, raw = self.profile(semantic)
+                    bom = json.loads(raw)
+                    item = next(value for value in bom["components"] if value["type"] == "file")
+                    if change == "missing":
+                        bom["components"].remove(item)
+                    else:
+                        extra = json.loads(json.dumps(item))
+                        if change == "extra":
+                            extra["name"] = "py3langid/data/unreviewed.bin"
+                            extra["bom-ref"] = "unreviewed"
+                        bom["components"].append(extra)
+                    with self.assertRaises(ValueError):
+                        self.validator.validate(json.dumps(bom).encode(), pins)
+
+    def test_model_identity_license_size_and_provenance_are_not_silently_filtered(self):
+        pins, raw = self.profile()
+        for change in ("name", "version", "ref", "hash", "size", "git_blob", "license",
+                       "qualification", "extra_property", "extra_field", "wrong_type"):
+            with self.subTest(change=change):
+                bom = json.loads(raw)
+                item = next(value for value in bom["components"] if value["type"] == "file")
+                if change == "name":
+                    item["name"] = "../model.npz.xz"
+                elif change == "version":
+                    item["version"] = "0.4.1"
+                elif change == "ref":
+                    item["bom-ref"] += "-different"
+                elif change == "hash":
+                    item["hashes"][0]["content"] = "0" * 64
+                elif change == "size":
+                    item["properties"][1]["value"] = "1"
+                elif change == "git_blob":
+                    item["properties"][0]["value"] = "0" * 40
+                elif change == "license":
+                    item["licenses"][0]["license"]["id"] = "Unreviewed"
+                elif change == "qualification":
+                    item["properties"][2]["value"] = "All languages qualified"
+                elif change == "extra_property":
+                    item["properties"].append(dict(item["properties"][0]))
+                elif change == "extra_field":
+                    item["additional_file"] = "anything"
+                else:
+                    item["type"] = "library"
+                with self.assertRaises(ValueError):
+                    self.validator.validate(json.dumps(bom).encode(), pins)
+
+    def test_unknown_file_cannot_be_added_to_a_library_only_profile(self):
+        raw = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": [
+            {"type": "library", "name": "fixture", "version": "1"},
+            {"type": "file", "name": "arbitrary.bin", "version": "1"},
+        ]}).encode()
+        with self.assertRaisesRegex(ValueError, "unapproved"):
+            self.validator.validate(raw, {"fixture": "1"})
+
+    def test_duplicate_json_keys_and_normalized_pins_refuse(self):
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            self.validator.validate(b'{"bomFormat":"CycloneDX","bomFormat":"CycloneDX"}',
+                                    {"fixture": "1"})
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            self.validator.validate(b"{}", {"some-name": "1", "SOME_name": "1"})
+
+    def synthetic(self, payload=b"reviewed synthetic model bytes", *, contents=None, duplicate=False):
+        manifest = json.loads(self.validator.MANIFEST.read_bytes())
+        record = manifest["files"][self.validator.MODEL_NAME]
+        record["size"] = len(payload)
+        record["sha256"] = hashlib.sha256(payload).hexdigest()
+        wheel_path = self.root / "py3langid-0.4.0-py3-none-any.whl"
+        with ZipFile(wheel_path, "w", ZIP_DEFLATED) as archive:
+            archive.writestr("py3langid-0.4.0.dist-info/METADATA",
+                             "Metadata-Version: 2.3\nName: py3langid\nVersion: 0.4.0\n")
+            if contents is not None:
+                for name, data in contents:
+                    archive.writestr(name, data)
+            else:
+                archive.writestr(self.validator.MODEL_NAME, payload)
+            if duplicate:
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    archive.writestr(self.validator.MODEL_NAME, payload)
+        manifest["wheel"]["size"] = wheel_path.stat().st_size
+        manifest["wheel"]["sha256"] = builder.sha256(wheel_path)
+        raw = json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": [
+            {"type": "library", "name": "py3langid", "version": "0.4.0"},
+            self.validator._model_component(manifest),
+        ]}).encode()
+        return manifest, raw, wheel_path
+
+    def test_real_model_wheel_bytes_are_verified_without_importing_the_package(self):
+        import builtins
+        original_import = builtins.__import__
+
+        def no_model_code(name, *args, **kwargs):
+            if name.split(".")[0] in {"py3langid", "numpy"}:
+                self.fail("model or NumPy code was imported during byte validation")
+            return original_import(name, *args, **kwargs)
+
+        manifest, raw, wheel_path = self.synthetic()
+        with patch.object(self.validator, "_model_manifest", return_value=manifest):
+            inventory = self.validator.validate(raw, {"py3langid": "0.4.0"})
+        with patch("builtins.__import__", side_effect=no_model_code):
+            self.validator.verify_wheel(inventory, wheel_path)
+
+    def test_real_wheel_rejects_missing_duplicate_and_changed_model_bytes(self):
+        for change in ("missing", "duplicate", "changed", "extra_bytes"):
+            with self.subTest(change=change):
+                payload = b"reviewed synthetic model bytes"
+                contents = None
+                if change == "missing":
+                    contents = [("py3langid/data/other.bin", payload)]
+                elif change == "changed":
+                    contents = [(self.validator.MODEL_NAME, b"X" * len(payload))]
+                elif change == "extra_bytes":
+                    contents = [(self.validator.MODEL_NAME, payload + b"X")]
+                manifest, raw, wheel_path = self.synthetic(
+                    payload, contents=contents, duplicate=change == "duplicate")
+                with patch.object(self.validator, "_model_manifest", return_value=manifest):
+                    inventory = self.validator.validate(raw, {"py3langid": "0.4.0"})
+                # The archive itself is admitted; its declared inner model still must match.
+                with self.assertRaisesRegex(ValueError, "model"):
+                    self.validator.verify_wheel(inventory, wheel_path)
+
+    def installed(self):
+        manifest, raw, _wheel = self.synthetic()
+        path = self.root / self.validator.MODEL_NAME
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b"reviewed synthetic model bytes")
+
+        class Distribution:
+            version = "0.4.0"
+
+            def locate_file(inner, name):
+                self.assertEqual(name, self.validator.MODEL_NAME)
+                return self.root / name
+
+        return manifest, raw, path, Distribution()
+
+    def test_real_installed_model_matches_before_any_model_import(self):
+        import builtins
+        manifest, raw, _path, distribution = self.installed()
+        original_import = builtins.__import__
+
+        def no_model_code(name, *args, **kwargs):
+            if name.split(".")[0] in {"py3langid", "numpy"}:
+                self.fail("model code imported by installed inventory validation")
+            return original_import(name, *args, **kwargs)
+
+        with patch.object(self.validator, "_model_manifest", return_value=manifest):
+            with patch.object(self.validator.metadata, "version", return_value="0.4.0"):
+                with patch.object(self.validator.metadata, "distribution", return_value=distribution):
+                    with patch("builtins.__import__", side_effect=no_model_code):
+                        self.assertEqual(
+                            self.validator.verify_installed(raw, {"py3langid": "0.4.0"}),
+                            {"py3langid": "0.4.0"})
+
+    def test_installed_version_mismatch_refuses_before_opening_model(self):
+        manifest, raw, _path, _distribution = self.installed()
+        with patch.object(self.validator, "_model_manifest", return_value=manifest):
+            with patch.object(self.validator.metadata, "version", return_value="0.4.1"):
+                with patch.object(self.validator.metadata, "distribution",
+                                  side_effect=AssertionError("model opened after version mismatch")):
+                    with self.assertRaisesRegex(ValueError, "installed dependencies"):
+                        self.validator.verify_installed(raw, {"py3langid": "0.4.0"})
+
+    def test_real_installed_same_size_model_tampering_refuses(self):
+        manifest, raw, path, distribution = self.installed()
+        path.write_bytes(b"X" * path.stat().st_size)
+        with patch.object(self.validator, "_model_manifest", return_value=manifest):
+            with patch.object(self.validator.metadata, "version", return_value="0.4.0"):
+                with patch.object(self.validator.metadata, "distribution", return_value=distribution):
+                    with self.assertRaisesRegex(ValueError, "checksum"):
+                        self.validator.verify_installed(raw, {"py3langid": "0.4.0"})
+
+    def test_model_changed_after_genuine_hash_is_rejected(self):
+        payload = b"reviewed synthetic model bytes"
+        path = self.root / "model.npz.xz"
+        path.write_bytes(payload)
+        genuine_hash = self.validator._hash_stream
+
+        def changed_after_hash(stream, size, expected):
+            genuine_hash(stream, size, expected)
+            # Append after the real hash. The open descriptor's size change
+            # must be observed before verification can report success.
+            with path.open("ab") as writer:
+                writer.write(b"changed")
+
+        with patch.object(self.validator, "_hash_stream", side_effect=changed_after_hash):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                self.validator._verify_file(path, len(payload), hashlib.sha256(payload).hexdigest())
+
+    def test_builder_seals_typed_model_and_libraries_as_exact_reviewed_bytes(self):
+        manifest, raw, model_wheel = self.synthetic()
+        wheels = self.root / "wheels"
+        wheels.mkdir()
+        destination = wheels / model_wheel.name
+        destination.write_bytes(model_wheel.read_bytes())
+        app = wheel(self.root, "universal_research_library",
+                    requires=["py3langid==0.4.0"], entrypoint=True)
+        lock = self.root / "windows.lock"
+        lock.write_text("py3langid==0.4.0 --hash=sha256:" + builder.sha256(destination) + "\n")
+        sbom = self.root / "runtime.json"
+        sbom.write_bytes(raw)
+        output = self.root / "bundle"
+        original_read = Path.read_bytes
+
+        def reviewed_fixture(path):
+            if path == self.validator.MANIFEST:
+                return json.dumps(manifest).encode()
+            return original_read(path)
+
+        with patch.object(Path, "read_bytes", reviewed_fixture):
+            builder.build_bundle(app, wheels, lock, output, sbom=sbom)
+        self.assertEqual((output / "runtime-sbom.cdx.json").read_bytes(), raw)
+        self.assertEqual((output / "wheelhouse" / model_wheel.name).read_bytes(),
+                         destination.read_bytes())
+        installer.verify(output)
+        self.assertFalse((output / "py3langid").exists())
+
+    def test_builder_rejects_declared_model_mismatch_before_output(self):
+        manifest, raw, model_wheel = self.synthetic(
+            contents=[(self.validator.MODEL_NAME, b"X" * len(b"reviewed synthetic model bytes"))])
+        wheels = self.root / "wheels"
+        wheels.mkdir()
+        (wheels / model_wheel.name).write_bytes(model_wheel.read_bytes())
+        app = wheel(self.root, "universal_research_library",
+                    requires=["py3langid==0.4.0"], entrypoint=True)
+        lock = self.root / "windows.lock"
+        lock.write_text("py3langid==0.4.0 --hash=sha256:" + builder.sha256(model_wheel) + "\n")
+        sbom = self.root / "runtime.json"
+        sbom.write_bytes(raw)
+        output = self.root / "bundle"
+        original_read = Path.read_bytes
+
+        def reviewed_fixture(path):
+            if path == self.validator.MANIFEST:
+                return json.dumps(manifest).encode()
+            return original_read(path)
+
+        with patch.object(Path, "read_bytes", reviewed_fixture):
+            with self.assertRaisesRegex(ValueError, "checksum"):
+                builder.build_bundle(app, wheels, lock, output, sbom=sbom)
+        self.assertFalse(output.exists())
 
 if __name__ == "__main__":
     unittest.main()
