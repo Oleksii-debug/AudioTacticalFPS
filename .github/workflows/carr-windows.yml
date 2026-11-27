@@ -213,6 +213,12 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/installed-ocr-models.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check observed Windows format and OCR regressions before long suites
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_document_formats_text.py tests/extract/test_ocr_languages.py 2>&1 | Tee-Object 'ci-results/platform-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
         timeout-minutes: 35
         run: |
@@ -311,6 +317,7 @@ jobs:
             'tests/reader/test_query_manager.py',
             'tests/ui/test_query_manager_actions.py',
             'tests/search/test_federated.py',
+            'tests/search/test_federated_advanced.py',
             'tests/search/test_federated_independent.py',
             'tests/ui/test_federated_search.py',
             'tests/search/test_federated_epub.py',
@@ -735,6 +742,8 @@ jobs:
               'tests/acquisition/test_acquisition_cli.py',
               'tests/ui/test_native_acquisition.py',
               'tests/e2e/test_advanced_research_search.py',
+              'tests/search/test_federated_advanced.py',
+              'tests/e2e/test_research_search_cli.py',
               'tests/research/test_bibtex_import.py',
               'tests/citations/test_csl.py',
               'tests/citations/test_csl_contexts.py',

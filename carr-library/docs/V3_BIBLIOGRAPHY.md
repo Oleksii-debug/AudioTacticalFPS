@@ -131,6 +131,14 @@ archived references from all-active output. Existing destinations require the
 explicit `--overwrite` option. Without it, publication uses an atomic no-clobber
 operation, including when a file appears during rendering. A filesystem lacking
 that operation fails clearly instead of weakening the replacement policy.
+On Windows this uses a rename that refuses an existing destination, so a process
+exit immediately after publication leaves one complete file and no staging link
+that could prevent a later approved replacement. Other platforms use a hard-link
+publication with bounded cleanup retry. A permanent cleanup error explicitly
+reports that the export was published; abrupt process termination on that
+portable fallback can leave a second link, which ordinary replacement rejects.
+This is not a claim of protection against power loss or malicious directory
+changes by another process with the same filesystem permissions.
 `--style` and `--style-file` are mutually exclusive. The saved-output report
 includes the exact style hash and whether an explicitly loaded custom style was
 used.

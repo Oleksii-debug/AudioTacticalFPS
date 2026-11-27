@@ -66,6 +66,11 @@ def run_native(source=None, timeout=120):
         application = ProbeApp(False)
     except (Exception, SystemExit) as exc:
         return not_run('Native wx application could not open: ' + str(exc))
+    # A manually pumped native probe still needs an active event loop. On MSW,
+    # App.Yield without one processes pending Python work but cannot dispatch
+    # the actual OS keyboard messages through wxApp::Dispatch.
+    native_loop = wx.GUIEventLoop()
+    loop_activation = wx.EventLoopActivator(native_loop)
     simulator = wx.UIActionSimulator()
     watchdog = wx.CallLater(int(timeout * 1000), abort, 'Native keyboard probe exceeded its bounded timeout.')
 
@@ -176,10 +181,16 @@ def run_native(source=None, timeout=120):
             check('extension command uses the production stable-ID registry', manager.available(test_id))
             keymap = manager.store.path
 
-            def host_key(letter):
+            def host_key(letter, *, editable=True):
                 frame.Raise()
-                frame._restore_note_focus()
-                focus(frame.evidence.note)
+                # An intentionally removed/disabled shortcut must fall through
+                # to native control behavior. Ctrl+J/K may insert control text
+                # in an MSW multiline editor, so negative dispatch assertions
+                # use the genuine read-only quotation control. Live commands
+                # continue to be exercised from the editable unsaved note.
+                if editable:
+                    frame._restore_note_focus()
+                focus(frame.evidence.note if editable else frame.evidence.quote)
                 press(ord(letter), wx.MOD_CONTROL | wx.MOD_SHIFT)
 
             host_key('J')
@@ -201,10 +212,16 @@ def run_native(source=None, timeout=120):
                                     and settings.rows[0].command_id == test_id):
                             raise AssertionError('Native command filter did not find the stable test command.')
                         operation(settings)
+                        if settings.dialog.IsShown():
+                            raise AssertionError('Native settings operation did not close the dialog: '
+                                                 + settings.status.GetValue())
                     except BaseException as exc:
                         errors.append(exc)
                     finally:
-                        if settings.dialog.IsModal():
+                        # IsModal stays true until ShowModal unwinds on MSW,
+                        # even after native Save has called EndModal(ID_OK).
+                        # Do not overwrite that real result during cleanup.
+                        if settings.dialog.IsModal() and settings.dialog.IsShown():
                             settings.dialog.EndModal(wx.ID_CANCEL)
 
                 wx.CallAfter(edit)
@@ -229,13 +246,14 @@ def run_native(source=None, timeout=120):
             check('saved native settings persist a semantic command ID and update the menu',
                   KeymapStore(keymap).load()[test_id] == 'Ctrl+Shift+K'
                   and action.GetItemLabel().endswith('\tCtrl+Shift+K'))
-            host_key('J')
+            check('saving keyboard settings preserves the complete unsaved research note', preserved())
+            host_key('J', editable=False)
             check('old native menu accelerator stops after remapping', len(calls) == 1)
             host_key('K')
             check('new native menu accelerator dispatches exactly once', pump(lambda: len(calls) == 2))
 
             action.Enable(False)
-            host_key('K')
+            host_key('K', editable=False)
             check('actual shortcut cannot dispatch a disabled native menu item',
                   len(calls) == 2 and not manager.available(test_id))
             action.Enable(True)
@@ -249,8 +267,9 @@ def run_native(source=None, timeout=120):
                 press(wx.WXK_ESCAPE)
 
             check('actual Escape cancels the native settings dialog', not settings_session(cancel))
-            check('Cancel preserves saved bindings and the complete unsaved evidence note',
-                  keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K' and preserved())
+            check('Cancel preserves the saved keymap bytes and active binding',
+                  keymap.read_bytes() == before and manager.shortcut(test_id) == 'Ctrl+Shift+K')
+            check('Cancel preserves the complete unsaved evidence note', preserved())
 
             def conflict(dialog):
                 dialog.shortcut.SetValue('Ctrl+N')
@@ -271,7 +290,7 @@ def run_native(source=None, timeout=120):
 
             check('native settings support explicit unassignment', settings_session(unassign)
                   and manager.shortcut(test_id) == '' and '\t' not in action.GetItemLabel())
-            host_key('K')
+            host_key('K', editable=False)
             check('unassigned native accelerator no longer dispatches', len(calls) == 2)
 
             launcher_errors = []
@@ -290,10 +309,12 @@ def run_native(source=None, timeout=120):
                           pump(lambda: results.GetCount() == 1)
                           and 'Not assigned' in results.GetString(0))
                     activate(button(dialog, identifier=wx.ID_OK))
+                    if dialog.IsShown():
+                        raise AssertionError('Native Run command did not close the launcher.')
                 except BaseException as exc:
                     launcher_errors.append(exc)
                 finally:
-                    if dialog is not None and dialog.IsModal():
+                    if dialog is not None and dialog.IsModal() and dialog.IsShown():
                         dialog.EndModal(wx.ID_CANCEL)
 
             wx.CallAfter(choose_command)
@@ -310,7 +331,7 @@ def run_native(source=None, timeout=120):
 
             check('native settings save the reset shortcut', settings_session(reset)
                   and manager.shortcut(test_id) == 'Ctrl+Shift+J')
-            host_key('K')
+            host_key('K', editable=False)
             check('reset removes the previously custom native accelerator', len(calls) == 3)
             host_key('J')
             check('reset restores the original native accelerator', pump(lambda: len(calls) == 4))
