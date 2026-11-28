@@ -1,0 +1,84 @@
+{
+  "schema": "carr-finalization-status/1",
+  "observed_at": "2026-11-28 08:34:00 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "pr": 143,
+  "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+  "files": 1567,
+  "source": "Reviewed public finalization scope; complete recursive tree verification before leased fast-forward",
+  "canonical_input": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "status": "CURRENT_HEAD_HAS_KNOWN_MAIN_SYNTAX_FAILURE",
+  "gate_runs": {
+    "windows": 46124998890,
+    "v3": 46124998937,
+    "scale": 46124999025,
+    "native_launcher": 46124998938,
+    "bibliography": 46124998884,
+    "calibre": 46124995558,
+    "legacy": 46124995570
+  },
+  "temporary_preflight": {
+    "head": "84816b20f32ca8142b9e07591a7ec3fd1b4dce17",
+    "tree": "b7990002f96fbed9477d192b2920bd1d2011eae7",
+    "run": 46126153255,
+    "status": "PENDING_SEPARATE_HEAD_WITH_REPAIRED_MAIN"
+  },
+  "pending_component_native": {
+    "word": {
+      "head": "429a5e60685b4c4ac38efd204d8fb4d57a6604c5",
+      "run": 46126241176,
+      "previous_actual_probe": "PASS 128; optional Office NOT_RUN 0; wrapper job failed on trailing blank result line",
+      "previous_evidence": "d4cf4d713d8cf4154877076eba1a6fd0633ed049"
+    }
+  },
+  "main_definition_correction": {
+    "rejected_run": 46124239342,
+    "rejected_head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
+    "before": "faf177b4e701dd10746ea78bdd54a5b2c0d36082",
+    "after": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+    "independent_review": "eb983c6864b2561f6b478c578a9ce2f002123f6d",
+    "actual_admission": {
+      "run": 46124998890,
+      "job": 140917531388,
+      "status": "QUEUED_ACTUAL_NAMED_JOB",
+      "runtime_pass": false
+    }
+  },
+  "notes": [
+    "All seven maintained workflows were admitted for the exact final head.",
+    "Three duplicate push runs were automatically superseded by their pull_request counterparts under the existing workflow concurrency policy; no manual job cancellation was requested.",
+    "Component evidence belongs only to the commit and installed inventory declared in each record.",
+    "All 12 actual capacity tiers and the required backup/fresh-restore results for the largest profiles remain pending.",
+    "Actual Office availability, private engines, physical devices/listening, human NVDA, quality across 135 languages, and publisher/distribution clearance remain separate qualifications.",
+    "Do not replace active final-head jobs. The corrected final candidate still needs exact-head gates after publication; this checkpoint does not transfer any result."
+  ],
+  "merge_allowed": false,
+  "current_gate_observations": {
+    "windows": "Queued; known PowerShell source-selector syntax failure",
+    "v3": "Portable source and native jobs running",
+    "scale": "Linux books-1000 completed; remaining tiers pending/running",
+    "native_launcher": "Pinned Zig job passed; MSVC pending",
+    "bibliography": "Pending",
+    "calibre": "PASS",
+    "legacy": "Linux passed; Windows running"
+  },
+  "required_correction": {
+    "path": ".github/workflows/carr-windows.yml",
+    "before": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+    "after": "2297c5440ecc9b54e8b3a2d03e64a5ef8e62ca9e",
+    "selection_unchanged": true,
+    "product_unchanged": true,
+    "evidence": "838e2fa4f474f77d77cf4aa0519de94a5db8652b"
+  },
+  "completed_component_native": {
+    "silence": {
+      "head": "feb07924db248c2f028517939daeec02ebeb3ce9",
+      "run": 46123004216,
+      "status": "PASS",
+      "checks": 98,
+      "scenarios": 9,
+      "evidence": "f651a223e990d12de0f200b17656560b1616ddc6"
+    }
+  }
+}

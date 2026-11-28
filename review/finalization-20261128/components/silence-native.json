@@ -1,0 +1,273 @@
+{
+  "schema": "carr-studio-silence-native-evidence/1",
+  "status": "PASS",
+  "qualification": "ACTUAL_INSTALLED_WINDOWS_COMPONENT; final combined head separate",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "branch": "carr/studio-silence-native-review-20261128",
+  "head": "feb07924db248c2f028517939daeec02ebeb3ce9",
+  "tree": "25ad4aef45d4209b57a8f602d730dec381c9c593",
+  "source_manifest": "e17aa3db9e4659abe2933da5f97553e508778e96",
+  "run": 46123004216,
+  "job": 140911371283,
+  "raw_log_blob": "99affb5e10862316e29c3697b1e76d2f1d7dcdd7",
+  "native_probe": "745e03f9ed7d0d5499debd3373288dd4cd75eab6",
+  "workflow": "c42c6caab05d966770908a27688568608d943867",
+  "modal_helper": "7f468b9454e22fa021848b05fd1c4aaa96bf1542",
+  "actual_result": {
+    "schema": "carr-native-studio-silence/1",
+    "result": "PASS",
+    "checks": 98,
+    "check_names": [
+      "the real current producer completed its authored Tone/FFmpeg job",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "a real completed artifact matches its exact saved receipt",
+      "the completed project retains its exact original Unicode script",
+      "the setup service confirms closure before the real Studio opens",
+      "actual nested-modal failure returns child before parent",
+      "actual failed modal owners receive one native destruction each",
+      "named control is alive, visible and enabled",
+      "native modifier down",
+      "native modifier down",
+      "native key down",
+      "native key released",
+      "native key released",
+      "native key released",
+      "the actual Studio requests its existing single-worker executor",
+      "one actual Studio controller and executor own the view",
+      "named control is alive, visible and enabled",
+      "native key down",
+      "native key released",
+      "the actual saved-job picker contains the genuine completed job",
+      "named control is alive, visible and enabled",
+      "native key down",
+      "native key released",
+      "native key down",
+      "native key released",
+      "selected native project text remains the actual saved original",
+      "native silence defaults are explicit",
+      "named control is alive, visible and enabled",
+      "native modifier down",
+      "native key down",
+      "native key released",
+      "native key released",
+      "native ASCII numeric text accepted",
+      "native key down",
+      "native key released",
+      "named control is alive, visible and enabled",
+      "native key down",
+      "native key released",
+      "invalid native criteria admit no inspection or Studio worker",
+      "named control is alive, visible and enabled",
+      "native modifier down",
+      "native key down",
+      "native key released",
+      "native key released",
+      "native ASCII numeric text accepted",
+      "native key down",
+      "native key released",
+      "named control is alive, visible and enabled",
+      "native modifier down",
+      "native key down",
+      "native key released",
+      "native key released",
+      "native ASCII numeric text accepted",
+      "native key down",
+      "native key released",
+      "named control is alive, visible and enabled",
+      "native key down",
+      "native key released",
+      "actual inspection uses the selected job and typed criteria",
+      "named control is alive, visible and enabled",
+      "the exact genuine inspection report is focused and read-only",
+      "the report binds actual master and timeline bytes",
+      "inspection uses the real existing worker and releases the actual resource lease",
+      "named control is alive, visible and enabled",
+      "native modifier down",
+      "native key down",
+      "native key released",
+      "native key released",
+      "native ASCII numeric text accepted",
+      "native key down",
+      "native key released",
+      "named control is alive, visible and enabled",
+      "native modifier down",
+      "native key down",
+      "native key released",
+      "native key released",
+      "native ASCII numeric text accepted",
+      "native key down",
+      "native key released",
+      "named control is alive, visible and enabled",
+      "native key down",
+      "native key released",
+      "the second real scan uses the new criteria without partial or stale intervals",
+      "completed job, original script and every actual published artifact remain byte-exact",
+      "named control is alive, visible and enabled",
+      "native key down",
+      "native key released",
+      "the genuine current Studio service and all submitted operations have completed",
+      "all fixed native silence scenarios completed",
+      "all selected installed sources remain byte-exact",
+      "all native scripts and reused modal helpers remain byte-exact",
+      "the exact selected actual audio evidence and executable bytes remain unchanged"
+    ],
+    "scenarios": {
+      "actual_completed_production": "PASS",
+      "native_saved_job_selection": "PASS",
+      "invalid_criteria_no_admission": "PASS",
+      "native_explicit_criteria": "PASS",
+      "actual_readonly_inspection_report": "PASS",
+      "same_studio_worker_and_no_playback": "PASS",
+      "second_criteria_and_complete_scan": "PASS",
+      "unchanged_job_source_and_artifacts": "PASS",
+      "confirmed_native_and_worker_cleanup": "PASS"
+    },
+    "selected_sources": {
+      "carr_library.application": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+        "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+      },
+      "carr_library.durable_state": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+        "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+      },
+      "carr_library.operations.broker": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\operations\\broker.py",
+        "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+      },
+      "carr_library.runtime_settings": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\runtime_settings.py",
+        "sha256": "0811f94c2c28ac45819fd1107216c2f1432051d5d93f8a9f58058d2bc103f0fe"
+      },
+      "carr_library.audio.models": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\models.py",
+        "sha256": "40d44e18048874a970ff803effe45897b4647e654606d1028b5baeb0a807a631"
+      },
+      "carr_library.audio.process": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+        "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+      },
+      "carr_library.audio.cleanup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+        "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+      },
+      "carr_library.backup_compat.pcm": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_compat\\pcm.py",
+        "sha256": "2fee3561af3638cc9040743472d443bddbc22a141c784ef8ae51f3731e5b6e1c"
+      },
+      "carr_library.studio.render": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\render.py",
+        "sha256": "3ccd318f8a296992d544d38d834fde8be5f18c2a8a331e590a5b1ff1ad3a33cb"
+      },
+      "carr_library.studio.project": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\project.py",
+        "sha256": "79af584af00fa781d3f686029ecb76073acbc1ffad5661074d2cd2d60710c30a"
+      },
+      "carr_library.studio.publishing": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\publishing.py",
+        "sha256": "4e32fdd3b4dda2e857f0cce5adceae1295cf803cb56e42291155990852fb0824"
+      },
+      "carr_library.studio.interchange": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\interchange.py",
+        "sha256": "442fe081f0b7797517c86a2e891709335148fbc0231ffb9ad06e12aa03ab0869"
+      },
+      "carr_library.studio.silence": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\silence.py",
+        "sha256": "d26d73241ea69af78f4ddc885cfbe88c044dfe00a8cab5bfa6874bd7b1596645"
+      },
+      "carr_library.ui.desktop_app": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "sha256": "627b8a082d6792ca96eba92a66b30517e0a8a77695ef697e1214aff75f82db3a"
+      },
+      "carr_library.ui.studio_dialog": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\studio_dialog.py",
+        "sha256": "1781ea44da180d038848a66b0631edaa75fc7b993ce64f90ae1b2eb7db9d678d"
+      },
+      "carr_library.ui.operation_progress": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\operation_progress.py",
+        "sha256": "ec850a426e32a4509579ac729c7dafbacfc0bf55ffbae19dee6e6075d041b75b"
+      },
+      "carr_library.ui.progress_panel": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\progress_panel.py",
+        "sha256": "e960ce2f84c58c07894f02e28bdd8983a528d7369a44fdbd2c1d5e9410191bd7"
+      }
+    },
+    "scripts": {
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_studio_silence_smoke.py": "7b12731cf8af119f699c1486d4b6fd7b5310a788ee5c1a12b9686711f08e4e91",
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py": "5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916",
+      "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py": "55c8a34229e40424b9e929f7eaa43a407276186e50e93f98dd5f6112b7c32343"
+    },
+    "actual_saved_production": "PASS",
+    "actual_native_criteria": "PASS",
+    "actual_readonly_report": "PASS",
+    "source_sha256": "89c262611a178b8e4a562aafd2748ec48b825548a93bf41ccd7093c591211145",
+    "audio_runtime": {
+      "runtime_root": "D:\\a\\_temp\\carr-studio-silence-native-audio",
+      "bundled": false,
+      "ffmpeg": {
+        "path": "D:\\a\\_temp\\carr-studio-silence-native-audio\\bin\\ffmpeg.exe",
+        "sha256": "ed8f66cb877087a96f5bbb40a2944f0e764f2ad8870d5cb647360d912e62bc07"
+      },
+      "ffprobe": {
+        "path": "D:\\a\\_temp\\carr-studio-silence-native-audio\\bin\\ffprobe.exe",
+        "sha256": "df0199f606faa88e9ad192732a7c3987acfb647663534c297772e17730611a08"
+      }
+    },
+    "synthetic_voice": "DISCLOSED_TONE_PCM_FIXTURE",
+    "physical_output": "NOT_RUN",
+    "speech_quality": "NOT_RUN",
+    "NVDA": "NOT_RUN"
+  },
+  "before_after_bindings": [
+    {
+      "origins": 17,
+      "package_inventory_sha256": "ca15cc2daa0df7f8c8ee2b9d82dde0cca1bb596930bf7bc2a01d870068964a46",
+      "package_python_files": 408,
+      "phase": "before",
+      "probe": "silence",
+      "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate",
+      "script_count": 4,
+      "status": "IDENTITY_VERIFIED"
+    },
+    {
+      "origins": 17,
+      "package_inventory_sha256": "ca15cc2daa0df7f8c8ee2b9d82dde0cca1bb596930bf7bc2a01d870068964a46",
+      "package_python_files": 408,
+      "phase": "after",
+      "probe": "silence",
+      "qualification": "INSTALLED_BINDINGS_ONLY; actual native outcome is separate",
+      "script_count": 4,
+      "status": "IDENTITY_VERIFIED"
+    }
+  ],
+  "artifact_lines": [
+    "2026-11-28T08:21:21.9725226Z Artifact studio-silence-native-windows-2022-feb07924db248c2f028517939daeec02ebeb3ce9 has been successfully uploaded! Final size is 46712 bytes. Artifact ID is 15255725687",
+    "2026-11-28T08:21:21.9730360Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46123004216/artifacts/15255725687"
+  ],
+  "combined_common_evidence": "f8befd32c9b070f11349dfa41faac7440ee5b681",
+  "previous_failures": [
+    {
+      "evidence": "27da3827fde7337f0f898143e84b928aeb523693",
+      "cause": "Probe/workflow named nonexistent studio.publication; corrected to current studio.publishing."
+    },
+    {
+      "evidence": "fff99a96f785ab5dc44caa0654ee158cee11f518",
+      "cause": "Isolated workflow passed raw acquisition report; corrected only workflow to established external audio binding envelope."
+    }
+  ],
+  "limits": {
+    "synthetic_voice": "DISCLOSED_TONE_PCM_FIXTURE",
+    "physical_output": "NOT_RUN",
+    "speech_quality": "NOT_RUN",
+    "NVDA": "NOT_RUN",
+    "GUI_editor_import": "NOT_RUN",
+    "final_exact_71ca_native": "SEPARATE_PENDING_GATE"
+  },
+  "source_unchanged": "Both observed corrections were acceptance-only; actual product remains the independently reviewed root a11/3c56 silence+CUE implementation."
+}

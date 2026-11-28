@@ -1,0 +1,50 @@
+{
+  "schema": "carr-composed-preflight/1",
+  "status": "FAIL",
+  "head": "9d8da1b3096046b49ff66a8dd0c0331bd6a26b15",
+  "tree": "10190663b49ab4457ec69392907c6d98239570c3",
+  "run": 46124240341,
+  "job": 140915151765,
+  "raw_log_blob": "aa40c2a5043ce1816f6a8383c2a405c9c8667861",
+  "executed": {
+    "python_files": 1246,
+    "embedded_python_blocks": 10,
+    "entrypoints": 6,
+    "workflows": 8,
+    "python_yaml_paths": "PASS",
+    "powershell_blocks": 43,
+    "powershell_status": "FAIL",
+    "errors": [
+      {
+        "block": "carr-windows.yml:integrated-desktop:33",
+        "line": 519,
+        "message": "Missing expression after ','."
+      }
+    ]
+  },
+  "native": {
+    "status": "SKIPPED_BECAUSE_SYNTAX_DEPENDENCY_FAILED",
+    "checks": 0
+  },
+  "artifact": {
+    "id": 15255533172,
+    "bytes": 101879,
+    "sha256": "917b33be76d51738741cb260a385c5e7b126eabeeb4a377b13aa268d6bb5af32"
+  },
+  "cause": "The appended PowerShell source-suite array ended with a comma immediately before its closing parenthesis.",
+  "prepared_fix": {
+    "before": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+    "after": "2297c5440ecc9b54e8b3a2d03e64a5ef8e62ca9e",
+    "change": "Add the separator after the previous last entry and remove the forbidden trailing separator after the new last entry.",
+    "selected_source_paths": 512,
+    "selected_paths_changed": false,
+    "product_source_changed": false,
+    "independent_source_review": "SOURCE_APPROVED",
+    "runtime_status": "NOT_RUN"
+  },
+  "limits": [
+    "This is an executed failure, not a final qualification.",
+    "The final71ca main contains the same syntax issue and cannot pass its required source step.",
+    "Healthy final71ca jobs are retained; each outcome remains bound to that exact head."
+  ]
+}

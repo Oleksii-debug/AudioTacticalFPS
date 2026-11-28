@@ -1,0 +1,111 @@
+{
+  "schema": "carr-final-scale-source-review/1",
+  "reviewed_utc": "2026-11-28T08:27:28Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "pr": 143,
+  "commit": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+  "run_id": 46124999025,
+  "verdict": "SOURCE_APPROVE_FINITE_CAPACITY_ORCHESTRATION",
+  "runtime_verdict": "PENDING_12_ACTUAL_TIERS",
+  "sources": [
+    {
+      "path": ".github/workflows/carr-library-scale.yml",
+      "sha": "75994a6df89d8b1d38ce96a82e36f159eae32283"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_backup.py",
+      "sha": "17d8ae5ae97ab57fe5ede1ea46a6f22b385e2b56"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_catalog.py",
+      "sha": "5c674cac4b02237c8cf65122fbc58dca397ed3d9"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "sha": "81e569b33a6acc4a64f3ee04176598487f9efc07"
+    }
+  ],
+  "additional_sources": [
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "f096cccaa7e1312a295362da7a6d7242993433ef"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_budget.py",
+      "sha": "8a3bf0e3987706b223751c6dd7cee5ca106154bc"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/session.py",
+      "sha": "943c084f546455c2d84fc0478033f254ad1e79e4"
+    }
+  ],
+  "matrix": {
+    "operating_systems": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "tier_count": 6,
+    "jobs": 12,
+    "maximum_parallel": 12,
+    "job_minutes": 360,
+    "exact_2g_original_bytes": 2147483648,
+    "exact_2g_segments": 1000,
+    "book_counts": [
+      1000,
+      10000,
+      50000
+    ],
+    "segments_per_book": 40,
+    "large_source_other_bytes": [
+      68157613,
+      135266477
+    ]
+  },
+  "bounds": {
+    "worker_seconds": 600,
+    "query_seconds": 1800,
+    "anchor_queries": 50,
+    "per_page_results": 100,
+    "books_50000_resume_seconds": 14400,
+    "books_50000_search_seconds": 5400,
+    "text_2g_search_seconds": 14400,
+    "backup_roundtrip_seconds": 3600,
+    "largest_backup_roundtrips": 4
+  },
+  "prewrite_authored_projections_not_observations": {
+    "books_50000": {
+      "original_bytes": 513950003,
+      "initial_fixture_free_requirement_bytes": 32930581704,
+      "separate_verifier_tmp_requirement_bytes": 13434457086,
+      "backup_available_memory_requirement_bytes": 4362076160
+    },
+    "text_2g": {
+      "original_bytes": 2147483648,
+      "initial_fixture_free_requirement_bytes": 62482567680,
+      "separate_verifier_tmp_requirement_bytes": 23422595072,
+      "backup_available_memory_requirement_bytes": 2214592512
+    }
+  },
+  "disk_review": [
+    "The chosen fixture parent is a new private mkdtemp directory on the larger currently observed free volume among RUNNER_TEMP and Python tempfile roots; no existing fixture is adopted or unrelated file removed.",
+    "The foundation admission counts external originals, retained originals, separate catalog and journal estimates, manifest, chosen search spool, and free reserve. Largest-tier preflight additionally counts archive and verifier/restore staging before generation.",
+    "The backup adapter remeasures the live profile and actual fixture/temp free capacity and physical/cgroup availability, derives a typed external BackupBudget before archive creation, and fails NOT_RUN/nonzero if unavailable.",
+    "The external originals and live profile persist through the entire roundtrip. Backup, verify, restore execute sequentially; verifier TemporaryDirectory is closed before restore; fresh restore publication uses same-volume hard links to staging, which are removed before successful return.",
+    "The catalog measurement explicitly says application_profile includes retained originals and SQLite and categories overlap; the report does not sum those categories. Backup final whole-tree inventory is taken after all oracles and before report write.",
+    "Logical tree bytes are measured; allocation bytes use st_blocks where available and otherwise remain NOT_MEASURED. No continuous disk-peak claim is made."
+  ],
+  "memory_review": [
+    "Every actual import worker records its own lifetime peak through the existing owned runner bootstrap; the parent reads this only after real runner return.",
+    "Coordinator getrusage or PeakWorkingSetSize is separate from individual worker peaks. The maximum of worker peaks is not added to the coordinator maximum.",
+    "simultaneous_family_peak remains NOT_MEASURED; no aggregate family peak is inferred.",
+    "SearchResources memory is a working source-window allowance, not an OS memory cap; 1GiB admits 33,554,432 raw characters while result count remains at most100.",
+    "Backup policy memory bounds manifest/metadata decoders and is checked against current availability; it is not an enforced RSS quota."
+  ],
+  "acceptance": [
+    "No component PASS transfers.",
+    "All12 tiers require exact source counts, actual exit73 after durable commit and owned-family return, same saved queue resume, complete catalog/source/hash traversal, all50 anchors, quotations, Unicode, scope/federation and cold/reopen full-rank checks.",
+    "Exactly four largest jobs require BACKUP_RESTORE_VERIFIED, complete raw/catalog/source equality, old-attempt revocation/passive scan review, restored verified copy and foreign-scope refusal.",
+    "Every phase and before/after exact commit, package, origins and three script identities is required; failed/skipped/NOT_RUN mandatory phases cannot yield PASS."
+  ]
+}

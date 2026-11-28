@@ -1,0 +1,121 @@
+{
+  "schema": "carr-final-native-launcher-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+  "run_id": 46124998938,
+  "job_id": 140917531696,
+  "job_name": "pinned-zig-native-launcher",
+  "job_status": "completed",
+  "job_conclusion": "success",
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124998938/job/140917531696",
+  "workflow_blob": "0e8ce239bd8f00648a957ddda71088e9fa819c16",
+  "raw_log_blob": "4fe9fd266d3c5ebeccb7c6b280a84eb27d72aba6",
+  "raw_readback_exact": true,
+  "build": {
+    "schema": 1,
+    "toolchain": {
+      "version": "0.14.1",
+      "archive_sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+      "archive_bytes": 82229343,
+      "binary_sha256": "1ddf230367e07738c4a769eae66c1db7469e37bd520e81c86356453d0db2b9fd",
+      "primary_url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip"
+    },
+    "source_sha256": {
+      "launcher.c": "052c2d285d6be44013e0da3b9ca1a155e5d6bcf991ba1e9fa30ebde03d1752bd",
+      "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+      "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+      "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+      "toolchain.lock.json": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+    },
+    "target": "x86_64-windows-gnu",
+    "pe": {
+      "schema": 1,
+      "file": "ResearchLibrary.exe",
+      "bytes": 15872,
+      "sha256": "34133c81454f438093541c58858f7e7b40a920b868441ae67fae2f4816fd131c",
+      "machine": "x86_64",
+      "subsystem": "windows-gui",
+      "aslr": true,
+      "high_entropy_aslr": true,
+      "dep": true,
+      "timestamp": 2350220029,
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll",
+        "SHELL32.dll"
+      ],
+      "reproducible_build_marker": true,
+      "embedded_as_invoker": true,
+      "certificate_table_present": false,
+      "authenticode_signed": false,
+      "windows_execution_verified": false,
+      "nvda_verified": false
+    },
+    "release_status": "unsigned-private-candidate"
+  },
+  "probe": {
+    "schema": 1,
+    "status": "passed",
+    "checks": [
+      "unicode-spaces-fixed-argv-offline-optional-runtimes",
+      "read-only-ready-probe",
+      "fixed-installation-check",
+      "child-exit-status-propagated",
+      "extra-arguments-rejected",
+      "incomplete-state-preserved-without-reinstall",
+      "missing-runtime-does-not-search-path",
+      "fresh-package-reuses-fixed-offline-installer",
+      "research-data-sentinel-preserved"
+    ],
+    "check_count": 9,
+    "launcher_sha256": "34133c81454f438093541c58858f7e7b40a920b868441ae67fae2f4816fd131c",
+    "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+    "native_launcher_execution_verified": true,
+    "actual_python_installation_verified": false,
+    "nvda_verified": false,
+    "authenticode_verified": false
+  },
+  "source_git_blobs": [
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.c",
+      "sha": "b4dcd8d765863878fb61b0b79737a4594dfb1c1b"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher_core.h",
+      "sha": "456ff2695b5b5749290e054d1f8031e483999374"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.rc",
+      "sha": "7cf42ebb63320940ad33bda24747a292bd67ed63"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.manifest",
+      "sha": "cfaea634d9705ae75f23b9423350e051cce7b732"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/toolchain.lock.json",
+      "sha": "75e7cc434ef2a50ab3f08fd1d0ab1a5b9eaedf91"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/build_launcher.py",
+      "sha": "beb1c95f9ec999be261bda1c38593a4f849525d0"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_windows.py",
+      "sha": "ce66b743c8614b88ec7f1a77e2423f86fc64474b"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/windows_child_probe.c",
+      "sha": "0cd3039053be35eb3e9f76960eccc7557d73e46d"
+    }
+  ],
+  "scope": {
+    "native_zig_launcher": "PASS",
+    "native_child": "synthetic test executable",
+    "actual_python_installation": "NOT_VERIFIED",
+    "nvda": "NOT_VERIFIED",
+    "authenticode": "NOT_VERIFIED",
+    "msvc_lane": "PENDING"
+  }
+}

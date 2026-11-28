@@ -24,23 +24,27 @@ The implementation guides and requirement/evidence records are in [release readi
 - Current technical contracts: finalization `db8adbdc483a03c262885928c7ed214ca70bbaa7` and audio/agent `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
 - The temporary component/preflight workflows are excluded. The final tree contains the **seven maintained workflows** below.
 
-**The final candidate is published for acceptance; its required gates are pending. No component PASS is reassigned to this head.** The PR must remain unmerged until the required exact-head results complete successfully.
+**The current head has a known main-workflow PowerShell selector syntax failure and must not merge.** Its healthy running gates continue to retain their own actual results. A reviewed delimiter-only correction is being tested separately; the later corrected candidate will require its own completed gates. No component or predecessor PASS is reassigned to another head.
 
 | Required workflow | Required scope | Current verdict |
 | --- | --- | --- |
-| CARR Windows integrated desktop | Real standard installation and sealed bundle, offline runtime, required native controls and full selected source/installed suites | PENDING |
-| CARR V3 local studio and assistant | Portable source integrity plus installed/native/offline Studio and Assistant acceptance | PENDING |
-| Actual library corpus scale | All 12 actual corpus/source tiers below, including required fresh backup/restore on the largest profiles | PENDING |
+| CARR Windows integrated desktop | Real standard installation and sealed bundle, offline runtime, required native controls and full selected source/installed suites | BLOCKED by known source-selector syntax; other phases retained |
+| CARR V3 local studio and assistant | Portable source integrity plus installed/native/offline Studio and Assistant acceptance | RUNNING |
+| Actual library corpus scale | All 12 actual corpus/source tiers below, including required fresh backup/restore on the largest profiles | RUNNING; Linux 1,000-book tier completed |
 | CARR native Windows launch entry | Actual native launcher, process ownership and installed entry behavior | PENDING |
 | CARR bibliography and import acceptance | Installed bibliography/import and document protocol boundaries | PENDING |
-| Selected Calibre reading review | Eight actual selected formats, source/installed and real reader routes | PENDING |
-| Selected legacy document and archive conversion review | Required Windows/Linux document and archive conversion acceptance | PENDING |
+| Selected Calibre reading review | Eight actual selected formats, source/installed and real reader routes | PASS on this head: 235 suite cases, eight installed conversions and four negative controls |
+| Selected legacy document and archive conversion review | Required Windows/Linux document and archive conversion acceptance | Linux completed; Windows pending |
 
 The scale matrix uses Windows and Linux for **1,000 / 10,000 / 50,000 books**, with 40 segments per book, and actual **65 MiB + 173 bytes / 129 MiB + 173 bytes / exactly 2 GiB** source files. Generation, admission, publication, committed interruption, same-queue resume, full catalog/search scope, saved resource policies and integrity evidence remain mandatory. The exact 2 GiB profile is not inferred from a smaller source or a sparse file.
 
 The maintained Windows and V3 gates now execute all eight final native scope contracts through one committed helper. The helper binds the expected event head, complete source/installed Python inventories, exact probe/config/oracle files, all **22** selected runtime/notice assets and the selected audio evidence before and after every outcome. Existing tests and assertions remain required; the 19 newly missing test files were added to each of the four maintained source/installed selectors.
 
-The shared preflight at `9d8da1b3096046b49ff66a8dd0c0331bd6a26b15` ([run 46124240341](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124240341)) remains a separate record. Its old main-workflow definition was rejected before jobs started after a GitHub expression was inserted into a large scalar. The final main workflow moves that same event-head expression into one job environment value and passes it unchanged to the helper; it preserves every test, timeout, firewall and identity check. Admission and runtime results belong to this candidate's runs.
+The first shared preflight at `9d8da1b3096046b49ff66a8dd0c0331bd6a26b15` ([run 46124240341](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124240341)) compiled all **1,246 Python files**, ten embedded Python blocks and eight workflows, then the actual PowerShell parser found a forbidden final comma in the main source-suite array. The native job correctly did not run after that dependency failure. Record: `838e2fa4f474f77d77cf4aa0519de94a5db8652b`.
+
+The prepared main-workflow correction `2297c5440ecc9b54e8b3a2d03e64a5ef8e62ca9e` changes only the two required comma positions; all 512 selected source paths and every test/bound remain unchanged. It is being exercised with the complete native composition at `84816b20f32ca8142b9e07591a7ec3fd1b4dce17` ([run 46126153255](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46126153255)). The current PR head and its running jobs are left intact until their outcomes are captured.
+
+The earlier zero-job GitHub definition rejection was separately corrected by moving the same event-head expression into a job environment value. The current main run was admitted as an actual named job; that admission is not a runtime PASS.
 
 ## Completed component evidence
 
@@ -52,7 +56,7 @@ Counts below are **per context**, not summed into a release total; these selecti
 | Redacted diagnostics | Windows 77 + 77, Linux 78 + 78; 135 native assertions | [46118029628](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118029628), record `4b82c8fe492ec5373c300f8b397074ea5f5f4659` |
 | Speech preparation | 755 source + 755 installed on each OS; 321 actual native assertions | [46118114870](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118114870), [46120170430](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120170430) |
 | Live A–B and sleep | 987 source + 987 installed on each OS; 126 native assertions and five actual selected SAPI renders with controlled PCM output | [46120317097](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120317097), [46121452393](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121452393) |
-| CUE and silence common contracts | 342 source + 342 installed on each OS; six upstream libcue self-tests plus actual two-track and 100-chapter boundary parsing | [46121179440](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121179440), record `f8befd32c9b070f11349dfa41faac7440ee5b681` |
+| CUE and silence | 342 source + 342 installed on each OS; six upstream libcue self-tests plus actual two-track and 100-chapter boundary parsing; 98 native Studio assertions with all nine silence scenarios passed | [46121179440](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121179440), [46123004216](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46123004216), native record `f651a223e990d12de0f200b17656560b1616ddc6` |
 | Word common contracts | 539 source + 539 installed on each OS, with all 20 CSL/runtime/notice assets bound before/after | [46120130479](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120130479), record `9b620e7e1045049eb3af6eb2decc79268620e7c9` |
 | Research merge | 237 source + 237 installed on each OS; all 12 fixed native criteria and 310 native assertions | [46120328460](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120328460), [46122906464](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122906464) |
 | Indexed large-source publication | 306 source + 306 installed on each OS, with three additional subtests per context and real rollback/SQLite-plan checks | [46112053954](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46112053954), record `e0ff493a9ebac6bdfb6817e33693023efc3044e1` |
@@ -60,7 +64,7 @@ Counts below are **per context**, not summed into a release total; these selecti
 
 The Windows 512 MiB record measured import at 71.033 seconds and complete retrieval at 1,791.572 seconds. Its worker and coordinator own-process peaks are separate measurements, not a concurrent family peak or an operating-system RAM cap. This record does not qualify the final 2 GiB or 50,000-book profiles.
 
-The remaining isolated Word and silence native runs are also tracked separately from the final candidate. Previous failed probes and their corrections remain recorded; a queued job is not an executed verdict.
+The completed silence native record and the remaining isolated Word native run are tracked separately from the final candidate. Previous failed probes and their corrections remain recorded; a queued job is not an executed verdict.
 
 ## Qualification boundaries
 
