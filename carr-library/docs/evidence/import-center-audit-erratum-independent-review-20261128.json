@@ -1,0 +1,59 @@
+{
+  "schema": "carr-import-center-audit-erratum-independent-review/1",
+  "status": "GO_CORRECTED_PROVENANCE_NO_RUNTIME_CLAIM",
+  "erratum_commit": "ec70134c192f35d59a09821116d0a8c2214053dd",
+  "affected_source_candidate": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+  "reviewed_at_utc": "2026-11-28T09:49:51Z",
+  "root_checks": {
+    "commit": true,
+    "tree": true,
+    "only_added_doc": true,
+    "proof_digest": true,
+    "original_record": true,
+    "selection88": true,
+    "current2701_blobs": true,
+    "corrected_digest": true,
+    "original_reconstruction": true,
+    "derived_digest": true,
+    "derived_blobs": true,
+    "only_two_derived_changes": true,
+    "search_current": true,
+    "search_has_no_import_center": true,
+    "old_search_digest": true,
+    "derived_probe_hashes": true,
+    "product_excluded": true,
+    "no_runtime_claim": true
+  },
+  "consumer_checks": [
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "sha256": "a24f415796b7d1a6d971fb26cae948df6a7f1332939a22737d68ca2b255e2bce",
+      "expected": "a24f415796b7d1a6d971fb26cae948df6a7f1332939a22737d68ca2b255e2bce",
+      "exact": true,
+      "mentions_import": true
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "sha256": "1b08b1b0b02df57746204b1edee4730e616a660b44a7796cb089b77608400c98",
+      "expected": "1b08b1b0b02df57746204b1edee4730e616a660b44a7796cb089b77608400c98",
+      "exact": true,
+      "mentions_import": true
+    },
+    {
+      "path": "carr-library/tests/ui/probe_import_epub_continuation_native.py",
+      "sha256": "2a373cb070486fcf7992403fdb909dfab5c6daebe2999c6cde9fae4699de08d6",
+      "expected": "2a373cb070486fcf7992403fdb909dfab5c6daebe2999c6cde9fae4699de08d6",
+      "exact": true,
+      "mentions_import": true
+    },
+    {
+      "path": "carr-library/tests/ui/probe_streamed_import_native.py",
+      "sha256": "f37872cc78405485e007d12e496c4218109b4c220cd44e79213f5bca99c6b9f8",
+      "expected": "f37872cc78405485e007d12e496c4218109b4c220cd44e79213f5bca99c6b9f8",
+      "exact": true,
+      "mentions_import": true
+    }
+  ],
+  "boundary": "The originating reviewer freshly fetched all88 exact2701 audit inputs. Root rederived the complete path set and checked all88 Git identities, exact serialized corrected/original/derived digests, the changed search bytes and four actual consumer hashes. Root does not claim a second complete88-body download. This corrects the historical metadata only and makes no execution claim.",
+  "source_and_active_refs": "UNCHANGED"
+}

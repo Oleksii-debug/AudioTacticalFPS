@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28T09:41:28Z",
+  "updated_utc": "2026-11-28T09:49:51Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -137,13 +137,13 @@
   },
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
-    "head": "f0e15752504c6a8f0bb8f16001049a8c9dd9e597",
-    "tree": "055aca340c25ac97ee00a82cd607c923c693b985",
+    "head": "606b7ef2eeb26052a5e2950c58054ee0bc49b95f",
+    "tree": "19d21963816ffa981bad5292e826add212e315c2",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
     "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
     "auxiliary_root_review_path": "carr-library/docs/evidence/pr210-7c991-auxiliary-independent-review-20261128.json",
-    "files": 1826,
+    "files": 1829,
     "current_source_composition": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
     "current_independent_review_path": "carr-library/docs/evidence/import-center-final-independent-review-20261128.json",
     "focused_2701_review_path": "carr-library/docs/evidence/2701-focused-independent-review-20261128.json"
@@ -545,5 +545,25 @@
     "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "no_historical_pass_transfer": true
+  },
+  "provenance_erratum": {
+    "status": "REVIEWED_CORRECTION",
+    "scope": "The c2b0 repair provenance contains one stale-body digest in the88-file2701 native-input audit. Product/probe source selections and the four actual Import Center consumers remain independently reviewed.",
+    "original_inventory_sha256": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+    "affected_path": "carr-library/tests/ui/probe_search_continuation_native.py",
+    "claimed_current_blob": "3cff32ca38b7097a943cf92d36512356076dede6",
+    "current_source_sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8",
+    "original_stale_source_sha256": "d3a32334721fbfacc7d7d0b192c8406d52813bf731d909343234be80c7b1d11a",
+    "repair": "Freshly read all88 inputs at exact2701; retain full corrected inventory and original digest, then separately identify09ac probe differences. Record an explicit append-only erratum and bind it to observed proof.",
+    "runtime_impact": "No product/gate change established; active source refs remain frozen.",
+    "owner": "durable_native_composition",
+    "commit": "ec70134c192f35d59a09821116d0a8c2214053dd",
+    "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json",
+    "git_blob": "5cd8c388c45f8bdfbb696501bebb30722ba4ad08",
+    "corrected_2701_inventory_sha256": "a286ab1f4a2d072c2b60d80bdd643d18055b139266f79c76339bf2fe4d2089c0",
+    "separate_09ac_inventory_sha256": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
+    "root_checks": 18,
+    "exact_consumers": 4,
+    "original_digest_disposition": "INVALID_AS_CURRENT_2701_INVENTORY; retained and explicitly corrected."
   }
 }

@@ -146,5 +146,16 @@
   },
   "final_main_artifact_read": "NOT_RUN",
   "canonical_integration": "NOT_PERFORMED",
-  "full_platform_status": "NOT_QUALIFIED"
+  "full_platform_status": "NOT_QUALIFIED",
+  "provenance_erratum": {
+    "status": "CORRECTED_BY_APPEND_ONLY_ERRATUM",
+    "commit": "ec70134c192f35d59a09821116d0a8c2214053dd",
+    "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json",
+    "root_review_path": "carr-library/docs/evidence/import-center-audit-erratum-independent-review-20261128.json",
+    "original_digest": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+    "corrected_2701_digest": "a286ab1f4a2d072c2b60d80bdd643d18055b139266f79c76339bf2fe4d2089c0",
+    "separate_09ac_digest": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
+    "source_gates_changed": false,
+    "runtime_claim": false
+  }
 }
