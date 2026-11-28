@@ -101,11 +101,11 @@ jobs:
           $proof | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/endpoint-installed-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Require durable path safety and complete installed acceptance controls
+      - name: Require durable paths, playback identities and installed acceptance controls
         id: union_source_controls
         timeout-minutes: 6
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_durable_state_read.py tests/storage/test_durable_state_publication.py tests/packaging/test_standard_installer.py 2>&1 | Tee-Object 'ci-results/union-source-controls.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_durable_state_read.py tests/storage/test_durable_state_publication.py tests/packaging/test_standard_installer.py tests/speech/test_playback_devices.py tests/speech/test_playlist_recovery.py 2>&1 | Tee-Object 'ci-results/union-source-controls.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require the exact endpoint guards and serialization controls
@@ -184,6 +184,51 @@ jobs:
           $receiptExit = $LASTEXITCODE
           if ($endpointExit -ne 0) { exit $endpointExit }
           if ($receiptExit -ne 0) { exit $receiptExit }
+
+      - name: Require two distinct actual endpoint identities and silent explicit selection
+        id: endpoint_product_identity
+        timeout-minutes: 2
+        run: |
+          $identityProof = @'
+          import hashlib, json, os, pathlib, sys
+          from carr_library.speech import playback_devices
+          from carr_library.speech.player import WavePlayer
+          installed = pathlib.Path(playback_devices.__file__).resolve(strict=True)
+          source = pathlib.Path('src/carr_library/speech/playback_devices.py').resolve(strict=True)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          assert installed.read_bytes() == source.read_bytes()
+          outputs = playback_devices.output_devices()
+          assert len(outputs) == 2 and all(row.selectable for row in outputs)
+          assert len({row.interface for row in outputs}) == 2
+          player = WavePlayer()
+          observed = []
+          try:
+              assert player.output_device is None and player.state == 'stopped'
+              for row in outputs:
+                  resolved = playback_devices.resolve_output(row)
+                  assert resolved.identity == row.identity
+                  player.select_output(row)
+                  assert player.output_device.identity == row.identity
+                  assert player.output_device.index == resolved.index
+                  assert player.state == 'stopped'
+                  assert not player._open and player._wave is None and player._process is None
+                  observed.append(dict(index=row.index, resolved_index=resolved.index, name=row.name,
+                      endpoint_id_sha256=hashlib.sha256(row.interface.encode('utf-8')).hexdigest()))
+              player.select_output(None)
+              assert player.output_device is None and player.state == 'stopped'
+              assert not player._open and player._wave is None and player._process is None
+          finally:
+              player.close()
+          report = dict(status='PASS', source_commit=os.environ['GITHUB_SHA'],
+              module_sha256=hashlib.sha256(installed.read_bytes()).hexdigest(),
+              output_count=len(outputs), outputs=observed, silent_explicit_selection='PASS',
+              actual_audio_playback='NOT_RUN', physical_hotplug='NOT_RUN', nvda='NOT_RUN')
+          raw = json.dumps(report, ensure_ascii=True, sort_keys=True, allow_nan=False)
+          pathlib.Path('ci-results/endpoint-output-identities.json').write_text(raw + '\n', encoding='utf-8')
+          print(raw, flush=True)
+          '@
+          $identityProof | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/endpoint-output-identities.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve the one-off endpoint evidence before application acceptance
         if: always()

@@ -46,15 +46,15 @@ class WinMM:
         index = handle.value or 0
         self.calls.append(('message', index, command))
         raw = (self.rows[index].interface + '\0').encode('utf-16-le')
-        if command == devices.DRV_QUERYDEVICEINTERFACESIZE:
+        if command == devices.DRV_QUERYFUNCTIONINSTANCEIDSIZE:
             if self.failure == 'size': return 8
-            ctypes.cast(first, ctypes.POINTER(ctypes.c_uint32)).contents.value = len(raw) if self.size_override is None else self.size_override
-        elif command == devices.DRV_QUERYDEVICEINTERFACE:
+            ctypes.cast(first, ctypes.POINTER(ctypes.c_size_t)).contents.value = len(raw) if self.size_override is None else self.size_override
+        elif command == devices.DRV_QUERYFUNCTIONINSTANCEID:
             if self.failure == 'interface': return 8
             assert second >= len(raw)
             ctypes.memmove(first, raw, len(raw))
         else:
-            raise AssertionError('Only documented interface messages are admitted')
+            raise AssertionError('Only documented endpoint ID messages are admitted')
         return 0
 
 
@@ -69,7 +69,7 @@ def test_actual_abi_layout_utf16_identity_and_documented_queries(monkeypatch):
     monkeypatch.setattr(devices, '_winmm', lambda: native)
     assert devices.output_devices() == native.rows
     assert [row for row in native.calls if row[0] == 'caps'] == [('caps', 0, 84), ('caps', 1, 84)] * 2
-    assert devices.DRV_QUERYDEVICEINTERFACE == 0x80c and devices.DRV_QUERYDEVICEINTERFACESIZE == 0x80d
+    assert devices.DRV_QUERYFUNCTIONINSTANCEID == 0x811 and devices.DRV_QUERYFUNCTIONINSTANCEIDSIZE == 0x812
     assert native.waveOutMessage.argtypes == [ctypes.c_void_p, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t]
 
 
@@ -84,8 +84,8 @@ def test_failed_native_inventory_never_becomes_partial_success(monkeypatch, fail
 def test_interface_size_is_checked_before_allocating_or_calling_native_write(monkeypatch, size):
     native = WinMM((device(),)); native.size_override = size
     monkeypatch.setattr(devices, '_winmm', lambda: native)
-    with pytest.raises(RuntimeError, match='interface size'): devices.output_devices()
-    assert not any(row[0] == 'message' and row[2] == 0x80c for row in native.calls)
+    with pytest.raises(RuntimeError, match='endpoint size'): devices.output_devices()
+    assert not any(row[0] == 'message' and row[2] == 0x811 for row in native.calls)
 
 
 def test_no_devices_and_devices_without_interfaces_are_truthful(monkeypatch):
@@ -230,7 +230,7 @@ def test_inventory_checks_cancellation_and_budget_after_each_native_query(monkey
     def query(*args):
         result = real(*args)
         reached = stage in ('count', 'caps') or args[1] == (
-            devices.DRV_QUERYDEVICEINTERFACESIZE if stage == 'size' else devices.DRV_QUERYDEVICEINTERFACE)
+            devices.DRV_QUERYFUNCTIONINSTANCEIDSIZE if stage == 'size' else devices.DRV_QUERYFUNCTIONINSTANCEID)
         if reached:
             interrupted[0] = True
             now[0] = 102.0
@@ -351,3 +351,111 @@ def test_failed_output_change_keeps_old_identity_and_retryable_open_handle(playe
     playback.select_output(other)
     assert playback.output_device == other and playback._opened_output is None and not playback._open
     assert playback.state == 'stopped' and path.is_file()
+
+
+class SharedAdapterWinMM(WinMM):
+    """Two endpoint IDs can share the same older PnP adapter interface."""
+    def message(self, handle, command, first, second):
+        if command not in (0x80c, 0x80d):
+            return super().message(handle, command, first, second)
+        index = handle.value or 0
+        self.calls.append(('message', index, command))
+        raw = ('same-adapter-interface\0').encode('utf-16-le')
+        if command == 0x80d:
+            ctypes.cast(first, ctypes.POINTER(ctypes.c_uint32)).contents.value = len(raw)
+        else:
+            assert second >= len(raw)
+            ctypes.memmove(first, raw, len(raw))
+        return 0
+
+
+def test_distinct_endpoints_of_one_adapter_are_not_collapsed(monkeypatch):
+    first = device(0, 'opaque-endpoint-a', 'Same device name')
+    second = device(1, 'opaque-endpoint-b', first.name)
+    native = SharedAdapterWinMM((first, second))
+    monkeypatch.setattr(devices, '_winmm', lambda: native)
+    rows = devices.output_devices()
+    assert rows == (first, second)
+    assert len({row.interface for row in rows}) == 2
+    assert [call[2] for call in native.calls if call[0] == 'message'] == [0x812, 0x811] * 4
+    assert all(row.selectable for row in rows)
+
+
+@pytest.mark.parametrize('change', ['reorder', 'add-sibling', 'remove-sibling'])
+def test_endpoint_identity_survives_adapter_sibling_inventory_changes(monkeypatch, change):
+    first = device(0, 'opaque-endpoint-a', 'Same device name')
+    second = device(1, 'opaque-endpoint-b', first.name)
+    native = SharedAdapterWinMM((first, second))
+    monkeypatch.setattr(devices, '_winmm', lambda: native)
+    selected, _ = devices.output_devices()
+    if change == 'reorder':
+        current = replace(first, index=1)
+        native.rows = (replace(second, index=0), current)
+    elif change == 'add-sibling':
+        current = replace(first, index=2)
+        native.rows = (device(0, 'opaque-endpoint-c', first.name), second, current)
+    else:
+        current = first
+        native.rows = (current,)
+    resolved = devices.resolve_output(selected)
+    assert resolved == current
+    assert resolved.identity == selected.identity
+    assert resolved.interface == 'opaque-endpoint-a'
+    assert not any(call[0] == 'message' and call[2] in (0x80c, 0x80d) for call in native.calls)
+
+
+@pytest.mark.parametrize('change', ['selected-removed', 'selected-replaced'])
+def test_matching_adapter_name_caps_and_ordinal_do_not_rebind_another_endpoint(monkeypatch, change):
+    first = device(0, 'opaque-endpoint-a', 'Same device name')
+    second = device(1, 'opaque-endpoint-b', first.name)
+    native = SharedAdapterWinMM((first, second))
+    monkeypatch.setattr(devices, '_winmm', lambda: native)
+    selected, _ = devices.output_devices()
+    replacement = replace(second, index=0) if change == 'selected-removed' else replace(first, interface='replacement-endpoint')
+    native.rows = (replacement,)
+    with pytest.raises(RuntimeError, match='no fallback'):
+        devices.resolve_output(selected)
+    assert selected.interface == 'opaque-endpoint-a'
+
+
+def test_endpoint_size_t_write_is_bounded_before_allocating_native_buffer(monkeypatch):
+    native = WinMM((device(),))
+    reads = []
+    def message(handle, command, first, second):
+        assert command == devices.DRV_QUERYFUNCTIONINSTANCEIDSIZE
+        size = ctypes.cast(first, ctypes.POINTER(ctypes.c_size_t)).contents
+        reads.append(size.value)
+        size.value = ctypes.c_size_t(-1).value
+        return 0
+    native.waveOutMessage.callback = message
+    monkeypatch.setattr(devices, '_winmm', lambda: native)
+    with pytest.raises(RuntimeError, match='endpoint size'):
+        devices.output_devices()
+    assert reads == [0]
+
+
+def test_endpoint_size_accepts_a_zero_extended_legacy_width_native_write(monkeypatch):
+    native = WinMM((device(interface='opaque-endpoint-a'),))
+    original = native.waveOutMessage.callback
+    sizes = []
+    def message(handle, command, first, second):
+        if command == devices.DRV_QUERYFUNCTIONINSTANCEIDSIZE:
+            assert ctypes.cast(first, ctypes.POINTER(ctypes.c_size_t)).contents.value == 0
+            raw = (native.rows[0].interface + '\0').encode('utf-16-le')
+            ctypes.cast(first, ctypes.POINTER(ctypes.c_uint32)).contents.value = len(raw)
+            sizes.append(ctypes.cast(first, ctypes.POINTER(ctypes.c_size_t)).contents.value)
+            return 0
+        return original(handle, command, first, second)
+    native.waveOutMessage.callback = message
+    monkeypatch.setattr(devices, '_winmm', lambda: native)
+    assert devices.output_devices() == native.rows
+    assert sizes == [len(('opaque-endpoint-a\0').encode('utf-16-le'))] * 2
+
+
+def test_empty_terminated_endpoint_is_visible_but_cannot_authorize_selection(monkeypatch):
+    native = SharedAdapterWinMM((device(interface=''),))
+    monkeypatch.setattr(devices, '_winmm', lambda: native)
+    row, = devices.output_devices()
+    assert row.interface == '' and not row.selectable
+    with pytest.raises(ValueError, match='stable device identity'):
+        devices.resolve_output(row)
