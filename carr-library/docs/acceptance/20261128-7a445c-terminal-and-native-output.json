@@ -401,8 +401,7 @@
         "total_members": 98,
         "excluded": "local-transport.xml wrongdeliveredhash/19bytesshort"
       },
-      "failure": "Bothnativechainsfirstfail EPUBstage2, same suppressed MCIstart errorpattern",
-      "book_v3_groups": 16,
+      "failure": "Both native chains reached an EPUB stage2 timeout; the original playback-start error was not visible in the 7a log.",
       "book_first_result_seconds": 50.406,
       "document_native_checks": 28,
       "qualification": "Actual completed failed7a job; source402reports are partial404selection. No finalPASS. Earlierphase97/98memberproof remains separatelyqualified.",
@@ -433,7 +432,10 @@
         "sha256": "b7e13dfc3e8b7732edba229c95074101aabee3018dc1a2af9a51c31e8acff6dc",
         "status": "metadata read; raw archive not decoded"
       },
-      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590271/job/140802113695"
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087590271/job/140802113695",
+      "native_v3_groups_passed": 16,
+      "native_v3_groups_scope": "Whole installed V3 smoke report; not sixteen Book-only checks.",
+      "diagnostic_followup": "The separate exact2ed diagnostic below later observed MCI326 with no render endpoint after starting the built-in audio services; this diagnosis is not transferred back as an observed7a error."
     }
   ],
   "full_windows_source_failures": [
