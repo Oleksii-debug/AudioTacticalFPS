@@ -1,0 +1,387 @@
+{
+  "schema": "carr-configured-update-native-actual/1",
+  "status": "PASS",
+  "observed_utc": "2026-11-28T08:17:08Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_a": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea"
+  },
+  "source_b": {
+    "commit": "26beb805aab1e9e202d134008441927523cdcb94",
+    "tree": "510592c4d116652f4099a14cc7216fbcf48c955d"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-configured-update-native.yml",
+    "git_blob": "14517f2e4018942a2a0a4c56ce6c59f38de861a4"
+  },
+  "probe": {
+    "path": "carr-library/scripts/windows_configured_update_smoke.py",
+    "git_blob": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91"
+  },
+  "run": {
+    "id": 46122917046,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046",
+    "branch": "carr/ci-full-final-b-20261128-5a9e",
+    "head_sha": "26beb805aab1e9e202d134008441927523cdcb94"
+  },
+  "job": {
+    "id": 140911207117,
+    "name": "Required configured native Apply and checked restart / Windows x64 / actual configured Apply and checked restart",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:52:32Z",
+    "completed_at": "2026-11-28T08:13:46Z",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:52:33Z",
+        "completed_at": "2026-11-28T07:52:33Z"
+      },
+      {
+        "number": 2,
+        "name": "Check out exact B source",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:52:33Z",
+        "completed_at": "2026-11-28T07:52:42Z"
+      },
+      {
+        "number": 3,
+        "name": "Check out immutable reviewed A source",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:52:42Z",
+        "completed_at": "2026-11-28T07:52:47Z"
+      },
+      {
+        "number": 4,
+        "name": "Set up native x64 build host",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:52:47Z",
+        "completed_at": "2026-11-28T07:52:47Z"
+      },
+      {
+        "number": 5,
+        "name": "Pin the host profile and record both actual source identities",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:52:47Z",
+        "completed_at": "2026-11-28T07:53:11Z"
+      },
+      {
+        "number": 6,
+        "name": "Acquire the existing pinned compilers and original Python/native runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:53:11Z",
+        "completed_at": "2026-11-28T07:53:53Z"
+      },
+      {
+        "number": 7,
+        "name": "Build two exact trusted-client distributions and actual standard setups",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:53:53Z",
+        "completed_at": "2026-11-28T07:57:48Z"
+      },
+      {
+        "number": 8,
+        "name": "Require real configured native Apply, full A retention and checked B restart",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:57:48Z",
+        "completed_at": "2026-11-28T08:13:36Z"
+      },
+      {
+        "number": 9,
+        "name": "Require unchanged exact source and installed host payload after native work",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:36Z",
+        "completed_at": "2026-11-28T08:13:37Z"
+      },
+      {
+        "number": 10,
+        "name": "Retain only the bounded public diagnostic contract",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:37Z",
+        "completed_at": "2026-11-28T08:13:38Z"
+      },
+      {
+        "number": 11,
+        "name": "Preserve bounded configured-update text evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:38Z",
+        "completed_at": "2026-11-28T08:13:39Z"
+      },
+      {
+        "number": 20,
+        "name": "Post Set up native x64 build host",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:39Z",
+        "completed_at": "2026-11-28T08:13:39Z"
+      },
+      {
+        "number": 21,
+        "name": "Post Check out immutable reviewed A source",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:39Z",
+        "completed_at": "2026-11-28T08:13:40Z"
+      },
+      {
+        "number": 22,
+        "name": "Post Check out exact B source",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:40Z",
+        "completed_at": "2026-11-28T08:13:42Z"
+      },
+      {
+        "number": 23,
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T08:13:42Z",
+        "completed_at": "2026-11-28T08:13:42Z"
+      }
+    ]
+  },
+  "decoded_log": {
+    "sha256": "776fc8db683b0233bad86bfce3b5a6dc4240aecf470682b41cf291eb349f5d57",
+    "bytes": 214590,
+    "line_count": 1860
+  },
+  "artifact": {
+    "id": 15254604384,
+    "name": "configured-update-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 571255,
+    "digest": "sha256:77e7d7c258e3d7390d8277c212fa650c548fccb32a75c54e587d092278edb866",
+    "expired": false,
+    "created_at": "2026-11-28T08:13:38Z",
+    "expires_at": "2026-12-05T08:13:38Z",
+    "workflow_run": {
+      "id": 46122917046,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-full-final-b-20261128-5a9e",
+      "head_sha": "26beb805aab1e9e202d134008441927523cdcb94"
+    }
+  },
+  "actual_report_log_line": 1575,
+  "actual_report": {
+    "actual_host_preparation": "PASS",
+    "actual_host_result_sha256": "ee3b2b14a5346501bbdf2c3de8a4bd51a070526be1978219588e5ebce659f163",
+    "actual_native_restart": "PASS",
+    "actual_restart": {
+      "actual_image": "D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\runtime\\python.exe",
+      "actual_window": 1048710,
+      "actual_window_pid": 784,
+      "configured_status_sha256": "5cc583346458d626c9c727509edffc5771ad08d95fd72eb2d3b2af0ba1490248",
+      "normal_close": "PASS",
+      "owned_family": "PASS",
+      "requested_pid": 7340,
+      "status": "PASS"
+    },
+    "actual_ui_result_sha256": "dbec5f45e1b34e5322dd25a986cf8ec3edd93231305e1b45e136f3468b9abf64",
+    "actual_update": "PASS",
+    "authenticode": "NOT_CLAIMED",
+    "checks": [
+      "both compiled source receipts and full owned A payload are exact",
+      "temporary actual Windows vault anchor begins at A",
+      "restarted process and window belong to the retained Windows Job",
+      "restarted actual application holds the installation lease",
+      "restarted actual installed entrypoint retains the configured Apply route",
+      "normal restarted Close settles the complete native process family",
+      "real separate host records completed B and protected build two",
+      "complete prior A wrapper and exact original research are retained",
+      "actual backup restores the original synthetic research",
+      "actual standard uninstaller leaves research and prior recovery intact"
+    ],
+    "exact_publisher": "synthetic owned TUF closure",
+    "host_package": "D:\\a\\_temp\\carr-configured-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "picker": "explicit owned synthetic offline-repository selection; no file-picker qualification",
+    "prepared_configuration_sha256": "c70e0ee45502aef4548ecbacbc33b5756c960a3693aca5760bd5b9f065ec7d40",
+    "production_publisher": "NOT_CONFIGURED",
+    "production_rollout": "NOT_RUN",
+    "real_user_installation": "NOT_RUN",
+    "schema": 1,
+    "setup_a_sha256": "1e66b5306e339ab79ee579d70b0a2f8f794d719879fba41e123c0ba04badbbfd",
+    "setup_b_sha256": "53c37786c5f53cb7eceb2aaf395cb80de9ffd819c9b193495e45b726ff4a3f9b",
+    "source_a": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "source_b": "26beb805aab1e9e202d134008441927523cdcb94",
+    "status": "PASS",
+    "target_sha256": "61c05b7263a5b4edc149f382f7f085e2799045a8e4cb7b973246cf7ffd63d841",
+    "ui_checks": [
+      "actual installed A entrypoint owns the selected library and explicit recipe",
+      "actual native updater command is registered exactly once",
+      "offline configuration grants no idle network permission",
+      "preparation question defaults to the actual owned No button",
+      "observed No creates no host or configuration",
+      "explicit native Yes prepares the separate exact A runtime",
+      "prepared controller retains original library and requires explicit review",
+      "native signed release review has exact product build source and target",
+      "downloaded target is verified before the native Apply review",
+      "Apply opens with restart unchecked and Cancel as default",
+      "native Cancel leaves A open and creates no handoff",
+      "explicit native Space selects the optional checked restart",
+      "actual Close precedes the exact durable COMMIT",
+      "source identity remains exact through the real application lease",
+      "actual entrypoint returns after normal Close and shared worker settlement"
+    ],
+    "ui_origin_count": 15,
+    "ui_origins": {
+      "carr_library.__main__": "f919be6f56350882156a14534cf2c67533d794aff9cebdb4bc1a627a6b897260",
+      "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+      "carr_library.installation_lease": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+      "carr_library.native_runtime": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf",
+      "carr_library.security.anchors": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+      "carr_library.security.controller": "3c1cc0b9c8f8fdb82b9a924b77d53004e6a96938057d177c1168973cf08e02af",
+      "carr_library.security.installation": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+      "carr_library.security.managed_installation": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+      "carr_library.security.update_handoff": "8604fa1966368a40ea3916c3fff2555a7a848489699d7a572f223c441a52fc27",
+      "carr_library.security.update_host": "166f7adf905b35edfd5953ef58e4c98f93b50596eb51be2181b2eac4f948c210",
+      "carr_library.security.update_runtime": "fefa8020ef66d885adc03f420d2c814261eaf8c8a0ff91de399c0454fbfbe2dd",
+      "carr_library.security.updates": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+      "carr_library.ui.desktop_app": "28cc10d724badc164b34814e24264e81bf1ee1e20e0afedb4c795d30dc29005f",
+      "carr_library.ui.trust_status": "2716f33a0e05d5d7c810d1d86c47d000d580a14b1cd5e3cf9046fcb0d54ba082",
+      "carr_library.ui.worker_lifetime": "321720af78ed1605db5164a1cb8b675ba8f013343660f5449e811d12844a8c18"
+    }
+  },
+  "compiled_bundle_receipts": [
+    {
+      "log_line": 1105,
+      "bundle_manifest_sha256": "9e139995c425935899f7722a0612ad1f710ddc5e37d251634e8b34b89d586121",
+      "payload_files": 485,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 414,
+      "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+      "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+      "wheel_sha256": "f31dcec456f4c14c8e1b2c1592ac17d71714365a1601ed463e14fbb12d5eedf1"
+    },
+    {
+      "log_line": 1403,
+      "bundle_manifest_sha256": "4e352b514b08eaf98678c70b33656cb5154f87252e8e5de76d6912ac56632dcb",
+      "payload_files": 485,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 414,
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+      "wheel_sha256": "1f3b471f782ae2c53eb00a14a329632158f9e1caea1f68acaaf5f568de08d12a"
+    }
+  ],
+  "retention": {
+    "retained_files": 40,
+    "status": "PASS",
+    "total_bytes": 2370993
+  },
+  "checks": {
+    "native_ui": 15,
+    "parent": 10,
+    "actual_installed_origins": 15,
+    "host_preparation": "PASS",
+    "configured_apply": "PASS",
+    "checked_installed_restart": "PASS",
+    "normal_restart_close_and_job_family": "PASS",
+    "complete_prior_A_retained": "PASS",
+    "original_synthetic_research_unchanged": "PASS",
+    "actual_backup_restore": "PASS",
+    "standard_uninstaller_research_retention": "PASS",
+    "source_and_installed_payload_before_after": "PASS"
+  },
+  "excerpts": [
+    {
+      "line": 438,
+      "text": "2026-11-28T07:52:51.1987553Z Exact native configured-update probe, packaging helpers and all pinned build inputs admitted."
+    },
+    {
+      "line": 1409,
+      "text": "2026-11-28T07:57:48.5019966Z PASS: isolated installed B whole wheel payload matches exact source."
+    },
+    {
+      "line": 1563,
+      "text": "2026-11-28T07:58:00.2518137Z CONFIGURED_STAGE install-exact-A"
+    },
+    {
+      "line": 1564,
+      "text": "2026-11-28T07:59:36.8997524Z CHECK: both compiled source receipts and full owned A payload are exact"
+    },
+    {
+      "line": 1565,
+      "text": "2026-11-28T07:59:37.4376184Z CHECK: temporary actual Windows vault anchor begins at A"
+    },
+    {
+      "line": 1566,
+      "text": "2026-11-28T07:59:37.4388891Z CONFIGURED_STAGE actual-A-main-prepare-review-cancel-apply-restart"
+    },
+    {
+      "line": 1567,
+      "text": "2026-11-28T08:12:34.2957282Z CHECK: restarted process and window belong to the retained Windows Job"
+    },
+    {
+      "line": 1568,
+      "text": "2026-11-28T08:12:34.2958351Z CHECK: restarted actual application holds the installation lease"
+    },
+    {
+      "line": 1569,
+      "text": "2026-11-28T08:12:34.3470559Z CHECK: restarted actual installed entrypoint retains the configured Apply route"
+    },
+    {
+      "line": 1570,
+      "text": "2026-11-28T08:12:34.4977575Z CHECK: normal restarted Close settles the complete native process family"
+    },
+    {
+      "line": 1571,
+      "text": "2026-11-28T08:12:49.0051865Z CHECK: real separate host records completed B and protected build two"
+    },
+    {
+      "line": 1572,
+      "text": "2026-11-28T08:12:59.9795812Z CHECK: complete prior A wrapper and exact original research are retained"
+    },
+    {
+      "line": 1573,
+      "text": "2026-11-28T08:13:00.2909657Z CHECK: actual backup restores the original synthetic research"
+    },
+    {
+      "line": 1574,
+      "text": "2026-11-28T08:13:33.2000244Z CHECK: actual standard uninstaller leaves research and prior recovery intact"
+    },
+    {
+      "line": 1576,
+      "text": "2026-11-28T08:13:33.3020247Z PASS: exact native UI15 + parent10, installed origins15, checked restart and original qualifiers."
+    },
+    {
+      "line": 1704,
+      "text": "2026-11-28T08:13:37.8115349Z PASS: exact admitted source and any admitted installed payload remain unchanged."
+    },
+    {
+      "line": 1784,
+      "text": "2026-11-28T08:13:38.1547015Z {\"retained_files\": 40, \"status\": \"PASS\", \"total_bytes\": 2370993}"
+    },
+    {
+      "line": 1821,
+      "text": "2026-11-28T08:13:38.7454939Z Uploaded bytes 571255"
+    },
+    {
+      "line": 1823,
+      "text": "2026-11-28T08:13:38.7571533Z SHA256 digest of uploaded artifact is 77e7d7c258e3d7390d8277c212fa650c548fccb32a75c54e587d092278edb866"
+    },
+    {
+      "line": 1825,
+      "text": "2026-11-28T08:13:39.0912734Z Artifact configured-update-26beb805aab1e9e202d134008441927523cdcb94-1 successfully finalized. Artifact ID 15254604384"
+    }
+  ],
+  "qualification": "Actual compiled immutable A3 to B through installed native main, current prepared maintenance host, signed synthetic owned offline TUF closure, real installer, normal Close then COMMIT, and actual checked installed restart. This is not a production publisher, production rollout, real-user installation, picker, NVDA, or physical-audio qualification. Retained prior A plus backup restore is observed; this record does not transfer or replace the separate managed-update rollback lane or any full-source/installed-suite result."
+}

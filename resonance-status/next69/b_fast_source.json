@@ -1,0 +1,1077 @@
+{
+  "schema": 1,
+  "status": "CLOSED_CANCELLED_WITH_PARTIAL_TEST_FAILURES",
+  "observed_at": "2026-11-28 08:53:12 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "26beb805aab1e9e202d134008441927523cdcb94",
+  "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job_id": 140911207030,
+  "job": {
+    "id": 140911207030,
+    "run_id": 46122917046,
+    "workflow_name": "CARR Windows integrated desktop",
+    "head_branch": "carr/ci-full-final-b-20261128-5a9e",
+    "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOT_nmzs8AAAAgzvZidg",
+    "head_sha": "26beb805aab1e9e202d134008441927523cdcb94",
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140911207030",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911207030",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "created_at": "2026-11-28T07:49:21Z",
+    "started_at": "2026-11-28T08:00:18Z",
+    "completed_at": "2026-11-28T08:45:30Z",
+    "name": "Required current composition / Windows source regressions",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-28T08:00:19Z",
+        "completed_at": "2026-11-28T08:00:20Z"
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-28T08:00:20Z",
+        "completed_at": "2026-11-28T08:00:28Z"
+      },
+      {
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-28T08:00:28Z",
+        "completed_at": "2026-11-28T08:00:28Z"
+      },
+      {
+        "name": "Prepare locked dependencies and the existing pinned codec",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-28T08:00:28Z",
+        "completed_at": "2026-11-28T08:01:06Z"
+      },
+      {
+        "name": "Run required source regressions before the full bundle finishes",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "number": 5,
+        "started_at": "2026-11-28T08:01:06Z",
+        "completed_at": "2026-11-28T08:45:26Z"
+      },
+      {
+        "name": "Retain source-only composition diagnostics",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-28T08:45:26Z",
+        "completed_at": "2026-11-28T08:45:27Z"
+      },
+      {
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 11,
+        "started_at": "2026-11-28T08:45:27Z",
+        "completed_at": "2026-11-28T08:45:27Z"
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-11-28T08:45:27Z",
+        "completed_at": "2026-11-28T08:45:29Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-11-28T08:45:29Z",
+        "completed_at": "2026-11-28T08:45:29Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140911207030",
+    "labels": [
+      "windows-2022"
+    ],
+    "runner_id": 1000490402,
+    "runner_name": "GitHub Actions 1000490402",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  "workflow_git_blob": "1f0c67ee4ad51735fa3805388317c850f482258a",
+  "declared_job_minutes": 45,
+  "selected_whole_count": 182,
+  "selected_wholes": [
+    "tests/reader/test_braille.py",
+    "tests/ui/test_braille_actions.py",
+    "tests/studio/test_project_effects.py",
+    "tests/storage/test_backup_studio_effects.py",
+    "tests/integrations/test_dordiai_host_lifecycle.py",
+    "tests/ui/test_engine_settings_lifetime.py",
+    "tests/speech/test_listening.py",
+    "tests/speech/test_playback_devices.py",
+    "tests/ui/test_reader_listening_hooks.py",
+    "tests/packaging/test_installed_trusted_client_probe.py",
+    "tests/speech/test_wave_output.py",
+    "tests/speech/test_playlist.py",
+    "tests/speech/test_playlist_recovery.py",
+    "tests/ui/test_audio_playback.py",
+    "tests/audio/test_conversion_batch.py",
+    "tests/ui/test_audio_conversion_batch.py",
+    "tests/studio/test_conversion_batch_cli.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/ui/test_reader_playback_actions.py",
+    "tests/studio/test_clip_dialog.py",
+    "tests/packaging/test_standard_installer.py",
+    "tests/speech/test_reader_usability.py",
+    "tests/security/test_idle_renewal.py",
+    "tests/assistant/test_translation_local.py",
+    "tests/assistant/test_translation_v3.py",
+    "tests/transcription/test_export_publication.py",
+    "tests/speech/test_publication_validation.py",
+    "tests/speech/test_reading_marks.py",
+    "tests/ui/test_reading_tools.py",
+    "tests/speech/test_reading_tabs.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/speech/test_reading_presentation.py",
+    "tests/speech/test_reading_presentation_handlers.py",
+    "tests/speech/test_reading_presentation_reader_hook.py",
+    "tests/ui/test_native_reading_presentation_driver.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/storage/test_voice_preferences_backup.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/ui/test_reader_navigation_ui.py",
+    "tests/ui/test_reader_view_hooks.py",
+    "tests/storage/test_reader_preferences_state.py",
+    "tests/studio/test_book_batch.py",
+    "tests/studio/test_book_cli.py",
+    "tests/ui/test_book_batch_dialog.py",
+    "tests/storage/test_backup_book_batches.py",
+    "tests/audio/test_recording.py",
+    "tests/audio/test_recording_controls.py",
+    "tests/audio/test_recording_monitor.py",
+    "tests/ui/test_recording_dialog.py",
+    "tests/storage/test_backup_recording_controls.py",
+    "tests/catalog/test_streaming_intake.py",
+    "tests/e2e/test_raster_import.py",
+    "tests/extract/test_raster_pages.py",
+    "tests/ingest/test_batch_continuation.py",
+    "tests/ingest/test_batch_continuation_cli.py",
+    "tests/ui/test_import_center.py",
+    "tests/e2e/test_research_search_cli.py",
+    "tests/search/test_federated.py",
+    "tests/ui/test_federated_search.py",
+    "tests/search/test_search_paging.py",
+    "tests/ingest/test_scan_root_binding.py",
+    "tests/reader/test_export_reconciliation.py",
+    "tests/packaging/test_ci_check.py",
+    "tests/storage/test_desktop_preferences.py",
+    "tests/ui/test_desktop_integration.py",
+    "tests/ui/test_desktop_settings.py",
+    "tests/ui/test_desktop_host_lifecycle.py",
+    "tests/speech/test_narration_receipt.py",
+    "tests/storage/test_local_schedules.py",
+    "tests/ui/test_local_schedules.py",
+    "tests/storage/test_backup_local_schedules.py",
+    "tests/packaging/test_local_schedules_cli.py",
+    "tests/storage/test_transcription_backup.py",
+    "tests/speech/test_spelling.py",
+    "tests/speech/test_spelling_handlers.py",
+    "tests/speech/test_spelling_reader_hook.py",
+    "tests/packaging/test_hunspell_build.py",
+    "tests/packaging/test_library_scale_benchmark.py",
+    "tests/audio/test_envelopes.py",
+    "tests/studio/test_envelope_workflow.py",
+    "tests/studio/test_clip_operations.py",
+    "tests/studio/test_project_history.py",
+    "tests/studio/test_clip_history_dialog.py",
+    "tests/assistant/test_translation_layout.py",
+    "tests/ui/test_translation_layout.py",
+    "tests/assistant/test_translation_layout_cli.py",
+    "tests/assistant/test_translation_partition.py",
+    "tests/ui/test_save_all.py",
+    "tests/academic_integration/test_word_records.py",
+    "tests/academic_integration/test_word_bridge.py",
+    "tests/academic_integration/test_word_worker.py",
+    "tests/ui/test_word_citations.py",
+    "tests/assistant/test_google_oauth.py",
+    "tests/ui/test_google_oauth.py",
+    "tests/assistant/test_translation_epub_layout.py",
+    "tests/ui/test_translation_epub_layout.py",
+    "tests/assistant/test_translation_epub_cli.py",
+    "tests/studio/test_clip_copy.py",
+    "tests/studio/test_clip_copy_dialog.py",
+    "tests/extract/test_docx_rich.py",
+    "tests/assistant/test_translation_rich_docx.py",
+    "tests/ui/test_translation_rich_docx.py",
+    "tests/assistant/test_translation_rich_docx_cli.py",
+    "tests/extract/test_docx_ordered.py",
+    "tests/extract/test_docx_omitted_content.py",
+    "tests/extract/test_docx_hidden_styles.py",
+    "tests/ingest/test_application_atomic_docx_gate.py",
+    "tests/ingest/test_import_replay_identity.py",
+    "tests/ingest/test_terminal_replay_registration.py",
+    "tests/ingest/test_txt_replay_registration.py",
+    "tests/ingest/test_import_publication_point.py",
+    "tests/ui/test_native_recording_driver.py",
+    "tests/storage/test_scoped_locator_capacity.py",
+    "tests/storage/test_locator_integrity.py",
+    "tests/storage/test_printed_label_integrity.py",
+    "tests/ingest/test_checked_catalog_commit.py",
+    "tests/search/test_search_query_work.py",
+    "tests/operations/test_broker_scope.py",
+    "tests/packaging/test_library_capacity_measurement.py",
+    "tests/storage/test_backup_capacity.py",
+    "tests/storage/test_backup_capacity_cli.py",
+    "tests/ui/test_backup_capacity.py",
+    "tests/storage/test_crash_backup.py",
+    "tests/studio/test_book_effects.py",
+    "tests/studio/test_measured_audio.py",
+    "tests/studio/test_measured_pcm.py",
+    "tests/studio/test_book_measured_cli.py",
+    "tests/ui/test_book_effects.py",
+    "tests/ui/test_book_duration_dialog.py",
+    "tests/packaging/test_owner_candidate_archives.py",
+    "tests/conversion/test_selected_conversion.py",
+    "tests/conversion/test_calibre_admission.py",
+    "tests/conversion/test_office_admission.py",
+    "tests/ui/test_document_conversion.py",
+    "tests/extract/test_document_formats_xml.py",
+    "tests/transcription/test_native_profiles_fixture.py",
+    "tests/ui/test_native_backup_capacity_driver.py",
+    "tests/ui/test_native_studio_book_choices.py",
+    "tests/ui/test_native_book_publication_driver.py",
+    "tests/search/test_paged_candidate_work.py",
+    "tests/audio/test_live_metadata_retry.py",
+    "tests/ui/test_native_conversion_diagnostics.py",
+    "tests/audio/test_voice_package_management.py",
+    "tests/audio/test_voice_management_state.py",
+    "tests/audio/test_voice_reference_management.py",
+    "tests/audio/test_voice_protected_management.py",
+    "tests/audio/test_voice_publication_lifetime.py",
+    "tests/audio/test_voice_ownership.py",
+    "tests/integrations/test_dordiai_owner_lease.py",
+    "tests/integrations/test_dordiai_managed_authority.py",
+    "tests/ui/test_voice_packages.py",
+    "tests/ui/test_voice_reference.py",
+    "tests/integrations/test_dordiai_voices.py",
+    "tests/integrations/test_dordiai_speech.py",
+    "tests/integrations/test_dordiai_settings.py",
+    "tests/integrations/test_dordiai_probe_cancellation.py",
+    "tests/integrations/test_dordiai_convergence.py",
+    "tests/audio/test_bundled_runtime_settings.py",
+    "tests/storage/test_v3_state_backup.py",
+    "tests/storage/test_library_backup.py",
+    "tests/storage/test_state_backup_portability.py",
+    "tests/search/test_window_catalog_projection.py",
+    "tests/ui/test_ebook_dialog.py",
+    "tests/ui/test_native_saved_audio_cleanup.py",
+    "tests/integrations/test_dordiai_reference_backends.py",
+    "tests/integrations/test_dordiai_managed_backends.py",
+    "tests/citations/test_attestation_cancellation.py",
+    "tests/packaging/test_library_scale_profile.py",
+    "tests/studio/test_daisy_schema_resolver.py",
+    "tests/assistant/test_transcription_provider.py",
+    "tests/transcription/test_remote_service.py",
+    "tests/ui/test_transcription_remote.py",
+    "tests/security/test_update_handoff.py",
+    "tests/security/test_update_runtime.py",
+    "tests/security/test_update_ui.py",
+    "tests/security/test_update_controller_actions.py",
+    "tests/audio/test_voice_scope_checks.py",
+    "tests/catalog/test_text_screen_work.py",
+    "tests/search/test_ascii_mapping_work.py",
+    "tests/studio/test_clip_preview_loop.py",
+    "tests/studio/test_project_markers.py"
+  ],
+  "artifact": {
+    "id": 15256720221,
+    "name": "carr-completion-source-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 100594,
+    "digest": "sha256:95720596214f169d5993d55b2c521276a8f0b7d6bb007f8c7f62bc824f7194b4"
+  },
+  "partial_summary": {
+    "pytest_summary_rows": 170,
+    "printed_totals": {
+      "passed": 4475,
+      "failed": 1,
+      "skipped": 0
+    },
+    "strict_runner_summary": false,
+    "limitation": "These are observed child pytest summaries, not verified unique whole-suite success receipts; parallel stdout is interleaved. The cancelled process never reaches the strict end-of-run summary."
+  },
+  "pytest_summaries": [
+    {
+      "line": 790,
+      "text": "============================== 8 passed in 6.58s =============================="
+    },
+    {
+      "line": 817,
+      "text": "============================= 40 passed in 14.83s ============================="
+    },
+    {
+      "line": 845,
+      "text": "============================= 21 passed in 13.25s ============================="
+    },
+    {
+      "line": 873,
+      "text": "============================= 13 passed in 7.31s =============================="
+    },
+    {
+      "line": 917,
+      "text": "============================= 43 passed in 6.22s =============================="
+    },
+    {
+      "line": 981,
+      "text": "============================= 53 passed in 0.67s =============================="
+    },
+    {
+      "line": 1018,
+      "text": "============================= 24 passed in 1.29s =============================="
+    },
+    {
+      "line": 1067,
+      "text": "============================= 34 passed in 3.98s =============================="
+    },
+    {
+      "line": 1109,
+      "text": "============================= 31 passed in 0.74s =============================="
+    },
+    {
+      "line": 1143,
+      "text": "============================= 21 passed in 1.07s =============================="
+    },
+    {
+      "line": 1178,
+      "text": "============================= 28 passed in 21.09s ============================="
+    },
+    {
+      "line": 1211,
+      "text": "============================= 25 passed in 47.86s ============================="
+    },
+    {
+      "line": 1235,
+      "text": "============================= 24 passed in 7.16s =============================="
+    },
+    {
+      "line": 1268,
+      "text": "============================= 21 passed in 0.92s =============================="
+    },
+    {
+      "line": 1300,
+      "text": "============================= 36 passed in 23.95s ============================="
+    },
+    {
+      "line": 1362,
+      "text": "============================= 52 passed in 0.61s =============================="
+    },
+    {
+      "line": 1397,
+      "text": "============================= 24 passed in 1.16s =============================="
+    },
+    {
+      "line": 1453,
+      "text": "============================= 45 passed in 2.24s =============================="
+    },
+    {
+      "line": 1520,
+      "text": "============================= 4 passed in 23.80s =============================="
+    },
+    {
+      "line": 1599,
+      "text": "============================ 102 passed in 17.11s ============================="
+    },
+    {
+      "line": 1617,
+      "text": "============================== 4 passed in 1.90s =============================="
+    },
+    {
+      "line": 1678,
+      "text": "============================= 39 passed in 5.43s =============================="
+    },
+    {
+      "line": 1704,
+      "text": "============================= 33 passed in 16.86s ============================="
+    },
+    {
+      "line": 1784,
+      "text": "============================= 64 passed in 19.79s ============================="
+    },
+    {
+      "line": 1807,
+      "text": "============================= 12 passed in 4.17s =============================="
+    },
+    {
+      "line": 1854,
+      "text": "============================= 36 passed in 1.79s =============================="
+    },
+    {
+      "line": 1878,
+      "text": "============================= 14 passed in 0.76s =============================="
+    },
+    {
+      "line": 1916,
+      "text": "============================= 25 passed in 5.80s =============================="
+    },
+    {
+      "line": 1948,
+      "text": "============================= 20 passed in 6.47s =============================="
+    },
+    {
+      "line": 1992,
+      "text": "============================= 32 passed in 1.58s =============================="
+    },
+    {
+      "line": 2022,
+      "text": "============================= 20 passed in 1.31s =============================="
+    },
+    {
+      "line": 2041,
+      "text": "============================== 9 passed in 0.56s =============================="
+    },
+    {
+      "line": 2065,
+      "text": "============================= 14 passed in 0.29s =============================="
+    },
+    {
+      "line": 2099,
+      "text": "============================= 23 passed in 0.70s =============================="
+    },
+    {
+      "line": 2111,
+      "text": "============================== 2 passed in 1.86s =============================="
+    },
+    {
+      "line": 2133,
+      "text": "============================= 12 passed in 0.63s =============================="
+    },
+    {
+      "line": 2192,
+      "text": "============================= 48 passed in 1.23s =============================="
+    },
+    {
+      "line": 2213,
+      "text": "============================= 11 passed in 0.76s =============================="
+    },
+    {
+      "line": 2234,
+      "text": "============================= 11 passed in 0.69s =============================="
+    },
+    {
+      "line": 2253,
+      "text": "============================== 7 passed in 2.50s =============================="
+    },
+    {
+      "line": 2271,
+      "text": "======================= 42 passed in 109.59s (0:01:49) ========================"
+    },
+    {
+      "line": 2307,
+      "text": "======================= 14 passed in 194.25s (0:03:14) ========================"
+    },
+    {
+      "line": 2337,
+      "text": "======================= 18 passed in 154.97s (0:02:34) ========================"
+    },
+    {
+      "line": 2352,
+      "text": "============================= 18 passed in 27.97s ============================="
+    },
+    {
+      "line": 2410,
+      "text": "============================= 31 passed in 35.23s ============================="
+    },
+    {
+      "line": 2446,
+      "text": "======================== 33 passed in 64.76s (0:01:04) ========================"
+    },
+    {
+      "line": 2477,
+      "text": "============================= 21 passed in 0.26s =============================="
+    },
+    {
+      "line": 2517,
+      "text": "============================= 28 passed in 2.91s =============================="
+    },
+    {
+      "line": 2561,
+      "text": "============================= 20 passed in 4.30s =============================="
+    },
+    {
+      "line": 2575,
+      "text": "============================= 30 passed in 35.74s ============================="
+    },
+    {
+      "line": 2601,
+      "text": "============================= 16 passed in 5.91s =============================="
+    },
+    {
+      "line": 2641,
+      "text": "======================== 23 passed, 1 warning in 0.48s ========================"
+    },
+    {
+      "line": 2662,
+      "text": "============================= 11 passed in 31.31s ============================="
+    },
+    {
+      "line": 2675,
+      "text": "============================= 3 passed in 12.59s =============================="
+    },
+    {
+      "line": 2727,
+      "text": "============================= 42 passed in 0.52s =============================="
+    },
+    {
+      "line": 2752,
+      "text": "============================= 15 passed in 26.49s ============================="
+    },
+    {
+      "line": 2821,
+      "text": "======================= 18 passed in 105.15s (0:01:45) ========================"
+    },
+    {
+      "line": 2898,
+      "text": "============================ 100 passed in 52.08s ============================="
+    },
+    {
+      "line": 3067,
+      "text": "======================= 114 passed in 153.38s (0:02:33) ======================="
+    },
+    {
+      "line": 3081,
+      "text": "============================== 4 passed in 2.10s =============================="
+    },
+    {
+      "line": 3119,
+      "text": "============================= 28 passed in 0.59s =============================="
+    },
+    {
+      "line": 3174,
+      "text": "=================== 35 passed, 40 subtests passed in 17.63s ==================="
+    },
+    {
+      "line": 3206,
+      "text": "============================= 22 passed in 1.90s =============================="
+    },
+    {
+      "line": 3253,
+      "text": "============================= 37 passed in 0.72s =============================="
+    },
+    {
+      "line": 3267,
+      "text": "============================== 4 passed in 0.49s =============================="
+    },
+    {
+      "line": 3281,
+      "text": "============================== 4 passed in 0.79s =============================="
+    },
+    {
+      "line": 3370,
+      "text": "============================= 79 passed in 1.16s =============================="
+    },
+    {
+      "line": 3456,
+      "text": "============================= 21 passed in 9.44s =============================="
+    },
+    {
+      "line": 3496,
+      "text": "======================== 43 passed in 99.50s (0:01:39) ========================"
+    },
+    {
+      "line": 3511,
+      "text": "============================= 23 passed in 25.11s ============================="
+    },
+    {
+      "line": 3533,
+      "text": "============================= 11 passed in 20.62s ============================="
+    },
+    {
+      "line": 3606,
+      "text": "============================= 55 passed in 31.35s ============================="
+    },
+    {
+      "line": 3640,
+      "text": "============================= 20 passed in 6.57s =============================="
+    },
+    {
+      "line": 3659,
+      "text": "============================== 9 passed in 0.71s =============================="
+    },
+    {
+      "line": 3701,
+      "text": "============================= 31 passed in 2.48s =============================="
+    },
+    {
+      "line": 3725,
+      "text": "======================= 27 passed in 354.84s (0:05:54) ========================"
+    },
+    {
+      "line": 3818,
+      "text": "============================= 64 passed in 5.46s =============================="
+    },
+    {
+      "line": 3831,
+      "text": "============================= 24 passed in 28.32s ============================="
+    },
+    {
+      "line": 3949,
+      "text": "============================= 90 passed in 0.61s =============================="
+    },
+    {
+      "line": 3982,
+      "text": "============================= 17 passed in 7.02s =============================="
+    },
+    {
+      "line": 4042,
+      "text": "============================= 50 passed in 2.30s =============================="
+    },
+    {
+      "line": 4063,
+      "text": "============================= 29 passed in 22.06s ============================="
+    },
+    {
+      "line": 4121,
+      "text": "======================== 23 passed in 78.56s (0:01:18) ========================"
+    },
+    {
+      "line": 4275,
+      "text": "======================= 143 passed in 243.75s (0:04:03) ======================="
+    },
+    {
+      "line": 4303,
+      "text": "============================= 5 passed in 53.57s =============================="
+    },
+    {
+      "line": 4337,
+      "text": "============================= 24 passed in 0.27s =============================="
+    },
+    {
+      "line": 4472,
+      "text": "================== 1 failed, 32 passed in 164.76s (0:02:44) ==================="
+    },
+    {
+      "line": 4491,
+      "text": "======================== 50 passed in 67.79s (0:01:07) ========================"
+    },
+    {
+      "line": 4520,
+      "text": "============================= 17 passed in 10.92s ============================="
+    },
+    {
+      "line": 4547,
+      "text": "============================= 17 passed in 3.26s =============================="
+    },
+    {
+      "line": 4608,
+      "text": "============================= 49 passed in 14.49s ============================="
+    },
+    {
+      "line": 4633,
+      "text": "============================= 15 passed in 0.78s =============================="
+    },
+    {
+      "line": 4674,
+      "text": "======================= 26 passed in 139.01s (0:02:19) ========================"
+    },
+    {
+      "line": 4695,
+      "text": "============================= 6 passed in 17.94s =============================="
+    },
+    {
+      "line": 4715,
+      "text": "======================== 31 passed in 79.08s (0:01:19) ========================"
+    },
+    {
+      "line": 4744,
+      "text": "============================= 17 passed in 12.83s ============================="
+    },
+    {
+      "line": 4764,
+      "text": "============================= 10 passed in 0.63s =============================="
+    },
+    {
+      "line": 4783,
+      "text": "============================= 5 passed in 39.41s =============================="
+    },
+    {
+      "line": 4843,
+      "text": "============================= 55 passed in 7.75s =============================="
+    },
+    {
+      "line": 4868,
+      "text": "======================= 20 passed in 225.56s (0:03:45) ========================"
+    },
+    {
+      "line": 4872,
+      "text": "============================= 5 passed in 41.30s =============================="
+    },
+    {
+      "line": 4898,
+      "text": "============================== 9 passed in 0.73s =============================="
+    },
+    {
+      "line": 4928,
+      "text": "============================= 20 passed in 1.43s =============================="
+    },
+    {
+      "line": 4951,
+      "text": "============================= 13 passed in 1.25s =============================="
+    },
+    {
+      "line": 4962,
+      "text": "============================== 1 passed in 0.92s =============================="
+    },
+    {
+      "line": 5003,
+      "text": "============================= 24 passed in 18.61s ============================="
+    },
+    {
+      "line": 5024,
+      "text": "============================= 10 passed in 7.54s =============================="
+    },
+    {
+      "line": 5038,
+      "text": "============================= 4 passed in 37.16s =============================="
+    },
+    {
+      "line": 5054,
+      "text": "============================== 7 passed in 6.28s =============================="
+    },
+    {
+      "line": 5064,
+      "text": "============================== 2 passed in 2.86s =============================="
+    },
+    {
+      "line": 5079,
+      "text": "============================= 10 passed in 0.18s =============================="
+    },
+    {
+      "line": 5097,
+      "text": "======================== 17 passed in 89.29s (0:01:29) ========================"
+    },
+    {
+      "line": 5120,
+      "text": "============================== 8 passed in 1.67s =============================="
+    },
+    {
+      "line": 5125,
+      "text": "============================== 4 passed in 1.86s =============================="
+    },
+    {
+      "line": 5184,
+      "text": "============================= 17 passed in 5.81s =============================="
+    },
+    {
+      "line": 5230,
+      "text": "============================= 20 passed in 3.39s =============================="
+    },
+    {
+      "line": 5234,
+      "text": "============================= 37 passed in 11.03s ============================="
+    },
+    {
+      "line": 5249,
+      "text": "============================= 10 passed in 10.35s ============================="
+    },
+    {
+      "line": 5276,
+      "text": "============================== 3 passed in 3.75s =============================="
+    },
+    {
+      "line": 5305,
+      "text": "============================= 17 passed in 11.10s ============================="
+    },
+    {
+      "line": 5321,
+      "text": "============================== 5 passed in 1.28s =============================="
+    },
+    {
+      "line": 5365,
+      "text": "============================= 14 passed in 59.40s ============================="
+    },
+    {
+      "line": 5377,
+      "text": "======================== 25 passed in 78.79s (0:01:18) ========================"
+    },
+    {
+      "line": 5406,
+      "text": "============================= 19 passed in 0.54s =============================="
+    },
+    {
+      "line": 5469,
+      "text": "============================= 9 passed in 58.36s =============================="
+    },
+    {
+      "line": 5484,
+      "text": "============================== 5 passed in 5.73s =============================="
+    },
+    {
+      "line": 5528,
+      "text": "======================= 17 passed in 174.50s (0:02:54) ========================"
+    },
+    {
+      "line": 5561,
+      "text": "============================= 22 passed in 10.72s ============================="
+    },
+    {
+      "line": 5612,
+      "text": "============================= 39 passed in 25.54s ============================="
+    },
+    {
+      "line": 5672,
+      "text": "============================= 49 passed in 7.27s =============================="
+    },
+    {
+      "line": 5706,
+      "text": "============================= 24 passed in 4.45s =============================="
+    },
+    {
+      "line": 5737,
+      "text": "============================= 20 passed in 5.90s =============================="
+    },
+    {
+      "line": 5898,
+      "text": "============================= 151 passed in 0.89s ============================="
+    },
+    {
+      "line": 5917,
+      "text": "======================== 2 passed in 64.34s (0:01:04) ========================="
+    },
+    {
+      "line": 5938,
+      "text": "============================= 11 passed in 0.30s =============================="
+    },
+    {
+      "line": 5962,
+      "text": "============================= 14 passed in 0.49s =============================="
+    },
+    {
+      "line": 5980,
+      "text": "============================== 8 passed in 0.39s =============================="
+    },
+    {
+      "line": 6011,
+      "text": "======================= 28 passed in 466.65s (0:07:46) ========================"
+    },
+    {
+      "line": 6016,
+      "text": "======================= 36 passed in 391.18s (0:06:31) ========================"
+    },
+    {
+      "line": 6048,
+      "text": "============================= 22 passed in 1.17s =============================="
+    },
+    {
+      "line": 6088,
+      "text": "============================= 30 passed in 6.56s =============================="
+    },
+    {
+      "line": 6158,
+      "text": "============================= 30 passed in 57.54s ============================="
+    },
+    {
+      "line": 6171,
+      "text": "============================= 25 passed in 30.57s ============================="
+    },
+    {
+      "line": 6220,
+      "text": "======================= 15 passed in 270.54s (0:04:30) ========================"
+    },
+    {
+      "line": 6246,
+      "text": "============================= 15 passed in 1.93s =============================="
+    },
+    {
+      "line": 6286,
+      "text": "============================= 30 passed in 3.57s =============================="
+    },
+    {
+      "line": 6327,
+      "text": "============================= 28 passed in 38.76s ============================="
+    },
+    {
+      "line": 6365,
+      "text": "======================= 30 passed in 569.57s (0:09:29) ========================"
+    },
+    {
+      "line": 6471,
+      "text": "============================= 32 passed in 1.53s =============================="
+    },
+    {
+      "line": 6476,
+      "text": "============================= 46 passed in 5.64s =============================="
+    },
+    {
+      "line": 6515,
+      "text": "============================= 10 passed in 7.96s =============================="
+    },
+    {
+      "line": 6553,
+      "text": "============================= 17 passed in 4.93s =============================="
+    },
+    {
+      "line": 6583,
+      "text": "============================= 40 passed in 16.31s ============================="
+    },
+    {
+      "line": 6597,
+      "text": "============================== 7 passed in 4.09s =============================="
+    },
+    {
+      "line": 6615,
+      "text": "============================== 8 passed in 0.42s =============================="
+    },
+    {
+      "line": 6639,
+      "text": "============================= 10 passed in 9.21s =============================="
+    },
+    {
+      "line": 6679,
+      "text": "============================= 9 passed in 14.39s =============================="
+    },
+    {
+      "line": 6720,
+      "text": "============================= 27 passed in 0.82s =============================="
+    },
+    {
+      "line": 6763,
+      "text": "============================= 27 passed in 2.81s =============================="
+    },
+    {
+      "line": 6812,
+      "text": "============================= 38 passed in 1.21s =============================="
+    },
+    {
+      "line": 6845,
+      "text": "============================= 19 passed in 1.24s =============================="
+    },
+    {
+      "line": 6851,
+      "text": "============================= 42 passed in 29.41s ============================="
+    },
+    {
+      "line": 6909,
+      "text": "============================= 40 passed in 9.37s =============================="
+    },
+    {
+      "line": 6934,
+      "text": "============================= 15 passed in 2.55s =============================="
+    },
+    {
+      "line": 6951,
+      "text": "============================= 7 passed in 20.59s =============================="
+    },
+    {
+      "line": 6988,
+      "text": "============================= 27 passed in 0.48s =============================="
+    },
+    {
+      "line": 7038,
+      "text": "============================= 39 passed in 2.84s =============================="
+    },
+    {
+      "line": 7079,
+      "text": "============================= 29 passed in 45.97s ============================="
+    },
+    {
+      "line": 7108,
+      "text": "============================= 18 passed in 13.72s ============================="
+    },
+    {
+      "line": 7173,
+      "text": "============================= 53 passed in 29.04s ============================="
+    }
+  ],
+  "whole_timeouts": [
+    {
+      "line": 3417,
+      "timestamp": "2026-11-28T08:13:40.6158113Z",
+      "seconds": 600,
+      "path": "tests/studio/test_book_batch.py",
+      "bounded_exception_tail": "TimedStackDump())\\nstatus = pytest.main(sys.argv[1:], plugins=plugins)\\nif policy.seen:\\n    print('FAIL: pytest reported XFAIL or XPASS', flush=True)\\n    if status == pytest.ExitCode.OK:\\n        status = pytest.ExitCode.TESTS_FAILED\\nraise SystemExit(status)\\n\", '-v', '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-t1hc9hbu\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-t1hc9hbu\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\studio\\\\test_book_batch.py']' timed out after 600 seconds\u001b[0m"
+    },
+    {
+      "line": 6413,
+      "timestamp": "2026-11-28T08:41:18.9174270Z",
+      "seconds": 600,
+      "path": "tests/audio/test_voice_package_management.py",
+      "bounded_exception_tail": "p())\\nstatus = pytest.main(sys.argv[1:], plugins=plugins)\\nif policy.seen:\\n    print('FAIL: pytest reported XFAIL or XPASS', flush=True)\\n    if status == pytest.ExitCode.OK:\\n        status = pytest.ExitCode.TESTS_FAILED\\nraise SystemExit(status)\\n\", '-v', '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-zyn3ydmj\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-zyn3ydmj\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\audio\\\\test_voice_package_management.py']' timed out after 600 seconds\u001b[0m"
+    }
+  ],
+  "actual_completed_failure": {
+    "path": "tests/assistant/test_translation_layout.py",
+    "case": "test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release",
+    "counts": {
+      "passed": 32,
+      "failed": 1,
+      "skipped": 0
+    },
+    "trace_lines": [
+      4398,
+      4472
+    ],
+    "trace": "2026-11-28T08:18:40.1404829Z _ test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release _\n2026-11-28T08:18:40.1405991Z \n2026-11-28T08:18:40.1409950Z bound = namespace(app=<carr_library.application.LibraryApp object at 0x000002605A9EFAD0>, workspace='dab49b12b4324fd493086256b...tion/json', 'Accept': 'application/json', 'User-Agent': 'UniversalResearchLibrary/0.2'})], 'status': 200, 'raw': None})\n2026-11-28T08:18:40.1413197Z tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-7sne7zhn/pytest/test_actual_child_cancellation0')\n2026-11-28T08:18:40.1414498Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002605BA0A450>\n2026-11-28T08:18:40.1415100Z \n2026-11-28T08:18:40.1415725Z     def test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release(bound, tmp_path, monkeypatch):\n2026-11-28T08:18:40.1416836Z         from carr_library.audio import process as process_module\n2026-11-28T08:18:40.1417477Z         marker = tmp_path / 'worker-ready.json'\n2026-11-28T08:18:40.1418021Z         actual_command = layout_module._command\n2026-11-28T08:18:40.1418516Z         def blocked(*args, **kwargs):\n2026-11-28T08:18:40.1419076Z             command, environment = actual_command(*args, **kwargs)\n2026-11-28T08:18:40.1419706Z             bootstrap_index = command.index('-c') + 1\n2026-11-28T08:18:40.1420228Z             command[bootstrap_index] = (\n2026-11-28T08:18:40.1420775Z                 'import json,os,time; from pathlib import Path; '\n2026-11-28T08:18:40.1421663Z                 'Path(' + repr(str(marker)) + ').write_text(json.dumps({\"pid\":os.getpid()}),encoding=\"utf-8\"); '\n2026-11-28T08:18:40.1422560Z                 'time.sleep(60); ' + command[bootstrap_index])\n2026-11-28T08:18:40.1423130Z             return command, environment\n2026-11-28T08:18:40.1423699Z         monkeypatch.setattr(layout_module, '_command', blocked)\n2026-11-28T08:18:40.1424262Z         processes = []\n2026-11-28T08:18:40.1424602Z         if os.name == 'nt':\n2026-11-28T08:18:40.1425020Z             from carr_library.audio import windows_job\n2026-11-28T08:18:40.1425555Z             actual_process = windows_job.JobProcess\n2026-11-28T08:18:40.1426052Z             def capture(*args, **kwargs):\n2026-11-28T08:18:40.1426523Z                 value = actual_process(*args, **kwargs)\n2026-11-28T08:18:40.1427019Z                 processes.append(value)\n2026-11-28T08:18:40.1427444Z                 return value\n2026-11-28T08:18:40.1427999Z             monkeypatch.setattr(windows_job, 'JobProcess', capture)\n2026-11-28T08:18:40.1429148Z         else:\n2026-11-28T08:18:40.1429936Z             actual_process = process_module.subprocess.Popen\n2026-11-28T08:18:40.1430488Z             def capture(*args, **kwargs):\n2026-11-28T08:18:40.1431161Z                 value = actual_process(*args, **kwargs)\n2026-11-28T08:18:40.1431665Z                 processes.append(value)\n2026-11-28T08:18:40.1432343Z                 return value\n2026-11-28T08:18:40.1433074Z             monkeypatch.setattr(process_module.subprocess, 'Popen', capture)\n2026-11-28T08:18:40.1548602Z         with pytest.raises(AudioCancelled):\n2026-11-28T08:18:40.1564399Z >           capture_layout(bound.app, bound.workspace, bound.edition, cancelled=marker.exists)\n2026-11-28T08:18:40.1565235Z \n2026-11-28T08:18:40.1566455Z tests\\assistant\\test_translation_layout.py:416: \n2026-11-28T08:18:40.1570846Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n2026-11-28T08:18:40.1571722Z src\\carr_library\\assistant\\translation_layout.py:430: in capture_layout\n2026-11-28T08:18:40.1572867Z     mapping = _invoke(library, desk, action='describe', cancelled=stopped, broker=broker)\n2026-11-28T08:18:40.1573966Z               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n2026-11-28T08:18:40.1574738Z src\\carr_library\\assistant\\translation_layout.py:367: in _invoke\n2026-11-28T08:18:40.1575502Z     result = run_process(args, env=environment, cwd=directory,\n2026-11-28T08:18:40.1576236Z src\\carr_library\\audio\\process.py:298: in run_process\n2026-11-28T08:18:40.1576800Z     check()\n2026-11-28T08:18:40.1577354Z src\\carr_library\\audio\\process.py:225: in check\n2026-11-28T08:18:40.1577893Z     check_control()\n2026-11-28T08:18:40.1578364Z src\\carr_library\\audio\\process.py:204: in check_control\n2026-11-28T08:18:40.1579137Z     if cancelled():\n2026-11-28T08:18:40.1579534Z        ^^^^^^^^^^^\n2026-11-28T08:18:40.1580050Z src\\carr_library\\assistant\\translation_layout.py:340: in stopped\n2026-11-28T08:18:40.1580720Z     return bool(cancelled()) or lease.cancelled()\n2026-11-28T08:18:40.1581258Z                 ^^^^^^^^^^^\n2026-11-28T08:18:40.1581804Z src\\carr_library\\assistant\\translation_layout.py:252: in stopped\n2026-11-28T08:18:40.1582563Z     TranslationService._source_current(desk, cancelled=base)\n2026-11-28T08:18:40.1583313Z src\\carr_library\\assistant\\translation.py:297: in _source_current\n2026-11-28T08:18:40.1583916Z     check_cancelled(cancelled)\n2026-11-28T08:18:40.1584426Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n2026-11-28T08:18:40.1584883Z \n2026-11-28T08:18:40.1585285Z cancelled = <function _bound_cancel.<locals>.stopped at 0x000002605BAB1E40>\n2026-11-28T08:18:40.1585814Z \n2026-11-28T08:18:40.1586039Z     def check_cancelled(cancelled):\n2026-11-28T08:18:40.1586509Z         if not callable(cancelled):\n2026-11-28T08:18:40.1587081Z             raise ValueError('A cancellation callback is required.')\n2026-11-28T08:18:40.1587655Z         if cancelled():\n2026-11-28T08:18:40.1588253Z >           raise InterruptedError('Speech operation cancelled; no output was published.')\n2026-11-28T08:18:40.1589154Z E           InterruptedError: Speech operation cancelled; no output was published.\n2026-11-28T08:18:40.1589712Z \n2026-11-28T08:18:40.1589993Z src\\carr_library\\speech\\_io.py:34: InterruptedError\n2026-11-28T08:18:40.1590719Z - generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-7sne7zhn\\junit.xml -\n2026-11-28T08:18:40.1591513Z =========================== short test summary info ===========================\n2026-11-28T08:18:40.1592956Z FAILED tests/assistant/test_translation_layout.py::test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release - InterruptedError: Speech operation cancelled; no output was published.\n2026-11-28T08:18:40.1594518Z ================== 1 failed, 32 passed in 164.76s (0:02:44) ===================",
+    "finding": "The fixture expected AudioCancelled; actual run_process cancellation callback reaches TranslationService._source_current and speech._io.check_cancelled, which raises InterruptedError. This is the actual raised path; post-expectation cleanup assertions did not execute.",
+    "source_snapshots_from_C_which_only_changed_native_library_probe_over_B": [
+      {
+        "path": "carr-library/tests/assistant/test_translation_layout.py",
+        "sha": "4098d53def8821247f3fce2756c7f0da1443d2d3"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+        "sha": "f91173da3d90bb6b17be4d184799993ddfa91def"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/translation.py",
+        "sha": "29324c1891c4e1fc278f410af6221e50ae3f9b04"
+      },
+      {
+        "path": "carr-library/src/carr_library/speech/_io.py",
+        "sha": "8657f0942eb5eef51f30e9c938f9025bf91f9e47"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "sha": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b"
+      }
+    ],
+    "changes": "NONE; no new product/fixture or timeout decision made."
+  },
+  "termination": {
+    "line": 7220,
+    "text": "2026-11-28T08:45:26.3075735Z ##[error]The operation was canceled.",
+    "fact": "Actual job conclusion cancelled; runtime spans the declared45-minute job cap. The log does not provide a separate explicit job-timeout annotation; do not infer manual cancellation or complete execution."
+  },
+  "last_visible_activity": [
+    "2026-11-28T08:44:56.6724675Z tests/security/test_update_runtime.py::test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code[source] PASSED [ 47%]",
+    "2026-11-28T08:45:04.3143093Z tests/security/test_update_runtime.py::test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code[bytecode] PASSED [ 50%]",
+    "2026-11-28T08:45:05.1719488Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[.venv] PASSED [ 52%]",
+    "2026-11-28T08:45:06.0246428Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[data] PASSED [ 55%]",
+    "2026-11-28T08:45:06.0844907Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[state] PASSED [ 72%]",
+    "2026-11-28T08:45:06.9104545Z tests/integrations/test_dordiai_managed_authority.py::test_current_managed_stream_rechecks_authority_after_each_actual_pcm_yield[document] PASSED [ 57%]",
+    "2026-11-28T08:45:07.8498444Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[models] PASSED [ 60%]",
+    "2026-11-28T08:45:08.6985105Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[voices] PASSED [ 62%]",
+    "2026-11-28T08:45:10.0706954Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[references] PASSED [ 65%]",
+    "2026-11-28T08:45:10.9179203Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[voice-packages] PASSED [ 67%]",
+    "2026-11-28T08:45:11.7884864Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[dordiai-voices] PASSED [ 70%]",
+    "2026-11-28T08:45:12.6598710Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[node_modules] PASSED [ 72%]",
+    "2026-11-28T08:45:13.5001449Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[.git] PASSED [ 75%]",
+    "2026-11-28T08:45:14.3306206Z tests/security/test_update_runtime.py::test_pip_code_exception_preserves_every_private_component_refusal[.env] PASSED [ 77%]",
+    "2026-11-28T08:45:15.3255370Z tests/security/test_update_runtime.py::test_pip_code_exception_is_closed_to_exact_observed_relative_files[runtime/Lib/site-packages/pip/_internal/models/extra.py] PASSED [ 80%]",
+    "2026-11-28T08:45:16.3522668Z tests/security/test_update_runtime.py::test_pip_code_exception_is_closed_to_exact_observed_relative_files[runtime/Lib/site-packages/other/models/wheel.py] PASSED [ 82%]",
+    "2026-11-28T08:45:17.3743655Z tests/security/test_update_runtime.py::test_pip_code_exception_is_closed_to_exact_observed_relative_files[runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-312.pyc] PASSED [ 85%]",
+    "2026-11-28T08:45:18.1593918Z tests/security/test_update_runtime.py::test_pip_code_exception_is_closed_to_exact_observed_relative_files[runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-311.opt-1.pyc] PASSED [ 66%]",
+    "2026-11-28T08:45:18.3705236Z tests/integrations/test_dordiai_managed_backends.py::test_current_backend_configuration_change_retires_saved_authority_without_retargeting_approved_voice[omnivoice] PASSED [ 87%]",
+    "2026-11-28T08:45:26.3075735Z ##[error]The operation was canceled."
+  ],
+  "result_transfer": "NONE: separate focused or full-source receipts do not qualify this unfinished182-whole fast lane."
+}

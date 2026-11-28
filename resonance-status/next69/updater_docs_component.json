@@ -1,0 +1,29 @@
+{
+  "schema": "carr-reviewed-documentation-component/1",
+  "component": "configured-update-observed-a3-to-b-acceptance",
+  "status": "ACCEPTED_STATIC_DOCUMENTATION",
+  "files": [
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "c9e5230983eb7fa2ee70324dd687c93d7d51e1b3",
+      "successor": "e8da163467fcd58ea582f50e95aee26ed9795b47",
+      "scope": "Append-only actual results section; every prior byte retained."
+    }
+  ],
+  "peer": {
+    "reviewer": "canonical_regression",
+    "record": "661062aaf8cd52cc5dd579367f2c1dc763be97e3",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "actual_evidence": {
+    "a3_linux_ordinary": "cd1073c510ff8e4edbea743ca4c9690bcf42d320",
+    "a3_windows_ordinary": "3feb7e7a369fbf9a6b599efca6e27a018c6dcec5",
+    "a3_windows_tls": "914af02a9d6c80d5811148a77257ce50d5f6f459",
+    "compiled_a3_b": "78b44172915ffb73ee9aabed4055546772918c6b"
+  },
+  "identities": {
+    "a3": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "b": "26beb805aab1e9e202d134008441927523cdcb94"
+  },
+  "qualification": "Documents observed exact-head ordinary/transport/native evidence while keeping production publisher, rollout, real-user installation, file-picker, Authenticode, NVDA and physical audio limits explicit. Later changes need applicable checks. Separate managed-update rollback gate remains required. No source, gate, test, timeout or ref mutation."
+}

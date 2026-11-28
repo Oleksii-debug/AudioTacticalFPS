@@ -1,0 +1,32 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Translation-layout real child cancellation fixture and actual cleanup observations",
+  "path": "carr-library/tests/assistant/test_translation_layout.py",
+  "preimage": "4098d53def8821247f3fce2756c7f0da1443d2d3",
+  "successor": "075828b1d2eda8a7d75aae1e0318568ec866f65c",
+  "actual_failure_receipt": "1785598f785805a5e4200ba1bfeca5a676bf2567",
+  "unchanged_inventory": {
+    "cases": 33,
+    "functions": 19,
+    "decorators": true
+  },
+  "reviewed_sources": {
+    "layout": "f91173da3d90bb6b17be4d184799993ddfa91def",
+    "translation": "29324c1891c4e1fc278f410af6221e50ae3f9b04",
+    "speech_io": "8657f0942eb5eef51f30e9c938f9025bf91f9e47",
+    "process": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+    "windows_job": "27aeb47c39660ac74335d791e22e58b44058db3b"
+  },
+  "findings": [
+    "The actual B failure is InterruptedError from the fresh TranslationService source checkpoint while the real child-created marker changes between cancellation reads; the previous AudioCancelled-only expectation did not reach cleanup assertions.",
+    "The current process runner converts a True callback result to AudioCancelled, while the supplied source guard deliberately propagates its own InterruptedError. Both are exact current cancellation paths; no generic exception is accepted.",
+    "The fixture keeps the real sleeping child, marker, original command forwarding, genuine JobProcess/Popen construction, returned process status, empty broker inventory and absent staging checks.",
+    "Added observations inspect actual closed stdout/stderr and Windows job/process/thread handles after the current close routine has confirmed termination and cached returncode.",
+    "Replacing only the single modified case reconstructs the old whole file exactly; all19 test names and decorators remain unchanged, keeping33 cases. No product, budget or timeout edit is included."
+  ],
+  "limits": [
+    "Static API/fixture peer only; the corrected case still needs real execution.",
+    "Current cleanup API supports the added observations, but the old failed run did not reach them and is not relabelled as cleanup PASS."
+  ]
+}

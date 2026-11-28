@@ -1,0 +1,111 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Final proposed pin closure, inverse operations and live-file map consistency only",
+  "manifest": "d70a2a0173131052ea3f2591952ee928917472c1",
+  "base": {
+    "commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+    "files": 1945
+  },
+  "overlay_files": 49,
+  "proposed_files": 1956,
+  "gate_paths": 61,
+  "repository_flat_rows": 946,
+  "source_digest": {
+    "bytes": 197700,
+    "sha256": "e076c148e3a18791006cdd4537df21b72ce246e9ea1294c29248c1fe3b537db9"
+  },
+  "independent_results": {
+    "base_tree_truncated": false,
+    "base_blob_files": 1945,
+    "all_overlay_preimages_match": true,
+    "unique_overlay_paths": 49,
+    "read_blob_count": 82,
+    "sequential_inverse_files": 21,
+    "sequential_hunks": 46,
+    "exact_repository_pin_multiset": true,
+    "bad_or_missing_repository_rows": 0,
+    "old_changed_blob_literal_occurrences_in_current_gates": 0,
+    "manual_binding_occurrences": [
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "a249e767159702bf4dc88434290d60efb1ba03dd",
+        "expected": 2,
+        "actual": 2
+      },
+      {
+        "path": ".github/workflows/carr-integrated-source-shard.yml",
+        "sha": "a249e767159702bf4dc88434290d60efb1ba03dd",
+        "expected": 1,
+        "actual": 1
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+        "expected": 1,
+        "actual": 1
+      },
+      {
+        "path": ".github/workflows/carr-next9-capacity.yml",
+        "sha": "74c63a71377ac84bdf14a05dc0168326517a3248",
+        "expected": 2,
+        "actual": 2
+      },
+      {
+        "path": ".github/workflows/carr-remote-stt.yml",
+        "sha": "46c643f10171b0d8404db3dd4bd2e15baf7d7ee3",
+        "expected": 1,
+        "actual": 1
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_windows_profile.py",
+        "sha": "63bb13715248fae83bcac87c1a403af534532aa6",
+        "expected": 1,
+        "actual": 1
+      },
+      {
+        "path": ".github/workflows/carr-voice-windows-profile.yml",
+        "sha": "ba360c132a2a5daa1cb63a8e162e56ad08fcd1f6",
+        "expected": 1,
+        "actual": 1
+      },
+      {
+        "path": ".github/workflows/carr-configured-update.yml",
+        "sha": "d56854984eb138ec15232ac8901e019f9b3a49ba",
+        "expected": 1,
+        "actual": 1
+      }
+    ],
+    "diagnostic_count_overlay_exact": true
+  },
+  "methodology": [
+    "Independently fetched the exact D recursive tree and all82 unique blobs needed for the61 final gate paths and21 predecessor/successor inverse pairs.",
+    "Applied all46 hunk operations in their recorded sequence and reversed them in reverse order, reconstructing every predecessor and successor byte-for-byte. The diagnostic workflow intentionally composes two helper bindings at the same offset in sequence.",
+    "Independently parsed the current quoted repository path/hash maps, including bare pyproject.toml, and compared the full946-row multiset with the manifest and proposed source map.",
+    "The six bare external owner module hash rows belong to the two unchanged actual-owner API closures, not repository-local paths; they retain their original three immutable owner blobs and are outside the repository flat-row count.",
+    "Recomputed the full proposed1956-file digest using codepoint-sorted path, NUL, mode, NUL, blob and newline. It exactly matches197700bytes/e076c148e3a18791006cdd4537df21b72ce246e9ea1294c29248c1fe3b537db9.",
+    "Manually verified main2/reusable1 source-helper bindings, the required language workflow digest, both capacity checks, remote helper, profile contract/helper, and separate HTTPS helper.",
+    "Future diagnostic7043 is exactly the accepted112 helper90d3 plus the two reviewed backup source pins; workflow62aa is exactly accepted6b631 with its helper binding advanced once. All selectors,66functions,600/900 limits, order and failure behavior remain."
+  ],
+  "gate_sizes": {
+    "main": {
+      "blob": "e71a09b322d18f0447fae7d1cf64b23805902b39",
+      "bytes": 402616
+    },
+    "v3": {
+      "blob": "2d83808c3a49eef7991b46502f4eec579b08e808",
+      "bytes": 402581
+    }
+  },
+  "separate_reviews": {
+    "core_gates": "9d3417b28fd0eca23c3d025165b1a7a48a7ac139",
+    "core_gate_peer_owner": "locate_project",
+    "language_focused_helper_peer": "0719f2f6cb21b9149ea20976e5911c1f9fdbd7eb",
+    "diagnostic_count_peer": "39b5695107eadf3c7a977958b42a5eb8f540f953"
+  },
+  "limits": [
+    "Static pin/inverse/map peer only; no YAML/PowerShell/Python parser or runtime execution performed.",
+    "No commit/ref publication or actual D outcome is asserted. Live D remains unchanged; semantic full-gate review is separately owned by Locate."
+  ]
+}

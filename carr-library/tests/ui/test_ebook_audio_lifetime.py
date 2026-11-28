@@ -312,3 +312,185 @@ def test_recorded_modal_return_rechecks_captured_reader_before_focus(host, monke
     else:
         reading.text.SetFocus.assert_not_called()
     reading._error.assert_not_called()
+
+
+def _recorded_start_case(host, tmp_path, *, failure_stage='device', deferred=False):
+    """Real borrowed worker/transport/quiet helper; only native device and widgets are doubles."""
+    dialog = dialog_for(host)
+    prepared = Owned(tmp_path / 'prepared-recorded.wav')
+    prepared.cue = SimpleNamespace(index=0)
+    error = RuntimeError('Controlled exact recorded-audio start failure.')
+    scheduled, device_calls = [], []
+    state = SimpleNamespace(before_failure=lambda: None)
+    class Player:
+        state = 'stopped'
+        def play(self, path):
+            assert path == prepared.path and path.is_file()
+            device_calls.append(path)
+            state.before_failure()
+            raise error
+        def close(self):
+            self.state = 'stopped'
+    class Hold:
+        ready = not deferred
+        closed = False
+        calls = 0
+        def close(self):
+            self.calls += 1
+            self.closed = True
+    player, hold = Player(), Hold()
+    def prepare(index, *, cancelled):
+        assert index == 0 and not cancelled()
+        assert prepared.path.read_bytes() == b'owned temporary result'
+        return prepared
+    def admission(value):
+        assert value is prepared
+        if failure_stage == 'admission':
+            state.before_failure()
+            raise error
+    session = SimpleNamespace(prepare=prepare, start_check=admission, guard=lambda: None,
+        close=Mock(), chapter=SimpleNamespace(cues=(object(), object())))
+    transport = OverlayPlayback(session, player)
+    dialog.session, dialog.player, dialog.transport = session, player, transport
+    dialog.progress = SimpleNamespace(hold_audio=lambda: hold, refresh_audio_state=Mock(),
+        unregister_player=Mock())
+    dialog.wx.CallLater = lambda delay, callback: scheduled.append((delay, callback))
+    dialog._highlight = Mock()
+    dialog.segments = SimpleNamespace(GetSelection=lambda: 1)
+    return SimpleNamespace(dialog=dialog, prepared=prepared, error=error, player=player,
+        transport=transport, session=session, hold=hold, scheduled=scheduled,
+        device_calls=device_calls, state=state)
+
+
+@pytest.mark.parametrize('failure_stage', ['admission', 'device'])
+@pytest.mark.parametrize('deferred', [False, True])
+def test_recorded_start_failure_survives_own_generation_cleanup(host, tmp_path, failure_stage, deferred):
+    case = _recorded_start_case(host, tmp_path, failure_stage=failure_stage, deferred=deferred)
+    dialog, transport = case.dialog, case.transport
+    try:
+        dialog.play()
+        requested = transport.ticket
+        host.pump()
+        if deferred:
+            assert case.prepared.path.is_file() and not case.hold.closed
+            assert dialog._last_error is None and not dialog.busy and not host.working
+            assert transport.ticket == requested and not transport.active
+            delay, callback = case.scheduled.pop()
+            assert delay == 25
+            case.hold.ready = True
+            callback()
+        assert dialog._last_error is case.error
+        dialog._error.assert_called_once_with(case.error)
+        assert dialog.status.ChangeValue.call_args.args == (str(case.error),)
+        dialog.status.SetFocus.assert_called_once_with()
+        assert transport.ticket != requested and not transport.active
+        assert transport.prepared is None and dialog._pending is None
+        assert case.prepared.closed.is_set() and not case.prepared.path.exists()
+        assert case.hold.closed and case.hold.calls == 1
+        assert not case.scheduled and not dialog.busy and not host.working
+        assert len(case.device_calls) == (failure_stage == 'device')
+        dialog._highlight.assert_not_called()
+        assert host.executor.submit(lambda: 29).result(timeout=5) == 29
+    finally:
+        dialog.close()
+
+
+@pytest.mark.parametrize('change', ['stop', 'selection', 'host-closing', 'library-replaced',
+    'dialog-closed', 'transport-replaced', 'session-replaced', 'transport-closed'])
+def test_recorded_start_error_does_not_present_to_a_revoked_request(host, tmp_path, change):
+    case = _recorded_start_case(host, tmp_path)
+    dialog = case.dialog
+    notifications, replacement = [], []
+    def revoke():
+        if change == 'stop':
+            dialog.stop()
+        elif change == 'selection':
+            dialog.select()
+        elif change == 'host-closing':
+            host._closing = True
+        elif change == 'library-replaced':
+            host.library = LibraryApp(host.library.root)
+        elif change == 'dialog-closed':
+            dialog.close()
+        elif change == 'transport-replaced':
+            other_player = SimpleNamespace(state='stopped', close=Mock())
+            other = OverlayPlayback(case.session, other_player)
+            other.generation = case.transport.generation
+            replacement.append(other)
+            dialog.transport = other
+        elif change == 'session-replaced':
+            dialog.session = SimpleNamespace(close=Mock())
+        else:
+            case.transport.close()
+        notifications.append(dialog.status.ChangeValue.call_count)
+    case.state.before_failure = revoke
+    try:
+        dialog.play()
+        host.pump()
+        assert notifications and dialog.status.ChangeValue.call_count == notifications[0]
+        dialog._error.assert_not_called()
+        assert dialog._last_error is case.error
+        assert not case.prepared.path.exists() and not case.transport.active
+        assert case.hold.closed and case.hold.calls == 1
+        if replacement:
+            replacement[0].player.close.assert_not_called()
+        assert not dialog.busy and not host.working
+    finally:
+        dialog.close()
+
+
+def test_recorded_start_keeps_original_error_when_notification_fails_or_repeats(host, tmp_path, monkeypatch):
+    from carr_library.ui import ebook_audio_dialog
+    real_quiet = ebook_audio_dialog.play_when_quiet
+    handlers = []
+    def observe(*args, **kwargs):
+        handlers.append(kwargs['on_error'])
+        return real_quiet(*args, **kwargs)
+    monkeypatch.setattr(ebook_audio_dialog, 'play_when_quiet', observe)
+    case = _recorded_start_case(host, tmp_path)
+    notification_error = RuntimeError('Controlled status-view failure.')
+    try:
+        case.dialog.play()
+        case.dialog.status.ChangeValue.side_effect = notification_error
+        host.pump()
+        assert case.dialog._last_error is case.error
+        case.dialog._error.assert_called_once_with(case.error)
+        assert any('RuntimeError: Controlled status-view failure.' in note
+                   for note in case.error.__notes__)
+        assert len(handlers) == 1
+        handlers[0](case.error)
+        case.dialog._error.assert_called_once_with(case.error)
+        assert case.dialog._last_error is case.error
+        assert case.hold.closed and not case.prepared.path.exists()
+        assert not case.transport.active and case.transport.prepared is None
+    finally:
+        case.dialog.status.ChangeValue.side_effect = None
+        case.dialog.close()
+
+
+def test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm(host, tmp_path, monkeypatch):
+    from carr_library.ui import ebook_audio_dialog
+    real_quiet = ebook_audio_dialog.play_when_quiet
+    clock = [0.]
+    def observed_clock(*args, **kwargs):
+        return real_quiet(*args, _clock=lambda: clock[0], **kwargs)
+    monkeypatch.setattr(ebook_audio_dialog, 'play_when_quiet', observed_clock)
+    case = _recorded_start_case(host, tmp_path, deferred=True)
+    try:
+        case.dialog.play()
+        host.pump()
+        assert not case.hold.closed and case.prepared.path.is_file()
+        delay, callback = case.scheduled.pop()
+        assert delay == 25
+        clock[0] = 3.01
+        callback()
+        error = case.dialog._last_error
+        assert type(error) is RuntimeError and 'Progress audio has not confirmed silence.' in str(error)
+        case.dialog._error.assert_called_once_with(error)
+        assert case.dialog.status.ChangeValue.call_args.args == (str(error),)
+        assert case.hold.closed and case.hold.calls == 1
+        assert not case.prepared.path.exists() and not case.device_calls
+        assert not case.transport.active and case.transport.prepared is None
+        assert case.dialog._pending is None and not case.scheduled
+    finally:
+        case.dialog.close()

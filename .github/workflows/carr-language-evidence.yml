@@ -1,0 +1,188 @@
+name: CARR passive language evidence acceptance
+
+on:
+  push:
+    branches: ['carr/ci-language-evidence-*']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  language-evidence-windows:
+    name: Language evidence, 147 source, 147 installed and actual native synthetic evidence controls
+    runs-on: windows-2022
+    timeout-minutes: 135
+    concurrency:
+      group: carr-language-evidence-${{ github.workflow }}-${{ github.run_id }}-${{ github.sha }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        timeout-minutes: 3
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        timeout-minutes: 5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify exact source and acquire only the existing hashed Python dependencies
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact language evidence source head differs.' }
+          $verify = @'
+          from hashlib import sha1
+          import importlib.util, json, pathlib, sys
+          pins = {"scripts/ci_language_evidence_contracts.py":"b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a","scripts/ci_language_evidence_cases.json":"6797df44d708230f38ba999760bbfd3cb8581e40","scripts/windows_language_evidence_smoke.py":"1a0358e96abb435b6b944c8a69046e8f3f178c1b","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          for name, expected in pins.items():
+              path = pathlib.Path(name)
+              assert path.is_file() and not path.is_symlink()
+              raw = path.read_bytes()
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == expected, name
+              if name.endswith('.py'):
+                  compile(raw, name, 'exec')
+          path = pathlib.Path('scripts/ci_language_evidence_contracts.py').resolve()
+          spec = importlib.util.spec_from_file_location('language_ci_preflight', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = module
+          spec.loader.exec_module(module)
+          module.sources()
+          for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):
+              compile(getattr(module, name), '<language-'+name+'>', 'exec')
+          assert len(module.PINS) == 48 and len(module.MODULES) == 36
+          assert len(module.SUITES) == 5 and sum(module.SUITES.values()) == 147
+          cases = module.read_contract()
+          assert module.SUITES == {
+              'tests/language_qualification/test_catalog.py': 31,
+              'tests/language_qualification/test_ui.py': 7,
+              **{name: item['count'] for name, item in cases['suites'].items()}}
+          print('Exact passive language evidence source and embedded Python compile checks passed.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Language evidence source/policy preflight failed.' }
+          New-Item -ItemType Directory -Path 'ci-language-evidence' -ErrorAction Stop | Out-Null
+          & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned language evidence dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Language evidence dependency closure is inconsistent.' }
+      # 1500 source + 5 x 600 installed + 540 wheel + 120 origins + 330 native = 5490 s.
+      # The 100-minute step has 510 s for bounded snapshots/staging/cleanup; all children keep their limits.
+      # Checkout 3 + Python 5 + preparation 20 + contracts 100 + retention 2 + upload 3 = 133 < 135 job minutes.
+      - name: Require all 147 source, 147 isolated installed and native 75 checks
+        timeout-minutes: 100
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $python = (Get-Command python -ErrorAction Stop).Source
+          $pythonPrograms = @(& $python -I -B -c "import pathlib,sys; p=pathlib.Path(sys.executable).resolve(); b=pathlib.Path(getattr(sys,'_base_executable',sys.executable)).resolve(); print(p); print(b); print(p.with_name('pythonw.exe')); print(b.with_name('pythonw.exe'))")
+          if ($LASTEXITCODE -ne 0) { throw 'Exact interpreter inventory failed.' }
+          $programs = @($pythonPrograms | ForEach-Object { [IO.Path]::GetFullPath($_) } | Sort-Object -Unique)
+          foreach ($program in $programs) {
+            if (-not (Test-Path -LiteralPath $program -PathType Leaf)) { throw ('Required offline executable is missing: ' + $program) }
+            if (((Get-Item -LiteralPath $program -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw ('Offline executable is a reparse point: ' + $program) }
+          }
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3) { throw 'All three firewall profile states must be captured.' }
+          $rules = [System.Collections.Generic.List[string]]::new()
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            $active = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+            if ($active.Count -ne 3 -or @($active | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Every firewall profile must be active before actual language evidence work.' }
+            foreach ($program in $programs) {
+              $name = 'CARR-Language-evidence-' + [guid]::NewGuid().ToString('N')
+              $rules.Add($name)
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+              $rule = Get-NetFirewallRule -Name $name -ErrorAction Stop
+              $filter = @($rule | Get-NetFirewallApplicationFilter -ErrorAction Stop)
+              if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block' -or $filter.Count -ne 1 -or [IO.Path]::GetFullPath($filter[0].Program) -ne [IO.Path]::GetFullPath($program)) { throw 'Exact-program outbound rule was not admitted.' }
+            }
+            @{ status='ACTIVE'; programs=$programs; rules=$rules.ToArray(); profiles=$active; direction='Outbound'; action='Block'; qualification='All acquisition finished before these rules' } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-language-evidence/firewall.json'
+            & $python -I -B scripts/ci_language_evidence_contracts.py --evidence ci-language-evidence/contracts --expected-head $env:EXPECTED_SOURCE_SHA
+            if ($LASTEXITCODE -ne 0) { throw 'Required language evidence source, installed or native acceptance failed.' }
+          } finally {
+            $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+            foreach ($name in $rules) {
+              try { Remove-NetFirewallRule -Name $name -ErrorAction Stop } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $restored = Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop
+                if ($restored.Enabled -ne $profile.Enabled) { throw ('Profile state was not restored: ' + $profile.Name) }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            @{ status=$(if ($cleanupFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); original_profiles=$profilesBefore; removed_rules=$rules.ToArray(); errors=$cleanupFailures.ToArray() } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-language-evidence/firewall-cleanup.json'
+            if ($cleanupFailures.Count -ne 0) { throw ('Owned language evidence firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          }
+      - name: Admit only bounded diagnostic text and JSON evidence
+        id: evidence_contract
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $validate = @'
+          import json, pathlib, stat, xml.etree.ElementTree as ET
+          root = pathlib.Path('ci-language-evidence')
+          assert root.is_dir() and not root.is_symlink(), 'No actual language evidence receipts exist.'
+          allowed = {'firewall.json','firewall-cleanup.json'}
+          contract = {
+              'identity-before.json','identity-after.json','source-contracts.txt','source-summary.json',
+              'wheel-build.txt','source-wheel-proof.json','wheel-install.txt','installed-pip-check.txt',
+              'native-origins-before.json','native-origins-before.txt',
+              'native-origins-after.json','native-origins-after.txt',
+              'native-language-evidence.txt','native-language-evidence.json','contracts-summary.json'}
+          contract.update(f'installed-{number}{suffix}' for number in range(1,6)
+                          for suffix in ('.xml','-origins.json','.txt'))
+          allowed.update('contracts/'+name for name in contract)
+          files = list(root.rglob('*'))
+          assert files and len(files) <= len(allowed)+1
+          total_bytes = 0
+          for path in files:
+              info = path.lstat()
+              assert not path.is_symlink() and not getattr(info,'st_file_attributes',0) & 1024
+              if stat.S_ISDIR(info.st_mode):
+                  assert path.relative_to(root).as_posix() == 'contracts'
+                  continue
+              name = path.relative_to(root).as_posix()
+              assert name in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink == 1, name
+              assert info.st_size <= 8*1024*1024, name
+              total_bytes += info.st_size
+              assert total_bytes <= 64*1024*1024, 'Evidence exceeds the total byte bound.'
+              raw = path.read_bytes()
+              assert b'\0' not in raw, name
+              if path.suffix == '.json':
+                  json.loads(raw.decode('utf-8-sig'))
+              elif path.suffix == '.xml':
+                  ET.fromstring(raw)
+          print('Closed, bounded text/JSON/XML language evidence receipts only; binaries, corpora and runtimes excluded.')
+          '@
+          $validate | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Language evidence inventory is invalid.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        timeout-minutes: 3
+        if: ${{ always() && steps.evidence_contract.outcome == 'success' }}
+        with:
+          name: language-evidence-windows-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-language-evidence/
+          if-no-files-found: error
+          retention-days: 7

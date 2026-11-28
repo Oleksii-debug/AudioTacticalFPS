@@ -26,7 +26,7 @@ PINS = {
     "src/carr_library/ui/ebook_model.py": "358ff820e01e07410a3227f895bec17905bc3e68",
     "src/carr_library/ui/ebook_dialog.py": "224cc307e27732b284f1ddfb2b076a6a31762849",
     "src/carr_library/ui/ebook_actions.py": "10c7f842e1dcfcde6cd8dafee994beca2e035cd6",
-    "src/carr_library/ui/ebook_audio_dialog.py": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5",
+    "src/carr_library/ui/ebook_audio_dialog.py": "1bbfb74a7a286f933056696ea7ff769d75436061",
     "src/carr_library/ui/publishing_dialog.py": "9f5047e74f38a17189e43157c0f432d118e3cdeb",
     "src/carr_library/ui/import_center.py": "b304c895432fe69f68b7ea7a768ee0c70c9d4f0d",
     "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",

@@ -1,0 +1,35 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Language evidence native wx/control/host-lifetime and fixed contract",
+  "source": {
+    "path": "carr-library/scripts/windows_language_evidence_smoke.py",
+    "blob": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "draft": "893ac08fd0112e3e790d97210dc66c06b38e7c7d"
+  },
+  "contract": "ab6d1347ab658b998c032ad5dae7757b558bbfef",
+  "reviewed_ui": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+  "fixture": "72944369f7304650e8742f97372d41415e3e35da",
+  "inventory": {
+    "literal_unique_checks": 47,
+    "module_origins": 14,
+    "required_unique_checks": 75,
+    "default_no_multiplicity": 3,
+    "watchdog_seconds": 300,
+    "parent_seconds": 330
+  },
+  "findings": [
+    "Actual current DesktopFrame menu, native evidence controls and borrowed run_job API match the current UI. Initial and subsequent menu admission wait for real host idle.",
+    "Import confirmations admit only exact owned title/process/owner-chain questions and bounded native descendant Yes/No buttons. Initial No focus is observed before actual keyboard Space; no fixed control-ID assumption is introduced.",
+    "Review uses actual fields, native choice, initially unchecked acknowledgements and exact selected-observation detail. Recorded choice is explicitly reselected after update/reset before reject and revoke.",
+    "Keyboard release is scheduled before potentially nested modal dispatch; held-key and live enabled current-control checks precede focus.",
+    "The external Destroy EventFilter uses real event/window IDs and separately captured HWNDs, always skips onward, and remains registered through ordinary Close and executor drain.",
+    "Final successor captures host executor, HWND and ID immediately after successful DesktopFrame construction, before Show or SetTopWindow can fail. Its exact reorder and two observation reselections reverse to the reviewed draft byte-for-byte.",
+    "Exceptional shutdown closes only observed owned questions/modals, requests actual host Close and retains the original event loop/fixtures/native runtime on unconfirmed settlement. Temp disposal follows executor cleanup and resource-lease checks.",
+    "The fixed75-label/14-origin contract exactly equals the47 literal checks plus both origin observations per module; default-No must occur three times. The contract keeps explicit synthetic/reviewer/language/audio/NVDA/file-picker limits."
+  ],
+  "limitations": [
+    "Backup/state transition semantics are independently reviewed by Canonical; this peer covers actual UI and owner lifetime plus contract identity.",
+    "No parser, Windows execution, physical output, authenticated review, language quality or current-device qualification is claimed."
+  ]
+}

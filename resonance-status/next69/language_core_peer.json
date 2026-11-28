@@ -1,0 +1,52 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "scope": "Six-file language qualification observation, recorded review, exact-state CAS, scoped matrix and both restore integration contracts",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/language_qualification/evidence.py",
+      "preimage": null,
+      "successor": "befc09f3b9ac1724baf37d1d4016bb59b27f956c"
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/backup.py",
+      "preimage": null,
+      "successor": "45f11351d946bd10587d2842dca80c3e4eb7a39a"
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "preimage": "bad9aa5c644573ed18fdb83527733dd99a738ade",
+      "successor": "236a61ecb765b544ca4e0005fb94e6b462256996"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+      "successor": "4052234a20b12d26d825463363e2126585f73211"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "preimage": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+      "successor": "65c75e75f82c78ba3153da01d687669b276428e3"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "preimage": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "successor": "0ccbba5db4c41e78143f0ef11aef51bd3df55339"
+    }
+  ],
+  "findings": [
+    "Imported files admit only one exact bounded observation schema; state, review, and report roots do not import authority. No provenance or artifact path is executed.",
+    "Explicit accept requires a distinct normalized executor/reviewer identity, independent-assessment acknowledgement, review time consistent with the observation and exact complete observation digest confirmation. The source explicitly states that these are recorded assertions, not authenticated identities or proof of experiment execution.",
+    "Application/environment context is explicit; each capability binds language/tag/scope/coverage, engine/pack identities, test version, input digest and result digest. Matrix selection requires an explicit existing recorded context. Default calls remain unqualified; all22 verified entries must share one language qualification scope.",
+    "Review selection is append-only and overrides later unreviewed imports; revoked/failed states remain visible. Positive assessments from restored review history are dormant until a new explicit local review.",
+    "EvidenceStore reuses actual durable_state snapshots, local paths, directory identities, state_lock and atomic publication. Exact-token CAS is rechecked after the final callback immediately before publication; post-commit durability/cleanup errors carry the saved snapshot/token.",
+    "Reserved backup namespace admits only the exact bounded evidence.json, ignores only lock/pending names, rejects other namespace paths/directories, and validates typed content plus manifest size/hash on both collection routes.",
+    "Both restore paths transform only the private copied stage or newly restored state after old hash validation. They retain observation/review content, advance dormant_through to all historical reviews, and update the sidecar hash inventory before publish. Source backup bytes remain untouched; other typed restoration order remains."
+  ],
+  "limits": [
+    "This is a bounded source/API and restore-order review only. New meaningful tests, UI behavior and actual source/installed/native execution are outside this verdict.",
+    "No real-language, model, engine, human independence, acoustic, device, or production qualification follows from stored claims or this review.",
+    "No source file or ref was edited by the reviewer."
+  ]
+}

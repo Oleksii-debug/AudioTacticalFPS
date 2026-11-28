@@ -1,0 +1,55 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Language evidence static contract data only",
+  "path": "carr-library/scripts/ci_language_evidence_cases.json",
+  "blob": "6797df44d708230f38ba999760bbfd3cb8581e40",
+  "bytes": 11850,
+  "root_keys": [
+    "schema",
+    "suites",
+    "native",
+    "native_script_git_blob"
+  ],
+  "data_schema": "carr-language-evidence-contracts/1",
+  "suites": [
+    {
+      "path": "tests/language_qualification/test_evidence.py",
+      "source_blob": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+      "cases": 54,
+      "functions": 14
+    },
+    {
+      "path": "tests/language_qualification/test_evidence_backup.py",
+      "source_blob": "a40f8b1964fa0a2ccc66e06e46134701484adb38",
+      "cases": 27,
+      "functions": 6
+    },
+    {
+      "path": "tests/language_qualification/test_evidence_ui.py",
+      "source_blob": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+      "cases": 28,
+      "functions": 12
+    }
+  ],
+  "totals": {
+    "suites": 3,
+    "cases": 109,
+    "functions": 32
+  },
+  "native_contract": "ea20c8ebc68963b518567e2e54fb814a1cc4492a",
+  "native_script": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+  "native_checks": 75,
+  "native_origins": 14,
+  "default_no_multiplicity": 3,
+  "proof": [
+    "All three ordered function arrays exactly match the immutable whole test source definitions.",
+    "54 and27 counts match the already independently reviewed whole parametrizations; UI count28 independently expands as1+6+1+1+2+1+3+4+2+4+2+1.",
+    "Native object is JSON-value identical to the final complete fixed native contract, including required fields, qualifiers, multiplicity, fixture and accepted peer references.",
+    "Old catalog31/UI7 suites are deliberately absent from these three new whole specs; this data does not alter or replace those existing inventories."
+  ],
+  "limits": [
+    "Data-only peer; loader, process scope, gate merge/disjointness and actual execution require their own checks.",
+    "No parser, Python or native qualification is claimed."
+  ]
+}

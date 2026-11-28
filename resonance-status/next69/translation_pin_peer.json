@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "path": ".github/workflows/carr-next13-partition.yml",
+  "preimage": "ed41540248769489f5a01ca9c00771162d3b2a88",
+  "successor": "3da5fa4ae3e7c8a20d2fab72222ff2f3f6b3e698",
+  "test_preimage": "4098d53def8821247f3fce2756c7f0da1443d2d3",
+  "test_successor": "075828b1d2eda8a7d75aae1e0318568ec866f65c",
+  "proof": {
+    "old_occurrences": 2,
+    "new_occurrences": 2,
+    "old_left": 0,
+    "forward_exact": true,
+    "inverse_exact": true
+  },
+  "finding": "Exactly the existing two source/installed pin dictionaries replace the reviewed translation-layout test SHA. All other11463 characters reconstruct byte-for-byte. Selectors,33-case contract, function inventory, source policies, deadlines and report behavior remain unchanged.",
+  "fixture_manifest": "c909a7d29776437a90ed2e6a38d55f15590d992b",
+  "fixture_peer": "db8f5dfeb23239675c8ef757043fea56b422b20e",
+  "execution": "NOT_RUN; no refs changed."
+}

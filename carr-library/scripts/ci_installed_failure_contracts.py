@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
-    "tests/studio/test_book_batch.py": 30,
+    "tests/studio/test_book_batch.py": 29,
     "tests/assistant/test_translation_documents.py": 20,
     "tests/transcription/test_admission_boundaries.py": 40,
     "tests/speech/test_voice_preferences.py": 23
@@ -116,9 +116,9 @@ PINS = {
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
     "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
     "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
-    "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+    "src/carr_library/library_backup.py": "0ccbba5db4c41e78143f0ef11aef51bd3df55339",
     "src/carr_library/backup_producers.py": "0fb5e91a440ded8b62b806b944bdd4722f288e65",
-    "src/carr_library/state_backup.py": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+    "src/carr_library/state_backup.py": "65c75e75f82c78ba3153da01d687669b276428e3",
     "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
     "src/carr_library/speech/runtime.py": "f5c43ef5f03af626f44096be0a2b10f034c09c80",
     "src/carr_library/speech/reading.py": "8fcebccb61d1e0a3b616928a75a22f3e9306ed77",
@@ -465,7 +465,7 @@ def main():
     require(git('show', args.expected_head + ':' + own_relative)
             == Path(__file__).read_text(encoding='utf-8').strip(),
             'Orchestrator differs from its committed source.')
-    require(len(SUITES) == 4 and sum(SUITES.values()) == 113
+    require(len(SUITES) == 4 and sum(SUITES.values()) == 112
             and len(MODULES) == len(set(MODULES)) == 42
             and set(FUNCTIONS) == set(SUITES)
             and sum(map(len, FUNCTIONS.values())) == 66,

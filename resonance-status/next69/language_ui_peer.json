@@ -1,0 +1,69 @@
+{
+  "schema": "carr-independent-static-review/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "before": "ba8a105cad8b021bd35625e005ffc01b1e8c578e",
+      "after": "0ab2481e4bf081bbc398b068390f035f21606d7e"
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence_ui.py",
+      "before": null,
+      "after": "e4c8d5dcfc1ecf772401301e4c0d90cfc043d168"
+    }
+  ],
+  "companions": [
+    {
+      "path": "carr-library/tests/language_qualification/evidence_fixture.py",
+      "git_blob": "72944369f7304650e8742f97372d41415e3e35da"
+    }
+  ],
+  "actual_api_sources": {
+    "desktop_frame": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "evidence_core": "befc09f3b9ac1724baf37d1d4016bb59b27f956c"
+  },
+  "inventory": {
+    "cases": 21,
+    "functions": [
+      "test_controller_requires_explicit_configuration_and_retains_exact_review_details",
+      "test_worker_and_result_callbacks_reject_current_library_changes",
+      "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review",
+      "test_report_is_create_only_passive_and_never_roundtrips_as_approval",
+      "test_cancelled_report_preserves_original_exception_and_creates_nothing",
+      "test_report_rechecks_actual_state_after_the_last_callback",
+      "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record",
+      "test_native_callback_never_publishes_unconfirmed_or_stale_review",
+      "test_native_import_requires_explicit_yes_and_stays_passive"
+    ],
+    "function_cases": {
+      "test_controller_requires_explicit_configuration_and_retains_exact_review_details": 1,
+      "test_worker_and_result_callbacks_reject_current_library_changes": 6,
+      "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review": 1,
+      "test_report_is_create_only_passive_and_never_roundtrips_as_approval": 1,
+      "test_cancelled_report_preserves_original_exception_and_creates_nothing": 2,
+      "test_report_rechecks_actual_state_after_the_last_callback": 1,
+      "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record": 3,
+      "test_native_callback_never_publishes_unconfirmed_or_stale_review": 4,
+      "test_native_import_requires_explicit_yes_and_stays_passive": 2
+    }
+  },
+  "findings": [
+    "The existing Voice command and unbound capability/installed-voice distinctions remain. Construction/filtering does not enumerate, synthesize or fetch voices; recorded configuration selection is explicit.",
+    "Current request_evidence_operation borrows actual frame.run_job and captures exact LibraryApp object/root spelling plus EvidenceStore's current directory identity. Work and result callbacks both recheck it; the real DesktopFrame releases working/busy before done, permitting the explicit second import stage without a second executor.",
+    "The live native import callback captures current token, reads checked observation through the worker, then uses a default-No owned confirmation. Only Yes stages the exact observation as passive candidate; file contents and claimed review authority cannot bypass store policy.",
+    "Review captures exact selected observation/token before its modal; actual current TextCtrl/Choice/CheckBox values feed the real store with exact digest confirmation. Both acknowledgements start false; current checkbox/control names are explicit. Cancel/unconfirmed/stale/self/nonindependent review cases preserve original bytes.",
+    "Closed child callbacks are suppressed through _alive; pending close requests cancellation while the host owns worker settlement. Mutations remain exact CAS and commit-aware; confirmed committed-save warnings reload their exact snapshot only in the live view.",
+    "Create-only export performs current scope/cancel/token checks and a final exact state check after the last callback; it publishes a passive report outside the private library and cannot be reimported as approval.",
+    "All21 cases use actual controller/store/filesystem and exact current native handler methods with explicit inert widgets; nine actual function names and the fixture-relative import match the proposed contract. No syntax or native execution result is claimed."
+  ],
+  "limits": {
+    "genuine_native_controls": "NOT_RUN",
+    "authenticated_reviewers": "NOT_ESTABLISHED",
+    "real_language_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  },
+  "accessibility_successor": "Over source2b840d4c9777ef32c6a68103ce739c587ca1b69b, exactly three SetName insertions; over UI tests096a08432f8c7184ef30439eb413a929ae165e12, exactly two explicit-name observer substitutions. No case or core API change."
+}

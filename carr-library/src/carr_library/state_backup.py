@@ -14,6 +14,7 @@ import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
 from . import backup_local_schedules
+from .language_qualification import backup as backup_language_evidence
 from . import backup_effect_presets, backup_playback_queue, backup_book_batches
 
 MAX_STATE_FILES = 100_000
@@ -49,6 +50,9 @@ def relative_name(value):
         raise ValueError('Local Studio origin authority must not be restored from a backup.')
     if _local_transcription_origin(path):
         raise ValueError('Local transcription origin authority must not be restored from a backup.')
+    if (backup_language_evidence.reserved('state/' + value)
+            and backup_language_evidence.limit('state/' + value) is None):
+        raise ValueError('Invalid reserved language evidence filename.')
     if backup_local_schedules.reserved('state/' + value):
         backup_local_schedules.limit('state/' + value)
     return path
@@ -60,6 +64,8 @@ def _stamp(value):
 
 def _include(path, generated):
     name = 'state/' + path.as_posix()
+    if backup_language_evidence.reserved(name):
+        return not backup_language_evidence.ignored(name)
     if backup_local_schedules.reserved(name):
         return not backup_local_schedules.ignored(name)
     if backup_book_batches.reserved(name):
@@ -95,6 +101,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
                 regular(Path(directory) / name, directory=True)
                 backup_effect_presets.validate_directory(
                     'state/' + (Path(directory) / name).relative_to(root).as_posix())
+                backup_language_evidence.validate_directory(
+                    'state/' + (Path(directory) / name).relative_to(root).as_posix())
                 backup_playback_queue.validate_directory(
                     'state/' + (Path(directory) / name).relative_to(root).as_posix())
                 backup_book_batches.validate_directory(
@@ -121,6 +129,9 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
         ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
          for name, stamp in before_inventory.items()), cancelled=cancelled)
     backup_effect_presets.collection_budgets(
+        ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
+         for name, stamp in before_inventory.items()), cancelled=cancelled)
+    backup_language_evidence.collection_budgets(
         ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
          for name, stamp in before_inventory.items()), cancelled=cancelled)
     entries, total = [], 0
@@ -202,6 +213,7 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     from .audio.recording import verify_retained_recordings
     verify_retained_recordings(target, entries, cancelled=cancelled)
     backup_local_schedules.validate_collection(target, entries, cancelled=cancelled)
+    backup_language_evidence.validate_collection(target, entries, cancelled=cancelled)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
@@ -262,6 +274,8 @@ def validate_state(entries):
     backup_local_schedules.collection_budgets(
         ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
     backup_effect_presets.collection_budgets(
+        ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
+    backup_language_evidence.collection_budgets(
         ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
     backup_playback_queue.collection_budgets(
         ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
@@ -399,6 +413,8 @@ def restore_state(source, target, entries):
             regular(Path(directory) / name, directory=True)
             backup_effect_presets.validate_directory(
                 'state/' + (Path(directory) / name).relative_to(source).as_posix())
+            backup_language_evidence.validate_directory(
+                'state/' + (Path(directory) / name).relative_to(source).as_posix())
             backup_playback_queue.validate_directory(
                 'state/' + (Path(directory) / name).relative_to(source).as_posix())
             backup_book_batches.validate_directory(
@@ -422,6 +438,7 @@ def restore_state(source, target, entries):
     from .audio.recording import verify_retained_recordings
     verify_retained_recordings(source, entries)
     backup_local_schedules.validate_collection(source, entries)
+    backup_language_evidence.validate_collection(source, entries)
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
@@ -453,6 +470,8 @@ def restore_state(source, target, entries):
     _validate_reader_preferences(target, entries)
     verify_retained_recordings(target, entries)
     backup_local_schedules.validate_collection(target, entries)
+    backup_language_evidence.validate_collection(target, entries)
+    backup_language_evidence.prepare_restored_state(target)
     if (target / 'transcription').exists():
         from .integrations.transcription_protocol import prepare_restored_state
         prepare_restored_state(target)

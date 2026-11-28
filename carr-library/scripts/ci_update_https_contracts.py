@@ -44,7 +44,7 @@ PINS = {
     "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
     "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
     "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
-    "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+    "src/carr_library/library_backup.py": "0ccbba5db4c41e78143f0ef11aef51bd3df55339",
     "src/carr_library/storage/revisions.py": "417a9920d4c25eacd36cc81f7441ea321c18d632",
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",

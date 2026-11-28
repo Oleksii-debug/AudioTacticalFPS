@@ -1,0 +1,27 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "canonical_regression",
+  "created_utc": "2026-11-28 08:27:00 UTC",
+  "scope": "Append-only MANAGED_UPDATES actual A3-to-B documentation against exact closed source, installed, TLS and native receipts",
+  "path": "carr-library/docs/MANAGED_UPDATES.md",
+  "preimage": "c9e5230983eb7fa2ee70324dd687c93d7d51e1b3",
+  "successor": "e8da163467fcd58ea582f50e95aee26ed9795b47",
+  "checks": [
+    "Exact previous documentation is the full byte prefix; only the 41-line recorded-result section is appended.",
+    "Independently fetched and read the three actual A3 receipts: Linux122+122, Windows122+122 and Windows localTLS15+15, all bound to 7bfdbe2 and run46121235190.",
+    "Independently fetched final native78b441 receipt: actual A3/B commits and trees, run46122917046/job140911207117, UI15/parent10/15origins, observed host preparation, normal Close then COMMIT, checked restart and owned family closure match the prose.",
+    "Artifact15254604384,571255bytes and SHA25677e7d7c258e3d7390d8277c212fa650c548fccb32a75c54e587d092278edb866 agree with the closed receipt;40 bounded report files plus retention receipt is accurately stated.",
+    "Prior A/research retention and actual backup/uninstall observations remain distinct from the required rollback lane. Synthetic publisher/research scope and production/picker/AuthentiCode/NVDA/audio limitations are explicit."
+  ],
+  "receipts": [
+    "cd1073c510ff8e4edbea743ca4c9690bcf42d320",
+    "3feb7e7a369fbf9a6b599efca6e27a018c6dcec5",
+    "914af02a9d6c80d5811148a77257ce50d5f6f459",
+    "78b44172915ffb73ee9aabed4055546772918c6b"
+  ],
+  "limits": [
+    "Documentation/receipt consistency only; no new execution or qualification beyond the exact existing records.",
+    "No code, tests, gates or refs edited."
+  ]
+}

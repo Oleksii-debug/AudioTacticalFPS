@@ -1,0 +1,555 @@
+{
+  "schema": "carr-actual-required-lane/1",
+  "status": "PASS",
+  "lane": "managed_native",
+  "observed_at_utc": "2026-11-28T08:27:42Z",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job_id": 140911207147,
+  "job": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:50:37Z",
+    "completed_at": "2026-11-28T08:05:31Z"
+  },
+  "claims": {
+    "source_wholes": 5,
+    "source_cases": 161,
+    "actual_installer": {
+      "actual_backup_restore": "PASS",
+      "actual_inno": "PASS",
+      "actual_windows_registration": "PASS",
+      "actual_windows_vault": "PASS",
+      "authenticode": "NOT_CLAIMED",
+      "full_wrapper_rollback": "PASS",
+      "host_package": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+      "live_app_exclusion": "PASS",
+      "nvda": "NOT_RUN",
+      "production_publisher": "NOT_CONFIGURED",
+      "repair": "PASS",
+      "schema": 1,
+      "setup_a_sha256": "7f12063e0afd46462ef33852f7e890a82f094c0629163d215e294523486b5d42",
+      "setup_b_sha256": "f56dc7c1461718e277d14893dae6ea737376059411ab949399c2fd2dbfb52922",
+      "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+      "source_b": "26beb805aab1e9e202d134008441927523cdcb94",
+      "status": "PASS",
+      "target_sha256": "082563d7b7ce2eaa10bc94860e1dabbe320c73e46ae05b6d81b95ca0c4a53544",
+      "uninstall": "PASS",
+      "update": "PASS",
+      "user_source_preserved": "PASS"
+    }
+  },
+  "strict_whole_rows": [
+    {
+      "line": 682,
+      "path": "tests/security/test_managed_installation.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 683,
+      "path": "tests/security/test_managed_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 684,
+      "path": "tests/packaging/test_standard_installer.py",
+      "passed": 102,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 685,
+      "path": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 686,
+      "path": "tests/packaging/test_managed_update_native_policy.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_json_reports": [
+    {
+      "line": 943,
+      "data": {
+        "status": "PASS",
+        "source_commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+        "source_tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+        "locks": {
+          "windows-cp311.lock": {
+            "sha256": "75aff80e44ecfbcf23be9db25e5f8ca34eba3b59cdb7ab14f26967bc3c4eb3ff",
+            "count": 17,
+            "pins": {
+              "defusedxml": "0.7.1",
+              "filelock": "3.29.0",
+              "lxml": "6.1.3",
+              "numpy": "2.4.6",
+              "pillow": "13.0.0",
+              "platformdirs": "4.10.0",
+              "pypdf": "7.1.1",
+              "pypdfium2": "5.13.0",
+              "python-docx": "1.2.0",
+              "typing-extensions": "4.16.0",
+              "wxpython": "4.2.4",
+              "bibtexparser": "2.1.0",
+              "pylatexenc": "2.11",
+              "quickjs-ng": "0.18.0.2",
+              "cryptography": "50.0.2",
+              "cffi": "2.1.1",
+              "pycparser": "3.12"
+            }
+          },
+          "windows-semantic-cp311.lock": {
+            "sha256": "9e37f548a044e6534e2675ef0e1b49cef3b5e91f202e6c206dc011ff336d236d",
+            "count": 53,
+            "pins": {
+              "defusedxml": "0.7.1",
+              "annotated-doc": "0.0.7",
+              "annotated-types": "0.8.0",
+              "anyio": "4.16.0",
+              "certifi": "2026.11.20",
+              "charset-normalizer": "3.5.3",
+              "colorama": "0.4.6",
+              "fastembed": "0.9.1",
+              "filelock": "3.29.0",
+              "flatbuffers": "25.12.19",
+              "fsspec": "2026.9.0",
+              "h11": "0.16.0",
+              "hf-xet": "1.8.0",
+              "httpcore": "1.0.9",
+              "httpx": "0.28.1",
+              "huggingface-hub": "1.16.1",
+              "idna": "3.20",
+              "loguru": "0.7.3",
+              "lxml": "6.1.3",
+              "markdown-it-py": "4.3.0",
+              "mdurl": "0.1.2",
+              "mmh3": "5.3.1",
+              "numpy": "2.3.5",
+              "onnxruntime": "1.32.0",
+              "packaging": "26.4",
+              "pillow": "13.0.0",
+              "platformdirs": "4.10.0",
+              "protobuf": "7.36.2",
+              "py-rust-stemmers": "0.1.8",
+              "pydantic": "2.14.4",
+              "pydantic-core": "2.50.5",
+              "pygments": "2.21.0",
+              "pypdf": "7.1.1",
+              "pypdfium2": "5.13.0",
+              "python-docx": "1.2.0",
+              "pyyaml": "6.0.4",
+              "requests": "2.34.2",
+              "rich": "15.0.0",
+              "shellingham": "1.5.4",
+              "tokenizers": "0.23.3",
+              "tqdm": "4.70.1",
+              "typer": "0.29.3",
+              "typing-extensions": "4.16.0",
+              "typing-inspection": "0.4.5",
+              "urllib3": "2.8.0",
+              "win32-setctime": "1.2.1",
+              "wxpython": "4.2.4",
+              "bibtexparser": "2.1.0",
+              "pylatexenc": "2.11",
+              "quickjs-ng": "0.18.0.2",
+              "cryptography": "50.0.2",
+              "cffi": "2.1.1",
+              "pycparser": "3.12"
+            }
+          }
+        },
+        "downloaded_core_wheels": [
+          {
+            "name": "bibtexparser-2.1.0-py3-none-any.whl",
+            "distribution": "bibtexparser",
+            "version": "2.1.0",
+            "sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+          },
+          {
+            "name": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+            "distribution": "cffi",
+            "version": "2.1.1",
+            "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0"
+          },
+          {
+            "name": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+            "distribution": "cryptography",
+            "version": "50.0.2",
+            "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
+          },
+          {
+            "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+            "distribution": "defusedxml",
+            "version": "0.7.1",
+            "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+          },
+          {
+            "name": "filelock-3.29.0-py3-none-any.whl",
+            "distribution": "filelock",
+            "version": "3.29.0",
+            "sha256": "96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"
+          },
+          {
+            "name": "lxml-6.1.3-cp311-cp311-win_amd64.whl",
+            "distribution": "lxml",
+            "version": "6.1.3",
+            "sha256": "7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559"
+          },
+          {
+            "name": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+            "distribution": "numpy",
+            "version": "2.4.6",
+            "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+          },
+          {
+            "name": "pillow-13.0.0-cp311-cp311-win_amd64.whl",
+            "distribution": "pillow",
+            "version": "13.0.0",
+            "sha256": "d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3"
+          },
+          {
+            "name": "platformdirs-4.10.0-py3-none-any.whl",
+            "distribution": "platformdirs",
+            "version": "4.10.0",
+            "sha256": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a"
+          },
+          {
+            "name": "pycparser-3.12-py3-none-any.whl",
+            "distribution": "pycparser",
+            "version": "3.12",
+            "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+          },
+          {
+            "name": "pylatexenc-2.11-py2.py3-none-any.whl",
+            "distribution": "pylatexenc",
+            "version": "2.11",
+            "sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+          },
+          {
+            "name": "pypdf-7.1.1-py3-none-any.whl",
+            "distribution": "pypdf",
+            "version": "7.1.1",
+            "sha256": "04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1"
+          },
+          {
+            "name": "pypdfium2-5.13.0-py3-none-win_amd64.whl",
+            "distribution": "pypdfium2",
+            "version": "5.13.0",
+            "sha256": "47dcca2a8d507b5fd24f94c3c9d48fb379430f097bc20f01beff6c963ffbcedb"
+          },
+          {
+            "name": "python_docx-1.2.0-py3-none-any.whl",
+            "distribution": "python-docx",
+            "version": "1.2.0",
+            "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+          },
+          {
+            "name": "quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl",
+            "distribution": "quickjs-ng",
+            "version": "0.18.0.2",
+            "sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+          },
+          {
+            "name": "typing_extensions-4.16.0-py3-none-any.whl",
+            "distribution": "typing-extensions",
+            "version": "4.16.0",
+            "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+          },
+          {
+            "name": "wxpython-4.2.4-cp311-cp311-win_amd64.whl",
+            "distribution": "wxpython",
+            "version": "4.2.4",
+            "sha256": "f48fe7b9f22c7733a06b5901559b5b7e4835fa852cbef0f620ffd0a0030aaf73"
+          }
+        ],
+        "semantic_profile": "Recorded only; not used by this core installation lane"
+      }
+    },
+    {
+      "line": 1017,
+      "data": {
+        "target": "Windows x64 / CPython 3.11",
+        "wheels": 18,
+        "output": "D:\\a\\_temp\\carr-managed-upgrade-private\\build-a\\core-base",
+        "manifest_sha256": "e392e7f8181fb1ac6895ab37dd6a8774ae31839b665bbcb4fbe51950a42b128c"
+      }
+    },
+    {
+      "line": 1070,
+      "data": {
+        "bundle_manifest_sha256": "6d5878812d5f3dee50adf0162c5b7efadfbdf79cbea030353e854c3b946a67b8",
+        "payload_files": 365,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev1",
+        "required_runtime_files": 297,
+        "source_commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+        "source_tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+        "wheel_sha256": "955799ec6fd6a210781e11dc29d1dff79d729ce11105d8cde53407aa21a21445"
+      }
+    },
+    {
+      "line": 1117,
+      "data": {
+        "status": "PASS",
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "locks": {
+          "windows-cp311.lock": {
+            "sha256": "a080f413266ed8942deb0dedd82304721cb39ea7b9eddd96d2cba542086d7f4a",
+            "count": 15,
+            "pins": {
+              "defusedxml": "0.7.1",
+              "filelock": "3.29.0",
+              "lxml": "6.1.3",
+              "numpy": "2.4.6",
+              "pillow": "13.0.0",
+              "platformdirs": "4.10.0",
+              "pypdf": "7.1.1",
+              "pypdfium2": "5.13.0",
+              "python-docx": "1.2.0",
+              "typing-extensions": "4.16.0",
+              "wxpython": "4.2.4",
+              "bibtexparser": "2.1.0",
+              "pylatexenc": "2.11",
+              "quickjs-ng": "0.18.0.2",
+              "comtypes": "1.5.0"
+            }
+          },
+          "windows-semantic-cp311.lock": {
+            "sha256": "944d1200826aca692439626e729024f3d3578a5002f771c6c15b5711f9950f08",
+            "count": 51,
+            "pins": {
+              "defusedxml": "0.7.1",
+              "annotated-doc": "0.0.7",
+              "annotated-types": "0.8.0",
+              "anyio": "4.16.0",
+              "certifi": "2026.11.20",
+              "charset-normalizer": "3.5.3",
+              "colorama": "0.4.6",
+              "fastembed": "0.9.1",
+              "filelock": "3.29.0",
+              "flatbuffers": "25.12.19",
+              "fsspec": "2026.9.0",
+              "h11": "0.16.0",
+              "hf-xet": "1.8.0",
+              "httpcore": "1.0.9",
+              "httpx": "0.28.1",
+              "huggingface-hub": "1.16.1",
+              "idna": "3.20",
+              "loguru": "0.7.3",
+              "lxml": "6.1.3",
+              "markdown-it-py": "4.3.0",
+              "mdurl": "0.1.2",
+              "mmh3": "5.3.1",
+              "numpy": "2.3.5",
+              "onnxruntime": "1.32.0",
+              "packaging": "26.4",
+              "pillow": "13.0.0",
+              "platformdirs": "4.10.0",
+              "protobuf": "7.36.2",
+              "py-rust-stemmers": "0.1.8",
+              "pydantic": "2.14.4",
+              "pydantic-core": "2.50.5",
+              "pygments": "2.21.0",
+              "pypdf": "7.1.1",
+              "pypdfium2": "5.13.0",
+              "python-docx": "1.2.0",
+              "pyyaml": "6.0.4",
+              "requests": "2.34.2",
+              "rich": "15.0.0",
+              "shellingham": "1.5.4",
+              "tokenizers": "0.23.3",
+              "tqdm": "4.70.1",
+              "typer": "0.29.3",
+              "typing-extensions": "4.16.0",
+              "typing-inspection": "0.4.5",
+              "urllib3": "2.8.0",
+              "win32-setctime": "1.2.1",
+              "wxpython": "4.2.4",
+              "bibtexparser": "2.1.0",
+              "pylatexenc": "2.11",
+              "quickjs-ng": "0.18.0.2",
+              "comtypes": "1.5.0"
+            }
+          }
+        },
+        "downloaded_core_wheels": [
+          {
+            "name": "bibtexparser-2.1.0-py3-none-any.whl",
+            "distribution": "bibtexparser",
+            "version": "2.1.0",
+            "sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+          },
+          {
+            "name": "comtypes-1.5.0-py3-none-any.whl",
+            "distribution": "comtypes",
+            "version": "1.5.0",
+            "sha256": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+          },
+          {
+            "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+            "distribution": "defusedxml",
+            "version": "0.7.1",
+            "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+          },
+          {
+            "name": "filelock-3.29.0-py3-none-any.whl",
+            "distribution": "filelock",
+            "version": "3.29.0",
+            "sha256": "96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"
+          },
+          {
+            "name": "lxml-6.1.3-cp311-cp311-win_amd64.whl",
+            "distribution": "lxml",
+            "version": "6.1.3",
+            "sha256": "7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559"
+          },
+          {
+            "name": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+            "distribution": "numpy",
+            "version": "2.4.6",
+            "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+          },
+          {
+            "name": "pillow-13.0.0-cp311-cp311-win_amd64.whl",
+            "distribution": "pillow",
+            "version": "13.0.0",
+            "sha256": "d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3"
+          },
+          {
+            "name": "platformdirs-4.10.0-py3-none-any.whl",
+            "distribution": "platformdirs",
+            "version": "4.10.0",
+            "sha256": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a"
+          },
+          {
+            "name": "pylatexenc-2.11-py2.py3-none-any.whl",
+            "distribution": "pylatexenc",
+            "version": "2.11",
+            "sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+          },
+          {
+            "name": "pypdf-7.1.1-py3-none-any.whl",
+            "distribution": "pypdf",
+            "version": "7.1.1",
+            "sha256": "04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1"
+          },
+          {
+            "name": "pypdfium2-5.13.0-py3-none-win_amd64.whl",
+            "distribution": "pypdfium2",
+            "version": "5.13.0",
+            "sha256": "47dcca2a8d507b5fd24f94c3c9d48fb379430f097bc20f01beff6c963ffbcedb"
+          },
+          {
+            "name": "python_docx-1.2.0-py3-none-any.whl",
+            "distribution": "python-docx",
+            "version": "1.2.0",
+            "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+          },
+          {
+            "name": "quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl",
+            "distribution": "quickjs-ng",
+            "version": "0.18.0.2",
+            "sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+          },
+          {
+            "name": "typing_extensions-4.16.0-py3-none-any.whl",
+            "distribution": "typing-extensions",
+            "version": "4.16.0",
+            "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+          },
+          {
+            "name": "wxpython-4.2.4-cp311-cp311-win_amd64.whl",
+            "distribution": "wxpython",
+            "version": "4.2.4",
+            "sha256": "f48fe7b9f22c7733a06b5901559b5b7e4835fa852cbef0f620ffd0a0030aaf73"
+          }
+        ],
+        "semantic_profile": "Recorded only; not used by this core installation lane"
+      }
+    },
+    {
+      "line": 1191,
+      "data": {
+        "target": "Windows x64 / CPython 3.11",
+        "wheels": 16,
+        "output": "D:\\a\\_temp\\carr-managed-upgrade-private\\build-b\\core-base",
+        "manifest_sha256": "d2c346a1854d51b9871eb5aef9a68c2e39eff784e778b93fc946bac739eab84b"
+      }
+    },
+    {
+      "line": 1245,
+      "data": {
+        "bundle_manifest_sha256": "8a38fa76925e77fdb517aae3fbe642889d3634f9d2867920161399e11e20111d",
+        "payload_files": 485,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 414,
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "wheel_sha256": "9596250d4290584d012f8dc53c45e02767f8a4ecf459266508c2003593ea0c4d"
+      }
+    },
+    {
+      "line": 1250,
+      "data": {
+        "installed_host": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+        "version": "0.2.0.dev2"
+      }
+    },
+    {
+      "line": 1323,
+      "data": {
+        "actual_backup_restore": "PASS",
+        "actual_inno": "PASS",
+        "actual_windows_registration": "PASS",
+        "actual_windows_vault": "PASS",
+        "authenticode": "NOT_CLAIMED",
+        "full_wrapper_rollback": "PASS",
+        "host_package": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+        "live_app_exclusion": "PASS",
+        "nvda": "NOT_RUN",
+        "production_publisher": "NOT_CONFIGURED",
+        "repair": "PASS",
+        "schema": 1,
+        "setup_a_sha256": "7f12063e0afd46462ef33852f7e890a82f094c0629163d215e294523486b5d42",
+        "setup_b_sha256": "f56dc7c1461718e277d14893dae6ea737376059411ab949399c2fd2dbfb52922",
+        "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+        "source_b": "26beb805aab1e9e202d134008441927523cdcb94",
+        "status": "PASS",
+        "target_sha256": "082563d7b7ce2eaa10bc94860e1dabbe320c73e46ae05b6d81b95ca0c4a53544",
+        "uninstall": "PASS",
+        "update": "PASS",
+        "user_source_preserved": "PASS"
+      }
+    }
+  ],
+  "artifact": {
+    "id": 15254582012,
+    "name": "managed-update-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 90087,
+    "digest": "sha256:3ff79298514df4941cc1d59a14c2c580622c8710e4d50272a1c652adfd7a5e19"
+  },
+  "log": {
+    "bytes": 156123,
+    "sha256": "ce82324f729159021e4c543568bfe6526688e02701ace417d746d522e83983a4",
+    "line_count": 1399
+  },
+  "qualification": "Ordinary managed standard-installer workflow baseline665acf→exact B. It is distinct from configured trusted Apply A3→B. Production publisher and Authenticode are not claimed; manual NVDA is NOT_RUN.",
+  "aggregate_boundary": "This is one required lane at exact B; full-source, integrated installed, V3, physical audio, manual accessibility and later compositions remain separate."
+}

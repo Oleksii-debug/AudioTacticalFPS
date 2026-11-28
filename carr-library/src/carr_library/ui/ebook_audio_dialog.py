@@ -405,22 +405,56 @@ class EbookAudioDialog:
             return
         try:
             self._check_scope(); self.transport.stop()
-            ticket = self.transport.ticket
+            transport, session = self.transport, self.session
+            ticket = transport.ticket
             self.report('Preparing the exact recorded audio interval…')
+            reported = False
+            def failed(error):
+                nonlocal reported
+                if reported:
+                    return
+                reported = True
+                self._last_error = error
+                # A failed start closes its own player and advances generation
+                # once. That cleanup must not hide its error, while a genuine
+                # Stop, selection, replaced source/view or close still revokes it.
+                if (self.stopping() or not self._can_present()
+                        or self.transport is not transport or self.session is not session
+                        or transport.session is not session or transport.closed
+                        or transport.interrupted or transport.index != ticket[0]
+                        or transport.generation not in (ticket[1], ticket[1] + 1)):
+                    return
+                try:
+                    self._error(error)
+                except Exception as presentation_error:
+                    # Keep the original failure even if its native status view
+                    # cannot present it. The diagnostic owns this same object.
+                    self._last_error = error
+                    try:
+                        error.add_note('Recorded EPUB error presentation failed: '
+                            + type(presentation_error).__name__ + ': ' + str(presentation_error)[:2048])
+                    except Exception:
+                        pass
             def ready(prepared):
-                if ticket != self.transport.ticket:
+                if self.transport is not transport or self.session is not session or ticket != transport.ticket:
                     prepared.close(); return
                 self._pending = prepared
                 def start():
                     self._check_scope()
-                    if self.transport.start(prepared, ticket):
+                    try:
+                        started = transport.start(prepared, ticket)
+                    except Exception as error:
+                        failed(error)
+                        raise
+                    if started:
                         self._pending = None
                         self._highlight()
                         self.timer.Start(100)
                         self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')
                 play_when_quiet((self.progress,), start, schedule=self.wx.CallLater,
-                    alive=lambda: not self.stopping() and ticket == self.transport.ticket,
-                    on_error=self._error)
+                    alive=lambda: not self.stopping() and self.transport is transport
+                        and self.session is session and ticket == transport.ticket,
+                    on_error=failed)
             self._submit(lambda: self.session.prepare(ticket[0], cancelled=self.stopping),
                          ready, lambda prepared: prepared.close())
         except Exception as exc:

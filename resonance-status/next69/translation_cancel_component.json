@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "Actual translation layout child-cancellation fixture correction",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+  "integration": "Followup F after root's coherent E; the single test preimage4098 is unchanged in D/E. Root verifies that exact preimage at composition. No refs changed.",
+  "actual_evidence": "1785598f785805a5e4200ba1bfeca5a676bf2567",
+  "actual_run": 46122917046,
+  "actual_job": 140911207030,
+  "actual_head": "26beb805aab1e9e202d134008441927523cdcb94",
+  "actual_case_result": {
+    "module": "tests/assistant/test_translation_layout.py",
+    "passed": 32,
+    "failed": 1,
+    "skipped": 0,
+    "case": "test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release",
+    "post_failure_cleanup_assertions": "NOT_REACHED in the old failed run"
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "preimage": "4098d53def8821247f3fce2756c7f0da1443d2d3",
+      "successor": "075828b1d2eda8a7d75aae1e0318568ec866f65c",
+      "hunks": [
+        {
+          "old": "    with pytest.raises(AudioCancelled):\n        capture_layout(bound.app, bound.workspace, bound.edition, cancelled=marker.exists)\n    assert marker.is_file() and len(processes) == 1\n    assert processes[0].returncode is not None\n    assert ResourceBroker.for_app(bound.app.root).snapshot()['leases'] == []\n    assert not list((bound.app.root / 'runtime').glob('.docx-layout-*'))\n",
+          "replacement": "    # The source recheck and the subprocess poll preserve their own cancellation\n    # types when this real child marker appears between their fresh checkpoints.\n    with pytest.raises((AudioCancelled, InterruptedError)) as stopped:\n        capture_layout(bound.app, bound.workspace, bound.edition, cancelled=marker.exists)\n    assert type(stopped.value) in (AudioCancelled, InterruptedError)\n    assert marker.is_file() and len(processes) == 1\n    assert processes[0].returncode is not None\n    assert processes[0].stdout.closed and processes[0].stderr.closed\n    if os.name == 'nt':\n        assert processes[0]._job is None\n        assert processes[0]._process.hProcess is None\n        assert processes[0]._process.hThread is None\n    assert ResourceBroker.for_app(bound.app.root).snapshot()['leases'] == []\n    assert not list((bound.app.root / 'runtime').glob('.docx-layout-*'))\n"
+        }
+      ],
+      "exact_inverse": true
+    }
+  ],
+  "source_bindings": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "git_blob": "f91173da3d90bb6b17be4d184799993ddfa91def"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "git_blob": "29324c1891c4e1fc278f410af6221e50ae3f9b04"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_io.py",
+      "git_blob": "8657f0942eb5eef51f30e9c938f9025bf91f9e47"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "git_blob": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/windows_job.py",
+      "git_blob": "27aeb47c39660ac74335d791e22e58b44058db3b"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/models.py",
+      "git_blob": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6"
+    }
+  ],
+  "reason": [
+    "The actual child writes its readiness marker. The same live marker can become visible between the first base() check in translation_layout._source_cancel and the fresh base callback inside TranslationService._source_current.",
+    "run_process.check_control raises AudioCancelled when the callback returns True. The fresh source check raises and preserves InterruptedError via speech._io.check_cancelled. The actual B traceback proves the latter.",
+    "The fixture now accepts exactly those two concrete public cancellation types and asserts their exact type. No generic Exception or additional cancellation category is admitted.",
+    "The real child-marker path, original command/bootstrap, actual JobProcess/Popen observation, cancellation polling and deadlines remain unchanged.",
+    "Existing marker/one-child/returncode/no-broker-leases/no-staging checks are retained. New assertions require real stdout/stderr closure and Windows Job/process/thread handles released after actual cleanup."
+  ],
+  "inventory": {
+    "path": "tests/assistant/test_translation_layout.py",
+    "old_cases": 33,
+    "cases": 33,
+    "old_functions": 19,
+    "functions": [
+      "test_actual_worker_maps_only_exact_retained_paragraphs_and_simple_cells",
+      "test_review_requires_no_provider_request_and_binds_visible_layout_limitations",
+      "test_actual_completed_docx_preserves_tables_styles_relationships_and_unselected_parts",
+      "test_unsupported_source_shapes_are_refused_by_unchanged_canonical_admission",
+      "test_mixed_hyperlink_fails_real_capture_before_jobs_or_translation",
+      "test_actual_document_with_more_than2048_nonempty_units_is_refused_before_job_creation",
+      "test_changed_same_size_worker_request_is_refused_by_its_actual_decoded_snapshot",
+      "test_foreign_worker_origin_is_rejected_before_source_parsing",
+      "test_mutated_mapping_cannot_authorize_another_body_or_layout",
+      "test_actual_partial_jobs_must_finish_before_format_publication_and_resume_without_duplicates",
+      "test_changed_profile_cannot_resume_prepared_formatted_requests",
+      "test_final_protected_publication_keeps_source_destination_and_no_clobber_authority",
+      "test_late_cancel_after_actual_publisher_return_preserves_completed_receipt",
+      "test_same_path_library_replacement_revokes_captured_layout_before_worker",
+      "test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release",
+      "test_actual_full_restore_exports_completed_layout_offline_after_deleting_original_and_prior_root",
+      "test_explicit_saved_job_selection_orders_only_the_chosen_source_positions",
+      "test_explicit_saved_job_selection_cannot_substitute_foreign_or_incomplete_approval",
+      "test_export_rejects_forged_layout_even_when_source_paragraph_jobs_are_authentic"
+    ],
+    "new_functions": [],
+    "new_companions": [],
+    "new_origins": [],
+    "decorators_unchanged": true
+  },
+  "inverse": "Replacing the sole replacement hunk with its old text reconstructs4098 byte-for-byte; all other bytes remain identical.",
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "record": "db8f5dfeb23239675c8ef757043fea56b422b20e"
+  },
+  "limits": {
+    "changed": false,
+    "actual_worker_pause_seconds": 60,
+    "whole_seconds": 600,
+    "production_deadline_and_budget_unchanged": true
+  },
+  "pin_integration": "No count/function/selector change. Root's final complete pin scan must refresh any exact4098 test binding; no shared gate edited by this component.",
+  "execution": "NOT_RUN for075828. This does not turn old B failed cleanup assertions into executed evidence and does not resolve the independent Book/package600 whole timeouts or unfinished fast aggregate."
+}

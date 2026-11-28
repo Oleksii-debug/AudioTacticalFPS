@@ -1,0 +1,45 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "scope": "Recorded EPUB local start-error propagation and native ownership lifetime only",
+  "source": {
+    "path": "carr-library/src/carr_library/ui/ebook_audio_dialog.py",
+    "preimage": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5",
+    "successor": "1bbfb74a7a286f933056696ea7ff769d75436061"
+  },
+  "tests": {
+    "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+    "preimage": "e2794f558501eea37dcb482d46f9419d68e9cb22",
+    "successor": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+    "old_cases": 14,
+    "cases": 28,
+    "old_functions": 9,
+    "functions": 13,
+    "added_case_arithmetic": "2 admission/device x 2 direct/deferred + 8 revoked request states + original-error/repeated-notification + real quiet timeout = 14",
+    "added_functions": [
+      "test_recorded_start_failure_survives_own_generation_cleanup",
+      "test_recorded_start_error_does_not_present_to_a_revoked_request",
+      "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats",
+      "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm"
+    ]
+  },
+  "dependency": {
+    "path": "carr-library/src/carr_library/speech/progress_speech.py",
+    "git_blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf"
+  },
+  "checks": [
+    "Every byte outside EbookAudioDialog.play is identical; transport/player/stop/cleanup implementations remain unchanged.",
+    "All 14 original case bodies and decorators are retained as an exact test prefix; four appended functions provide 14 new cases.",
+    "Read actual OverlayPlayback.start/stop: failed start closes its owned player/prepared result and advances the ticket generation before rethrowing.",
+    "Read actual play_when_quiet: its later alive check rejects that advanced ticket, establishing the local missing-notification path without diagnosing physical device availability.",
+    "Local failed callback retains the original object, permits only the captured owner/session/selection and zero or one own cleanup generation, refuses cancellation/closed/replaced/interrupted requests, and reports at most once.",
+    "Notification failure is caught only around presentation, preserving the original failure and bounded diagnostic note; existing cleanup retains native ownership.",
+    "Regressions use the actual borrowed serial executor, OverlayPlayback, and shared quiet helper; native player/widgets are explicit doubles. Direct/deferred failure, revoked state, quiet hold disposal, old/new owner separation, and same-object propagation are observed."
+  ],
+  "not_claimed": [
+    "No execution/parser/native PASS.",
+    "No physical device cause inferred from previous preparing/idle/null-error observation.",
+    "No shared helper, player, timeout, native25 inventory or approval boundary relaxed."
+  ]
+}

@@ -1,0 +1,1129 @@
+{
+  "schema": "carr-language-evidence-inverse-audit/1",
+  "status": "EXACT_STATIC_NOT_RUN",
+  "base_commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+  "created_utc": "2026-11-28 08:33:52 UTC",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "preimage": "bad9aa5c644573ed18fdb83527733dd99a738ade",
+      "successor": "236a61ecb765b544ca4e0005fb94e6b462256996",
+      "hunks": [
+        {
+          "oldLine": 361,
+          "newLine": 361,
+          "before": [],
+          "after": [
+            "    evidence_id: str | None = None",
+            "    review_id: str | None = None",
+            "    qualification_scope: str | None = None"
+          ]
+        },
+        {
+          "oldLine": 383,
+          "newLine": 386,
+          "before": [],
+          "after": [
+            "    recorded_context: str | None = None"
+          ]
+        },
+        {
+          "oldLine": 389,
+          "newLine": 393,
+          "before": [
+            "        if status is not None and status not in ('untested', 'unsupported', 'candidate', 'partial', 'verified'):"
+          ],
+          "after": [
+            "        if status is not None and status not in ('untested', 'unsupported', 'candidate', 'partial', 'verified', 'failed', 'revoked'):"
+          ]
+        },
+        {
+          "oldLine": 410,
+          "newLine": 414,
+          "before": [
+            "                'qualified_entries': 0, 'unmatched_voices': len(self.unmatched_voice_ids),"
+          ],
+          "after": [
+            "                'qualified_entries': sum(",
+            "                    all(row.status == 'verified' and row.qualification_scope for row in entry.capabilities)",
+            "                    and len({row.qualification_scope for row in entry.capabilities}) == 1",
+            "                    for entry in self.entries),",
+            "                'unmatched_voices': len(self.unmatched_voice_ids),"
+          ]
+        },
+        {
+          "oldLine": 418,
+          "newLine": 426,
+          "before": [
+            "                'unmatched_voice_ids': list(self.unmatched_voice_ids), 'warnings': list(self.warnings)}"
+          ],
+          "after": [
+            "                'unmatched_voice_ids': list(self.unmatched_voice_ids), 'warnings': list(self.warnings),",
+            "                'recorded_context': self.recorded_context}"
+          ]
+        },
+        {
+          "oldLine": 423,
+          "newLine": 432,
+          "before": [
+            "                            bindings: Iterable[DeclaredLanguageBinding] = ()) -> CapabilityMatrix:"
+          ],
+          "after": [
+            "                            bindings: Iterable[DeclaredLanguageBinding] = (),",
+            "                            evidence=None, recorded_context: str | None = None) -> CapabilityMatrix:"
+          ]
+        },
+        {
+          "oldLine": 431,
+          "newLine": 441,
+          "before": [],
+          "after": [
+            "    assessments = {}",
+            "    if evidence is not None:",
+            "        from .evidence import EvidenceSnapshot, assessment_detail, assessment_status",
+            "        if type(evidence) is not EvidenceSnapshot:",
+            "            raise CatalogError('Use validated passive qualification evidence.')",
+            "        # Validate direct callers too; no external path or runtime is consulted.",
+            "        evidence = EvidenceSnapshot.from_dict(evidence.to_dict(), catalog=catalog)",
+            "        if recorded_context is not None:",
+            "            assessments = evidence.assessments(recorded_context)",
+            "    elif recorded_context is not None:",
+            "        raise CatalogError('Select a configuration from the recorded evidence.')"
+          ]
+        },
+        {
+          "oldLine": 479,
+          "newLine": 500,
+          "before": [],
+          "after": [
+            "            assessment = assessments.get((entry.id, name))",
+            "            if assessment is not None:",
+            "                observation, review, active = assessment",
+            "                value = Capability(name, assessment_status(observation, review, active),",
+            "                    assessment_detail(observation, review, active), (), observation.fingerprint,",
+            "                    review.fingerprint if review else None, observation.qualification_scope)"
+          ]
+        },
+        {
+          "oldLine": 482,
+          "newLine": 509,
+          "before": [
+            "    return CapabilityMatrix(catalog, tuple(records), tuple(unmatched), tuple(warnings))"
+          ],
+          "after": [
+            "    if recorded_context is not None:",
+            "        warnings.append('Verified means an explicitly recorded human assessment for the selected '",
+            "                        'app/environment and exact engine/pack, not authenticated identity, '",
+            "                        'automatic execution, current-device support or another language variety.')",
+            "    return CapabilityMatrix(catalog, tuple(records), tuple(unmatched), tuple(warnings),",
+            "                            recorded_context=recorded_context)"
+          ]
+        }
+      ],
+      "exact_reverse": true
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+      "successor": "4052234a20b12d26d825463363e2126585f73211",
+      "hunks": [
+        {
+          "oldLine": 25,
+          "newLine": 25,
+          "before": [],
+          "after": [
+            "from .language_qualification import backup as backup_language_evidence"
+          ]
+        },
+        {
+          "oldLine": 91,
+          "newLine": 92,
+          "before": [],
+          "after": [
+            "    if maximum := backup_language_evidence.limit(name):",
+            "        return maximum"
+          ]
+        },
+        {
+          "oldLine": 315,
+          "newLine": 318,
+          "before": [],
+          "after": [
+            "        elif backup_language_evidence.reserved(name):",
+            "            backup_language_evidence.validate_record(name, _json(raw))"
+          ]
+        },
+        {
+          "oldLine": 363,
+          "newLine": 368,
+          "before": [],
+          "after": [
+            "        backup_language_evidence.collection_budgets({'filename': name, 'size_bytes': size}",
+            "                                                   for name, size in entries)"
+          ]
+        },
+        {
+          "oldLine": 507,
+          "newLine": 514,
+          "before": [],
+          "after": [
+            "    if backup_language_evidence.reserved(name):",
+            "        return backup_language_evidence.ignored(name)"
+          ]
+        },
+        {
+          "oldLine": 568,
+          "newLine": 577,
+          "before": [],
+          "after": [
+            "        backup_language_evidence.validate_directory(name)"
+          ]
+        },
+        {
+          "oldLine": 579,
+          "newLine": 589,
+          "before": [],
+          "after": [
+            "                backup_language_evidence.validate_directory(relative)"
+          ]
+        },
+        {
+          "oldLine": 658,
+          "newLine": 669,
+          "before": [],
+          "after": [
+            "        backup_language_evidence.validate_collection(root / 'state',",
+            "            ({**entry, 'filename': entry['filename'].removeprefix('state/')}",
+            "             for entry in entries if entry['filename'].startswith('state/')), cancelled=cancelled)"
+          ]
+        }
+      ],
+      "exact_reverse": true
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "preimage": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+      "successor": "65c75e75f82c78ba3153da01d687669b276428e3",
+      "hunks": [
+        {
+          "oldLine": 17,
+          "newLine": 17,
+          "before": [],
+          "after": [
+            "from .language_qualification import backup as backup_language_evidence"
+          ]
+        },
+        {
+          "oldLine": 52,
+          "newLine": 53,
+          "before": [],
+          "after": [
+            "    if (backup_language_evidence.reserved('state/' + value)",
+            "            and backup_language_evidence.limit('state/' + value) is None):",
+            "        raise ValueError('Invalid reserved language evidence filename.')"
+          ]
+        },
+        {
+          "oldLine": 63,
+          "newLine": 67,
+          "before": [],
+          "after": [
+            "    if backup_language_evidence.reserved(name):",
+            "        return not backup_language_evidence.ignored(name)"
+          ]
+        },
+        {
+          "oldLine": 98,
+          "newLine": 104,
+          "before": [],
+          "after": [
+            "                backup_language_evidence.validate_directory(",
+            "                    'state/' + (Path(directory) / name).relative_to(root).as_posix())"
+          ]
+        },
+        {
+          "oldLine": 126,
+          "newLine": 134,
+          "before": [],
+          "after": [
+            "    backup_language_evidence.collection_budgets(",
+            "        ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}",
+            "         for name, stamp in before_inventory.items()), cancelled=cancelled)"
+          ]
+        },
+        {
+          "oldLine": 205,
+          "newLine": 216,
+          "before": [],
+          "after": [
+            "    backup_language_evidence.validate_collection(target, entries, cancelled=cancelled)"
+          ]
+        },
+        {
+          "oldLine": 266,
+          "newLine": 278,
+          "before": [],
+          "after": [
+            "    backup_language_evidence.collection_budgets(",
+            "        ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))"
+          ]
+        },
+        {
+          "oldLine": 402,
+          "newLine": 416,
+          "before": [],
+          "after": [
+            "            backup_language_evidence.validate_directory(",
+            "                'state/' + (Path(directory) / name).relative_to(source).as_posix())"
+          ]
+        },
+        {
+          "oldLine": 425,
+          "newLine": 441,
+          "before": [],
+          "after": [
+            "    backup_language_evidence.validate_collection(source, entries)"
+          ]
+        },
+        {
+          "oldLine": 456,
+          "newLine": 473,
+          "before": [],
+          "after": [
+            "    backup_language_evidence.validate_collection(target, entries)",
+            "    backup_language_evidence.prepare_restored_state(target)"
+          ]
+        }
+      ],
+      "exact_reverse": true
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "preimage": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "successor": "0ccbba5db4c41e78143f0ef11aef51bd3df55339",
+      "hunks": [
+        {
+          "oldLine": 409,
+          "newLine": 409,
+          "before": [],
+          "after": [
+            "        from .language_qualification.backup import prepare_restored_inventory as prepare_restored_language_evidence",
+            "        restored_sidecars = prepare_restored_language_evidence(stage, restored_sidecars, cancelled=cancelled)"
+          ]
+        }
+      ],
+      "exact_reverse": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "preimage": "ba8a105cad8b021bd35625e005ffc01b1e8c578e",
+      "successor": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+      "hunks": [
+        {
+          "oldLine": 1,
+          "newLine": 1,
+          "before": [
+            "\"\"\"Read-only canonical languages, capability evidence and separate local voices.\"\"\"",
+            "from dataclasses import dataclass"
+          ],
+          "after": [
+            "\"\"\"Canonical languages, passive evidence and scoped recorded human assessments.\"\"\"",
+            "from dataclasses import asdict, dataclass"
+          ]
+        },
+        {
+          "oldLine": 7,
+          "newLine": 7,
+          "before": [],
+          "after": [
+            "from ..language_qualification.evidence import (",
+            "    EvidenceSnapshot, EvidenceStore, PersonProvenance, REPORT_SCHEMA,",
+            "    EvidenceSaveCommittedError, assessment_detail, import_observation,",
+            ")",
+            "from ..durable_state import atomic_bytes, encode, local_path, read_json_snapshot, regular",
+            "import json",
+            "import os"
+          ]
+        },
+        {
+          "oldLine": 24,
+          "newLine": 31,
+          "before": [
+            "    \"candidate\": \"Declared candidate\", \"partial\": \"Partial candidate\", \"verified\": \"Verified\","
+          ],
+          "after": [
+            "    \"candidate\": \"Declared candidate\", \"partial\": \"Partial assessment\",",
+            "    \"verified\": \"Verified for the recorded configuration\",",
+            "    \"failed\": \"Reported failure or rejected assessment\", \"revoked\": \"Revoked assessment\","
+          ]
+        },
+        {
+          "oldLine": 58,
+          "newLine": 67,
+          "before": [
+            "    def __init__(self):"
+          ],
+          "after": [
+            "    def __init__(self, library_root=None, *, guard=lambda: None):"
+          ]
+        },
+        {
+          "oldLine": 63,
+          "newLine": 72,
+          "before": [],
+          "after": [
+            "        self.store = EvidenceStore(library_root, guard=guard) if library_root is not None else None",
+            "        self.evidence, self.evidence_token = EvidenceSnapshot(), None",
+            "        self.recorded_context = None",
+            "        self.evidence_loaded = False"
+          ]
+        },
+        {
+          "oldLine": 79,
+          "newLine": 92,
+          "before": [
+            "        matrix = build_capability_matrix(catalog=self.catalog, voices=inventory.voices, bindings=())"
+          ],
+          "after": [
+            "        if self.store is not None:",
+            "            self.store.guard()",
+            "        matrix = build_capability_matrix(catalog=self.catalog, voices=inventory.voices, bindings=(),",
+            "            evidence=self.evidence, recorded_context=self.recorded_context)"
+          ]
+        },
+        {
+          "oldLine": 83,
+          "newLine": 99,
+          "before": [],
+          "after": [
+            "    def _require_store(self):",
+            "        if self.store is None:",
+            "            raise ValueError(\"Open language evidence from a current library.\")",
+            "        self.store.guard()",
+            "        return self.store",
+            "",
+            "    def load_evidence(self, *, cancelled=lambda: False):",
+            "        return self._require_store().load(cancelled=cancelled)",
+            "",
+            "    def accept_evidence(self, result):",
+            "        snapshot, token = result",
+            "        if type(snapshot) is not EvidenceSnapshot:",
+            "            raise ValueError(\"Use an exact checked evidence snapshot.\")",
+            "        if self.recorded_context not in {row.fingerprint for row in snapshot.contexts()}:",
+            "            self.recorded_context = None",
+            "        self.evidence, self.evidence_token = snapshot, token",
+            "        self.evidence_loaded = True",
+            "        self._rebuild()",
+            "",
+            "    def _rebuild(self):",
+            "        self.matrix = build_capability_matrix(catalog=self.catalog,",
+            "            voices=self.inventory.voices if self.inventory is not None else (), bindings=(),",
+            "            evidence=self.evidence, recorded_context=self.recorded_context)",
+            "",
+            "    def choose_configuration(self, identity):",
+            "        if self.store is not None:",
+            "            self.store.guard()",
+            "        if identity is not None and identity not in {row.fingerprint for row in self.evidence.contexts()}:",
+            "            raise ValueError(\"Choose one exact recorded configuration.\")",
+            "        self.recorded_context = identity",
+            "        self._rebuild()",
+            "",
+            "    def read_observation(self, path, *, cancelled=lambda: False):",
+            "        store = self._require_store()",
+            "        result = import_observation(path, cancelled=cancelled)",
+            "        store.guard()",
+            "        return result",
+            "",
+            "    def evidence_details(self, identity):",
+            "        observation = self.evidence.get(identity)",
+            "        reviews = [(index, row) for index, row in enumerate(self.evidence.reviews, 1)",
+            "                   if row.observation_sha256 == identity]",
+            "        last = reviews[-1] if reviews else None",
+            "        detail = assessment_detail(observation, last[1] if last else None,",
+            "                                   bool(last and last[0] > self.evidence.dormant_through))",
+            "        return (self.catalog.get(observation.language_id).label_uk + \" — \"",
+            "                + CAPABILITY_LABELS[observation.capability] + \"\\n\" + detail",
+            "                + \"\\n\\nComplete passive observation\\n\"",
+            "                + json.dumps(observation.to_dict(), ensure_ascii=False, indent=2)",
+            "                + f\"\\n\\nReview history: last {min(32, len(reviews))} of {len(reviews)}; \"",
+            "                \"the report retains the full history.\\n\" + json.dumps(",
+            "                    [{\"sequence\": index, \"active_after_restore\": index > self.evidence.dormant_through,",
+            "                      **asdict(row)} for index, row in reviews[-32:]], ensure_ascii=False, indent=2))",
+            "",
+            "    def export_report(self, path, *, expected_token, cancelled=lambda: False):",
+            "        store = self._require_store()",
+            "        snapshot, token = store.load(cancelled=cancelled)",
+            "        if token != expected_token:",
+            "            raise ValueError(\"Language evidence changed. Reload before exporting its report.\")",
+            "        context = self.recorded_context",
+            "        matrix = build_capability_matrix(catalog=self.catalog, evidence=snapshot,",
+            "                                          recorded_context=context)",
+            "        payload = encode({\"schema\": REPORT_SCHEMA, \"qualification\":",
+            "            \"Recorded human assessments of exact configurations; no automatic execution, \"",
+            "            \"authenticated reviewer identity or current-device qualification.\",",
+            "            \"evidence\": snapshot.to_dict(), \"matrix\": matrix.to_dict()})",
+            "        destination = local_path(path)",
+            "        if destination.is_relative_to(store.root):",
+            "            raise ValueError(\"Choose a new report outside the library's private state.\")",
+            "        regular(local_path(destination.parent, exists=True), directory=True)",
+            "        store._check(cancelled)",
+            "        # No callback after this fresh exact-token check and before create-only write.",
+            "        if os.path.lexists(store.path):",
+            "            _, latest = read_json_snapshot(store.path)",
+            "        else:",
+            "            latest = None",
+            "        store._validate_scope()",
+            "        if latest != token:",
+            "            raise ValueError(\"Language evidence changed before report publication.\")",
+            "        atomic_bytes(destination, payload, replace=False)",
+            "        return destination",
+            ""
+          ]
+        },
+        {
+          "oldLine": 88,
+          "newLine": 186,
+          "before": [
+            "            f\"Qualified language entries: {values['qualified_entries']}.\\n\""
+          ],
+          "after": [
+            "            f\"Qualified language entries: {values['qualified_entries']} \"",
+            "            \"(all 22 capabilities in the selected recorded configuration only).\\n\""
+          ]
+        },
+        {
+          "oldLine": 92,
+          "newLine": 191,
+          "before": [
+            "            \"Local voices are not automatically assigned to the selected languages.\""
+          ],
+          "after": [
+            "            \"Local voices are not automatically assigned to the selected languages. \"",
+            "            \"Human assessments are recorded claims, not authenticated identities or current-device tests.\""
+          ]
+        },
+        {
+          "oldLine": 152,
+          "newLine": 252,
+          "before": [],
+          "after": [
+            "class EvidenceDeliveryScopeError(ValueError):",
+            "    \"\"\"Retain an old-library outcome without applying it to the current view.\"\"\"",
+            "    def __init__(self, scope_error, *, completed_result=None, original_error=None):",
+            "        self.scope_error = scope_error",
+            "        self.completed_result = completed_result",
+            "        self.original_error = original_error",
+            "        if isinstance(original_error, EvidenceSaveCommittedError):",
+            "            detail = \"A change was saved in the original library; its receipt is retained. \"",
+            "        elif completed_result is not None:",
+            "            detail = \"The completed operation result for the original library is retained. \"",
+            "        else:",
+            "            detail = \"The original operation error is retained. \"",
+            "        super().__init__(\"The library changed before the language evidence outcome could be shown. \"",
+            "                         + detail + \"Reload that library before repeating a change.\")",
+            "",
+            "",
+            "def request_evidence_operation(frame, controller, operation, *, completed, failed):",
+            "    \"\"\"Use the existing worker and exact current-library guard for passive I/O.\"\"\"",
+            "    if getattr(frame, \"_closing\", False):",
+            "        raise ValueError(\"The application is closing.\")",
+            "    if getattr(frame, \"working\", False) or getattr(frame, \"busy\", False):",
+            "        raise ValueError(\"Wait for the current operation or cancel it first.\")",
+            "    library = frame.library",
+            "    root_spelling = str(library.root)",
+            "    store = controller._require_store()",
+            "",
+            "    def check():",
+            "        if (getattr(frame, \"_closing\", False) or frame.library is not library",
+            "                or str(library.root) != root_spelling):",
+            "            raise ValueError(\"The library changed during language evidence work.\")",
+            "        store.guard()",
+            "",
+            "    def work():",
+            "        check()",
+            "        return operation(frame.cancel_event.is_set)",
+            "",
+            "    def done(result):",
+            "        try:",
+            "            check()",
+            "        except Exception as scope_error:",
+            "            raise EvidenceDeliveryScopeError(scope_error, completed_result=result) from scope_error",
+            "        completed(result)",
+            "",
+            "    def failure(error):",
+            "        if isinstance(error, EvidenceDeliveryScopeError):",
+            "            failed(error)",
+            "            return",
+            "        try:",
+            "            check()",
+            "        except Exception as scope_error:",
+            "            retained = EvidenceDeliveryScopeError(scope_error, original_error=error)",
+            "            retained.__cause__ = error",
+            "            failed(retained)",
+            "            return",
+            "        failed(error)",
+            "",
+            "    frame.run_job(\"Language qualification evidence\", work, done, failure)",
+            "",
+            ""
+          ]
+        },
+        {
+          "oldLine": 212,
+          "newLine": 371,
+          "before": [],
+          "after": [
+            "            evidence_page = wx.Panel(self.tabs)",
+            "            self.tabs.AddPage(evidence_page, \"Recorded qualification evidence\")",
+            "            evidence_layout = wx.BoxSizer(wx.VERTICAL)",
+            "            self.contexts = labelled(evidence_page, evidence_layout,",
+            "                \"Recorded application and environment; does not inspect this device\", wx.Choice(evidence_page))",
+            "            self.contexts.Bind(wx.EVT_CHOICE, self.choose_context)",
+            "            self.evidence_rows = ()",
+            "            self.evidence_list = labelled(evidence_page, evidence_layout,",
+            "                \"Observations for the selected language\", wx.ListBox(evidence_page), 1)",
+            "            self.evidence_list.Bind(wx.EVT_LISTBOX, self.select_evidence)",
+            "            self.evidence_text = labelled(evidence_page, evidence_layout,",
+            "                \"Exact observation, configuration and recorded review history\",",
+            "                wx.TextCtrl(evidence_page, style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 220)), 2)",
+            "            evidence_buttons = wx.BoxSizer(wx.HORIZONTAL)",
+            "            self.load_button = wx.Button(evidence_page, label=\"&Load recorded evidence\")",
+            "            self.import_button = wx.Button(evidence_page, label=\"&Import passive observation...\")",
+            "            self.review_button = wx.Button(evidence_page, label=\"Record human &assessment...\")",
+            "            self.export_button = wx.Button(evidence_page, label=\"Export evidence &report...\")",
+            "            for button, callback in ((self.load_button, self.load_evidence),",
+            "                    (self.import_button, self.import_evidence), (self.review_button, self.record_review),",
+            "                    (self.export_button, self.export_evidence)):",
+            "                button.SetName(button.GetLabel().replace(\"&\", \"\"))",
+            "                button.Bind(wx.EVT_BUTTON, callback)",
+            "                evidence_buttons.Add(button, 0, wx.ALL, 5)",
+            "            evidence_layout.Add(evidence_buttons, 0, wx.EXPAND)",
+            "            evidence_page.SetSizer(evidence_layout)"
+          ]
+        },
+        {
+          "oldLine": 236,
+          "newLine": 421,
+          "before": [],
+          "after": [
+            "            self.update_evidence()"
+          ]
+        },
+        {
+          "oldLine": 238,
+          "newLine": 424,
+          "before": [],
+          "after": [
+            "            if controller.store is not None:",
+            "                wx.CallAfter(self.load_evidence)"
+          ]
+        },
+        {
+          "oldLine": 256,
+          "newLine": 444,
+          "before": [],
+          "after": [
+            "                self.update_evidence()"
+          ]
+        },
+        {
+          "oldLine": 267,
+          "newLine": 456,
+          "before": [],
+          "after": [
+            "                self.update_evidence()"
+          ]
+        },
+        {
+          "oldLine": 271,
+          "newLine": 461,
+          "before": [
+            "            self.pending = True",
+            "            self.refresh_button.Disable()",
+            "            self.cancel_button.Enable()"
+          ],
+          "after": [
+            "            self._set_pending(True)"
+          ]
+        },
+        {
+          "oldLine": 279,
+          "newLine": 467,
+          "before": [
+            "                self.pending = False",
+            "                self.refresh_button.Enable()",
+            "                self.cancel_button.Disable()"
+          ],
+          "after": [
+            "                self._set_pending(False)"
+          ]
+        },
+        {
+          "oldLine": 287,
+          "newLine": 473,
+          "before": [
+            "                    \"Use Ctrl+Tab for details. Qualified language entries remain zero; no exact bindings or acoustic tests were added.\")"
+          ],
+          "after": [
+            "                    \"Use Ctrl+Tab for details. Enumeration adds no qualification or exact language binding.\")"
+          ]
+        },
+        {
+          "oldLine": 291,
+          "newLine": 477,
+          "before": [
+            "                    self.pending = False",
+            "                    self.refresh_button.Enable()",
+            "                    self.cancel_button.Disable()"
+          ],
+          "after": [
+            "                    self._set_pending(False)"
+          ]
+        },
+        {
+          "oldLine": 301,
+          "newLine": 485,
+          "before": [],
+          "after": [
+            "        def _set_pending(self, value):",
+            "            self.pending = value",
+            "            self.refresh_button.Enable(not value)",
+            "            self.cancel_button.Enable(value)",
+            "            usable = self.controller.store is not None and not value",
+            "            self.load_button.Enable(usable)",
+            "            self.contexts.Enable(usable and self.controller.evidence_loaded)",
+            "            for button in (self.import_button, self.review_button, self.export_button):",
+            "                button.Enable(usable and self.controller.evidence_loaded)",
+            "",
+            "        def _run_evidence(self, operation, completed):",
+            "            if self.pending:",
+            "                return",
+            "            self._set_pending(True)",
+            "",
+            "            def done(result):",
+            "                if not self._alive:",
+            "                    return",
+            "                self._set_pending(False)",
+            "                completed(result)",
+            "",
+            "            def failed(error):",
+            "                if self._alive:",
+            "                    self._set_pending(False)",
+            "                    if isinstance(error, EvidenceSaveCommittedError):",
+            "                        self.controller.accept_evidence((error.snapshot, error.token))",
+            "                        self.update_evidence()",
+            "                        self.filter()",
+            "                    self.status.ChangeValue(str(error))",
+            "",
+            "            try:",
+            "                request_evidence_operation(self.GetParent(), self.controller, operation,",
+            "                                           completed=done, failed=failed)",
+            "            except Exception as error:",
+            "                failed(error)",
+            "",
+            "        def update_evidence(self):",
+            "            controller = self.controller",
+            "            contexts = controller.evidence.contexts()",
+            "            self.context_ids = (None,) + tuple(row.fingerprint for row in contexts)",
+            "            self.contexts.Set([\"No recorded configuration selected\"] + [",
+            "                row.application.name + \" \" + row.application.version + \" | \" + row.platform",
+            "                + \" | \" + row.fingerprint[:16] for row in contexts])",
+            "            self.contexts.SetSelection(self.context_ids.index(controller.recorded_context))",
+            "            selected = self.languages.GetSelection()",
+            "            language_id = self.rows[selected].language.id if 0 <= selected < len(self.rows) else None",
+            "            self.evidence_rows = tuple(row for row in controller.evidence.observations",
+            "                                       if row.language_id == language_id)",
+            "            self.evidence_list.Set([",
+            "                CAPABILITY_LABELS[row.capability] + \" | \" + row.language_tag",
+            "                + \" | reported \" + row.test.outcome + \" | \" + row.fingerprint[:16]",
+            "                for row in self.evidence_rows])",
+            "            if self.evidence_rows:",
+            "                self.evidence_list.SetSelection(0)",
+            "                self.select_evidence()",
+            "            else:",
+            "                self.evidence_text.ChangeValue(\"No saved observation for this selected language. \"",
+            "                    \"Importing a claim cannot verify it. Reviewer identities are recorded assertions.\")",
+            "            self.summary.ChangeValue(controller.summary())",
+            "            self._set_pending(self.pending)",
+            "",
+            "        def choose_context(self, event=None):",
+            "            try:",
+            "                index = self.contexts.GetSelection()",
+            "                if not 0 <= index < len(self.context_ids):",
+            "                    raise ValueError(\"Choose an exact recorded configuration.\")",
+            "                self.controller.choose_configuration(self.context_ids[index])",
+            "                self.filter()",
+            "                self.summary.ChangeValue(self.controller.summary())",
+            "            except Exception as error:",
+            "                self.status.ChangeValue(str(error))",
+            "",
+            "        def select_evidence(self, event=None):",
+            "            index = self.evidence_list.GetSelection()",
+            "            if 0 <= index < len(self.evidence_rows):",
+            "                self.evidence_text.ChangeValue(",
+            "                    self.controller.evidence_details(self.evidence_rows[index].fingerprint))",
+            "                self.evidence_text.SetInsertionPoint(0)",
+            "",
+            "        def _accepted_evidence(self, result):",
+            "            self.controller.accept_evidence(result)",
+            "            self.update_evidence()",
+            "            self.filter()",
+            "            self.status.ChangeValue(\"Recorded evidence loaded. Choose its exact application/environment \"",
+            "                \"to view assessments; this does not qualify the current device.\")",
+            "",
+            "        def load_evidence(self, event=None):",
+            "            self._run_evidence(lambda cancelled: self.controller.load_evidence(cancelled=cancelled),",
+            "                               self._accepted_evidence)",
+            "",
+            "        def import_evidence(self, event=None):",
+            "            if self.pending or not self.controller.evidence_loaded:",
+            "                return",
+            "            token = self.controller.evidence_token",
+            "            picker = wx.FileDialog(self, \"Choose one passive qualification observation\",",
+            "                wildcard=\"JSON observation (*.json)|*.json\", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)",
+            "            try:",
+            "                if picker.ShowModal() != wx.ID_OK:",
+            "                    return",
+            "                path = picker.GetPath()",
+            "                self.controller._require_store()",
+            "            finally:",
+            "                picker.Destroy()",
+            "",
+            "            def read(result):",
+            "                observation, source_digest = result",
+            "                question = wx.MessageDialog(self,",
+            "                    \"Save this passive observation?\\n\\n\"",
+            "                    + self.controller.catalog.get(observation.language_id).label_uk + \" — \"",
+            "                    + CAPABILITY_LABELS[observation.capability] + \"\\nReported outcome: \"",
+            "                    + observation.test.outcome + \"\\nObservation SHA-256: \" + observation.fingerprint",
+            "                    + \"\\nImported file SHA-256: \" + source_digest",
+            "                    + \"\\n\\nThis action records a claim only. It does not verify a capability.\",",
+            "                    \"Import passive language observation\", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)",
+            "                try:",
+            "                    if question.ShowModal() != wx.ID_YES:",
+            "                        return",
+            "                    store = self.controller._require_store()",
+            "                finally:",
+            "                    question.Destroy()",
+            "                self._run_evidence(lambda cancelled: store.add(observation, expected_token=token,",
+            "                    cancelled=cancelled), self._accepted_evidence)",
+            "",
+            "            self._run_evidence(lambda cancelled: self.controller.read_observation(path, cancelled=cancelled), read)",
+            "",
+            "        def record_review(self, event=None):",
+            "            if self.pending or not self.controller.evidence_loaded:",
+            "                return",
+            "            index = self.evidence_list.GetSelection()",
+            "            if not 0 <= index < len(self.evidence_rows):",
+            "                self.status.ChangeValue(\"Select the exact saved observation first.\")",
+            "                return",
+            "            observation = self.evidence_rows[index]",
+            "            token = self.controller.evidence_token",
+            "            dialog = wx.Dialog(self, title=\"Record a human language assessment\", size=(900, 820),",
+            "                               style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)",
+            "            layout = wx.BoxSizer(wx.VERTICAL)",
+            "            labelled(dialog, layout, \"Exact observation and prior reviews; no current-device test\",",
+            "                wx.TextCtrl(dialog, value=self.controller.evidence_details(observation.fingerprint),",
+            "                            style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 250)), 1)",
+            "            fields = {}",
+            "            for name, label in ((\"identity\", \"Reviewer identity\"), (\"source\", \"Reviewer provenance reference\"),",
+            "                                (\"role\", \"Reviewer role\"), (\"statement\", \"Assessment and limitations\")):",
+            "                fields[name] = labelled(dialog, layout, label,",
+            "                    wx.TextCtrl(dialog, style=wx.TE_MULTILINE if name == \"statement\" else 0))",
+            "            decision = labelled(dialog, layout, \"Recorded decision\", wx.Choice(dialog,",
+            "                choices=[\"Accept recorded test assessment\", \"Reject assessment\", \"Revoke assessment\"]))",
+            "            decision.SetSelection(0)",
+            "            independent = wx.CheckBox(dialog, label=\"I record an independent assessment; identities are not authenticated\")",
+            "            exact = wx.CheckBox(dialog, label=\"This decision concerns the exact observation SHA-256 displayed above\")",
+            "            independent.SetName(\"Recorded independent assessment acknowledgement\")",
+            "            exact.SetName(\"Confirm the exact displayed observation\")",
+            "            layout.Add(independent, 0, wx.ALL, 7)",
+            "            layout.Add(exact, 0, wx.ALL, 7)",
+            "            layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALIGN_RIGHT | wx.ALL, 7)",
+            "            dialog.SetSizer(layout)",
+            "            dialog.SetEscapeId(wx.ID_CANCEL)",
+            "            try:",
+            "                self.controller._require_store()",
+            "                if dialog.ShowModal() != wx.ID_OK:",
+            "                    return",
+            "                if not exact.GetValue():",
+            "                    raise ValueError(\"Confirm the exact displayed observation before recording an assessment.\")",
+            "                choice = decision.GetSelection()",
+            "                if not 0 <= choice < 3:",
+            "                    raise ValueError(\"Choose a recorded review decision.\")",
+            "                selected = (\"accept\", \"reject\", \"revoke\")[choice]",
+            "                reviewer = PersonProvenance(fields[\"identity\"].GetValue(),",
+            "                    fields[\"source\"].GetValue(), fields[\"role\"].GetValue())",
+            "                statement = fields[\"statement\"].GetValue()",
+            "                acknowledged = bool(independent.GetValue())",
+            "                store = self.controller._require_store()",
+            "            except Exception as error:",
+            "                self.status.ChangeValue(str(error))",
+            "                return",
+            "            finally:",
+            "                dialog.Destroy()",
+            "            self._run_evidence(lambda cancelled: store.review(observation.fingerprint, reviewer,",
+            "                decision=selected, independent_assessment=acknowledged, statement=statement,",
+            "                confirmation=selected.upper() + \" \" + observation.fingerprint,",
+            "                expected_token=token, cancelled=cancelled), self._accepted_evidence)",
+            "",
+            "        def export_evidence(self, event=None):",
+            "            if self.pending or not self.controller.evidence_loaded:",
+            "                return",
+            "            token = self.controller.evidence_token",
+            "            picker = wx.FileDialog(self, \"Create a new passive evidence report outside the library\",",
+            "                wildcard=\"JSON report (*.json)|*.json\", style=wx.FD_SAVE)",
+            "            try:",
+            "                if picker.ShowModal() != wx.ID_OK:",
+            "                    return",
+            "                path = picker.GetPath()",
+            "                self.controller._require_store()",
+            "            finally:",
+            "                picker.Destroy()",
+            "            self._run_evidence(lambda cancelled: self.controller.export_report(path,",
+            "                expected_token=token, cancelled=cancelled),",
+            "                lambda destination: self.status.ChangeValue(",
+            "                    \"Passive evidence report created. It cannot be imported as review authority.\"))",
+            ""
+          ]
+        },
+        {
+          "oldLine": 304,
+          "newLine": 688,
+          "before": [
+            "                self.status.ChangeValue(\"Cancellation requested. The current bounded adapter probe must finish or reach its time limit.\")"
+          ],
+          "after": [
+            "                self.status.ChangeValue(\"Cancellation requested. Current bounded work will settle before another operation.\")"
+          ]
+        },
+        {
+          "oldLine": 324,
+          "newLine": 708,
+          "before": [
+            "        controller = LanguageMatrixController()"
+          ],
+          "after": [
+            "        library = frame.library",
+            "        root_spelling = str(library.root)",
+            "",
+            "        def guard():",
+            "            if (getattr(frame, \"_closing\", False) or frame.library is not library",
+            "                    or str(library.root) != root_spelling):",
+            "                raise ValueError(\"The selected library changed. Reopen language evidence.\")",
+            "",
+            "        controller = LanguageMatrixController(library.root, guard=guard)"
+          ]
+        },
+        {
+          "oldLine": 336,
+          "newLine": 728,
+          "before": [
+            "    \"\"\"Add the read-only evidence command to the native Voice menu.\"\"\""
+          ],
+          "after": [
+            "    \"\"\"Add the existing canonical matrix and passive evidence workflow to Voice.\"\"\""
+          ]
+        }
+      ],
+      "exact_reverse": true
+    },
+    {
+      "path": "carr-library/docs/language_qualification.md",
+      "preimage": "0762689c5b844dd7498da2ee70b46f72d29e7e51",
+      "successor": "2329190cc1096188bbb7f2debb6e762baab51d3d",
+      "hunks": [
+        {
+          "oldLine": 110,
+          "newLine": 110,
+          "before": [
+            "licensing compatibility, code switching or native accessibility. `verified`",
+            "filters intentionally return no rows until a separately implemented evidence",
+            "workflow records actual independent acceptance."
+          ],
+          "after": [
+            "licensing compatibility, code switching or native accessibility. The default",
+            "`verified` filter remains empty. Explicitly selected recorded evidence can show",
+            "**Verified for the recorded configuration** only after a separate local human",
+            "assessment of its exact observation. This is a recorded assessment, not proof",
+            "of authenticated reviewer identity, genuine independence, automatic execution",
+            "or current-device qualification."
+          ]
+        },
+        {
+          "oldLine": 115,
+          "newLine": 118,
+          "before": [
+            "upstream resource counts and qualified entries separate. Current qualification",
+            "count is **zero**. This is an honest foundation for the final expansion stage,",
+            "not acceptance of 135 working voices. No source-language substitution or silent",
+            "fallback is performed."
+          ],
+          "after": [
+            "upstream resource counts and qualified entries separate. Default qualification",
+            "count is **zero**. In an explicitly selected app/environment, an entry counts",
+            "only when all 22 capabilities have accepted complete PASS observations for the",
+            "same exact language tag, scope and coverage. Each row still identifies its own",
+            "engine and pack. No real language-quality acceptance is shipped with this",
+            "software; synthetic regression fixtures do not qualify any of the 135 entries.",
+            "No source-language substitution or silent fallback is performed."
+          ]
+        },
+        {
+          "oldLine": 122,
+          "newLine": 128,
+          "before": [
+            "`install_language_actions(frame)` from `ui.language_matrix` adds a read-only",
+            "native language matrix command. Search, region and capability/status filters"
+          ],
+          "after": [
+            "`install_language_actions(frame)` from `ui.language_matrix` adds the existing",
+            "native language matrix and its passive evidence workflow. Search, region and capability/status filters"
+          ]
+        },
+        {
+          "oldLine": 138,
+          "newLine": 144,
+          "before": [],
+          "after": [
+            "## Recording evidence without granting execution authority",
+            "",
+            "The **Recorded qualification evidence** section uses the current library's",
+            "existing private state and worker. Opening it loads records without creating",
+            "state, enumerating engines, fetching models or running tests. Choose one exact",
+            "**Recorded application and environment** before viewing reviewed statuses.",
+            "Selecting a context only filters recorded data; it does not inspect this",
+            "computer or assert that the named engine or pack is installed.",
+            "",
+            "1. Choose **Import passive observation...** and one local JSON observation.",
+            "   The default-No confirmation displays the canonical language, capability,",
+            "   reported result and complete observation/file digests. Import stores a claim",
+            "   only. A claim with an asserted PASS remains a candidate until reviewed.",
+            "2. Select the saved observation and inspect its complete configuration, test",
+            "   input/result, hashes and history. The detail pane shows the latest 32 reviews;",
+            "   the report preserves the complete bounded history.",
+            "3. Choose **Record human assessment...**. Record reviewer identity, provenance",
+            "   reference, role, assessment and limitations. Confirm that the decision binds",
+            "   the complete displayed observation. Acceptance also requires the explicit",
+            "   independent-assessment acknowledgement and a reviewer identity different",
+            "   from the executor after Unicode compatibility/case normalization.",
+            "4. Record **Accept**, **Reject** or **Revoke**. The decision binds the complete",
+            "   canonical observation digest and receives a local UTC time. Reject/revoke",
+            "   remain in history; importing another observation cannot silently replace the",
+            "   selected reviewed record. A later explicit review can select another exact",
+            "   observation for that capability and context.",
+            "5. Choose **Export evidence report...** to create a new file outside the",
+            "   library. Reports retain the observation/review history and selected matrix,",
+            "   and are deliberately not accepted as observation or approval imports.",
+            "",
+            "Reviewer names, roles, provenance references and independence acknowledgements",
+            "are **recorded human assertions**. Comparing two strings does not authenticate",
+            "two people or establish real independence. The application checks the bounded",
+            "record and its internal consistency; it does not verify an external person,",
+            "laboratory, receipt, model, acoustic result or document merely because its",
+            "digest is supplied. A real qualification still needs the actual relevant",
+            "experiment and a competent independent reviewer.",
+            "",
+            "### Exact observation schema and API",
+            "",
+            "Use the frozen types in",
+            "[language_qualification/evidence.py](../src/carr_library/language_qualification/evidence.py).",
+            "One imported document has schema `carr-language-observation/1` and exactly:",
+            "",
+            "| Field | Required meaning |",
+            "| --- | --- |",
+            "| `catalog_sha256` | Exact pinned canonical selection digest, not another language list. |",
+            "| `language_id`, `language_tag`, `language_scope` | Existing canonical entry ID, structurally valid canonical tag spelling, and the exact standard/variety being assessed. |",
+            "| `coverage` | `full-selected-entry` or `partial-variety`; a partial variety cannot qualify the whole selected entry. |",
+            "| `capability` | One of the existing 22 capability IDs. |",
+            "| `context` | Exact application name/version/SHA-256, platform, architecture, environment description and environment-record SHA-256. |",
+            "| `engine`, `pack` | Name/version/SHA-256, or explicit null identity fields with a reason that the artifact is not applicable. The application itself cannot be inapplicable. |",
+            "| `test` | Test ID/version, executed versus declaration, executor identity/provenance/role, UTC execution time, exact bounded input text and its matching digest, expected result, outcome, result description and result-artifact digest. |",
+            "",
+            "Artifact identity objects have exactly `name`, `version`, `sha256` and",
+            "`not_applicable_reason`. Contexts have exactly `application`, `platform`,",
+            "`architecture`, `environment` and `environment_sha256`. Person provenance has",
+            "exactly `identity`, `source` and `role`. Test records have exactly `identity`,",
+            "`version`, `kind`, `executor`, `performed_utc`, `input_text`, `input_sha256`,",
+            "`expected_result`, `outcome`, `result` and `result_sha256`.",
+            "",
+            "Digests are lowercase SHA-256. The input digest is checked against the retained",
+            "UTF-8 input itself. The result-artifact and configuration digests remain",
+            "passive references for the reviewer; the application does not open a path or",
+            "download a URL to resolve them. A declaration must use `not_run`, with no",
+            "execution time or completed result digest. Executed outcomes distinguish",
+            "`pass`, `partial`, `fail` and `not_run`. Approval/status/review fields are not",
+            "permitted in imports; generated state and reports use different closed schemas.",
+            "",
+            "For API consumers that already have a genuinely observed, typed record:",
+            "",
+            "~~~python",
+            "from carr_library.language_qualification.evidence import EvidenceStore, import_observation",
+            "from carr_library.language_qualification import build_capability_matrix",
+            "",
+            "store = EvidenceStore(current_library_root, guard=current_library_guard)",
+            "snapshot, token = store.load(cancelled=cancelled)",
+            "observation, original_file_digest = import_observation(selected_json, cancelled=cancelled)",
+            "snapshot, token = store.add(observation, expected_token=token, cancelled=cancelled)",
+            "",
+            "# Explicitly selecting the record's context still yields a candidate until a",
+            "# separate deliberate local review has been recorded.",
+            "matrix = build_capability_matrix(",
+            "    evidence=snapshot, recorded_context=observation.context.fingerprint)",
+            "~~~",
+            "",
+            "A store review uses `store.review(observation.fingerprint, reviewer,",
+            "decision=..., independent_assessment=..., statement=...,",
+            "confirmation=decision.upper() + \" \" + observation.fingerprint,",
+            "expected_token=token, cancelled=cancelled)`. The native dialog constructs that",
+            "exact binding from the displayed immutable record after explicit confirmation;",
+            "it does not ask users to retype a 64-character hash.",
+            "",
+            "An accepted full PASS can become `verified` only within that recorded context",
+            "and language scope. Accepted partial coverage/results remain `partial`;",
+            "accepted failed tests remain `failed`; accepted unexecuted declarations remain",
+            "`untested`. Rejected and revoked assessments remain visibly distinct.",
+            "Unreviewed claims and restored positive historical reviews cannot verify rows.",
+            "",
+            "### Shared state, conflicts and backup",
+            "",
+            "The sole producer file is",
+            "`state/language-qualification/evidence.json`. It uses the existing bounded",
+            "snapshot reader, local ordinary-file checks, state lock, atomic writer",
+            "and exact-byte compare-before-save token. Every captured directory identity is",
+            "checked again. Changed bytes with an unchanged revision still conflict. The",
+            "last callback is followed by a fresh token/scope check before publication;",
+            "cancellation does not erase a completed save. A visible late durability error",
+            "returns a committed-state receipt and tells the user to reload instead of",
+            "repeating the change.",
+            "",
+            "Each observation is limited to 64 KiB; the collection is limited to 32 MiB,",
+            "8,192 distinct observations and 16,384 reviews. Unknown fields, duplicate JSON",
+            "keys, non-finite values, unrecognized catalog/capability IDs, mismatched input",
+            "digests, invalid review references, links and reserved namespace aliases are",
+            "refused. These bounds allow the complete 135-by-22 capability matrix without",
+            "introducing an editable catalog.",
+            "",
+            "Both existing library and state backup routes validate the same typed",
+            "collection and exact staged hashes. Restore preserves every observation,",
+            "review, failed result and revocation as passive history. It advances a",
+            "`dormant_through` boundary over all prior reviews; a positive historical review",
+            "must receive an explicit new local assessment before it can be shown as",
+            "verified again. Rejections and revocations remain visible. Restore never",
+            "reopens an engine, pack, test input or provenance reference.",
+            "",
+            "This closes the software path for recording and reviewing evidence. It does",
+            "not supply actual 135-language qualification, authenticated reviewer identity,",
+            "physical playback, native screen-reader listening, model rights or acoustic",
+            "quality. Those remain separate evidence requirements. The finite requested",
+            "reading/synthesis workflow checklist is maintained in",
+            "[REQUESTED_READER_WORKFLOWS.md](REQUESTED_READER_WORKFLOWS.md).",
+            ""
+          ]
+        }
+      ],
+      "exact_reverse": true
+    }
+  ],
+  "qualification": "Each edited existing text file reverses exactly to its immutable D preimage. New files have no predecessor. This is byte reconstruction, not parsing or execution."
+}

@@ -1,0 +1,142 @@
+{
+  "schema": "carr-actual-native-library-evidence-v1",
+  "head": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+  "tree": "9d88b8a0475f88fc75cf20ffffe6c7b37bce2e57",
+  "run_id": 46123596336,
+  "job_id": 140913190122,
+  "status": "PASS",
+  "started_at": "2026-11-28T08:25:19Z",
+  "completed_at": "2026-11-28T08:26:41Z",
+  "step_results": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:25:20Z",
+      "completed": "2026-11-28T08:25:21Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:25:21Z",
+      "completed": "2026-11-28T08:25:29Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:25:29Z",
+      "completed": "2026-11-28T08:25:29Z"
+    },
+    {
+      "name": "Bind the original probe and prepare the same installed desktop dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:25:29Z",
+      "completed": "2026-11-28T08:26:10Z"
+    },
+    {
+      "name": "Run the original installed native probe with unchanged assertions and deadline",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:26:10Z",
+      "completed": "2026-11-28T08:26:35Z"
+    },
+    {
+      "name": "Admit only bounded public diagnostic evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:26:35Z",
+      "completed": "2026-11-28T08:26:35Z"
+    },
+    {
+      "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:26:35Z",
+      "completed": "2026-11-28T08:26:37Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:26:37Z",
+      "completed": "2026-11-28T08:26:37Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:26:37Z",
+      "completed": "2026-11-28T08:26:39Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started": "2026-11-28T08:26:39Z",
+      "completed": "2026-11-28T08:26:39Z"
+    }
+  ],
+  "reports": [
+    {
+      "line": 562,
+      "data": {
+        "status": "PASS",
+        "native_platform": "Windows",
+        "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+        "checks": [
+          "real named native menu dialog and read-only reviewed plan before approval",
+          "native Pause checkpoints the real import before topic or export publication",
+          "fresh native dialog reloads the exact scoped job and reviewed folder permissions",
+          "real resumed worker publishes exactly one topic and export without repeating import",
+          "scoped source results exclude the other library and preserve quotations, handles and notebook",
+          "native status reports stay on the GUI thread while real tool execution uses the worker"
+        ],
+        "windows_native": "PASS",
+        "windows_nvda": "NOT_RUN",
+        "service_sha256": "64db6f2ee3eaf414729944b93abb31b2ae88990597f825be3e4b267ba384b480",
+        "ui_sha256": "7298d2e67d0bbcadca26f5c2d1eb4a87ed85966fb2c667dc13f2187299e59931",
+        "desktop_sha256": "28cc10d724badc164b34814e24264e81bf1ee1e20e0afedb4c795d30dc29005f"
+      }
+    },
+    {
+      "line": 565,
+      "data": {
+        "complete_integrated_qualification": "NOT_RUN",
+        "errors": [],
+        "native_exit": 0,
+        "required_checks": 6,
+        "source_commit": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+        "status": "PASS",
+        "windows_nvda": "NOT_RUN"
+      }
+    }
+  ],
+  "actual_native_required_checks": 6,
+  "installed_source_origin_count": 9,
+  "native_exit": 0,
+  "verified_wheel_before_and_after": "PASS as enforced by unchanged helper8ffc",
+  "source_pins": {
+    "probe": "2bc30526bfb15076f168a2706bb79cc6b5744f66",
+    "helper": "8ffc5598f8ed0bcbf570b3bd676f86a14f30c16c",
+    "workflow": "b50202409935cd0a8ca6816313fb641b5f4e600b"
+  },
+  "artifact": {
+    "id": 15255666787,
+    "name": "native-library-workflow-windows-6042d1eb52ea32ded3769f9cb67459b119a4016c-1",
+    "size": 13785,
+    "sha256": "3f9546a6cfdfba5ae16b4a120f3ddc71cb1bac34dd02efeb0f1bbbe70b09e046"
+  },
+  "limits": {
+    "native_probe_seconds": 40,
+    "watchdog_seconds": 60,
+    "parent_seconds": 180
+  },
+  "qualification": {
+    "complete_integrated_qualification": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  },
+  "interpretation": "The actual unchanged installed library workflow now reaches all six original native checks after waiting for the real host worker to become idle. This receipt applies only to C6042 and does not replace the B full-run failure."
+}

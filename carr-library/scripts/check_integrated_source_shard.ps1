@@ -496,7 +496,10 @@ $suites = @(
   'tests/search/test_ascii_mapping_work.py',
   'tests/studio/test_clip_preview_loop.py',
   'tests/studio/test_project_markers.py',
-  'tests/studio/test_marker_consumers.py'
+  'tests/studio/test_marker_consumers.py',
+  "tests/language_qualification/test_evidence.py",
+  "tests/language_qualification/test_evidence_backup.py",
+  "tests/language_qualification/test_evidence_ui.py"
 )
 
 $operationsCounts = @{
@@ -518,7 +521,7 @@ $readerExpected = @{
   'tests/speech/test_player_transport.py' = 11
   'tests/ui/test_reader_playback.py' = 52
   'tests/ui/test_reader_playback_actions.py' = 24
-  'tests/ui/test_ebook_audio_lifetime.py' = 14
+  'tests/ui/test_ebook_audio_lifetime.py' = 28
   'tests/ui/test_progress_voice_actions.py' = 22
 }
 $completedFeatureCounts = @{
@@ -707,6 +710,9 @@ $completedFeatureCounts = @{
   'tests/audio/test_voice_scope_checks.py' = 42
   'tests/catalog/test_text_screen_work.py' = 26
   'tests/search/test_ascii_mapping_work.py' = 73
+  'tests/language_qualification/test_evidence.py' = 54
+  'tests/language_qualification/test_evidence_backup.py' = 27
+  'tests/language_qualification/test_evidence_ui.py' = 28
 }
 $formatExpected = @{
   'tests/audio/test_audiobook.py' = 17
@@ -724,7 +730,7 @@ $unique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Or
 foreach ($suite in $allSuites) {
   if ($suite -cnotmatch '^(tests|bootstrap)/[A-Za-z0-9_./-]+\.py$' -or -not $unique.Add($suite)) { throw "Invalid or duplicate whole-suite selector: $suite" }
 }
-if ($allSuites.Count -ne 490) { throw 'Exactly 490 reviewed whole source selectors are required.' }
+if ($allSuites.Count -ne 493) { throw 'Exactly 493 reviewed whole source selectors are required.' }
 $allCounts = [System.Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
 foreach ($mapping in @($operationsCounts, $readerExpected, $completedFeatureCounts, $formatExpected, @{'tests/speech/test_runtime.py'=13})) {
   foreach ($entry in $mapping.GetEnumerator()) {
@@ -763,13 +769,13 @@ $assignedUnion = [System.Collections.Generic.HashSet[string]]::new([StringCompar
 $shards = [ordered]@{}
 for ($index = 0; $index -lt 4; $index++) {
   $selected = @($partitions[$index].ToArray())
-  if ($selected.Count -ne @(123,123,122,122)[$index]) { throw 'The reviewed four-shard inventory size differs.' }
+  if ($selected.Count -ne @(124,123,123,123)[$index]) { throw 'The reviewed four-shard inventory size differs.' }
   foreach ($suite in $selected) {
     if (-not $unique.Contains($suite) -or -not $assignedUnion.Add($suite)) { throw "Shard overlap or unknown selector: $suite" }
   }
   $shards[[string]$index] = $selected
 }
-if ($assignedUnion.Count -ne 490 -or -not $assignedUnion.SetEquals($unique)) { throw 'The source shard union is incomplete.' }
+if ($assignedUnion.Count -ne 493 -or -not $assignedUnion.SetEquals($unique)) { throw 'The source shard union is incomplete.' }
 function Text-Sha256([string]$Text) {
   $hash = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text))
   return [Convert]::ToHexString($hash).ToLowerInvariant()
@@ -781,7 +787,7 @@ $countLines = @($countKeys | ForEach-Object { $_ + '=' + $allCounts[$_] })
 $inventory = [ordered]@{
   schema = 'carr-integrated-source-inventory/1'
   complete = $allSuites
-  complete_count = 490
+  complete_count = 493
   shards = $shards
   inventory_sha256 = Text-Sha256 (($allSuites -join $lf) + $lf)
   expected_counts = $allCounts
@@ -1051,7 +1057,7 @@ $receipt = [ordered]@{
   head = $head
   tree = $tree
   shard = $Shard
-  complete_count = 490
+  complete_count = 493
   assigned = $suites
   assigned_count = $suites.Count
   inventory_sha256 = $inventory.inventory_sha256

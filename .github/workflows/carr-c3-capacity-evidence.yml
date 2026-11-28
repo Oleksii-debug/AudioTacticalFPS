@@ -1,0 +1,276 @@
+name: Inspect exact A3 four-profile corpus evidence
+
+on:
+  push:
+    branches: ['carr/ci-c3-capacity-evidence-a3-*']
+    paths: ['.github/workflows/carr-c3-capacity-evidence.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect-exact-completed-artifacts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify four exact completed A3 corpus reports and print measured outcomes
+        env:
+          CARR_EVIDENCE_TOKEN: ${{ github.token }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          from io import BytesIO
+          import json
+          import math
+          import os
+          from pathlib import PurePosixPath
+          import stat
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          
+          REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
+          RUN = 46121242674
+          HEAD = '7bfdbe2ce454bfa83bb2309ee897aaf131d3411f'
+          TREE = '900774226367870b3bf1c2afd34b5e3fcc1e16ea'
+          SCHEMA = 'carr-library-corpus-benchmark/1'
+          PHASES = ['build', 'measure', 'restart', 'operations', 'backup']
+          CAPACITY = {'construction': 'retained-fixture', 'public_samples': 12,
+                      'complete_backup': True, 'backup_capacity_profile': 'large-source-v1'}
+          ARTIFACTS = json.loads(r'''[{"artifact":15253578936,"job":140909164680,"books":1000,"segments_per_book":20,"zip_bytes":27325,"zip_sha256":"68354746247499efb61e4fe8cf775e7323aa40fc805c7334399791573c09aa28","name":"retained-capacity-large-source-v1-1000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1","status":"PASS","phases":[{"phase":"build","reason":null,"status":"PASS"},{"phase":"measure","reason":null,"status":"PASS"},{"phase":"restart","reason":null,"status":"PASS"},{"phase":"operations","reason":null,"status":"PASS"},{"phase":"backup","reason":null,"status":"PASS"}],"retained":{"1000/backup.json":{"bytes":6940,"sha256":"e03cd408d5bd11ab4081617b9f2d7f2e5e2bd7f7502da9cdc4e6cf5105780fc6"},"1000/backup.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/backup.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/build.json":{"bytes":5978,"sha256":"d2a8a1478167d15ed03b1d4aa19c202e1fe7df5509b6aa036657555d7c88b812"},"1000/build.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/build.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/measure.json":{"bytes":6998,"sha256":"9fc93f1518fa4c49576c468e5660031308dc96a36b725440501ccfaa1d716450"},"1000/measure.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/measure.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/operations.json":{"bytes":10153,"sha256":"ef53e5c8b04a198cfbcd5cdfd38ae8b23ae7e248f87fc184bacd273bcbaac74d"},"1000/operations.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/operations.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/restart.json":{"bytes":6733,"sha256":"a4e1aefc1f690a96b67bddd7d4468859b5d9ee48222bbc452a7a1d2d1ad657f8"},"1000/restart.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"1000/restart.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"configuration.json":{"bytes":5460,"sha256":"e1c05dbbc00392e797d4fd5800365b7fca2fce4207f89c17434bb296c8e46f2d"},"library-corpus-scale.json":{"bytes":44691,"sha256":"cd351f7470b61c353e9882b602245a1f8e848823c5055d21b8abf500a9428af6"}}},{"artifact":15254900810,"job":140909164614,"books":10000,"segments_per_book":20,"zip_bytes":27300,"zip_sha256":"dfd8033551fb7652f565070425bd5a1835790feb186f8d62a9f6d557419e7f88","name":"retained-capacity-large-source-v1-10000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1","status":"PASS","phases":[{"phase":"build","reason":null,"status":"PASS"},{"phase":"measure","reason":null,"status":"PASS"},{"phase":"restart","reason":null,"status":"PASS"},{"phase":"operations","reason":null,"status":"PASS"},{"phase":"backup","reason":null,"status":"PASS"}],"retained":{"10000/backup.json":{"bytes":6962,"sha256":"466ceb4569fabe4648cfea1941c0b1bed1c1e2bd077e4981df3f3eac395093f0"},"10000/backup.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/backup.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/build.json":{"bytes":5981,"sha256":"c81352d7ee92bd1f71368ab057b2e0961b21586f54696d5128cec41803538a7c"},"10000/build.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/build.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/measure.json":{"bytes":7012,"sha256":"9e2f6aa97dbaa929ba16c47e6534e89b42426d142b9c65e6b47008aa1ead465b"},"10000/measure.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/measure.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/operations.json":{"bytes":10143,"sha256":"4f21f831e043900de086209f4480c64e3d5b0b1f49365d0c1ef55e040b59f57d"},"10000/operations.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/operations.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/restart.json":{"bytes":6748,"sha256":"5fd87515527a73e4afa1f48f1d344eb198a7d3f4d652ac6b74d5183703f2473a"},"10000/restart.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"10000/restart.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"configuration.json":{"bytes":5462,"sha256":"a506a46e912c0efa24a51349bad58104dac8d100d048ad3e2d53f6060633134a"},"library-corpus-scale.json":{"bytes":44743,"sha256":"0039d791f829c03ec730a28bcbac24a4425ab83993d7be8ba69e1f48cc6c17d5"}}},{"artifact":15255574442,"job":140909164761,"books":50000,"segments_per_book":20,"zip_bytes":27397,"zip_sha256":"5ce16f967f05cfdee3a43f33f608c6efd52cad2656dc1fa5a39051d68b47c22a","name":"retained-capacity-large-source-v1-50000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1","status":"PASS","phases":[{"phase":"build","reason":null,"status":"PASS"},{"phase":"measure","reason":null,"status":"PASS"},{"phase":"restart","reason":null,"status":"PASS"},{"phase":"operations","reason":null,"status":"PASS"},{"phase":"backup","reason":null,"status":"PASS"}],"retained":{"50000/backup.json":{"bytes":6980,"sha256":"49e8d449d85caef6ec74b05c8fe285cf399bb96e35b4e383838ecad8cd1a4745"},"50000/backup.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/backup.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/build.json":{"bytes":5981,"sha256":"b78d8803fb966c5394f9dc564f9ad07ec66a20d3a4a3e64a420f9c906b7de902"},"50000/build.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/build.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/measure.json":{"bytes":7023,"sha256":"51a153d1ea098e35303fc5633d95d3d88e67553111633958f07970b238568238"},"50000/measure.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/measure.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/operations.json":{"bytes":10144,"sha256":"f6585f2938ba1816a874bd6fa998edfd6bfc28cf87b680456c4636abb5d5c12b"},"50000/operations.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/operations.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/restart.json":{"bytes":6763,"sha256":"dd0139e6eba772d77ac5efdab05143990cd85fec9ef58e94f341172ebdbc9203"},"50000/restart.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/restart.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"configuration.json":{"bytes":5462,"sha256":"cf2888b9a0e6557f46c71e37e84742fb04a0f19ea43ecd31e7dfae20e15cf79d"},"library-corpus-scale.json":{"bytes":44770,"sha256":"267d46c62511737559101f77217ab6c308a1107e96026185930e2ff0bca7daa6"}}},{"artifact":15256606056,"job":140909164644,"books":50000,"segments_per_book":40,"zip_bytes":13479,"zip_sha256":"7aa34a6b9891908fc8bec7488bb2428a604e7135be4701d45026d2079a96488f","name":"retained-capacity-large-source-v1-50000x40-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1","status":"PARTIAL","phases":[{"phase":"build","reason":null,"status":"PASS"},{"phase":"measure","reason":"BudgetExceeded","status":"PARTIAL"}],"retained":{"50000/build.json":{"bytes":5979,"sha256":"5cabeead59ad09f3432ac758b60b33dd6f74f59c14e28c8fb8f16a45c863aa0a"},"50000/build.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/build.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/measure.json":{"bytes":5596,"sha256":"b9a19dbf5afc85bed611952e6946a6f1eb9f02d827a87a57659e883c71b69f26"},"50000/measure.stderr.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"50000/measure.stdout.txt":{"bytes":0,"sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},"configuration.json":{"bytes":5462,"sha256":"509d7eb6fdaebdb1a9d4b3b31daf41f7b6b3c19baad5c6059eaa89660f787c7b"},"library-corpus-scale.json":{"bytes":19236,"sha256":"a8fdab234505c52045aba8d25a70c2c62d52ad809aa1697a3cdfcaaf054fa177"}}}]''')
+          printed_bytes = 0
+          
+          class InspectionFailure(ValueError):
+              pass
+          
+          def require(value, message):
+              if not value:
+                  raise InspectionFailure(message)
+          
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  require(key not in result, 'Duplicate JSON key.')
+                  result[key] = value
+              return result
+          
+          def parsed(raw):
+              require(len(raw) <= 256 * 1024, 'JSON member is oversized.')
+              value = json.loads(raw.decode('utf-8'), object_pairs_hook=unique,
+                  parse_constant=lambda _: (_ for _ in ()).throw(InspectionFailure('Non-finite JSON.')))
+              pending, count = [(value, 0)], 0
+              while pending:
+                  item, depth = pending.pop()
+                  count += 1
+                  require(count <= 20000 and depth <= 32, 'JSON structure exceeds its bound.')
+                  if isinstance(item, float):
+                      require(math.isfinite(item), 'Non-finite JSON number.')
+                  elif isinstance(item, dict):
+                      pending.extend((v, depth + 1) for v in item.values())
+                  elif isinstance(item, list):
+                      pending.extend((v, depth + 1) for v in item)
+              return value
+          
+          def emit(label, value):
+              global printed_bytes
+              raw = json.dumps(value, ensure_ascii=True, sort_keys=True, allow_nan=False)
+              require(len(raw) <= 24000, 'Projected log section is oversized.')
+              printed_bytes += len(label) + len(raw) + 2
+              require(printed_bytes <= 256 * 1024, 'Aggregate log projection is oversized.')
+              print(label + ' ' + raw, flush=True)
+          
+          def read_bounded(response, maximum):
+              data = response.read(maximum + 1)
+              require(len(data) <= maximum, 'HTTP or ZIP response exceeds its bound.')
+              return data
+          
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          
+          def download(item):
+              endpoint = ('https://api.github.com/repos/' + REPOSITORY
+                          + '/actions/artifacts/' + str(item['artifact']))
+              headers = {'Authorization': 'Bearer ' + os.environ['CARR_EVIDENCE_TOKEN'],
+                         'Accept': 'application/vnd.github+json',
+                         'X-GitHub-Api-Version': '2022-11-28'}
+              opener = urllib.request.build_opener(NoRedirect)
+              with opener.open(urllib.request.Request(endpoint, headers=headers), timeout=20) as response:
+                  metadata = parsed(read_bounded(response, 64 * 1024))
+              require(metadata['id'] == item['artifact'] and metadata['expired'] is False
+                      and metadata['size_in_bytes'] == item['zip_bytes'], 'Artifact identity or size differs.')
+              require(metadata['workflow_run']['id'] == RUN
+                      and metadata['workflow_run']['head_sha'] == HEAD, 'Artifact source run differs.')
+              require(metadata['digest'] == 'sha256:' + item['zip_sha256']
+                      and metadata['name'] == item['name'], 'Artifact digest or matrix identity differs.')
+              try:
+                  with opener.open(urllib.request.Request(endpoint + '/zip', headers=headers), timeout=20):
+                      raise InspectionFailure('Expected an authenticated storage redirect.')
+              except urllib.error.HTTPError as response:
+                  require(response.code == 302, 'Artifact endpoint refused its storage redirect.')
+                  location = response.headers.get('Location', '')
+                  response.close()
+              target = urllib.parse.urlsplit(location)
+              require(target.scheme == 'https' and bool(target.hostname)
+                      and target.username is None and target.password is None
+                      and not target.fragment, 'Unsafe artifact storage URL.')
+              # The ephemeral GitHub credential is never forwarded to object storage.
+              with opener.open(urllib.request.Request(location), timeout=30) as response:
+                  archive = read_bounded(response, 64 * 1024)
+              require(len(archive) == item['zip_bytes']
+                      and sha256(archive).hexdigest() == item['zip_sha256'],
+                      'Downloaded ZIP differs from the exact requested artifact.')
+              return archive
+          
+          def inspect(item):
+              archive = download(item)
+              count, segments = item['books'], item['segments_per_book']
+              expected = item['retained']
+              required = set(expected) | {'declared-profile.json', 'retention.json',
+                                          'tested-commit.txt', 'tested-tree.txt', 'benchmark.txt'}
+              payloads = {}
+              with zipfile.ZipFile(BytesIO(archive)) as bundle:
+                  members = bundle.infolist()
+                  require(len(members) <= 32 and sum(v.file_size for v in members) <= 2 * 1024 * 1024,
+                          'ZIP inventory exceeds its bound.')
+                  seen, folded = set(), set()
+                  for member in members:
+                      name = member.filename
+                      path = PurePosixPath(name)
+                      require(name not in seen and name.casefold() not in folded
+                              and '\\' not in name and not path.is_absolute()
+                              and all(v not in ('', '.', '..') for v in name.rstrip('/').split('/')),
+                              'ZIP contains an unsafe or duplicate member.')
+                      seen.add(name)
+                      folded.add(name.casefold())
+                      mode = stat.S_IFMT(member.external_attr >> 16)
+                      require(not member.flag_bits & 1
+                              and member.compress_type in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED),
+                              'Encrypted or unsupported ZIP entry.')
+                      if member.is_dir():
+                          require(name == str(count) + '/' and mode in (0, stat.S_IFDIR),
+                                  'Unknown ZIP directory.')
+                          continue
+                      require(name in required and mode in (0, stat.S_IFREG)
+                              and member.file_size <= 256 * 1024, 'Unknown or unsafe ZIP file.')
+                      with bundle.open(member) as stream:
+                          raw = read_bounded(stream, 256 * 1024)
+                      require(len(raw) == member.file_size, 'Truncated ZIP member.')
+                      payloads[name] = raw
+              require(set(payloads) == required, 'Closed retained file inventory differs.')
+              require(payloads['tested-commit.txt'].decode('ascii').strip() == HEAD
+                      and payloads['tested-tree.txt'].decode('ascii').strip() == TREE,
+                      'Retained commit/tree proof differs.')
+              for name, pin in expected.items():
+                  require(len(payloads[name]) == pin['bytes']
+                          and sha256(payloads[name]).hexdigest() == pin['sha256'],
+                          'Retained payload differs from its actual job-log identity.')
+              config = parsed(payloads['configuration.json'])
+              report = parsed(payloads['library-corpus-scale.json'])
+              declared = parsed(payloads['declared-profile.json'])
+              retained = parsed(payloads['retention.json'])
+              require(config['schema'] == report['schema'] == SCHEMA
+                      and config['sizes'] == report['requested_sizes'] == [count]
+                      and report['status'] == retained['status'] == item['status']
+                      and report['mode'] == 'source', 'Corpus report identity or actual status differs.')
+              require(config['capacity'] == report['capacity'] == CAPACITY, 'Selected capacity contract differs.')
+              require(report['configuration_sha256'] == sha256(payloads['configuration.json']).hexdigest(),
+                      'Report configuration hash differs.')
+              require(declared['source_commit'] == retained['source_commit'] == HEAD
+                      and declared['books'] == retained['books'] == count
+                      and declared['segments_per_book'] == segments
+                      and declared['source_segments'] == retained['segments'] == count * segments
+                      and declared['required_origin_count'] == len(report['origins']) == 21,
+                      'Declared/source corpus identity differs.')
+              require(declared['complete_backup'] is True
+                      and declared['backup_capacity_profile'] == 'large-source-v1'
+                      and declared['construction'] == 'retained-fixture'
+                      and declared['public_samples'] == 12, 'Declared selection differs.')
+              for name, value in {'segments_per_book': segments, 'segment_bytes': 256,
+                                  'phase_timeout': 3600, 'max_disk_bytes': 25769803776,
+                                  'min_free_bytes': 1073741824}.items():
+                  require(config['case'][name] == declared[name] == value, 'Declared finite case differs.')
+              require(retained['retained'] == expected and retained['phases'] == item['phases'],
+                      'Retention summary differs from the exact actual log.')
+              require(config['origins'] == report['origins']
+                      and config['harness_sha256'] == report['harness_sha256']
+                      == declared['inputs']['scripts/benchmark_library_scale.py']['sha256'],
+                      'Actual configuration/source identities differ.')
+              require(len(report['cases']) == 1
+                      and report['cases'][0]['requested_books'] == count
+                      and report['cases'][0]['status'] == item['status'], 'Unexpected corpus case.')
+              phases = report['cases'][0]['phases']
+              require([p['phase'] for p in phases] == [p['phase'] for p in item['phases']]
+                      == PHASES[:len(phases)], 'Actual ordered phase inventory differs.')
+              require(len({p['pid'] for p in phases}) == len(phases), 'Phases reused an interpreter.')
+              completed_corpus = set()
+              for phase, expected_phase in zip(phases, item['phases']):
+                  actual = parsed(payloads[str(count) + '/' + phase['phase'] + '.json'])
+                  require(all(key in phase and phase[key] == value for key, value in actual.items()),
+                          'Aggregate phase differs from its retained child report.')
+                  require(phase['status'] == expected_phase['status']
+                          and phase.get('reason') == expected_phase['reason']
+                          and phase['process_reaped'] is True,
+                          'Actual phase outcome or process cleanup differs.')
+                  require(phase['origins'] == config['origins']
+                          and phase['harness_sha256'] == config['harness_sha256'],
+                          'Phase source identity differs.')
+                  if phase['status'] == 'PASS':
+                      require(phase['books'] == count and phase['segments'] == count * segments
+                              and phase['exit_code'] == 0, 'Passing phase has incomplete corpus or failed exit.')
+                      completed_corpus.add(phase['corpus_sha256'])
+                  else:
+                      require(phase['exit_code'] != 0, 'Partial phase did not retain its failed outcome.')
+              require(len(completed_corpus) == 1, 'Completed phases disagree on retained corpus identity.')
+              require(item['status'] != 'PASS' or len(phases) == len(PHASES), 'Passing corpus lacks a requested phase.')
+              emit('EXACT_ARTIFACT', {'repository': REPOSITORY, 'run_id': RUN, 'job_id': item['job'],
+                  'artifact_id': item['artifact'], 'head_sha': HEAD, 'tree_sha': TREE,
+                  'books': count, 'segments_per_book': segments, 'zip_bytes': len(archive),
+                  'zip_sha256': item['zip_sha256'], 'report_sha256': expected['library-corpus-scale.json']['sha256'],
+                  'harness_sha256': report['harness_sha256'], 'members': sorted(payloads),
+                  'source_sha256': {name: data['sha256'] for name, data in report['origins'].items()}})
+              emit('MEASUREMENT_CONTEXT', {'books': count, 'segments_per_book': segments,
+                  'environment': report['environment'], 'case': config['case'], 'capacity': CAPACITY,
+                  'method': report['method'], 'claims': report['claims'], 'mode': report['mode']})
+              for phase in phases:
+                  # Emit every captured measurement or partial-progress field, excluding only
+                  # repeated source/path provenance already printed above. Do not invent
+                  # stage timings that the child did not retain before an interruption.
+                  omitted = {'origins', 'memory_kernel', 'harness_sha256', 'python_executable', 'python_prefix'}
+                  emit('MEASURED_PHASE', {'requested_books': count, 'segments_per_book': segments,
+                                         **{key: value for key, value in phase.items() if key not in omitted}})
+                  if phase['status'] != 'PASS':
+                      for suffix in ('stdout', 'stderr'):
+                          name = str(count) + '/' + phase['phase'] + '.' + suffix + '.txt'
+                          raw = payloads[name]
+                          emit('FAILED_PHASE_OUTPUT', {'books': count, 'segments_per_book': segments,
+                              'name': name, 'bytes': len(raw), 'sha256': sha256(raw).hexdigest(),
+                              'bounded_tail': raw[-8192:].decode('utf-8', errors='replace')})
+              emit('MEASURED_TOTAL', {'requested_books': count, 'segments': count * segments,
+                  'actual_status': report['status'],
+                  'sum_phase_wall_seconds': math.fsum(p['process_wall_seconds'] for p in phases),
+                  'phases_not_run': PHASES[len(phases):],
+                  'qualification': 'Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.'})
+          
+          try:
+              for item in ARTIFACTS:
+                  inspect(item)
+              emit('INSPECTION', {'status': 'PASS', 'meaning': 'Exact artifacts verified and observed outcomes printed; this is not corpus qualification.',
+                  'inspected_artifacts': [item['artifact'] for item in ARTIFACTS],
+                  'profile_scope': 'Four exact A3 reports: 1000x20, 10000x20 and 50000x20 all phases PASS; 50000x40 build PASS and measure PARTIAL, later phases NOT_RUN; no other-head transfer'})
+          except Exception as error:
+              print('ARTIFACT_INSPECTION_FAILED ' + type(error).__name__
+                    + (': ' + str(error) if isinstance(error, InspectionFailure) else ''), file=sys.stderr)
+              raise SystemExit(1)
+          PY

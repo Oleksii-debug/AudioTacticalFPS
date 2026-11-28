@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   installed-failures-windows:
-    name: Windows Book30 alone, then83 source and113 isolated installed
+    name: Windows Book29 alone, then83 source and112 isolated installed
     runs-on: windows-2022
     timeout-minutes: 145
     concurrency:
@@ -53,7 +53,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_installed_failure_contracts.py":"fa8948e3c83108679a57bb3e6d3cbd4dd618f41e","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6"}
+          pins = {"scripts/ci_installed_failure_contracts.py":"7043f8392cf5ef3bd0bc5e95ca960dc5fdf91949","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -69,7 +69,7 @@ jobs:
           module.sources()
           for name in ('SOURCE_CHILD', 'INSTALLED_CHILD'):
               compile(getattr(module, name), '<focused-installed-'+name+'>', 'exec')
-          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 113
+          assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 112
           assert len(module.PINS) == 60
           assert sum(map(len, module.FUNCTIONS.values())) == 66
           assert next(iter(module.SUITES)) == module.BOOK_SUITE
@@ -91,7 +91,7 @@ jobs:
           "CARR_FAILURE_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Require113 source and113 isolated installed whole cases
+      - name: Require112 source and112 isolated installed whole cases
         # Book source600 + other source max900 + installed2700 + build/install540,
         # with bounded identity checks and owned cleanup inside100 minutes.
         # Every individual whole retains600; only the existing ASR exception is900.

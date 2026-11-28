@@ -107,18 +107,20 @@ def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, 
     # This test checks cancellation and reply framing, not subsecond Windows
     # interpreter startup. Wait for a launch-bound fixture checkpoint, preserving
     # the same one-second protocol deadline for the actual recovery render.
-    recovered_worker = adapter._start_worker()
-    assert recovered_worker.process.pid != cancelled_worker.process.pid
-    wait_for(lambda: ready_worker_pid(runtime, recovery_nonce) is not None, timeout=5.0)
-    actor_pid = ready_worker_pid(runtime, recovery_nonce)
-    assert actor_pid is not None
-    assert recovered_worker.process.poll() is None and adapter.request_timeout == 1.0
-    assert len(list(adapter.stream_pcm("After cancellation.", "speaker_a", "uk"))) == 2
-    assert adapter._worker is recovered_worker
-    recovery_requests = [r for r in records(runtime) if r["launch_nonce"] == recovery_nonce]
-    assert {r["pid"] for r in recovery_requests} == {actor_pid}
-    assert [r["mode"] for r in recovery_requests] == [
-        "reference", "next", "next"]
+    # Prewarming is part of the same real authority operation as recovery.
+    with adapter._authority_scope():
+        recovered_worker = adapter._start_worker()
+        assert recovered_worker.process.pid != cancelled_worker.process.pid
+        wait_for(lambda: ready_worker_pid(runtime, recovery_nonce) is not None, timeout=5.0)
+        actor_pid = ready_worker_pid(runtime, recovery_nonce)
+        assert actor_pid is not None
+        assert recovered_worker.process.poll() is None and adapter.request_timeout == 1.0
+        assert len(list(adapter.stream_pcm("After cancellation.", "speaker_a", "uk"))) == 2
+        assert adapter._worker is recovered_worker
+        recovery_requests = [r for r in records(runtime) if r["launch_nonce"] == recovery_nonce]
+        assert {r["pid"] for r in recovery_requests} == {actor_pid}
+        assert [r["mode"] for r in recovery_requests] == [
+            "reference", "next", "next"]
     adapter.close()
     assert recovered_worker.process.poll() is not None
 

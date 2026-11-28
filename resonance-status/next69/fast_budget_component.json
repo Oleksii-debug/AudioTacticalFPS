@@ -1,0 +1,76 @@
+{
+  "schema": "carr-fast-source-outer-envelope-component/1",
+  "created_utc": "2026-11-28 09:01:40 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "path": ".github/workflows/carr-windows.yml",
+  "preimage_git_blob": "e71a09b322d18f0447fae7d1cf64b23805902b39",
+  "successor_git_blob": "b84d83988db80f3706db9d2c4800b9a666bb321b",
+  "utf8": {
+    "sha256": "b0d1b3692f7dd80c60bd0cb9c590225126ffbb6d7d58efd5b77cdd40c3490d57",
+    "bytes": 402828
+  },
+  "evidence_audit": "1e615102638092838332e5f667aa07e25fa49fbc",
+  "closed_B_receipt": "1785598f785805a5e4200ba1bfeca5a676bf2567",
+  "peer": {
+    "agent": "/root/locate_project",
+    "record": "5f37ec072beb22d0a23f3f237cb263ec2b3928f9",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "exact_inverse": [
+    {
+      "before": "    # The measured 98-suite diagnostic took about 22 minutes before this 119-suite union.\n    # Keep every 600-second suite limit; allow bounded setup and verdict headroom.\n    timeout-minutes: 45",
+      "after": "    # B reached 170 child summaries but no strict aggregate before its 45-minute cap.\n    # Fund the complete 185-suite run; individual Book/voice timeouts remain failures.\n    # Step bounds total 130 minutes, leaving 5 minutes for job cleanup.\n    timeout-minutes: 135"
+    },
+    {
+      "before": "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n        with:",
+      "after": "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n        timeout-minutes: 3\n        with:"
+    },
+    {
+      "before": "      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0\n        with:",
+      "after": "      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0\n        timeout-minutes: 5\n        with:"
+    },
+    {
+      "before": "      - name: Prepare locked dependencies and the existing pinned codec\n        run: |",
+      "after": "      - name: Prepare locked dependencies and the existing pinned codec\n        timeout-minutes: 20\n        run: |"
+    },
+    {
+      "before": "      - name: Run required source regressions before the full bundle finishes\n        run: |",
+      "after": "      - name: Run required source regressions before the full bundle finishes\n        timeout-minutes: 100\n        run: |"
+    },
+    {
+      "before": "        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n        with:",
+      "after": "        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n        timeout-minutes: 2\n        with:"
+    }
+  ],
+  "scope": {
+    "job": "completion-regressions",
+    "source_step_minutes": 100,
+    "job_minutes": 135,
+    "step_minutes": {
+      "checkout": 3,
+      "python": 5,
+      "preparation": 20,
+      "source": 100,
+      "retention": 2
+    },
+    "post_job_reserve_minutes": 5,
+    "existing_selector_count": 185,
+    "selectors_order_and_bytes_unchanged": true,
+    "source_jobs": 3,
+    "ordinary600_and_reviewed900_mechanisms_unchanged": true,
+    "all_run_bodies_and_verdicts_unchanged": true,
+    "all_other_jobs_unchanged": true
+  },
+  "validation": {
+    "complete_reverse_reconstruction": true,
+    "github_blob_readback": true,
+    "workflow_parser": "NOT_RUN",
+    "exact_head_execution": "NOT_RUN"
+  },
+  "limits": [
+    "This funds the complete aggregate under an evidence-supported continuation estimate; it does not guarantee every185-whole theoretical worst-case duration.",
+    "The actual BookBatch and voice-package600-second failures remain independent failures; no deadline or assertion in those modules changes.",
+    "The actual B job lacks a final strict runner aggregate. No previous summaries become PASS through this envelope correction."
+  ]
+}

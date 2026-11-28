@@ -412,10 +412,18 @@ def test_actual_child_cancellation_reaps_worker_before_lease_and_staging_release
             processes.append(value)
             return value
         monkeypatch.setattr(process_module.subprocess, 'Popen', capture)
-    with pytest.raises(AudioCancelled):
+    # The source recheck and the subprocess poll preserve their own cancellation
+    # types when this real child marker appears between their fresh checkpoints.
+    with pytest.raises((AudioCancelled, InterruptedError)) as stopped:
         capture_layout(bound.app, bound.workspace, bound.edition, cancelled=marker.exists)
+    assert type(stopped.value) in (AudioCancelled, InterruptedError)
     assert marker.is_file() and len(processes) == 1
     assert processes[0].returncode is not None
+    assert processes[0].stdout.closed and processes[0].stderr.closed
+    if os.name == 'nt':
+        assert processes[0]._job is None
+        assert processes[0]._process.hProcess is None
+        assert processes[0]._process.hThread is None
     assert ResourceBroker.for_app(bound.app.root).snapshot()['leases'] == []
     assert not list((bound.app.root / 'runtime').glob('.docx-layout-*'))
 

@@ -358,6 +358,9 @@ class Capability:
     status: str
     detail: str
     voice_ids: tuple[str, ...] = ()
+    evidence_id: str | None = None
+    review_id: str | None = None
+    qualification_scope: str | None = None
 
 
 @dataclass(frozen=True)
@@ -380,13 +383,14 @@ class CapabilityMatrix:
     unmatched_voice_ids: tuple[str, ...]
     warnings: tuple[str, ...]
     schema: str = _MATRIX_SCHEMA
+    recorded_context: str | None = None
 
     def search(self, query: str = '', *, region: str | None = None,
                capability: str | None = None, status: str | None = None):
         query = _query(query)
         if capability is not None and capability not in _CAPABILITIES:
             raise CatalogError('Unknown language capability filter.')
-        if status is not None and status not in ('untested', 'unsupported', 'candidate', 'partial', 'verified'):
+        if status is not None and status not in ('untested', 'unsupported', 'candidate', 'partial', 'verified', 'failed', 'revoked'):
             raise CatalogError('Unknown capability status filter.')
         allowed = {x.id for x in self.catalog.search('', region=region)}
         result = []
@@ -407,7 +411,11 @@ class CapabilityMatrix:
         return {'selected_entries': len(self.entries),
                 'entries_with_declared_voice_matches': sum(bool(x.voices) for x in self.entries),
                 'distinct_matched_voices': len({v.voice_id for x in self.entries for v in x.voices}),
-                'qualified_entries': 0, 'unmatched_voices': len(self.unmatched_voice_ids),
+                'qualified_entries': sum(
+                    all(row.status == 'verified' and row.qualification_scope for row in entry.capabilities)
+                    and len({row.qualification_scope for row in entry.capabilities}) == 1
+                    for entry in self.entries),
+                'unmatched_voices': len(self.unmatched_voice_ids),
                 'upstream_reported_resources': self.catalog.audit.resources_reported,
                 'upstream_reported_acoustic_tests': self.catalog.audit.windows_nvda_acoustic_tests_reported}
 
@@ -415,12 +423,14 @@ class CapabilityMatrix:
         return {'schema': self.schema, 'catalog_source': asdict(self.catalog.source),
                 'resource_audit': asdict(self.catalog.audit), 'summary': self.summary(),
                 'entries': [asdict(x) for x in self.entries],
-                'unmatched_voice_ids': list(self.unmatched_voice_ids), 'warnings': list(self.warnings)}
+                'unmatched_voice_ids': list(self.unmatched_voice_ids), 'warnings': list(self.warnings),
+                'recorded_context': self.recorded_context}
 
 
 def build_capability_matrix(*, catalog: LanguageCatalog | None = None,
                             voices: Iterable = (),
-                            bindings: Iterable[DeclaredLanguageBinding] = ()) -> CapabilityMatrix:
+                            bindings: Iterable[DeclaredLanguageBinding] = (),
+                            evidence=None, recorded_context: str | None = None) -> CapabilityMatrix:
     """Match exact declared tags on already enumerated voices, without synthesis.
 
     Pass ``registry.voices()`` from the existing voice registry. This function
@@ -428,6 +438,17 @@ def build_capability_matrix(*, catalog: LanguageCatalog | None = None,
     acoustic tests or turn the separate upstream inventory into local support.
     """
     catalog = catalog or load_catalog()
+    assessments = {}
+    if evidence is not None:
+        from .evidence import EvidenceSnapshot, assessment_detail, assessment_status
+        if type(evidence) is not EvidenceSnapshot:
+            raise CatalogError('Use validated passive qualification evidence.')
+        # Validate direct callers too; no external path or runtime is consulted.
+        evidence = EvidenceSnapshot.from_dict(evidence.to_dict(), catalog=catalog)
+        if recorded_context is not None:
+            assessments = evidence.assessments(recorded_context)
+    elif recorded_context is not None:
+        raise CatalogError('Select a configuration from the recorded evidence.')
     bound = {}
     for index, binding in enumerate(bindings):
         if index >= 2000 or not isinstance(binding, DeclaredLanguageBinding):
@@ -476,7 +497,18 @@ def build_capability_matrix(*, catalog: LanguageCatalog | None = None,
                 if supported:
                     value = Capability(name, 'candidate',
                         'The matched adapter declares this control; language-specific output is untested.', supported)
+            assessment = assessments.get((entry.id, name))
+            if assessment is not None:
+                observation, review, active = assessment
+                value = Capability(name, assessment_status(observation, review, active),
+                    assessment_detail(observation, review, active), (), observation.fingerprint,
+                    review.fingerprint if review else None, observation.qualification_scope)
             capabilities.append(value)
         records.append(LanguageQualification(entry, tuple(capabilities), matches))
     warnings.append('The upstream 125-resource inventory is separate from this installation and proves zero Windows/NVDA acoustic tests.')
-    return CapabilityMatrix(catalog, tuple(records), tuple(unmatched), tuple(warnings))
+    if recorded_context is not None:
+        warnings.append('Verified means an explicitly recorded human assessment for the selected '
+                        'app/environment and exact engine/pack, not authenticated identity, '
+                        'automatic execution, current-device support or another language variety.')
+    return CapabilityMatrix(catalog, tuple(records), tuple(unmatched), tuple(warnings),
+                            recorded_context=recorded_context)

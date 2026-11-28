@@ -1,0 +1,287 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "observed_at": "2026-11-28 08:51:12 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "reviewed_component": "9d3417b28fd0eca23c3d025165b1a7a48a7ac139",
+  "predecessor_checkpoint": "ed366226d521d3b70ccef23ed71ae061e5cb5bf5",
+  "base_commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+  "base_tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+  "files": [
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "162be91cb9e49f64ddbdc7ce7e64271f687dd3e7",
+      "successor": "a249e767159702bf4dc88434290d60efb1ba03dd",
+      "exact_inverse": true,
+      "hunks": 8,
+      "utf8_bytes": 52804
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "69bc261f3b1e03603bdc780b04f905bd4fbe6e96",
+      "successor": "385e0434bf9b1e7762d091dd0fc9784b6f5fd4b0",
+      "exact_inverse": true,
+      "hunks": 1,
+      "utf8_bytes": 11536
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "1f0c67ee4ad51735fa3805388317c850f482258a",
+      "successor": "e71a09b322d18f0447fae7d1cf64b23805902b39",
+      "exact_inverse": true,
+      "hunks": 22,
+      "utf8_bytes": 402617
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "76a4ba5f1e899a3d6d1233c15b0313f68ff53b1a",
+      "successor": "38190898b7c38a1d81bec2f8d6d4005174a6c779",
+      "exact_inverse": true,
+      "hunks": 10,
+      "utf8_bytes": 205511
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "69dceb131561dbc78077cfb5451c524797db7e15",
+      "successor": "2d83808c3a49eef7991b46502f4eec579b08e808",
+      "exact_inverse": true,
+      "hunks": 17,
+      "utf8_bytes": 402581
+    },
+    {
+      "path": "carr-library/scripts/ci_v3_feature_case_contracts.json",
+      "new_file": true,
+      "utf8_bytes": 106931
+    },
+    {
+      "path": "carr-library/scripts/ci_language_evidence_cases.json",
+      "new_file": true,
+      "utf8_bytes": 11850
+    }
+  ],
+  "exact_final_workflow_binding": {
+    "one_marker": 1,
+    "final_markers": 0,
+    "pin_occurrences": 1,
+    "exact_pin_only": true,
+    "other_six": true,
+    "workflow_git_blob": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+    "focused_component": "b4c2b9d51d920eb2cf82f2fe2c083b5dc835e482",
+    "workflow_peer": "bb229dde49005e7ea691234f37474335472b09cd"
+  },
+  "selector_proof": [
+    {
+      "label": "source",
+      "old": 490,
+      "current": 493,
+      "unique": 493,
+      "expected": 493,
+      "wholes": 493,
+      "bootstrap_wholes": 1,
+      "test_wholes": 492,
+      "newpaths": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "old_order_retained": true,
+      "partitions": [
+        124,
+        123,
+        123,
+        123
+      ]
+    },
+    {
+      "label": "fast",
+      "old": 182,
+      "current": 185,
+      "unique": 185,
+      "expected": 185,
+      "wholes": 185,
+      "newpaths": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "old_order_retained": true
+    },
+    {
+      "label": "installed",
+      "old": 339,
+      "current": 342,
+      "unique": 342,
+      "expected": 342,
+      "wholes": 339,
+      "newpaths": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "old_order_retained": true
+    },
+    {
+      "label": "v3installed",
+      "old": 199,
+      "current": 202,
+      "unique": 202,
+      "expected": 202,
+      "wholes": 202,
+      "newpaths": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "old_order_retained": true
+    },
+    {
+      "label": "v3source",
+      "old": 220,
+      "current": 223,
+      "unique": 223,
+      "newpaths": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "old_order_retained": true
+    }
+  ],
+  "ordinary_new_suites": {
+    "tests/language_qualification/test_evidence.py": {
+      "count": 54,
+      "functions": [
+        "test_passive_import_and_zero_default_never_execute_or_accept_reviews",
+        "test_import_refuses_forged_or_ambiguous_observation_shapes",
+        "test_import_uses_strict_real_json_snapshot_decoder",
+        "test_review_binds_complete_observation_and_explicit_distinct_provenance",
+        "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests",
+        "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope",
+        "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes",
+        "test_real_directory_substitution_is_not_silently_adopted",
+        "test_linked_or_nonregular_evidence_is_refused_without_modification",
+        "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged",
+        "test_final_callback_cannot_replace_state_or_scope_before_actual_publication",
+        "test_visible_late_commit_is_reported_without_repeating_or_erasing_it",
+        "test_review_history_preserves_all_prior_rejections_and_revocations",
+        "test_collection_bounds_refuse_before_unbounded_history_processing"
+      ]
+    },
+    "tests/language_qualification/test_evidence_backup.py": {
+      "count": 27,
+      "functions": [
+        "test_real_backups_preserve_history_but_restored_positive_reviews_are_dormant",
+        "test_resigned_invalid_typed_evidence_cannot_be_restored",
+        "test_unknown_reserved_namespace_cannot_be_omitted_or_copied_opaquely",
+        "test_portable_case_alias_is_rejected_before_looking_for_copied_state",
+        "test_cancelled_dormancy_preparation_preserves_exact_copied_bytes_and_exception",
+        "test_only_exact_writer_temporaries_are_excluded_from_passive_backup"
+      ]
+    },
+    "tests/language_qualification/test_evidence_ui.py": {
+      "count": 28,
+      "functions": [
+        "test_controller_requires_explicit_configuration_and_retains_exact_review_details",
+        "test_worker_and_result_callbacks_reject_current_library_changes",
+        "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review",
+        "test_report_is_create_only_passive_and_never_roundtrips_as_approval",
+        "test_cancelled_report_preserves_original_exception_and_creates_nothing",
+        "test_report_rechecks_actual_state_after_the_last_callback",
+        "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record",
+        "test_native_callback_never_publishes_unconfirmed_or_stale_review",
+        "test_native_import_requires_explicit_yes_and_stays_passive",
+        "test_late_committed_failure_retains_receipt_without_applying_old_library",
+        "test_current_failure_preserves_original_error_and_only_applies_actual_commit",
+        "test_late_success_retains_exact_result_without_delivering_it_to_changed_library"
+      ]
+    }
+  },
+  "ordinary_inventory_findings": [
+    "All old ordered whole-module selectors are retained exactly once at source, fast source, full installed, V3 source and V3 installed boundaries.",
+    "Source493 includes492 tests paths and one pre-existing bootstrap/semantic_compat/test_probe.py whole. Exact modulo-four partitions are124/123/123/123.",
+    "Full installed342 selectors comprise339 whole modules and the same3 previous node selectors.",
+    "New language ordinary contracts54/27/28 and14/6/12 functions match actual frozen source inventory92d9c3aefd1f378f97b376bc20f6edc2e038beb3:109 cases/32 functions.",
+    "EPUB lifetime14-to28 and the four exact appended functions from d9f84b8451cb73910ac4c843c5f097ad7e7397cb are present in full installed and lateV3 required-function checks; source expected count is28."
+  ],
+  "epub_required_new_functions": [
+    "test_recorded_start_failure_survives_own_generation_cleanup",
+    "test_recorded_start_error_does_not_present_to_a_revoked_request",
+    "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats",
+    "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm"
+  ],
+  "data_extraction": {
+    "early_v3_20_map_unchanged": true,
+    "late_v3_129_map_exactly_equals_d920_suites": true,
+    "source": "carr-library/scripts/ci_v3_feature_case_contracts.json",
+    "git_blob": "d92016b4a2c924c7f0148c19292bf17a58367f90",
+    "old_installed_inline_map_unchanged": true,
+    "language_git_blob": "6797df44d708230f38ba999760bbfd3cb8581e40",
+    "language_native_contract_exactly_equals": "ea20c8ebc68963b518567e2e54fb814a1cc4492a"
+  },
+  "same_process_loader": {
+    "positions": {
+      "installed": {
+        "i": 39505,
+        "test": 41856,
+        "post": 43503,
+        "merge": 171421,
+        "ordered": true
+      },
+      "v3": {
+        "i": 153908,
+        "test": 164205,
+        "post": 166046,
+        "merge": 166863,
+        "ordered": true
+      }
+    },
+    "findings": [
+      "Strict held-descriptor/read bound/Git-blob/schema prechecks execute in the same Python process and globals before pytest.main.",
+      "Captured case bytes and file identity are rechecked after pytest.main; fixture copy/hash checks bracket the same execution.",
+      "Language map merge is explicitly disjoint from existing reviewed_feature_cases and occurs before the strict JUnit case/function validation.",
+      "Only the accepted late V3 map was externalized; early recovery code/map stays unchanged.",
+      "New exact source and installed origins include the package __init__.py mapping; existing bootstrap mapping stays unchanged."
+    ]
+  },
+  "new_origins": [
+    "carr_library.language_qualification",
+    "carr_library.language_qualification.catalog",
+    "carr_library.language_qualification.evidence",
+    "carr_library.language_qualification.backup",
+    "carr_library.ui.language_matrix",
+    "carr_library.storage.schema_identity"
+  ],
+  "fixture": {
+    "path": "tests/language_qualification/evidence_fixture.py",
+    "git_blob": "72944369f7304650e8742f97372d41415e3e35da",
+    "copied_and_hashed_before_after_in_both_isolated_lanes": true
+  },
+  "required_workflow": {
+    "main_and_v3_reusable_language_jobs": true,
+    "main_and_v3_pr_push_paths": true,
+    "main_final_required_result_included": true,
+    "old_obligations_preserved": true,
+    "strict_success_only": true,
+    "strict_always_guards_unchanged": true,
+    "main_exact_workflow_git_binding": true,
+    "blocking_placeholder_removed_exactly_once": true,
+    "native_report": "Separate focused job requires actual147source+147installed and75 unique native checks/14 origins/16 exact fields; default-No multiplicity3. No ordinary-suite success substitutes for native evidence."
+  },
+  "preserved_limits": {
+    "ordinary_whole_seconds": 600,
+    "asr_whole_seconds": 900,
+    "source_jobs": 3,
+    "native_watchdog_seconds": 300,
+    "native_external_seconds": 330,
+    "old_native_hardware_and_manual_qualification_requirements_unchanged": true,
+    "no_skip_xfail_failure_relaxation": true
+  },
+  "proof_scope": {
+    "independent_complete_inverse_files": 5,
+    "independent_json_decode_and_inventory_comparisons": true,
+    "all_root_946_pins": "Root reports946 pins/61 gate paths and zero stale predecessors; whole proposed-tree/pin closure is outside this bounded independent peer.",
+    "runtime_parser_execution": "NOT_RUN: no PowerShell/Python/YAML execution is claimed.",
+    "exact_head_ci": "Still mandatory. Existing head receipts do not transfer."
+  }
+}

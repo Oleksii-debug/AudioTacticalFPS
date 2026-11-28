@@ -22,6 +22,7 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 from . import backup_producers, backup_generated, backup_transcription, backup_book_audio, backup_effect_presets, backup_playback_queue, backup_book_batches
 from .state_backup import _local_studio_origin, _local_transcription_origin
 from . import backup_local_schedules
+from .language_qualification import backup as backup_language_evidence
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
@@ -88,6 +89,8 @@ def sidecar_limit(name):
         return _model('progress_preferences').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
+    if maximum := backup_language_evidence.limit(name):
+        return maximum
     if maximum := backup_generated.limit(name):
         return maximum
     if maximum := backup_producers.limit(name):
@@ -312,6 +315,8 @@ def validate_sidecar(db, name, raw):
             _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
+        elif backup_language_evidence.reserved(name):
+            backup_language_evidence.validate_record(name, _json(raw))
         elif name.startswith(backup_generated.PREFIX):
             backup_generated.validate_receipt(name, _json(raw))
         elif backup_producers.SUBTITLE.fullmatch(name):
@@ -360,6 +365,8 @@ def _collection_budgets(entries):
                                      for name, size in entries)
         backup_local_schedules.collection_budgets({'filename': name, 'size_bytes': size}
                                                   for name, size in entries)
+        backup_language_evidence.collection_budgets({'filename': name, 'size_bytes': size}
+                                                   for name, size in entries)
         backup_book_audio.collection_budgets({'filename': name, 'size_bytes': size}
                                              for name, size in entries)
         backup_effect_presets.collection_budgets({'filename': name, 'size_bytes': size}
@@ -504,6 +511,8 @@ def read_regular(path, maximum, *, allow_empty=False):
 
 
 def _ignored(name):
+    if backup_language_evidence.reserved(name):
+        return backup_language_evidence.ignored(name)
     path = PurePosixPath(name)
     if backup_local_schedules.reserved(name):
         return backup_local_schedules.ignored(name)
@@ -565,6 +574,7 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
         portable_name(name)
         directory = root / name
         backup_effect_presets.validate_directory(name)
+        backup_language_evidence.validate_directory(name)
         backup_local_schedules.validate_directory(name)
         backup_playback_queue.validate_directory(name)
         backup_book_batches.validate_directory(name)
@@ -576,6 +586,7 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
             if stat.S_ISDIR(info.st_mode):
                 _plain(path, directory=True)
                 backup_effect_presets.validate_directory(relative)
+                backup_language_evidence.validate_directory(relative)
                 backup_local_schedules.validate_directory(relative)
                 backup_playback_queue.validate_directory(relative)
                 backup_book_batches.validate_directory(relative)
@@ -655,6 +666,9 @@ def _validate_collections(db, root, entries, records, *, cancelled):
         backup_generated.validate_collection(entries, {name: value for name, value in records.items()
                                                        if name.startswith(backup_generated.PREFIX)})
         backup_producers.validate_primary_collection(root, entries, records, cancelled=cancelled)
+        backup_language_evidence.validate_collection(root / 'state',
+            ({**entry, 'filename': entry['filename'].removeprefix('state/')}
+             for entry in entries if entry['filename'].startswith('state/')), cancelled=cancelled)
         backup_producers.validate_translation_collection(db, records, cancelled=cancelled)
         backup_local_schedules.validate_collection(root / 'state',
             ({**entry, 'filename': entry['filename'][6:]}

@@ -53,7 +53,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_configured_update_contracts.py":"59d3642396f88529e17d82f68bb4675382145c9f","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_configured_update_contracts.py":"5f188cd9645bdfccbc98b244f806723c884c2a44","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -181,7 +181,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_configured_update_contracts.py":"59d3642396f88529e17d82f68bb4675382145c9f","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
+          pins = {"scripts/ci_configured_update_contracts.py":"5f188cd9645bdfccbc98b244f806723c884c2a44","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -350,7 +350,7 @@ jobs:
           path = pathlib.Path('scripts/ci_update_https_contracts.py').resolve()
           assert path.is_file() and not path.is_symlink()
           raw = path.read_bytes()
-          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == '8e7c117ae4c8a2fabba46ef8c99eae09f25f40de'
+          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == 'd56854984eb138ec15232ac8901e019f9b3a49ba'
           compile(raw, str(path), 'exec')
           spec = importlib.util.spec_from_file_location('updater_https_preflight', path)
           module = importlib.util.module_from_spec(spec)

@@ -12,6 +12,7 @@ on:
       - .github/workflows/carr-trusted-client.yml
       - .github/workflows/carr-managed-update.yml
       - .github/workflows/carr-configured-update-native.yml
+      - .github/workflows/carr-language-evidence.yml
   push:
     branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, 'carr/ci-full-final-*']
     paths:
@@ -23,6 +24,7 @@ on:
       - .github/workflows/carr-trusted-client.yml
       - .github/workflows/carr-managed-update.yml
       - .github/workflows/carr-configured-update-native.yml
+      - .github/workflows/carr-language-evidence.yml
   workflow_dispatch:
 
 permissions:
@@ -96,7 +98,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '162be91cb9e49f64ddbdc7ce7e64271f687dd3e7'
+          $expectedBlob = 'a249e767159702bf4dc88434290d60efb1ba03dd'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -114,9 +116,9 @@ jobs:
           if ($afterInfo.PSIsContainer -or ($afterInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
               ($helperStamp -join ':') -cne (@($afterInfo.Length, $afterInfo.CreationTimeUtc.Ticks, $afterInfo.LastWriteTimeUtc.Ticks) -join ':') -or
               (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant() -cne $helperHash) { throw 'The reviewed source-shard helper changed during execution.' }
-          if ($inventory.complete_count -ne 490 -or $inventory.complete.Count -ne 490 -or $inventory.shards.Count -ne 4) { throw 'The actual source inventory audit did not return its complete reviewed contract.' }
+          if ($inventory.complete_count -ne 493 -or $inventory.complete.Count -ne 493 -or $inventory.shards.Count -ne 4) { throw 'The actual source inventory audit did not return its complete reviewed contract.' }
           $inventory | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath 'ci-syntax-results/integrated-source-inventory.json' -Encoding utf8
-          Write-Output 'PASS: native source-shard parser, exact 490 selectors, four assignments, and every overlapping case count.'
+          Write-Output 'PASS: native source-shard parser, exact 493 selectors, four assignments, and every overlapping case count.'
 
       - name: Preserve exact workflow syntax evidence
         if: always()
@@ -160,7 +162,7 @@ jobs:
       expected_head: ${{ github.event.pull_request.head.sha || github.sha }}
 
   integrated-source-complete:
-    name: Required complete source inventory / 490 whole suites
+    name: Required complete source inventory / 493 whole suites
     needs: [integrated-source-0, integrated-source-1, integrated-source-2, integrated-source-3]
     if: always()
     runs-on: windows-2022
@@ -192,7 +194,7 @@ jobs:
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required source aggregate has no exact tree.' }
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '162be91cb9e49f64ddbdc7ce7e64271f687dd3e7'
+          $expectedBlob = 'a249e767159702bf4dc88434290d60efb1ba03dd'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -210,7 +212,7 @@ jobs:
           if ($afterInfo.PSIsContainer -or ($afterInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
               ($helperStamp -join ':') -cne (@($afterInfo.Length, $afterInfo.CreationTimeUtc.Ticks, $afterInfo.LastWriteTimeUtc.Ticks) -join ':') -or
               (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant() -cne $helperHash) { throw 'The reviewed source-shard helper changed during execution.' }
-          if ($inventory.schema -cne 'carr-integrated-source-inventory/1' -or $inventory.complete_count -ne 490 -or $inventory.complete.Count -ne 490 -or $inventory.shards.Count -ne 4) { throw 'The source inventory helper did not produce its complete reviewed map.' }
+          if ($inventory.schema -cne 'carr-integrated-source-inventory/1' -or $inventory.complete_count -ne 493 -or $inventory.complete.Count -ne 493 -or $inventory.shards.Count -ne 4) { throw 'The source inventory helper did not produce its complete reviewed map.' }
           function Exact-Integer($Value, [int]$Expected) {
             return (($Value -is [long] -or $Value -is [int]) -and $Value -eq $Expected)
           }
@@ -237,7 +239,7 @@ jobs:
             if ($receipt.schema -cne 'carr-required-source-shard/1' -or $receipt.status -cne 'PASS' -or
                 $receipt.head -cne $head -or $receipt.tree -cne $tree -or
                 -not (Exact-Integer $receipt.shard $index) -or
-                -not (Exact-Integer $receipt.complete_count 490) -or
+                -not (Exact-Integer $receipt.complete_count 493) -or
                 -not (Exact-Integer $receipt.assigned_count $assigned.Count) -or
                 -not (Exact-Integer $receipt.strict_verdict_count $assigned.Count) -or
                 -not (Exact-Integer $receipt.jobs 3) -or -not (Exact-Integer $receipt.academic_jobs 1) -or
@@ -258,16 +260,16 @@ jobs:
             elseif ($sourceSha256 -cne $receipt.source_sha256) { throw 'The four source workers did not validate the same tracked payload.' }
             $reports.Add($receipt)
           }
-          if ($union.Count -ne 490 -or -not $union.SetEquals([string[]]$inventory.complete)) { throw 'The four source jobs did not cover the exact 490-suite union once.' }
+          if ($union.Count -ne 493 -or -not $union.SetEquals([string[]]$inventory.complete)) { throw 'The four source jobs did not cover the exact 493-suite union once.' }
           New-Item -ItemType Directory -Path 'ci-source-aggregate' | Out-Null
           $complete = [ordered]@{
             schema='carr-required-source-aggregate/1'; status='PASS'; head=$head; tree=$tree;
-            complete_whole_suites=490; shards=4; multiplicity=1; source_sha256=$sourceSha256;
+            complete_whole_suites=493; shards=4; multiplicity=1; source_sha256=$sourceSha256;
             inventory_sha256=$inventory.inventory_sha256; count_contract_sha256=$inventory.count_contract_sha256;
             helper_sha256=$helperHash; results=$reports; qualification='Strict source acceptance only'
           }
           $complete | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath 'ci-source-aggregate/complete-source.json' -Encoding utf8
-          Write-Output ('PASS: all four required source jobs, exactly 490 whole suites, head=' + $head)
+          Write-Output ('PASS: all four required source jobs, exactly 493 whole suites, head=' + $head)
       - name: Preserve the required complete-source receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -281,9 +283,10 @@ jobs:
     needs: source-syntax
     name: Required current composition / Windows source regressions
     runs-on: windows-2022
-    # The measured 98-suite diagnostic took about 22 minutes before this 119-suite union.
-    # Keep every 600-second suite limit; allow bounded setup and verdict headroom.
-    timeout-minutes: 45
+    # B reached 170 child summaries but no strict aggregate before its 45-minute cap.
+    # Fund the complete 185-suite run; individual Book/voice timeouts remain failures.
+    # Step bounds total 130 minutes, leaving 5 minutes for job cleanup.
+    timeout-minutes: 135
     defaults:
       run:
         shell: pwsh
@@ -300,14 +303,17 @@ jobs:
       DO_NOT_TRACK: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        timeout-minutes: 3
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        timeout-minutes: 5
         with:
           python-version: '3.11'
           architecture: x64
       - name: Prepare locked dependencies and the existing pinned codec
+        timeout-minutes: 20
         run: |
           New-Item -ItemType Directory -Force 'ci-completion-results' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-completion-results/tested-commit.txt'
@@ -329,6 +335,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Run required source regressions before the full bundle finishes
+        timeout-minutes: 100
         run: |
           $completionSuites = @(
             'tests/reader/test_braille.py',
@@ -512,7 +519,10 @@ jobs:
             'tests/catalog/test_text_screen_work.py',
             'tests/search/test_ascii_mapping_work.py',
             'tests/studio/test_clip_preview_loop.py',
-            'tests/studio/test_project_markers.py'
+            'tests/studio/test_project_markers.py',
+            "tests/language_qualification/test_evidence.py",
+            "tests/language_qualification/test_evidence_backup.py",
+            "tests/language_qualification/test_evidence_ui.py"
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -676,6 +686,9 @@ jobs:
             'tests/audio/test_voice_scope_checks.py' = 42
             'tests/catalog/test_text_screen_work.py' = 26
             'tests/search/test_ascii_mapping_work.py' = 73
+            'tests/language_qualification/test_evidence.py' = 54
+            'tests/language_qualification/test_evidence_backup.py' = 27
+            'tests/language_qualification/test_evidence_ui.py' = 28
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -686,6 +699,7 @@ jobs:
       - name: Retain source-only composition diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        timeout-minutes: 2
         with:
           name: carr-completion-source-${{ github.sha }}-${{ github.run_attempt }}
           path: carr-library/ci-completion-results/*.txt
@@ -715,6 +729,12 @@ jobs:
     needs: source-syntax
     name: Required native managed update
     uses: ./.github/workflows/carr-managed-update.yml
+
+  # Require real passive evidence state, both backup routes and native review controls.
+  language-evidence:
+    needs: source-syntax
+    name: Required recorded language evidence and recovery
+    uses: ./.github/workflows/carr-language-evidence.yml
 
   # Exercise the actual configured UI, prepared host and checked restart.
   configured-update-native:
@@ -3781,7 +3801,7 @@ jobs:
 
   required-complete:
     name: Required complete desktop, source and update results
-    needs: [source-syntax, integrated-source-complete, completion-regressions, flite-runtime, portable-sync, trusted-client, managed-update, configured-update-native, integrated-desktop, keyboard-native]
+    needs: [source-syntax, integrated-source-complete, completion-regressions, flite-runtime, portable-sync, trusted-client, managed-update, language-evidence, configured-update-native, integrated-desktop, keyboard-native]
     if: always()
     runs-on: windows-2022
     timeout-minutes: 5
@@ -3798,6 +3818,7 @@ jobs:
       CARR_RESULT_SYNC: ${{ needs.portable-sync.result }}
       CARR_RESULT_TRUSTED_CLIENT: ${{ needs.trusted-client.result }}
       CARR_RESULT_MANAGED_UPDATE: ${{ needs.managed-update.result }}
+      CARR_RESULT_LANGUAGE_EVIDENCE: ${{ needs.language-evidence.result }}
       CARR_RESULT_CONFIGURED_UPDATE: ${{ needs.configured-update-native.result }}
       CARR_RESULT_DESKTOP: ${{ needs.integrated-desktop.result }}
       CARR_RESULT_KEYBOARD: ${{ needs.keyboard-native.result }}
@@ -3816,6 +3837,9 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $head -cne $env:CARR_REQUIRED_HEAD -or $head -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has a different HEAD.' }
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has no exact tree.' }
+          $languagePath = '.github/workflows/carr-language-evidence.yml'
+          $languageBlob = (& git rev-parse ('HEAD:' + $languagePath)).Trim()
+          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne 'de0ffa6a26dffdcc91bcb1284550f75d704f032d') { throw 'The required language evidence workflow differs from its reviewed source.' }
           $configuredPath = '.github/workflows/carr-configured-update-native.yml'
           $configuredBlob = (& git rev-parse ('HEAD:' + $configuredPath)).Trim()
           if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '14517f2e4018942a2a0a4c56ce6c59f38de861a4') { throw 'The required configured native workflow differs from its reviewed source.' }
@@ -3827,6 +3851,7 @@ jobs:
             'portable-sync'=$env:CARR_RESULT_SYNC
             'trusted-client'=$env:CARR_RESULT_TRUSTED_CLIENT
             'managed-update'=$env:CARR_RESULT_MANAGED_UPDATE
+            'language-evidence'=$env:CARR_RESULT_LANGUAGE_EVIDENCE
             'configured-update-native'=$env:CARR_RESULT_CONFIGURED_UPDATE
             'integrated-desktop'=$env:CARR_RESULT_DESKTOP
             'keyboard-native'=$env:CARR_RESULT_KEYBOARD
@@ -3837,7 +3862,8 @@ jobs:
             status=$(if ($failed.Count -eq 0) { 'PASS' } else { 'FAIL' })
             head=$head; tree=$tree; run_id=[long]$env:GITHUB_RUN_ID; run_attempt=[int]$env:GITHUB_RUN_ATTEMPT
             required_jobs=$results; failed_jobs=$failed
-            source_whole_suites=490
+            source_whole_suites=493
+            language_evidence_workflow=$languagePath; language_evidence_workflow_blob=$languageBlob
             configured_native_workflow=$configuredPath; configured_native_workflow_blob=$configuredBlob
             configured_native_artifact=('configured-update-' + $head + '-' + $env:GITHUB_RUN_ATTEMPT)
             qualification='Required workflow results only; each lane retains its original source, native, hardware and manual acceptance boundaries.'

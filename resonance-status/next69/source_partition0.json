@@ -1,0 +1,1694 @@
+{
+  "schema": "carr-actual-workflow-job-evidence-v1",
+  "head": "26beb805aab1e9e202d134008441927523cdcb94",
+  "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job_id": 140911207103,
+  "job_conclusion": "failure",
+  "finished_at": "2026-11-28T08:23:18Z",
+  "scope": "Windows whole source partition 1/index0",
+  "groups": [
+    {
+      "whole_suites": 1,
+      "passed": 1,
+      "failed": 0,
+      "path": "tests/research/test_academic_library.py",
+      "cases": 118
+    },
+    {
+      "whole_suites": 122,
+      "passed": 120,
+      "failed": 2
+    }
+  ],
+  "total_whole_suites": 123,
+  "completed_strict_junit_rows": 122,
+  "completed_junit_passed": 3187,
+  "completed_junit_failed": 2,
+  "completed_junit_skipped": 0,
+  "timeout_whole_without_final_junit": {
+    "path": "tests/transcription/test_admission_boundaries.py",
+    "existing_bound_seconds": 900,
+    "explicit_timeout_at": "2026-11-28T08:18:13.0877985Z",
+    "line": 4033,
+    "last_named_activity": "2026-11-28T08:18:00.0992431Z tests/transcription/test_admission_boundaries.py::test_stop_during_historical_receipt_hash_preserves_durable_results[True-cancel] PASSED [ 22%]\r",
+    "qualification": "NOT_COMPLETE",
+    "cause": "NOT_ESTABLISHED; shared interleaved progress rows do not establish exact per-case durations"
+  },
+  "failed_whole": {
+    "path": "tests/voice_acceptance/test_dordiai_acceptance.py",
+    "passed": 7,
+    "failed": 2,
+    "skipped": 0,
+    "case_parameters": [
+      "normal",
+      "delayed_normal"
+    ],
+    "case": "test_cancel_drains_loading_and_inflight_chunk_before_drop_ack",
+    "first_error": "Voice authority requires this worker's active operation scope.",
+    "failure_site": "test line110 direct adapter._start_worker() during recovery; actual authority checkpoint refuses outside an operation scope",
+    "prior_assertions": "Actual cancellation, empty output, exact DordiaiCancelled, drop acknowledgement, original worker retention and subsequent refresh disposal were reached before the failing direct recovery call."
+  },
+  "source_proofs": [
+    {
+      "line": 709,
+      "data": {
+        "source_descriptor_controls": 8,
+        "status": "PASS"
+      }
+    },
+    {
+      "line": 710,
+      "data": {
+        "files": 1473,
+        "head": "26beb805aab1e9e202d134008441927523cdcb94",
+        "phase": "before",
+        "source_sha256": "42bb0a2fca29034fcaf5dcfdcf99eb326e895972517d31f9c9563c69fd63d193",
+        "status": "PASS",
+        "tree": "510592c4d116652f4099a14cc7216fbcf48c955d"
+      }
+    },
+    {
+      "line": 5421,
+      "data": {
+        "files": 1473,
+        "head": "26beb805aab1e9e202d134008441927523cdcb94",
+        "phase": "after",
+        "source_sha256": "42bb0a2fca29034fcaf5dcfdcf99eb326e895972517d31f9c9563c69fd63d193",
+        "status": "PASS",
+        "tree": "510592c4d116652f4099a14cc7216fbcf48c955d"
+      }
+    }
+  ],
+  "strict_rows": [
+    {
+      "line": 840,
+      "status": "PASS",
+      "path": "tests/research/test_academic_library.py",
+      "passed": 118,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5299,
+      "status": "PASS",
+      "path": "tests/ui/test_progress_numeric_limits.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5300,
+      "status": "PASS",
+      "path": "tests/storage/test_progress_preferences_backup.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5301,
+      "status": "PASS",
+      "path": "tests/e2e/test_offline_startup.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5302,
+      "status": "PASS",
+      "path": "tests/e2e/test_import_batches.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5303,
+      "status": "PASS",
+      "path": "tests/ui/test_ocr_selection.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5304,
+      "status": "PASS",
+      "path": "tests/extract/test_document_formats_xml.py",
+      "passed": 151,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5305,
+      "status": "PASS",
+      "path": "tests/ui/test_ebook_reader.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5306,
+      "status": "PASS",
+      "path": "tests/e2e/test_epub_reading_desk.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5307,
+      "status": "PASS",
+      "path": "tests/e2e/test_catalog_insights_workflow.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5308,
+      "status": "PASS",
+      "path": "tests/e2e/test_search_operation_budget.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5309,
+      "status": "PASS",
+      "path": "tests/ingest/test_application_atomic_docx_gate.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5310,
+      "status": "PASS",
+      "path": "tests/e2e/test_source_file.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5311,
+      "status": "PASS",
+      "path": "tests/extract/test_clipping_visibility.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5312,
+      "status": "PASS",
+      "path": "tests/catalog/test_metadata_backup_roundtrip.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5313,
+      "status": "PASS",
+      "path": "tests/storage/test_academic_migration.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5314,
+      "status": "PASS",
+      "path": "tests/storage/test_printed_label_integrity.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5315,
+      "status": "PASS",
+      "path": "tests/e2e/test_catalog_tools.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5316,
+      "status": "PASS",
+      "path": "tests/acquisition/test_acquisition_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5317,
+      "status": "PASS",
+      "path": "tests/catalog/test_insights_budget.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5318,
+      "status": "PASS",
+      "path": "tests/reader/test_evidence_export.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5319,
+      "status": "PASS",
+      "path": "tests/reader/test_binary_file_export.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5320,
+      "status": "PASS",
+      "path": "tests/reader/test_topic_literature_matrix.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5321,
+      "status": "PASS",
+      "path": "tests/ui/test_academic_tools.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5322,
+      "status": "PASS",
+      "path": "tests/reader/test_reading_desk.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5323,
+      "status": "PASS",
+      "path": "tests/search/test_literal_v2_composition.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5324,
+      "status": "PASS",
+      "path": "tests/ui/test_desktop_handlers.py",
+      "passed": 60,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5325,
+      "status": "PASS",
+      "path": "tests/ui/test_reading_desk_actions.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5326,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_keymap_context.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5327,
+      "status": "PASS",
+      "path": "tests/storage/test_evidence_drafts.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5328,
+      "status": "PASS",
+      "path": "tests/ui/test_academic_library_dialog.py",
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5329,
+      "status": "PASS",
+      "path": "tests/research/test_outline_export.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5330,
+      "status": "PASS",
+      "path": "tests/reader/test_query_manager.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5331,
+      "status": "PASS",
+      "path": "tests/ui/test_federated_search.py",
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5332,
+      "status": "PASS",
+      "path": "tests/citations/test_authorized_action.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5333,
+      "status": "PASS",
+      "path": "tests/packaging/test_source_wheel.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5334,
+      "status": "PASS",
+      "path": "tests/extract/test_docx_hidden_styles.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5335,
+      "status": "PASS",
+      "path": "tests/library_assistant/test_library_workflow.py",
+      "passed": 51,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5336,
+      "status": "PASS",
+      "path": "tests/search/test_literal_unicode_memory.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5337,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_voices.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5338,
+      "status": "FAIL",
+      "path": "tests/voice_acceptance/test_dordiai_acceptance.py",
+      "passed": 7,
+      "failed": 2,
+      "skipped": 0,
+      "pytest_exit": 1
+    },
+    {
+      "line": 5339,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5340,
+      "status": "PASS",
+      "path": "tests/assistant/test_supplied_transcription.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5341,
+      "status": "PASS",
+      "path": "tests/speech/test_session.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5342,
+      "status": "PASS",
+      "path": "tests/studio/test_music_scheduling.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5343,
+      "status": "PASS",
+      "path": "tests/reader/test_export_no_clobber.py",
+      "passed": 80,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5344,
+      "status": "PASS",
+      "path": "tests/ui/test_progress_panel_state.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5345,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation.py",
+      "passed": 168,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5346,
+      "status": "PASS",
+      "path": "tests/packaging/test_native_checks_manifest.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5347,
+      "status": "PASS",
+      "path": "tests/storage/test_state_json_reader.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5348,
+      "status": "PASS",
+      "path": "tests/progress/test_progress_contract.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5349,
+      "status": "PASS",
+      "path": "tests/language_qualification/test_catalog.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5350,
+      "status": "PASS",
+      "path": "tests/citations/test_bibliography_workbench.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5351,
+      "status": "PASS",
+      "path": "tests/storage/test_complete_pending_backup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5352,
+      "status": "PASS",
+      "path": "tests/reader/test_export_change_time.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5353,
+      "status": "PASS",
+      "path": "tests/e2e/test_import_worker_publication.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5354,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_dialog.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5355,
+      "status": "PASS",
+      "path": "tests/audio/test_recording_cleanup.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5356,
+      "status": "PASS",
+      "path": "tests/audio/test_dsp.py",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5357,
+      "status": "PASS",
+      "path": "tests/speech/test_runtime.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5358,
+      "status": "PASS",
+      "path": "tests/studio/test_publishing_cli.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5359,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_advanced_union.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5360,
+      "status": "PASS",
+      "path": "tests/assistant/test_workflow_template_handlers.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5361,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_book_audio.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5362,
+      "status": "PASS",
+      "path": "tests/search/test_federated_advanced.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5363,
+      "status": "PASS",
+      "path": "tests/e2e/test_pdf_review_cancellation.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5364,
+      "status": "PASS",
+      "path": "tests/ui/test_progress_job_review.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5365,
+      "status": "PASS",
+      "path": "tests/transcription/test_protocol_fixture.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5366,
+      "status": "PASS",
+      "path": "tests/transcription/test_restore.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5367,
+      "status": "PASS",
+      "path": "tests/transcription/test_unified_authority.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5368,
+      "status": "PASS",
+      "path": "tests/storage/test_durable_state_publication.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5369,
+      "status": "PASS",
+      "path": "tests/reader/test_ebook_audio.py",
+      "passed": 65,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5370,
+      "status": "PASS",
+      "path": "tests/speech/test_player_transport.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5371,
+      "status": "PASS",
+      "path": "tests/packaging/test_audio_bundle.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5372,
+      "status": "PASS",
+      "path": "tests/sync/test_vault.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5373,
+      "status": "PASS",
+      "path": "tests/studio/test_daisy_publishing.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5374,
+      "status": "PASS",
+      "path": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5375,
+      "status": "PASS",
+      "path": "tests/security/test_anchor_locking.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5376,
+      "status": "PASS",
+      "path": "tests/security/test_idle_renewal.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5377,
+      "status": "PASS",
+      "path": "tests/security/test_managed_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5378,
+      "status": "PASS",
+      "path": "tests/ui/test_trust_status_handlers.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5379,
+      "status": "PASS",
+      "path": "tests/ui/test_find_replace_ui.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5380,
+      "status": "PASS",
+      "path": "tests/operations/test_production_admission.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5381,
+      "status": "PASS",
+      "path": "tests/ui/test_operations_dialog.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5382,
+      "status": "PASS",
+      "path": "tests/ui/test_braille_actions.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5383,
+      "status": "PASS",
+      "path": "tests/ui/test_engine_settings_lifetime.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5384,
+      "status": "PASS",
+      "path": "tests/packaging/test_installed_trusted_client_probe.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5385,
+      "status": "PASS",
+      "path": "tests/ui/test_audio_playback.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5386,
+      "status": "PASS",
+      "path": "tests/speech/test_publication_validation.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5387,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5388,
+      "status": "PASS",
+      "path": "tests/ui/test_native_reading_presentation_driver.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5389,
+      "status": "PASS",
+      "path": "tests/ui/test_reader_view_hooks.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5390,
+      "status": "PASS",
+      "path": "tests/storage/test_backup_book_batches.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5391,
+      "status": "PASS",
+      "path": "tests/catalog/test_streaming_intake.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5392,
+      "status": "PASS",
+      "path": "tests/ingest/test_batch_continuation.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5393,
+      "status": "PASS",
+      "path": "tests/ui/test_desktop_integration.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5394,
+      "status": "PASS",
+      "path": "tests/storage/test_local_schedules.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5395,
+      "status": "PASS",
+      "path": "tests/speech/test_spelling.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5396,
+      "status": "PASS",
+      "path": "tests/packaging/test_library_scale_benchmark.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5397,
+      "status": "PASS",
+      "path": "tests/studio/test_project_history.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5398,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_layout_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5399,
+      "status": "PASS",
+      "path": "tests/academic_integration/test_word_worker.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5400,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_epub_layout.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5401,
+      "status": "PASS",
+      "path": "tests/studio/test_clip_copy_dialog.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5402,
+      "status": "PASS",
+      "path": "tests/assistant/test_translation_rich_docx_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5403,
+      "status": "PASS",
+      "path": "tests/storage/test_scoped_locator_capacity.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5404,
+      "status": "PASS",
+      "path": "tests/operations/test_broker_scope.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5405,
+      "status": "PASS",
+      "path": "tests/storage/test_read_boundary.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5406,
+      "status": "PASS",
+      "path": "tests/search/test_literal_readonly.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5407,
+      "status": "PASS",
+      "path": "tests/ui/test_backup_capacity.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5408,
+      "status": "PASS",
+      "path": "tests/studio/test_book_measured_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5409,
+      "status": "PASS",
+      "path": "tests/conversion/test_selected_conversion.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5410,
+      "status": "PASS",
+      "path": "tests/transcription/test_native_profiles_fixture.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5411,
+      "status": "PASS",
+      "path": "tests/search/test_paged_candidate_work.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5412,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_management_state.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5413,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_ownership.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5414,
+      "status": "PASS",
+      "path": "tests/ui/test_voice_reference.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5415,
+      "status": "PASS",
+      "path": "tests/integrations/test_dordiai_reference_backends.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5416,
+      "status": "PASS",
+      "path": "tests/studio/test_daisy_schema_resolver.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5417,
+      "status": "PASS",
+      "path": "tests/security/test_update_handoff.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5418,
+      "status": "PASS",
+      "path": "tests/audio/test_voice_scope_checks.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 5419,
+      "status": "PASS",
+      "path": "tests/studio/test_project_markers.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "trace": [
+    {
+      "line": 2331,
+      "text": "2026-11-28T08:07:25.9019478Z ____ test_cancel_drains_loading_and_inflight_chunk_before_drop_ack[normal] ____\r"
+    },
+    {
+      "line": 2332,
+      "text": "2026-11-28T08:07:25.9021144Z \r"
+    },
+    {
+      "line": 2333,
+      "text": "2026-11-28T08:07:25.9023844Z api = <module 'carr_library.integrations.dordiai_voices' from 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\src\\\\carr_library\\\\integrations\\\\dordiai_voices.py'>\r"
+    },
+    {
+      "line": 2334,
+      "text": "2026-11-28T08:07:25.9028101Z adapter = <carr_library.integrations.dordiai_voices.DordiaiVoicesAdapter object at 0x00000210ACCC40D0>\r"
+    },
+    {
+      "line": 2335,
+      "text": "2026-11-28T08:07:25.9033455Z runtime = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-04di21_2/pytest/test_cancel_drains_loading_and0/Synthetic engine — fixture/kx47Runtime')\r"
+    },
+    {
+      "line": 2336,
+      "text": "2026-11-28T08:07:25.9036830Z recovery_scenario = 'normal'\r"
+    },
+    {
+      "line": 2337,
+      "text": "2026-11-28T08:07:25.9038177Z \r"
+    },
+    {
+      "line": 2338,
+      "text": "2026-11-28T08:07:25.9039684Z     @pytest.mark.parametrize(\"recovery_scenario\", (\"normal\", \"delayed_normal\"))\r"
+    },
+    {
+      "line": 2339,
+      "text": "2026-11-28T08:07:25.9042021Z     def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, runtime, recovery_scenario):\r"
+    },
+    {
+      "line": 2340,
+      "text": "2026-11-28T08:07:25.9043932Z         scenario(runtime, \"late_cancel_chunk\")\r"
+    },
+    {
+      "line": 2341,
+      "text": "2026-11-28T08:07:25.9045344Z         output, errors = [], []\r"
+    },
+    {
+      "line": 2342,
+      "text": "2026-11-28T08:07:25.9046708Z     \r"
+    },
+    {
+      "line": 2343,
+      "text": "2026-11-28T08:07:25.9047978Z         def run():\r"
+    },
+    {
+      "line": 2344,
+      "text": "2026-11-28T08:07:25.9049491Z             try:\r"
+    },
+    {
+      "line": 2345,
+      "text": "2026-11-28T08:07:25.9051139Z                 output.extend(adapter.stream_pcm(\"Late synthetic reply.\", \"speaker_a\", \"uk\"))\r"
+    },
+    {
+      "line": 2346,
+      "text": "2026-11-28T08:07:25.9052879Z             except Exception as exc:\r"
+    },
+    {
+      "line": 2347,
+      "text": "2026-11-28T08:07:25.9054201Z                 errors.append(exc)\r"
+    },
+    {
+      "line": 2348,
+      "text": "2026-11-28T08:07:25.9055372Z     \r"
+    },
+    {
+      "line": 2349,
+      "text": "2026-11-28T08:07:25.9056563Z         thread = Thread(target=run, daemon=True)\r"
+    },
+    {
+      "line": 2350,
+      "text": "2026-11-28T08:07:25.9057888Z         thread.start()\r"
+    },
+    {
+      "line": 2351,
+      "text": "2026-11-28T08:07:25.9059155Z         wait_for(lambda: (runtime / \"awaiting-cancel\").exists())\r"
+    },
+    {
+      "line": 2352,
+      "text": "2026-11-28T08:07:25.9060523Z         cancelled_worker = adapter._worker\r"
+    },
+    {
+      "line": 2353,
+      "text": "2026-11-28T08:07:25.9061955Z         assert cancelled_worker is not None and cancelled_worker.process.poll() is None\r"
+    },
+    {
+      "line": 2354,
+      "text": "2026-11-28T08:07:25.9063578Z         adapter.cancel()\r"
+    },
+    {
+      "line": 2355,
+      "text": "2026-11-28T08:07:25.9064816Z         thread.join(timeout=3)\r"
+    },
+    {
+      "line": 2356,
+      "text": "2026-11-28T08:07:25.9066062Z         assert not thread.is_alive() and not output\r"
+    },
+    {
+      "line": 2357,
+      "text": "2026-11-28T08:07:25.9067521Z         assert len(errors) == 1 and isinstance(errors[0], api.DordiaiCancelled)\r"
+    },
+    {
+      "line": 2358,
+      "text": "2026-11-28T08:07:25.9069110Z         assert [r[\"mode\"] for r in records(runtime)][-1] == \"drop\"\r"
+    },
+    {
+      "line": 2359,
+      "text": "2026-11-28T08:07:25.9070738Z         assert adapter._worker is cancelled_worker and cancelled_worker.process.poll() is None\r"
+    },
+    {
+      "line": 2360,
+      "text": "2026-11-28T08:07:25.9072579Z         # Refresh must close the cancelled process before the next scenario starts.\r"
+    },
+    {
+      "line": 2361,
+      "text": "2026-11-28T08:07:25.9074426Z         adapter.voices(refresh=True)\r"
+    },
+    {
+      "line": 2362,
+      "text": "2026-11-28T08:07:25.9075900Z         assert cancelled_worker.process.poll() is not None and adapter._worker is None\r"
+    },
+    {
+      "line": 2363,
+      "text": "2026-11-28T08:07:25.9077510Z         recovery_nonce = scenario(runtime, recovery_scenario)\r"
+    },
+    {
+      "line": 2364,
+      "text": "2026-11-28T08:07:25.9079118Z         # The previous actor's marker remains on disk and must not satisfy readiness.\r"
+    },
+    {
+      "line": 2365,
+      "text": "2026-11-28T08:07:25.9080880Z         assert ready_worker_pid(runtime, recovery_nonce) is None\r"
+    },
+    {
+      "line": 2366,
+      "text": "2026-11-28T08:07:25.9082665Z         # This test checks cancellation and reply framing, not subsecond Windows\r"
+    },
+    {
+      "line": 2367,
+      "text": "2026-11-28T08:07:25.9084744Z         # interpreter startup. Wait for a launch-bound fixture checkpoint, preserving\r"
+    },
+    {
+      "line": 2368,
+      "text": "2026-11-28T08:07:25.9086704Z         # the same one-second protocol deadline for the actual recovery render.\r"
+    },
+    {
+      "line": 2369,
+      "text": "2026-11-28T08:07:25.9088395Z >       recovered_worker = adapter._start_worker()\r"
+    },
+    {
+      "line": 2370,
+      "text": "2026-11-28T08:07:25.9089804Z                            ^^^^^^^^^^^^^^^^^^^^^^^\r"
+    },
+    {
+      "line": 2371,
+      "text": "2026-11-28T08:07:25.9090816Z \r"
+    },
+    {
+      "line": 2372,
+      "text": "2026-11-28T08:07:25.9091854Z tests\\voice_acceptance\\test_dordiai_acceptance.py:110: \r"
+    },
+    {
+      "line": 2373,
+      "text": "2026-11-28T08:07:25.9093303Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\r"
+    },
+    {
+      "line": 2374,
+      "text": "2026-11-28T08:07:25.9094888Z src\\carr_library\\integrations\\dordiai_voices.py:502: in _start_worker\r"
+    },
+    {
+      "line": 2375,
+      "text": "2026-11-28T08:07:25.9096452Z     configuration = self._authority.runtime_configuration()\r"
+    },
+    {
+      "line": 2376,
+      "text": "2026-11-28T08:07:25.9097785Z                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r"
+    },
+    {
+      "line": 2377,
+      "text": "2026-11-28T08:07:25.9099304Z src\\carr_library\\integrations\\_dordiai_authority.py:312: in runtime_configuration\r"
+    },
+    {
+      "line": 2378,
+      "text": "2026-11-28T08:07:25.9100880Z     self.checkpoint()\r"
+    },
+    {
+      "line": 2379,
+      "text": "2026-11-28T08:07:25.9102189Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\r"
+    },
+    {
+      "line": 2380,
+      "text": "2026-11-28T08:07:25.9103552Z \r"
+    },
+    {
+      "line": 2381,
+      "text": "2026-11-28T08:07:25.9104755Z self = <carr_library.integrations._dordiai_authority.DordiaiAuthority object at 0x00000210ACCC52D0>\r"
+    },
+    {
+      "line": 2382,
+      "text": "2026-11-28T08:07:25.9106416Z \r"
+    },
+    {
+      "line": 2383,
+      "text": "2026-11-28T08:07:25.9108359Z     def checkpoint(self):\r"
+    },
+    {
+      "line": 2384,
+      "text": "2026-11-28T08:07:25.9110426Z         if self._depth <= 0 or self._thread != get_ident():\r"
+    },
+    {
+      "line": 2385,
+      "text": "2026-11-28T08:07:25.9112420Z >           raise ValueError('Voice authority requires this worker\\'s active operation scope.')\r"
+    },
+    {
+      "line": 2386,
+      "text": "2026-11-28T08:07:25.9114617Z E           ValueError: Voice authority requires this worker's active operation scope.\r"
+    },
+    {
+      "line": 2387,
+      "text": "2026-11-28T08:07:25.9116188Z \r"
+    },
+    {
+      "line": 2388,
+      "text": "2026-11-28T08:07:25.9117545Z src\\carr_library\\integrations\\_dordiai_authority.py:270: ValueError\r"
+    },
+    {
+      "line": 2389,
+      "text": "2026-11-28T08:07:25.9119460Z _ test_cancel_drains_loading_and_inflight_chunk_before_drop_ack[delayed_normal] _\r"
+    },
+    {
+      "line": 2390,
+      "text": "2026-11-28T08:07:25.9120754Z \r"
+    },
+    {
+      "line": 2391,
+      "text": "2026-11-28T08:07:25.9122462Z api = <module 'carr_library.integrations.dordiai_voices' from 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\src\\\\carr_library\\\\integrations\\\\dordiai_voices.py'>\r"
+    },
+    {
+      "line": 2392,
+      "text": "2026-11-28T08:07:25.9124885Z adapter = <carr_library.integrations.dordiai_voices.DordiaiVoicesAdapter object at 0x00000210AA9A8E90>\r"
+    },
+    {
+      "line": 2393,
+      "text": "2026-11-28T08:07:25.9127559Z runtime = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-04di21_2/pytest/test_cancel_drains_loading_and1/Synthetic engine — fixture/kx47Runtime')\r"
+    },
+    {
+      "line": 2394,
+      "text": "2026-11-28T08:07:25.9129962Z recovery_scenario = 'delayed_normal'\r"
+    },
+    {
+      "line": 2395,
+      "text": "2026-11-28T08:07:25.9131267Z \r"
+    },
+    {
+      "line": 2396,
+      "text": "2026-11-28T08:07:25.9132661Z     @pytest.mark.parametrize(\"recovery_scenario\", (\"normal\", \"delayed_normal\"))\r"
+    },
+    {
+      "line": 2397,
+      "text": "2026-11-28T08:07:25.9286249Z     def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, runtime, recovery_scenario):\r"
+    },
+    {
+      "line": 2398,
+      "text": "2026-11-28T08:07:25.9289953Z         scenario(runtime, \"late_cancel_chunk\")\r"
+    },
+    {
+      "line": 2399,
+      "text": "2026-11-28T08:07:25.9291444Z         output, errors = [], []\r"
+    },
+    {
+      "line": 2400,
+      "text": "2026-11-28T08:07:25.9292780Z     \r"
+    },
+    {
+      "line": 2401,
+      "text": "2026-11-28T08:07:25.9293982Z         def run():\r"
+    },
+    {
+      "line": 2402,
+      "text": "2026-11-28T08:07:25.9295247Z             try:\r"
+    },
+    {
+      "line": 2403,
+      "text": "2026-11-28T08:07:25.9296728Z                 output.extend(adapter.stream_pcm(\"Late synthetic reply.\", \"speaker_a\", \"uk\"))\r"
+    },
+    {
+      "line": 2404,
+      "text": "2026-11-28T08:07:25.9298345Z             except Exception as exc:\r"
+    },
+    {
+      "line": 2405,
+      "text": "2026-11-28T08:07:25.9299729Z                 errors.append(exc)\r"
+    },
+    {
+      "line": 2406,
+      "text": "2026-11-28T08:07:25.9301037Z     \r"
+    },
+    {
+      "line": 2407,
+      "text": "2026-11-28T08:07:25.9302239Z         thread = Thread(target=run, daemon=True)\r"
+    },
+    {
+      "line": 2408,
+      "text": "2026-11-28T08:07:25.9303528Z         thread.start()\r"
+    },
+    {
+      "line": 2409,
+      "text": "2026-11-28T08:07:25.9304728Z         wait_for(lambda: (runtime / \"awaiting-cancel\").exists())\r"
+    },
+    {
+      "line": 2410,
+      "text": "2026-11-28T08:07:25.9306127Z         cancelled_worker = adapter._worker\r"
+    },
+    {
+      "line": 2411,
+      "text": "2026-11-28T08:07:25.9307583Z         assert cancelled_worker is not None and cancelled_worker.process.poll() is None\r"
+    },
+    {
+      "line": 2412,
+      "text": "2026-11-28T08:07:25.9309205Z         adapter.cancel()\r"
+    },
+    {
+      "line": 2413,
+      "text": "2026-11-28T08:07:25.9310351Z         thread.join(timeout=3)\r"
+    },
+    {
+      "line": 2414,
+      "text": "2026-11-28T08:07:25.9311574Z         assert not thread.is_alive() and not output\r"
+    },
+    {
+      "line": 2415,
+      "text": "2026-11-28T08:07:25.9313327Z         assert len(errors) == 1 and isinstance(errors[0], api.DordiaiCancelled)\r"
+    },
+    {
+      "line": 2416,
+      "text": "2026-11-28T08:07:25.9315053Z         assert [r[\"mode\"] for r in records(runtime)][-1] == \"drop\"\r"
+    },
+    {
+      "line": 2417,
+      "text": "2026-11-28T08:07:25.9316707Z         assert adapter._worker is cancelled_worker and cancelled_worker.process.poll() is None\r"
+    },
+    {
+      "line": 2418,
+      "text": "2026-11-28T08:07:25.9318456Z         # Refresh must close the cancelled process before the next scenario starts.\r"
+    },
+    {
+      "line": 2419,
+      "text": "2026-11-28T08:07:25.9320010Z         adapter.voices(refresh=True)\r"
+    },
+    {
+      "line": 2420,
+      "text": "2026-11-28T08:07:25.9321443Z         assert cancelled_worker.process.poll() is not None and adapter._worker is None\r"
+    },
+    {
+      "line": 2421,
+      "text": "2026-11-28T08:07:25.9323538Z         recovery_nonce = scenario(runtime, recovery_scenario)\r"
+    },
+    {
+      "line": 2422,
+      "text": "2026-11-28T08:07:25.9325703Z         # The previous actor's marker remains on disk and must not satisfy readiness.\r"
+    },
+    {
+      "line": 2423,
+      "text": "2026-11-28T08:07:25.9327917Z         assert ready_worker_pid(runtime, recovery_nonce) is None\r"
+    },
+    {
+      "line": 2424,
+      "text": "2026-11-28T08:07:25.9330112Z         # This test checks cancellation and reply framing, not subsecond Windows\r"
+    },
+    {
+      "line": 2425,
+      "text": "2026-11-28T08:07:25.9332447Z         # interpreter startup. Wait for a launch-bound fixture checkpoint, preserving\r"
+    },
+    {
+      "line": 2426,
+      "text": "2026-11-28T08:07:25.9335015Z         # the same one-second protocol deadline for the actual recovery render.\r"
+    },
+    {
+      "line": 2427,
+      "text": "2026-11-28T08:07:25.9336963Z >       recovered_worker = adapter._start_worker()\r"
+    },
+    {
+      "line": 2428,
+      "text": "2026-11-28T08:07:25.9338785Z                            ^^^^^^^^^^^^^^^^^^^^^^^\r"
+    },
+    {
+      "line": 2429,
+      "text": "2026-11-28T08:07:25.9340337Z \r"
+    },
+    {
+      "line": 2430,
+      "text": "2026-11-28T08:07:25.9341696Z tests\\voice_acceptance\\test_dordiai_acceptance.py:110: \r"
+    },
+    {
+      "line": 2431,
+      "text": "2026-11-28T08:07:25.9343900Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\r"
+    },
+    {
+      "line": 2432,
+      "text": "2026-11-28T08:07:25.9346103Z src\\carr_library\\integrations\\dordiai_voices.py:502: in _start_worker\r"
+    },
+    {
+      "line": 2433,
+      "text": "2026-11-28T08:07:25.9348314Z     configuration = self._authority.runtime_configuration()\r"
+    },
+    {
+      "line": 2434,
+      "text": "2026-11-28T08:07:25.9350183Z                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r"
+    },
+    {
+      "line": 2435,
+      "text": "2026-11-28T08:07:25.9352328Z src\\carr_library\\integrations\\_dordiai_authority.py:312: in runtime_configuration\r"
+    },
+    {
+      "line": 2436,
+      "text": "2026-11-28T08:07:25.9354323Z     self.checkpoint()\r"
+    },
+    {
+      "line": 2437,
+      "text": "2026-11-28T08:07:25.9355617Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\r"
+    },
+    {
+      "line": 2438,
+      "text": "2026-11-28T08:07:25.9356803Z \r"
+    },
+    {
+      "line": 2439,
+      "text": "2026-11-28T08:07:25.9358217Z self = <carr_library.integrations._dordiai_authority.DordiaiAuthority object at 0x00000210AA9AB010>\r"
+    },
+    {
+      "line": 2440,
+      "text": "2026-11-28T08:07:25.9359852Z \r"
+    },
+    {
+      "line": 2441,
+      "text": "2026-11-28T08:07:25.9360832Z     def checkpoint(self):\r"
+    },
+    {
+      "line": 2442,
+      "text": "2026-11-28T08:07:25.9362184Z         if self._depth <= 0 or self._thread != get_ident():\r"
+    },
+    {
+      "line": 2443,
+      "text": "2026-11-28T08:07:25.9364522Z >           raise ValueError('Voice authority requires this worker\\'s active operation scope.')\r"
+    },
+    {
+      "line": 2444,
+      "text": "2026-11-28T08:07:25.9367983Z E           ValueError: Voice authority requires this worker's active operation scope.\r"
+    },
+    {
+      "line": 2445,
+      "text": "2026-11-28T08:07:25.9369261Z \r"
+    },
+    {
+      "line": 2446,
+      "text": "2026-11-28T08:07:25.9370873Z src\\carr_library\\integrations\\_dordiai_authority.py:270: ValueError\r"
+    },
+    {
+      "line": 2447,
+      "text": "2026-11-28T08:07:25.9372790Z - generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-04di21_2\\junit.xml -\r"
+    },
+    {
+      "line": 2448,
+      "text": "2026-11-28T08:07:25.9374723Z =========================== short test summary info ===========================\r"
+    },
+    {
+      "line": 2449,
+      "text": "2026-11-28T08:07:25.9377461Z FAILED tests/voice_acceptance/test_dordiai_acceptance.py::test_cancel_drains_loading_and_inflight_chunk_before_drop_ack[normal] - ValueError: Voice authority requires this worker's active operation scope.\r"
+    },
+    {
+      "line": 2450,
+      "text": "2026-11-28T08:07:25.9381132Z FAILED tests/voice_acceptance/test_dordiai_acceptance.py::test_cancel_drains_loading_and_inflight_chunk_before_drop_ack[delayed_normal] - ValueError: Voice authority requires this worker's active operation scope.\r"
+    },
+    {
+      "line": 2451,
+      "text": "2026-11-28T08:07:25.9383871Z ========================= 2 failed, 7 passed in 6.85s =========================\r"
+    }
+  ],
+  "timeout_summary": {
+    "line": 5298,
+    "text": "2026-11-28T08:23:10.5694922Z FAIL: tests/transcription/test_admission_boundaries.py: required suite did not complete cleanly; last phase=pytest process; TimeoutExpired: Command '['D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Scripts\\\\python.exe', '-B', '-c', \"\\nimport sys\\nimport socket\\n\\ndef offline_network(*args, **kwargs):\\n    raise OSError('Network access is disabled during offline verification')\\n\\nsocket.socket.connect = offline_network\\nsocket.socket.connect_ex = offline_network\\nsocket.create_connection = offline_network\\nsocket.getaddrinfo = offline_network\\n\\ntry:\\n    import onnxruntime\\nexcept ImportError:\\n    pass\\nelse:\\n    onnxruntime.disable_telemetry_events()\\n\\nimport pytest\\n\\ndef _needs_gil_stack_dump(platform=sys.platform, implementation=sys.implementation.name,\\n                          version=sys.version_info[:2]):\\n    return platform == 'win32' and implementation == 'cpython' and tuple(version) == (3, 11)\\n\\nclass GilTimedStackDump:\\n    # CPython 3.11's native timed dumper walks changing frames without the GIL\\n    # (python/cpython#140815; pytest-dev/pytest#7022). A Python thread calls the\\n    # synchronous, bounded dumper while it owns the GIL instead. Fatal exception\\n    # handling remains pytest's own; the parent's 600/900 s deadline is unchanged.\\n    timeout = 0.0\\n    exit_on_timeout = False\\n\\n    @pytest.hookimpl(tryfirst=True)\\n    def pytest_configure(self, config):\\n        timeout = float(config.getini('faulthandler_timeout') or 0.0)\\n        if timeout <= 0:\\n            return\\n        import math\\n        if not math.isfinite(timeout):\\n            raise ValueError('A timed stack diagnostic needs a finite interval.')\\n        self.timeout = timeout\\n        self.exit_on_timeout = config.getini('faulthandler_exit_on_timeout')\\n        # Pinned pytest 9.0.2 consults this same ini cache in its protocol hook.\\n        # Only its unsafe timed traversal is suppressed; enable()/fatal handling\\n        # and all other configured pytest policies remain untouched.\\n        config._inicache['faulthandler_timeout'] = 0.0\\n\\n    @pytest.hookimpl(wrapper=True, tryfirst=True)\\n    def pytest_runtest_protocol(self, item):\\n        if self.timeout <= 0:\\n            return (yield)\\n        import faulthandler\\n        import os\\n        import threading\\n        stopped = threading.Event()\\n        interval = self.timeout\\n        errors = []\\n        fd = os.dup(sys.__stderr__.fileno())\\n\\n        def diagnostic():\\n            try:\\n                if not stopped.wait(interval):\\n                    os.write(fd, b'Timed stack diagnostic (GIL-owned Python thread):\\\\n')\\n                    # This synchronous CPython entry point does not release the\\n                    # GIL while traversing frames; its usual 100-thread/frame\\n                    # and 500-character field bounds still apply.\\n                    faulthandler.dump_traceback(file=fd, all_threads=True)\\n                    if self.exit_on_timeout:\\n                        os._exit(1)\\n            except BaseException as exc:\\n                errors.append(exc)\\n            finally:\\n                os.close(fd)\\n\\n        worker = threading.Thread(target=diagnostic, name='carr-ci-stack-diagnostic',\\n                                  daemon=True)\\n        try:\\n            worker.start()\\n        except BaseException:\\n            os.close(fd)\\n            raise\\n        try:\\n            return (yield)\\n        finally:\\n            stopped.set()\\n            worker.join(timeout=5)\\n            if worker.is_alive():\\n                raise RuntimeError('The timed stack diagnostic did not settle.')\\n            if errors:\\n                raise RuntimeError('The timed stack diagnostic failed.') from errors[0]\\n\\nclass RejectExpectedFailures:\\n    seen = False\\n\\n    def pytest_runtest_logreport(self, report):\\n        if hasattr(report, 'wasxfail'):\\n            self.seen = True\\n\\npolicy = RejectExpectedFailures()\\nplugins = [policy]\\nif _needs_gil_stack_dump():\\n    plugins.append(GilTimedStackDump())\\nstatus = pytest.main(sys.argv[1:], plugins=plugins)\\nif policy.seen:\\n    print('FAIL: pytest reported XFAIL or XPASS', flush=True)\\n    if status == pytest.ExitCode.OK:\\n        status = pytest.ExitCode.TESTS_FAILED\\nraise SystemExit(status)\\n\", '-v', '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-bmxov_d_\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-bmxov_d_\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\transcription\\\\test_admission_boundaries.py']' timed out after 900 seconds\r"
+  },
+  "final_summaries": [
+    {
+      "line": 841,
+      "text": "2026-11-28T08:03:10.4902288Z Required suites complete: 1; passed=1; failed=0\r"
+    },
+    {
+      "line": 5420,
+      "text": "2026-11-28T08:23:10.5822148Z Required suites complete: 122; passed=120; failed=2\r"
+    }
+  ],
+  "artifact": {
+    "id": 15255567584,
+    "name": "carr-required-source-0-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size": 361410,
+    "sha256": "a21f5eb035c4260fc2108bdf339dccca6b09783ecd3b324b620957a6ea152597"
+  },
+  "limitations": [
+    "No completed verdict is inferred for the timed-out ASR whole.",
+    "The 123-whole partition and full 490 aggregate failed; successful rows do not qualify the aggregate.",
+    "No source, timeout, hardware or other run result was changed."
+  ]
+}

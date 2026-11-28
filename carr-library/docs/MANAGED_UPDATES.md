@@ -366,3 +366,43 @@ anchor belongs only to that synthetic run. Production publisher provisioning,
 vendor rollout, a real user's installation, Authenticode, NVDA and physical audio
 remain separate qualifications. The probe's source review or the portable
 122-case and TLS15 results cannot stand in for an actual successful native run.
+
+### Observed corrected A3-to-B result
+
+The corrected immutable baseline A3 is
+`7bfdbe2ce454bfa83bb2309ee897aaf131d3411f` (tree
+`900774226367870b3bf1c2afd34b5e3fcc1e16ea`). Its
+[configured-updater run 46121235190](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121235190)
+completed all 122 source and 122 isolated-installed cases on both Linux and
+Windows, plus the separate Windows local-TLS 15 source and 15 installed cases.
+These are the ordinary and transport results for that exact baseline.
+
+The subsequent
+[required native run 46122917046, job 140911207117](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911207117)
+actually built and installed A3, then completed the configured native cycle to
+B `26beb805aab1e9e202d134008441927523cdcb94` (tree
+`510592c4d116652f4099a14cc7216fbcf48c955d`). Its closed report passed all
+15 native UI checks, 10 parent transaction/restart checks and 15 installed
+origins: real host preparation after explicit Yes; signed fixture review and
+verified download; Cancel without handoff; normal Close before COMMIT; actual
+checked installed B restart; and normal restart closure with its owned process
+family settled. It also verified complete prior A retention, unchanged synthetic
+research, actual backup restore and standard-uninstall research retention.
+The separate managed-update rollback lane remains its own requirement.
+
+The exact source and isolated B package checks passed before and after this
+work. Closed retention admitted 40 bounded report files; the artifact also
+contains their retention receipt.
+[Artifact 15254604384](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/artifacts/15254604384)
+is 571,255 bytes, with SHA-256
+`77e7d7c258e3d7390d8277c212fa650c548fccb32a75c54e587d092278edb866`.
+The durable structured result is
+`resonance-status/Configured_Update_A3_B_Actual_20261128.json`, Git blob
+`78b44172915ffb73ee9aabed4055546772918c6b`.
+
+This result qualifies the tested compiled A3-to-B software route with its
+synthetic owned TUF publisher and research fixtures. Production publisher
+configuration, production rollout, real-user installation, native file-picker
+accessibility, Authenticode, NVDA and physical audio retain the separate
+limitations above. Later source changes require their own applicable checks;
+the recorded result remains bound to these exact A3 and B identities.
