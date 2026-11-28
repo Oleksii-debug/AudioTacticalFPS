@@ -97,7 +97,8 @@ def run_native(source=None):
                 wildcard = picker.GetWildcard()
                 check('native file selector includes all additional formats',
                     all('*' + extension in wildcard for extension in
-                        ('.html', '.md', '.eml', '.fb2', '.odt', '.ods', '.odp', '.pptx', '.xlsx')))
+                        ('.html', '.md', '.eml', '.fb2', '.odt', '.ods', '.odp', '.pptx', '.xlsx',
+                         '.jpg', '.jpeg', '.png', '.tif', '.tiff')))
             finally:
                 picker.Destroy()
 
@@ -122,6 +123,9 @@ def run_native(source=None):
                     check('format help describes unverified text and unsupported conversions',
                         'unverified logical segments' in text.GetValue()
                         and 'RTF' in text.GetValue() and 'not handled' in text.GetValue())
+                    check('format help describes bounded raster frames and independent review',
+                        all(value in text.GetValue() for value in
+                            ('JPEG/PNG', 'TIFF', 'physical frames', 'independent review', '20 million pixels')))
                     text.SetFocus()
                     check('format help can receive native keyboard focus', pump(lambda: wx.Window.FindFocus() is text))
                 except BaseException:
@@ -177,8 +181,10 @@ def run_native(source=None):
                 dialog = state['import']
                 check('native queue recognizes HTML and Markdown as two documents',
                       dialog.batch['counts']['queued'] == 2 and dialog.rows.GetCount() == 2)
-                button = next(child for child in dialog.GetChildren()
-                              if isinstance(child, wx.Button) and child.GetLabel() == '&Start queued files')
+                button, = [child for child in dialog.content.GetChildren()
+                           if isinstance(child, wx.Button)
+                           and child.GetLabel() == '&Start queued files'
+                           and child.GetName() == 'Start queued files']
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
                 event.SetEventObject(button)
                 check('native Start queued files button event launches work',

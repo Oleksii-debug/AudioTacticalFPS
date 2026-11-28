@@ -397,3 +397,114 @@ def test_regex_child_preserves_runtime_bytecode_and_unicode_protocol(tmp_path, m
     assert copy.source_text == 'Назва 12 кг.'
     assert {path.relative_to(sealed): path.read_bytes()
             for path in sealed.rglob('*') if path.is_file()} == before
+
+
+def test_one_thousand_matching_pronunciation_rules_commit_one_undo_step():
+    document = ReadingDocument('[0000]')
+    rules = [PronunciationRule(f'[{index:04d}]', f'[{index + 1:04d}]')
+             for index in range(1000)]
+    assert document.apply_pronunciations(rules)
+    assert document.text == '[1000]'
+    assert document.revision == 1 and len(document.to_dict()['edits']) == 1
+    assert document.source_text == '[0000]'
+    assert document.undo() and document.text == '[0000]'
+    assert document.redo() and document.text == '[1000]'
+
+
+def test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic():
+    import tracemalloc
+    document = ReadingDocument('a' * 10_000)
+    before = document.to_dict()
+    tracemalloc.start()
+    try:
+        with pytest.raises(ValueError, match='budget'):
+            document.apply_pronunciations([PronunciationRule('a', 'b' * 4096)])
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    # The rejected output would be over 40 MB. Admission must not allocate it.
+    assert peak < 8 * 1024 * 1024
+    assert document.to_dict() == before
+
+
+def test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged():
+    document = ReadingDocument('a' * 100_000)
+    before = document.to_dict()
+    checks = 0
+    def cancelled():
+        nonlocal checks
+        checks += 1
+        return checks >= 6
+    with pytest.raises(InterruptedError):
+        document.apply_pronunciations([PronunciationRule('a', 'b')], cancelled=cancelled)
+    assert checks == 6 and document.to_dict() == before
+
+
+def test_regex_backreference_expansion_is_bounded_inside_the_real_child():
+    import subprocess
+    import sys
+    from carr_library.speech import reading
+    worker = Path(reading.__file__).with_name('regex_worker.py')
+    code = (
+        'import json, runpy, tracemalloc\n'
+        f'worker = runpy.run_path({str(worker)!r})\n'
+        'tracemalloc.start()\n'
+        'try:\n'
+        '    worker["main"]()\n'
+        'except ValueError:\n'
+        '    print(json.dumps({"rejected": True, "peak": tracemalloc.get_traced_memory()[1]}))\n'
+        'else:\n'
+        '    raise AssertionError("Unbounded replacement was accepted.")\n'
+        'finally:\n'
+        '    tracemalloc.stop()\n')
+    payload = {'text': 'a' * 20_000, 'pattern': '(a+)',
+               'replacement': r'\1' * 2048, 'ignore_case': False}
+    completed = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-S', '-c', code],
+        input=json.dumps(payload), capture_output=True, text=True, timeout=15, check=True)
+    result = json.loads(completed.stdout)
+    assert result['rejected'] is True
+    # A single match.expand(template) would allocate 40 MB before rejecting it.
+    assert result['peak'] < 8 * 1024 * 1024
+
+
+def test_failed_regex_expansion_never_publishes_earlier_rules():
+    document = ReadingDocument('!' + 'a' * 20_000)
+    before = document.to_dict()
+    with pytest.raises((ValueError, RuntimeError)):
+        document.apply_pronunciations([PronunciationRule('!', '?'),
+            PronunciationRule('(a+)', r'\1' * 2048, regex=True)], timeout=10)
+    assert document.to_dict() == before
+
+
+@pytest.mark.parametrize('text,pattern,replacement', [
+    ('ab', r'(?P<one>a)(b)', r'\g<one>-\2-\\-\101'),
+    ('a', r'(a)', r'\112\1'),
+    ('b ab', r'(a)?b', r'<\1>'),
+    ('aa', r'(?=a)|a', 'X'),
+    ('a', 'a', r'\\g<one>'),
+])
+def test_bounded_regex_worker_keeps_python_replacement_semantics(text, pattern, replacement):
+    import re
+    document = ReadingDocument(text)
+    document.apply_pronunciations([PronunciationRule(pattern, replacement, regex=True)], timeout=10)
+    assert document.text == re.sub(pattern, replacement, text)
+    assert document.source_text == text
+
+
+@pytest.mark.parametrize('replacement', ['\\', r'\g<missing>'])
+def test_invalid_regex_replacement_remains_atomic(replacement):
+    document = ReadingDocument('a')
+    with pytest.raises((ValueError, RuntimeError)):
+        document.apply_pronunciations([PronunciationRule('a', replacement, regex=True)], timeout=10)
+    assert document.text == 'a' and document.revision == 0
+
+
+def test_bounded_rules_preserve_language_then_exact_voice_precedence():
+    document = ReadingDocument('start')
+    document.apply_pronunciations([
+        PronunciationRule('language', 'voice', voice_id='fixture:voice'),
+        PronunciationRule('general', 'language', language='en'),
+        PronunciationRule('start', 'general'),
+        PronunciationRule('voice', 'wrong', language='de', voice_id='fixture:voice'),
+    ], language='en', voice_id='fixture:voice')
+    assert document.text == 'voice' and document.revision == 1

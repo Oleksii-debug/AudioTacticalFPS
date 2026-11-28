@@ -1,0 +1,236 @@
+name: Unified local transcription acceptance
+on:
+  push:
+    branches: [feature/supplied-transcription-20261127-137c, carr/asr-runtime-closure-20261127-5900, carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
+  pull_request:
+    branches: [carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: transcription-bridge-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  protocol:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    # Actual candidate7: completed modules 748.13s plus admission >600s serial.
+    # Keep finite envelopes and every whole-suite/native gate; no worker budget changes.
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the actual source package and test dependencies
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-asr-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-asr-results/tested-commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-asr-results/tested-tree.txt'
+          python -m pip install '.[test]'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m compileall -q src scripts/windows_transcription_smoke.py scripts/windows_transcription_profiles_smoke.py tests/transcription
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify retained inputs, actual child protocol, recovery and CLI
+        timeout-minutes: 20
+        shell: pwsh
+        run: |
+          $suites = @('tests/transcription/test_supplied_worker_bridge.py', 'tests/transcription/test_v5_worker_profile.py', 'tests/transcription/test_runtime_interpreter.py', 'tests/operations/test_transcription_admission.py', 'tests/assistant/test_supplied_transcription.py', 'tests/ui/test_progress_job_review.py', 'tests/transcription/test_protocol_fixture.py', 'tests/transcription/test_service.py', 'tests/transcription/test_admission_boundaries.py', 'tests/transcription/test_runtime_admission.py', 'tests/transcription/test_restore.py', 'tests/storage/test_transcription_backup.py', 'tests/ui/test_transcription_dialog.py', 'tests/e2e/test_transcription_cli.py', 'tests/transcription/test_unified_authority.py', 'tests/transcription/test_export_publication.py', 'tests/transcription/test_native_profiles_fixture.py')
+          if ($env:RUNNER_OS -eq 'Windows') { $suites += 'tests/transcription/test_protocol_fixture_windows.py' }
+          python scripts/ci_check.py --jobs 2 --suite-timeout 'tests/transcription/test_admission_boundaries.py=900' @suites 2>&1 | Tee-Object 'ci-asr-results/source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $reviewedAsrCounts = @{
+            'tests/transcription/test_service.py' = 28
+            'tests/transcription/test_admission_boundaries.py' = 40
+            'tests/transcription/test_protocol_fixture.py' = 9
+            'tests/storage/test_transcription_backup.py' = 143
+            'tests/transcription/test_native_profiles_fixture.py' = 2
+          }
+          if ($env:RUNNER_OS -eq 'Windows') { $reviewedAsrCounts['tests/transcription/test_protocol_fixture_windows.py'] = 2 }
+          foreach ($entry in $reviewedAsrCounts.GetEnumerator()) {
+            $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+            if (@(Select-String -LiteralPath 'ci-asr-results/source.txt' -Pattern $pattern).Count -ne 1) { throw ('Required ASR case inventory differs: ' + $entry.Key) }
+          }
+      - name: Verify the same whole suites against the installed package
+        timeout-minutes: 35
+        shell: pwsh
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          PYTEST_ADDOPTS: ''
+        run: |
+          $installedAsr = @'
+          from hashlib import sha256
+          import importlib, json, os, pathlib, socket, sys, xml.etree.ElementTree as ET
+          import pytest
+          checkout = pathlib.Path.cwd().resolve()
+          modules = ["carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.transcription","carr_library.backup_transcription","carr_library.state_backup","carr_library.backup_sidecars","carr_library.library_backup","carr_library.ui.transcription_runtime_dialog","carr_library.ui.transcription_dialog","carr_library.transcription_cli","carr_library.integrations.transcription_exports"]
+          def origins():
+              result = {}
+              for name in modules:
+                  actual = pathlib.Path(importlib.import_module(name).__file__).resolve()
+                  source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+                  assert not actual.is_relative_to(checkout) and actual.is_relative_to(pathlib.Path(sys.prefix).resolve()), (name, actual)
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(source.read_bytes()).hexdigest(), name
+                  result[name] = dict(path=str(actual), sha256=digest)
+              return result
+          before = origins()
+          fixture_paths = ('tests/transcription/fixture_runtime.py',
+                           'tests/transcription/fixtures/protocol_worker.py')
+          fixture_hashes = {name: sha256((checkout / name).read_bytes()).hexdigest() for name in fixture_paths}
+          def offline_network(*args, **kwargs):
+              raise OSError('Network access is disabled during offline verification')
+          socket.socket.connect = socket.socket.connect_ex = offline_network
+          socket.create_connection = socket.getaddrinfo = offline_network
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          suites = ["tests/transcription/test_supplied_worker_bridge.py","tests/transcription/test_v5_worker_profile.py","tests/transcription/test_runtime_interpreter.py","tests/operations/test_transcription_admission.py","tests/assistant/test_supplied_transcription.py","tests/ui/test_progress_job_review.py","tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/transcription/test_export_publication.py",
+              "tests/transcription/test_native_profiles_fixture.py",
+          ]
+          if os.name == 'nt':
+              suites.append('tests/transcription/test_protocol_fixture_windows.py')
+          report = pathlib.Path('ci-asr-results/installed.xml')
+          # Reuse the exact reviewed timed diagnostic without executing its child policy.
+          from hashlib import sha1 as _ci_diagnostic_sha1
+          import stat as _ci_diagnostic_stat
+          _ci_diagnostic_path = pathlib.Path.cwd() / 'scripts/ci_check.py'
+          _ci_diagnostic_info = _ci_diagnostic_path.lstat()
+          assert (_ci_diagnostic_stat.S_ISREG(_ci_diagnostic_info.st_mode)
+                  and _ci_diagnostic_info.st_nlink == 1
+                  and not getattr(_ci_diagnostic_info, 'st_file_attributes', 0) & 0x400)
+          _ci_diagnostic_raw = _ci_diagnostic_path.read_bytes()
+          assert _ci_diagnostic_sha1(b'blob ' + str(len(_ci_diagnostic_raw)).encode('ascii') + b'\0' + _ci_diagnostic_raw).hexdigest() == '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473', 'Reviewed pytest diagnostic source differs'
+          _ci_diagnostic_scope = {'__name__': '_carr_direct_pytest_diagnostics', '__file__': str(_ci_diagnostic_path)}
+          exec(compile(_ci_diagnostic_raw, str(_ci_diagnostic_path), 'exec'), _ci_diagnostic_scope)
+          _ci_diagnostic_plugins = _ci_diagnostic_scope['pytest_diagnostic_plugins']()
+          status = pytest.main(['-v', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+              '-o', 'faulthandler_timeout=120', '--import-mode=importlib', '--junitxml=' + str(report), *suites],
+              plugins=[policy, *_ci_diagnostic_plugins])
+          assert _ci_diagnostic_path.read_bytes() == _ci_diagnostic_raw, 'Reviewed pytest diagnostic source changed during tests'
+          _ci_diagnostic_after = _ci_diagnostic_path.lstat()
+          assert (_ci_diagnostic_after.st_dev, _ci_diagnostic_after.st_ino, _ci_diagnostic_after.st_size, _ci_diagnostic_after.st_mtime_ns) == (_ci_diagnostic_info.st_dev, _ci_diagnostic_info.st_ino, _ci_diagnostic_info.st_size, _ci_diagnostic_info.st_mtime_ns), 'Reviewed pytest diagnostic identity changed during tests'
+          assert _ci_diagnostic_after.st_nlink == 1 and not getattr(_ci_diagnostic_after, 'st_file_attributes', 0) & 0x400
+          print(json.dumps({'direct_pytest_diagnostic_source': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473', 'selected_plugins': len(_ci_diagnostic_plugins)}, sort_keys=True), flush=True)
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          counts = {}
+          for suite in suites:
+              name = suite[:-3].replace('/', '.')
+              selected = [case for case in cases if case.get('classname', '') == name or case.get('classname', '').startswith(name + '.')]
+              counts[suite] = len(selected)
+          after = origins()
+          fixtures_after = {name: sha256((checkout / name).read_bytes()).hexdigest() for name in fixture_paths}
+          reviewed_counts = {'tests/transcription/test_service.py': 28,
+              'tests/transcription/test_admission_boundaries.py': 40,
+              'tests/transcription/test_protocol_fixture.py': 9,
+              'tests/storage/test_transcription_backup.py': 143,
+              'tests/transcription/test_native_profiles_fixture.py': 2}
+          if os.name == 'nt':
+              reviewed_counts['tests/transcription/test_protocol_fixture_windows.py'] = 2
+          barrier_suite = "tests/transcription/test_native_profiles_fixture.py"
+          barrier_module = barrier_suite[:-3].replace('/', '.')
+          barrier_names = {case.get('name', '').split('[', 1)[0] for case in cases
+              if case.get('classname', '') == barrier_module or case.get('classname', '').startswith(barrier_module + '.')}
+          required_barrier_names = set(["test_actual_stop_barrier_waits_past_old_hold_and_resume_starts_only_unfinished_source","test_actual_stop_barrier_expires_without_silent_second_source_or_complete_status"])
+          ok = (status == 0 and bool(cases) and failed == skipped == 0 and not policy.seen
+                and all(counts.values()) and before == after and fixture_hashes == fixtures_after
+                and barrier_names == required_barrier_names
+                and all(counts.get(name) == count for name, count in reviewed_counts.items()))
+          evidence = dict(status='PASS' if ok else 'FAIL',
+              source_commit=pathlib.Path('ci-asr-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),
+              source_tree=pathlib.Path('ci-asr-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip(),
+              passed=len(cases)-failed-skipped, failed=failed, skipped=skipped,
+              pytest_exit=int(status), expected_failures=policy.seen,
+              suite_counts=counts, required_suite_counts=reviewed_counts, origins=after,
+              fixture_sha256=fixtures_after,
+              acoustic_inference='NOT_RUN', manual_NVDA='NOT_RUN')
+          pathlib.Path('ci-asr-results/installed.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
+          print(json.dumps(evidence), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
+          $installedAsr | python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-asr-results/installed.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install actual native desktop controls
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise actual native controls and shared background operation
+        if: runner.os == 'Windows'
+        # Both native phases keep their own 45s and 150s watchdogs.
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          python -I -B -X utf8 scripts/windows_transcription_smoke.py 2>&1 | Tee-Object 'ci-asr-results/native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyTranscription = @'
+          from hashlib import sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path('ci-asr-results/native.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'runtime_profiles' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native transcription report is missing or ambiguous.'
+          report = reports[0]
+          assert report['status'] == 'PASS'
+          assert set(["actual named wx controls","shared background operation","actual native profile choice and configure action","V5 three-source binding","explicit legacy reconfiguration","actual named folder action","background folder intake","relative source and exclusion count","actual isolated child protocol","six verified formats","separate edit revision","original unchanged"]) <= set(report['checks'])
+          assert report['whisper_acoustic_inference'] == report['manual_NVDA'] == 'NOT_RUN'
+          profile = report['runtime_profiles']
+          assert profile['status'] == 'PASS' and profile['protocol'] == 'local-file-job/1'
+          assert set(["actual named runtime inspect/trust/register controls","complete synthetic Python/distribution/model inventory","actual file action and retained originals","actual native Pause and Resume","same accepted receipt across real child restart","actual transcript/edit/export controls","four formats and separate edit","explicit historical workspace binding without execution","legacy workspace list remains separate","exact imported source identities"]) <= set(profile['checks'])
+          assert profile['acoustic_inference'] == profile['manual_NVDA'] == 'NOT_RUN'
+          assert profile['recognition_backend'] == 'public synthetic file protocol fixture'
+          expected = set(["carr_library.transcription","carr_library.backup_transcription","carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.ui.transcription_dialog","carr_library.ui.transcription_runtime_dialog","carr_library.integrations.transcription_exports"])
+          assert set(profile['module_origins']) == expected
+          checkout = pathlib.Path.cwd().resolve()
+          for name, evidence in profile['module_origins'].items():
+              actual = pathlib.Path(evidence['path']).resolve(strict=True)
+              source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert not actual.is_relative_to(checkout) and actual.is_relative_to(pathlib.Path(sys.prefix).resolve())
+              assert evidence['sha256'] == sha256(actual.read_bytes()).hexdigest() == sha256(source.read_bytes()).hexdigest()
+          pathlib.Path('ci-asr-results/native.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $verifyTranscription | & python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Unified transcription native evidence is incomplete.' }
+      - name: Retain exact-source synthetic transcription evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-asr-${{ matrix.os }}-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-asr-results/
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,44 @@
+{
+  "schema": "carr-language-denial-pin-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 10:11:42 UTC",
+  "reviewer": "locate_project",
+  "source_peer": "294376dd25ca900bd14fb3e8a74781aad0a0554b",
+  "files": [
+    {
+      "key": "helper",
+      "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+      "before": "460e6ba9397c956660b9658b8f29047952e4243d",
+      "after": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+      "oldPin": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+      "newPin": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
+      "replacement_count": 1,
+      "complete_inverse": "BYTE_EXACT"
+    },
+    {
+      "key": "workflow",
+      "path": ".github/workflows/carr-language-evidence.yml",
+      "before": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+      "after": "29bf8a261151818ed9b45695ef5cf356f8fc552d",
+      "oldPin": "460e6ba9397c956660b9658b8f29047952e4243d",
+      "newPin": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+      "replacement_count": 1,
+      "complete_inverse": "BYTE_EXACT"
+    }
+  ],
+  "preserved": {
+    "source_cases": 147,
+    "installed_cases": 147,
+    "whole_modules": 5,
+    "source_pins": 48,
+    "origins": 36,
+    "native_unique": 75,
+    "native_origins": 14,
+    "default_no_multiplicity": 3,
+    "all_other_bytes": "EXACT"
+  },
+  "limits": [
+    "Literal-only inverse review; no parser or runtime claim.",
+    "The current G language failure remains unchanged."
+  ]
+}

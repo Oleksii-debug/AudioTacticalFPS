@@ -1,0 +1,1450 @@
+{
+  "schema": "carr-installed-failures-actual/1",
+  "created_utc": "2026-11-28 09:04:49 UTC",
+  "status": "FAIL",
+  "source_commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+  "source_tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+  "run": 46124697721,
+  "job": 140916610238,
+  "job_conclusion": "failure",
+  "job_started": "2026-11-28T08:20:43Z",
+  "job_completed": "2026-11-28T08:59:17Z",
+  "workflow_blob": "01238de36b1f54ea5c693f42dcd46e496f2666af",
+  "helper_blob": "fa8948e3c83108679a57bb3e6d3cbd4dd618f41e",
+  "artifact": {
+    "id": 15256557150,
+    "name": "focused-installed-windows-f28ce084a1016121a4d04b7a358c0c3ef72b2812-1",
+    "bytes": 115598,
+    "digest": "sha256:d0e060c29d61a242265c041a801f99074c4b32655a7cf59c169620ef00a02f85",
+    "closed_retained_files": 44
+  },
+  "decoded_log": {
+    "sha256": "b730970a03798a2b4519c90bb6acc3cbc0ab16d9114231d0e3ae17c810e8f887",
+    "bytes": 239935,
+    "lines": 1836,
+    "decoding": "Exact GitHub tool-returned UTF-8 text, including original BOM and CRLF in the hash; excerpt line numbers use normalized lines with timestamps stripped."
+  },
+  "final_logged_summary": {
+    "inputs_unchanged": true,
+    "installed_passed": 110,
+    "source_commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "source_passed": 110,
+    "source_tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+    "status": "FAIL"
+  },
+  "actual_case_totals": {
+    "source": {
+      "collected": 112,
+      "passed": 110,
+      "failed": 2,
+      "skipped": 0
+    },
+    "installed": {
+      "collected": 112,
+      "passed": 110,
+      "failed": 2,
+      "skipped": 0
+    }
+  },
+  "published_expected_total": 113,
+  "correct_current_static_total": 112,
+  "book_count_reconciliation": {
+    "static_receipt": "d141e829f906280495e420b0bd1264b51b943235",
+    "future_count_fix": "73749a9c3e8ad1441e272b82a113d6357b5fe769",
+    "test_blob": "860b5e112e803527add77983733b0f1833b465e5",
+    "published_diagnostic_expected": 30,
+    "actual_collected_and_junit_cases": 29,
+    "observed_functions": 21,
+    "source_case_verdict": "29 PASS, exit0, 398.859s including parent observation; pytest reports397.76s.",
+    "installed_case_verdict": "29 PASS, exit0,398.344s including parent observation; pytest reports397.65s.",
+    "diagnostic_contract_verdict": "FAIL in both modes because expected30 differs from actual29. This receipt does not replace or relabel the failed historical gate."
+  },
+  "independent_module_results": [
+    {
+      "line": 518,
+      "cases": 29,
+      "elapsed_seconds": 398.859,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "source",
+      "passed": 29,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite": "tests/studio/test_book_batch.py",
+      "collection": "collecting ... collected 29 items",
+      "pytest_summary": "======================= 29 passed in 397.76s (0:06:37) ========================",
+      "whole_timeout_seconds": 600,
+      "case_rows": [
+        {
+          "name": "test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_two_book_render_and_reopened_resume_verify_original_outputs",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[order]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[voice]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[format]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[destination]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_scope_duplicate_and_missing_plan_bindings_are_rejected",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_control_stops_current_item_and_never_starts_later_books[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_control_stops_current_item_and_never_starts_later_books[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_invocation_signal_cannot_stop_a_new_explicit_run",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_observer_failure_does_not_relabel_or_repeat_completed_books",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_backup_restore_preserves_order_and_requires_new_explicit_destination_review",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_passive_backup_refuses_unbound_batch_membership[missing]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_passive_backup_refuses_unbound_batch_membership[fingerprint]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_passive_backup_refuses_unbound_batch_membership[scope]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_plan_save_then_prepare_uses_one_lock_at_a_time",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_between_books_does_not_signal_a_foreign_locked_job[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_between_books_does_not_signal_a_foreign_locked_job[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_primary_failure_is_not_masked_by_control_cleanup_failure",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_competing_same_bytes_selection_is_not_adopted_as_our_commit",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_same_path_library_replacement_invalidates_existing_batch_service_before_writes",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_batch_inventory_never_silently_omits_unreadable_directory",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[replace-token]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[remove-active]",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 21,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "PASS"
+    },
+    {
+      "line": 661,
+      "cases": 23,
+      "elapsed_seconds": 1.641,
+      "exit": 1,
+      "failed": 1,
+      "failure_names": [
+        "test_reload_persists_exact_ids_profiles_and_external_declarations"
+      ],
+      "mode": "source",
+      "passed": 22,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite": "tests/speech/test_voice_preferences.py",
+      "collection": "collecting ... collected 23 items",
+      "pytest_summary": "======================== 1 failed, 22 passed in 0.49s =========================",
+      "whole_timeout_seconds": 600,
+      "case_rows": [
+        {
+          "name": "test_legacy_load_does_not_rewrite_bytes_or_probe_optional_engines",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_reload_persists_exact_ids_profiles_and_external_declarations",
+          "status": "FAILED"
+        },
+        {
+          "name": "test_two_windows_refuse_stale_preference_save_without_overwriting",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_engine_window_cannot_overwrite_a_later_voice_preference_change",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_shared_settings_lock_refuses_overlapping_changes",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_explicit_voice_beats_default_but_not_exact_language_guard",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_profile_controls_are_not_applied_to_a_different_voice_or_language",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_no_region_or_script_fallback_to_similarly_named_voice[en]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_no_region_or_script_fallback_to_similarly_named_voice[en-GB]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_no_region_or_script_fallback_to_similarly_named_voice[en-Latn-US]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_adapter_underscore_tag_and_request_case_use_one_exact_language",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_removed_voice_and_unsupported_controls_do_not_pick_another_voice",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>0]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>1]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>2]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>3]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>4]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>5]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>6]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>7]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>8]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>9]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_owner_guard_is_rechecked_after_latest_settings_read_before_commit",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 12,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "FAIL"
+    },
+    {
+      "line": 786,
+      "cases": 20,
+      "elapsed_seconds": 12.328,
+      "exit": 1,
+      "failed": 1,
+      "failure_names": [
+        "test_actual_job_resume_and_structured_export_keep_original_lineage"
+      ],
+      "mode": "source",
+      "passed": 19,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite": "tests/assistant/test_translation_documents.py",
+      "collection": "collecting ... collected 20 items",
+      "pytest_summary": "======================== 1 failed, 19 passed in 11.30s ========================",
+      "whole_timeout_seconds": 600,
+      "case_rows": [
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[First\\n\\nSecond]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[  First\\r\\n \\r\\nSecond\\r\\n\\r\\n]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[First\\n\\n\\n\\n]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[\\n\\n \\u0423\\u043a\\u0440\\u0430\\u0457\\u043d\\u0441\\u044c\\u043a\\u0430 \\U0001f642\\r\\rAnother.\\n\\n  ]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_limit_is_inclusive_and_rejects_more_before_job_creation",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_batch_review_and_prepare_never_contact_provider_or_mutate_originals",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[target]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[source]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[range]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[profile]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_duplicate_and_modified_reading_copies_are_not_batch_sources",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_job_resume_and_structured_export_keep_original_lineage",
+          "status": "FAILED"
+        },
+        {
+          "name": "test_source_revocation_during_preparation_returns_already_saved_jobs",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_cancel_after_first_document_preserves_completion_and_resumes_remaining_once",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_current_profile_blocks_new_calls_but_completed_work_stays_offline",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_partial_batch_export_returns_real_committed_directories_and_never_deletes_them",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_local_structured_state_uses_passive_complete_backup_and_restores_without_server",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_restored_pending_batch_needs_fresh_source_approval_before_any_provider_call",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_cli_document_capture_enforces_remaining_batch_budget_during_reads",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_direct_local_resume_rereads_current_catalog_before_any_request",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 14,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "FAIL"
+    },
+    {
+      "line": 959,
+      "cases": 40,
+      "elapsed_seconds": 715.641,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "source",
+      "passed": 40,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/transcription/test_admission_boundaries.py",
+      "collection": "collecting ... collected 40 items",
+      "pytest_summary": "======================= 40 passed in 714.49s (0:11:54) ========================",
+      "whole_timeout_seconds": 900,
+      "case_rows": [
+        {
+          "name": "test_export_rejects_changed_payload_before_external_publication[same_size]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_rejects_changed_payload_before_external_publication[grow]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_rejects_changed_payload_before_external_publication[truncate]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_receipt_verification_observes_cancellation",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_payload_is_bounded_and_interruptible",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_decodes_only_verified_bytes[text]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_decodes_only_verified_bytes[provenance]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_decodes_only_verified_bytes[inventory]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_corruption_blocks_external_export",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_verified_json_preserves_strict_state_parsing[{\"a\":1,\"a\":2}]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_verified_json_preserves_strict_state_parsing[{\"a\":NaN}]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_verified_json_preserves_strict_state_parsing[{\"a\":Infinity}]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_decodes_only_the_bytes_it_verifies[read]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_decodes_only_the_bytes_it_verifies[export]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_export_uses_the_captured_revision",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_interrupts_admission_hash_and_reaches_child_cleanup[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_interrupts_admission_hash_and_reaches_child_cleanup[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_failed_archive_keeps_durable_cache_rejection_until_retry[OSError]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_child_import_never_writes_or_replaces_python_bytecode[False]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_child_import_never_writes_or_replaces_python_bytecode[True]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_cancelled_post_admission_check_preserves_committed_valid_receipt",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[False-pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[False-cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[False-callback]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[True-pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[True-cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[True-callback]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_status_retains_strict_schema_and_exact_budget[invalid-terminal-state]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_status_retains_strict_schema_and_exact_budget[duplicate-done-field]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_status_retains_strict_schema_and_exact_budget[over-limit-status]",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 19,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "PASS"
+    },
+    {
+      "line": 1268,
+      "cases": 29,
+      "elapsed_seconds": 398.344,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "installed",
+      "passed": 29,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite": "tests/studio/test_book_batch.py",
+      "collection": "collecting ... collected 29 items",
+      "pytest_summary": "======================= 29 passed in 397.65s (0:06:37) ========================",
+      "whole_timeout_seconds": 600,
+      "case_rows": [
+        {
+          "name": "test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_two_book_render_and_reopened_resume_verify_original_outputs",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[order]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[voice]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[format]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_review_cannot_reuse_preparation_approval[destination]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_scope_duplicate_and_missing_plan_bindings_are_rejected",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_control_stops_current_item_and_never_starts_later_books[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_control_stops_current_item_and_never_starts_later_books[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_invocation_signal_cannot_stop_a_new_explicit_run",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_observer_failure_does_not_relabel_or_repeat_completed_books",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_backup_restore_preserves_order_and_requires_new_explicit_destination_review",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_passive_backup_refuses_unbound_batch_membership[missing]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_passive_backup_refuses_unbound_batch_membership[fingerprint]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_passive_backup_refuses_unbound_batch_membership[scope]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_plan_save_then_prepare_uses_one_lock_at_a_time",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_between_books_does_not_signal_a_foreign_locked_job[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_between_books_does_not_signal_a_foreign_locked_job[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_primary_failure_is_not_masked_by_control_cleanup_failure",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_competing_same_bytes_selection_is_not_adopted_as_our_commit",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_same_path_library_replacement_invalidates_existing_batch_service_before_writes",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_batch_inventory_never_silently_omits_unreadable_directory",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[replace-token]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[remove-active]",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 21,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "PASS"
+    },
+    {
+      "line": 1393,
+      "cases": 20,
+      "elapsed_seconds": 10.906,
+      "exit": 1,
+      "failed": 1,
+      "failure_names": [
+        "test_actual_job_resume_and_structured_export_keep_original_lineage"
+      ],
+      "mode": "installed",
+      "passed": 19,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite": "tests/assistant/test_translation_documents.py",
+      "collection": "collecting ... collected 20 items",
+      "pytest_summary": "======================== 1 failed, 19 passed in 10.24s ========================",
+      "whole_timeout_seconds": 600,
+      "case_rows": [
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[First\\n\\nSecond]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[  First\\r\\n \\r\\nSecond\\r\\n\\r\\n]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[First\\n\\n\\n\\n]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators[\\n\\n \\u0423\\u043a\\u0440\\u0430\\u0457\\u043d\\u0441\\u044c\\u043a\\u0430 \\U0001f642\\r\\rAnother.\\n\\n  ]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_paragraph_limit_is_inclusive_and_rejects_more_before_job_creation",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_batch_review_and_prepare_never_contact_provider_or_mutate_originals",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[target]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[source]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[range]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_old_batch_review_never_authorizes_different_selection_or_profile[profile]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_duplicate_and_modified_reading_copies_are_not_batch_sources",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_job_resume_and_structured_export_keep_original_lineage",
+          "status": "FAILED"
+        },
+        {
+          "name": "test_source_revocation_during_preparation_returns_already_saved_jobs",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_cancel_after_first_document_preserves_completion_and_resumes_remaining_once",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_changed_current_profile_blocks_new_calls_but_completed_work_stays_offline",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_partial_batch_export_returns_real_committed_directories_and_never_deletes_them",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_local_structured_state_uses_passive_complete_backup_and_restores_without_server",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_restored_pending_batch_needs_fresh_source_approval_before_any_provider_call",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_cli_document_capture_enforces_remaining_batch_budget_during_reads",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_direct_local_resume_rereads_current_catalog_before_any_request",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 14,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "FAIL"
+    },
+    {
+      "line": 1566,
+      "cases": 40,
+      "elapsed_seconds": 715.844,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "installed",
+      "passed": 40,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/transcription/test_admission_boundaries.py",
+      "collection": "collecting ... collected 40 items",
+      "pytest_summary": "======================= 40 passed in 715.14s (0:11:55) ========================",
+      "whole_timeout_seconds": 900,
+      "case_rows": [
+        {
+          "name": "test_export_rejects_changed_payload_before_external_publication[same_size]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_rejects_changed_payload_before_external_publication[grow]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_rejects_changed_payload_before_external_publication[truncate]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_receipt_verification_observes_cancellation",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_export_payload_is_bounded_and_interruptible",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_decodes_only_verified_bytes[text]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_decodes_only_verified_bytes[provenance]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_decodes_only_verified_bytes[inventory]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_saved_receipt_corruption_blocks_external_export",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_verified_json_preserves_strict_state_parsing[{\"a\":1,\"a\":2}]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_verified_json_preserves_strict_state_parsing[{\"a\":NaN}]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_verified_json_preserves_strict_state_parsing[{\"a\":Infinity}]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_decodes_only_the_bytes_it_verifies[read]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_decodes_only_the_bytes_it_verifies[export]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_export_uses_the_captured_revision",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_interrupts_admission_hash_and_reaches_child_cleanup[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_interrupts_admission_hash_and_reaches_child_cleanup[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_failed_archive_keeps_durable_cache_rejection_until_retry[OSError]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_failed_archive_keeps_durable_cache_rejection_until_retry[SystemExit]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_child_import_never_writes_or_replaces_python_bytecode[False]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_actual_child_import_never_writes_or_replaces_python_bytecode[True]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop[pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop[cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_cancelled_post_admission_check_preserves_committed_valid_receipt",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[False-pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[False-cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[False-callback]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[True-pause]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[True-cancel]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_stop_during_historical_receipt_hash_preserves_durable_results[True-callback]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_status_retains_strict_schema_and_exact_budget[invalid-terminal-state]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_status_retains_strict_schema_and_exact_budget[duplicate-done-field]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_terminal_status_retains_strict_schema_and_exact_budget[over-limit-status]",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 19,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "PASS"
+    },
+    {
+      "line": 1709,
+      "cases": 23,
+      "elapsed_seconds": 0.984,
+      "exit": 1,
+      "failed": 1,
+      "failure_names": [
+        "test_reload_persists_exact_ids_profiles_and_external_declarations"
+      ],
+      "mode": "installed",
+      "passed": 22,
+      "skipped": 0,
+      "status": "FAIL",
+      "suite": "tests/speech/test_voice_preferences.py",
+      "collection": "collecting ... collected 23 items",
+      "pytest_summary": "======================== 1 failed, 22 passed in 0.32s =========================",
+      "whole_timeout_seconds": 600,
+      "case_rows": [
+        {
+          "name": "test_legacy_load_does_not_rewrite_bytes_or_probe_optional_engines",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_reload_persists_exact_ids_profiles_and_external_declarations",
+          "status": "FAILED"
+        },
+        {
+          "name": "test_two_windows_refuse_stale_preference_save_without_overwriting",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_engine_window_cannot_overwrite_a_later_voice_preference_change",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_shared_settings_lock_refuses_overlapping_changes",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_explicit_voice_beats_default_but_not_exact_language_guard",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_profile_controls_are_not_applied_to_a_different_voice_or_language",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_no_region_or_script_fallback_to_similarly_named_voice[en]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_no_region_or_script_fallback_to_similarly_named_voice[en-GB]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_no_region_or_script_fallback_to_similarly_named_voice[en-Latn-US]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_adapter_underscore_tag_and_request_case_use_one_exact_language",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_removed_voice_and_unsupported_controls_do_not_pick_another_voice",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>0]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>1]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>2]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>3]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>4]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>5]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>6]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>7]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>8]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values[<lambda>9]",
+          "status": "PASSED"
+        },
+        {
+          "name": "test_owner_guard_is_rechecked_after_latest_settings_read_before_commit",
+          "status": "PASSED"
+        }
+      ],
+      "observed_function_count": 12,
+      "helper_status_preserved": true,
+      "actual_pytest_verdict": "FAIL"
+    }
+  ],
+  "source_installed_identity_boundary": {
+    "fixed_helper_required_before_ordinary_whole_row": "Actual source before/after receipt or isolated complete-wheel before/after receipt and required42-origin inventory succeeded before each completed row could be emitted.",
+    "final_input_audio_head_check": "The exact helper reached its final inputs_unchanged:true statement, then correctly raised on aggregate failure.",
+    "raw_origin_and_junit_artifact_files": "Retained in the closed44-file artifact; not separately downloaded or re-executed for this receipt."
+  },
+  "observed_failures": [
+    {
+      "suite": "tests/assistant/test_translation_documents.py",
+      "test_blob": "fc0d6148287026dbf6cb2640e5e4b0926a2d0ef8",
+      "case": "test_actual_job_resume_and_structured_export_keep_original_lineage",
+      "modes": [
+        "source",
+        "installed"
+      ],
+      "boundary": "The actual original.txt byte equality passed. Test line138 reads UTF-8 translation-structure.json with default Path.read_text(); line140 compares mojibake original paragraphs with the exact source string.",
+      "observed_codec": "cp1252 sequence shown in pytest short summary; explicit UTF-8 producer must be verified before a fixture correction.",
+      "full_suite_leakage": "This exact failure reproduces in fresh isolated source and installed children."
+    },
+    {
+      "suite": "tests/speech/test_voice_preferences.py",
+      "test_blob": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+      "case": "test_reload_persists_exact_ids_profiles_and_external_declarations",
+      "modes": [
+        "source",
+        "installed"
+      ],
+      "boundary": "Actual saved/reloaded preference equality passed. Test line60 then calls json.loads(path.read_text()) and the default cp1252 decoder rejects byte0x8f in the product's UTF-8 Cyrillic name.",
+      "full_suite_leakage": "This exact failure reproduces in fresh isolated source and installed children."
+    }
+  ],
+  "scope_limits": [
+    "ASR40 completed in both modes under the original900-second whole limit. Its older full-suite failures/timeouts are not retroactively explained or relabeled by this isolated result.",
+    "Book29 completed alone under600 in both modes. Earlier concurrent whole timeouts remain actual failures; CPU contention or a general performance guarantee has not been established.",
+    "The diagnostic and final job remain FAIL with two actual case failures per mode plus the historical declared Book-count mismatch.",
+    "No source tests, product bytes, child budgets, live refs, or publication rules were changed to collect this evidence.",
+    "No native, physical audio, manual NVDA, production/private engine, full installed cross-suite, or release qualification is transferred."
+  ],
+  "excerpts": [
+    {
+      "first": 390,
+      "last": 425,
+      "lines": [
+        "============================= test session starts =============================",
+        "platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0 -- C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+        "cachedir: .pytest_cache",
+        "rootdir: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+        "configfile: \\\\.\\nul\\",
+        "collecting ... collected 29 items",
+        "",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech PASSED [  3%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_actual_two_book_render_and_reopened_resume_verify_original_outputs PASSED [  6%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[order] PASSED [ 10%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[voice] PASSED [ 13%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[format] PASSED [ 17%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[destination] PASSED [ 20%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_scope_duplicate_and_missing_plan_bindings_are_rejected PASSED [ 24%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second PASSED [ 27%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_active_control_stops_current_item_and_never_starts_later_books[pause] PASSED [ 31%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_active_control_stops_current_item_and_never_starts_later_books[cancel] PASSED [ 34%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate PASSED [ 37%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_old_invocation_signal_cannot_stop_a_new_explicit_run PASSED [ 41%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_observer_failure_does_not_relabel_or_repeat_completed_books PASSED [ 44%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_backup_restore_preserves_order_and_requires_new_explicit_destination_review PASSED [ 48%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_passive_backup_refuses_unbound_batch_membership[missing] PASSED [ 51%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_passive_backup_refuses_unbound_batch_membership[fingerprint] PASSED [ 55%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_passive_backup_refuses_unbound_batch_membership[scope] PASSED [ 58%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_plan_save_then_prepare_uses_one_lock_at_a_time PASSED [ 62%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_stop_between_books_does_not_signal_a_foreign_locked_job[pause] PASSED [ 65%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_stop_between_books_does_not_signal_a_foreign_locked_job[cancel] PASSED [ 68%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume PASSED [ 72%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio PASSED [ 75%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_primary_failure_is_not_masked_by_control_cleanup_failure PASSED [ 79%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs PASSED [ 82%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_competing_same_bytes_selection_is_not_adopted_as_our_commit PASSED [ 86%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_same_path_library_replacement_invalidates_existing_batch_service_before_writes PASSED [ 89%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_saved_batch_inventory_never_silently_omits_unreadable_directory PASSED [ 93%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[replace-token] PASSED [ 96%]",
+        "..\\..\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\studio\\test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[remove-active] PASSED [100%]"
+      ]
+    },
+    {
+      "first": 550,
+      "last": 585,
+      "lines": [
+        "================================== FAILURES ===================================",
+        "______ test_reload_persists_exact_ids_profiles_and_external_declarations ______",
+        "",
+        "tmp_path = WindowsPath('D:/a/_temp/carr-focused-failures-cajpfqaw/source-4-pytest/test_reload_persists_exact_ids0')",
+        "",
+        "    def test_reload_persists_exact_ids_profiles_and_external_declarations(tmp_path):",
+        "        value = settings.load_settings(tmp_path)",
+        "        settings.save_settings(tmp_path, value)",
+        "        path = settings.settings_path(tmp_path)",
+        "        source = json.loads(path.read_text())",
+        "        source['ffmpeg'] = '/uninstalled-after-relocation/ffmpeg'",
+        "        path.write_text(json.dumps(source))",
+        "        selected = preferences()",
+        "        saved = settings.save_voice_preferences(tmp_path, selected, expected=empty())",
+        "        selected['profiles']['\\u0422\\u0438\\u0445\\u0435 \\u0447\\u0438\\u0442\\u0430\\u043d\\u043d\\u044f']['volume'] = 99",
+        "        assert saved == settings.load_voice_preferences(tmp_path) == preferences()",
+        ">       restored = json.loads(path.read_text())",
+        "                              ^^^^^^^^^^^^^^^^",
+        "",
+        "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\speech\\test_voice_preferences.py:60: ",
+        "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+        "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\pathlib.py:1059: in read_text",
+        "    return f.read()",
+        "           ^^^^^^^^",
+        "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+        "",
+        "self = <encodings.cp1252.IncrementalDecoder object at 0x00000187A59F9910>",
+        "input = b'{\"dordiai\":null,\"ffmpeg\":\"/uninstalled-after-relocation/ffmpeg\",\"ffprobe\":null,\"fluidsynth\":null,\"music_models\":[],\"...87\\xd0\\xb8\\xd1\\x82\\xd0\\xb0\\xd0\\xbd\\xd0\\xbd\\xd1\\x8f\":{\"language\":\"uk\",\"rate\":-2,\"voice_id\":\"local:uk\",\"volume\":55}}}}\\n'",
+        "final = True",
+        "",
+        "    def decode(self, input, final=False):",
+        ">       return codecs.charmap_decode(input,self.errors,decoding_table)[0]",
+        "               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "E       UnicodeDecodeError: 'charmap' codec can't decode byte 0x8f in position 266: character maps to <undefined>",
+        "",
+        "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\encodings\\cp1252.py:23: UnicodeDecodeError"
+      ]
+    },
+    {
+      "first": 690,
+      "last": 719,
+      "lines": [
+        "================================== FAILURES ===================================",
+        "_____ test_actual_job_resume_and_structured_export_keep_original_lineage ______",
+        "",
+        "bound = namespace(app=<carr_library.application.LibraryApp object at 0x000001C92AD44390>, workspace='06b56d0d4af74d939b89606e8...tion/json', 'Accept': 'application/json', 'User-Agent': 'UniversalResearchLibrary/0.2'})], 'status': 200, 'raw': None})",
+        "tmp_path = WindowsPath('D:/a/_temp/carr-focused-failures-cajpfqaw/source-2-pytest/test_actual_job_resume_and_str0')",
+        "",
+        "    def test_actual_job_resume_and_structured_export_keep_original_lineage(bound, tmp_path):",
+        "        identities = prepare(bound)",
+        "        assert run_documents(bound.service, identities)['status'] == 'complete'",
+        "        output = tmp_path / 'exports'",
+        "        output.mkdir()",
+        "        receipt = export_documents(bound.service, identities, output)",
+        "        assert receipt['status'] == 'complete' and len(receipt['exports']) == 2",
+        "        for identity, item, selected in zip(identities, receipt['exports'], bound.selected):",
+        "            directory = Path(item['path'])",
+        "            original = selected.document.source_text",
+        "            assert (directory / 'original.txt').read_bytes() == original.encode()",
+        "            mapping = json.loads((directory / 'translation-structure.json').read_text())",
+        "            assert mapping['job_id'] == identity and mapping['quotation_authority'] is False",
+        ">           assert ''.join(row['original'] for row in mapping['paragraphs']) == original",
+        "E           AssertionError: assert 'Original <on...nd paragraph.' == 'Original <on...nd paragraph.'",
+        "E             ",
+        "E             - Original <one> \\U0001f642",
+        "E             ?                ^",
+        "E             + Original <one> 🙂",
+        "E             ?                ^^^^",
+        "E               ",
+        "E               Original second paragraph.",
+        "",
+        "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\assistant\\test_translation_documents.py:140: AssertionError"
+      ]
+    },
+    {
+      "first": 1140,
+      "last": 1175,
+      "lines": [
+        "============================= test session starts =============================",
+        "platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0 -- C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+        "cachedir: .pytest_cache",
+        "rootdir: D:\\a\\_temp\\carr-focused-failures-cajpfqaw\\isolated-tests",
+        "configfile: pytest.ini",
+        "collecting ... collected 29 items",
+        "",
+        "tests/studio/test_book_batch.py::test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech PASSED [  3%]",
+        "tests/studio/test_book_batch.py::test_actual_two_book_render_and_reopened_resume_verify_original_outputs PASSED [  6%]",
+        "tests/studio/test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[order] PASSED [ 10%]",
+        "tests/studio/test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[voice] PASSED [ 13%]",
+        "tests/studio/test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[format] PASSED [ 17%]",
+        "tests/studio/test_book_batch.py::test_changed_review_cannot_reuse_preparation_approval[destination] PASSED [ 20%]",
+        "tests/studio/test_book_batch.py::test_scope_duplicate_and_missing_plan_bindings_are_rejected PASSED [ 24%]",
+        "tests/studio/test_book_batch.py::test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second PASSED [ 27%]",
+        "tests/studio/test_book_batch.py::test_active_control_stops_current_item_and_never_starts_later_books[pause] PASSED [ 31%]",
+        "tests/studio/test_book_batch.py::test_active_control_stops_current_item_and_never_starts_later_books[cancel] PASSED [ 34%]",
+        "tests/studio/test_book_batch.py::test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate PASSED [ 37%]",
+        "tests/studio/test_book_batch.py::test_old_invocation_signal_cannot_stop_a_new_explicit_run PASSED [ 41%]",
+        "tests/studio/test_book_batch.py::test_observer_failure_does_not_relabel_or_repeat_completed_books PASSED [ 44%]",
+        "tests/studio/test_book_batch.py::test_backup_restore_preserves_order_and_requires_new_explicit_destination_review PASSED [ 48%]",
+        "tests/studio/test_book_batch.py::test_passive_backup_refuses_unbound_batch_membership[missing] PASSED [ 51%]",
+        "tests/studio/test_book_batch.py::test_passive_backup_refuses_unbound_batch_membership[fingerprint] PASSED [ 55%]",
+        "tests/studio/test_book_batch.py::test_passive_backup_refuses_unbound_batch_membership[scope] PASSED [ 58%]",
+        "tests/studio/test_book_batch.py::test_plan_save_then_prepare_uses_one_lock_at_a_time PASSED [ 62%]",
+        "tests/studio/test_book_batch.py::test_stop_between_books_does_not_signal_a_foreign_locked_job[pause] PASSED [ 65%]",
+        "tests/studio/test_book_batch.py::test_stop_between_books_does_not_signal_a_foreign_locked_job[cancel] PASSED [ 68%]",
+        "tests/studio/test_book_batch.py::test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume PASSED [ 72%]",
+        "tests/studio/test_book_batch.py::test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio PASSED [ 75%]",
+        "tests/studio/test_book_batch.py::test_primary_failure_is_not_masked_by_control_cleanup_failure PASSED [ 79%]",
+        "tests/studio/test_book_batch.py::test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs PASSED [ 82%]",
+        "tests/studio/test_book_batch.py::test_competing_same_bytes_selection_is_not_adopted_as_our_commit PASSED [ 86%]",
+        "tests/studio/test_book_batch.py::test_same_path_library_replacement_invalidates_existing_batch_service_before_writes PASSED [ 89%]",
+        "tests/studio/test_book_batch.py::test_saved_batch_inventory_never_silently_omits_unreadable_directory PASSED [ 93%]",
+        "tests/studio/test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[replace-token] PASSED [ 96%]",
+        "tests/studio/test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[remove-active] PASSED [100%]"
+      ]
+    },
+    {
+      "first": 1297,
+      "last": 1327,
+      "lines": [
+        "================================== FAILURES ===================================",
+        "_____ test_actual_job_resume_and_structured_export_keep_original_lineage ______",
+        "",
+        "bound = namespace(app=<carr_library.application.LibraryApp object at 0x00000273F39FFB90>, workspace='38d0642912074f0c9ac46fc06...tion/json', 'Accept': 'application/json', 'User-Agent': 'UniversalResearchLibrary/0.2'})], 'status': 200, 'raw': None})",
+        "tmp_path = WindowsPath('D:/a/_temp/carr-focused-failures-cajpfqaw/installed-2-pytest/test_actual_job_resume_and_str0')",
+        "",
+        "    def test_actual_job_resume_and_structured_export_keep_original_lineage(bound, tmp_path):",
+        "        identities = prepare(bound)",
+        "        assert run_documents(bound.service, identities)['status'] == 'complete'",
+        "        output = tmp_path / 'exports'",
+        "        output.mkdir()",
+        "        receipt = export_documents(bound.service, identities, output)",
+        "        assert receipt['status'] == 'complete' and len(receipt['exports']) == 2",
+        "        for identity, item, selected in zip(identities, receipt['exports'], bound.selected):",
+        "            directory = Path(item['path'])",
+        "            original = selected.document.source_text",
+        "            assert (directory / 'original.txt').read_bytes() == original.encode()",
+        "            mapping = json.loads((directory / 'translation-structure.json').read_text())",
+        "            assert mapping['job_id'] == identity and mapping['quotation_authority'] is False",
+        ">           assert ''.join(row['original'] for row in mapping['paragraphs']) == original",
+        "E           AssertionError: assert 'Original <on...nd paragraph.' == 'Original <on...nd paragraph.'",
+        "E             ",
+        "E             - Original <one> \\U0001f642",
+        "E             ?                ^",
+        "E             + Original <one> 🙂",
+        "E             ?                ^^^^",
+        "E               ",
+        "E               Original second paragraph.",
+        "",
+        "tests\\assistant\\test_translation_documents.py:140: AssertionError",
+        "- generated xml file: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\ci-focused-installed\\contracts\\installed-2.xml -"
+      ]
+    },
+    {
+      "first": 1598,
+      "last": 1633,
+      "lines": [
+        "================================== FAILURES ===================================",
+        "______ test_reload_persists_exact_ids_profiles_and_external_declarations ______",
+        "",
+        "tmp_path = WindowsPath('D:/a/_temp/carr-focused-failures-cajpfqaw/installed-4-pytest/test_reload_persists_exact_ids0')",
+        "",
+        "    def test_reload_persists_exact_ids_profiles_and_external_declarations(tmp_path):",
+        "        value = settings.load_settings(tmp_path)",
+        "        settings.save_settings(tmp_path, value)",
+        "        path = settings.settings_path(tmp_path)",
+        "        source = json.loads(path.read_text())",
+        "        source['ffmpeg'] = '/uninstalled-after-relocation/ffmpeg'",
+        "        path.write_text(json.dumps(source))",
+        "        selected = preferences()",
+        "        saved = settings.save_voice_preferences(tmp_path, selected, expected=empty())",
+        "        selected['profiles']['\\u0422\\u0438\\u0445\\u0435 \\u0447\\u0438\\u0442\\u0430\\u043d\\u043d\\u044f']['volume'] = 99",
+        "        assert saved == settings.load_voice_preferences(tmp_path) == preferences()",
+        ">       restored = json.loads(path.read_text())",
+        "                              ^^^^^^^^^^^^^^^^",
+        "",
+        "tests\\speech\\test_voice_preferences.py:60: ",
+        "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+        "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\pathlib.py:1059: in read_text",
+        "    return f.read()",
+        "           ^^^^^^^^",
+        "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+        "",
+        "self = <encodings.cp1252.IncrementalDecoder object at 0x000001D96CFC80D0>",
+        "input = b'{\"dordiai\":null,\"ffmpeg\":\"/uninstalled-after-relocation/ffmpeg\",\"ffprobe\":null,\"fluidsynth\":null,\"music_models\":[],\"...87\\xd0\\xb8\\xd1\\x82\\xd0\\xb0\\xd0\\xbd\\xd0\\xbd\\xd1\\x8f\":{\"language\":\"uk\",\"rate\":-2,\"voice_id\":\"local:uk\",\"volume\":55}}}}\\n'",
+        "final = True",
+        "",
+        "    def decode(self, input, final=False):",
+        ">       return codecs.charmap_decode(input,self.errors,decoding_table)[0]",
+        "               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "E       UnicodeDecodeError: 'charmap' codec can't decode byte 0x8f in position 266: character maps to <undefined>",
+        "",
+        "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\encodings\\cp1252.py:23: UnicodeDecodeError"
+      ]
+    },
+    {
+      "first": 1709,
+      "last": 1718,
+      "lines": [
+        "FOCUSED_WHOLE {\"cases\": 23, \"elapsed_seconds\": 0.984, \"exit\": 1, \"failed\": 1, \"failure_names\": [\"test_reload_persists_exact_ids_profiles_and_external_declarations\"], \"mode\": \"installed\", \"passed\": 22, \"skipped\": 0, \"status\": \"FAIL\", \"suite\": \"tests/speech/test_voice_preferences.py\"}",
+        "{\"inputs_unchanged\": true, \"installed_passed\": 110, \"source_commit\": \"f28ce084a1016121a4d04b7a358c0c3ef72b2812\", \"source_passed\": 110, \"source_tree\": \"e54789eebce9bd393a956e7d63c58b7b36601595\", \"status\": \"FAIL\"}",
+        "Traceback (most recent call last):",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_installed_failure_contracts.py\", line 565, in <module>",
+        "    main()",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_installed_failure_contracts.py\", line 561, in main",
+        "    require(all_passed, 'Every unchanged source and installed whole must pass without skip or expected failure.')",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_installed_failure_contracts.py\", line 176, in require",
+        "    raise ValueError(message)",
+        "ValueError: Every unchanged source and installed whole must pass without skip or expected failure."
+      ]
+    },
+    {
+      "first": 1808,
+      "last": 1819,
+      "lines": [
+        "With the provided path, there will be 44 files uploaded",
+        "Artifact name is valid!",
+        "Root directory input is valid!",
+        "Uploading artifact: focused-installed-windows-f28ce084a1016121a4d04b7a358c0c3ef72b2812-1.zip",
+        "Beginning upload of artifact content to blob storage",
+        "Uploaded bytes 115598",
+        "Finished uploading artifact content to blob storage!",
+        "SHA256 digest of uploaded artifact is d0e060c29d61a242265c041a801f99074c4b32655a7cf59c169620ef00a02f85",
+        "Finalizing artifact upload",
+        "Artifact focused-installed-windows-f28ce084a1016121a4d04b7a358c0c3ef72b2812-1 successfully finalized. Artifact ID 15256557150",
+        "Artifact focused-installed-windows-f28ce084a1016121a4d04b7a358c0c3ef72b2812-1 has been successfully uploaded! Final size is 115598 bytes. Artifact ID is 15256557150",
+        "Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124697721/artifacts/15256557150"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,758 @@
+{
+  "schema": "resonance.reader-reuse-composition/1",
+  "status": "READY_FOR_INDEPENDENT_REVIEW_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_base": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "donor": "c8cbc5014905ed693b47cbfa40b480605a4bbdc9",
+  "donor_tree": "3f423d980f8f7a813e08ad31744b0e7176307c34",
+  "preserved_incoming": {
+    "source": "385377eee0c17139f46e79a7584e3369f88d91fc",
+    "note": "Root-reported successor modifies only speech/runtime.py and test_publication_validation.py. Neither path is in this reader composition; do not overwrite their new geometry/bounded-assembly work."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "sha": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "base": "5aaa28e17958bb7c37094a1d16a3a06557026e24"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "sha": "80e6be1ce68f600d5cf5674388d06086fda2be81",
+      "base": "2ea5b52b63cc62262d62ca18004441f54d5bd7d2"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "sha": "ae9e812f169409232773f082a06f44d7b5e75232",
+      "base": "24b1f463ef867d7aa98e4f7d7c54566d3e67773a"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/marks.py",
+      "sha": "5f2459052d21d0c358641738cb595b265ef01a48",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/tabs.py",
+      "sha": "00067da194596d014ca7b1a826bf55c75a0c410a",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/presentation.py",
+      "sha": "55681bf8f712c1ff43bfd4cc8e9c948df738134a",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "sha": "269814e94549fdff700027afa450686a4a15f81b",
+      "base": "a83e4b5020aa3779b93e6169928607194677769c"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_tabs.py",
+      "sha": "d275bb802ae4821895141834f0e2733ff9a724c0",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "ad1307145332c5845f738eb449c1499c2bde109f",
+      "base": "4612356be5452b938dd737c50bc1f65e303723bc"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "sha": "828efa16203bc2d2dcd427781e0f02e47facb709",
+      "base": "d28985cf2345d5c875f8f3bc2f13a05fdb30367f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_preferences.py",
+      "sha": "b94eaca264c9d6a1ec3390925de04cac6e09aa58",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_tools.py",
+      "sha": "39b145318d8e5c8953009227572c593b0f1920ed",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_presentation.py",
+      "sha": "f4793e92177c584ce95ed8c95e534d34322bc196",
+      "base": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "sha": "33c4ef1a242bab6226ef5cf27b1fc2bec09c5608",
+      "base": "74608b6e34b3f7d64712a82f7b75359ea4701673"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "d28185cd09ddcb6a51f6132aaa54bec727d3c685",
+      "base": "40390b406ca318ffac31ecc20f6d6c6980281278"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "c68a0368728aad8f2ca9b427029fcf0cc391c517",
+      "base": "ba268ebe0da616dce392a14b0306fa83f5913e1b"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "c9a9d1d3abc45765cadae1cace7085dcd4c6b92b",
+      "base": "fb672fe02721a64aa889d1afa0e3792b77f6e748"
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_marks.py",
+      "sha": "5ecd99794e7c59748b1e1df017c651d8fd4c76d9",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_reading_tools.py",
+      "sha": "b25f92728d18b8298f5b259b85969eb4bf221736",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_tabs.py",
+      "sha": "9e7610d1892341ab48fc1ba8f86b7f45652229fd",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_tabs.py",
+      "sha": "34cd5178ed7aa46cb9848156245c370eb67af46c",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation.py",
+      "sha": "b43d3423b398c1eda457d50c058950809fa32081",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation_handlers.py",
+      "sha": "6c626cd42a05a51cead09c82c5e6bb28058a21b5",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation_reader_hook.py",
+      "sha": "b3e8caad709c4cf6b5dfd65625a047b1baeafa3f",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_reading_presentation_driver.py",
+      "sha": "8b184b29424c4393ec651ce7f3bb076bade35cc2",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_voice_preferences.py",
+      "sha": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/storage/test_voice_preferences_backup.py",
+      "sha": "39364cacad912036d6d52322f28986312a6a3ec1",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_voice_preferences_dialog.py",
+      "sha": "9a8f5a85ed23e419b5029bcaa5cc920a17a5979c",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "sha": "1356973e8989077fff56d902101106851dc56b97",
+      "base": "729d1e2e5a55f4099b8d2512783f7cccbcc31a5e"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_navigation_ui.py",
+      "sha": "083d06a6590d17a90ef99f18f2d0cacbc7dc97a3",
+      "base": "87c4088ad61a4717c0c41fa4a09aab108d23f215"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_view_hooks.py",
+      "sha": "0651cdfa71bfc92cd4ae29592e662cff5d67f793",
+      "base": null
+    },
+    {
+      "path": "carr-library/tests/storage/test_reader_preferences_state.py",
+      "sha": "b848559af2b0f604ad7ca3c4a5127cc4f4d5b485",
+      "base": null
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_presentation_smoke.py",
+      "sha": "66c0c971e63bcbbccddeaba30cc467e2f5e4ff0c",
+      "base": null
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_tabs_smoke.py",
+      "sha": "905f5a1a0bb18f02d2ef19914412a22af439d4f0",
+      "base": null
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "sha": "69636973b5b387fdeaf62a16540d59f144556e0b",
+      "base": null
+    },
+    {
+      "path": "carr-library/docs/READING_TABS.md",
+      "sha": "4690c347f9cc43e80c86aba7488cbb1c0fae7d66",
+      "base": null
+    },
+    {
+      "path": "carr-library/docs/READING_TOOLS.md",
+      "sha": "84e0d94386aad467f2a6b6d0616495671fcd1064",
+      "base": null
+    },
+    {
+      "path": "carr-library/docs/READING_PRESENTATION.md",
+      "sha": "8f1149f4c598a3ec21ebfb1d6298bd6b57013f1e",
+      "base": null
+    },
+    {
+      "path": "carr-library/docs/VOICE_PREFERENCES.md",
+      "sha": "0625dec4cc3603398fc0d3df3d70f50559162c58",
+      "base": null
+    }
+  ],
+  "unchanged_contracts": [
+    "single current reader and shared keyboard registry",
+    "current1000-rule bounded pronunciation rewrite and cancellable dictionary I/O",
+    "current speech runtime and _io publication authority",
+    "current listening/queue/player ownership and ReaderResources cleanup",
+    "all original shared backup namespaces, ASR revocation, Studio nonce rules and passive entitlement state"
+  ],
+  "selected_features": [
+    "up to16 native independent manual reading tabs through existing draft recovery/CAS",
+    "exact-text passive bookmarks and one-history-edit paragraph split/join",
+    "native font/color/zoom presentation on current reader controls",
+    "exact-language installed-voice defaults/favorites and named rate/volume profiles; no substitution or synthesis",
+    "bounded checked JSON snapshot token through current common parser; atomic writer unchanged"
+  ],
+  "excluded_donor_scope": [
+    "reading-focus/paced-reading view is not adopted by this task; its later donor native focus phases are not claimed",
+    "no replacement speech/runtime.py, WavePlayer, native audio code, engine registry, desktop_app.py, workflows or pyproject",
+    "no automatic clipboard watch; current one-shot explicit clipboard action retained"
+  ],
+  "shared_hunks": [
+    {
+      "label": "backup-only-hunks",
+      "sha": "c5be6cd6e184857a79abf16454e3301b02006977"
+    },
+    {
+      "label": "all-existing-file-hunks",
+      "sha": "2a39c19eb8d336f583e39c287aedd9dbc86d7074"
+    }
+  ],
+  "application_policy": "Apply existing-file hunks only to their recorded bases or reconcile them semantically with newer root-owned BookBatch/import work. New files are exact blobs. No remote refs were changed.",
+  "tests": {
+    "execution": "NOT_RUN",
+    "python_parse": "NOT_RUN",
+    "source_and_installed_whole_modules": [
+      {
+        "path": "carr-library/tests/speech/test_reading_marks.py",
+        "sha": "5ecd99794e7c59748b1e1df017c651d8fd4c76d9",
+        "base": null,
+        "expected_cases": 36,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_real_project_round_trip_preserves_bookmark_identity_history_and_exact_original",
+          "test_bookmark_is_bound_to_exact_text_and_undo_restores_it",
+          "test_invalid_passive_bookmarks_are_rejected",
+          "test_bookmark_wire_is_strict_and_bounded",
+          "test_bookmark_limit_and_invalid_cursor_do_not_change_previous_marks",
+          "test_paragraph_split_and_join_are_independent_undoable_reading_edits",
+          "test_invalid_split_keeps_history_and_original",
+          "test_invalid_join_keeps_history_and_original",
+          "test_join_mixed_blank_lines_and_spaces_changes_only_the_next_boundary",
+          "test_adding_passive_bookmarks_does_not_invalidate_saved_audio_position",
+          "test_bookmarks_survive_actual_backup_delete_and_relocated_recovery"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_reading_tools.py",
+        "sha": "b25f92728d18b8298f5b259b85969eb4bf221736",
+        "base": null,
+        "expected_cases": 14,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_native_bookmark_add_go_to_and_late_callback_are_explicit",
+          "test_native_changed_text_cannot_be_followed_as_the_old_bookmark",
+          "test_native_paragraph_actions_preserve_source_and_support_undo",
+          "test_native_stale_or_revoked_scope_does_not_apply_a_queued_action",
+          "test_actual_reader_hook_mutates_and_saves_only_the_reviewed_reading_copy",
+          "test_actual_reader_hook_vetoes_unsafe_paragraph_mutation"
+        ]
+      },
+      {
+        "path": "carr-library/tests/speech/test_reading_tabs.py",
+        "sha": "9e7610d1892341ab48fc1ba8f86b7f45652229fd",
+        "base": null,
+        "expected_cases": 25,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_exact_json_snapshot_reports_actual_bytes_not_reserialized_value",
+          "test_format_only_competing_write_is_preserved_and_stale_save_refused",
+          "test_fresh_instance_rejects_stale_membership_and_missing_draft",
+          "test_tab_labels_and_ids_cannot_carry_paths_or_invalid_text",
+          "test_membership_has_only_bounded_passive_fields",
+          "test_actual_backup_delete_and_relocate_keeps_two_independent_histories",
+          "test_resigned_invalid_tab_collection_never_publishes_destination",
+          "test_replaced_library_directory_invalidates_existing_store",
+          "test_json_snapshot_rejects_inplace_mutation_after_bytes_were_read",
+          "test_json_snapshot_keeps_checked_descriptor_after_path_rebinding"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_reader_tabs.py",
+        "sha": "34cd5178ed7aa46cb9848156245c370eb67af46c",
+        "base": null,
+        "expected_cases": 20,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_switch_and_fresh_reopen_keep_each_copy_voice_cursor_and_undo",
+          "test_failed_switch_keeps_native_selection_and_both_drafts",
+          "test_close_uses_confirmation_preserves_files_and_ignores_reentrant_events",
+          "test_late_native_events_after_close_do_not_access_destroyed_controls",
+          "test_rename_after_modal_revalidates_exact_membership_before_native_label",
+          "test_save_all_writes_independent_projects_and_restores_selected_tab",
+          "test_cancel_close_stays_on_unsaved_tab_and_retains_other_copy",
+          "test_busy_close_does_not_activate_a_different_copy_for_confirmation",
+          "test_edit_invalidates_saved_numeric_playback_position",
+          "test_explicit_text_appends_without_overwriting_recovered_copy",
+          "test_explicit_text_preserves_pre_tabs_manual_recovery",
+          "test_clean_close_flushes_latest_voice_cursor_and_numeric_audio_before_autosave",
+          "test_dirty_discard_does_not_flush_rejected_edits_or_replace_prior_recovery",
+          "test_cancel_other_dirty_copy_does_not_flush_active_clean_copy",
+          "test_clean_close_cas_conflict_preserves_other_writer_and_prevents_completion"
+        ]
+      },
+      {
+        "path": "carr-library/tests/speech/test_reading_presentation.py",
+        "sha": "b43d3423b398c1eda457d50c058950809fa32081",
+        "base": null,
+        "expected_cases": 32,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_real_profile_defaults_save_reopen_reset_and_independent_libraries",
+          "test_exact_compare_before_save_rejects_other_window_and_format_only_changes",
+          "test_typed_profile_rejects_unbounded_or_ambiguous_values",
+          "test_native_font_fields_are_finite_and_bounded",
+          "test_invalid_saved_profile_is_preserved_instead_of_silently_reset",
+          "test_growth_between_stat_and_open_is_rejected_before_read",
+          "test_replaced_library_and_linked_state_are_not_write_authority",
+          "test_actual_backup_delete_restore_preserves_profile_text_source_history_and_cursor"
+        ]
+      },
+      {
+        "path": "carr-library/tests/speech/test_reading_presentation_handlers.py",
+        "sha": "6c626cd42a05a51cead09c82c5e6bb28058a21b5",
+        "base": null,
+        "expected_cases": 20,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_native_preview_apply_reset_preserve_exact_text_native_positions_source_and_history",
+          "test_font_change_restores_native_selection_and_caret_without_character_conversion",
+          "test_silently_edited_zoom_invalidates_review_even_without_native_event",
+          "test_partial_zoom_edit_is_visible_and_cannot_escape_native_handler",
+          "test_scope_change_and_closed_dialog_prevent_profile_or_reader_changes",
+          "test_native_picker_cancel_and_changed_scope_preserve_original_choices",
+          "test_saved_font_missing_after_restore_stays_explicit_and_reset_is_reviewable",
+          "test_other_window_save_rolls_back_native_display_and_requires_reload",
+          "test_profile_file_write_failure_rolls_back_display_without_touching_text",
+          "test_controls_have_distinct_accessible_names_and_escape_closes",
+          "test_reader_startup_restores_only_display_and_preserves_invalid_profile"
+        ]
+      },
+      {
+        "path": "carr-library/tests/speech/test_reading_presentation_reader_hook.py",
+        "sha": "b3e8caad709c4cf6b5dfd65625a047b1baeafa3f",
+        "base": null,
+        "expected_cases": 9,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_real_reader_hook_retains_library_source_and_focus_authority"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_native_reading_presentation_driver.py",
+        "sha": "8b184b29424c4393ec651ce7f3bb076bade35cc2",
+        "base": null,
+        "expected_cases": 9,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_key_release_failure_retains_exact_modifier_tuple_for_final_retry",
+          "test_cleanup_releases_keys_and_restores_fixtures_after_a_failed_timer_stop",
+          "test_cleanup_does_not_swallow_process_control_exceptions",
+          "test_nested_unwind_waits_for_child_destruction_before_ending_reader",
+          "test_unwind_still_closes_owned_modal_when_key_release_raises",
+          "test_failed_modal_exit_still_schedules_the_retained_outer_loop_exit",
+          "test_unwind_has_a_finite_deadline_for_an_owned_child_that_never_destroys"
+        ]
+      },
+      {
+        "path": "carr-library/tests/speech/test_voice_preferences.py",
+        "sha": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+        "base": null,
+        "expected_cases": 23,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_legacy_load_does_not_rewrite_bytes_or_probe_optional_engines",
+          "test_reload_persists_exact_ids_profiles_and_external_declarations",
+          "test_two_windows_refuse_stale_preference_save_without_overwriting",
+          "test_engine_window_cannot_overwrite_a_later_voice_preference_change",
+          "test_shared_settings_lock_refuses_overlapping_changes",
+          "test_explicit_voice_beats_default_but_not_exact_language_guard",
+          "test_profile_controls_are_not_applied_to_a_different_voice_or_language",
+          "test_no_region_or_script_fallback_to_similarly_named_voice",
+          "test_adapter_underscore_tag_and_request_case_use_one_exact_language",
+          "test_removed_voice_and_unsupported_controls_do_not_pick_another_voice",
+          "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values",
+          "test_owner_guard_is_rechecked_after_latest_settings_read_before_commit"
+        ]
+      },
+      {
+        "path": "carr-library/tests/storage/test_voice_preferences_backup.py",
+        "sha": "39364cacad912036d6d52322f28986312a6a3ec1",
+        "base": null,
+        "expected_cases": 2,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_voice_preferences_backup_restore_preserves_exact_bytes_without_discovery",
+          "test_resigned_invalid_profile_rejects_restore_without_touching_backup"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_voice_preferences_dialog.py",
+        "sha": "9a8f5a85ed23e419b5029bcaa5cc920a17a5979c",
+        "base": null,
+        "expected_cases": 12,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_open_close_does_not_discover_speak_or_write_preferences",
+          "test_favorite_captures_selected_id_before_background_save",
+          "test_default_requires_exact_current_voice_language",
+          "test_saved_default_changes_only_selection_and_keeps_reviewed_controls",
+          "test_saved_profile_displays_and_applies_its_exact_controls",
+          "test_missing_default_stays_visible_and_never_selects_substitute",
+          "test_pending_write_rechecks_owner_before_touching_settings",
+          "test_stale_window_preserves_other_settings_and_can_explicitly_reload",
+          "test_profile_replacement_requires_explicit_confirmation",
+          "test_no_callback_can_apply_a_voice_after_modal_close",
+          "test_invalid_profile_controls_fail_before_queueing"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_progress_job_review.py",
+        "sha": "1356973e8989077fff56d902101106851dc56b97",
+        "base": "729d1e2e5a55f4099b8d2512783f7cccbcc31a5e",
+        "expected_cases": 48,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_batch_receipts_require_actual_completion",
+          "test_callback_publication_failure_never_announces_100_percent",
+          "test_desktop_uses_aggregate_outcome_instead_of_success_for_every_return",
+          "test_help_progress_query_and_quiet_mode_remain_available_during_jobs",
+          "test_success_preserves_callback_output_location_and_waits_for_it",
+          "test_generic_completion_preserves_callback_owned_focus",
+          "test_completion_summary_preserves_the_callback_focus_target",
+          "test_old_completion_does_not_overwrite_a_callback_started_job",
+          "test_generic_completion_updates_notice_without_overriding_callback_focus",
+          "test_progress_observer_failure_cannot_reclassify_committed_work",
+          "test_receipt_classifier_failure_preserves_successful_publication",
+          "test_observer_failure_and_late_cancel_keep_the_real_business_error",
+          "test_executor_failure_still_unlocks_controls_when_progress_start_fails",
+          "test_measurements_use_captured_token_and_late_updates_do_not_touch_next_job",
+          "test_studio_reports_measured_phases_without_fabricated_percent_and_commits_before_success",
+          "test_studio_pause_cancel_and_failure_follow_saved_job_receipt_without_success",
+          "test_studio_final_publication_callback_failure_never_reaches_100_percent",
+          "test_studio_executor_start_failure_is_terminal_and_unlocks_controls",
+          "test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup",
+          "test_studio_close_releases_device_and_both_observers_even_after_device_failure"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_reader_navigation_ui.py",
+        "sha": "083d06a6590d17a90ef99f18f2d0cacbc7dc97a3",
+        "base": "87c4088ad61a4717c0c41fa4a09aab108d23f215",
+        "expected_cases": 11,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_current_previous_next_select_without_speech_or_source_edits",
+          "test_read_current_unit_is_an_explicit_separate_action",
+          "test_navigation_refuses_busy_unloaded_or_revoked_source_without_speaking",
+          "test_invalid_unit_keeps_selection_and_produces_no_audio",
+          "test_from_cursor_and_autosave_use_observed_unicode_offsets",
+          "test_a_finished_navigation_does_not_wrap_or_start_full_document_speech",
+          "test_navigation_refuses_a_replaced_reader_scope_before_selection"
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_reader_view_hooks.py",
+        "sha": "0651cdfa71bfc92cd4ae29592e662cff5d67f793",
+        "base": null,
+        "expected_cases": 11,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_current_reading_desk_appearance_keeps_source_and_modal_owner",
+          "test_missing_voice_preferences_remain_reviewable_but_late_owner_changes_are_refused"
+        ]
+      },
+      {
+        "path": "carr-library/tests/storage/test_reader_preferences_state.py",
+        "sha": "b848559af2b0f604ad7ca3c4a5127cc4f4d5b485",
+        "base": null,
+        "expected_cases": 7,
+        "expected_case_count_status": "STATIC_ONLY_NOT_COLLECTED",
+        "required_test_functions": [
+          "test_actual_state_only_relocation_preserves_drafts_marks_appearance_and_dormant_voices",
+          "test_resigned_state_only_reader_damage_is_refused_before_caller_publication",
+          "test_snapshot_refuses_a_live_tab_index_without_its_retained_draft"
+        ]
+      }
+    ],
+    "total_expected_cases": 279,
+    "new_module_expected_cases": 220,
+    "existing_context_only_cases": 59,
+    "existing_context_only_changes": [
+      "test_progress_job_review: add reader_tabs close context/assertion, all48 prior cases retained",
+      "test_reader_navigation_ui: add current closure locals only, all11 prior cases retained"
+    ],
+    "installed_companions": [
+      {
+        "test": "tests/ui/test_native_reading_presentation_driver.py",
+        "relative_path": "scripts/windows_reading_presentation_smoke.py",
+        "sha": "66c0c971e63bcbbccddeaba30cc467e2f5e4ff0c",
+        "reason": "Portable helper tests import the exact adjacent script by __file__; copy script into isolated test root, never import checkout carr_library."
+      }
+    ],
+    "required_unchanged_regressions": [
+      "tests/speech/test_reading.py",
+      "tests/speech/test_reader_usability.py",
+      "tests/speech/test_session.py",
+      "tests/speech/test_publication_validation.py",
+      "tests/ui/test_reader_command_dispatch.py",
+      "tests/ui/test_reader_keymap_context.py",
+      "tests/ui/test_reading_desk_actions.py",
+      "tests/storage/test_engine_settings_backup.py",
+      "tests/storage/test_engine_settings_dordiai_backup.py",
+      "tests/integrations/test_dordiai_settings.py",
+      "tests/ui/test_engine_settings_lifetime.py"
+    ],
+    "strict": "zero failure/error/skip/XFAIL/XPASS for selected portable suites; preserve all current gates"
+  },
+  "native": {
+    "execution": "NOT_RUN",
+    "probes": [
+      {
+        "path": "carr-library/scripts/windows_reading_presentation_smoke.py",
+        "sha": "66c0c971e63bcbbccddeaba30cc467e2f5e4ff0c",
+        "base": null,
+        "expected_check_count": 27,
+        "required_checks": [
+          "installed exact source: carr_library.speech.presentation",
+          "installed exact source: carr_library.speech.reading",
+          "installed exact source: carr_library.speech.session",
+          "installed exact source: carr_library.ui.reading_presentation",
+          "installed exact source: carr_library.ui.speech_dialog",
+          "installed exact source: carr_library.ui.ebook_model",
+          "installed exact source: carr_library.durable_state",
+          "installed exact source: carr_library.ui.builtin_keyboard_commands",
+          "installed exact source: carr_library.ui.reading_shortcuts",
+          "actual native Windows controls",
+          "both real Reader modal lifetimes completed",
+          "restart restores exact edited text and selected native font",
+          "restart retains source and canonical undo history",
+          "actual keyboard edit retains native undo",
+          "actual saved draft retains immutable original source and an edit",
+          "actual native zoom entry is exact",
+          "native preview remains separate from reader and durable state",
+          "native font colors and zoom match the saved explicit profile",
+          "appearance preserves exact Unicode text native selection caret and undo",
+          "appearance does not edit saved reading source or history",
+          "picker fixture selections were explicit and finite",
+          "appearance close restores reader keyboard focus",
+          "OS reset is a preview until explicitly applied",
+          "explicit reset saves defaults and restores native OS presentation",
+          "canonical undo survives appearance and reader restart",
+          "original source remains exact after undo and new save",
+          "actual native reader workflow completed twice"
+        ],
+        "origins": [
+          "carr_library.speech.presentation",
+          "carr_library.speech.reading",
+          "carr_library.speech.session",
+          "carr_library.ui.reading_presentation",
+          "carr_library.ui.speech_dialog",
+          "carr_library.ui.ebook_model",
+          "carr_library.durable_state",
+          "carr_library.ui.builtin_keyboard_commands",
+          "carr_library.ui.reading_shortcuts"
+        ],
+        "command": "<installed-python> -I -B -X utf8 scripts/windows_reading_presentation_smoke.py",
+        "runtime": "NOT_RUN",
+        "expected_count_status": "STATIC_LITERAL_INVENTORY_NOT_EXECUTED",
+        "required_report": {
+          "result": "PASS",
+          "native_reader_lifecycle": "PASS",
+          "native_text_presentation": "PASS",
+          "native_font_colour_pickers": "NOT_RUN",
+          "speech_engine": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        },
+        "watchdog_seconds": 180,
+        "phase_deadline_seconds": 25,
+        "overall_native_ui_deadline_seconds": 130
+      },
+      {
+        "path": "carr-library/scripts/windows_reading_tabs_smoke.py",
+        "sha": "905f5a1a0bb18f02d2ef19914412a22af439d4f0",
+        "base": null,
+        "expected_check_count": 32,
+        "required_checks": [
+          "installed exact source: carr_library.speech.tabs",
+          "installed exact source: carr_library.speech.session",
+          "installed exact source: carr_library.speech.reading",
+          "installed exact source: carr_library.ui.reader_tabs",
+          "installed exact source: carr_library.ui.speech_dialog",
+          "installed exact source: carr_library.speech.marks",
+          "installed exact source: carr_library.ui.reading_tools",
+          "installed exact source: carr_library.durable_state",
+          "installed exact source: carr_library.ui.builtin_keyboard_commands",
+          "installed exact source: carr_library.ui.reading_shortcuts",
+          "actual native Windows notebook and text controls",
+          "both owned reader modal lifetimes completed",
+          "first native tab contains exact Unicode source with native line endings",
+          "first native keyboard edit is retained",
+          "first copy saves original and independent undo",
+          "actual native bookmark name and list controls are available",
+          "native bookmark action persists exact text and cursor",
+          "native paragraph split is undoable and preserves the original",
+          "native bookmark navigation restores cursor and reader focus",
+          "native paragraph Undo restores the bookmarked text version",
+          "Control T creates and focuses a separate native page",
+          "second copy receives an actual independent keyboard edit",
+          "separate durable identities and originals",
+          "Control Tab restores the first native editor and text",
+          "Control Tab restores the second text and cursor",
+          "fresh reader recovers both pages and selected identity",
+          "restart restores saved cursor with no installed voice",
+          "restart retains first edited Unicode text",
+          "restart retains the native-created bookmark and exact version",
+          "first undo is independent after actual reader restart",
+          "first undo preserves second history and original source",
+          "actual native tabs workflow completed twice"
+        ],
+        "origins": [
+          "carr_library.speech.tabs",
+          "carr_library.speech.session",
+          "carr_library.speech.reading",
+          "carr_library.ui.reader_tabs",
+          "carr_library.ui.speech_dialog",
+          "carr_library.speech.marks",
+          "carr_library.ui.reading_tools",
+          "carr_library.durable_state",
+          "carr_library.ui.builtin_keyboard_commands",
+          "carr_library.ui.reading_shortcuts"
+        ],
+        "command": "<installed-python> -I -B -X utf8 scripts/windows_reading_tabs_smoke.py",
+        "runtime": "NOT_RUN",
+        "expected_count_status": "STATIC_LITERAL_INVENTORY_NOT_EXECUTED",
+        "required_report": {
+          "result": "PASS",
+          "native_reading_tabs": "PASS",
+          "keyboard_and_restart": "PASS",
+          "voice_inventory": "EXPLICIT_EMPTY_FIXTURE",
+          "speech_engine": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        },
+        "watchdog_seconds": 180,
+        "phase_deadline_seconds": 25,
+        "overall_native_ui_deadline_seconds": 130
+      },
+      {
+        "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+        "sha": "69636973b5b387fdeaf62a16540d59f144556e0b",
+        "base": null,
+        "expected_check_count": 23,
+        "required_checks": [
+          "installed exact source: carr_library.runtime_settings",
+          "installed exact source: carr_library.durable_state",
+          "installed exact source: carr_library.speech.runtime",
+          "installed exact source: carr_library.speech.reading",
+          "installed exact source: carr_library.speech.session",
+          "installed exact source: carr_library.speech.tabs",
+          "installed exact source: carr_library.ui.voice_preferences",
+          "installed exact source: carr_library.ui.speech_dialog",
+          "installed exact source: carr_library.ui.builtin_keyboard_commands",
+          "installed exact source: carr_library.ui.reading_shortcuts",
+          "installed exact source: carr_library.ui.worker_lifetime",
+          "actual native Windows preference controls",
+          "reader cleanup settles the original provider once",
+          "preference workflow never synthesizes or plays audio",
+          "opening preferences is silent and does not write",
+          "native favorite persists",
+          "native exact-language default persists",
+          "native profile applies exact declared controls",
+          "changed library refuses native save",
+          "changed library suppresses stale native notices",
+          "closed modal has no pending worker callback",
+          "actual reader save keeps selected voice without a project picker",
+          "actual reader preferences workflow and cleanup completed"
+        ],
+        "origins": [
+          "carr_library.runtime_settings",
+          "carr_library.durable_state",
+          "carr_library.speech.runtime",
+          "carr_library.speech.reading",
+          "carr_library.speech.session",
+          "carr_library.speech.tabs",
+          "carr_library.ui.voice_preferences",
+          "carr_library.ui.speech_dialog",
+          "carr_library.ui.builtin_keyboard_commands",
+          "carr_library.ui.reading_shortcuts",
+          "carr_library.ui.worker_lifetime"
+        ],
+        "command": "<installed-python> -I -B -X utf8 scripts/windows_voice_preferences_smoke.py",
+        "runtime": "NOT_RUN",
+        "expected_count_status": "STATIC_LITERAL_INVENTORY_NOT_EXECUTED",
+        "required_report": {
+          "result": "PASS",
+          "native_voice_preferences": "PASS",
+          "actual_reader_worker": "PASS",
+          "voice_inventory": "SYNTHETIC_DECLARATIONS",
+          "speech_engine": "NOT_RUN",
+          "acoustic_quality": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        },
+        "watchdog_seconds": 180,
+        "phase_deadline_seconds": 25,
+        "overall_native_ui_deadline_seconds": 130
+      }
+    ],
+    "companion_requirement": "Keep windows_reading_presentation_smoke.py adjacent to the tabs and voice-preferences probes. It is loaded by exact path under -I/-B; no sys.path widening.",
+    "interpretation": "Actual native reader controls, existing worker and persistence only after successful execution. Metadata inventories are explicit fixtures. No private inference, acoustic, physical-device, OS font/color picker interaction or NVDA qualification."
+  },
+  "installed_origins": [
+    "carr_library.durable_state",
+    "carr_library.speech.reading",
+    "carr_library.speech.session",
+    "carr_library.speech.marks",
+    "carr_library.speech.tabs",
+    "carr_library.speech.presentation",
+    "carr_library.runtime_settings",
+    "carr_library.ui.reader_tabs",
+    "carr_library.ui.speech_dialog",
+    "carr_library.ui.builtin_keyboard_commands",
+    "carr_library.ui.voice_preferences",
+    "carr_library.ui.reading_tools",
+    "carr_library.ui.reading_presentation",
+    "carr_library.ui.reading_desk",
+    "carr_library.backup_producers",
+    "carr_library.backup_sidecars",
+    "carr_library.state_backup"
+  ],
+  "guide_copy_additions": [
+    "READING_TABS.md",
+    "READING_TOOLS.md",
+    "READING_PRESENTATION.md",
+    "VOICE_PREFERENCES.md"
+  ],
+  "review": {
+    "durable_session_tab_store": "Accepted independently by locate_project, static only",
+    "ui_lifetime": "Pending canonical_regression final bounded review",
+    "backup_hooks": "Requested locate_project bounded passive review",
+    "self_checks": "All39 blobs read back exactly; static literal case inventory only. No Python/YAML/native execution."
+  }
+}

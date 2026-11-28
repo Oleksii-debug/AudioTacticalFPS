@@ -7,6 +7,7 @@ explicitly selected roots; original audio is never modified.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import replace
 from fractions import Fraction
 import hashlib
@@ -19,9 +20,11 @@ import shutil
 import stat
 import tempfile
 
-from .models import (AudioBudget, AudioCancelled, AudioError, AudioInfo,
+from .models import (AudioBudget, AudioCancelled, AudioCleanupPending, AudioError, AudioInfo,
                      AudioUnavailable, Effect, LoudnessInfo, Track, finite, integer)
 from .process import publish_file, run_process
+from .envelopes import (ENVELOPE_KINDS, active_envelope, control_definitions,
+                        envelope_filter, validate_envelope_scope)
 from ..durable_state import local_path
 
 
@@ -80,12 +83,14 @@ _CONTROLS = {
     'loudness': {'target_lufs': (-18, -40, -9, 'LUFS'), 'peak_db': (-1, -9, 0, 'dBTP'),
                  'range_lu': (7, 1, 20, 'LU')},
 }
+_CONTROLS.update(control_definitions())
 _FILTERS = {'gain': 'volume', 'equalizer': 'equalizer', 'highpass': 'highpass',
     'lowpass': 'lowpass', 'lowshelf': 'bass', 'highshelf': 'treble', 'notch': 'bandreject',
     'gate': 'agate', 'compressor': 'acompressor', 'limiter': 'alimiter', 'denoise': 'afftdn',
     'declick': 'adeclick', 'declip': 'adeclip', 'deesser': 'deesser', 'delay': 'aecho',
     'reverb': 'aecho', 'chorus': 'chorus', 'tempo': 'atempo', 'pitch': 'asetrate',
     'width': 'extrastereo', 'loudness': 'loudnorm'}
+_FILTERS.update({kind: 'aeval' for kind in ENVELOPE_KINDS})
 
 
 def effect_controls():
@@ -100,7 +105,13 @@ def narration_preset():
 
 
 def _n(value):
-    return format(float(value), '.12g')
+    # Keep the existing twelve significant digits, but duration options such
+    # as atrim/afade require ordinary decimal notation, including one sample.
+    rendered = format(float(value), '.12g')
+    if 'e' in rendered.lower():
+        from decimal import Decimal
+        return format(Decimal(rendered), 'f')
+    return rendered
 
 
 def _linear(db):
@@ -123,6 +134,8 @@ def effect_filter(effect, sample_rate=24000):
     """Validate *all* controls, including bypassed effects, before compiling."""
     if not isinstance(effect, Effect) or effect.kind not in _CONTROLS:
         raise ValueError('Unsupported audio effect; arbitrary filters are not accepted.')
+    if effect.kind in ENVELOPE_KINDS:
+        return envelope_filter(effect, sample_rate)
     definitions = _CONTROLS[effect.kind]
     unknown = set(effect.parameters) - set(definitions)
     if unknown:
@@ -202,6 +215,28 @@ def _local_path(value):
     if '\x00' in text or '://' in text or text.startswith(('\\\\', '//')):
         raise ValueError('Audio paths must be local files, not network paths or addresses.')
     return Path(value)
+
+
+def _run_codec(args, **options):
+    """Use the existing native process owner for every Windows codec child."""
+    return run_process(args, owned_windows_job=os.name == 'nt', **options)
+
+
+@contextmanager
+def _staging_directory(*, prefix, directory):
+    """Retain codec staging until its actual native owner confirms quiescence."""
+    temporary = tempfile.TemporaryDirectory(prefix=prefix, dir=directory)
+    try:
+        yield temporary.name
+    except AudioCleanupPending as error:
+        # A bound cleanup callback keeps the TemporaryDirectory strongly alive.
+        # Both nested render output and a concat manifest use the same owner.
+        error.cleanup_owner.add_quiescent_callback(temporary.cleanup)
+        temporary = None
+        raise
+    finally:
+        if temporary is not None:
+            temporary.cleanup()
 
 
 class AudioRuntime:
@@ -286,13 +321,15 @@ class AudioRuntime:
                 '-filter_threads', str(self.budget.threads),
                 '-filter_complex_threads', str(self.budget.threads)]
 
-    def capabilities(self):
+    def capabilities(self, *, cancelled=lambda: False):
+        if cancelled():
+            raise AudioCancelled('Audio capability inspection cancelled.')
         if self._capabilities is None:
             budget = replace(self.budget, timeout=min(20, self.budget.timeout))
-            version = run_process([self.ffmpeg, '-version'], budget=budget).stdout.decode('utf-8', 'replace')
-            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget).stdout.decode('utf-8', 'replace')
-            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget).stdout.decode('utf-8', 'replace')
-            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget).stdout.decode('utf-8', 'replace')
+            version = _run_codec([self.ffmpeg, '-version'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            filters = _run_codec([self.ffmpeg, '-hide_banner', '-filters'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            encoders = _run_codec([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            muxers = _run_codec([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
             # FFmpeg 9 removed the command-support column (three flags -> two).
             filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{2,3}\s+([a-zA-Z0-9_]+)\s', filters, re.M)}
             encoder_names = {match.group(1) for match in re.finditer(r'^\s*[A-Z.]{6}\s+(\S+)\s', encoders, re.M)}
@@ -310,6 +347,8 @@ class AudioRuntime:
                 'reverb_description': 'Four early reflections; no convolution IR or calibrated RT60.',
                 'delay_description': 'Single echo; recursive feedback is not supported.',
                 'memory_control': 'Streaming pipeline, thread and allocation limits; not an OS memory sandbox.'}
+        if cancelled():
+            raise AudioCancelled('Audio capability inspection cancelled.')
         return json.loads(json.dumps(self._capabilities))
 
     def _chain(self, effects, rate):
@@ -335,7 +374,7 @@ class AudioRuntime:
                 '-select_streams', 'a:0',
                 '-show_entries', 'stream=codec_name,sample_rate,channels,duration,duration_ts,time_base:format=format_name,duration',
                 '-of', 'json', str(path)]
-        result = run_process(args, budget=replace(self.budget, timeout=min(30, self.budget.timeout)), cancelled=cancelled)
+        result = _run_codec(args, budget=replace(self.budget, timeout=min(30, self.budget.timeout)), cancelled=cancelled)
         try:
             data = json.loads(result.stdout)
             stream, = data['streams']
@@ -403,14 +442,14 @@ class AudioRuntime:
         self._space(expected_duration, rate, channels, bit_depth, target.parent)
         encoding = self._encoding(target, rate, channels, bit_depth, bitrate)
         snapshots = [(source, _identity(source)) for source in sources]
-        with tempfile.TemporaryDirectory(prefix='.audio-', dir=target.parent) as temporary:
+        with _staging_directory(prefix='.audio-', directory=target.parent) as temporary:
             staged = Path(temporary) / ('render' + target.suffix)
             command = [*args, '-map_metadata', '-1', '-map_chapters', '-1', '-vn', '-sn', '-dn',
                        *encoding]
             if progress is not None:
                 command += ['-stats_period', '1', '-progress', 'pipe:1']
             command += [str(staged)]
-            run_process(command, budget=self.budget, cancelled=cancelled, watch=(staged,), progress=progress)
+            _run_codec(command, budget=self.budget, cancelled=cancelled, watch=(staged,), progress=progress)
             info = self.inspect(staged, cancelled=cancelled)
             if info.channels != channels or info.sample_rate != rate:
                 # Opus is intrinsically 48 kHz. Do not silently claim a 24 kHz
@@ -444,17 +483,31 @@ class AudioRuntime:
         if selected > info.duration - start + 1 / info.sample_rate:
             raise ValueError('Selection exceeds the source audio.')
         chain = self._chain(effects, sample_rate)
+        curve_pan = active_envelope(effects, 'pan_envelope')
+        curve_width = active_envelope(effects, 'width_envelope')
+        if curve_pan and (info.channels != 1 or channels != 2):
+            raise ValueError('Convert pan envelopes require a mono source and stereo output.')
+        if curve_width and (info.channels != 2 or channels != 2):
+            raise ValueError('Convert stereo-width envelopes require a stereo source and stereo output.')
+        validate_envelope_scope(effects, routing='pan' if curve_pan else 'stereo')
         tempo = math.prod(float(effect.parameters.get('factor', 1)) for effect in effects
                           if effect.kind == 'tempo' and effect.enabled)
         output_duration = round(selected / tempo * sample_rate) / sample_rate
         frames = round(output_duration * sample_rate)
         filters = [f'atrim=start={_n(start)}:duration={_n(selected)}', 'asetpts=PTS-STARTPTS',
-                   f'aresample={sample_rate}', f'aformat=sample_fmts=fltp:channel_layouts={"mono" if channels == 1 else "stereo"}',
+                   f'aresample={sample_rate}', f'aformat=sample_fmts=fltp:channel_layouts={"mono" if channels == 1 or curve_pan else "stereo"}',
                    *chain, f'aresample={sample_rate}', f'apad=whole_len={frames}', f'atrim=end_sample={frames}']
         return self._render([*self._base_args(), *self._input_args(source), '-map', '0:a:0',
                              '-af', ','.join(filters)], target, expected_duration=output_duration,
                             rate=sample_rate, channels=channels, bit_depth=bit_depth, bitrate=bitrate,
                             sources=(source,), cancelled=cancelled, progress=progress)
+
+    def audiobook(self, source, output, *, chapters, title, sample_rate=24000,
+                  channels=2, bitrate=192, cancelled=lambda: False, progress=None):
+        from .audiobook import publish_m4b
+        return publish_m4b(self, source, output, chapters=chapters, title=title,
+                           sample_rate=sample_rate, channels=channels, bitrate=bitrate,
+                           cancelled=cancelled, progress=progress)
 
     def mix(self, tracks, output, *, duration=None, sample_rate=24000, channels=2,
             duck_music=True, effects=(), bit_depth=16, bitrate=192,
@@ -469,10 +522,12 @@ class AudioRuntime:
             raise ValueError('Every mixed track must be a typed Track.')
         target = self._output(output)
         master = self._chain(effects, sample_rate)
+        validate_envelope_scope(effects, routing='stereo')
         if any(effect.kind == 'tempo' and effect.enabled for effect in effects):
             raise ValueError('Master tempo changes timeline alignment. Change tempo with Convert before mixing.')
         args, graph, prepared = self._base_args(), [], []
         for track in tracks:
+            validate_envelope_scope(track.effects, routing=track.routing, pan=track.pan)
             path = self._input(track.path)
             info = self.inspect(path, cancelled=cancelled)
             if track.trim_start >= info.duration:
@@ -504,7 +559,7 @@ class AudioRuntime:
             if track.routing == 'stereo':
                 if track.pan != 0:
                     raise ValueError('Stereo-preserving routing uses its existing channels; select pan routing to reposition.')
-            else:
+            elif not active_envelope(track.effects, 'pan_envelope'):
                 pan = -1 if track.routing == 'left' else 1 if track.routing == 'right' else track.pan
                 left, right = math.sqrt((1 - pan) / 2), math.sqrt((1 + pan) / 2)
                 filters += [f'pan=stereo|c0={_n(left)}*c0|c1={_n(right)}*c0']
@@ -582,7 +637,7 @@ class AudioRuntime:
         samples = round(duration * sample_rate)
         total = samples / sample_rate
         self._space(total, sample_rate, channels, bit_depth, target.parent)
-        with tempfile.TemporaryDirectory(prefix='.audio-join-', dir=target.parent) as folder:
+        with _staging_directory(prefix='.audio-join-', directory=target.parent) as folder:
             manifest = Path(folder) / 'scenes.ffconcat'
             with manifest.open('x', encoding='utf-8', newline='\n') as stream:
                 stream.write('ffconcat version 1.0\n')
@@ -612,7 +667,7 @@ class AudioRuntime:
         # progress is disabled. It is still subject to the diagnostic cap.
         args[args.index('error')] = 'info'
         args.insert(1, '-nostats')
-        result = run_process(args, budget=self.budget, cancelled=cancelled)
+        result = _run_codec(args, budget=self.budget, cancelled=cancelled)
         match = re.search(rb'\{\s*"input_i".*?\}', result.stderr, flags=re.S)
         if not match:
             raise AudioError('The local loudness meter returned no measurement.')

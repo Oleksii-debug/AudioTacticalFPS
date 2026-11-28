@@ -1,0 +1,346 @@
+{
+  "schema": "carr.reviewed-source-union/1",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c"
+  },
+  "replaces": "52a60603532d2599d0db9e64d7f7e3781d1da8f6",
+  "incorporates": [
+    {
+      "manifest": "de70ebddd53a3fbd2ccd82c417cb74b98e0e1914",
+      "scope": "Seven already reviewed V3/direct-pytest/scan fixture files; all semantics retained."
+    },
+    {
+      "manifest": "861e7995bab670a802ed3c41867913e0f8c4be42",
+      "scope": "Two actual native chooser corrections and14 portable driver cases."
+    },
+    {
+      "manifest": "52a60603532d2599d0db9e64d7f7e3781d1da8f6",
+      "scope": "Previously accepted ten-file native-choice and direct-pytest union; all source fixes retained."
+    }
+  ],
+  "dependency_manifests": [
+    {
+      "manifest": "d4b81b82baaad9399a4247fb970f2d79711744ab",
+      "scope": "Reader focus two-stage drivers; existing source/installed9→14; scripts remain mandatory native probes."
+    },
+    {
+      "manifest": "4d17024436587b2e8d0c58e6514f705b4585ff03",
+      "scope": "Backup live-choice native correction plus6 source/installed portable cases; standalone184 pins remain owned by Locate."
+    },
+    {
+      "manifest": "31ef41c298f29b561de15421a6788ecc9e13d7b9",
+      "scope": "Actual converter transport/audit correction; selected conversion 29, Calibre 49, Office 19, UI 17, XML 95 = 209 portable cases."
+    },
+    {
+      "manifest": "e23bf4153f3786e5d20959591662534b29e0a21a",
+      "scope": "Final-only complete ci_check 6ad repin of converter 209 helper, runtime preparer and workflow; supersedes stale 3ffbe."
+    },
+    {
+      "manifest": "c89f9d26490f5916c8444050275b0f3f5af1ae3b",
+      "scope": "Book publication diagnostics and eight driver cases; original six Book suites retain 98 cases, standalone helper now requires 106; native 77/18 unchanged."
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "7bf829f6ecced363473a3392bd9090f1e6fc6100",
+      "sha": "c77d99ead8e771da909985bd500a37749f128477",
+      "reviewed_lineage": [
+        "c8c26f8c3fff494e00ce75e7dd05d413b9def14a",
+        "9fbfa5594f96ae0d9f8a9577992e01e4158115c9"
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "9c592fbc2a7c936838614e5ea11253f918f23d56",
+      "sha": "abb023c66f8f04fb7f48356551662dd98faaa4fd",
+      "reviewed_lineage": [
+        "2bbbca4de62cca7564877a96223c7a473637bdca",
+        "5b863dcb3c5ba2dc683390879d891a658fa2221a"
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "preimage": "d8aa1b8ba13d2c125ee1f0069bfb81c7874b4ce0",
+      "sha": "28da3567fed054331d003bf02aa35b30fed91f1e"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "e241f58f2a69ff9a1c991bbc6523c6aea8dfb6c3",
+      "sha": "5d9ff9b20f7710236dc481c87ab790cbf75bb9e0",
+      "reviewed_lineage": [
+        "683c7bbd6d4f093b527830ddecb1662635d6b6e2",
+        "f443fd7e305cb9af6f43aac2d5997d623fd27c67"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "preimage": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+      "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "preimage": "33d9b62c6aabeea518751aaef3cafb865ab7f919",
+      "sha": "78a59aae58e455c5b2c1d3e369859bd7a32d8c73"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_continuation.py",
+      "preimage": "adce2719c3de7a852d2df3bffe17624086e633ee",
+      "sha": "3d31db503d13bacf86272d73a6b89ad310a8a6bf"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_batch_smoke.py",
+      "preimage": "cb4a1713fee5cd4993b1d26e1d39f73521279552",
+      "sha": "aa037396f89f61dca669acdc26fc74da2ecbac7a"
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "preimage": "f64a4dcc568614542f704f01b3da08dd26a29ab9",
+      "sha": "ab57dedcac0cc49fd1a9207e0bb17b20988f8ce8"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_studio_book_choices.py",
+      "preimage": null,
+      "sha": "b35fc3759c951dbb8024a32489d4eaf67ca7a0ba"
+    }
+  ],
+  "gate_delta": {
+    "whole_tests": {
+      "tests/ui/test_native_reading_presentation_driver.py": {
+        "count": 14,
+        "functions": [
+          "test_key_release_failure_retains_exact_modifier_tuple_for_final_retry",
+          "test_cleanup_releases_keys_and_restores_fixtures_after_a_failed_timer_stop",
+          "test_cleanup_does_not_swallow_process_control_exceptions",
+          "test_nested_unwind_waits_for_child_destruction_before_ending_reader",
+          "test_unwind_still_closes_owned_modal_when_key_release_raises",
+          "test_failed_modal_exit_still_schedules_the_retained_outer_loop_exit",
+          "test_unwind_has_a_finite_deadline_for_an_owned_child_that_never_destroys",
+          "test_verified_reader_focus_advances_before_next_control_focus_settlement",
+          "test_missing_initial_reader_focus_still_refuses_before_any_native_key",
+          "test_wrong_bookmark_cursor_still_refuses_despite_correct_reader_focus"
+        ]
+      },
+      "tests/ui/test_native_backup_capacity_driver.py": {
+        "count": 6,
+        "functions": [
+          "test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance",
+          "test_native_capacity_refuses_a_down_key_that_did_not_change_the_live_list",
+          "test_native_capacity_refuses_ambiguous_embedded_lists_before_any_key",
+          "test_native_capacity_default_requires_actual_ordinary_list_not_cached_result_only",
+          "test_native_capacity_cancel_does_not_select_or_accept_any_allowance"
+        ]
+      },
+      "tests/ui/test_native_studio_book_choices.py": {
+        "count": 14,
+        "functions": [
+          "test_native_book_chooser_reads_live_selection_before_actual_ok",
+          "test_native_book_chooser_refuses_an_unapplied_live_selection_before_ok",
+          "test_native_book_chooser_refuses_missing_or_ambiguous_live_controls",
+          "test_native_history_checks_live_revision_while_modal_string_cache_is_empty",
+          "test_native_history_refuses_wrong_live_index_or_exact_revision_identity",
+          "test_native_history_refuses_missing_or_ambiguous_live_controls",
+          "test_native_batch_abort_unwinds_one_running_owned_loop_per_event_turn",
+          "test_native_batch_abort_answers_owned_question_before_any_wx_modal",
+          "test_native_batch_abort_surfaces_cleanup_refusal_without_closing_suspended_parents"
+        ]
+      },
+      "tests/conversion/test_selected_conversion.py": {
+        "count": 29,
+        "functions": [
+          "test_actual_owned_worker_publishes_one_exact_triplet_and_read_is_passive",
+          "test_read_refuses_changed_complete_folder_before_use",
+          "test_initial_cancel_does_not_create_broker_or_admit_worker",
+          "test_queued_source_runtime_and_directory_identity_refuse_before_child",
+          "test_source_mutation_before_final_publication_is_refused",
+          "test_late_cancel_before_atomic_rename_leaves_no_partial_triplet",
+          "test_competing_folder_is_never_adopted_removed_or_overwritten",
+          "test_visible_triplet_survives_directory_durability_warning",
+          "test_actual_committed_result_survives_late_reservation_release_error",
+          "test_staging_cleanup_attention_keeps_actual_committed_result",
+          "test_pending_actual_child_keeps_core_stage_and_broker_until_quiescence",
+          "test_optional_selection_never_uses_path_discovery_or_writes_private_library",
+          "test_cancel_after_real_atomic_commit_keeps_returned_receipt",
+          "test_actual_import_retains_only_reading_text_and_survives_external_folder_removal",
+          "test_reading_folder_swap_at_actual_import_boundary_refuses_before_ingest",
+          "test_import_returned_receipt_survives_late_reader_cleanup_error",
+          "test_actual_adapter_stdin_and_logs_remain_inside_unchanged_worker_audit"
+        ]
+      },
+      "tests/conversion/test_calibre_admission.py": {
+        "count": 49,
+        "functions": [
+          "test_core_selection_and_snapshot_bind_real_files_without_executing",
+          "test_incomplete_or_unbound_installation_is_refused_before_launch",
+          "test_worker_refuses_modified_selected_inventory",
+          "test_false_format_header_is_refused_before_native_admission",
+          "test_fixed_plain_text_arguments_and_source_lineage_for_every_enabled_family",
+          "test_invalid_or_empty_converter_text_is_not_accepted",
+          "test_private_environment_does_not_inherit_user_plugins_python_hooks_or_secrets",
+          "test_early_cancellation_never_admits_native_code",
+          "test_native_invocation_inherits_existing_owner_and_uses_fixed_binary_streams",
+          "test_fast_finished_child_cannot_bypass_diagnostic_byte_limit",
+          "test_expired_adapter_never_starts_another_native_child",
+          "test_existing_complete_staging_bounds_are_retained",
+          "test_actual_upstream_entrypoint_version_names_are_accepted",
+          "test_prc_palmdoc_family_is_admitted_without_enabling_arbitrary_pdb",
+          "test_observed_calibre_creator_banner_keeps_exact_version_identity",
+          "test_unknown_calibre_version_banner_never_reaches_conversion"
+        ]
+      },
+      "tests/ui/test_native_book_publication_driver.py": {
+        "count": 8,
+        "functions": [
+          "test_failed_publication_unwinds_each_resumed_owned_modal_on_later_turn",
+          "test_controlled_failure_closes_only_running_child_and_keeps_parent_alive",
+          "test_error_unwind_waits_for_owned_question_before_any_wx_modal",
+          "test_modal_exit_error_remains_visible_without_ending_suspended_parent",
+          "test_publication_observer_preserves_actual_arguments_and_returned_receipt",
+          "test_publication_observer_preserves_original_error_and_bounded_diagnostic"
+        ]
+      }
+    },
+    "companions_added": [
+      "scripts/windows_reading_tabs_smoke.py",
+      "scripts/windows_backup_capacity_smoke.py",
+      "scripts/windows_book_batch_smoke.py",
+      "scripts/windows_studio_effects_smoke.py",
+      "scripts/windows_book_audio_smoke.py"
+    ],
+    "counts": {
+      "main_fast_source_whole": 140,
+      "main_full_source_whole": 456,
+      "main_installed_additive_contents_suites": 300,
+      "v3_publication_source_whole": 177,
+      "v3_publication_installed_suites": 156
+    },
+    "native_book_batch": {
+      "previous_required": 55,
+      "required": 56,
+      "essential": 40,
+      "origins": 16,
+      "added_check": "native batch failure answers only owned question No before unwinding active modal",
+      "added_fields": {
+        "native_failure_cleanup": "PASS"
+      }
+    },
+    "native_studio": "Unchanged64 required labels/15 origins/PCM/keyboard/strict report contract.",
+    "workflow_utf8_bytes": {
+      "main": 402043,
+      "v3": 429384
+    },
+    "preservation": "Every prior test path and function is retained. Existing reviewed_feature_cases entries change only the explicitly reviewed Reader 9→14, selected converter 26→29 and Calibre 44→49 additions. Every old native check, origin, callback, firewall, final seal, aggregate failure and owner qualification boundary remains. Book publication native 77/18 and Studio native 64/15 remain unchanged."
+  },
+  "previous_fix_contract": {
+    "scanner_fixture": "One explicit happy first-page fixture allowance120→240 inside unchanged suite600, actual reason=files required, bounded reason/total/limits diagnostic; all5000+7/restart/identity/cursor/cancellation/time tests and18cases remain.",
+    "diagnostic_factory": "Only two exact existing AST definitions are compiled from byte-identical PYTEST_CHILD. Returns its existing GIL-owned timed diagnostic on actual CPython3.11 Windows; no offline/telemetry/main side effects.",
+    "direct_callers": [
+      "V3 installed recovery",
+      "V3 installed publication",
+      "Main extracted installed bundle verifier",
+      "Dedicated installed ASR"
+    ],
+    "caller_proof": "Regular single-link/non-reparse helper admitted by exact6ad Git blob before execution from those bytes, private namespace with__file__, no sys.path insertion; exact bytes/devino/size/mtime/link/reparse rechecked after pytest. Existing caller arguments/policies remain.",
+    "counts": {
+      "tests/packaging/test_ci_check.py": 35,
+      "tests/ingest/test_batch_continuation.py": 18,
+      "tests/transcription/test_native_profiles_fixture.py": 2,
+      "tests/packaging/test_owner_candidate_archives.py": 22
+    },
+    "new_ci_methods": [
+      "test_direct_pytest_factory_reuses_real_gil_dump_without_changing_caller_policy",
+      "test_direct_pytest_factory_settles_timer_before_the_next_test",
+      "test_direct_pytest_diagnostic_failure_preserves_nonzero_exit_after_cleanup"
+    ],
+    "v3_orchestration": {
+      "source_minutes": {
+        "before": 45,
+        "after": 75
+      },
+      "job_minutes": {
+        "before": 270,
+        "after": 300
+      },
+      "current_whole_source": 177,
+      "sequential": true,
+      "reason": "Measured 2628.93 seconds for 158 old child suites plus 563.39 seconds for six current Windows Book suites and 391.71 seconds for the five remaining current Windows capacity suites yields 3584.03 seconds before new legacy suites, other driver suites, startup and verdict work. These are sequential child sums, not parallel runner wall time. The already approved 75-minute source envelope and 300-minute job are retained; no individual bound grows.",
+      "child_seconds": 600,
+      "reviewed_asr_exception_seconds": 900,
+      "installed_publication_minutes": 120
+    }
+  },
+  "measured_envelope_followup": {
+    "head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "windows_capacity_job": 140760166819,
+    "source_remaining_five_sum_seconds": 391.71,
+    "prior_c3_completed158_sum_seconds": 2628.93,
+    "actual_book_six_sum_seconds": 563.39,
+    "sequential_total_seconds": 3584.03,
+    "note": "Current-head Windows source child sums exclude helper setup; sequential sums are not two-worker wall time. The older 387.42-second DDD measurement is retained separately. No additional deadline change occurs in this delta.",
+    "book_evidence": "d0f8c9f7d4a178cef0f13ed0ee4abb2d8ca4775c",
+    "historical_ddd_book_sum_seconds": 387.42
+  },
+  "reviews": {
+    "prior_seven": [
+      {
+        "reviewer": "locate_project",
+        "scope": "Exact scanner fixture3d31/adce, all18 cases preserved",
+        "status": "ACCEPTED_STATIC_NOT_RUN"
+      },
+      {
+        "reviewer": "progress_completion",
+        "scope": "Canonical6ad factory and78a actual direct-child tests",
+        "status": "ACCEPTED_STATIC_NOT_RUN"
+      },
+      {
+        "reviewer": "canonical_regression",
+        "scope": "Four direct caller changes plus main35 counts and measured V3 outer envelopes",
+        "status": "ACCEPTED_STATIC_NOT_RUN"
+      }
+    ],
+    "native_and_driver": {
+      "source": {
+        "reviewer": "canonical_regression",
+        "verdict": "ACCEPTED_STATIC_NOT_RUN"
+      },
+      "portable_tests": {
+        "reviewer": "canonical_regression",
+        "verdict": "ACCEPTED_STATIC_NOT_RUN",
+        "cases": 14,
+        "functions": 9
+      }
+    },
+    "gate_inventory": {
+      "reader_backup": {
+        "reviewer": "locate_project",
+        "verdict": "ACCEPTED_STATIC_NOT_RUN"
+      },
+      "book_batch_studio": {
+        "reviewer": "canonical_regression",
+        "verdict": "ACCEPTED_STATIC_NOT_RUN"
+      },
+      "book_publication": {
+        "reviewer": "locate_project",
+        "verdict": "ACCEPTED_STATIC_NOT_RUN",
+        "scope": "Exact whole eight and six functions, actual native-script companion, all old 98 preserved; native 77/18 unchanged."
+      },
+      "converter209": {
+        "reviewer": "canonical_regression",
+        "verdict": "ACCEPTED_STATIC_NOT_RUN",
+        "scope": "Exact selected 29 and Calibre 49 plus all three new functions; old 19/17/XML95 and native blocks/envelopes unchanged."
+      }
+    }
+  },
+  "actual_evidence": [
+    "b4a6dabd6b1c4976f70b4c6b389da9e439af0f26",
+    "9a171cd47640633b6a2eff32e4706e90c72c6dd2",
+    "addce64bb3e4b126fc46fb0febef096181d13970",
+    "d0f8c9f7d4a178cef0f13ed0ee4abb2d8ca4775c"
+  ],
+  "runtime": "NOT_RUN for this union; no syntax/parser, source, installed, native, physical or release acceptance transfers from older heads.",
+  "refs_changed": false,
+  "actual_evidence_scope": "Managed-update and ASR/Book results apply only to their recorded exact heads. Current Book native stage 35 remains FAIL; this reviewed successor and its new portable cases are NOT_RUN."
+}

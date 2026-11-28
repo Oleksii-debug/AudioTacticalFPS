@@ -1,0 +1,175 @@
+{
+  "schema": "carr-studio-markers-handoff/1",
+  "created_utc": "2026-11-28 05:51:33 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base": {
+    "commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "preimage": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "git_blob": "63a20c64909db77b9958e9c16627b78f08050d95",
+      "kind": "source",
+      "static_inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "preimage": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "git_blob": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab",
+      "kind": "source",
+      "static_inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+      "preimage": "6688213b891b2a3d1bf91a015918280ccc3eaeb6",
+      "git_blob": "fdc163215c53240dd6058e8f4235d2e8aa03db10",
+      "kind": "source",
+      "static_inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "preimage": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+      "git_blob": "0fb5e91a440ded8b62b806b944bdd4722f288e65",
+      "kind": "source",
+      "static_inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "preimage": "7027e3f07f967403d6e523aa23c8233176a43222",
+      "git_blob": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+      "kind": "source",
+      "static_inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_markers.py",
+      "preimage": null,
+      "git_blob": "088083c06c452fa5fbac9e14df1786aba524d3d7",
+      "cases": 48,
+      "functions": {
+        "test_every_legacy_project_wire_and_fingerprint_stays_exact": 3,
+        "test_schema_four_roundtrip_keeps_sample_positions_without_changing_scene_duration": 5,
+        "test_marker_wire_rejects_invalid_positions_labels_and_ambiguous_identity": 12,
+        "test_schema_four_requires_closed_typed_marker_wire": 7,
+        "test_marker_collection_admits_exact_bound_and_refuses_growth_before_store_write": 1,
+        "test_add_edit_remove_and_history_share_exact_existing_revision_cas": 3,
+        "test_stale_marker_edits_cannot_overwrite_an_actual_competing_saved_project": 6,
+        "test_noop_marker_update_keeps_bytes_inode_history_and_fresh_cas": 1,
+        "test_marker_identity_refusals_leave_current_and_history_exact": 3,
+        "test_marker_cancellation_before_publication_preserves_original_files_and_exception": 3,
+        "test_late_cancel_after_actual_marker_publication_returns_committed_revision": 1,
+        "test_actual_book_plan_ownership_refuses_marker_edits_and_preserves_backup_linkage": 2,
+        "test_legacy_external_clip_cannot_gain_marker_schema_without_managed_input_admission": 1
+      },
+      "companions": [],
+      "kind": "new whole test module",
+      "function_count": 13
+    },
+    {
+      "path": "carr-library/tests/studio/test_marker_consumers.py",
+      "preimage": null,
+      "git_blob": "0877334ad369cc03b3d48edecfdd00b1a8202c9b",
+      "cases": 31,
+      "functions": {
+        "test_marker_backup_preserves_current_history_inputs_and_passive_output_boundary": 2,
+        "test_resigned_marker_backup_still_requires_typed_identity_effects_and_retained_sources": 20,
+        "test_restored_marker_job_needs_fresh_output_before_any_recorded_path_or_runtime_access": 2,
+        "test_effect_edits_keep_marker_schema_identity_and_the_existing_history": 4,
+        "test_schema_four_source_resolution_keeps_fresh_hash_and_original_cancellation": 2,
+        "test_actual_marker_only_render_reuses_speech_and_preserves_pcm_timing_and_restored_effects": 1
+      },
+      "companions": [],
+      "kind": "new whole test module",
+      "function_count": 6
+    }
+  ],
+  "test_contract": {
+    "whole_modules": 2,
+    "total_cases": 79,
+    "total_functions": 19,
+    "companions": [],
+    "ordinary_600_second_policy": "unchanged",
+    "actual_audio_dependency": "One consumer case requires actual FFmpeg/ffprobe and AudioRuntime; it uses only runtime-generated synthetic PCM and cannot skip if codec tools are absent.",
+    "execution": "NOT_RUN; static source and fixture/API peers only"
+  },
+  "api": {
+    "Marker": "Marker(id: str, scene_id: str, position: float, label: str)",
+    "Project": "schema4 carries markers: tuple[Marker,...]; schema1/2/3 wire bytes remain marker-free.",
+    "add": "ProjectStore.add_marker(current, *, scene_id, position, label, marker_id=None, cancelled=lambda: False)",
+    "update": "ProjectStore.update_marker(current, marker_id, *, position, label, cancelled=lambda: False)",
+    "remove": "ProjectStore.remove_marker(current, marker_id, *, cancelled=lambda: False)",
+    "bounds": {
+      "markers": 1024,
+      "label_characters": 256,
+      "position": "Nonnegative finite seconds aligned exactly to the project's sample grid; no implied duration or audio mutation."
+    },
+    "persistence": "Existing project.json + revision/full-fingerprint CAS and immutable historical files; one revision on a real edit; fresh CAS with no write for an exact no-op.",
+    "cancellation": "Checked before current-state work and immediately before existing save; no cancellation check can turn a returned committed save into a non-result.",
+    "book_plans": "carr-book-audio source ownership is refused by all marker edits and by schema4 Project construction; BookPlan1/2 wire/project/provenance mappings remain unchanged."
+  },
+  "source_consumer_audit": {
+    "git_blob": "64e69220678638fb272a8ad514a8481876b971f7",
+    "modules_read": 399,
+    "failed_reads": 0
+  },
+  "external_composition_dependencies": [
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "git_blob": "598d0c450e3697c699a03c74d806783173fc3ab5",
+      "manifest": "661ec49061830598cc26be3144449866716ba8d2",
+      "owner": "Progress",
+      "required_behavior": "set_effects schema=max(3, project.schema); dataclasses.replace preserves markers; this path is not overwritten by the seven owned files."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "owner": "root",
+      "required_behavior": "Preserve markers/schema/effects through edited-script reconstruction; require unchanged ordered scene structure when markers exist, and refuse changed scripts with a repeated marked-scene title. Project-title/no-op saves and unique-title text edits remain supported.",
+      "git_blob": "ce11e96477841cebe30702001a1b5f4d6107178b",
+      "tests": {
+        "path": "carr-library/tests/studio/test_studio_controller.py",
+        "git_blob": "93a093e395388b69d6b7a76f22d7432cc8b60c92",
+        "whole_cases": 18,
+        "functions": 10
+      },
+      "peer": "Canonical ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "owner": "root",
+      "reviewed_blob": "5b8dee1dab668bdafe455d1085e532bc54988515",
+      "required_behavior": "Existing worker/CAS/history and modal-scope guards; explicit nearest-sample input, typed persisted marker values."
+    }
+  ],
+  "peer_reviews": [
+    {
+      "reviewer": "Progress",
+      "scope": "All five owned source files",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "Progress",
+      "scope": "Whole domain48/13; actual store/history/book-plan and backup API fixture review",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "Progress",
+      "scope": "Whole consumer31/6; actual render/PCM/cache/retained-input/output-origin/passive backup API fixture review",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "preserved": [
+    "No new marker database or backup namespace.",
+    "No existing test module, old case or deadline removed.",
+    "No BookPlan schema or source-provenance changes.",
+    "No cross-call metadata authority cache.",
+    "No renderer marker-time expansion or PCM mutation."
+  ],
+  "not_claimed": [
+    "No runtime test or native UI PASS yet.",
+    "No acoustic, physical-device or screen-reader qualification.",
+    "No capacity measurement result transferred to these Studio changes."
+  ],
+  "publication": "Immutable source/test/report blobs only; root owns composition, required gate inventory and all refs.",
+  "supersedes": "8bc0071040faa99703fba68b60d53993da953d88"
+}

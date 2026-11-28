@@ -1,0 +1,84 @@
+{
+  "schema": "carr-source-shard-checkout-correction/1",
+  "status": "SOURCE_CORRECTION_STATIC_NOT_RUN",
+  "head": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "run_id": 46097288580,
+  "jobs": [
+    {
+      "shard": 0,
+      "job_id": 140831855884,
+      "conclusion": "failure",
+      "failed_step": 9,
+      "source_suites": "NOT_RUN",
+      "actual_error": "2026-11-28T02:29:25.7560223Z ValueError: Checked-out source bytes differ from the selected Git object: .github/workflows/carr-integrated-source-shard.yml",
+      "artifact": {
+        "id": 15244286390,
+        "size_bytes": 11362,
+        "sha256": "701adcc46fc954365a78ccf206ac69d22e2b055bbc86025c4cbaa67c2901e653",
+        "inventory_inspected": false
+      }
+    },
+    {
+      "shard": 1,
+      "job_id": 140831855965,
+      "conclusion": "failure",
+      "failed_step": 9,
+      "source_suites": "NOT_RUN",
+      "actual_error": "2026-11-28T02:35:40.4778022Z ValueError: Checked-out source bytes differ from the selected Git object: .github/workflows/carr-integrated-source-shard.yml",
+      "artifact": {
+        "id": 15244114185,
+        "size_bytes": 11355,
+        "sha256": "5c4635c8306eaa11e2392f00be1ae7d12a53feb4b68051dcd345f3597909ca5a",
+        "inventory_inspected": false
+      }
+    },
+    {
+      "shard": 2,
+      "job_id": 140831855975,
+      "conclusion": "failure",
+      "failed_step": 9,
+      "source_suites": "NOT_RUN",
+      "actual_error": "2026-11-28T02:29:52.1947457Z ValueError: Checked-out source bytes differ from the selected Git object: .github/workflows/carr-integrated-source-shard.yml",
+      "artifact": {
+        "id": 15243908538,
+        "size_bytes": 11362,
+        "sha256": "619f27eab006f64c1e66a4fe289e953798ffb6f0c115348ed3a23b7b5f6ec2b2",
+        "inventory_inspected": false
+      }
+    },
+    {
+      "shard": 3,
+      "job_id": 140831855942,
+      "conclusion": "failure",
+      "failed_step": 9,
+      "source_suites": "NOT_RUN",
+      "actual_error": "2026-11-28T02:34:06.6635485Z ValueError: Checked-out source bytes differ from the selected Git object: .github/workflows/carr-integrated-source-shard.yml",
+      "artifact": {
+        "id": 15244029092,
+        "size_bytes": 11364,
+        "sha256": "eaaa9aa1dcf22d6e5db59ea21b529130af55d2d5be0f4a6ec7bcb3b4a46ea7da",
+        "inventory_inspected": false
+      }
+    }
+  ],
+  "existing_attributes": {
+    "path": "carr-library/.gitattributes",
+    "blob": "9f82225a0a9443c12c23170c7c4fb71784bbbb39",
+    "rule": "* -text"
+  },
+  "finding": "All four jobs refuse raw workflow bytes before any whole suite. The package-local attributes do not cover either newly source-bound workflow. Checkout text conversion is the source-supported explanation; the logs do not print differing bytes.",
+  "files": [
+    {
+      "path": ".github/.gitattributes",
+      "preimage": null,
+      "blob": "f1f365b6bcad4cd7df40aa444d543bee482dab61"
+    }
+  ],
+  "preserved": [
+    "472 whole suites, exact four assignments of118",
+    "before/after raw Git SHA and byte/file identity checks",
+    "600-second children; ASR900; jobs3; academic1",
+    "all main/native/owner tests, timeouts and policies"
+  ],
+  "verification": "Exact blob readback; no parser/execution or runtime outcome transferred."
+}

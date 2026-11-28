@@ -1,0 +1,120 @@
+{
+  "schema": "carr-reviewed-component/1",
+  "component": "Language final-callback Windows denial fixture correction",
+  "source_base": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "actual_failure_receipt": "141de50f4bc975c4fa1519fbcb13dafe19f31e90",
+  "actual_failure": {
+    "run_id": 46131516654,
+    "job_id": 140937500203,
+    "pr_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "checkout": "2b3cb9f0e73b18baf1fc70672b897876b500dc16",
+    "source_passed": 146,
+    "source_failed": 1,
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence.py",
+      "preimage": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+      "blob": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
+      "readback_exact": true,
+      "bytes": 17578,
+      "inverse": [
+        {
+          "before": "@pytest.mark.parametrize('mutation', ['document', 'root'])\ndef test_final_callback_cannot_replace_state_or_scope_before_actual_publication(tmp_path, mutation):\n    root = tmp_path / 'library'\n    root.mkdir()\n    store, value, snapshot, token = fixture.saved(root)\n    before = store.path.read_bytes()\n    armed = False\n    changed = False\n    replacement = encode(EvidenceSnapshot(snapshot.revision + 7).to_dict())\n\n    def operation(current):\n        nonlocal armed\n        armed = True\n        return replace(current, revision=current.revision + 1,\n                       observations=current.observations + (fixture.observation('unicode_text'),))\n\n    def cancelled():\n        nonlocal changed\n        if armed and not changed:\n            changed = True\n            if mutation == 'document':\n                store.path.write_bytes(replacement)\n            else:\n                root.rename(tmp_path / 'held-root')\n                shutil.copytree(tmp_path / 'held-root', root)\n        return False\n\n    with pytest.raises(ValueError, match='changed'):\n        store._change(operation, token, cancelled)\n    assert changed\n    assert store.path.read_bytes() == (replacement if mutation == 'document' else before)\n    assert not list(store.path.parent.glob('.pending-*'))\n",
+          "after": "@pytest.mark.parametrize('mutation', ['document', 'root'])\ndef test_final_callback_cannot_replace_state_or_scope_before_actual_publication(tmp_path, mutation):\n    root = tmp_path / 'library'\n    root.mkdir()\n    store, value, snapshot, token = fixture.saved(root)\n    snapshot, token = fixture.assess(store, value, token)\n    assert status(snapshot, value) == 'verified' and len(snapshot.reviews) == 1\n    before = store.path.read_bytes()\n    root_info, state_info = root.stat(), store.path.stat()\n    held_root = tmp_path / 'held-root'\n    armed = False\n    changed = False\n    rename_denied = propagated_denial = None\n    replacement = encode(EvidenceSnapshot(snapshot.revision + 7).to_dict())\n\n    def operation(current):\n        nonlocal armed\n        armed = True\n        return replace(current, revision=current.revision + 1,\n                       observations=current.observations + (fixture.observation('unicode_text'),))\n\n    def cancelled():\n        nonlocal changed, rename_denied\n        if armed and not changed:\n            changed = True\n            if mutation == 'document':\n                store.path.write_bytes(replacement)\n            else:\n                try:\n                    root.rename(held_root)\n                except PermissionError as error:\n                    # Windows may refuse the actual ancestor rename while the\n                    # real state-lock handle is open. Retain only that exact denial.\n                    if os.name != 'nt' or getattr(error, 'winerror', None) != 5:\n                        raise\n                    rename_denied = error\n                    raise\n                shutil.copytree(held_root, root)\n        return False\n\n    try:\n        with pytest.raises(ValueError, match='changed'):\n            store._change(operation, token, cancelled)\n    except PermissionError as error:\n        assert mutation == 'root' and error is rename_denied\n        propagated_denial = error\n    assert changed and propagated_denial is rename_denied\n    assert store.path.read_bytes() == (replacement if mutation == 'document' else before)\n    assert not list(store.path.parent.glob('.pending-*'))\n    if rename_denied is not None:\n        assert os.name == 'nt' and rename_denied.winerror == 5\n        assert not held_root.exists()\n        after_root, after_state = root.stat(), store.path.stat()\n        assert (after_root.st_dev, after_root.st_ino) == (root_info.st_dev, root_info.st_ino)\n        fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')\n        assert tuple(getattr(after_state, name) for name in fields) == tuple(\n            getattr(state_info, name) for name in fields)\n        # The failed operation released its genuine lock and committed no candidate.\n        with module.state_lock(store.path.parent, 'language-evidence'):\n            restored, restored_token = store.load()\n        assert (restored, restored_token) == (snapshot, token)\n        assert restored.reviews == snapshot.reviews and status(restored, value) == 'verified'\n        assert tuple(row.capability for row in restored.observations) == ('tts',)\n    elif mutation == 'root':\n        after_root = root.stat()\n        assert (after_root.st_dev, after_root.st_ino) != (root_info.st_dev, root_info.st_ino)\n        assert (held_root / store.path.relative_to(root)).read_bytes() == before\n        with pytest.raises(ValueError, match='changed'):\n            store.load()\n        restored, restored_token = EvidenceStore(root).load()\n        assert (restored, restored_token) == (snapshot, token)\n        assert restored.reviews == snapshot.reviews and status(restored, value) == 'verified'\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+      "preimage": "460e6ba9397c956660b9658b8f29047952e4243d",
+      "blob": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+      "readback_exact": true,
+      "bytes": 31101,
+      "inverse": [
+        {
+          "before": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+          "after": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-language-evidence.yml",
+      "preimage": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+      "blob": "29bf8a261151818ed9b45695ef5cf356f8fc552d",
+      "readback_exact": true,
+      "bytes": 12090,
+      "inverse": [
+        {
+          "before": "460e6ba9397c956660b9658b8f29047952e4243d",
+          "after": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "inventory": {
+    "changed_test_path": "carr-library/tests/language_qualification/test_evidence.py",
+    "whole_cases": 54,
+    "ordinary_functions": 14,
+    "function_case_counts": {
+      "test_passive_import_and_zero_default_never_execute_or_accept_reviews": 2,
+      "test_import_refuses_forged_or_ambiguous_observation_shapes": 20,
+      "test_import_uses_strict_real_json_snapshot_decoder": 3,
+      "test_review_binds_complete_observation_and_explicit_distinct_provenance": 4,
+      "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests": 5,
+      "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope": 4,
+      "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes": 1,
+      "test_real_directory_substitution_is_not_silently_adopted": 3,
+      "test_linked_or_nonregular_evidence_is_refused_without_modification": 2,
+      "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged": 4,
+      "test_final_callback_cannot_replace_state_or_scope_before_actual_publication": 2,
+      "test_visible_late_commit_is_reported_without_repeating_or_erasing_it": 1,
+      "test_review_history_preserves_all_prior_rejections_and_revocations": 1,
+      "test_collection_bounds_refuse_before_unbounded_history_processing": 2
+    },
+    "focused_wholes": 5,
+    "focused_source_cases": 147,
+    "focused_installed_cases": 147,
+    "pins": 48,
+    "installed_origins": 36,
+    "native_required_checks": 75,
+    "native_origins": 14,
+    "native_default_no_observations": 3,
+    "new_wholes": 0,
+    "new_functions": 0,
+    "new_companions": 0,
+    "new_origins": 0,
+    "shared_data_unchanged": "6797df44d708230f38ba999760bbfd3cb8581e40",
+    "native_source_unchanged": "1a0358e96abb435b6b944c8a69046e8f3f178c1b"
+  },
+  "peers": {
+    "fixture": "294376dd25ca900bd14fb3e8a74781aad0a0554b",
+    "pin_closure": "253c13cb5799d6cedb42e6dd703da7ae8b18b7d5"
+  },
+  "correction": [
+    "Seed one genuine recorded synthetic accept review before attempting the final-callback mutation.",
+    "Catch only PermissionError raised by the actual root.rename call on Windows with winerror5, rethrow it, and require the identical object propagated from the real EvidenceStore operation.",
+    "The actual-denial branch requires unchanged root and state-file identity, exact bytes/token/full snapshot/review/current scoped status, no held-root or pending staging/candidate, and successful reacquisition of the real released state lock.",
+    "If the actual rename succeeds, keep original changed-scope ValueError and byte/staging requirements; also require changed root identity, unchanged held original bytes, stale store rejection, and exact new-store snapshot/history.",
+    "Every other test/function/decorator is unchanged; no product or lock implementation change, skip, generic permission-error allowance, retry, or deadline expansion."
+  ],
+  "inverse_and_pins": {
+    "all_three_preimages_match_G": true,
+    "test_only_one_existing_function": true,
+    "helper_one_test_pin": true,
+    "workflow_one_helper_pin": true,
+    "all_focused_pins_match_G_plus_test": true
+  },
+  "required_composition_followup": "Root owns the exact required reusable-workflow hash cascade in the current main gate; update it from5fb36eda5c859af0d8a4c304fafb1680feb4e3dc to29bf8a261151818ed9b45695ef5cf356f8fc552d. No refs changed here.",
+  "validation": {
+    "static_review": "PASS",
+    "runtime": "NOT_RUN",
+    "required_actual": "147 source +147 isolated installed +75 native checks on a new exact composed checkout; retain original G146/1 failure separately."
+  }
+}

@@ -1,0 +1,308 @@
+{
+  "schema": "carr-ci-diagnostic-expansion/1",
+  "status": "SOURCE_REVIEW_PENDING_EXECUTION_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "files": [
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+      "sha": "bfbac56257c0075e04b7077f5c377fb881c0e717",
+      "readback": "EXACT"
+    }
+  ],
+  "preserved_original": {
+    "byte_identical": true,
+    "source": {
+      "whole_suites": 41,
+      "expected_cases": 1079,
+      "job_minutes": 45,
+      "step_minutes": 35
+    },
+    "windows_intake": {
+      "whole_suites": 5,
+      "expected_cases": 59,
+      "job_minutes": 25,
+      "step_minutes": 14
+    },
+    "real_workflow_parser": true,
+    "ReportLab4_4_9_acquisition_and_Canvas_version_probe": true,
+    "existing_hash_required_install_commands": true
+  },
+  "added_jobs": {
+    "focused_linux": {
+      "runs_on": "ubuntu-24.04",
+      "job_timeout_minutes": 50,
+      "test_step_timeout_minutes": 35,
+      "ci_check_jobs": 3,
+      "whole_suites": {
+        "tests/ingest/test_checked_catalog_commit.py": 10,
+        "tests/storage/test_scoped_locator_capacity.py": 4,
+        "tests/search/test_search_query_work.py": 17,
+        "tests/ui/test_native_recording_driver.py": 10,
+        "tests/operations/test_broker_scope.py": 20,
+        "tests/ingest/test_application_atomic_gate.py": 1,
+        "tests/ingest/test_pipeline.py": 9,
+        "tests/ingest/test_initial_publication_completion.py": 2,
+        "tests/ingest/test_worker_publication_boundary.py": 32,
+        "tests/e2e/test_import_worker_publication.py": 36,
+        "tests/storage/test_schema_boundary.py": 9,
+        "tests/storage/test_revisions.py": 5,
+        "tests/storage/test_read_boundary.py": 5,
+        "tests/storage/test_locator_integrity.py": 8,
+        "tests/storage/test_printed_label_integrity.py": 37,
+        "tests/catalog/test_read_views.py": 9,
+        "tests/catalog/test_read_views_v2_integration.py": 5,
+        "tests/search/test_search_paging.py": 27,
+        "tests/search/test_literal_integrity.py": 6,
+        "tests/search/test_literal_readonly.py": 6,
+        "tests/search/test_literal_v2_composition.py": 6,
+        "tests/e2e/test_retained_source_search_integrity.py": 11,
+        "tests/operations/test_facade.py": 22,
+        "tests/operations/test_import_admission.py": 6,
+        "tests/operations/test_production_admission.py": 18,
+        "tests/operations/test_resources.py": 18,
+        "tests/operations/test_transcription_admission.py": 10,
+        "tests/operations/test_current_union.py": 11,
+        "tests/operations/test_worker_start_cleanup.py": 2,
+        "tests/ui/test_operations_dialog.py": 13,
+        "tests/ui/test_operations_policy.py": 37,
+        "tests/e2e/test_operations_cli.py": 5,
+        "tests/operations/test_resources_posix.py": 1
+      },
+      "suite_count": 33,
+      "static_expected_cases": 418
+    },
+    "focused_windows": {
+      "runs_on": "windows-2022",
+      "job_timeout_minutes": 60,
+      "test_step_timeout_minutes": 35,
+      "ci_check_jobs": 2,
+      "whole_suites": {
+        "tests/ingest/test_checked_catalog_commit.py": 10,
+        "tests/storage/test_scoped_locator_capacity.py": 4,
+        "tests/search/test_search_query_work.py": 17,
+        "tests/ui/test_native_recording_driver.py": 10,
+        "tests/operations/test_broker_scope.py": 20,
+        "tests/ingest/test_application_atomic_gate.py": 1,
+        "tests/ingest/test_pipeline.py": 9,
+        "tests/ingest/test_initial_publication_completion.py": 2,
+        "tests/ingest/test_worker_publication_boundary.py": 32,
+        "tests/e2e/test_import_worker_publication.py": 36,
+        "tests/storage/test_schema_boundary.py": 9,
+        "tests/storage/test_revisions.py": 5,
+        "tests/storage/test_read_boundary.py": 5,
+        "tests/storage/test_locator_integrity.py": 8,
+        "tests/storage/test_printed_label_integrity.py": 37,
+        "tests/catalog/test_read_views.py": 9,
+        "tests/catalog/test_read_views_v2_integration.py": 5,
+        "tests/search/test_search_paging.py": 27,
+        "tests/search/test_literal_integrity.py": 6,
+        "tests/search/test_literal_readonly.py": 6,
+        "tests/search/test_literal_v2_composition.py": 6,
+        "tests/e2e/test_retained_source_search_integrity.py": 11,
+        "tests/operations/test_facade.py": 22,
+        "tests/operations/test_import_admission.py": 6,
+        "tests/operations/test_production_admission.py": 18,
+        "tests/operations/test_resources.py": 18,
+        "tests/operations/test_transcription_admission.py": 10,
+        "tests/operations/test_current_union.py": 11,
+        "tests/operations/test_worker_start_cleanup.py": 2,
+        "tests/ui/test_operations_dialog.py": 13,
+        "tests/ui/test_operations_policy.py": 37,
+        "tests/e2e/test_operations_cli.py": 5
+      },
+      "suite_count": 32,
+      "static_expected_cases": 417
+    }
+  },
+  "source_lineage": {
+    "checked_commit": "0de49b4c2e8679b1928e8b4e38d3a67c3542005e",
+    "scoped_locator": "f436ba4fff6d879d381aa79a39a0404131ebcb89",
+    "search_queries": "52797e0822da1594102603e1f3d1ad58bae0a58b",
+    "recording_driver": "637747b8c2a82c2a543ddefd75edf0896bb479fb",
+    "broker_scope": "c174dfcf313bd1a2b10dcbc6ad6b4b96779909da",
+    "corrected_rich_fixture": "063ed76c1a57df2a5be9d81f0dfa3bf3ee14ac66",
+    "counts_from_existing_full_gates": [
+      "a07e65670300af364749682e4ad0e8409ecfdec1",
+      "6373bf052d1ed83eacfc746476e8c9de34536bb9"
+    ],
+    "unchanged_suite_static_enumerations": [
+      {
+        "path": "tests/ingest/test_application_atomic_gate.py",
+        "count": 1,
+        "basis": "one unchanged function",
+        "blob": "477093d586ec83f6bddee09530b139d1d77d6d26"
+      },
+      {
+        "path": "tests/ingest/test_pipeline.py",
+        "count": 9,
+        "basis": "nine unchanged functions",
+        "blob": "11e68408f08dd08ad3cc961487354040155b10f5"
+      },
+      {
+        "path": "tests/ingest/test_initial_publication_completion.py",
+        "count": 2,
+        "basis": "two unchanged functions",
+        "blob": "a6d66edf0b1f9717c504a60cd72ea117fea12b89"
+      },
+      {
+        "path": "tests/ingest/test_worker_publication_boundary.py",
+        "count": 32,
+        "basis": "15 +1 +1 +1 +7 +4 +1 +2 explicit unchanged cases",
+        "blob": "2352f8ad2a9ec8d6883aef9f6ba41d07702e1a38"
+      },
+      {
+        "path": "tests/e2e/test_import_worker_publication.py",
+        "count": 36,
+        "basis": "2 +2 +9 +6 +9 +1 +1 +3 +1 +1 +1 explicit unchanged cases",
+        "blob": "20f9f757622ee3168f1495e640ad5a2555be3b9d"
+      },
+      {
+        "path": "tests/storage/test_schema_boundary.py",
+        "count": 9,
+        "basis": "3 +1 +4 +1 explicit unchanged cases",
+        "blob": "2b647eb1d6d39b4b9a59a30caa41e25ad66b9f85"
+      },
+      {
+        "path": "tests/storage/test_revisions.py",
+        "count": 5,
+        "basis": "five unchanged functions",
+        "blob": "fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9"
+      },
+      {
+        "path": "tests/storage/test_read_boundary.py",
+        "count": 5,
+        "basis": "1 +1 +3 explicit unchanged cases",
+        "blob": "4a760e122a3db3444457eeef477a3a13a98cc6db"
+      },
+      {
+        "path": "tests/catalog/test_read_views.py",
+        "count": 9,
+        "basis": "nine unchanged unittest methods; subTest does not add pytest items",
+        "blob": "21cce0614ef41d8e4223f405424174fb4572bca0"
+      },
+      {
+        "path": "tests/catalog/test_read_views_v2_integration.py",
+        "count": 5,
+        "basis": "five unchanged functions",
+        "blob": "52b200a0dc67d89ffdfd8b019488ffa72d165690"
+      },
+      {
+        "path": "tests/search/test_literal_integrity.py",
+        "count": 6,
+        "basis": "six unchanged unittest methods",
+        "blob": "d4369630452009bc9e08efacaea2208b3b178e65"
+      },
+      {
+        "path": "tests/search/test_literal_readonly.py",
+        "count": 6,
+        "basis": "six unchanged unittest methods",
+        "blob": "f609a2c6a1658b974e883e959b0af00a62123601"
+      },
+      {
+        "path": "tests/search/test_literal_v2_composition.py",
+        "count": 6,
+        "basis": "six unchanged unittest methods",
+        "blob": "2d0329d5abebedf70fd07fcb03dfa5a3a9aef93e"
+      },
+      {
+        "path": "tests/e2e/test_retained_source_search_integrity.py",
+        "count": 11,
+        "basis": "one 2x3 parameterized case and five unchanged functions",
+        "blob": "e76900b55329bc139e0f9fe478627877df8cd2dd"
+      },
+      {
+        "path": "tests/operations/test_resources_posix.py",
+        "count": 1,
+        "basis": "one unchanged actual-fork case, Ubuntu only",
+        "blob": "ca146746383361ad579bb016b4e74e1740b2758e"
+      }
+    ]
+  },
+  "companions": {
+    "scripts/windows_recording_smoke.py": "27ea1213d42fd3d3826133e54ab7c82c36fc82c3",
+    "tests/catalog/catalog_membership_candidate.sql": "5ab88793b8e4041127f88c2a1dd7662bbe42094e",
+    "tests/e2e/test_epub_import.py": "e788c2dabcb94488c9c5f52190dfee447cf9e486",
+    "tests/transcription/test_supplied_worker_bridge.py": "b9a4c40ab6fbef78a4a0754e799c4426672b6707"
+  },
+  "source_pins": {
+    "tests/ingest/test_application_atomic_gate.py": "477093d586ec83f6bddee09530b139d1d77d6d26",
+    "tests/ingest/test_pipeline.py": "11e68408f08dd08ad3cc961487354040155b10f5",
+    "tests/ingest/test_initial_publication_completion.py": "a6d66edf0b1f9717c504a60cd72ea117fea12b89",
+    "tests/ingest/test_worker_publication_boundary.py": "2352f8ad2a9ec8d6883aef9f6ba41d07702e1a38",
+    "tests/e2e/test_import_worker_publication.py": "20f9f757622ee3168f1495e640ad5a2555be3b9d",
+    "tests/storage/test_schema_boundary.py": "2b647eb1d6d39b4b9a59a30caa41e25ad66b9f85",
+    "tests/storage/test_revisions.py": "fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9",
+    "tests/storage/test_read_boundary.py": "4a760e122a3db3444457eeef477a3a13a98cc6db",
+    "tests/storage/test_locator_integrity.py": "dcdaba8eac7bb7894de9e87df74019240db187ae",
+    "tests/storage/test_printed_label_integrity.py": "0cc3cc1c0d0002c2dcda6c3a16f417ff3fe2d7d5",
+    "tests/catalog/test_read_views.py": "21cce0614ef41d8e4223f405424174fb4572bca0",
+    "tests/catalog/test_read_views_v2_integration.py": "52b200a0dc67d89ffdfd8b019488ffa72d165690",
+    "tests/search/test_search_paging.py": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+    "tests/search/test_literal_integrity.py": "d4369630452009bc9e08efacaea2208b3b178e65",
+    "tests/search/test_literal_readonly.py": "f609a2c6a1658b974e883e959b0af00a62123601",
+    "tests/search/test_literal_v2_composition.py": "2d0329d5abebedf70fd07fcb03dfa5a3a9aef93e",
+    "tests/e2e/test_retained_source_search_integrity.py": "e76900b55329bc139e0f9fe478627877df8cd2dd",
+    "tests/operations/test_facade.py": "97c23278a538865b2e7e5bbf986531efe9405440",
+    "tests/operations/test_import_admission.py": "53410c72f9ae93b38632e369c20f1d2ea2363166",
+    "tests/operations/test_production_admission.py": "ab092398189a4118c652b14a43d549a42064b172",
+    "tests/operations/test_resources.py": "c8eef1bbd9785a6993138475ad9a8e82032e7608",
+    "tests/operations/test_transcription_admission.py": "f163da1b651e4cb346a16ac2b9f12915e217b18f",
+    "tests/operations/test_current_union.py": "9cba6e080a5170b83eccd3ed834b1004e8022c3b",
+    "tests/operations/test_worker_start_cleanup.py": "c6870917d737c2a35fb3ba8cfa7541d607114d67",
+    "tests/ui/test_operations_dialog.py": "36921e597ec079acdfc2ee5ec80a52533b0d28f3",
+    "tests/ui/test_operations_policy.py": "4a3b564741df14d3fbb159c972539e0a093a7a19",
+    "tests/e2e/test_operations_cli.py": "12aef567dac6bc3732afb9f6ff960b25f4d0a82d",
+    "src/carr_library/application.py": "67aa7dc2ad70cd4929f64dd6ad275e627726117f",
+    "src/carr_library/ingest/pipeline.py": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+    "src/carr_library/storage/revisions.py": "63a9179eff3816a81523c5fadeeea750ddfbcdc4",
+    "src/carr_library/catalog/read_views.py": "d2e2045738ace3ca99ac5decefc3d8ba3a955297",
+    "src/carr_library/search/paging.py": "ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6",
+    "tests/ingest/test_checked_catalog_commit.py": "d351cf482029a332970953b649933c2cb060f118",
+    "tests/storage/test_scoped_locator_capacity.py": "489dec6a00fb8e4ae16611fefb84616a5ec77592",
+    "tests/search/test_search_query_work.py": "1a4128547ebc99c7be3f5e8e0f3975c5637864aa",
+    "tests/ui/test_native_recording_driver.py": "ead73e8f5b7d50e9ff9e8d850f0b225351054317",
+    "tests/operations/test_broker_scope.py": "21cdd7081b5af428d5303efa116d96765e185ff9",
+    "scripts/ci_check.py": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "scripts/windows_recording_smoke.py": "27ea1213d42fd3d3826133e54ab7c82c36fc82c3",
+    "tests/catalog/catalog_membership_candidate.sql": "5ab88793b8e4041127f88c2a1dd7662bbe42094e",
+    "tests/e2e/test_epub_import.py": "e788c2dabcb94488c9c5f52190dfee447cf9e486",
+    "tests/transcription/test_supplied_worker_bridge.py": "b9a4c40ab6fbef78a4a0754e799c4426672b6707",
+    "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693"
+  },
+  "source_execution_layout": "ci_check executes the complete checked-out source tree directly. No isolated test copy is made by this diagnostic. Required existing companion scripts/SQL/fixture modules are present at their actual lookup paths and bound before/after; the installed-wheel full workflows keep their separate copy logic.",
+  "validation_contract": {
+    "runner": "Unchanged exact scripts/ci_check.py8a23; default600 seconds, sole existing reviewed900-second ASR override table preserved and checked. No new timeout override.",
+    "cases": "Every selected whole suite must emit exactly one PASS verdict with its exact expected count, failed=0, skipped=0, pytest_exit=0. Exact suite membership excludes missing/foreign/duplicate verdicts. Original XFAIL/XPASS/offline socket policy unchanged.",
+    "identity": "Exact reviewed Git blobs checked before execution, all selected source/fixture bytes hashed before and after; the initial inventory SHA is retained as a completed GitHub step output.",
+    "runtime": "Ubuntu reuses existing prepared system FFmpeg evidence. Windows reuses existing packaging/prepare_windows_audio.py and packaging/windows-audio.lock.json, exact selected ffmpeg/ffprobe path,size,sha256 before/after. Missing codec is failure, never a skipped PCM pass.",
+    "post_failure": "After-test source/verdict evidence runs under always() after successful identity preparation; a failing test step remains failed. Required reports upload on failure.",
+    "framework": "No new test runner, installed-source substitution, network-policy rewrite, native endpoint substitution, model or production source change."
+  },
+  "outcome_evidence": {
+    "source_commit": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+    "run_id": 46051069136,
+    "blob": "7744fe9c33c60f7bb891b122457e672820b90f5d",
+    "status": "FAIL",
+    "ubuntu": "1048 passed /31 failed-or-error /0 skipped",
+    "windows": "41 passed /18 failed-or-error /0 skipped",
+    "parser": "113 bodies +6 controls PASS; runtime NOT_RUN"
+  },
+  "validation": {
+    "readback": "EXACT",
+    "base_job_byte_comparison": "PASS",
+    "all_known_paths_checked": "PASS except five intentional new suite paths supplied by manifests",
+    "yaml_parse": "NOT_RUN",
+    "powershell_parse": "NOT_RUN",
+    "python_inline_parse": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "windows_tests": "NOT_RUN",
+    "peer_review": "PENDING"
+  },
+  "limits": [
+    "Counts from newly written or statically enumerated source are expectations, not executed results.",
+    "No later retained-fixture benchmark or backup-capacity revision is included.",
+    "No root ref, PR or integration checkout mutation was made."
+  ]
+}

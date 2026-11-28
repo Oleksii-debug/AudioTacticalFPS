@@ -1,0 +1,96 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Existing translation/2 partitions and larger DOCX",
+  "status": "DRAFT_NOT_RUN",
+  "base": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "requires_initial_docx_manifest": "198365e2c7d46dd4542dfab6d769fa25acf58a82",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "preimage": null,
+      "sha": "c16d50ac29e2a89edc5d498a833108f0116d395b"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "preimage": "9da6a25aabfe94f4247fb4cc91a38cae209497ac",
+      "sha": "29324c1891c4e1fc278f410af6221e50ae3f9b04"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_documents.py",
+      "preimage": "340afdf70dd03f9ca51f3f61636c07f83017b458",
+      "sha": "c4b72384ddede9f7e9f20c1e175bc8c97b602b78"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "preimage": "edc348d04fb01ec8038e309e305492c51c46e7f5",
+      "sha": "8c87aca1b49e3ff22c2ff6d11903b45f1188190a"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "preimage": "a3c7ae541f69095af1e928afc46735f2ac2f21c8",
+      "sha": "6430dea3a6c56e30e33ab958df653e8472b1f85e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "preimage": "fe0ddc1b3de52cebb034d0dd24b90ab5dd8fe220",
+      "sha": "7810e9e4a70e0b09f86e48093dcbe7e1f8f2e3ef"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "preimage": null,
+      "sha": "2a8f09a620582288a23eef2ae6711f68f471f327"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "preimage": "6e61354bf81a650436318b6bb52d28c87f7b241c",
+      "sha": "4098d53def8821247f3fce2756c7f0da1443d2d3"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_layout.py",
+      "preimage": "9cef53f91a7caa02ddc9da860e10d03396902e8c",
+      "sha": "ce2773d284b973614a19440466ceeeb313402408"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "preimage": "765df364c5c020a433e9939ad9fa217f646a7cab",
+      "sha": "d13a37cd5bf1626b602f487ab2b16bda71c01f27"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "preimage": "22f976adfda6ec3decae85fb597aa6fc6eb34f71",
+      "sha": "14de811e7ce29ff2441c0eb2028261fbbf9c4798"
+    }
+  ],
+  "shared_backup_hook": "9ee727c13fcb62cf4b85ab57314e5449450ad0e3",
+  "claims": {
+    "partition": "optional on existing source-bound jobs only; exact whole-text coverage and mapping identity; old absent wire/UUID/approval unchanged",
+    "larger_docx": "one complete ReadingDocument job for >64 paragraphs; 2048 nonempty/4096ranges/2Mchars; existing64-job cap unchanged",
+    "parser_guards": "unchanged canonical DOCX admission; footnotes/endnotes still refused pending actual source extension",
+    "runtime": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "tests": {
+    "counts_kind": "static enumeration, not collection/execution",
+    "suites": {
+      "tests/assistant/test_translation_partition.py": 26,
+      "tests/assistant/test_translation_layout.py": 33,
+      "tests/ui/test_translation_layout.py": 23,
+      "tests/assistant/test_translation_layout_cli.py": 5
+    },
+    "fixture_companions": [
+      "tests/assistant/test_translation_local.py",
+      "tests/ui/test_translation_documents.py"
+    ],
+    "native": {
+      "script": "scripts/windows_translation_layout_smoke.py",
+      "essential_checks": 27,
+      "source_modules": 17,
+      "before_after_source_checks": 34,
+      "required_total": 61,
+      "extra_origin": "carr_library.assistant.translation_partition",
+      "audio_prerequisite": false
+    }
+  },
+  "state": "No new durable namespace or restore authority. The one allowlisted optional field delegates to existing pure source/chunk/ledger validation.",
+  "peer_correction": "Canonical-copy each validated caller partition before observer callbacks; same captured copies feed review/authorization/submission. Added actual guard mutation regression; NOT_RUN."
+}

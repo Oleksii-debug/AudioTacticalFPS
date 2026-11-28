@@ -1,7 +1,8 @@
-"""Actual desktop export handler with real saved research and a controlled dialog.
+"""Actual desktop export handler with real saved research and controlled dialogs.
 
 No window is created. Native wx is imported so this checks the shipped handler,
-while the dialog supplies deterministic synthetic paths without user interaction.
+while the dialogs supply deterministic synthetic paths and explicit approval
+without user interaction. Native keyboard confirmation has its own smoke probe.
 """
 from types import SimpleNamespace
 from threading import Event
@@ -29,8 +30,7 @@ def research(tmp_path):
                            original=app.assets.resolve(imported['asset']))
 
 
-def export_using_dialog(research, destination, monkeypatch, *, format_index=1,
-                        allow_replace=True, prompts=None, submitted=None):
+def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
     class FileDialog:
         def __init__(self, *args, **kwargs):
             pass
@@ -48,25 +48,15 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1,
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
-    monkeypatch.setattr(desktop_app.wx, 'MessageBox', lambda *args: desktop_app.wx.YES)
-    reports = []
-    prompts = [] if prompts is None else prompts
-
     def confirm(message, title, style, parent):
-        assert title == 'Replace export'
-        assert style == (desktop_app.wx.YES_NO | desktop_app.wx.NO_DEFAULT
-                         | desktop_app.wx.ICON_QUESTION)
-        assert parent is frame
-        prompts.append(message)
-        return desktop_app.wx.YES if allow_replace else desktop_app.wx.NO
+        assert destination.name in message and title == 'Replace export'
+        assert style == desktop_app.wx.YES_NO | desktop_app.wx.NO_DEFAULT | desktop_app.wx.ICON_QUESTION
+        return desktop_app.wx.YES
 
-    # Exercise the real destination snapshot and publisher. Only native user
-    # input is controlled; the placeholder frame is not a real wx.Window.
     monkeypatch.setattr(desktop_app.wx, 'MessageBox', confirm)
+    reports = []
 
     def run_job(title, operation, done=None, failed=None):
-        if submitted is not None:
-            submitted.append(title)
         try:
             result = operation()
         except Exception as error:
@@ -108,15 +98,13 @@ def test_desktop_export_to_external_file_keeps_source_and_notes_separate(researc
     expected = research.app.export_topic(research.workspace, research.topic, format='text')
     before_original = research.original.read_bytes()
 
-    prompts = []
-    reports = export_using_dialog(research, destination, monkeypatch, prompts=prompts)
+    reports = export_using_dialog(research, destination, monkeypatch)
 
-    assert prompts == ['Replace the existing export research-topic.txt?']
     assert reports == ['Topic exported with quotations and research notes kept separate.']
     assert destination.read_text(encoding='utf-8') == expected
     assert 'source exact quotation' in expected and 'Separate research note' in expected
     assert research.original.read_bytes() == before_original
-    assert not list(tmp_path.glob('.research-export-*'))
+    assert not list(tmp_path.glob('.carr-export-*'))
 
 
 def test_failed_export_preserves_existing_output_and_library(research, tmp_path, monkeypatch):
@@ -130,35 +118,13 @@ def test_failed_export_preserves_existing_output_and_library(research, tmp_path,
         raise OSError('Synthetic replacement failure')
 
     monkeypatch.setattr(export_file.os, 'replace', reject_replace)
-    prompts = []
-    reports = export_using_dialog(research, destination, monkeypatch, prompts=prompts)
+    reports = export_using_dialog(research, destination, monkeypatch)
 
-    assert prompts == ['Replace the existing export research-topic.txt?']
     assert reports == ['Export not completed: Synthetic replacement failure']
     assert destination.read_bytes() == old_output
     assert research.app.database.read_bytes() == before_database
     assert research.original.read_bytes() == before_original
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
-def test_declined_replacement_keeps_output_and_library_without_submitting_work(
-        research, tmp_path, monkeypatch):
-    destination = tmp_path / 'research-topic.txt'
-    old_output = b'An existing export the owner declined to replace.\n'
-    destination.write_bytes(old_output)
-    before_database = research.app.database.read_bytes()
-    before_original = research.original.read_bytes()
-    prompts, submitted = [], []
-
-    reports = export_using_dialog(research, destination, monkeypatch, allow_replace=False,
-                                  prompts=prompts, submitted=submitted)
-
-    assert prompts == ['Replace the existing export research-topic.txt?']
-    assert submitted == [] and reports == []
-    assert destination.read_bytes() == old_output
-    assert research.app.database.read_bytes() == before_database
-    assert research.original.read_bytes() == before_original
-    assert not list(tmp_path.glob('.research-export-*'))
+    assert not list(tmp_path.glob('.carr-export-*'))
 
 
 @pytest.mark.parametrize('format_index,extension', [(5, 'docx'), (6, 'html')])

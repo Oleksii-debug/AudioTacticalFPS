@@ -1,0 +1,31 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "scope": "Reading publication focused source pin and workflow helper pin only",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "preimage": "ce8b9935b18dc95c94919332fb8b38b451156f5e",
+      "successor": "af1fbc37e37d875d03d1c7eac2ec05e29e888ca4",
+      "replacement": {
+        "from": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5",
+        "to": "1bbfb74a7a286f933056696ea7ff769d75436061",
+        "count": 1
+      }
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "preimage": "70c013c7543d9b29ace0f243bddbfd1b590ba548",
+      "successor": "f21146358d08de0d0dae0f3445bc714845bf6a95",
+      "replacement": {
+        "from": "ce8b9935b18dc95c94919332fb8b38b451156f5e",
+        "to": "af1fbc37e37d875d03d1c7eac2ec05e29e888ca4",
+        "count": 1
+      }
+    }
+  ],
+  "exact_inverse": true,
+  "source_peer": "3cbd59d3dd935647f216b129f77217538f5413c7",
+  "qualification": "No other byte differs. Existing focused three-whole69 counts, native/report/firewall/limits stay unchanged; this focused helper does not claim to execute the separate new lifetime28 whole. No execution/parser claim."
+}

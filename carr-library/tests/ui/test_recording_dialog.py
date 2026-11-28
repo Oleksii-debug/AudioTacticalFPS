@@ -1,0 +1,504 @@
+"""Execute real recording callbacks; these are not hardware or native UI claims."""
+import ast
+from concurrent.futures import Future
+from pathlib import Path
+import threading
+import time
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+
+from carr_library.audio.models import AudioCancelled, AudioCleanupPending
+from carr_library.audio.recording import RecordingOptions
+from carr_library.application import LibraryApp
+from carr_library.progress import ProgressHub, ProgressState, bind_progress, current_progress
+from carr_library.durable_state import local_path, regular
+from carr_library.speech.progress_speech import play_when_quiet
+
+
+class Control:
+    def __init__(self, value='', selection=0):
+        self.value, self.selection, self.items, self.enabled = value, selection, [], True
+    def Enable(self, enabled): self.enabled = enabled
+    def GetSelection(self): return self.selection
+    def SetSelection(self, selected): self.selection = selected
+    def SetItems(self, items): self.items = list(items)
+    def GetValue(self): return self.value
+    def SetValue(self, value): self.value = value
+    def GetStringSelection(self): return str(self.value)
+
+
+class Progress:
+    def __init__(self):
+        self.ready, self.fail_on, self.holds, self.events = False, None, [], []
+        self.allow_preview = False
+    def hold_audio(self, *, recording=False):
+        assert recording is True or self.allow_preview
+        if self.fail_on == 'hold':
+            raise RuntimeError('Another media owner cannot confirm silence')
+        owner = self
+        class Hold:
+            closed = False
+            @property
+            def ready(self): return owner.ready
+            def close(self): self.closed = True
+        hold = Hold()
+        self.holds.append(hold)
+        return hold
+    def begin(self, title, **kwargs):
+        if self.fail_on == 'begin': raise RuntimeError('Detached progress view')
+        return ProgressHub().start(title)
+    def unregister_player(self, player, *, silence_confirmed=True):
+        self.events.append('player-released' if silence_confirmed else 'player-pending')
+    def finish(self, task, state, message):
+        if self.fail_on == 'finish': raise RuntimeError('Detached progress view')
+        if state == 'succeeded':
+            task.succeed(message=message)
+            self.events.append('completed')
+        elif state == 'cancelled':
+            task.cancelled(message)
+            self.events.append('cancelled')
+        else:
+            task.fail(message)
+            self.events.append('failed')
+
+
+class Executor:
+    def __init__(self): self.pending = []
+    def submit(self, callback):
+        future = Future()
+        self.pending.append((callback, future))
+        return future
+    def finish(self):
+        callback, future = self.pending.pop(0)
+        try:
+            result = callback()
+        except BaseException as exc:
+            future.set_exception(exc)
+        else:
+            future.set_result(result)
+
+
+def handlers(values):
+    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/recording_dialog.py'
+    module = ast.parse(source.read_text(encoding='utf-8'))
+    window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
+    names = {'close_player', 'cleanup_player', 'request_cleanup', 'refresh_monitor', 'pause_recording', 'resume_recording', 'scope_current', 'stopping', 'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
+             'start', 'preview', 'export', 'close', 'stop_recording', 'cancel_recording'}
+    definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in definitions} == names
+    result = ', '.join(repr(name) + ': ' + name for name in sorted(names)) + ", 'detach': detach"
+    factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
+    factory.body[0].body[:0] = definitions + ast.parse('def detach():\n    nonlocal alive\n    alive = False\n').body
+    namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'AudioCleanupPending': AudioCleanupPending, 'time': time, 'threading': threading,
+                 'play_when_quiet': play_when_quiet, 'bind_progress': bind_progress,
+                 'current_progress': current_progress, 'ProgressState': ProgressState, 'local_path': local_path, 'regular': regular}
+    exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
+    return SimpleNamespace(**namespace['build'](**values))
+
+
+@pytest.fixture
+def view(tmp_path):
+    progress, parent = Progress(), Progress()
+    deferred, captures, executor = [], [], Executor()
+    device = SimpleNamespace(id='selected-device', name='Explicit microphone')
+    result = {'id': 'retained', 'title': 'My recording', 'created': '2026-11-27T01:00:00Z',
+              'path': '/private/retained.wav', 'audio': {'duration_seconds': 1.0, 'sample_rate': 24000, 'channels': 1}}
+    def capture(device_id, **kwargs):
+        captures.append((device_id, kwargs))
+        if kwargs['cancelled'](): raise AudioCancelled('User cancelled before capture')
+        kwargs['state_changed'](SimpleNamespace(state='recording'))
+        kwargs['progress'](1.0)
+        return result
+    service = SimpleNamespace(devices=Mock(return_value=(device,)), monitoring_outputs=Mock(return_value=()), capture=capture,
+                              get=Mock(return_value=result), export=Mock(return_value={'path': 'exported.wav'}))
+    buttons = {name: Control() for name in ('refresh', 'refresh_monitor', 'start', 'pause', 'resume', 'stop', 'cancel', 'preview', 'use', 'export', 'stop_preview', 'close')}
+    library = LibraryApp(tmp_path / 'library')
+    values = dict(busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
+        cleanup_owner=None, cleanup_future=None, cleanup_retry=None, hold_guard=threading.RLock(),
+        player_guard=threading.RLock(), player_cleaned=False, cleanup_queued=False, unregister_cleanup=Mock(),
+        monitor_outputs=(), capture_phase='idle', paused=threading.Event(), monitoring=Control(False),
+        monitor_output=Control(selection=-1), library_identity=(library.root.stat().st_dev, library.root.stat().st_ino),
+        frame=Mock(library=library, _closing=False, cancel_event=threading.Event()), library=library, library_root=library.root,
+        selected_result=None, controllers=(progress, parent), progress=progress, player=Mock(),
+        executor=executor, service=service, cancelled=threading.Event(), stopped=threading.Event(),
+        microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
+        sample_rate=Control('24000'), channels=Control(selection=0), saved=Control(selection=-1),
+        buttons=buttons, details=Control(), status=Control(), dialog=Mock(),
+        wx=SimpleNamespace(NOT_FOUND=-1, ID_CANCEL=2, CallAfter=lambda callback: callback(),
+                           CallLater=lambda delay, callback: deferred.append(callback)))
+    return SimpleNamespace(handlers=handlers(values), values=values, progress=progress, parent=parent,
+        deferred=deferred, captures=captures, executor=executor, service=service, result=result)
+
+
+def discovered(view):
+    view.handlers.refresh()
+    view.executor.finish()
+    view.values['microphone'].SetSelection(0)
+
+
+def test_discovery_never_records_or_automatically_selects_even_a_single_microphone(view):
+    view.handlers.start()
+    assert view.captures == [] and view.executor.pending == []
+    view.handlers.refresh()
+    assert view.service.devices.call_count == 0 and view.captures == []
+    view.executor.finish()
+    assert view.values['microphone'].GetSelection() == -1
+    assert view.values['microphone'].items == ['Explicit microphone (selected)']
+    view.handlers.start()
+    assert view.captures == [] and view.executor.pending == []
+
+
+def test_start_waits_for_recording_silence_then_passes_explicit_device_and_options(view):
+    discovered(view)
+    view.handlers.start()
+    assert view.captures == [] and view.executor.pending == []
+    assert len(view.progress.holds) == len(view.parent.holds) == 1
+    view.progress.ready = view.parent.ready = True
+    view.deferred.pop(0)()
+    assert view.captures == []
+    view.handlers.stop_recording()
+    view.executor.finish()
+    device_id, options = view.captures[0]
+    assert device_id == 'selected-device'
+    assert options['title'] == 'My recording'
+    assert options['options'].max_seconds == 120 and options['options'].sample_rate == 24000
+    assert options['stop_requested']() is True and options['cancelled']() is False
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    assert view.values['status'].value.startswith('Saved and verified.')
+
+
+@pytest.mark.parametrize('action', ['stop_recording', 'cancel_recording'])
+def test_stop_or_cancel_while_waiting_for_silence_never_opens_microphone(view, action):
+    discovered(view)
+    view.handlers.start()
+    getattr(view.handlers, action)()
+    view.deferred.pop(0)()
+    assert view.captures == [] and view.executor.pending == []
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    assert view.values['buttons']['refresh'].enabled
+
+
+def test_close_active_capture_waits_for_cleanup_without_releasing_recording_hold(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    event = Mock()
+    view.handlers.close(event)
+    event.Veto.assert_called_once()
+    assert view.values['cancelled'].is_set() and not view.progress.holds[0].closed
+    view.values['dialog'].EndModal.assert_not_called()
+    view.executor.finish()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    view.values['dialog'].EndModal.assert_called_once_with(2)
+    assert view.progress.events[-1] == 'cancelled'
+
+
+def test_partial_silence_admission_failure_releases_existing_holds_and_does_not_record(view):
+    discovered(view)
+    view.parent.fail_on = 'hold'
+    view.handlers.start()
+    assert view.progress.holds[0].closed
+    assert view.captures == [] and view.executor.pending == []
+    assert 'cannot confirm silence' in view.values['status'].value
+
+
+def test_exceptional_modal_exit_retains_audio_hold_until_capture_future_completes(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.values['cancelled'].set()
+    view.handlers.release_when_stopped()
+    assert not view.progress.holds[0].closed and not view.parent.holds[0].closed
+    view.executor.finish()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+@pytest.mark.parametrize('failure', ['begin', 'finish'])
+def test_progress_observer_failure_cannot_turn_retained_recording_into_failed_work(view, failure):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.progress.fail_on = failure
+    view.handlers.start()
+    view.executor.finish()
+    assert view.values['status'].value.startswith('Saved and verified.')
+    assert view.values['saved'].items == ['My recording (2026-11-27T01:00:00)']
+    assert len(view.captures) == 1 and view.progress.holds[0].closed
+    assert 'Detached progress view' in view.progress.notice
+
+
+class PendingOwner:
+    def __init__(self):
+        self.quiescent_event = threading.Event()
+        self.callbacks = []
+        self.retries = 0
+    @property
+    def quiescent(self):
+        return self.quiescent_event.is_set()
+    def add_quiescent_callback(self, callback):
+        if self.quiescent:
+            callback()
+        else:
+            self.callbacks.append(callback)
+    def close(self):
+        self.retries += 1
+        return self.quiescent
+    def confirm(self):
+        self.quiescent_event.set()
+        callbacks, self.callbacks = self.callbacks, []
+        for callback in callbacks:
+            callback()
+
+
+def test_detached_waiting_prepare_never_touches_destroyed_controls_or_opens_capture(view):
+    discovered(view)
+    view.handlers.start()
+    view.handlers.detach()
+    for value in view.values.values():
+        if isinstance(value, Control):
+            value.Enable = value.SetValue = lambda *a: pytest.fail('Detached native control accessed')
+    view.handlers.release_when_stopped()
+    for callback in tuple(view.deferred):
+        callback()
+    assert view.captures == [] and view.executor.pending == []
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_pending_native_cleanup_retains_holds_after_future_and_modal_completion(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    owner = PendingOwner()
+    def pending(*args, **kwargs):
+        raise AudioCleanupPending('Native cleanup is not confirmed', cleanup_owner=owner)
+    view.service.capture = pending
+    view.handlers.start()
+    view.executor.finish()
+    assert not view.progress.holds[0].closed and not view.parent.holds[0].closed
+    assert 'not confirmed silence' in view.values['status'].value
+    assert not view.values['buttons']['start'].enabled
+    view.handlers.detach()
+    view.handlers.release_when_stopped()
+    for value in view.values.values():
+        if isinstance(value, Control):
+            value.Enable = value.SetValue = lambda *a: pytest.fail('Detached native control accessed')
+    for callback in tuple(view.deferred):
+        callback()
+    assert not view.progress.holds[0].closed
+    owner.confirm()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_cleanup_retry_start_failure_keeps_existing_owner_and_quiet_holds(view, monkeypatch):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    owner = PendingOwner()
+    def pending(*args, **kwargs):
+        raise AudioCleanupPending('Native cleanup is not confirmed', cleanup_owner=owner)
+    view.service.capture = pending
+    view.handlers.start()
+    view.executor.finish()
+    def no_thread(self):
+        raise RuntimeError('Synthetic retry thread unavailable')
+    monkeypatch.setattr(threading.Thread, 'start', no_thread)
+    view.handlers.stop_recording()
+    assert 'remain retained' in view.values['status'].value
+    assert not view.progress.holds[0].closed and not view.parent.holds[0].closed
+    owner.confirm()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+
+@pytest.mark.parametrize('change', ['same-path-new-library', 'root-changed', 'frame-closing', 'same-path-new-directory'])
+def test_queued_capture_loses_admission_when_its_exact_library_scope_changes(view, tmp_path, change):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    frame, library = view.values['frame'], view.values['library']
+    if change == 'same-path-new-library':
+        frame.library = LibraryApp(library.root)
+    elif change == 'root-changed':
+        library.root = tmp_path / 'another-root'
+    elif change == 'same-path-new-directory':
+        original = library.root
+        original.rename(tmp_path / 'retained-old-library')
+        LibraryApp(original)
+        assert frame.library is library and library.root == original
+    else:
+        frame._closing = True
+    view.executor.finish()
+    assert view.captures == []
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    assert not view.values['buttons']['start'].enabled
+    assert 'original library' in view.values['status'].GetValue()
+
+
+def test_late_completed_recording_is_not_applied_to_a_replacement_library(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    actual = view.service.capture
+
+    def completed_then_changed(*args, **kwargs):
+        result = actual(*args, **kwargs)
+        view.values['frame'].library = LibraryApp(view.values['library'].root)
+        return result
+
+    view.service.capture = completed_then_changed
+    view.handlers.start()
+    view.executor.finish()
+    assert len(view.captures) == 1
+    assert not view.values['saved'].items
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+    assert 'original library' in view.values['status'].GetValue()
+
+
+def test_pending_preview_cannot_start_after_same_path_library_replacement(view):
+    view.progress.allow_preview = view.parent.allow_preview = True
+    view.handlers.show_records((view.result,), view.result['id'])
+    view.handlers.preview()
+    view.executor.finish()
+    assert view.deferred and not view.progress.holds[0].closed
+    view.values['frame'].library = LibraryApp(view.values['library'].root)
+    view.progress.ready = view.parent.ready = True
+    view.deferred.pop(0)()
+    view.values['player'].play.assert_not_called()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+@pytest.mark.parametrize('replace_before_execution', [False, True])
+def test_wav_export_is_explicit_and_queued_under_the_same_library(view, replace_before_execution):
+    view.handlers.show_records((view.result,), view.result['id'])
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetPath.return_value = 'selected-new.wav'
+    wx = view.values['wx']
+    wx.ID_OK, wx.FD_SAVE, wx.FileDialog = 1, 32, Mock(return_value=chooser)
+    view.handlers.export()
+    chooser.Destroy.assert_called_once()
+    assert wx.FileDialog.call_args.kwargs['style'] == wx.FD_SAVE
+    view.service.export.assert_not_called()
+    if replace_before_execution:
+        view.values['frame'].library = LibraryApp(view.values['library'].root)
+    view.executor.finish()
+    if replace_before_execution:
+        view.service.export.assert_not_called()
+    else:
+        args, options = view.service.export.call_args
+        assert args == ('retained', 'selected-new.wav') and options['cancelled']() is False
+        assert 'Verified WAV exported' in view.values['status'].GetValue()
+
+
+
+def test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    owner = PendingOwner()
+
+    def pending(*args, **kwargs):
+        view.values['frame'].library = LibraryApp(view.values['library'].root)
+        raise AudioCleanupPending('Native cleanup is not confirmed', cleanup_owner=owner)
+
+    view.service.capture = pending
+    view.handlers.start()
+    view.executor.finish()
+    assert 'cleanup is still pending' in view.values['status'].GetValue()
+    assert not view.progress.holds[0].closed and not view.parent.holds[0].closed
+    assert view.values['buttons']['stop'].enabled
+    view.handlers.close()
+    view.values['dialog'].EndModal.assert_called_once_with(2)
+    assert not view.progress.holds[0].closed
+    owner.confirm()
+    assert view.progress.holds[0].closed and view.parent.holds[0].closed
+
+
+def test_pause_and_resume_wait_for_actual_service_acknowledgment_and_keep_quiet_holds(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    actual = view.service.capture
+    def capture(identity, **options):
+        options['state_changed'](SimpleNamespace(state='recording'))
+        assert view.values['buttons']['pause'].enabled
+        view.handlers.pause_recording()
+        assert options['pause_requested']() and view.values['dialog'].capture_state == 'pausing'
+        assert not view.values['buttons']['resume'].enabled
+        view.handlers.resume_recording()
+        assert options['pause_requested'](), 'A UI flag cannot acknowledge producer shutdown.'
+        assert not any(hold.closed for hold in view.progress.holds + view.parent.holds)
+        options['state_changed'](SimpleNamespace(state='paused'))
+        assert view.values['buttons']['resume'].enabled
+        assert not options['cancelled']() and not options['stop_requested']()
+        view.handlers.resume_recording()
+        assert not options['pause_requested']() and view.values['dialog'].capture_state == 'opening'
+        assert not any(hold.closed for hold in view.progress.holds + view.parent.holds)
+        return actual(identity, **options)
+    view.service.capture = capture
+    view.handlers.start()
+    view.executor.finish()
+    assert all(hold.closed for hold in view.progress.holds + view.parent.holds)
+    assert view.values['status'].GetValue().startswith('Saved and verified.')
+
+
+def test_monitor_output_discovery_never_selects_or_opens_an_output(view):
+    output = SimpleNamespace(selectable=True, name='Explicit headphones', index=2)
+    view.service.monitoring_outputs.return_value = (output,)
+    view.handlers.refresh_monitor()
+    view.service.monitoring_outputs.assert_not_called()
+    assert view.captures == []
+    view.executor.finish()
+    assert view.values['monitor_output'].items == ['Explicit headphones; device 3']
+    assert view.values['monitor_output'].GetSelection() == -1
+    assert not view.values['monitoring'].GetValue()
+    view.values['player'].play.assert_not_called()
+
+
+def test_enabled_monitor_requires_explicit_output_before_any_capture_hold(view):
+    discovered(view)
+    view.values['monitoring'].SetValue(True)
+    view.handlers.start()
+    assert not view.executor.pending and not view.captures
+    assert not view.progress.holds and not view.parent.holds
+    assert 'Select a monitoring output explicitly' in view.values['status'].GetValue()
+
+
+def test_explicit_monitor_selection_is_passed_unchanged_to_same_capture(view):
+    output = SimpleNamespace(selectable=True, name='Explicit headphones', index=2)
+    view.service.monitoring_outputs.return_value = (output,)
+    view.handlers.refresh_monitor()
+    view.executor.finish()
+    view.values['monitor_output'].SetSelection(0)
+    view.values['monitoring'].SetValue(True)
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.executor.finish()
+    assert view.captures[0][1]['monitor_output'] is output
+
+
+def test_modal_player_cleanup_uses_borrowed_worker_and_is_idempotent(view):
+    view.handlers.request_cleanup()
+    assert len(view.executor.pending) == 1
+    view.values['player'].close.assert_not_called()
+    view.executor.finish()
+    view.values['player'].close.assert_called_once()
+    view.values['unregister_cleanup'].assert_called_once()
+    view.handlers.cleanup_player()
+    view.values['player'].close.assert_called_once()
+
+
+def test_failed_player_cleanup_keeps_registered_owner_for_explicit_host_retry(view):
+    view.values['player'].close.side_effect = OSError('native handle is still owned')
+    view.handlers.request_cleanup()
+    view.executor.finish()
+    view.values['unregister_cleanup'].assert_not_called()
+    view.values['player'].close.side_effect = None
+    view.handlers.cleanup_player()
+    view.values['unregister_cleanup'].assert_called_once()
+
+
+def test_failed_cleanup_submission_keeps_registered_owner(view):
+    view.executor.submit = Mock(side_effect=RuntimeError('host executor is shutting down'))
+    view.handlers.request_cleanup()
+    view.values['player'].close.assert_not_called()
+    view.values['unregister_cleanup'].assert_not_called()
+    view.handlers.cleanup_player()
+    view.values['unregister_cleanup'].assert_called_once()

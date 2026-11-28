@@ -1,0 +1,217 @@
+{
+  "schema": "carr-focused-qualification/1",
+  "observed_utc": "2026-11-28T01:02:27Z",
+  "source_commit": "de46e79215a4c2603506704b1784b349d7c475d8",
+  "source_tree": "340e9c503a50ec5383d5dce78299a327f16a1b54",
+  "workflow_run": 46090317936,
+  "job": 140809448957,
+  "job_conclusion": "success",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46090317936/job/140809448957",
+  "source": {
+    "whole_suites": 3,
+    "passed": 69,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed": {
+    "whole_suites": 3,
+    "passed": 69,
+    "failed": 0,
+    "skipped": 0,
+    "origins": 23
+  },
+  "native": [
+    {
+      "phase": "actual_windows_text_positions_source",
+      "checks": 20,
+      "status": "PASS",
+      "profiles": [
+        {
+          "all_boundaries": 709,
+          "logical_lines": 3,
+          "name": "wrapped-narrow",
+          "native_last": 713,
+          "physical_lines": 27,
+          "selected_native": [
+            665,
+            691
+          ],
+          "source_characters": 708
+        },
+        {
+          "all_boundaries": 709,
+          "logical_lines": 3,
+          "name": "wrapped-wide",
+          "native_last": 713,
+          "physical_lines": 9,
+          "selected_native": [
+            665,
+            691
+          ],
+          "source_characters": 708
+        },
+        {
+          "all_boundaries": 709,
+          "logical_lines": 3,
+          "name": "unwrapped",
+          "native_last": 713,
+          "physical_lines": 3,
+          "selected_native": [
+            665,
+            691
+          ],
+          "source_characters": 708
+        }
+      ],
+      "module_sha256": "8671b88747e7882cb037e5c2964bf319a8661bfdb8e93756db47e8ba70526608",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "phase": "actual_windows_text_positions_installed",
+      "checks": 20,
+      "status": "PASS",
+      "profiles": [
+        {
+          "all_boundaries": 709,
+          "logical_lines": 3,
+          "name": "wrapped-narrow",
+          "native_last": 713,
+          "physical_lines": 27,
+          "selected_native": [
+            665,
+            691
+          ],
+          "source_characters": 708
+        },
+        {
+          "all_boundaries": 709,
+          "logical_lines": 3,
+          "name": "wrapped-wide",
+          "native_last": 713,
+          "physical_lines": 9,
+          "selected_native": [
+            665,
+            691
+          ],
+          "source_characters": 708
+        },
+        {
+          "all_boundaries": 709,
+          "logical_lines": 3,
+          "name": "unwrapped",
+          "native_last": 713,
+          "physical_lines": 3,
+          "selected_native": [
+            665,
+            691
+          ],
+          "source_characters": 708
+        }
+      ],
+      "module_sha256": "8671b88747e7882cb037e5c2964bf319a8661bfdb8e93756db47e8ba70526608",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    {
+      "phase": "installed_document_import_and_reading",
+      "checks": 28,
+      "status": "PASS",
+      "origins": {
+        "carr_library.extract.document_formats": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats.py",
+        "carr_library.ui.desktop_app": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+        "carr_library.ui.import_center": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\import_center.py"
+      }
+    },
+    {
+      "phase": "installed_epub_and_daisy_publication",
+      "checks": 53,
+      "status": "PASS",
+      "checks_observed": [
+        "publication UI comes from installed package",
+        "installed module origin: ui/publishing_dialog.py",
+        "exact installed source bytes: ui/publishing_dialog.py",
+        "installed module origin: audio/audiobook.py",
+        "exact installed source bytes: audio/audiobook.py",
+        "installed module origin: audio/dsp.py",
+        "exact installed source bytes: audio/dsp.py",
+        "installed module origin: studio/daisy.py",
+        "exact installed source bytes: studio/daisy.py",
+        "installed module origin: studio/publishing.py",
+        "exact installed source bytes: studio/publishing.py",
+        "installed module origin: studio/render.py",
+        "exact installed source bytes: studio/render.py",
+        "real native Windows widgets",
+        "explicit selected audio executable: ffmpeg",
+        "pinned audio executable bytes: ffmpeg",
+        "explicit selected audio executable: ffprobe",
+        "pinned audio executable bytes: ffprobe",
+        "actual FFmpeg produced a completed Studio fixture",
+        "M4B carries actual measured chapter names and bounds",
+        "LRC retains measured line starts without inferred word timestamps",
+        "real native main loop is active",
+        "export controls have native accessible names",
+        "native Space down: &Load jobs / receipts",
+        "native Space up: &Load jobs / receipts",
+        "completed job is listed without implicit selection",
+        "native Space down: &Export publication",
+        "native Space up: &Export publication",
+        "native export completed with a durable receipt",
+        "shared progress completes only after publication verification",
+        "native completion focuses readable publication status",
+        "exact script and measured line overlays are retained",
+        "embedded audio is MP3 with an actual byte identity",
+        "native Space down: &Verify receipt",
+        "native Space up: &Verify receipt",
+        "native explicit receipt verification succeeds",
+        "native Space down: &Export publication",
+        "native Space up: &Export publication",
+        "native duplicate export cannot overwrite completed bytes",
+        "publication format and publisher are native named controls",
+        "native Space down: &Export publication",
+        "native Space up: &Export publication",
+        "DAISY requires explicitly supplied publisher metadata",
+        "native Space down: &Export publication",
+        "native Space up: &Export publication",
+        "native DAISY export commits the second durable receipt",
+        "DAISY preserves exact script, measured audio and explicit publisher",
+        "native Space down: &Verify receipt",
+        "native Space up: &Verify receipt",
+        "native DAISY verification follows the selected receipt",
+        "native Space down: &Close",
+        "native Space up: &Close",
+        "native keyboard close completes"
+      ]
+    }
+  ],
+  "all_children_reaped": true,
+  "inputs_unchanged": true,
+  "required_gates_weakened": false,
+  "artifact": {
+    "id": 15240962289,
+    "name": "reading-publication-windows-de46e79215a4c2603506704b1784b349d7c475d8-1",
+    "size_in_bytes": 39031,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240962289",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240962289/zip",
+    "expired": false,
+    "created_at": "2026-11-28T00:59:30Z",
+    "expires_at": "2027-02-26T00:53:44Z",
+    "updated_at": "2026-11-28T00:59:30Z",
+    "digest": "sha256:4636f9f791942a5895c5adf93b4402c6b0cd51b085021510254eef81846b4295",
+    "workflow_run": {
+      "id": 46090317936,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-native-reading-publication-20261128-5a9e",
+      "head_sha": "de46e79215a4c2603506704b1784b349d7c475d8"
+    }
+  },
+  "scope_limits": {
+    "recorded_epub_playback": "NOT_RUN",
+    "actual_output_device_playback": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "speech_quality": "NOT_RUN",
+    "independent_daisy_validation": "NOT_RUN",
+    "reader_interoperability": "NOT_RUN",
+    "release": "NOT_RUN"
+  },
+  "interpretation": "This exact candidate passed required source, isolated installed and four actual Windows native phases. Publication now has durable EPUB and DAISY receipts, exact measured text/audio metadata, no overwrite and native close. The previous native publication report lacked worker cause, so this does not prove its sole historical cause. No acoustic or full release claim."
+}

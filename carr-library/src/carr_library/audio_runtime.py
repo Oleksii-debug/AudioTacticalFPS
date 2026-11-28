@@ -44,6 +44,15 @@ def _read_json(path, expected_hash=None):
 
 def _source_lock(path):
     lock, _digest, size = _read_json(path, SOURCE_LOCK_SHA256)
+    # Integrity and execution evidence do not imply redistribution rights.
+    # This exact package remains owner-local until the transitive notices,
+    # corresponding sources and replacement obligations are independently reviewed.
+    review = lock.get('review') if type(lock) is dict else None
+    if (type(review) is not dict
+            or lock.get('use_scope') != 'private-owner-local-installation'
+            or review.get('public_distribution_clearance') is not False
+            or review.get('third_party_complete_source_bundle') is not False):
+        raise ValueError('Audio runtime distribution review is missing or differs from the reviewed owner-local profile.')
     return lock, size
 
 
@@ -118,7 +127,10 @@ def _inspect_audio_runtime(runtime_dir):
               'bytes': total, 'version': lock.get('version'),
               'source_lock_sha256': SOURCE_LOCK_SHA256, 'manifest_sha256': manifest_hash,
               'tools': {name: str(root / value) for name, value in TOOLS.items()},
-              'native_execution': 'NOT_RUN'}
+              'native_execution': 'NOT_RUN',
+              'use_scope': lock['use_scope'],
+              'public_distribution_clearance': lock['review']['public_distribution_clearance'],
+              'third_party_complete_source_bundle': lock['review']['third_party_complete_source_bundle']}
     return report, expected
 
 

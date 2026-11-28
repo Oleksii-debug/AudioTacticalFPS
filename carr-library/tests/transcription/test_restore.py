@@ -1,7 +1,17 @@
 """Archived recognition workspaces remain inert through full data restore."""
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup
-from carr_library.transcription import TranscriptionService
+
+
+
+# Canonical protocol tests exercise the real workspace-scoped host's adapter.
+from importlib.util import spec_from_file_location as _fixture_spec, module_from_spec as _fixture_module
+from pathlib import Path as _FixturePath
+_fixture_path = _FixturePath(__file__).with_name('fixture_runtime.py')
+_fixture = _fixture_spec('scoped_transcription_test_factory', _fixture_path)
+_fixture_builder = _fixture_module(_fixture)
+_fixture.loader.exec_module(_fixture_builder)
+TranscriptionService = _fixture_builder.make_service
 
 
 def test_restore_scrubs_archived_launch_state_without_changing_accepted_results(synthetic_asr_runtime,

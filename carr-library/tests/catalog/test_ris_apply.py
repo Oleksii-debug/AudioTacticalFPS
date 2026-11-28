@@ -1,4 +1,6 @@
 """RIS review uses actual catalog transactions and historical source snapshots."""
+from contextlib import contextmanager
+from threading import Event
 from dataclasses import replace
 
 import pytest
@@ -261,3 +263,133 @@ def test_ordinary_full_metadata_edit_keeps_its_existing_normalization_and_defaul
     assert selected.authors == ('New Author', 'Автор Два')
     assert (selected.language, selected.edition, selected.volume) == (None, None, None)
     assert sibling == replace(before, title=selected.title, authors=selected.authors)
+
+
+@pytest.mark.parametrize('cancel_after', (1, 2))
+def test_partial_metadata_cancelled_after_staging_rolls_back_every_shared_edition(
+        case, monkeypatch, cancel_after):
+    app, workspace = case
+    current = app.edition_metadata(workspace, 'e1')
+    topic = app.create_topic(workspace, 'Historical evidence')
+    for hit in app.search(workspace, 'railway passage'):
+        app.save_hit(workspace, topic, hit.ref, hit.revision, 'Retained research note')
+    before = state(app)
+    assets = {row.asset: app.assets.resolve(row.asset).read_bytes()
+              for row in app.browse(workspace)}
+    original = Storage.stage_revision
+    cancelled = Event()
+    staged = []
+
+    def cancel_after_staging(self, scope, edition_id, *args, **kwargs):
+        result = original(self, scope, edition_id, *args, **kwargs)
+        staged.append(edition_id)
+        if len(staged) == cancel_after:
+            cancelled.set()
+        return result
+
+    monkeypatch.setattr(Storage, 'stage_revision', cancel_after_staging)
+    with pytest.raises(InterruptedError, match='Metadata update cancelled'):
+        app.update_metadata(workspace, 'e1', title='Cancelled title',
+            authors=('Cancelled author',), language='uk',
+            edition='Unchecked edition', volume='Unchecked volume',
+            expected_metadata=current, selected_fields=('title', 'authors', 'language'),
+            cancelled=cancelled.is_set)
+
+    assert cancelled.is_set()
+    assert staged == ['e1', 'e2'][:cancel_after]
+    reopened = LibraryApp(app.root)
+    assert state(reopened) == before
+    assert {asset: reopened.assets.resolve(asset).read_bytes() for asset in assets} == assets
+
+
+def test_partial_metadata_with_cancellation_callback_preserves_unselected_values(whitespace_case):
+    app, workspace = whitespace_case
+    before = {row.edition_id: row for row in app.browse(workspace)}
+    with app.read(workspace) as db:
+        revisions = dict(db.execute('SELECT edition,revision FROM active WHERE workspace=?', (workspace,)))
+    checked = []
+
+    def not_cancelled():
+        checked.append(True)
+        return False
+
+    revision = app.update_metadata(workspace, 'e1', title='Unchecked title',
+        authors=('Unchecked author',), language='uk',
+        edition='Unchecked edition', volume='Unchecked volume',
+        expected_metadata=before['e1'], selected_fields=('language',),
+        cancelled=not_cancelled)
+
+    reopened = LibraryApp(app.root)
+    after = {row.edition_id: row for row in reopened.browse(workspace)}
+    assert checked
+    assert after['e1'] == replace(before['e1'], language='uk')
+    assert after['e2'] == before['e2']
+    with reopened.read(workspace) as db:
+        current_revisions = dict(db.execute(
+            'SELECT edition,revision FROM active WHERE workspace=?', (workspace,)))
+    assert current_revisions['e1'] == revision != revisions['e1']
+    assert current_revisions['e2'] == revisions['e2']
+
+
+def test_partial_metadata_cancelled_after_writer_acquisition_does_not_commit(case, monkeypatch):
+    from carr_library import application
+
+    app, workspace = case
+    current = app.edition_metadata(workspace, 'e1')
+    before = state(app)
+    assets = {row.asset: app.assets.resolve(row.asset).read_bytes()
+              for row in app.browse(workspace)}
+    original_writer = application.exclusive_writer
+    cancelled = Event()
+    entered = []
+
+    @contextmanager
+    def cancel_when_locked(root, **kwargs):
+        with original_writer(root, **kwargs) as locked_root:
+            entered.append(locked_root)
+            cancelled.set()
+            yield locked_root
+
+    monkeypatch.setattr(application, 'exclusive_writer', cancel_when_locked)
+    with pytest.raises(InterruptedError, match='Metadata update cancelled'):
+        app.update_metadata(workspace, 'e1', title='Must not be committed',
+            authors=('Unselected author',), language='uk', expected_metadata=current,
+            selected_fields=('title', 'language'), cancelled=cancelled.is_set)
+
+    assert entered == [app.root.resolve()]
+    reopened = LibraryApp(app.root)
+    assert state(reopened) == before
+    assert {asset: reopened.assets.resolve(asset).read_bytes() for asset in assets} == assets
+
+
+def test_partial_metadata_rechecks_reviewed_snapshot_after_writer_acquisition(case, monkeypatch):
+    from carr_library import application
+
+    app, workspace = case
+    reviewed = app.edition_metadata(workspace, 'e1')
+    original_writer = application.exclusive_writer
+    newer = LibraryApp(app.root)
+    concurrent_state = []
+
+    @contextmanager
+    def edit_before_lock(root, **kwargs):
+        # Restore the actual guard for the competing complete transaction. The
+        # outer operation still has its old reviewed snapshot and must recheck
+        # it only after entering its own real writer/SQLite transaction.
+        monkeypatch.setattr(application, 'exclusive_writer', original_writer)
+        newer.update_metadata(workspace, 'e1', title='Concurrent title',
+            authors=('Concurrent author',), language='fr', edition='Later', volume='IX')
+        concurrent_state.append(state(newer))
+        with original_writer(root, **kwargs) as locked_root:
+            yield locked_root
+
+    monkeypatch.setattr(application, 'exclusive_writer', edit_before_lock)
+    with pytest.raises(ValueError, match='metadata changed'):
+        app.update_metadata(workspace, 'e1', title='Unselected title',
+            language='uk', expected_metadata=reviewed, selected_fields=('language',))
+
+    assert len(concurrent_state) == 1
+    reopened = LibraryApp(app.root)
+    assert state(reopened) == concurrent_state[0]
+    assert reopened.edition_metadata(workspace, 'e1').language == 'fr'
+

@@ -1,0 +1,185 @@
+# Ordinary import integrity: bounded optimization proposal
+
+Status: STATIC_DESIGN_ONLY. No scoped validator, session cache, schema change,
+source execution, or throughput qualification is included in this proposal.
+
+## Measured baseline and completed narrow changes
+
+Exact source fb39ed3cb1e23ffa3be8bd768c1dd64216f110da imported 1,000 retained
+TXT books / 20,000 segments through ordinary LibraryApp.add_text. Actual import
+time was 969.628493533 seconds; min/max were 0.031841454 / 1.928042567 seconds.
+The complete three-process run was 1,155.645278569 seconds. These are one
+synthetic Linux corpus/configuration, not a general 10k/50k or native claim.
+Exact artifact/phase evidence: blob8d0c4bbaad3b39f411fce2fde644618509d11056.
+
+Two independent source slices are now reviewable, not executed:
+- f436ba4fff6d879d381aa79a39a0404131ebcb89: parameterized revision equality
+  replaces a nullable-OR locator predicate. All full audits stay.
+- 0de49b4c2e8679b1928e8b4e38d3a67c3542005e: explicit checked-commit operation
+  removes only a redundant full audit after the same catalog publication.
+  Actual attempt receipt staging is inside the final rejectable full audit.
+
+Neither change makes the remaining per-publication global audit constant-size.
+
+## Existing boundaries that must remain explicit
+
+Storage.stage_revision already validates the exact schema, original Page Python
+values, per-page digest, ordinal/locator sequence, nonempty revision, seal,
+active pointer and transactional old-index deletion/new-index insertion.
+Canonical indexed_ai/indexed_ad triggers update FTS5 in that same transaction.
+Catalog registration rejects work/edition/manifest conflicts and validates the
+requested collections. The assembled publisher adds source_metadata and
+source_page_review bindings. The worker binds its immutable per-attempt
+import_publication row to exact request, catalog, source metadata and page bytes.
+The journal can be completed only after publication has committed.
+
+LibraryApp cold/open calls Storage.check. Storage.check/backup/rebuild and
+migration validation run the full database/schema/foreign-key/seal/active/
+locator/raw-digest/index/FTS/research/academic audit. Existing historical reads
+rehash their selected page; retained-source search independently hashes its
+selected original. Replay/recovery compare exact checkpoint/source/identity and
+retain an independent full audit. None of these checks is a cached claim.
+
+Current _CatalogPublisher also full-audits unrelated old content on every fresh
+publication. That is actual existing behavior. The inspected negative suites
+exercise selected candidates, replay membership, full cold/backup audits and
+selected historical reads; no inspected case explicitly makes unrelated old
+raw corruption the reason a different new publication must fail. This bounded
+test observation is not a reason to remove a current behavior silently.
+
+## Proposed scoped publication contract
+
+A fresh-publication receipt would mean only:
+
+"The selected original and extraction configuration, requested catalog metadata,
+all newly published source pages and locators, selected prior-active transition,
+requested review records and this attempt's receipt committed together after
+validation."
+
+It would not certify unrelated retained revisions, saved research, bibliography
+or arbitrary prior search content. Those remain covered by full cold/open,
+manual, backup, migration, replay/recovery and relevant live-source read checks.
+No serialized 'library verified' flag, data_version counter, file mtime, or
+cross-connection cache may be used as authority.
+
+A scoped operation would use the existing exclusive_writer and one existing
+BEGIN IMMEDIATE publication transaction. It would use bound equality queries,
+with no new persistent schema or bypass of the native worker.
+
+### Exact validation plan inside that transaction
+
+1. Recheck the exact released schema and required native foreign-key/recursive
+   trigger settings before mutation and again before commit. Do not accept a
+   same-name replacement trigger, temporary writable-schema window, missing
+   trigger, attached catalog, or ended transaction.
+2. Capture the selected prior active revision and its source/index identity.
+   Validate the affected prior source rows before using their raw text to
+   remove FTS postings. The previous revision/seal stays immutable and readable.
+3. Freeze the explicit registration values and review records. Accumulate a
+   count and canonical ordered digest from the original Page values supplied to
+   stage_revision, without copying every raw string a second time. This is an
+   ephemeral input commitment, not a catalog trust cache.
+4. After staging, stream only the selected revision in ordinal order. Compare
+   the complete identity/config, original values, page count, every raw digest
+   and ordered commitment; invoke _check_locators(revision). Require its seal,
+   exact active pointer and exact corresponding indexed rows. Refuse missing,
+   extra, wrong-raw or out-of-scope rows for that transition.
+5. Require every old active page to have left indexed, without deleting its
+   historical revision/page/source bytes. Do not infer this only from row
+   counts, old/new token overlap, or successful search.
+6. Re-read the exact selected work/authors/edition/asset/source_metadata and
+   required collection memberships; compare to the frozen registration.
+   Preserve workspace and active-collection authorization. Validate all selected
+   source_page_review fields and their page digests.
+7. Stage the current immutable attempt receipt through the existing producer.
+   Its actual request/catalog/source/page binding remains authoritative. Any
+   source/review/receipt/schema/FTS validation failure must still roll back the
+   entire candidate and leave prior committed books and journal checkpoints.
+8. Commit before returning completion. Later cancellation or observer/cleanup
+   errors cannot turn that committed receipt into cancellation or authorize a
+   retry. A failed transaction cannot reuse any successful-validation marker.
+
+### FTS and native integrity are the unresolved asymptotic boundary
+
+SQLite's documented FTS5 integrity-check with rank=1 verifies the complete
+external-content index. It has no documented per-document/row-range form.
+A rowid SELECT from an external-content FTS table reads the external content
+and does not independently prove postings. Testing selected MATCH queries also
+cannot establish absence of extra/corrupt postings or complete token/position
+equivalence. A replacement must not label those checks as a full FTS audit.
+
+A first scoped-semantic implementation could retain the current native
+integrity_check, foreign_key_check and FTS5 integrity-check while narrowing only
+Python raw/locator/research/academic work to the affected publication. That is
+defensible as a reduction in repeated work, but still performs global native
+work and therefore is not an asymptotic solution. It should not be presented as
+a completed 10k/50k ordinary-import requirement.
+
+A true delta-only FTS proof would need either a proven native API capable of
+checking the affected postings, or a tightly owned finite transaction/session
+whose permitted mutation protocol itself maintains that invariant. Neither is
+provided by a data_version/total_changes cache alone. The current Python/SQLite
+API should not be supplemented with an invented weak index proof.
+
+## Session alternative and why it is not a drop-in patch
+
+An explicit finite catalog import session could full-audit entry, own one
+connection, validate known publication deltas, and invalidate on external/DDL/
+unexpected same-connection changes. However, current paths complicate this:
+- LibraryApp.import_files promises separately durable per-file results and
+  invokes progress outside every import transaction. Existing real observers
+  reopen LibraryApp. Holding the current writer lock across these callbacks
+  changes a tested contract and can deadlock/reject those observers.
+- ImportCenter runs one existing owned child per durable request, which creates
+  a fresh LibraryApp. It currently performs a cold audit per file. A parent
+  cache does not transfer trust to a new SQLite connection or child.
+- A persistent connection changes Windows file-lifetime behavior. Existing
+  workflows can delete or replace a closed old root while its LibraryApp object
+  still exists. An app-lifetime connection must not silently break that.
+- data_version detects other commits only relative to the same connection;
+  total_changes is not a DDL/rollback/global-mutation authority. Counting expected
+  DML does not detect all unexpected writes or a restored schema definition.
+- Callbacks/generators and receipt producers can execute code between stages.
+  If a session relies on only known writes, it must actually enforce that
+  admission boundary rather than trust a final total_changes value.
+
+A supported public session must therefore be an explicit finite user path,
+with bounded lifetime, cooperative cancellation, independent observer points,
+an enforced mutation protocol and honest per-item commit/recovery. The benchmark
+must use that same supported path. A benchmark-only bulk seed or SQL bypass is
+not ordinary-import throughput evidence.
+
+## Required negative and real-boundary validation for any further change
+
+Preserve existing atomic candidate/DOCX replay/terminal replay/schema/locator/
+printed-label/FTS/worker receipt/retained-source/backup suites and their original
+assertions. Add at least:
+- exact candidate raw/digest/locator/source metadata/review/receipt tampering
+  before commit, with a separate reader observing no partial candidate;
+- missing/extra/wrong-raw new index entries and retained old-active postings;
+- schema drop/restore, same-connection unexpected mutation, rollback followed by
+  retry, and actual second-connection mutation between session transactions;
+- external root/database replacement revoking a live session, with Windows
+  connection ownership tested rather than inferred;
+- unrelated historical corruption still refused by its relevant read,
+  cold/open/backup/manual/recovery audits; no scoped result claims full health;
+- actual cancellation before publication and late cancellation after immutable
+  receipt commit, retaining exact source/checkpoint/result bytes;
+- VM-operation or actual query-plan evidence that the *scoped* predicates do not
+  traverse unrelated rows, separately from whole end-to-end throughput;
+- actual supported-path 1k/10k/50k runs with the same capacity/resource limits.
+  Do not replace the ongoing unmodified baseline jobs.
+
+## Primary native API references
+
+https://www.sqlite.org/fts5.html#the_integrity_check_command
+https://www.sqlite.org/fts5.html#external_content_tables
+https://www.sqlite.org/fts5.html#the_fts5vocab_virtual_table_module
+https://www.sqlite.org/pragma.html#pragma_integrity_check
+https://www.sqlite.org/pragma.html#pragma_data_version
+https://www.sqlite.org/c3ref/total_changes.html
+
+The source/test identities and complete prior invariant inventory are recorded
+in f1f5d27570537dabd5e3a9159f4d6008a468ed55. This proposal deliberately separates
+a checked commit from a full-library certificate and an actual throughput
+measurement from a static complexity expectation.

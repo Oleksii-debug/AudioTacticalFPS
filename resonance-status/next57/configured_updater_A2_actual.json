@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_PASS",
+  "scope": "Configured updater77 source+installed on Linux/Windows; real local TLS15 source+installed on Windows only",
+  "source_commit": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "source_tree": "ce159fca8cc4344690d456dd3571937b4c46b781",
+  "workflow": ".github/workflows/carr-configured-update.yml",
+  "workflow_blob": "9c80ca9d610512978e5a7175a3f73e6022780565",
+  "run_id": 46104132320,
+  "run_conclusion": "success",
+  "attempt": 1,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104132320",
+  "observations": [
+    {
+      "job_id": 140852952089,
+      "name": "Configured updater77 source and77 installed on Linux",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:42:36Z",
+      "completed_at": "2026-11-28T03:43:31Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104132320/job/140852952089",
+      "decoded_log_characters": 85175,
+      "actual_summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 77,
+        "source_commit": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+        "source_passed": 77,
+        "source_tree": "ce159fca8cc4344690d456dd3571937b4c46b781",
+        "status": "PASS"
+      },
+      "actual_source_completion": [
+        "PASS: tests/security/test_update_handoff.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/security/test_update_runtime.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/security/test_update_ui.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/security/test_update_controller_actions.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+        "Required suites complete: 4; passed=4; failed=0"
+      ],
+      "actual_pytest_summary": [
+        "============================== 18 passed in 1.70s ==============================",
+        "============================== 14 passed in 0.60s ==============================",
+        "============================== 15 passed in 5.30s ==============================",
+        "============================== 30 passed in 6.33s ==============================",
+        "============================== 30 passed in 5.93s ==============================",
+        "============================== 18 passed in 1.60s ==============================",
+        "============================== 15 passed in 4.99s ==============================",
+        "============================== 14 passed in 0.51s =============================="
+      ],
+      "artifact": {
+        "id": 15245754439,
+        "name": "configured-update-linux-8f24cae6dbb657854a07dcb801f77296f3b7e4e3-1",
+        "size_in_bytes": 31791,
+        "digest": "sha256:dd59c40df0cea45f1c3d5f374af837da92553cf74e227699de12b38b29a835bf",
+        "expired": false,
+        "run": {
+          "id": 46104132320,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-configured-updater-final-20261128-5a9e",
+          "head_sha": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3"
+        }
+      },
+      "artifact_digest_metadata_matches_completed_upload_log": true
+    },
+    {
+      "job_id": 140852952203,
+      "name": "Updater HTTPS15 source and15 installed on Windows",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:52:09Z",
+      "completed_at": "2026-11-28T03:58:00Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104132320/job/140852952203",
+      "decoded_log_characters": 70790,
+      "actual_summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 15,
+        "source_commit": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+        "source_passed": 15,
+        "source_tree": "ce159fca8cc4344690d456dd3571937b4c46b781",
+        "status": "PASS"
+      },
+      "actual_source_completion": [],
+      "actual_pytest_summary": [
+        "======================= 15 passed in 140.75s (0:02:20) ========================",
+        "======================= 15 passed in 140.24s (0:02:20) ========================"
+      ],
+      "artifact": {
+        "id": 15247466848,
+        "name": "update-https-windows-8f24cae6dbb657854a07dcb801f77296f3b7e4e3-1",
+        "size_in_bytes": 16736,
+        "digest": "sha256:d547dd52087723a7c5220c94fc9581017091fbc738336678e90b5db589323391",
+        "expired": false,
+        "run": {
+          "id": 46104132320,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-configured-updater-final-20261128-5a9e",
+          "head_sha": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3"
+        }
+      },
+      "artifact_digest_metadata_matches_completed_upload_log": true
+    },
+    {
+      "job_id": 140852952300,
+      "name": "Configured updater77 source and77 installed on Windows",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:52:18Z",
+      "completed_at": "2026-11-28T03:53:58Z",
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104132320/job/140852952300",
+      "decoded_log_characters": 94158,
+      "actual_summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 77,
+        "source_commit": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+        "source_passed": 77,
+        "source_tree": "ce159fca8cc4344690d456dd3571937b4c46b781",
+        "status": "PASS"
+      },
+      "actual_source_completion": [
+        "PASS: tests/security/test_update_handoff.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/security/test_update_runtime.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/security/test_update_ui.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/security/test_update_controller_actions.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+        "Required suites complete: 4; passed=4; failed=0"
+      ],
+      "actual_pytest_summary": [
+        "============================= 15 passed in 8.44s ==============================",
+        "============================= 14 passed in 4.24s ==============================",
+        "============================= 18 passed in 22.83s =============================",
+        "============================= 30 passed in 24.50s =============================",
+        "============================= 30 passed in 9.00s ==============================",
+        "============================= 18 passed in 5.30s ==============================",
+        "============================= 15 passed in 5.32s ==============================",
+        "============================= 14 passed in 1.34s =============================="
+      ],
+      "artifact": {
+        "id": 15247245774,
+        "name": "configured-update-windows-8f24cae6dbb657854a07dcb801f77296f3b7e4e3-1",
+        "size_in_bytes": 33271,
+        "digest": "sha256:745998e5d93d0fa83c8461066b365fe82454669c0719ad102d0dab83bdd2c324",
+        "expired": false,
+        "run": {
+          "id": 46104132320,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-configured-updater-final-20261128-5a9e",
+          "head_sha": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3"
+        }
+      },
+      "artifact_digest_metadata_matches_completed_upload_log": true
+    }
+  ],
+  "evidence_boundary": "Closed actual job logs and API job/artifact metadata were retrieved; artifact digests agree with completed upload lines. Archives were not downloaded or inspected by this report.",
+  "remaining": {
+    "compiled_native_A2_to_B": "NOT_RUN",
+    "native_configured_restart": "NOT_RUN",
+    "production_publisher": "NOT_CONFIGURED",
+    "production_TLS_endpoint": "NOT_QUALIFIED_BY_LOCAL_TLS_FIXTURE",
+    "production_rollout": "NOT_RUN",
+    "real_user_installation": "NOT_RUN",
+    "authenticode": "NOT_CLAIMED",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  }
+}

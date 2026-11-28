@@ -1,0 +1,162 @@
+{
+  "schema": "carr-current-manager-owner-smoke-handoff/1",
+  "status": "STATIC_NOT_RUN",
+  "path": "carr-library/scripts/ci_voice_management_owner_smoke.py",
+  "preimage": null,
+  "blob": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+  "byte_count": 32764,
+  "peer": {
+    "agent": "canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Full current manager/real owner API, broker and actual child ownership; exact isolated source/installed origins; two explicit passive catalog operations corrected to current broker context; original deterministic package/receipt/revocation semantics preserved."
+  },
+  "cli": {
+    "source": [
+      "-I",
+      "-B",
+      "carr-library/scripts/ci_voice_management_owner_smoke.py",
+      "--source-root",
+      "<checkout>/carr-library/src",
+      "--owner-api-directory",
+      "<runner-private/exact-three-files>",
+      "--report",
+      "<evidence>/owner-source.json"
+    ],
+    "installed": [
+      "-I",
+      "-B",
+      "carr-library/scripts/ci_voice_management_owner_smoke.py",
+      "--source-root",
+      "<checkout>/carr-library/src",
+      "--require-installed",
+      "--owner-api-directory",
+      "<same-runner-private/exact-three-files>",
+      "--report",
+      "<evidence>/owner-installed.json"
+    ],
+    "explicit_download_alternative": "Replace --owner-api-directory <directory> with --acquire; exactly one required."
+  },
+  "dependencies": [
+    {
+      "path": "carr-library/scripts/ci_owner_voice_api_smoke.py",
+      "blob": "e22c226ef24cf48957d04c32f25cb472e48c764e"
+    },
+    {
+      "path": "carr-library/tests/audio/voice_management_fixtures.py",
+      "blob": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5"
+    }
+  ],
+  "report": {
+    "schema": "carr-current-manager-real-owner/1",
+    "required_unique_checks": [
+      "actual current registration binds the real owner closure and existing package lock",
+      "current configuration explicitly selects the supported OmniVoice package recipe",
+      "actual current inspection returns exact generated data roles and languages",
+      "unchecked reference rights refuse before another child or settings mutation",
+      "real owner installation publishes exact first version and current explicit rights",
+      "second actual install preserves immutable first-version bytes and advances binding",
+      "explicit current version activation reaches the real owner and refreshes authority",
+      "stale saved version review cannot silently select a later authority",
+      "export requires its own explicit reference permission before owner access",
+      "refused export creates no selected output",
+      "actual current export has exact owner document and independently verified receipt",
+      "actual current revoke preserves the owner tombstone and exact installed files",
+      "revoked real owner identity cannot fall back to an old legacy profile",
+      "deletion requires the exact fresh reviewed action",
+      "actual current delete removes only the selected retained versions",
+      "local revocation survives real owner registration deletion",
+      "every original runtime helper worker model marker and legacy reference remains exact",
+      "unrelated current voice preferences remain exact across all management commits",
+      "all generated source recordings text and original input archives remain exact",
+      "all metadata actions use actual current child admission and exact real owner bytes",
+      "all actual metadata processes are reaped and Windows handles are closed",
+      "no current broker lease survives actual owner management",
+      "no model synthesis microphone playback or private runtime was executed",
+      "executed application and exact acquisition companions remain unchanged",
+      "all probe-owned generated data were retired"
+    ],
+    "required_check_count": 25,
+    "origin_modules": [
+      "carr_library.runtime_settings",
+      "carr_library.durable_state",
+      "carr_library.catalog.intake",
+      "carr_library.audio.models",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.voice_manifest",
+      "carr_library.audio.voice_ownership",
+      "carr_library.audio.voice_transport",
+      "carr_library.audio.voice_settings",
+      "carr_library.audio.voice_packages",
+      "carr_library.audio.voice_lifecycle",
+      "carr_library.audio.package_publication",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.research.export_file",
+      "carr_library.studio.publishing"
+    ],
+    "origin_count": 18,
+    "required_PASS": [
+      "status",
+      "actual_owner_api",
+      "current_manager",
+      "management.current_broker_cleanup",
+      "management.actual_process_cleanup"
+    ],
+    "mode_values": [
+      "source",
+      "installed"
+    ],
+    "required_preacquired": {
+      "owner_input": "preacquired-closed-directory",
+      "supplied_owner_directory_unchanged": true,
+      "probe_downloaded_owner_source_retired": false
+    },
+    "required_qualifications": {
+      "real_engine_inference": "NOT_RUN",
+      "acoustic_quality": "NOT_RUN",
+      "physical_recording": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "release": "NOT_RUN",
+      "owner_source_or_data_in_public_artifacts": false
+    },
+    "required_actions": [
+      "prepare_lock",
+      "catalog",
+      "inspect",
+      "install",
+      "versions",
+      "review_version",
+      "activate",
+      "export",
+      "remove"
+    ],
+    "children": "All rows returned=True/returncode=0/owner_sources_verified=True/broker_admitted=True/windows_job_required=(actual platform is Windows); positive integer child_count equals children length and total action counts; every required action positive. Exact nine action key set.",
+    "identity": "origins_before and origins_after have exact 18 keys and equal hashes; outer gate compares hashes to selected source/wheel. Exact three owner_source_receipts Git SHA/bytes and companion hashes also bound.",
+    "bounds": {
+      "maximum_json_bytes": 65536,
+      "maximum_metadata_children": 128,
+      "operation_seconds": 900,
+      "source_maximum_bytes_each": 131072,
+      "public_artifacts": "Bounded JSON and text only; no owner source/package/PCM/runtime/model binary."
+    }
+  },
+  "owner": {
+    "repository": "Oleksii-debug/ChatGPT-Autopilot-ExtensionChatGPT-Autopilot-Extension",
+    "revision": "a1c73a5747bc86eb11f0c037120442e0c2593e91",
+    "prefix": "dordiai-voices/source/0.12.2/kx47Runtime",
+    "files": {
+      "voice_policy.py": "de305d15a955b92dc1a8bfb719b7f9df501a94d8",
+      "voice_packages.py": "2abe2a50bcf58aea423764ef15acc04538ee2f9b",
+      "voice_assets.py": "6cabd9c44a3979e2b543f2272915fdc83523c87c"
+    }
+  },
+  "runtime_claim": "NOT_RUN. Separate actual owner standalone32 has passed both OS but is not current-manager qualification.",
+  "reviewed_component_history": {
+    "initial": "e6d0b23ea2aeaf406f3aac563e7301c473a2ce66",
+    "final": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+    "delta": "Exactly two direct passive catalog observations enter existing manager.operation and forward admitted cancellation; no report/check/CLI change."
+  },
+  "created_utc": "2026-11-28 01:30:24 UTC"
+}

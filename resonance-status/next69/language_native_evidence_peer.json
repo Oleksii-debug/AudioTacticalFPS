@@ -1,0 +1,40 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "canonical_regression",
+  "scope": "Native language-evidence current observation, passive import, recorded review, real backup/state restore APIs and receipt semantics; wx/Win32 lifetime independently reviewed by Progress",
+  "source": {
+    "path": "carr-library/scripts/windows_language_evidence_smoke.py",
+    "git_blob": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "reviewed_predecessor": "893ac08fd0112e3e790d97210dc66c06b38e7c7d"
+  },
+  "contract": {
+    "git_blob": "ab6d1347ab658b998c032ad5dae7757b558bbfef",
+    "required_checks": 75,
+    "origins": 14,
+    "fixed_fields": 16,
+    "default_no_occurrences": 3
+  },
+  "source_dependencies": {
+    "component": "dd961c9cd7d78d6946d30b1cc5e704959747a25e",
+    "ui": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+    "evidence": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "fixture": "72944369f7304650e8742f97372d41415e3e35da",
+    "application": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "desktop": "85c0991f744bd521ca247a0e15da93aa585ea30d"
+  },
+  "findings": [
+    "Exact native source verifies the fixed synthetic fixture and all14 current product source origins before and after execution. Its75 literal/origin obligations and16 report fields match the machine-readable contract.",
+    "Actual UI labels, confirmation title, exact digest/detail/history text and create-only report statements match the frozen UI. Native No leaves state absent; Yes creates passive observations; cancel and unchecked review preserve actual bytes/token.",
+    "Caught and corrected a concrete live-selection mismatch: every accepted save refreshes the observation list to index0. The final probe explicitly reselects the second observation before both Reject and Revoke; exact persisted history/binding assertions remain unchanged.",
+    "Recorded accepted/failed/revoked states and selected context are checked through real EvidenceStore and build_capability_matrix. No complete22-capability or current-device language claim is inferred.",
+    "Actual full backup uses current create_backup/restore_backup with an independently computed exact manifest digest, then checks original edition metadata and passive restored history. Actual snapshot_state/restore_state yields the same EvidenceSnapshot dormancy/revision; original bytes and imported observations remain intact.",
+    "Actual Open existing library folder command matches current DesktopFrame route; restored UI opens with no selected context, shows dormant prior positive review, preserves revocation, and explicit rereview reactivates only the exact synthetic capability.",
+    "Both metadata backup operations run through the original frame worker and check actual result/admission. Fixed synthetic file/directory picker values are explicitly unqualified; real language quality, authenticated reviewer identity, acoustics/devices/NVDA remain NOT_RUN.",
+    "The final source differs its reviewed predecessor only by two explicit reselections and earlier host executor/HWND/ID capture; exact inverse reconstruction succeeded."
+  ],
+  "limits": [
+    "No Python parsing, pytest, wx/Windows execution, actual language/reviewer or performance qualification was performed.",
+    "No source or refs edited by this review; native Win32 and loop/cleanup mechanics remain the separate Progress seam."
+  ]
+}

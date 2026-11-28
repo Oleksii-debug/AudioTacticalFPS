@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "status": "DRAFT_NOT_RUN",
+  "date": "2026-11-27",
+  "kind": "checked_catalog_commit",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "preimage": "8987d40771f9758137c991dcd398c5fdcfd9b5fe",
+      "sha": "67aa7dc2ad70cd4929f64dd6ad275e627726117f",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "preimage": "8e13ac17b7da61af48ecfc68af60ba9897bbf553",
+      "sha": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_checked_catalog_commit.py",
+      "preimage": null,
+      "sha": "d351cf482029a332970953b649933c2cb060f118",
+      "readback": "EXACT"
+    }
+  ],
+  "exact_hunks": {
+    "application": [
+      {
+        "before": "            # Reject inconsistent candidates while this publication can still\n            # roll back every catalog, source, review and search-index write.\n            self.storage._check()\n            self.before_commit(workspace, revision)\n        self.published_here = True\n\n    def check(self):",
+        "after": "            self.before_commit(workspace, revision)\n            # Reject inconsistent candidates while this publication can still\n            # roll back every catalog, source, review, receipt and index write.\n            self.storage._check()\n        self.published_here = True\n\n    def publish_checked_revision(self, workspace, edition, revision, asset, config, pages):\n        \"\"\"Commit only after the complete candidate passes the full audit.\n\n        Keep the existing publication method as the one commit boundary. Callers\n        using this explicit operation need no second audit after it has returned;\n        recovery and replay still call check() independently.\n        \"\"\"\n        return self.publish_revision(workspace, edition, revision, asset, config, pages)\n\n    def check(self):"
+      },
+      {
+        "before": "                        publisher.publish_revision(workspace, record.edition_id, revision, asset.digest, settings,\n                            tuple(Page(r['raw_text']) for r in extracted['records']))",
+        "after": "                        publisher.publish_checked_revision(workspace, record.edition_id, revision, asset.digest, settings,\n                            tuple(Page(r['raw_text']) for r in extracted['records']))"
+      },
+      {
+        "before": "                            # Replays may add memberships; validate before exposing them.\n                            storage._check()\n                    publisher.check()\n                    return {'state': 'complete',",
+        "after": "                            # Replays may add memberships; validate before exposing them.\n                            storage._check()\n                        publisher.check()\n                    return {'state': 'complete',"
+      }
+    ],
+    "pipeline": [
+      {
+        "before": "                            self.storage.publish_revision(workspace, row['edition'], job, asset.digest, settings,\n                                                          [Page(p['raw_text'], p['physical_index']) for p in records])\n                            self.storage.check()",
+        "after": "                            pages = [Page(p['raw_text'], p['physical_index']) for p in records]\n                            checked_publish = getattr(self.storage, 'publish_checked_revision', None)\n                            if checked_publish is None:\n                                # A generic revision store retains its original\n                                # publication followed by independent full check.\n                                self.storage.publish_revision(workspace, row['edition'], job,\n                                                              asset.digest, settings, pages)\n                                self.storage.check()\n                            else:\n                                # The catalog adapter validates inside the same\n                                # transaction that publishes all candidate rows.\n                                checked_publish(workspace, row['edition'], job,\n                                                asset.digest, settings, pages)"
+      }
+    ]
+  },
+  "purpose": "Remove only the immediately repeated whole-catalog audit after an assembled publication already completed its full precommit audit. No scoped validator or trust cache is introduced.",
+  "changes": [
+    "The assembled publisher exposes publish_checked_revision, delegating through existing publish_revision so real worker publication-barrier instrumentation and the original commit method remain authoritative.",
+    "Receipt staging occurs before the same full Storage._check while the transaction still owns every catalog/source/review/FTS/receipt row. Any final audit error rolls them all back.",
+    "Generic Ingest storage still uses publish_revision then check; fresh catalog TXT/physical imports use the explicit checked operation.",
+    "Fresh extended-document import uses the checked operation and does not repeat the full check. Terminal replay, _recover, cold LibraryApp open, backup, Storage.check and low-level Storage are unchanged."
+  ],
+  "required_validation": {
+    "whole_suite": "tests/ingest/test_checked_catalog_commit.py",
+    "static_cases": 10,
+    "static_functions": 6,
+    "pytest_collection": "NOT_RUN",
+    "functions": [
+      "test_fresh_catalog_commit_audits_once_and_cold_open_rechecks_everything",
+      "test_generic_ingest_storage_keeps_its_separate_full_check",
+      "test_real_attempt_receipt_is_inside_rejectable_audit_and_retry_reuses_checkpoints",
+      "test_receipt_callback_damage_is_rejected_before_any_publication",
+      "test_late_cancel_keeps_checked_commit_and_its_exact_attempt_receipt",
+      "test_terminal_replay_still_runs_full_checks_without_a_new_publication"
+    ],
+    "companions": [],
+    "installed_origins": [
+      "carr_library.application",
+      "carr_library.ingest.pipeline",
+      "carr_library.ingest.worker",
+      "carr_library.ingest.publication",
+      "carr_library.storage.revisions"
+    ],
+    "preserve_whole_suites": [
+      "tests/ingest/test_application_atomic_gate.py",
+      "tests/ingest/test_application_atomic_docx_gate.py",
+      "tests/ingest/test_pipeline.py",
+      "tests/ingest/test_initial_publication_completion.py",
+      "tests/ingest/test_import_publication_point.py",
+      "tests/ingest/test_worker_publication_boundary.py",
+      "tests/ingest/test_import_replay_identity.py",
+      "tests/ingest/test_terminal_replay_registration.py",
+      "tests/ingest/test_txt_replay_registration.py",
+      "tests/e2e/test_import_worker_publication.py",
+      "tests/storage/test_schema_boundary.py",
+      "tests/storage/test_revisions.py",
+      "tests/storage/test_read_boundary.py",
+      "tests/storage/test_locator_integrity.py",
+      "tests/storage/test_printed_label_integrity.py"
+    ]
+  },
+  "performance_evidence": {
+    "baseline_source": "fb39ed3cb1e23ffa3be8bd768c1dd64216f110da",
+    "artifact_id": 15223331300,
+    "baseline_import_count": 1000,
+    "baseline_total_import_seconds": 969.628493533,
+    "evidence_blob": "8d0c4bbaad3b39f411fce2fde644618509d11056",
+    "corrected_execution": "NOT_RUN",
+    "qualification": "This is a safe reduction in duplicate work, not a linear-scaling claim. One global per-publication audit and ImportCenter's independent child cold-open audit remain."
+  },
+  "peer_review": {
+    "agent": "/root/locate_project",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Full precommit audit/receipt ordering, preserved publication interception, generic/replay paths and actual test API/rollback boundaries."
+  },
+  "limitations": [
+    "Executor unavailable; no AST/pytest/performance/native execution claimed.",
+    "No workflow or ref changed.",
+    "Application hunks are exact and intended to compose with unrelated search changes."
+  ]
+}

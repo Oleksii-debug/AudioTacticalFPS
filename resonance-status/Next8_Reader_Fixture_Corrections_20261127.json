@@ -1,0 +1,40 @@
+{
+  "schema": "resonance-actual-reader-fixture-correction/1",
+  "status": "NOT_RUN",
+  "evidence": {
+    "run": 46022851960,
+    "job": 140586631041,
+    "commit": "8329a483",
+    "presentation": "Collection failed only because a donor-only test module was absent.",
+    "reading_desk": "30PASS/2FAIL; both real retained-source calls rejected wrappers lacking the current cancelled keyword."
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/speech/test_reading_presentation_handlers.py",
+      "base": "6c626cd42a05a51cead09c82c5e6bb28058a21b5",
+      "sha": "11a5fbdb2118cf99a56bdc1f5f717e510f515b63",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/reader/test_reading_desk.py",
+      "base": "6353bf195c671dcb49e1bda33dcecc9c6376d246",
+      "sha": "310bf6c90668fe00c2eb2cd60a55412f7eed3710",
+      "readback": "EXACT"
+    }
+  ],
+  "exact_patch_blob": "fb1a186f8ac09c6c2d192b0a73db1a6fdd8ec3c3",
+  "changes": {
+    "presentation": "Reuse exactly the pinned c8cbc test_pronunciation_handlers native Widget/Sizer stand-ins locally, preserving thread/after-destruction checks. No donor worker or tests imported; every20 actual test body is unchanged.",
+    "reading_desk": "Only the two existing wrappers accept and forward cancelled; retain actual source resolution and subsequent simulated deadline/cancel boundary and all32 cases."
+  },
+  "donor": {
+    "commit": "c8cbc5014905ed693b47cbfa40b480605a4bbdc9",
+    "path": "carr-library/tests/speech/test_pronunciation_handlers.py",
+    "reuse": "Widget and Sizer only"
+  },
+  "expected_cases": {
+    "presentation": 20,
+    "reading_desk": 32
+  },
+  "production_changes": []
+}

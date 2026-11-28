@@ -1,0 +1,256 @@
+{
+  "schema": "carr-independent-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "component": "9b171988b0c5c65376f49bdccc2729f6411d24a9",
+  "base_commit": "8c954a11bd62ab158e59593e73bfbed4f9b8bb6c",
+  "files": [
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "fbb5941c2c8fb73861f0ea28469c33717080059c",
+      "after": "6032567fb09dd4e235caca7a3480d27845fcf889",
+      "inverse": "BYTE_EXACT",
+      "utf8_bytes": 53655,
+      "hunks": [
+        {
+          "old_line": 972,
+          "new_line": 972,
+          "removed": [
+            "  # All newly integrated reader/Find and trust modules remain whole-module strict gates.",
+            "  # The actual Windows run completed this suite alone in 208 seconds;",
+            "  # another run reached its unchanged 600-second bound alongside other suites.",
+            "  $academicSuite = 'tests/research/test_academic_library.py'",
+            "  $parallelSuites = @($suites | Where-Object { $_ -cne $academicSuite })",
+            "  $academicExit = 0",
+            "  if ($suites -ccontains $academicSuite) {",
+            "    if ($parallelSuites.Count + 1 -ne $suites.Count) { throw 'Required academic suite must occur exactly once.' }",
+            "    & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 $academicSuite 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'",
+            "    $academicExit = $LASTEXITCODE",
+            "  } elseif ($parallelSuites.Count -ne $suites.Count) {",
+            "    throw 'A different shard must own the complete academic suite.'"
+          ],
+          "added": [
+            "  # Preserve the measured whole-suite bounds while avoiding concurrent heavy children.",
+            "  # Academic, Book and ASR have completed alone; the voice whole passed in B's shard.",
+            "  # Contention is a hypothesis, not a change to any product or child deadline.",
+            "  $isolatedSuiteNames = @(",
+            "    'tests/research/test_academic_library.py',",
+            "    'tests/transcription/test_admission_boundaries.py',",
+            "    'tests/studio/test_book_batch.py',",
+            "    'tests/audio/test_voice_package_management.py'",
+            "  )",
+            "  $isolatedSuites = @($suites | Where-Object { $isolatedSuiteNames -ccontains $_ })",
+            "  $parallelSuites = @($suites | Where-Object { $isolatedSuiteNames -cnotcontains $_ })",
+            "  if ($isolatedSuites.Count + $parallelSuites.Count -ne $suites.Count -or $parallelSuites.Count -eq 0) { throw 'The reviewed source groups do not preserve the complete shard.' }",
+            "  Write-Output ('Reviewed isolated source suites: ' + ($isolatedSuites -join ', '))",
+            "  $PSNativeCommandUseErrorActionPreference = $false",
+            "  $isolatedExit = 0",
+            "  $sourceGroupCounts = @()",
+            "  if ($isolatedSuites.Count -gt 0) {",
+            "    $isolatedArguments = @('--jobs', '1')",
+            "    if ($isolatedSuites -ccontains 'tests/transcription/test_admission_boundaries.py') {",
+            "      $isolatedArguments += @('--suite-timeout', 'tests/transcription/test_admission_boundaries.py=900')",
+            "    }",
+            "    & $env:CARR_PYTHON scripts/ci_check.py @isolatedArguments @isolatedSuites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'",
+            "    $isolatedExit = $LASTEXITCODE",
+            "    $sourceGroupCounts += $isolatedSuites.Count"
+          ]
+        },
+        {
+          "old_line": 985,
+          "new_line": 997,
+          "removed": [
+            "  $parallelArguments = @('--jobs', '3')",
+            "  if ($parallelSuites -ccontains 'tests/transcription/test_admission_boundaries.py') {",
+            "    $parallelArguments += @('--suite-timeout', 'tests/transcription/test_admission_boundaries.py=900')"
+          ],
+          "added": [
+            "  & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'",
+            "  $parallelExit = $LASTEXITCODE",
+            "  $sourceGroupCounts += $parallelSuites.Count",
+            "  if ($isolatedExit -ne 0 -or $parallelExit -ne 0) { throw 'Required whole source suites failed.' }",
+            "  foreach ($groupCount in $sourceGroupCounts) {",
+            "    $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'",
+            "    $pattern = '^' + [regex]::Escape($summary) + '$'",
+            "    if (@(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern).Count -ne 1) { throw 'A real source group lacks its exact complete summary.' }"
+          ]
+        },
+        {
+          "old_line": 989,
+          "new_line": 1006,
+          "removed": [
+            "  & $env:CARR_PYTHON scripts/ci_check.py @parallelArguments @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'",
+            "  $parallelExit = $LASTEXITCODE",
+            "  if ($academicExit -ne 0 -or $parallelExit -ne 0) { throw 'Required whole source suites failed.' }"
+          ],
+          "added": []
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "bbcb5500262598eb3935d36aac7c18561ea51151",
+      "after": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+      "inverse": "BYTE_EXACT",
+      "utf8_bytes": 404556,
+      "hunks": [
+        {
+          "old_line": 101,
+          "new_line": 101,
+          "removed": [
+            "          $expectedBlob = 'fbb5941c2c8fb73861f0ea28469c33717080059c'"
+          ],
+          "added": [
+            "          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'"
+          ]
+        },
+        {
+          "old_line": 197,
+          "new_line": 197,
+          "removed": [
+            "          $expectedBlob = 'fbb5941c2c8fb73861f0ea28469c33717080059c'"
+          ],
+          "added": [
+            "          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'"
+          ]
+        },
+        {
+          "old_line": 527,
+          "new_line": 527,
+          "removed": [
+            "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'",
+            "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+          ],
+          "added": [
+            "          # Keep the two observed heavy wholes separate from the remaining pool.",
+            "          # Each real group retains its own strict ci_check aggregate and 600-second children.",
+            "          $completionUnique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)",
+            "          foreach ($suite in $completionSuites) {",
+            "            if (-not $completionUnique.Add($suite)) { throw 'A required completion suite is duplicated.' }",
+            "          }",
+            "          $isolatedCompletionNames = @(",
+            "            'tests/studio/test_book_batch.py',",
+            "            'tests/audio/test_voice_package_management.py'",
+            "          )",
+            "          $isolatedCompletionSuites = @($completionSuites | Where-Object { $isolatedCompletionNames -ccontains $_ })",
+            "          $parallelCompletionSuites = @($completionSuites | Where-Object { $isolatedCompletionNames -cnotcontains $_ })",
+            "          if ($completionSuites.Count -ne 185 -or $isolatedCompletionSuites.Count -ne 2 -or $parallelCompletionSuites.Count -ne 183) { throw 'The complete 185-suite source groups differ from review.' }",
+            "          Write-Output ('Reviewed isolated completion suites: ' + ($isolatedCompletionSuites -join ', '))",
+            "          $PSNativeCommandUseErrorActionPreference = $false",
+            "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 1 @isolatedCompletionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'",
+            "          $isolatedCompletionExit = $LASTEXITCODE",
+            "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @parallelCompletionSuites 2>&1 | Tee-Object -Append 'ci-completion-results/source-regressions.txt'",
+            "          $parallelCompletionExit = $LASTEXITCODE",
+            "          if ($isolatedCompletionExit -ne 0 -or $parallelCompletionExit -ne 0) { throw 'Required whole completion source suites failed.' }"
+          ]
+        },
+        {
+          "old_line": 697,
+          "new_line": 715,
+          "removed": [
+            "          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'",
+            "          if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }"
+          ],
+          "added": [
+            "          foreach ($groupCount in @($isolatedCompletionSuites.Count, $parallelCompletionSuites.Count)) {",
+            "            $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'",
+            "            $pattern = '^' + [regex]::Escape($summary) + '$'",
+            "            if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -Pattern $pattern).Count -ne 1) { throw 'A real completion group lacks its exact complete summary.' }",
+            "          }"
+          ]
+        },
+        {
+          "old_line": 3842,
+          "new_line": 3863,
+          "removed": [
+            "          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne 'de0ffa6a26dffdcc91bcb1284550f75d704f032d') { throw 'The required language evidence workflow differs from its reviewed source.' }"
+          ],
+          "added": [
+            "          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne '5fb36eda5c859af0d8a4c304fafb1680feb4e3dc') { throw 'The required language evidence workflow differs from its reviewed source.' }"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "96665bb20740c6f56fea8f8614fbee94882d39ea",
+      "after": "7d32d1153af6f612c82b319e608fc8e10bc128de",
+      "inverse": "BYTE_EXACT",
+      "utf8_bytes": 11536,
+      "hunks": [
+        {
+          "old_line": 139,
+          "new_line": 139,
+          "removed": [
+            "          $expectedBlob = 'fbb5941c2c8fb73861f0ea28469c33717080059c'"
+          ],
+          "added": [
+            "          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "cebd24c6219e5d4d653bd3b54ad8cf85f3e92365",
+      "after": "2530ad683289a6d9d16f5282fc470cf819e791b2",
+      "inverse": "BYTE_EXACT",
+      "utf8_bytes": 402441,
+      "hunks": [
+        {
+          "old_line": 34,
+          "new_line": 34,
+          "removed": [
+            "    # Preserve the prior job headroom after adding 30 minutes to source acceptance."
+          ],
+          "added": [
+            "    # The closed older job used 245 minutes; retain 300 while funding source 100."
+          ]
+        },
+        {
+          "old_line": 872,
+          "new_line": 872,
+          "removed": [
+            "        # Exact b524 completed 158 child suites in 2628.93s before this step's",
+            "        # 45-minute cap; five suites were unfinished. This union has 174 whole",
+            "        # suites, adding measured Book98 child work of 387.42s plus legacy201.",
+            "        # Keep sequential execution, every case and individual 600s limits;",
+            "        # reserve finite aggregate time for the remaining backup and verdict work.",
+            "        timeout-minutes: 75"
+          ],
+          "added": [
+            "        # The closed 5b2 run completed 203 of 217 wholes before its 75-minute outer stop.",
+            "        # Keep all 223 current selectors serial and every 600-second child bound.",
+            "        # Add 25 minutes of bounded source headroom; other phases keep their limits.",
+            "        timeout-minutes: 100"
+          ]
+        }
+      ]
+    }
+  ],
+  "evidence": {
+    "assessment_final": "424694bcbf8011f022ac522d09756902e0510492",
+    "old_V3_actual": "ac2c27cc81c93726d37f219d52ef7fc0c26eb3a7",
+    "language_fixture_pin_peer": "731dbf7c9b49431368c043c93212788de042683e"
+  },
+  "findings": [
+    "Every full predecessor reconstructs exactly from the recorded inverse hunks. Source493 and main185 ordered selector arrays, complete source anchors, maps, counts and assignment membership remain unchanged.",
+    "Source shard group sizes are2+122,1+122,0+123,1+122; main fast is2+183. Filtering is complementary and preserves order within groups. Existing input uniqueness and complete493 union remain; main adds explicit unique185 and exact2/183 cardinality.",
+    "One unchanged ci_check process executes each isolated group with jobs1, so each selected whole retains its own isolated child and default600 deadline; only exact selected ASR keeps the existing900 override. Remaining selected wholes retain jobs3.",
+    "Actual group completion summaries are anchored and uniquely matched. The two sizes within each affected lane are different, so no duplicate singleton-summary ambiguity occurs. No synthetic all185 aggregate is produced.",
+    "Main retains all162 existing exact per-case assertions byte-for-byte. Its185 selectors are covered by the two actual ci_check summaries bound to the exact2/183 argument arrays. Source retains the existing complete per-path verdict dictionary and strict receipt checks.",
+    "PowerShell native nonzero results are captured independently and the next group still executes; any nonzero group result fails the lane. Source proof/finally, current identity and retained log verification are unchanged.",
+    "Main source-helper pins change twice; reusable source-helper pin changes once. Main's required language workflow hash changes once to the independently accepted5fb36 successor. Existing native requirements and strict always aggregates are unchanged.",
+    "V3 changes only stale explanatory comments and the single source-step75→100 minute limit. Its exact223-selector command remains byte-identical and serial through ci_check default1; all600 child limits, installed120, job300 and every other timeout remain unchanged.",
+    "Closed old5b2 V3 explicitly reports75-minute timeout after203 sequential completed pytest summaries with4785 passed cases and4347.93 seconds of pytest work. Its overall245.5-minute run supplies bounded headroom reasoning for the additional25 source minutes within300, not a completion guarantee."
+  ],
+  "metadata_followup": [
+    "The candidate manifest still references superseded assessment28ea. Final record should reference424694, which clarifies that D source ASR ran with two short wholes while installed ASR was alone.",
+    "The added isolated-suite line is printed in the actual job console; per-group ci_check output remains in the existing retained raw text file."
+  ],
+  "qualification": [
+    "Static source/API/control-flow and exact inverse review only. No PowerShell parser or new-head runtime claim.",
+    "The existing source-syntax gate must parse the exact final workflow/PS1 and verify InventoryOnly before dependent required jobs can run.",
+    "No historical failure is reclassified; no physical audio, native UI, NVDA or corpus qualification is inferred."
+  ]
+}

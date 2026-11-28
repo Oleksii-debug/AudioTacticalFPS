@@ -11,13 +11,13 @@ import pytest
 from carr_library.audio.models import AudioBudget
 from carr_library.durable_state import read_json
 from carr_library.operations import ResourceBroker
-from carr_library.transcription import TranscriptionService
-from carr_library.transcription import service as module
-from carr_library.transcription.models import worker_settings
+from carr_library.integrations import transcription_protocol as module
+from carr_library.integrations.transcription_values import worker_settings
 
 _spec = spec_from_file_location('admission_fixture_builder', Path(__file__).with_name('fixture_runtime.py'))
 _builder = module_from_spec(_spec)
 _spec.loader.exec_module(_builder)
+TranscriptionService = _builder.make_service
 
 
 @pytest.fixture
@@ -47,6 +47,212 @@ def historical_job(setup):
     assert partial['status'] == 'partial' and partial['done'] == 1, partial
     runtime.options.write_text('{}', encoding='utf-8')
     return partial
+
+
+@pytest.mark.parametrize('mutation', ['same_size', 'grow', 'truncate'])
+def test_export_rejects_changed_payload_before_external_publication(setup, monkeypatch, mutation):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
+    assert state['status'] == 'complete', state['error']
+    record = service._receipt(state, state['results'][0])['files']['txt']
+    path = service._job_root(state['id']) / record['path']
+    before = path.read_bytes()
+    assert before
+    changed = {'same_size': bytes([before[0] ^ 1]) + before[1:],
+               'grow': before + b'x', 'truncate': before[:-1]}[mutation]
+    verify = service._verify_source
+
+    def mutate_after_receipt(*args, **kwargs):
+        verify(*args, **kwargs)
+        path.write_bytes(changed)
+
+    destination = runtime.root / 'export-mutation'
+    destination.mkdir()
+    monkeypatch.setattr(service, '_verify_source', mutate_after_receipt)
+    with pytest.raises(ValueError, match='changed before export'):
+        service.export(state['id'], destination, formats=['txt'])
+    assert not list(destination.iterdir())
+    assert path.read_bytes() == changed
+    assert service._load(state['id'])['results'] == state['results']
+
+
+def test_export_receipt_verification_observes_cancellation(setup, monkeypatch):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    destination = runtime.root / 'export-cancel'
+    destination.mkdir()
+    receipt = service._receipt
+    entered = []
+
+    def cancel():
+        return bool(entered)
+
+    def verify(*args, **kwargs):
+        entered.append(True)
+        assert callable(kwargs.get('cancel')) and kwargs['cancel']() is True
+        return receipt(*args, **kwargs)
+
+    monkeypatch.setattr(service, '_receipt', verify)
+    with pytest.raises(InterruptedError):
+        service.export(state['id'], destination, formats=['txt'], cancel=cancel)
+    assert not list(destination.iterdir())
+    assert service._load(state['id'])['results'] == state['results']
+
+
+def test_export_payload_is_bounded_and_interruptible(tmp_path):
+    from hashlib import sha256
+    path = tmp_path / 'synthetic.txt'
+    payload = b'x' * (2 * 1024 * 1024 + 17)
+    path.write_bytes(payload)
+    record = {'size': len(payload), 'sha256': sha256(payload).hexdigest()}
+    assert module._export_payload(path, record) == payload
+    polls = []
+
+    def cancel():
+        polls.append(True)
+        return len(polls) >= 3
+
+    with pytest.raises(InterruptedError):
+        module._export_payload(path, record, cancel=cancel)
+    assert len(polls) == 3
+    assert path.read_bytes() == payload
+
+
+@pytest.mark.parametrize('field', ['text', 'provenance', 'inventory'])
+def test_saved_receipt_decodes_only_verified_bytes(setup, monkeypatch, field):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    record = state['results'][0]
+    path = service._job_root(state['id']) / record['receipt']
+    original = service._receipt(state, record)
+    changed = json.loads(json.dumps(original))
+    if field == 'text':
+        changed['result']['text'] = 'Unverified text'
+    elif field == 'provenance':
+        changed['provenance']['unverified'] = True
+    else:
+        changed['files'] = {}
+    open_path = Path.open
+    reads = []
+
+    def swap_on_second_read(self, mode='r', *args, **kwargs):
+        if self == path and mode == 'rb':
+            reads.append(True)
+            if len(reads) == 2:
+                with open_path(path, 'wb') as stream:
+                    stream.write(json.dumps(changed).encode('utf-8'))
+        return open_path(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', swap_on_second_read)
+    assert service._receipt(state, record) == original
+    assert len(reads) == 1
+
+
+def test_saved_receipt_corruption_blocks_external_export(setup):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    record = state['results'][0]
+    path = service._job_root(state['id']) / record['receipt']
+    raw = path.read_bytes()
+    path.write_bytes(raw + b' ')
+    destination = runtime.root / 'receipt-corruption-export'
+    destination.mkdir()
+    with pytest.raises(ValueError, match='saved transcript receipt changed'):
+        service.export(state['id'], destination, formats=['txt'])
+    assert not list(destination.iterdir())
+    assert service._load(state['id'])['results'] == state['results']
+
+
+@pytest.mark.parametrize('raw', [b'{"a":1,"a":2}', b'{"a":NaN}', b'{"a":Infinity}'])
+def test_verified_json_preserves_strict_state_parsing(tmp_path, raw):
+    from hashlib import sha256
+    path = tmp_path / 'synthetic.json'
+    path.write_bytes(raw)
+    with pytest.raises(ValueError):
+        module._verified_json(path, sha256(raw).hexdigest())
+
+
+@pytest.mark.parametrize('operation', ['read', 'export'])
+def test_edited_copy_decodes_only_the_bytes_it_verifies(setup, monkeypatch, operation):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
+    assert state['status'] == 'complete', state['error']
+    source_id = state['results'][0]['source_id']
+    edited = service.save_edit(state['id'], source_id, 'Verified edit')
+    path = service._job_root(state['id']) / edited['path']
+    original = path.read_bytes()
+    changed = original.replace(b'Verified edit', b'Injected edit')
+    assert changed != original and len(changed) == len(original)
+    open_path = Path.open
+    reads = []
+
+    def swap_on_second_read(self, mode='r', *args, **kwargs):
+        if self == path and mode == 'rb':
+            reads.append(True)
+            if len(reads) == 2:
+                with open_path(path, 'wb') as stream:
+                    stream.write(changed)
+        return open_path(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', swap_on_second_read)
+    if operation == 'read':
+        assert service.read_transcript(state['id'], source_id, edited=True)['text'] == 'Verified edit'
+    else:
+        destination = runtime.root / 'edit-export'
+        destination.mkdir()
+        manifest = service.export(state['id'], destination, formats=['txt'])
+        exported = next(item for item in manifest['files'] if item['edited'])
+        assert Path(exported['path']).read_bytes() == b'Verified edit'
+    assert len(reads) == 1
+
+
+def test_edited_copy_export_uses_the_captured_revision(setup, monkeypatch):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    source_id = state['results'][0]['source_id']
+    service.save_edit(state['id'], source_id, 'Selected revision')
+    verify = service._verify_source
+    changed = []
+
+    def update_during_export(*args, **kwargs):
+        verify(*args, **kwargs)
+        if not changed:
+            changed.append(True)
+            service.save_edit(state['id'], source_id, 'Later revision')
+
+    monkeypatch.setattr(service, '_verify_source', update_during_export)
+    destination = runtime.root / 'edit-revision-export'
+    destination.mkdir()
+    manifest = service.export(state['id'], destination, formats=['txt'])
+    exported = next(item for item in manifest['files'] if item['edited'])
+    assert Path(exported['path']).read_bytes() == b'Selected revision'
+    assert service.read_transcript(state['id'], source_id, edited=True)['text'] == 'Later revision'
+
+
+def test_edited_copy_rejects_changed_bytes_and_observes_cancel(setup):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
+    assert state['status'] == 'complete', state['error']
+    source_id = state['results'][0]['source_id']
+    edited = service.save_edit(state['id'], source_id, 'Verified edit')
+    state = service._load(state['id'])
+    path = service._job_root(state['id']) / edited['path']
+    polls = []
+
+    def cancel():
+        polls.append(True)
+        return len(polls) >= 3
+
+    with pytest.raises(InterruptedError):
+        service._read_edit(state, source_id, cancel=cancel)
+    path.write_bytes(path.read_bytes().replace(b'Verified edit', b'Injected edit'))
+    with pytest.raises(ValueError, match='changed before export'):
+        service.read_transcript(state['id'], source_id, edited=True)
+    assert service._load(state['id'])['edits'] == state['edits']
 
 
 @pytest.mark.parametrize('intent', ['pause', 'cancel'])
@@ -184,7 +390,7 @@ def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkey
         with pytest.raises(ValueError, match='No verified'):
             service.export(state['id'], destination)
     model.write_bytes(original_model)
-    resumed = service.resume(state['id'])
+    resumed = service.resume(state['id'], timeout=30)
     assert resumed['status'] == 'complete', resumed['error']
     assert starts(runtime) == before_starts + 2, 'A rejected raw checkpoint was resurrected instead of rerunning.'
     assert resumed['results'][:len(previous)] == previous
@@ -252,7 +458,7 @@ def test_actual_child_import_never_writes_or_replaces_python_bytecode(setup, exi
     before = cached.read_bytes() if cached.exists() else None
     probe.write_text("VALUE = 'current synthetic source value'\n", encoding='utf-8')
     runtime.options.write_text(json.dumps({'import_probe': str(probe)}), encoding='utf-8')
-    result = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    result = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
     assert result['status'] == 'complete', result['error']
     observed = read_json(service._job_root(result['id']) / 'worker/bytecode-probe.json')
     assert observed == {'dont_write_bytecode': True, 'value': 'current synthetic source value'}
@@ -304,3 +510,121 @@ def test_cancelled_post_admission_check_preserves_committed_valid_receipt(setup,
     resumed = service.resume(state['id'])
     assert resumed['status'] == 'complete' and resumed['results'] == [accepted], resumed
     assert starts(runtime) == 1
+
+
+@pytest.mark.parametrize('intent', ['pause', 'cancel', 'callback'])
+@pytest.mark.parametrize('completed', [False, True])
+def test_stop_during_historical_receipt_hash_preserves_durable_results(setup, monkeypatch, intent, completed):
+    service, runtime, profile, sources = setup
+    if completed:
+        state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
+        assert state['status'] == 'complete', state
+    else:
+        state = historical_job(setup)
+    previous = list(state['results'])
+    before_starts = starts(runtime)
+    target = service._job_root(state['id']) / previous[0]['receipt']
+    entered, release, token = threading.Event(), threading.Event(), threading.Event()
+    original = module._verified_json
+    callbacks, outcome = [], {}
+
+    def controlled_hash(path, digest, *, cancel=None, **kwargs):
+        if Path(path) == target:
+            callbacks.append(cancel)
+            entered.set()
+            while not release.wait(.01):
+                module.stopped(cancel)
+        return original(path, digest, cancel=cancel, **kwargs)
+
+    monkeypatch.setattr(module, '_verified_json', controlled_hash)
+
+    def run():
+        try:
+            outcome['state'] = service.resume(state['id'], cancel=token.is_set)
+        except BaseException as error:
+            outcome['error'] = error
+
+    runner = threading.Thread(target=run)
+    runner.start()
+    promptly_stopped = False
+    try:
+        assert entered.wait(4), 'Historical receipt verification was not reached.'
+        if intent == 'callback':
+            token.set()
+        else:
+            getattr(service, intent)(state['id'])
+        runner.join(1.5)
+        promptly_stopped = not runner.is_alive()
+    finally:
+        release.set()
+        runner.join(6)
+    assert not runner.is_alive()
+    assert promptly_stopped, 'Historical receipt verification blocked stop.'
+    assert callbacks and all(callable(callback) for callback in callbacks)
+    saved = service.get_job(state['id'])
+    assert saved['results'] == previous and saved['done'] == len(previous)
+    assert starts(runtime) == before_starts
+    assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+    if completed:
+        assert isinstance(outcome.get('error'), InterruptedError), outcome
+        assert saved['status'] == 'complete'
+    else:
+        assert 'error' not in outcome, outcome
+        expected = 'paused' if intent == 'pause' else 'cancelled'
+        assert saved['status'] == outcome['state']['status'] == expected
+    # A fresh explicit resume revalidates the original receipt; no accepted
+    # historical source is transcribed twice.
+    resumed = service.resume(state['id'])
+    assert resumed['status'] == 'complete', resumed
+    assert resumed['results'][:len(previous)] == previous
+    assert starts(runtime) == before_starts + (0 if completed else 1)
+
+
+def test_terminal_only_status_policy_keeps_real_child_checkpoint_progress(setup, monkeypatch):
+    service, runtime, profile, sources = setup
+    runtime.options.write_text(json.dumps({'hold_after_checkpoint': .35}), encoding='utf-8')
+    state = service.create_job(profile['id'], sources[:1])
+    run_process, read_status = module.run_process, module._worker_status
+    active, reads, updates = [False], [], []
+
+    def actual_child(*args, **kwargs):
+        active[0] = True
+        try:
+            return run_process(*args, **kwargs)
+        finally:
+            active[0] = False  # The actual runner already owns/reaps its family.
+
+    def status_after_exit(path, total):
+        reads.append((Path(path), active[0]))
+        assert not active[0], 'The host opened mutable status while the real worker was alive.'
+        return read_status(path, total)
+
+    def observe(event):
+        updates.append((dict(event), active[0]))
+
+    # This exercises the Windows policy on every test host without replacing
+    # os.name, the process runner, the child, its writes or checkpoint admission.
+    monkeypatch.setattr(module, '_LIVE_STATUS_SNAPSHOTS', False)
+    monkeypatch.setattr(module, 'run_process', actual_child)
+    monkeypatch.setattr(module, '_worker_status', status_after_exit)
+    # This tests live checkpoint delivery and terminal-only mutable status,
+    # while retaining real runtime hashing and process ownership throughout.
+    result = service.run(state['id'], progress=observe, timeout=30)
+    assert result['status'] == 'complete', result
+    assert reads and not any(live for _, live in reads)
+    assert any(live and event['done'] == 1 for event, live in updates)
+    assert starts(runtime) == 1
+    assert service.read_transcript(state['id'])['text']
+
+
+@pytest.mark.parametrize('payload', [
+    b'{"state":"done","done":-1,"failed":0,"total":1}',
+    b'{"state":"done","done":1,"failed":0,"total":1,"done":0}',
+    b' ' * (256 * 1024 + 1),
+], ids=['invalid-terminal-state', 'duplicate-done-field', 'over-limit-status'])
+def test_terminal_status_retains_strict_schema_and_exact_budget(tmp_path, payload):
+    path = tmp_path / 'job_status.json'
+    path.write_bytes(payload)
+    from carr_library.ingest.restore import RestoreError
+    with pytest.raises((RestoreError, ValueError)):
+        module._worker_status(path, 1)

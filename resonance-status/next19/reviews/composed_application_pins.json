@@ -1,0 +1,41 @@
+{
+  "schema": "resonance-composed-application-pin-refresh/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "base": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "requires": [
+    "a6c40da056d70ce9e065681fefe2f4072c62795e",
+    "5ea8d3832b85adbedecda0096b3e38d8259fe272"
+  ],
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "e13fda43d6f00ffc670257f849cc4249209558d7",
+      "sha": "f367299bdfc55c6af6a409c020b437fd1bd1c416"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "ca2a659632d93d913d2fe8b5fc6113af98ffa63e",
+      "sha": "42383f649ca2d3d5c682cc036f1b5540c12c28aa"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "6dff3f3c5a8fb93868930ad08481906a8355639e",
+      "sha": "b9a05871fa6dc6b9e951799da8201b8660b9410a"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "1badeb7b8933737721e57cea0f44a4f95e41c409",
+      "sha": "d5dd53c0874cf4d701bc248cefc26d9ac6e353e8"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "33cc07c7aab7865b756ff69abf38f6078f41fae3",
+      "sha": "ad6d08e68e0bd6df219f80453b2f1ec6e986e70e"
+    }
+  ],
+  "changes": "Only the exact application454445→82af source pin in Book/helper/profile inputs and the resulting helper hashes. Each helper replaces one application pin. Next9 replaces one application pin plus two capacity-helper pins; next11 replaces two capacity-helper pins; next12 replaces one Book-helper pin.",
+  "preserved": "All diagnostics,21 capacity origins,106/184 suites,77/44 native checks, eighteen/twelve native origins, page37,3600, contracts, actual-source/installed checks and bounded artifact policies are unchanged.",
+  "readback": "All five blobs exact; occurrence-bounded replacements only.",
+  "peer": "Requested before execution; no runtime result.",
+  "live_focused_branches": "Book115cb and capacity79931 are unchanged and correctly retain their original application454445 dependency."
+}

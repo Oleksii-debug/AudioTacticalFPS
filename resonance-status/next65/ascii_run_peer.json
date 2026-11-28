@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "peer": "/root/locate_project",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "source": {
+    "path": "carr-library/src/carr_library/search/literal.py",
+    "preimage": "8a3819914681f08dc942b0905ab2bad796971b37",
+    "git_blob": "ebc80347d09b35fc8f9d11858e38b2b424920ad8"
+  },
+  "tests": {
+    "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+    "preimage": "5ae468e51b908a8c15169948c5bcee6c9c6944e2",
+    "git_blob": "e65d39a85c08b831ddf4f4b1f58ecd5359b7cb5d",
+    "old_case_count": 56,
+    "new_case_count": 73,
+    "old_functions": 15,
+    "new_functions": 19,
+    "added_function_cases": {
+      "test_bulk_ascii_runs_match_all_boundaries": 1,
+      "test_bulk_ascii_runs_keep_checkpoints_and_bounded_work": 4,
+      "test_bulk_ascii_runs_keep_mark_cluster_edges": 6,
+      "test_bulk_ascii_runs_keep_validation_and_stop": 6
+    }
+  },
+  "validation": {
+    "source_two_insertions_inverse": "PASS",
+    "old56_test_byte_prefix": "PASS",
+    "unchanged_offset_types_and_APIs": true,
+    "no_new_origins_or_companions": true
+  },
+  "reasoning": [
+    "The ASCII regex excludes exactly the existing ASCII whitespace classes; only non-whitespace ASCII clusters are batched.",
+    "Each regex scan ends at the existing next_check boundary, so bulk work is bounded to the current1024-character segment.",
+    "If the next raw code point is a Unicode Mark, the preceding ASCII base is left on the unchanged cluster path. This also handles a mark at a cancellation edge.",
+    "Dictionary and compact-array slices fill precisely the old per-character starts/ends. Compact folded-prefix validation and final whole-fold verification remain.",
+    "The four new test functions use the existing independent canonical oracle, actual classification-call counts and original callback positions; mark edge cases cover Mn/Mc/Me, both map representations, exact stop exception identity and corrupt whole-fold refusal.",
+    "No source authority, fresh read, attestation, copy, offset protocol, query behavior, page37 or3600-second budget changes."
+  ],
+  "limits": "No execution, measured speedup or full2M completion is established by this static peer.",
+  "recorded_utc": "2026-11-28 06:58:40 UTC",
+  "refs_modified": false
+}

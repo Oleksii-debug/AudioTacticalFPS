@@ -1,0 +1,57 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Scoped locator query capacity correction",
+  "status": "DRAFT_STATIC_REVIEWED_NOT_RUN",
+  "source_date": "2026-11-27",
+  "base_source": "fb39ed3cb1e23ffa3be8bd768c1dd64216f110da",
+  "upstream_source": "187a10493d4015e37de2b2d2d01e9efb0bbe62cf",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "preimage": "0e326329b65b519a7743503ee2967211fd19897b",
+      "sha": "63a9179eff3816a81523c5fadeeea750ddfbcdc4",
+      "exact_readback": true,
+      "source_donor": "a24851a456b9625ad6e36bce5580ed36c2a6e1ea",
+      "change": "Replace only _check_locators with the exact donor fixed-query-shape method; all other current bytes are unchanged."
+    },
+    {
+      "path": "carr-library/tests/storage/test_scoped_locator_capacity.py",
+      "preimage": null,
+      "sha": "489dec6a00fb8e4ae16611fefb84616a5ec77592",
+      "exact_readback": true,
+      "source_donor": "489dec6a00fb8e4ae16611fefb84616a5ec77592",
+      "change": "Reuse exact existing donor tests: actual SQLite VM progress-counter work and actual publication rollback/refusal."
+    }
+  ],
+  "hooks": [
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "before": "    def _check_locators(self, revision=None):\n        # Native SQLite window functions validate sequence and locator kind.\n        # Existing schema derives kind from physical IS NULL; no migration here.\n        invalid = self.db.execute(\"\"\"\n            WITH ordered AS (\n                SELECT ordinal, physical, printed, verified,\n                    row_number() OVER w AS expected,\n                    lag(physical) OVER w AS previous_physical,\n                    lag(physical IS NULL) OVER w AS previous_logical\n                FROM page WHERE (? IS NULL OR revision=?)\n                WINDOW w AS (PARTITION BY revision ORDER BY ordinal)\n            )\n            SELECT 1 FROM ordered WHERE ordinal != expected\n                OR (physical IS NULL AND (printed IS NOT NULL OR verified != 0))\n                OR (physical IS NOT NULL AND typeof(physical) != 'integer')\n                OR (printed IS NOT NULL AND (typeof(printed)!='text' OR instr(printed,char(0))>0))\n                OR (verified=1 AND (printed IS NULL OR trim(printed, char(9,10,13,32))=''))\n                OR (expected>1 AND previous_logical != (physical IS NULL))\n                OR (physical IS NOT NULL AND physical <= previous_physical)\n            LIMIT 1\n        \"\"\", (revision, revision)).fetchone()\n        if invalid:\n            raise sqlite3.IntegrityError('invalid source locator sequence or label')\n        # Apply the citation boundary to every authoritative label, including\n        # inactive historical revisions checked before backup or recovery.\n        for physical, printed in self.db.execute(\n                'SELECT physical,printed FROM page WHERE verified=1 AND (? IS NULL OR revision=?)',\n                (revision, revision)):\n            try:\n                Locator('physical_page', physical, printed, True)\n            except ValueError as exc:\n                raise sqlite3.IntegrityError('invalid verified printed label') from exc\n",
+      "after": "    def _check_locators(self, revision=None):\n        # Native SQLite window functions validate sequence and locator kind.\n        # Existing schema derives kind from physical IS NULL; no migration here.\n        # A bound nullable OR prevents SQLite from seeking the existing\n        # (revision, ordinal) index and scans every book for each new revision.\n        # Choose only between these two fixed query shapes; identities remain\n        # bound parameters and all locator checks stay identical.\n        selected = '' if revision is None else ' WHERE revision=?'\n        parameters = () if revision is None else (revision,)\n        invalid = self.db.execute(\"\"\"\n            WITH ordered AS (\n                SELECT ordinal, physical, printed, verified,\n                    row_number() OVER w AS expected,\n                    lag(physical) OVER w AS previous_physical,\n                    lag(physical IS NULL) OVER w AS previous_logical\n                FROM page\"\"\" + selected + \"\"\"\n                WINDOW w AS (PARTITION BY revision ORDER BY ordinal)\n            )\n            SELECT 1 FROM ordered WHERE ordinal != expected\n                OR (physical IS NULL AND (printed IS NOT NULL OR verified != 0))\n                OR (physical IS NOT NULL AND typeof(physical) != 'integer')\n                OR (printed IS NOT NULL AND (typeof(printed)!='text' OR instr(printed,char(0))>0))\n                OR (verified=1 AND (printed IS NULL OR trim(printed, char(9,10,13,32))=''))\n                OR (expected>1 AND previous_logical != (physical IS NULL))\n                OR (physical IS NOT NULL AND physical <= previous_physical)\n            LIMIT 1\n        \"\"\", parameters).fetchone()\n        if invalid:\n            raise sqlite3.IntegrityError('invalid source locator sequence or label')\n        # Apply the citation boundary to every authoritative label, including\n        # inactive historical revisions checked before backup or recovery.\n        for physical, printed in self.db.execute(\n                'SELECT physical,printed FROM page WHERE verified=1'\n                + ('' if revision is None else ' AND revision=?'), parameters):\n            try:\n                Locator('physical_page', physical, printed, True)\n            except ValueError as exc:\n                raise sqlite3.IntegrityError('invalid verified printed label') from exc\n"
+    }
+  ],
+  "validation": {
+    "static_cases": 4,
+    "collected_cases": "NOT_RUN",
+    "pytest": "NOT_RUN",
+    "native": "NOT_RUN",
+    "required_suite": "tests/storage/test_scoped_locator_capacity.py",
+    "tests": [
+      "test_scoped_locator_validation_does_not_scan_unrelated_books",
+      "test_scoped_publication_keeps_original_locator_refusals_and_rolls_back"
+    ],
+    "actual_fixture_design": "The first test publishes40 selected and20000 unrelated pages, then compares actual SQLite VM callback counts for selected-revision and whole-library locator checks. Three parameterized invalid locator sequences require rollback and retained original source.",
+    "preserved": "All full global check calls, raw hashes, foreign-key/schema checks, academic/research validation, transaction/backup behavior and cancellation paths remain unchanged."
+  },
+  "limits": {
+    "capacity_qualification": "NOT_ESTABLISHED",
+    "full_import_complexity": "The two full global checks per ordinary import still exist; this small optimization does not remove them.",
+    "benchmark": "Existing live1000/10000/50000-book baseline runs and benchmark source remain unchanged.",
+    "donor_capacity_evidence": "The separate upstream bulk-built corpus measurement is not substituted for ordinary N-import throughput.",
+    "cache": "No connection cache, global trust token, persistent handle or schema change introduced."
+  },
+  "references": [
+    "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/187a10493d4015e37de2b2d2d01e9efb0bbe62cf/carr-library/src/carr_library/storage/revisions.py",
+    "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/187a10493d4015e37de2b2d2d01e9efb0bbe62cf/carr-library/tests/storage/test_scoped_locator_capacity.py"
+  ]
+}

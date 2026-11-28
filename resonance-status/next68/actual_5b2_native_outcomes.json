@@ -1,0 +1,386 @@
+{
+  "schema": "carr-actual-main-native-and-owner-boundaries/1",
+  "status": "ACTUAL_CLOSED_FAILURE_WITH_SEPARATE_PARTIAL_SUCCESSES",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "run_id": 46110647047,
+    "job_id": 140873303775,
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110647047/job/140873303775",
+    "closed_log_characters": 1381731,
+    "log_line_numbering": "1-based decoded job log, split on CRLF/LF"
+  },
+  "timeout_receipt_git_blob": "e96a34b97f94ce0c195222bf78c0365c2ba8eae6",
+  "native_failures": [
+    {
+      "line": 6345,
+      "text": "REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed."
+    },
+    {
+      "line": 6483,
+      "text": "REQUIRED NATIVE BLOCK FAILED [recording]: Required native process exited with code 1"
+    },
+    {
+      "line": 8222,
+      "text": "REQUIRED NATIVE BLOCK FAILED [saved-audio-queue]: Actual installed native saved-audio-queue failed."
+    },
+    {
+      "line": 8270,
+      "text": "REQUIRED NATIVE BLOCK FAILED [recorded-epub]: Actual installed recorded EPUB playback failed."
+    }
+  ],
+  "audio_output_inventory": {
+    "line": 6336,
+    "report": {
+      "device_inventory_truncated": false,
+      "devices": [],
+      "mapper_queries": [
+        {
+          "bits_per_sample": 16,
+          "channels": 1,
+          "code": 2,
+          "message": "A device ID has been used that is out of range for your system.",
+          "sample_rate": 24000
+        },
+        {
+          "bits_per_sample": 16,
+          "channels": 2,
+          "code": 2,
+          "message": "A device ID has been used that is out of range for your system.",
+          "sample_rate": 24000
+        },
+        {
+          "bits_per_sample": 16,
+          "channels": 1,
+          "code": 2,
+          "message": "A device ID has been used that is out of range for your system.",
+          "sample_rate": 44100
+        },
+        {
+          "bits_per_sample": 16,
+          "channels": 2,
+          "code": 2,
+          "message": "A device ID has been used that is out of range for your system.",
+          "sample_rate": 44100
+        },
+        {
+          "bits_per_sample": 16,
+          "channels": 1,
+          "code": 2,
+          "message": "A device ID has been used that is out of range for your system.",
+          "sample_rate": 48000
+        },
+        {
+          "bits_per_sample": 16,
+          "channels": 2,
+          "code": 2,
+          "message": "A device ID has been used that is out of range for your system.",
+          "sample_rate": 48000
+        }
+      ],
+      "observation": "NO_OUTPUT_DEVICE_ENUMERATED_OR_QUERY_ERROR",
+      "playback_evidence": "NOT_RUN",
+      "query_only": true,
+      "schema": "carr-windows-audio-diagnostics/1",
+      "services": {
+        "AudioEndpointBuilder": {
+          "service_exit_code": 0,
+          "state": "RUNNING",
+          "state_code": 4,
+          "win32_exit_code": 0
+        },
+        "Audiosrv": {
+          "service_exit_code": 0,
+          "state": "RUNNING",
+          "state_code": 4,
+          "win32_exit_code": 0
+        }
+      },
+      "stage": "before-output-device-admission",
+      "wave_output_device_count": 0
+    }
+  },
+  "reader_output": {
+    "classification": "EXPLICIT_OUTPUT_DEVICE_QUALIFICATION_REFUSAL",
+    "trace": [
+      {
+        "line": 6338,
+        "text": "2026-11-28T05:46:49.7380181Z Traceback (most recent call last):"
+      },
+      {
+        "line": 6339,
+        "text": "2026-11-28T05:46:49.7384628Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 500, in <module>"
+      },
+      {
+        "line": 6340,
+        "text": "2026-11-28T05:46:49.7629215Z     raise SystemExit(main())"
+      },
+      {
+        "line": 6341,
+        "text": "2026-11-28T05:46:49.7632056Z                      ^^^^^^"
+      },
+      {
+        "line": 6342,
+        "text": "2026-11-28T05:46:49.7635699Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 386, in main"
+      },
+      {
+        "line": 6343,
+        "text": "2026-11-28T05:46:49.7638807Z     raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')"
+      },
+      {
+        "line": 6344,
+        "text": "2026-11-28T05:46:49.7642005Z RuntimeError: Actual output-device qualification requires an identifiable Windows output."
+      },
+      {
+        "line": 6345,
+        "text": "2026-11-28T05:46:49.7957417Z REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed."
+      }
+    ]
+  },
+  "recording": {
+    "classification": "EXPLICIT_MONITOR_OUTPUT_REFUSAL",
+    "trace": [
+      {
+        "line": 6458,
+        "text": "2026-11-28T05:48:50.6011104Z FAIL: native recording phase 103"
+      },
+      {
+        "line": 6459,
+        "text": "2026-11-28T05:48:50.6016006Z Traceback (most recent call last):"
+      },
+      {
+        "line": 6460,
+        "text": "2026-11-28T05:48:50.6020378Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 43, in invoke"
+      },
+      {
+        "line": 6461,
+        "text": "2026-11-28T05:48:50.6024084Z     callback()"
+      },
+      {
+        "line": 6462,
+        "text": "2026-11-28T05:48:50.6029169Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 372, in drive"
+      },
+      {
+        "line": 6463,
+        "text": "2026-11-28T05:48:50.6064650Z     drive_monitor()"
+      },
+      {
+        "line": 6464,
+        "text": "2026-11-28T05:48:50.6106172Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 486, in drive_monitor"
+      },
+      {
+        "line": 6465,
+        "text": "2026-11-28T05:48:50.6214482Z     raise RuntimeError('Actual Windows monitoring output is required; no output was enumerated. '"
+      },
+      {
+        "line": 6466,
+        "text": "2026-11-28T05:48:50.6222511Z RuntimeError: Actual Windows monitoring output is required; no output was enumerated. Native monitoring remains unqualified. Choose a monitoring output explicitly. Use headphones to avoid microphone feedback; no output was opened."
+      },
+      {
+        "line": 6467,
+        "text": "2026-11-28T05:48:50.6224986Z "
+      },
+      {
+        "line": 6468,
+        "text": "2026-11-28T05:48:50.6787218Z PASS: recording host Close drains its registered native owners"
+      }
+    ]
+  },
+  "saved_audio_queue": {
+    "classification": "REAL_WAVEOUT_PROGRESS_FAILED_WITH_ACTUAL_FAILURE_CLEANUP_PASS",
+    "worker_failure_control": [
+      {
+        "line": 8173,
+        "text": "2026-11-28T05:52:02.9310930Z SAVED_PLAYBACK_STAGE: {\"event\": \"failure-callback\", \"exact_error\": true, \"host_working\": false}"
+      },
+      {
+        "line": 8174,
+        "text": "2026-11-28T05:52:02.9362023Z SAVED_PLAYBACK_STAGE: {\"event\": \"failure-menu-returned\", \"errors\": 0}"
+      },
+      {
+        "line": 8175,
+        "text": "2026-11-28T05:52:02.9363501Z PASS: controlled worker failure closes only its owned passive playback modal"
+      }
+    ],
+    "trace_and_close": [
+      {
+        "line": 8195,
+        "text": "2026-11-28T05:52:17.4364475Z SAVED_PLAYBACK_CALLBACK_FAILURE: \"Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_audio_player_smoke.py\\\", line 331, in controls\\n    pump(lambda: current.position_seconds >= .05, 'Real waveOut did not advance')\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_audio_player_smoke.py\\\", line 154, in pump\\n    raise TimeoutError(label)\\nTimeoutError: Real waveOut did not advance\\n\""
+      },
+      {
+        "line": 8196,
+        "text": "2026-11-28T05:52:17.4450035Z SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"requested\", \"accepted\": true, \"before\": {\"working\": false, \"busy\": false, \"closing\": false, \"main_loop\": true, \"destroy_event_seen\": false, \"status\": \"Review selected playback files: complete.\"}, \"native_window_present\": true}"
+      },
+      {
+        "line": 8197,
+        "text": "2026-11-28T05:52:17.4891792Z SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"settled\", \"native_window_present\": false, \"destroy_event_seen\": true}"
+      },
+      {
+        "line": 8198,
+        "text": "2026-11-28T05:52:17.4893856Z PASS: actual host Close drains saved playback owners and the existing worker"
+      }
+    ],
+    "limits": "This does not establish physical playback. The separate zero-output inventory is real, but no further causal inference is made."
+  },
+  "recorded_epub": {
+    "classification": "UNRESOLVED_STAGE2_PREPARATION_TIMEOUT",
+    "trace": [
+      {
+        "line": 8243,
+        "text": "2026-11-28T05:52:24.2682973Z PASS: native source highlight is an exact Unicode fragment"
+      },
+      {
+        "line": 8244,
+        "text": "2026-11-28T05:52:24.2684628Z PASS: existing progress observes the owned transport"
+      },
+      {
+        "line": 8245,
+        "text": "2026-11-28T05:52:24.2690560Z PASS: owned native focus: Play from selected segment"
+      },
+      {
+        "line": 8246,
+        "text": "2026-11-28T05:52:24.2691425Z PASS: native key down: Play from selected segment"
+      },
+      {
+        "line": 8247,
+        "text": "2026-11-28T05:52:24.3114373Z PASS: native key release: Play from selected segment"
+      },
+      {
+        "line": 8248,
+        "text": "2026-11-28T05:54:18.3336405Z DIAGNOSTIC: recorded EPUB timeout {\"host_working\": false, \"key_pending\": false, \"last_error\": null, \"overlay_busy\": false, \"player_state\": \"stopped\", \"pressed\": [], \"reader_busy\": false, \"stage\": 2, \"status\": \"Preparing the exact recorded audio interval\\u2026\", \"transport_active\": false}"
+      },
+      {
+        "line": 8249,
+        "text": "2026-11-28T05:54:18.3341759Z FAIL: native recorded EPUB callback"
+      },
+      {
+        "line": 8250,
+        "text": "2026-11-28T05:54:18.3342908Z Traceback (most recent call last):"
+      },
+      {
+        "line": 8251,
+        "text": "2026-11-28T05:54:18.3357076Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 133, in invoke"
+      },
+      {
+        "line": 8252,
+        "text": "2026-11-28T05:54:18.3357727Z     callback()"
+      },
+      {
+        "line": 8253,
+        "text": "2026-11-28T05:54:18.3358268Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 274, in drive"
+      },
+      {
+        "line": 8254,
+        "text": "2026-11-28T05:54:18.3359116Z     raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))"
+      },
+      {
+        "line": 8255,
+        "text": "2026-11-28T05:54:18.3359714Z TimeoutError: Native recorded-EPUB acceptance exceeded its deadline at stage 2"
+      }
+    ],
+    "limits": "Actual idle/stopped status is observed. No source or endpoint cause is established by this report."
+  },
+  "no_audio_installed": {
+    "line": 9356,
+    "report": {
+      "audio_payload": false,
+      "bundle_manifest_sha256": "828dee25260bd2651b8f3638346e84d8e8a997f74203e3156905478b8a41078a",
+      "expected_failures": false,
+      "failed": 0,
+      "manifest_unchanged": true,
+      "manual_nvda": "NOT_RUN",
+      "passed": 352,
+      "sealed_files_verified": true,
+      "skipped": 0,
+      "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+      "status": "PASS",
+      "suites": [
+        "tests/e2e/test_semantic_runtime.py",
+        "tests/e2e/test_import_worker.py",
+        "tests/e2e/test_import_batches_ocr.py",
+        "tests/e2e/test_notebook_research_workflow.py",
+        "tests/e2e/test_epub_import.py",
+        "tests/e2e/test_extended_document_workflows.py",
+        "tests/reader/test_ebook_reader.py",
+        "tests/e2e/test_catalog_insights_workflow.py",
+        "tests/e2e/test_academic_workflows.py",
+        "tests/e2e/test_academic_workflow.py",
+        "tests/e2e/test_academic_document_export.py",
+        "tests/e2e/test_result_presentation.py",
+        "tests/e2e/test_advanced_research_search.py",
+        "tests/search/test_advanced_search.py",
+        "tests/ingest/test_import_metadata_shape.py"
+      ],
+      "transfer_policy": "PASS",
+      "wheel": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "wheel_sha256": "15fac04cd4cbff1221bc84dba0f9ce0faa8389a78eb58c527f2ffddb0e9d4982"
+    },
+    "limits": "352 cases across15 suites qualified only the separate no-audio bundle at this source."
+  },
+  "owner_candidate_reports": [
+    {
+      "line": 9357,
+      "data": {
+        "application_wheel_sha256": "15fac04cd4cbff1221bc84dba0f9ce0faa8389a78eb58c527f2ffddb0e9d4982",
+        "assembled_owner_bundle": false,
+        "complete_bundle_outcome": "failure",
+        "full_qualification": "NOT_ESTABLISHED",
+        "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+        "no_audio_bundle_manifest_sha256": "828dee25260bd2651b8f3638346e84d8e8a997f74203e3156905478b8a41078a",
+        "retained_optional_count": 5,
+        "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+        "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+        "status": "OWNER_CANDIDATE_INPUTS_READY"
+      }
+    },
+    {
+      "line": 9522,
+      "data": {
+        "archive_assembly": "PASS",
+        "assembled_owner_bundle": true,
+        "complete_binary_archive_uploaded": false,
+        "complete_bundle_outcome": "failure",
+        "full_qualification": "NOT_ESTABLISHED",
+        "independent_two_archive_verification": "PASS",
+        "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+        "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+        "status": "OWNER_CANDIDATE_UNQUALIFIED"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15254546345,
+      "name": "carr-windows-cf804916ca28bec9e038e8bca755faeab28cb9a7-1",
+      "size_in_bytes": 3622572,
+      "digest": "sha256:dfc33f0d015b3ce1c1aabdecde78113804e91c492bd2a9584511f6504b6c8f1a",
+      "created_at": "2026-11-28T07:50:43Z",
+      "expired": false
+    },
+    {
+      "id": 15254661001,
+      "name": "carr-phase-diagnostics-cf804916ca28bec9e038e8bca755faeab28cb9a7-1",
+      "size_in_bytes": 200356,
+      "digest": "sha256:d1371213c5a48d0479274bc2c69626447477a3f08788e124b5c4915efd552fd5",
+      "created_at": "2026-11-28T07:50:41Z",
+      "expired": false
+    },
+    {
+      "id": 15254825538,
+      "name": "owner-candidate-inputs-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+      "size_in_bytes": 7563837,
+      "digest": "sha256:135987a865cbb38ceca5a3e3111f3c0e5346e9f37c4ba9aace6ba2901f95938c",
+      "created_at": "2026-11-28T07:49:40Z",
+      "expired": false
+    }
+  ],
+  "qualification": {
+    "complete_bundle": "FAILURE",
+    "owner_full_qualification": "NOT_ESTABLISHED",
+    "physical_output": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_RUN",
+    "newer_B_or_C_transfer": false
+  }
+}

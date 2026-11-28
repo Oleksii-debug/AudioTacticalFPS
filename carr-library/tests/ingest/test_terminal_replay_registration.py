@@ -3,11 +3,12 @@ from contextlib import closing
 from hashlib import sha256
 import json
 import sqlite3
+from threading import Event
 
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.ingest.pipeline import canonical
+from carr_library.ingest.pipeline import Ingest, canonical
 from carr_library.storage.revisions import Storage
 
 
@@ -89,11 +90,15 @@ def test_superseded_replay_uses_current_metadata_without_reactivating_old_source
 
 def test_cancelled_completed_replay_does_not_add_memberships(imported):
     app, workspace, first, requested, source, metadata, initial = imported
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app._import_file(workspace, source, collections=(requested,),
-                         cancelled=lambda: True, **metadata)
+    original = source.read_bytes()
+    cancelled = app._import_file(workspace, source, collections=(requested,),
+                                 cancelled=lambda: True, **metadata)
+    assert cancelled['state'] == 'cancelled' and 'cancelled' in cancelled['message'].lower()
+    assert 'id' not in cancelled and not cancelled.get('publication_recovered')
     assert app.browse(workspace, collection=requested) == ()
     assert app.search(workspace, 'railway', collection=first)[0].revision == initial['id']
+    assert source.read_bytes() == original
+    assert app.assets.resolve(sha256(original).hexdigest()).read_bytes() == original
 
 
 def test_replay_rejects_rehashed_checkpoint_text_before_registration(imported):
@@ -113,16 +118,35 @@ def test_replay_rejects_rehashed_checkpoint_text_before_registration(imported):
 
 
 @pytest.mark.parametrize('state', ['complete', 'superseded'])
-def test_forged_terminal_journal_without_published_source_does_not_register(tmp_path, state):
+def test_forged_terminal_journal_without_published_source_does_not_register(tmp_path, state, monkeypatch):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Incomplete publication')
     requested = app.create_collection(workspace, 'Requested')
     source = tmp_path / 'source.txt'
     source.write_text('Original railway text', encoding='utf-8')
     metadata = dict(work_id='work', edition_id='edition', title='Original')
-    cancelled = app.import_file(workspace, source, cancelled=lambda: True, **metadata)
-    assert cancelled['state'] == 'cancelled'
+    stopped, admitted = Event(), []
+    start = Ingest.start
+
+    def cancel_after_real_admission(ingest, *args, **options):
+        identity = start(ingest, *args, **options)
+        # This fixture needs a real durable journal to corrupt. Entry-time
+        # cancellation intentionally creates none after streaming intake.
+        with closing(sqlite3.connect(app.root / 'imports.sqlite')) as observer:
+            row = observer.execute('SELECT id,state FROM job WHERE id=?', (identity,)).fetchone()
+            assert row == (identity, 'pending')
+        admitted.append(identity)
+        stopped.set()
+        return identity
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Ingest, 'start', cancel_after_real_admission)
+        cancelled = app.import_file(workspace, source, cancelled=stopped.is_set, **metadata)
+    assert cancelled['state'] == 'cancelled' and admitted == [cancelled['id']]
+    assert cancelled['completed'] == 0 and app.browse(workspace) == ()
     with closing(sqlite3.connect(app.root / 'imports.sqlite', isolation_level=None)) as journal:
+        assert journal.execute('SELECT state FROM job WHERE id=?',
+                               (cancelled['id'],)).fetchone()[0] == 'cancelled'
         journal.execute('UPDATE job SET state=? WHERE id=?', (state, cancelled['id']))
     with pytest.raises(ValueError, match='missing its sealed source'):
         app.import_file(workspace, source, collections=(requested,), **metadata)

@@ -1,0 +1,163 @@
+{
+  "schema": "carr.reviewed-source-slice/1",
+  "slice": "Explicit recording Pause Resume and dry monitor via current capture service",
+  "base_commit": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "donor_commit": "c8cbc5014905ed693b47cbfa40b480605a4bbdc9",
+  "status": "DRAFT_NOT_RUN",
+  "execution": {
+    "source_parse": "NOT_RUN",
+    "collection": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "native_windows": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "acoustic_listening": "NOT_RUN",
+    "human_nvda": "NOT_RUN"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/recording.py",
+      "preimage": "c3894fe4deb7e4e057f766781a5991e6e0ace806",
+      "blob": "7a71d0975cba5ada05772b43b881998e87b61326"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/recording_monitor.py",
+      "preimage": null,
+      "blob": "dbcdf2502fbf1d4cfae3c75a8f28916e98110a19"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/recording_dialog.py",
+      "preimage": "d5e3912c75a08e8150d2af364d4fb94150bb576a",
+      "blob": "d2447529f7f5ac6ee07de2e06c9da7189ee3c067"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording.py",
+      "preimage": "16167ccf67885d1eebfbe5856eec94a6c48c0eb9",
+      "blob": "ff8304e8f27ae8faaddb28737774752ffe9d6817"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_controls.py",
+      "preimage": null,
+      "blob": "e07f220a0143196b042eb0b301edd43c86073dc1"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_monitor.py",
+      "preimage": null,
+      "blob": "845e55e672981b21bfe0bd5d961e9384d5fae358"
+    },
+    {
+      "path": "carr-library/tests/ui/test_recording_dialog.py",
+      "preimage": "98c98dbe5a37796ce921254346c83dafb5631fbc",
+      "blob": "f4ff23078f837a75854317ead94ec203273420a4"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_recording_controls.py",
+      "preimage": null,
+      "blob": "6a994500f4d49161353502344d21c59c7fd89df6"
+    },
+    {
+      "path": "carr-library/scripts/windows_recording_smoke.py",
+      "preimage": "03f537c5363c47c0818575b2ae3e32d858190d85",
+      "blob": "10b85f6a8c827c3e0db9068dc5bd4ec721e557ff"
+    },
+    {
+      "path": "carr-library/docs/recording.md",
+      "preimage": "6562a9153afe05fee7c652da148f3794f65a1973",
+      "blob": "2390ca16d6152a3ed35978a4e6d2e07c0e43f201"
+    }
+  ],
+  "shared_hooks_blob": "816fff308011dd34f76ffc6b39459c6c09edd299",
+  "shared_hook_policy": "Apply exact four snippets only onto current root-owned backup producer/state unions; never overwrite newer BookBatch/tabs hooks. Mandatory before new backup gates.",
+  "contracts": [
+    "Default capture retains exact v1 receipt schema/validator and existing streamed protected WAV export; controlled capture uses v2 contiguous retained PCM hashes.",
+    "Same current ResourceBroker and NativeLock paths; declared admission remains held during pause and all producer/output cleanup. No new queue/process framework.",
+    "Pause acknowledgment follows actual producer job exit and monitor native buffer/handle close. Resume reopens exact selected identities, no fallback.",
+    "UI borrows frame.executor, retains current ProgressHub/media holds and registered retryable host cleanup; no private executor shutdown.",
+    "Monitor shares existing speech._wave_output WinMM ABI and feeds only same growing private PCM. Default off, output must be explicitly selected.",
+    "Full and standalone copied-state validation reuses strict receipt/audio/range validators; no external source/runtime/device path opened.",
+    "Native probe preserves all prior Stop/Cancel/Escape/export checks, adds real Pause/Resume and selected waveOut monitoring, and fails without actual output. It uses test-only FFmpeg synthetic input.",
+    "Every new source is cloud-checkpointed; no branch/ref was modified."
+  ],
+  "validation": {
+    "whole_existing_modules": [
+      "tests/audio/test_recording.py",
+      "tests/audio/test_recording_cleanup.py",
+      "tests/audio/test_recording_compatibility.py",
+      "tests/audio/test_recording_export.py",
+      "tests/ui/test_recording_dialog.py",
+      "tests/audio/test_audio_process.py",
+      "tests/audio/test_windows_audio_ownership.py"
+    ],
+    "whole_new_modules": [
+      "tests/audio/test_recording_controls.py",
+      "tests/audio/test_recording_monitor.py",
+      "tests/storage/test_backup_recording_controls.py"
+    ],
+    "native_script": "scripts/windows_recording_smoke.py",
+    "native_args": "Unchanged --audio-directory <explicit pinned runtime> --audio-lock <existing lock>; optional exact --ffmpeg/--ffprobe retained. No new flag is needed: monitoring remains a REQUIRED native sequence.",
+    "native_source_origins": [
+      "carr_library.audio.process",
+      "carr_library.audio.recording",
+      "carr_library.audio.recording_monitor",
+      "carr_library.speech._wave_output",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.audio.cleanup",
+      "carr_library.speech.playback_devices",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.ui.recording_dialog"
+    ],
+    "native_required_fields": {
+      "status": "PASS",
+      "actual_native_keys": true,
+      "actual_ffmpeg_synthetic_capture": true,
+      "verified_wav_export": true,
+      "actual_pause_resume": true,
+      "actual_selected_waveout_monitor": true,
+      "retained_frame_ranges": true,
+      "owned_cleanup_and_shared_admission": true
+    },
+    "native_required_literal_names": [
+      "export requests a new WAV without overwrite permission",
+      "captured segment stays within native fixture byte bound",
+      "native focus reaches ",
+      "opening the dialog does not discover or capture",
+      "standalone recording does not expose an unused selection action",
+      "recording progress has a native accessible gauge",
+      "single discovered input is not automatically selected",
+      "Start remains disabled until explicit selection",
+      "actual FFmpeg reports recorded PCM while UI remains responsive",
+      "Pause acknowledges actual capture exit before enabling Resume",
+      "paused recording retains its real shared admission lease",
+      "paused source does not acquire synthetic frames",
+      "Stop finalizes and verifies an actual retained recording",
+      "Pause Resume receipt binds unchanged contiguous PCM ranges",
+      "default capture opens no monitoring output",
+      "Stop reports retained completion",
+      "native export copies exact verified WAV without changing retained input",
+      "native export reports its completed destination",
+      "Cancel removes unfinished audio and preserves prior original",
+      "Cancel is announced distinctly",
+      "new dialog starts with dry monitoring disabled",
+      "monitor enumeration does not open output or select a fallback",
+      "monitoring Start requires explicit selected output",
+      "explicit dry monitoring owns an actual selected waveOut handle",
+      "monitored Pause waits for producer and output buffer quiescence",
+      "monitored Pause keeps resource reservation until final save",
+      "dry monitored pause omits wall-time frames",
+      "actual dry monitor records bounded submission evidence without changing saved PCM",
+      "monitored Stop releases all owned buffers and shared leases",
+      "Escape closes only after active capture cleanup",
+      "closing preserves exactly the verified original",
+      "second explicit monitoring dialog closes after completed cleanup"
+    ],
+    "native_watchdog_seconds": 210,
+    "case_counts": "Not collected. Preserve prior whole-module gates and strict no-skip/fail/XFAIL rules; add whole new modules and required cases without inferring a runtime pass."
+  },
+  "fixture_changes": [
+    "Existing recording tests retain all19 test functions and all lock/staging/receipt assertions; deferred owner gains close() and actual Future stays pending until native quiescence to verify the new held broker lease.",
+    "Existing UI handler fixture includes actual root directory identity/current host cancellation, new controls and current ProgressHub pause state. Old assertions preserved; adds7 tests plus actual same-path directory replacement parameter.",
+    "Fake WinMM tests use the real CleanupOwner with explicitly driven retries to avoid racing fake ctypes pointer assertions; actual multi-owner daemon/lease cleanup is covered separately.",
+    "No test opens a physical microphone; native selected output and FFmpeg are real."
+  ]
+}

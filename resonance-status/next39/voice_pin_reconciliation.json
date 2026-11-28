@@ -1,0 +1,58 @@
+{
+  "schema": "resonance-reviewed-voice-pin-reconciliation/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28T02:16:00Z",
+  "base_head": "9c9fb4df953fc5aa406a06086e75cfddc677089c",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "4831ad3665997c3faa573cd132b1a8e3ee220381",
+      "after": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "70fef77fe33be586bfd79e76f6ae0a22fd590944",
+      "after": "766fa06847a2d780cc7d8621811813b61ebe4909"
+    }
+  ],
+  "fixtures": {
+    "reference": {
+      "manifest": "eb7dfcd02f4f693d6180009a7be52742bd1ee0d6",
+      "blob": "48da3169be41c3524ebd5af86e7af686450013a2",
+      "cases": 30
+    },
+    "portability": {
+      "manifest": "bbbe5ad7b749750566f828c4bd98f542a2b911ec",
+      "blob": "27a9bf1ee349b48c557bd6f38f11f7ed15a99930",
+      "cases": 27
+    }
+  },
+  "exact_inverse": {
+    "helper": "Exactly two immutable test pins; reverse reconstructs4831ad3665997c3faa573cd132b1a8e3ee220381 byte-for-byte.",
+    "workflow": "Exactly two helper pins; reverse reconstructs70fef77fe33be586bfd79e76f6ae0a22fd590944 byte-for-byte."
+  },
+  "preserved": {
+    "whole_suites": 21,
+    "cases_per_source_or_installed_phase": 495,
+    "pinned_sources": 67,
+    "origins_linux": 35,
+    "origins_windows": 38,
+    "actual_current_owner_checks": 25,
+    "current_owner_phases": [
+      "source",
+      "installed"
+    ],
+    "native_windows_checks": 83,
+    "whole_child_seconds": 600,
+    "source_aggregate_seconds": 4500,
+    "native_outer_seconds": 330,
+    "retention": "unchanged"
+  },
+  "review": {
+    "peer": "/root/canonical_regression",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact inverse of both helpers/workflow changes and invariant gate contract; separate fixture body peers retained."
+  },
+  "execution": "NOT_RUN",
+  "refs_changed": false
+}

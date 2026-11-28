@@ -14,8 +14,10 @@ import json
 import sqlite3
 import tempfile
 
-from carr_library.catalog.intake import snapshot, IntakeError
+from carr_library.catalog.intake import (source_snapshot as snapshot, IntakeError, FileSnapshot,
+    TextSegments, source_stream, copy_snapshot)
 from carr_library.extract.page_ocr import Config, extract_page
+from carr_library.extract.document_formats import RASTER_MIMES, RASTER_BY_MIME, MIME_SUFFIXES
 from carr_library.storage.revisions import Page
 from bootstrap.vendor.cairn_extractors.hasher import hash_file
 
@@ -82,20 +84,32 @@ class Ingest:
         if asset.mime == 'text/plain':
             # Upstream TXT extractor replaces invalid bytes and normalizes CRLF;
             # preserve exact decoded source instead, and do not invent pagination.
-            segments = asset.data.decode('utf-8-sig', errors='strict').split('\f')
-            if not any(t.strip() for t in segments):
+            segments = (TextSegments(asset, cancelled=getattr(self, '_cancelled', lambda: False))
+                        if isinstance(asset, FileSnapshot) else asset.data.decode('utf-8-sig', errors='strict').split('\f'))
+            if not isinstance(segments, TextSegments) and not any(t.strip() for t in segments):
                 raise IngestError('empty text')
             count = len(segments)
             settings = dict(adapter='strict-utf8-v1', kind='logical_segment')
         elif asset.mime == 'application/pdf':
             from pypdf import PdfReader
-            reader = PdfReader(BytesIO(asset.data))
-            if reader.is_encrypted:
-                raise IngestError('encrypted PDF')
-            count = len(reader.pages)
+            with source_stream(asset, cancelled=getattr(self, '_cancelled', lambda: False)) as stream:
+                reader = PdfReader(stream)
+                if reader.is_encrypted:
+                    raise IngestError('encrypted PDF')
+                count = len(reader.pages)
             settings = dict(adapter='page_ocr-v1', kind='physical_page', config=asdict(config),
                             pypdf=importlib.metadata.version('pypdf'),
                             pdfium=importlib.metadata.version('pypdfium2'))
+            segments = None
+        elif asset.mime in RASTER_MIMES:
+            from carr_library.extract.raster_pages import frame_inventory, inventory_sha256, NORMALIZATION
+            frames = frame_inventory(asset.data, config,
+                cancelled=getattr(self, '_cancelled', lambda: False))
+            count = len(frames)
+            settings = dict(adapter='raster_ocr-v1', kind='physical_page',
+                config=asdict(config), format=RASTER_BY_MIME[asset.mime].name,
+                pillow=importlib.metadata.version('Pillow'), normalization=NORMALIZATION,
+                frame_inventory_sha256=inventory_sha256(frames))
             segments = None
         else:
             raise IngestError('unsupported source format')
@@ -103,15 +117,17 @@ class Ingest:
             raise IngestError('invalid segment count')
         return count, canonical(settings), segments
 
-    def dry_run(self, root, relative, config=Config()):
-        asset = snapshot(root, relative)
+    def dry_run(self, root, relative, config=Config(), *, cancelled=lambda: False):
+        self._cancelled = cancelled
+        asset = snapshot(root, relative, cancelled=cancelled)
         count, settings, _ = self._plan(asset, config)
         return dict(asset.manifest(), segments=count, extraction=json.loads(settings))
 
-    def start(self, workspace, edition, root, relative, config=Config()):
+    def start(self, workspace, edition, root, relative, config=Config(), *, cancelled=lambda: False):
         if not all(isinstance(v, str) and v for v in (workspace, edition)):
             raise IngestError('missing scope or edition')
-        asset = snapshot(root, relative)
+        self._cancelled = cancelled
+        asset = snapshot(root, relative, cancelled=cancelled)
         count, settings, _ = self._plan(asset, config)
         job = digest(canonical([workspace, edition, asset.digest, settings]))
         with self.transaction():
@@ -142,6 +158,10 @@ class Ingest:
                 raise IngestError('checkpoint identity mismatch')
             if not isinstance(p['raw_text'], str) or '\x00' in p['raw_text']:
                 raise IngestError('invalid raw text')
+            settings = json.loads(row['config'])
+            if settings.get('adapter') == 'raster_ocr-v1':
+                from carr_library.extract.raster_pages import validate_checkpoint
+                validate_checkpoint(p, settings, i, row['count'])
             records.append(p)
         if len(records) > row['count']:
             raise IngestError('checkpoint count mismatch')
@@ -182,6 +202,24 @@ class Ingest:
             self._set(job, 'pending')
 
     def run(self, workspace, job, root, relative, config=Config(), *, max_steps=1001, cancelled=lambda: False):
+        """Preserve the saved cancellation outcome even during streamed preparation."""
+        try:
+            return self._run(workspace, job, root, relative, config,
+                             max_steps=max_steps, cancelled=cancelled)
+        except InterruptedError:
+            if not cancelled():
+                raise
+            with self.transaction():
+                row = self._job(workspace, job)
+                # A late stop cannot turn a committed publication into cancelled.
+                # The enclosing worker validates its exact durable commit receipt.
+                if self.storage.db.execute('SELECT 1 FROM revision WHERE id=?', (job,)).fetchone():
+                    raise
+                if row['state'] in ('pending', 'failed'):
+                    self._set(job, 'cancelled')
+            return self.inspect(workspace, job)
+
+    def _run(self, workspace, job, root, relative, config=Config(), *, max_steps=1001, cancelled=lambda: False):
         """Run bounded sequential steps. Resume checks same input and configuration.
 
         max_steps includes the final publish step; checkpoint writes are durable
@@ -190,13 +228,16 @@ class Ingest:
         if not 1 <= max_steps <= 1001:
             raise IngestError('invalid step limit')
         row = self._job(workspace, job)
-        asset = snapshot(root, relative)
+        self._cancelled = cancelled
+        asset = snapshot(root, relative, cancelled=cancelled)
         count, settings, segments = self._plan(asset, config)
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
         with tempfile.TemporaryDirectory(prefix='carr-ingest-') as tmp:
-            staged = Path(tmp) / ('source.pdf' if segments is None else 'source.txt')
-            staged.write_bytes(asset.data)
+            staged = Path(tmp) / ('source' + MIME_SUFFIXES[asset.mime])
+            staged_asset = copy_snapshot(asset, staged, cancelled=cancelled)
+            if isinstance(segments, TextSegments):
+                segments.rebind(staged_asset)
             if hash_file(staged) != asset.digest:
                 raise IngestError('staging digest mismatch')
             for _ in range(max_steps):
@@ -222,13 +263,26 @@ class Ingest:
                             if self._active(workspace, row['edition']) != row['expected_active']:
                                 self._set(job, 'conflict', 'active_revision_changed')
                                 break
-                            self.storage.publish_revision(workspace, row['edition'], job, asset.digest, settings,
-                                                          [Page(p['raw_text'], p['physical_index']) for p in records])
-                            self.storage.check()
+                            pages = [Page(p['raw_text'], p['physical_index']) for p in records]
+                            checked_publish = getattr(self.storage, 'publish_checked_revision', None)
+                            if checked_publish is None:
+                                # A generic revision store retains its original
+                                # publication followed by independent full check.
+                                self.storage.publish_revision(workspace, row['edition'], job,
+                                                              asset.digest, settings, pages)
+                                self.storage.check()
+                            else:
+                                # The catalog adapter validates inside the same
+                                # transaction that publishes all candidate rows.
+                                checked_publish(workspace, row['edition'], job,
+                                                asset.digest, settings, pages)
                             self._set(job, 'complete')
                             break
                         i = len(records) + 1
-                        if segments is None:
+                        if asset.mime in RASTER_MIMES:
+                            from carr_library.extract.raster_pages import extract_raster_page
+                            p = extract_raster_page(staged, i, config, cancelled=cancelled)
+                        elif segments is None:
                             p = extract_page(staged, i, config)
                         else:
                             p = dict(physical_index=None, printed_label=None, printed_label_verified=False,

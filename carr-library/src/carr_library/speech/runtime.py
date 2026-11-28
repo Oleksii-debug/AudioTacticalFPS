@@ -3,6 +3,7 @@
 SAPI, eSpeak, Piper and FFmpeg are invoked with fixed argument vectors. Text is
 data, never a shell command, SSML or a user-supplied FFmpeg filter graph.
 """
+import atexit
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
@@ -16,6 +17,7 @@ import struct
 import sys
 import sysconfig
 from tempfile import TemporaryDirectory
+from threading import RLock
 import wave
 
 from ._io import (check_cancelled, digest, local_file, new_output, run_process,
@@ -81,7 +83,10 @@ class SpeechResult:
     chunks: int
 
 
-def _wave_info(path):
+def _wave_info(path, *, cancelled=lambda: False, max_output_bytes=None):
+    check_cancelled(cancelled)
+    if max_output_bytes is not None and Path(path).stat().st_size > max_output_bytes:
+        raise ValueError('Speech exceeds the selected audio-output budget.')
     with wave.open(str(path), 'rb') as audio:
         if (audio.getcomptype() != 'NONE' or audio.getsampwidth() not in (1, 2, 3, 4)
                 or audio.getnchannels() not in (1, 2) or not 8000 <= audio.getframerate() <= 192000
@@ -91,7 +96,10 @@ def _wave_info(path):
                                        audio.getnframes(), audio.getsampwidth())
         total = 0
         while block := audio.readframes(65536):
+            check_cancelled(cancelled)
             total += len(block)
+            if max_output_bytes is not None and total > max_output_bytes:
+                raise ValueError('Speech exceeds the selected audio-output budget.')
         if total != frames * channels * width:
             raise ValueError('The voice produced truncated audio.')
         return rate, channels, frames, width
@@ -119,6 +127,9 @@ class VoiceRegistry:
     """A registry only of actually enumerated voices; no imaginary catalog."""
     def __init__(self, providers=(), *, cancelled=lambda: False):
         self._providers = list(providers)
+        self._closed = False
+        self._close_guard = RLock()
+        self._cleanup_registered = False
         self._voices = {}
         self._owners = {}
         self.notices = []
@@ -159,10 +170,16 @@ class VoiceRegistry:
             raise
 
     def reload(self, *, cancelled=None):
-        if cancelled is not None:
-            self._cancelled = cancelled
+        with self._close_guard:
+            if self._closed:
+                raise RuntimeError('The local voice registry is closed.')
+            if cancelled is not None:
+                self._cancelled = cancelled
+            providers = tuple(self._providers)
+        # Discovery can block in a legacy provider. Never hold the lifecycle
+        # lock while it waits; close must remain able to cancel native owners.
         entries, owners, notices = {}, {}, []
-        for provider in self._providers:
+        for provider in providers:
             check_cancelled(self._cancelled)
             try:
                 values = (provider.voices(cancelled=self._cancelled)
@@ -179,42 +196,94 @@ class VoiceRegistry:
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 notices.append(f'{provider.name}: {exc}')
         check_cancelled(self._cancelled)
-        self._voices, self._owners, self.notices = entries, owners, notices
-        return self.voices()
+        with self._close_guard:
+            if self._closed:
+                raise RuntimeError('The local voice registry is closed.')
+            self._voices, self._owners, self.notices = entries, owners, notices
+            return self.voices()
 
     def add_provider(self, provider, *, cancelled=None):
-        self._providers.append(provider)
+        with self._close_guard:
+            if self._closed:
+                raise RuntimeError('The local voice registry is closed.')
+            self._providers.append(provider)
         try:
             return self.reload(cancelled=cancelled)
         except BaseException:
-            self._providers.remove(provider)
-            close = getattr(provider, 'close', None)
-            if callable(close):
-                close()
+            with self._close_guard:
+                if self._closed:
+                    # Concurrent close already disposed or retained this
+                    # exact owner. A late discovery must not close it twice.
+                    raise
+                close = getattr(provider, 'close', None)
+                try:
+                    if callable(close) and close() is False:
+                        raise RuntimeError('Local voice worker cleanup remains unconfirmed.')
+                except BaseException as error:
+                    # Failed discovery must not drop the last strong native owner.
+                    # New work stays disabled until this registry is discarded.
+                    self._closed = True
+                    self._voices, self._owners = {}, {}
+                    self.notices.append(f'{provider.name}: Local voice cleanup remains unconfirmed ({type(error).__name__}).')
+                    self._retain_cleanup()
+                    if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                        raise
+                    raise RuntimeError('Local voice worker cleanup remains unconfirmed; its owner is retained for retry.') from None
+                else:
+                    self._providers.remove(provider)
             raise
 
     def voices(self):
         return tuple(self._voices.values())
 
+    def _retain_cleanup(self):
+        # Keep ownership even when construction failed or a progress-selection
+        # cleanup thread has ended. No inference or discovery is retried.
+        if not self._cleanup_registered:
+            atexit.register(self.close)
+            self._cleanup_registered = True
+
     def close(self):
-        """Release every owned local worker, including a provider that failed discovery."""
-        providers, self._providers = self._providers, []
-        self._voices, self._owners = {}, {}
-        errors = []
-        for provider in providers:
-            close = getattr(provider, 'close', None)
-            if callable(close):
+        """Close successes once; retain failed native owners for explicit retry."""
+        with self._close_guard:
+            self._closed = True
+            self._voices, self._owners = {}, {}
+            pending, failures = [], []
+            for provider in self._providers:
+                close = getattr(provider, 'close', None)
+                if not callable(close):
+                    continue
                 try:
-                    close()
-                except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
-                    errors.append(f'{provider.name}: {exc}')
-        self.notices.extend(errors)
+                    if close() is False:
+                        raise RuntimeError('Local voice worker cleanup remains unconfirmed.')
+                except BaseException as error:
+                    pending.append(provider)
+                    failures.append(error)
+                    self.notices.append(f'{provider.name}: Local voice cleanup remains unconfirmed ({type(error).__name__}).')
+            self._providers = pending
+            if pending:
+                self._retain_cleanup()
+                for error in failures:
+                    if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                        raise error
+                # Existing service/desktop finalizers retain this registry when
+                # close raises. Do not expose private native exception payloads.
+                raise RuntimeError('Local voice worker cleanup remains unconfirmed; its owner is retained for retry.') from None
+            if self._cleanup_registered:
+                atexit.unregister(self.close)
+                self._cleanup_registered = False
+
+    def _selection(self, voice_id):
+        with self._close_guard:
+            try:
+                if self._closed:
+                    raise KeyError(voice_id)
+                return self._voices[voice_id], self._owners[voice_id]
+            except (KeyError, TypeError) as exc:
+                raise ValueError('Select an available installed voice and reload if it was removed.') from exc
 
     def get(self, voice_id):
-        try:
-            return self._voices[voice_id]
-        except (KeyError, TypeError) as exc:
-            raise ValueError('Select an available installed voice and reload if it was removed.') from exc
+        return self._selection(voice_id)[0]
 
     def fingerprint(self, voice_id):
         """Fingerprint visible installed runtime/voice assets for render caches.
@@ -223,8 +292,7 @@ class VoiceRegistry:
         Its identity remains a token/host fingerprint and is described as such;
         it is never represented as proof of a third-party model revision.
         """
-        voice = self.get(voice_id)
-        provider = self._owners[voice_id]
+        voice, provider = self._selection(voice_id)
         identity = {'voice': asdict(voice), 'executable_sha256': digest(provider.executable)}
         if isinstance(provider, PiperProvider):
             model, config, _, _ = provider._models[voice_id]
@@ -232,6 +300,9 @@ class VoiceRegistry:
         elif isinstance(provider, LocalHelperProvider):
             provider._verify()
             identity['helper_contract'] = 'carr.local-voice.v1'
+            if provider.script is not None:
+                identity['helper_script_sha256'] = provider.expected_script_hash
+                identity['helper_launch'] = 'isolated-python-script.v1'
         elif isinstance(provider, SapiProvider):
             identity.update(token=provider._tokens[voice_id], architecture=provider.architecture,
                             model_identity='opaque-installed-SAPI-token')
@@ -265,12 +336,17 @@ class VoiceRegistry:
             identity['provider_fingerprint'] = provider_fingerprint(voice_id)
         return sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
 
-    def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False):
+    def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False,
+                   before_publish=None, narration=None):
+        if not callable(cancelled):
+            raise ValueError('A cancellation callback is required.')
+        caller_cancelled = cancelled
+        cancelled = lambda: self._closed or bool(caller_cancelled())
         text_value(text)
         options = settings or SpeechSettings()
         if not isinstance(options, SpeechSettings):
             raise ValueError('Validated SpeechSettings are required.')
-        voice = self.get(voice_id)
+        voice, provider = self._selection(voice_id)
         if options.pitch is not None and 'pitch' not in voice.capabilities:
             raise ValueError('This voice does not expose native pitch control.')
         if options.punctuation and 'punctuation' not in voice.capabilities:
@@ -279,10 +355,38 @@ class VoiceRegistry:
             raise ValueError('This voice does not expose synthesis rate control.')
         if options.volume != 100 and 'volume' not in voice.capabilities:
             raise ValueError('This voice does not expose synthesis volume control.')
-        provider = self._owners[voice_id]
+        pcm_hash = runtime_identity = None
+        if narration is not None:
+            from .narration_receipt import validate_narration
+            narration = validate_narration(narration, text)
+            if not callable(before_publish):
+                raise ValueError('A narrated WAV receipt requires publication-time source validation.')
+            check_cancelled(cancelled)
+            # Enumerated synthetic/test providers can lack a runtime executable.
+            # Do not invent a model fingerprint for such providers.
+            if getattr(provider, 'executable', None) is not None:
+                runtime_identity = self.fingerprint(voice_id)
+            check_cancelled(cancelled)
+            pcm_hash = sha256()
         count, frames, params = 0, 0, None
         target = Path(destination).absolute()
-        with new_output(target, cancelled=cancelled) as staged:
+        def attest_publication(staged):
+            if before_publish is not None:
+                before_publish(staged)
+                if narration is not None:
+                    current_voice, current_provider = self._selection(voice_id)
+                    if current_voice != voice or current_provider is not provider:
+                        raise ValueError('The selected narration voice changed during rendering.')
+                    if runtime_identity is not None and self.fingerprint(voice_id) != runtime_identity:
+                        raise ValueError('The narration voice runtime changed during rendering.')
+                    check_cancelled(cancelled)
+                # The source check may take time; do not publish bytes that no
+                # longer match the measured rendering receipt.
+                if digest(staged) != checksum:
+                    raise ValueError('The staged speech changed during publication validation.')
+
+        with new_output(target, cancelled=cancelled,
+                        before_publish=attest_publication if before_publish is not None else None) as staged:
             with wave.open(str(staged), 'wb') as combined:
                 # A first-chunk cancellation must preserve its original error,
                 # not be replaced by Wave_write.close complaining about unset
@@ -297,7 +401,8 @@ class VoiceRegistry:
                     part = staged.parent / 'utterance.wav'
                     try:
                         provider.render(chunk, voice, part, options, cancelled)
-                        rate, channels, size, width = _wave_info(part)
+                        rate, channels, size, width = _wave_info(local_file(part),
+                            cancelled=cancelled, max_output_bytes=options.max_output_bytes)
                         if params is None:
                             params = rate, channels, width
                             combined.setframerate(rate)
@@ -307,15 +412,35 @@ class VoiceRegistry:
                             raise ValueError('The voice changed audio format between chunks.')
                         if (frames + size) * channels * width + 128 > options.max_output_bytes:
                             raise ValueError('Speech exceeds the selected audio budget. Split it into chapters.')
-                        with wave.open(str(part), 'rb') as segment:
+                        expected_bytes = size * channels * width
+                        copied = 0
+                        with wave.open(str(local_file(part)), 'rb') as segment:
+                            if (segment.getframerate(), segment.getnchannels(),
+                                    segment.getnframes(), segment.getsampwidth()) != (rate, channels, size, width):
+                                raise ValueError('The voice output geometry changed before assembly.')
                             while block := segment.readframes(65536):
                                 check_cancelled(cancelled)
+                                copied += len(block)
+                                if copied > expected_bytes:
+                                    raise ValueError('The voice output length changed during assembly.')
                                 combined.writeframesraw(block)
+                                if pcm_hash is not None:
+                                    pcm_hash.update(block)
+                        if copied != expected_bytes:
+                            raise ValueError('The voice output length changed during assembly.')
                         frames += size
                         count += 1
                     finally:
                         part.unlink(missing_ok=True)
-            rate, channels, frames, _ = _wave_info(staged)
+            rate, channels, measured_frames, width = _wave_info(staged,
+                cancelled=cancelled, max_output_bytes=options.max_output_bytes)
+            if (rate, channels, width) != params or measured_frames != frames:
+                raise ValueError('The assembled WAV does not match the measured utterances.')
+            if narration is not None:
+                from .narration_receipt import append_narration_receipt
+                append_narration_receipt(staged, narration, voice, options,
+                    pcm_sha256=pcm_hash.hexdigest(), runtime_sha256=runtime_identity,
+                    cancelled=cancelled)
             checksum = digest(staged)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
@@ -556,11 +681,16 @@ class LocalHelperProvider:
     """
     name = 'Opt-in local voice helper'
 
-    def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024):
+    def __init__(self, executable, *, sha256, engine_name, enabled=False, max_voices=1024,
+                 script=None, script_sha256=None):
         if enabled is not True:
             raise ValueError('Explicitly enable a reviewed local voice helper before running it.')
         self.executable = local_file(executable)
         self.expected_hash = sha256
+        if (script is None) != (script_sha256 is None):
+            raise ValueError('A Python helper script and its SHA256 must be configured together.')
+        self.script = local_file(script) if script is not None else None
+        self.expected_script_hash = script_sha256
         self.engine_name = text_value(engine_name, 'engine name', maximum=128)
         if type(max_voices) is not int or not 1 <= max_voices <= 10000:
             raise ValueError('Set a voice catalog limit from 1 to 10000.')
@@ -572,11 +702,22 @@ class LocalHelperProvider:
         if (not isinstance(self.expected_hash, str) or not re.fullmatch('[0-9a-f]{64}', self.expected_hash)
                 or digest(local_file(self.executable)) != self.expected_hash):
             raise ValueError('Local voice helper hash verification failed.')
+        if self.script is not None and (
+                not isinstance(self.expected_script_hash, str)
+                or not re.fullmatch('[0-9a-f]{64}', self.expected_script_hash)
+                or digest(local_file(self.script)) != self.expected_script_hash):
+            raise ValueError('Local voice helper script hash verification failed.')
 
     def _request(self, payload, *, cancelled=lambda: False, timeout=30, output=None, budget=512*1024*1024):
         self._verify()
         raw = json.dumps({'schema': 'carr.local-voice.v1', **payload}, ensure_ascii=False).encode('utf-8')
-        reply, _, _ = run_process([self.executable], input_bytes=raw, cancelled=cancelled,
+        command = [self.executable]
+        if self.script is not None:
+            # A reviewed, self-contained stdlib bridge uses a fixed interpreter
+            # invocation. Source text stays in JSON; no caller-supplied argv,
+            # shell, user site, startup hooks or bytecode writes are introduced.
+            command.extend(('-I', '-B', '-S', str(self.script)))
+        reply, _, _ = run_process(command, input_bytes=raw, cancelled=cancelled,
                                  timeout=timeout, output_file=output, max_output=budget)
         data = json.loads(reply.decode('utf-8'))
         if not isinstance(data, dict) or data.get('schema') != 'carr.local-voice.v1':

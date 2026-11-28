@@ -6,6 +6,22 @@ from importlib.metadata import version
 from carr_library.catalog.office_archive import validate_office
 
 
+def _unsupported_tags():
+    from docx.oxml.ns import qn
+    unsupported = {qn(name) for name in (
+        'w:ins', 'w:del', 'w:sdt', 'w:moveFrom', 'w:moveTo', 'w:altChunk',
+        'w:drawing', 'w:pict', 'w:object', 'w:fldSimple', 'w:fldChar',
+        'w:footnoteReference', 'w:endnoteReference', 'w:vanish',
+        'w:webHidden', 'w:specVanish',
+        'w:commentRangeStart', 'w:customXml', 'w:smartTag', 'w:ruby', 'w:sym',
+        'w:softHyphen', 'w:dir', 'w:bdo',
+        'm:oMath', 'm:oMathPara',
+    )}
+    # python-docx does not select an mc:Choice or mc:Fallback for us.
+    unsupported.add('{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent')
+    return unsupported
+
+
 def extract_docx(data: bytes):
     """Return separate logical paragraphs, never invented page numbers.
 
@@ -26,18 +42,11 @@ def extract_docx(data: bytes):
     # They must not turn a sentence containing an equation, symbol or wrapped
     # text into a shorter accepted preview. Match namespace URIs, since the
     # source document is free to choose its own XML prefixes.
-    unsupported = {qn(name) for name in (
-        'w:ins', 'w:del', 'w:sdt', 'w:moveFrom', 'w:moveTo', 'w:altChunk',
-        'w:drawing', 'w:pict', 'w:object', 'w:fldSimple', 'w:fldChar',
-        'w:footnoteReference', 'w:endnoteReference', 'w:vanish',
-        'w:webHidden', 'w:specVanish',
-        'w:commentRangeStart', 'w:customXml', 'w:smartTag', 'w:ruby', 'w:sym',
-        'w:softHyphen', 'w:dir', 'w:bdo',
-        'm:oMath', 'm:oMathPara',
-    )}
-    # python-docx does not select an mc:Choice or mc:Fallback for us.
-    unsupported.add('{http://schemas.openxmlformats.org/markup-compatibility/2006}AlternateContent')
-    if any(element.tag in unsupported for element in doc.element.iter()):
+    unsupported = _unsupported_tags()
+    from .docx_rich import RICH_TAGS, is_rich
+    rich = is_rich(doc)
+    rejected = unsupported - RICH_TAGS if rich else unsupported
+    if any(element.tag in rejected for element in doc.element.iter()):
         raise ValueError('unsupported body structure requires review')
     # The text API does not resolve visibility inherited through styles.
     # Reject even unused or explicitly disabled hidden properties rather than
@@ -55,6 +64,9 @@ def extract_docx(data: bytes):
             raise ValueError('external styles require review')
         if any(element.tag in hidden for element in parse_xml(rel.target_part.blob).iter()):
             raise ValueError('unsupported hidden text style requires review')
+    if rich:
+        from .docx_rich import extract_rich_document
+        return extract_rich_document(doc, data)
     records = []
     total = 0
 

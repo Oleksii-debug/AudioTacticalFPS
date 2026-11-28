@@ -1,0 +1,89 @@
+{
+  "schema": "resonance-reviewed-slice/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "title": "Deterministic finite native ASR Pause/Resume fixture",
+  "actual_evidence": {
+    "head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "run": 46065563716,
+    "job": 140729989982,
+    "source_cases": 510,
+    "installed_cases": 510,
+    "source_outcome": "PASS",
+    "installed_outcome": "PASS",
+    "native": "FAIL",
+    "failure": "windows_transcription_profiles_smoke.py:141 expected two starts; actual count was not retained",
+    "artifact": {
+      "id": 15232119061,
+      "bytes": 32386,
+      "sha256": "e832d1958eb107b8632b0aef06fbf131126055b941ea9f0fe97d7a5f6b59a6ad"
+    },
+    "root_evidence": "65a9c1ffc95cd2813c8edfded34d5ade5917d649"
+  },
+  "finding": {
+    "newline": "Exact fixture writes real started\\n once; Windows universal-newline decoding preserves one line per start.",
+    "source_proven_race": "Three-second synthetic hold can finish before expensive immutable checkpoint/runtime admission and actual UI Pause. Resume deliberately admits already-produced checkpoints before a new child is needed.",
+    "actual_unprinted_value": "Not reconstructed or claimed as observed.",
+    "correction": "Opt-in synthetic first-checkpoint stop barrier, expires at most60s; native/client bounds and product protocol unchanged; exact two starts remain required."
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+      "preimage": "f28e80b33bd4856063e306883fd05f7e85cb537a",
+      "sha": "db988156c9c16504a8b82f8b65d4349086fec388"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "preimage": "3737286758c88f8a634da2e276cadeccaad4360b",
+      "sha": "1cff7419157f775f6517ff2242f8da994ee19e8f"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_native_profiles_fixture.py",
+      "preimage": null,
+      "sha": "54e16c4b4dedf6f0270db73b877cd771c967e7db"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "preimage": "0a318607b4fe4f96082b51a02a8cfc1c8c8383e4",
+      "sha": "d8aa1b8ba13d2c125ee1f0069bfb81c7874b4ce0"
+    }
+  ],
+  "validation": {
+    "new_whole": "tests/transcription/test_native_profiles_fixture.py",
+    "count": 2,
+    "functions": [
+      "test_actual_stop_barrier_waits_past_old_hold_and_resume_starts_only_unfinished_source",
+      "test_actual_stop_barrier_expires_without_silent_second_source_or_complete_status"
+    ],
+    "runtime": "NOT_RUN",
+    "native": "NOT_RUN",
+    "parser": "NOT_RUN",
+    "source_and_installed_required": true,
+    "dedicated_suites": {
+      "linux": 17,
+      "windows": 18
+    },
+    "fixtures": [
+      "tests/transcription/fixture_runtime.py",
+      "tests/transcription/fixtures/protocol_worker.py"
+    ],
+    "native_original_labels": 10,
+    "native_origins": 10,
+    "product_files_changed": 0,
+    "all_budgets_preserved": true,
+    "old_three_second_option_retained_in_regression": true
+  },
+  "gate_followup": {
+    "main": "7bf829f6ecced363473a3392bd9090f1e6fc6100",
+    "installed_helper": "e241f58f2a69ff9a1c991bbc6523c6aea8dfb6c3",
+    "v3": "unchanged portable legacy9c592; it has no worker ASR suite"
+  },
+  "review": {
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "agent": "/root/canonical_regression",
+    "scope": "Synthetic worker/native control/two actual-child fixture cases; finite barrier leaves production and all native names unchanged.",
+    "gates": "Additive exact two-case whole source/installed maps; detailed gate review requested separately."
+  },
+  "refs_changed": false,
+  "supersedes": "fa6fa45fcc6e9932185b2b2b0ecf83bab8499663"
+}

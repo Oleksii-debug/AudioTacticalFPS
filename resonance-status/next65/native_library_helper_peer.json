@@ -1,0 +1,22 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "helper": {
+    "path": "carr-library/scripts/ci_native_library_workflow.py",
+    "sha": "c9d5c070e0590b252d055be7f3acfa73db01eb19"
+  },
+  "seed": "b8d8dcc6e1b4ac642b328a0e8c00a450bc9f400b",
+  "probe": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+  "scope": "Source/installed/report helper only; workflow separate",
+  "findings": [
+    "The six fixed labels exactly equal the unchanged native probe check append sites.",
+    "All 12 source pins equal the exact 727 product tree.",
+    "require/load/write/sources/git/child and ORIGIN_CHILD are byte-identical to accepted b8d8.",
+    "The isolated installed invocation preserves original -I -B -X utf8 arguments and probe 40-second/60-second controls within a finite 180-second parent.",
+    "Full wheel payload and nine imported installed origins are independently checked before and after the probe.",
+    "Original failure log and available probe JSON are retained. Both post-source and post-installed checks are independently attempted on failure; failed or missing native exit/report/check/hash remains FAIL.",
+    "Reported six-check PASS is confined to this exact native library diagnostic; complete integrated and NVDA qualifications remain NOT_RUN."
+  ],
+  "runtime": "NOT_RUN"
+}

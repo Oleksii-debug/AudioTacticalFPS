@@ -1,0 +1,492 @@
+"""Installed native rich DOCX translation route with an actual format worker.
+
+Only picker/consent answers and the selected synthetic HTTP transport are
+controlled. wx buttons, DesktopExecutor/ProgressHub, retained source capture,
+format children, ordinary jobs/ledger and protected DOCX publication are real.
+No Word layout, live translator, quality, accessibility-reader or NVDA claim.
+"""
+import argparse
+from hashlib import sha256
+import http.client
+import importlib.util
+from io import BytesIO
+import json
+import os
+from pathlib import Path
+import sys
+from tempfile import TemporaryDirectory
+import threading
+from time import monotonic, sleep
+import traceback
+from zipfile import ZipFile
+
+
+def main():
+    if os.name != 'nt':
+        print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows wx is required.'}))
+        return 77
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--source-root', type=Path,
+                        default=Path(__file__).resolve().parents[1] / 'src')
+    args = parser.parse_args()
+    import ctypes
+    from ctypes import wintypes
+    from docx import Document
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
+    import wx
+    from carr_library.application import LibraryApp
+    from carr_library import progress, durable_state
+    from carr_library.assistant import (
+        profiles, providers, translation, translation_documents, translation_layout, translation_layout_worker,
+        translation_partition, translation_docx_rich)
+    from carr_library.extract import docx_ordered, docx_rich
+    from carr_library.ui import translation_documents as document_ui
+    from carr_library.ui import translation_layout as layout_ui
+    from carr_library.ui import desktop_app, worker_lifetime
+    from carr_library.research import export_file
+    from carr_library.reader import reading_desk
+    from carr_library.audio import process
+    from carr_library.operations import broker
+
+    modules = (translation_layout, translation_layout_worker, translation_documents,
+        translation, providers, profiles, document_ui, layout_ui, export_file,
+        reading_desk, durable_state, progress, desktop_app, worker_lifetime, process, broker,
+        translation_partition, translation_docx_rich, docx_ordered, docx_rich)
+    checks, errors, calls, children, origins = [], [], [], [], {}
+    ui_thread = threading.get_ident()
+    modal_loops, handled_failures = [], []
+    unwind_pending, expected_failure = False, None
+    def check(label, condition):
+        if not condition:
+            raise AssertionError(label)
+        checks.append(label)
+        print('PASS: ' + label, flush=True)
+    for module in modules:
+        actual = Path(module.__file__).resolve()
+        expected = args.source_root / (module.__name__.replace('.', '/') + '.py')
+        check('installed exact source: ' + module.__name__,
+            actual.is_relative_to(Path(sys.prefix).resolve())
+            and not actual.is_relative_to(args.source_root.resolve())
+            and 'site-packages' in actual.parts and actual.read_bytes() == expected.read_bytes())
+        origins[module.__name__] = {'path': str(actual), 'sha256': sha256(actual.read_bytes()).hexdigest()}
+
+    class App(wx.App):
+        def OnExceptionInMainLoop(self):
+            current = sys.exc_info()[1]
+            if (expected_failure is not None and current is expected_failure[0]
+                    and user32.IsWindow(expected_failure[2])
+                    and expected_failure[3].IsRunning()):
+                handled_failures.append(current)
+            else:
+                errors.append(traceback.format_exc())
+            unwind()
+            return True  # Retain real failures; close only the active owned loop.
+    app = App(False)
+    app.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
+    app.SetExitOnFrameDelete(False)
+    simulator = wx.UIActionSimulator()
+    check('native Windows wx', wx.Platform == '__WXMSW__')
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
+    user32.SetForegroundWindow.argtypes, user32.SetForegroundWindow.restype = [wintypes.HWND], wintypes.BOOL
+    user32.GetForegroundWindow.argtypes, user32.GetForegroundWindow.restype = [], wintypes.HWND
+    def own_modal(window):
+        loop = wx.EventLoopBase.GetActive()
+        if loop is None or not loop.IsRunning() or loop.IsMain() or not window.IsModal():
+            raise AssertionError('The owned translation modal has no running native event loop.')
+        record = (window, window.GetHandle(), loop)
+        modal_loops.append(record)
+        return record
+
+    def unwind():
+        nonlocal unwind_pending
+        if unwind_pending:
+            return
+        unwind_pending = True
+        def close_active():
+            nonlocal unwind_pending
+            unwind_pending = False
+            try:
+                for window, handle, loop in reversed(modal_loops):
+                    if window and user32.IsWindow(handle) and window.IsModal() and loop.IsRunning():
+                        window.EndModal(wx.ID_CANCEL)
+                        return
+                active = wx.EventLoopBase.GetActive()
+                if errors and active is not None and active.IsMain():
+                    active.ScheduleExit(1)
+            except Exception:
+                errors.append(traceback.format_exc())
+                # A finite watchdog remains armed. Never destroy or EndModal a
+                # suspended/unowned window to turn an unconfirmed cleanup green.
+        wx.CallAfter(close_active)
+
+    def exercise_nested_failure(parent):
+        nonlocal expected_failure
+        parent_record = modal_loops[-1]
+        fixture = wx.Dialog(parent, title='Native translation failure cleanup fixture')
+        marker = RuntimeError('Controlled owned translation modal failure.')
+        observed, requests, owned_children = len(handled_failures), len(calls), len(children)
+        def fail_inside_owned_modal():
+            nonlocal expected_failure
+            try:
+                window, handle, loop = own_modal(fixture)
+                expected_failure = (marker, window, handle, loop)
+                try:
+                    raise marker
+                except RuntimeError:
+                    # wx.Timer.Notify must not propagate exceptions. Invoke the
+                    # actual app handler while this exact exception is active,
+                    # inside the real nested native modal callback.
+                    if app.OnExceptionInMainLoop() is not True:
+                        raise AssertionError('The owned failure handler terminated its event loop.')
+            except Exception:
+                errors.append(traceback.format_exc())
+                unwind()
+        try:
+            wx.CallLater(60, fail_inside_owned_modal)
+            result = fixture.ShowModal()
+            check('nested native failure unwinds only the active owned modal',
+                  result == wx.ID_CANCEL and handled_failures[observed:] == [marker]
+                  and not errors and user32.IsWindow(parent_record[1])
+                  and parent.IsModal() and parent_record[2].IsRunning()
+                  and len(calls) == requests and len(children) == owned_children
+                  and not frame.executor._shutdown)
+        finally:
+            expected_failure = None
+            fixture.Destroy()
+
+    def pump(predicate, label, timeout=35, *, cleanup=False):
+        until = monotonic() + timeout
+        while not predicate():
+            if errors and not cleanup:
+                raise RuntimeError(errors[-1])
+            if monotonic() > until:
+                raise TimeoutError(label)
+            app.Yield()
+            sleep(.01)
+    def press(control):
+        top = wx.GetTopLevelParent(control)
+        top.Raise()
+        user32.SetForegroundWindow(top.GetHandle())
+        control.SetFocus()
+        pump(lambda: wx.Window.FindFocus() is control and user32.GetForegroundWindow() == top.GetHandle(),
+             'Native keyboard focus')
+        check('native Space down: ' + control.GetName(), simulator.KeyDown(wx.WXK_SPACE))
+        app.Yield()
+        sleep(.04)
+        check('native Space up: ' + control.GetName(), simulator.KeyUp(wx.WXK_SPACE))
+        app.Yield()
+    def find(dialog, name):
+        result = wx.FindWindowByName(name, dialog)
+        if result is None:
+            raise AssertionError('Missing native control: ' + name)
+        return result
+
+    class SyntheticHTTP:
+        def __init__(self, host, port, **options):
+            if (host, port) != ('127.0.0.1', 55123):
+                raise AssertionError('Only the explicitly selected synthetic transport is allowed.')
+            self.position = 0
+        def request(self, method, route, body=None, headers=None):
+            task = progress.current_progress()
+            if threading.get_ident() == ui_thread or task is None:
+                raise AssertionError('Translation must run in the actual shared host worker/progress context.')
+            if any(key.lower() in ('authorization', 'x-goog-api-key') for key in (headers or {})):
+                raise AssertionError('The synthetic local transport must receive no credentials.')
+            calls.append((method, route))
+            if method == 'GET':
+                result = [{'code': 'en', 'name': 'English', 'targets': ['uk']},
+                          {'code': 'uk', 'name': 'Ukrainian', 'targets': []}]
+            else:
+                payload = json.loads(body)
+                if route != '/translate' or payload['format'] != 'text':
+                    raise AssertionError('Only approved paragraph text may leave the format mapping.')
+                result = {'translatedText': 'Похідний контроль: ' + payload['q']}
+            self.raw = json.dumps(result, ensure_ascii=False).encode('utf-8')
+        def getresponse(self):
+            self.status = 200
+            return self
+        def getheader(self, name, default=None):
+            return {'Content-Type': 'application/json', 'Content-Length': str(len(self.raw))}.get(name, default)
+        def read(self, size):
+            value = self.raw[self.position:self.position + size]
+            self.position += len(value)
+            return value
+        def close(self):
+            pass
+
+    finished = threading.Event()
+    def watchdog():
+        if not finished.wait(180):
+            print('FAIL: native DOCX translation cleanup-inclusive watchdog', flush=True)
+            os._exit(2)
+    threading.Thread(target=watchdog, name='rich-docx-native-watchdog', daemon=True).start()
+    actual = (http.client.HTTPConnection, wx.MessageBox, wx.SingleChoiceDialog, wx.FileDialog,
+              translation_layout.run_process, translation_layout.write_binary_export)
+    frame = None
+    host_handle, host_executor, host_cancel = None, None, None
+    with TemporaryDirectory(prefix='resonance-rich-docx-translation-') as temporary:
+        root = Path(temporary)
+        try:
+            library = LibraryApp(root / 'private-library')
+            workspace = library.create_workspace('Native DOCX translation')
+            fixture_path = Path(__file__).with_name('translation_rich_docx_fixtures.py').resolve(strict=True)
+            fixture_sha = sha256(fixture_path.read_bytes()).hexdigest()
+            spec = importlib.util.spec_from_file_location('native_rich_docx_original_source', fixture_path)
+            fixture = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(fixture)
+            raw = fixture.rich_docx(proof=True)
+            original_mapping = translation_docx_rich.describe(raw)
+            unit_count = original_mapping['selected']
+            source = root / 'Selected original Ω.docx'
+            source.write_bytes(raw)
+            imported = library._import_file(workspace, source, title='Native DOCX Ω',
+                authors=('Synthetic source',), work_id='native-docx-work', edition_id='native-docx-edition')
+            check('actual canonical DOCX import', imported['state'] == 'complete' and imported['verified'] is False)
+            profile = profiles.ProviderProfile('native_docx_local', 'Synthetic local DOCX API',
+                'libretranslate-local', 'http://127.0.0.1:55123', 'synthetic-protocol-only',
+                ('translation.text', 'translation.languages'), local=True, enabled=True)
+            profiles.ProfileStore(library.root / 'state/providers').save(profile)
+            http.client.HTTPConnection = SyntheticHTTP
+            answers = [wx.YES, wx.NO, wx.YES]
+            def approval(message, title, flags, parent):
+                check('explicit default-No consent: ' + title, bool(flags & wx.NO_DEFAULT))
+                return answers.pop(0)
+            wx.MessageBox = approval
+            class Choice:
+                def __init__(self, *args, **kwargs):
+                    pass
+                def ShowModal(self):
+                    return wx.ID_OK
+                def GetSelection(self):
+                    return 0
+                def Destroy(self):
+                    pass
+            output = root / 'Native translated Ω.docx'
+            class Destination(Choice):
+                def GetPath(self):
+                    return str(output)
+            wx.SingleChoiceDialog, wx.FileDialog = Choice, Destination
+            original_run = translation_layout.run_process
+            def owned_format(args, **kwargs):
+                if threading.get_ident() == ui_thread or progress.current_progress() is None:
+                    raise AssertionError('Format parsing must use the actual host worker and ProgressHub.')
+                if kwargs.get('owned_windows_job') is not True:
+                    raise AssertionError('The native format worker must use the existing Windows Job owner.')
+                if Path(args[-2]).resolve() != Path(translation_layout_worker.__file__).resolve():
+                    raise AssertionError('The format worker must execute the exact installed module.')
+                result = original_run(args, **kwargs)
+                children.append(result.returncode)
+                return result
+            translation_layout.run_process = owned_format
+            frame = desktop_app.DesktopFrame(library)
+            host_handle, host_executor, host_cancel = frame.GetHandle(), frame.executor, frame.cancel_event
+            frame.Show()
+            app.SetTopWindow(frame)
+            check('actual shared desktop executor', isinstance(frame.executor, worker_lifetime.DesktopExecutor))
+            check('actual unchanged host worker', frame.run_job.__func__ is desktop_app.DesktopFrame.run_job)
+            check('actual shared ProgressHub', isinstance(frame.progress_panel.hub, progress.ProgressHub))
+            panel = frame.book.GetPage(1)
+            check('actual retained catalog scope', panel.ready and panel.workspace == workspace
+                  and 'native-docx-edition' in panel.rows and frame.active == (workspace, None))
+            commands = {item.command_id for item in frame.keyboard_commands.registry.commands('main')}
+            check('existing document keyboard command retained', 'tools.translation_documents' in commands)
+
+            def formatted_phase():
+                dialog = None
+                try:
+                    dialog = next(item for item in wx.GetTopLevelWindows()
+                                  if item.GetName() == 'Formatted DOCX translation workstation')
+                    own_modal(dialog)
+                    check('formatted workstation is a native modal', dialog.IsModal())
+                    status = find(dialog, 'Formatted translation status and limitations')
+                    selection = find(dialog, 'Selected retained DOCX and paragraph jobs')
+                    check('limitations visible before approval', status.GetValue() == translation_layout_worker.NOTICE)
+                    check('source selection is readonly', not selection.IsEditable())
+                    find(dialog, 'DOCX source language; auto detects').ChangeValue('en')
+                    find(dialog, 'DOCX total approved USD budget; local service requires 0').ChangeValue('0')
+                    press(find(dialog, 'Fetch DOCX languages'))
+                    pump(lambda: not frame.working and '"languages"' in status.GetValue(), 'Declared language request')
+                    before = len(calls)
+                    press(find(dialog, 'Choose retained DOCX'))
+                    pump(lambda: not frame.working and '"canonical_paragraphs": 7' in selection.GetValue(),
+                         'Actual retained rich DOCX mapping')
+                    check('format inspection sends no source text', len(calls) == before)
+                    inspected = json.loads(status.GetValue())
+                    check('rich source profile and limitations visible before approval',
+                          inspected['schema'] == translation_docx_rich.PROFILE
+                          and inspected['notice'] == translation_docx_rich.NOTICE)
+                    check('body and independent note canonical records bound',
+                          inspected['canonical_paragraphs'] == 7 and inspected['note_paragraphs'] == 3
+                          and inspected['text_fragments'] == unit_count)
+                    press(find(dialog, 'Preview DOCX translation'))
+                    pump(lambda: not frame.working and 'review_sha256' in status.GetValue(), 'Exact DOCX review')
+                    check('review binds mapping and source with no quotation authority',
+                          'mapping_sha256' in status.GetValue() and '"quotation_authority": false' in status.GetValue())
+                    press(find(dialog, 'Approve and save DOCX jobs'))
+                    check('default-No decision saves no job and makes no request',
+                          not frame.working and not translation.TranslationService(
+                              library.root / 'state/translation', library=library).list() and len(calls) == before)
+                    press(find(dialog, 'Approve and save DOCX jobs'))
+                    pump(lambda: not frame.working and '"status": "prepared"' in status.GetValue(), 'DOCX job preparation')
+                    check('preparation makes no provider call', len(calls) == before)
+                    saved = translation.TranslationService(
+                        library.root / 'state/translation', library=library).list()
+                    check('one exact rich partition job',
+                          len(saved) == 1 and saved[0]['source_partition']['profile'] == translation_docx_rich.PROFILE
+                          and saved[0]['source_partition']['mapping_sha256'] == inspected['mapping_sha256'])
+                    press(find(dialog, 'Run / resume DOCX jobs'))
+                    pump(lambda: not frame.working and '"status": "complete"' in status.GetValue(), 'DOCX paragraph completion')
+                    check('exact reviewed rich fragment requests', len(calls) == before + unit_count)
+                    profiles.ProfileStore(library.root / 'state/providers').remove(profile.id)
+                    original_export = translation_layout.write_binary_export
+                    def publish_then_stop(*args, **kwargs):
+                        receipt = original_export(*args, **kwargs)
+                        frame.cancel_event.set()
+                        return receipt
+                    translation_layout.write_binary_export = publish_then_stop
+                    press(find(dialog, 'Export new translated DOCX'))
+                    pump(lambda: not frame.working and '"format": "docx"' in status.GetValue(), 'Completed offline DOCX export')
+                    receipt = json.loads(status.GetValue())
+                    check('late Stop retains actual committed completion',
+                          receipt['status'] == 'complete' and output.is_file() and frame.cancel_event.is_set())
+                    check('completed export needs no active profile',
+                          not profiles.ProfileStore(library.root / 'state/providers').list()
+                          and len(calls) == before + unit_count)
+                    exported = output.read_bytes()
+                    check('exact committed DOCX receipt',
+                          receipt['output_sha256'] == sha256(exported).hexdigest()
+                          and receipt['output_bytes'] == len(exported)
+                          and receipt['quotation_authority'] is False)
+                    with ZipFile(BytesIO(raw)) as original_zip, ZipFile(BytesIO(exported)) as translated_zip:
+                        check('all unselected DOCX parts preserved exactly',
+                              original_zip.namelist() == translated_zip.namelist()
+                              and all(original_zip.read(name) == translated_zip.read(name)
+                                      for name in original_zip.namelist()
+                                      if name not in receipt['changed_members']))
+                    document = Document(BytesIO(exported))
+                    check('actual paragraph and simple-table translation',
+                          document.paragraphs[0].text.startswith('Похідний контроль:')
+                          and document.tables[0].cell(0, 0).text.startswith('Похідний контроль:')
+                          and document.paragraphs[0].style.name == 'Heading 1'
+                          and document.paragraphs[0].runs[0].bold is True
+                          and document.paragraphs[0].runs[2].italic is True)
+                    rendered = translation_docx_rich.describe(exported)
+                    canonical_rows = docx_ordered.extract_docx(exported)['records']
+                    check('actual footnote and endnote text translated with exact locators',
+                          len(canonical_rows) == 7
+                          and canonical_rows[4]['raw_text'] == 'Похідний контроль: Independent footnote prose Україна.'
+                          and canonical_rows[6]['raw_text'] == 'Похідний контроль: Independent endnote prose Česko.'
+                          and [row['locator'] for row in rendered['records']]
+                              == [row['locator'] for row in original_mapping['records']]
+                          and receipt['changed_members'] ==
+                              ['word/document.xml', 'word/endnotes.xml', 'word/footnotes.xml'])
+                    with ZipFile(BytesIO(exported)) as archive:
+                        check('embedded picture bytes and identity retained',
+                              archive.read('word/media/image1.png') == fixture.png_bytes()
+                              and rendered['media'] == original_mapping['media'])
+                    check('fixed bookmark proof and note marker identities retained',
+                          [[{k: v for k, v in marker.items() if k != 'offset'}
+                            for marker in row['markers']] for row in rendered['records']] ==
+                          [[{k: v for k, v in marker.items() if k != 'offset'}
+                            for marker in row['markers']] for row in original_mapping['records']])
+                    check('rich output binds every accepted fragment digest',
+                          len(receipt['jobs']) == unit_count
+                          and all(row['translation_sha256'] == sha256(
+                              ('Похідний контроль: ' + paragraph['text'][unit['start']:unit['end']]).encode('utf-8')).hexdigest()
+                              for row, (paragraph, unit) in zip(receipt['jobs'],
+                                  ((paragraph, unit) for paragraph in original_mapping['records']
+                                   for unit in paragraph['units']))))
+                    check('original source bytes remain unchanged', source.read_bytes() == raw)
+                    check('completed export retains readable native status focus', wx.Window.FindFocus() is status)
+                    translation_layout.write_binary_export = original_export
+                    press(find(dialog, 'Export new translated DOCX'))
+                    pump(lambda: not frame.working and 'existing files are not replaced' in status.GetValue(),
+                         'No-clobber refusal')
+                    check('existing DOCX export never overwritten', output.read_bytes() == exported)
+                    check('real installed formatting children completed', len(children) >= 4 and all(code == 0 for code in children))
+                    check('format resource leases quiescent', broker.ResourceBroker.for_app(library.root).snapshot()['leases'] == [])
+                    press(find(dialog, 'Close formatted translation'))
+                except Exception:
+                    errors.append(traceback.format_exc())
+                    unwind()
+
+            def document_phase():
+                dialog = None
+                try:
+                    dialog = next(item for item in wx.GetTopLevelWindows()
+                                  if item.GetName() == 'Document translation workstation')
+                    own_modal(dialog)
+                    check('existing document workstation route preserved', dialog.IsModal())
+                    exercise_nested_failure(dialog)
+                    wx.CallLater(150, formatted_phase)
+                    press(find(dialog, 'Translate DOCX with layout'))
+                    if not errors:
+                        press(find(dialog, 'Close'))
+                    else:
+                        unwind()
+                except Exception:
+                    errors.append(traceback.format_exc())
+                    unwind()
+
+            def opened():
+                try:
+                    wx.CallLater(150, document_phase)
+                    document_ui.show_translation_documents(frame)
+                except Exception:
+                    errors.append(traceback.format_exc())
+                finally:
+                    active = wx.EventLoopBase.GetActive()
+                    if active is not None and active.IsMain():
+                        active.ScheduleExit(1 if errors else 0)
+                    elif errors:
+                        unwind()
+            wx.CallAfter(opened)
+            app.MainLoop()
+        finally:
+            try:
+                if host_executor is not None:
+                    host_cancel.set()
+                    try:
+                        # The handle/executor were captured while the frame was
+                        # alive; an earlier owned Close may already have destroyed it.
+                        if user32.IsWindow(host_handle):
+                            frame.Close(force=True)
+                        pump(lambda: not user32.IsWindow(host_handle),
+                             'Actual host Close did not release its native owners.',
+                             cleanup=True)
+                    finally:
+                        host_executor.shutdown(wait=True, cancel_futures=True)
+                    check('host shutdown retains no failed cleanup owner',
+                          not user32.IsWindow(host_handle) and not host_executor.cleanup_failures)
+                app.Yield()
+            finally:
+                (http.client.HTTPConnection, wx.MessageBox, wx.SingleChoiceDialog, wx.FileDialog,
+                 translation_layout.run_process, translation_layout.write_binary_export) = actual
+                if native_handle is not None:
+                    native_handle.close()
+    if sha256(fixture_path.read_bytes()).hexdigest() != fixture_sha:
+        raise RuntimeError('The original native rich DOCX fixture changed during qualification.')
+    for module in modules:
+        value = origins[module.__name__]
+        check('post-cleanup installed hash: ' + module.__name__,
+              sha256(Path(value['path']).read_bytes()).hexdigest() == value['sha256'])
+    if errors:
+        raise RuntimeError('\n'.join(errors))
+    finished.set()
+    print(json.dumps({'status': 'PASS', 'checks': checks, 'check_count': len(checks),
+        'source_origins': origins, 'native_keyboard': 'PASS', 'format_children': 'PASS',
+        'source_bound_docx': 'PASS', 'rich_source_mapping': 'PASS',
+        'independent_notes': 'PASS', 'fixed_markers': 'PASS', 'original_media': 'PASS',
+        'package_preservation': 'PASS', 'fixture_sha256': fixture_sha,
+        'completed_offline_export': 'PASS', 'late_stop_completion': 'PASS',
+        'native_failure_cleanup': 'PASS',
+        'synthetic_protocol_calls': len(calls), 'controlled_pickers_and_consent': True,
+        'real_translation_service': 'NOT_RUN', 'translation_quality': 'NOT_RUN',
+        'Word_layout': 'NOT_RUN', 'nvda': 'NOT_RUN'}, ensure_ascii=True), flush=True)
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

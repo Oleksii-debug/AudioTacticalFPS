@@ -1,0 +1,2077 @@
+{
+  "schema": "resonance-actual-superseded-head-evidence/1",
+  "status": "ACTUAL_PARTIAL_RESULTS_WITH_FAILURES_AND_NORMAL_SUPERSESSION",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "source_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "superseding_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "supersession_utc": "2026-11-27T22:55:45Z",
+  "evidence_basis": "Decoded completed GitHub job logs, actual emitted JSON reports and GitHub job/artifact metadata. Echoed workflow source is excluded from verdict extraction. Artifact ZIP contents were not downloaded or independently inspected in this session.",
+  "overall": "NOT_QUALIFIED",
+  "cancel_reason": "Existing workflow concurrency following authorized integration-head publication; no cancellation tool or ref mutation by this evidence author.",
+  "main": {
+    "run_id": 46074881860,
+    "job_id": 140761348364,
+    "conclusion": "cancelled",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46074881860/job/140761348364",
+    "completed_early_import_failure": {
+      "status": "FAIL",
+      "trace": [
+        {
+          "line": 2028,
+          "time": "2026-11-27T22:28:02.3734289Z",
+          "text": "    scroll_positions.append(dialog.content.GetViewStart().y)"
+        },
+        {
+          "line": 2030,
+          "time": "2026-11-27T22:28:02.3737736Z",
+          "text": "AttributeError: 'tuple' object has no attribute 'y'"
+        },
+        {
+          "line": 2040,
+          "time": "2026-11-27T22:28:02.5405585Z",
+          "text": "    scroll_positions.append(dialog.content.GetViewStart().y)"
+        },
+        {
+          "line": 2042,
+          "time": "2026-11-27T22:28:02.5418680Z",
+          "text": "AttributeError: 'tuple' object has no attribute 'y'"
+        }
+      ],
+      "note": "Tuple attribute access in native Import Center probe. Root's separately reviewed correction does not retroactively qualify this run."
+    },
+    "full_bundle": {
+      "step_number": 41,
+      "status": "CANCELLED_AFTER_COMPLETED_FAILURES_AND_PARTIAL_PASSES",
+      "native_failures": [
+        {
+          "line": 6137,
+          "time": "2026-11-27T22:34:01.8725891Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed."
+        },
+        {
+          "line": 6275,
+          "time": "2026-11-27T22:36:02.3688532Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [recording]: Required native process exited with code 1"
+        },
+        {
+          "line": 6518,
+          "time": "2026-11-27T22:41:08.3862031Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [book-audio]: Actual installed native book narration failed."
+        },
+        {
+          "line": 6583,
+          "time": "2026-11-27T22:41:10.5703892Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [reading-presentation]: Required reading-presentation native process failed."
+        },
+        {
+          "line": 6638,
+          "time": "2026-11-27T22:41:12.1048393Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [reading-tabs]: Required reading-tabs native process failed."
+        },
+        {
+          "line": 6727,
+          "time": "2026-11-27T22:47:14.4329582Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [book-batch]: Required book-batch native process failed."
+        },
+        {
+          "line": 7239,
+          "time": "2026-11-27T22:48:20.6369887Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [studio-persisted-effects]: Actual installed native persisted Studio effects failed."
+        },
+        {
+          "line": 7300,
+          "time": "2026-11-27T22:48:23.7355078Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [audio-conversion-batch]: Actual installed native audio-conversion-batch failed."
+        },
+        {
+          "line": 7363,
+          "time": "2026-11-27T22:48:51.6624852Z",
+          "text": "REQUIRED NATIVE BLOCK FAILED [saved-audio-queue]: Actual installed native saved-audio-queue failed."
+        }
+      ],
+      "completed_native_reports": [
+        {
+          "label": "native workflow templates",
+          "line": 5980,
+          "time": "2026-11-27T22:33:28.0052755Z",
+          "checks": [
+            "native preview is non-executing and shows exact operations",
+            "native Run executes real import and scoped search",
+            "native progress reports completion only after durable verification",
+            "reopened native saved job resumes without duplicate imports",
+            "unsupported native instructions execute nothing",
+            "original Unicode document bytes remain unchanged",
+            "native workflow save retains typed steps without scope or execution",
+            "native workflow load clears old approval and requires current preview",
+            "native workflow Run separately executes one newly submitted plan",
+            "reopened native workflow settings retain exact revision and source bytes"
+          ],
+          "check_count": 10,
+          "saved_job_reopened": true,
+          "unrelated_workspace_unchanged": true,
+          "workflow_templates_native": true,
+          "templates_require_new_approval": true,
+          "status": "PASS",
+          "windows_execution": "PASS",
+          "installed_modules": "PASS",
+          "source_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+          "source_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+          "source_hashes_module_names": [
+            "assistant/__init__.py",
+            "assistant/models.py",
+            "assistant/planner.py",
+            "assistant/service.py",
+            "assistant/state.py",
+            "assistant/backup_receipt.py",
+            "ui/assistant_dialog.py",
+            "assistant/templates.py",
+            "ui/assistant_templates.py",
+            "durable_state.py"
+          ],
+          "manual_nvda": "NOT_RUN",
+          "paid_api": "NOT_RUN"
+        },
+        {
+          "label": "local model preparation",
+          "line": 5981,
+          "time": "2026-11-27T22:33:29.6968132Z",
+          "status": "PASS",
+          "installed_package": true,
+          "platform": "win32",
+          "module_cli": "PASS",
+          "real_bundled_model_preparation": "PASS",
+          "nvda": "NOT_RUN"
+        },
+        {
+          "label": "native command launch",
+          "line": 5982,
+          "time": "2026-11-27T22:33:34.4563293Z",
+          "status": "PASS",
+          "checks": 4,
+          "nvda": "NOT_RUN"
+        },
+        {
+          "label": "source opening and federated navigation",
+          "line": 5983,
+          "time": "2026-11-27T22:33:45.4838248Z",
+          "status_text": "Opened a viewing copy of Selected source. Source location: Segment 1 (unpaginated). Use the external viewer to navigate to this location. The retained original is unchanged.",
+          "status": "PASS",
+          "platform": "Windows",
+          "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+          "checks": [
+            "actual TXT imports",
+            "native search event",
+            "exact selected result",
+            "native original-source event",
+            "verified viewing-copy bytes",
+            "retained original unchanged",
+            "controls restored",
+            "search-status focus"
+          ],
+          "external_viewer": "recording callback only",
+          "windows_nvda": "NOT_RUN",
+          "desktop_app_sha256": "28cc10d724badc164b34814e24264e81bf1ee1e20e0afedb4c795d30dc29005f",
+          "source_file_sha256": "22ea2004567e2e22489fa0df0864e0414cf01a48d212c42f4c9bf6bf24d7a6fa"
+        },
+        {
+          "label": "academic comparison",
+          "line": 6024,
+          "time": "2026-11-27T22:33:48.4816545Z",
+          "checks": 40,
+          "external_viewer": "recording callback only",
+          "installed_ui_sha256": "622cae7813292300cd365c80a0b19462a109347cd263109d9aede416c980b943",
+          "manual_keyboard": "NOT_RUN",
+          "native_file_pickers": "NOT_RUN",
+          "nvda": "NOT_RUN",
+          "platform": "Windows",
+          "result": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "label": "native runtime",
+          "line": 6025,
+          "time": "2026-11-27T22:33:52.2572704Z",
+          "status": "PASS",
+          "platform": "Windows",
+          "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+          "native_runtime_active": true,
+          "windows_nvda": "NOT_RUN",
+          "checks": [
+            "real TXT imports and separate library",
+            "named native dialog fields",
+            "keyboard Tab and Shift+Tab",
+            "native readable Help and focus return",
+            "negative-only validation and status focus",
+            "reviewable Build preview",
+            "keyboard Tab and Shift+Tab through readonly preview and status",
+            "editing invalidates Use",
+            "Cancel preserves query and results",
+            "All/Any/Exclude/NEAR Use updates advanced mode",
+            "stale results cleared",
+            "query focus returned",
+            "actual asynchronous advanced Enter search",
+            "unordered nearby match and excluded/distant sources rejected",
+            "workspace isolation",
+            "exact source quotation",
+            "actual clipboard copy",
+            "controls restored and readable status focus"
+          ]
+        },
+        {
+          "label": "bibliography",
+          "line": 6091,
+          "time": "2026-11-27T22:33:57.3095913Z",
+          "checks": 40,
+          "file_choices": "controlled temporary paths only",
+          "installer": "NOT_RUN",
+          "manual_keyboard": "NOT_RUN",
+          "native_bibtex_import": "PASS",
+          "native_export_options": "PASS",
+          "native_file_pickers": "NOT_RUN",
+          "native_keyboard": "PASS",
+          "native_overwrite_accessible_focus": "NOT_RUN",
+          "native_overwrite_confirmation": "PASS",
+          "nvda": "NOT_RUN",
+          "platform": "Windows-10-10.0.20348-SP0",
+          "python": "3.11.18",
+          "result": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "label": "complete bundle early seal and runtime inventory",
+          "line": 6092,
+          "time": "2026-11-27T22:33:59.8762362Z",
+          "status": "PASS",
+          "runtime_sbom": "VERIFIED",
+          "python": "3.11.18 (main, Nov 11 2026, 00:17:57) [MSC v.1944 64 bit (AMD64)]",
+          "manifest_unchanged": true,
+          "sealed_files_verified": true,
+          "model": "INCLUDED",
+          "ocr": "INCLUDED",
+          "private_native_runtime": "INCLUDED",
+          "nvda": "NOT_RUN"
+        },
+        {
+          "label": "native signed trust",
+          "line": 6178,
+          "time": "2026-11-27T22:35:22.3784875Z",
+          "status": "PASS",
+          "checks": [
+            "Actual desktop Help exposes the signed client status",
+            "Signed status uses the existing configurable keyboard registry",
+            "Repeated module installation does not duplicate the Help command",
+            "Native Help event reaches the status action",
+            "Default status is a named native read-only multiline control",
+            "Private default shows perpetual operation and no fake authority actions",
+            "Terms and profile are readable before accepting",
+            "Import requires explicit native checkbox acceptance",
+            "Native acceptance event enables import",
+            "Reviewed signed grant is durably verified"
+          ],
+          "nvda": "NOT_RUN",
+          "production_authority": "NOT_CONFIGURED",
+          "production_installer_upgrade": "NOT_RUN",
+          "ui_module": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\trust_status.py"
+        },
+        {
+          "label": "native clips",
+          "line": 6334,
+          "time": "2026-11-27T22:36:08.0752100Z",
+          "result": "PASS",
+          "checks": [
+            "installed module origin: carr_library.studio.clips",
+            "exact installed source bytes: carr_library.studio.clips",
+            "installed module origin: carr_library.studio.managed_inputs",
+            "exact installed source bytes: carr_library.studio.managed_inputs",
+            "installed module origin: carr_library.studio.render",
+            "exact installed source bytes: carr_library.studio.render",
+            "installed module origin: carr_library.studio.project",
+            "exact installed source bytes: carr_library.studio.project",
+            "installed module origin: carr_library.audio.process",
+            "exact installed source bytes: carr_library.audio.process",
+            "installed module origin: carr_library.audio.windows_job",
+            "exact installed source bytes: carr_library.audio.windows_job",
+            "installed module origin: carr_library.ui.studio_clips",
+            "exact installed source bytes: carr_library.ui.studio_clips",
+            "real wx Windows controls",
+            "installed module: carr_library.ui.studio_clips",
+            "installed module: carr_library.studio.clips",
+            "explicit selected external executable: ffmpeg",
+            "pinned external executable bytes: ffmpeg",
+            "explicit selected external executable: ffprobe",
+            "pinned external executable bytes: ffprobe",
+            "real native main loop is active",
+            "keyboard focus: Reload projects",
+            "Space key down: Reload projects",
+            "Space key up: Reload projects",
+            "native project choice binds saved identity",
+            "all timing controls have readable names",
+            "keyboard focus: Add audio file",
+            "Space key down: Add audio file",
+            "Space key up: Add audio file",
+            "original selection requires an existing file",
+            "native Add retains an actual clip",
+            "native Add retains a portable content identity",
+            "keyboard focus: Save clip settings",
+            "Space key down: Save clip settings",
+            "Space key up: Save clip settings",
+            "native Save persists reviewed numeric controls",
+            "keyboard focus: Render saved project",
+            "Space key down: Render saved project",
+            "Space key up: Render saved project",
+            "native Render creates exactly one completed saved project job",
+            "native render completion exposes its destination in readable status",
+            "actual left-only timeline and one-second duration",
+            "keyboard focus: Save clip settings",
+            "Space key down: Save clip settings",
+            "Space key up: Save clip settings",
+            "stale native edit cannot replace a newer revision",
+            "keyboard focus: Reload projects",
+            "Space key down: Reload projects",
+            "Space key up: Reload projects",
+            "keyboard focus: Remove clip",
+            "Space key down: Remove clip",
+            "Space key up: Remove clip",
+            "remove changes project but retains original bytes",
+            "keyboard focus: Close",
+            "Space key down: Close",
+            "Space key up: Close",
+            "native keyboard close finishes cleanly"
+          ],
+          "native_keyboard": "PASS",
+          "fixture": "synthetic PCM rendered by actual FFmpeg",
+          "module_origins_module_names": [
+            "carr_library.studio.clips",
+            "carr_library.studio.managed_inputs",
+            "carr_library.studio.render",
+            "carr_library.studio.project",
+            "carr_library.audio.process",
+            "carr_library.audio.windows_job",
+            "carr_library.ui.studio_clips"
+          ],
+          "nvda": "NOT_RUN",
+          "native_file_pickers": "NOT_RUN",
+          "physical_microphone": "NOT_RUN"
+        },
+        {
+          "label": "native voice preferences",
+          "line": 6672,
+          "time": "2026-11-27T22:41:14.0277589Z",
+          "result": "PASS",
+          "checks": 23,
+          "check_names": [
+            "installed exact source: carr_library.runtime_settings",
+            "installed exact source: carr_library.durable_state",
+            "installed exact source: carr_library.speech.runtime",
+            "installed exact source: carr_library.speech.reading",
+            "installed exact source: carr_library.speech.session",
+            "installed exact source: carr_library.speech.tabs",
+            "installed exact source: carr_library.ui.voice_preferences",
+            "installed exact source: carr_library.ui.speech_dialog",
+            "installed exact source: carr_library.ui.builtin_keyboard_commands",
+            "installed exact source: carr_library.ui.reading_shortcuts",
+            "installed exact source: carr_library.ui.worker_lifetime",
+            "actual native Windows preference controls",
+            "opening preferences is silent and does not write",
+            "native favorite persists",
+            "native exact-language default persists",
+            "native profile applies exact declared controls",
+            "changed library refuses native save",
+            "changed library suppresses stale native notices",
+            "closed modal has no pending worker callback",
+            "actual reader save keeps selected voice without a project picker",
+            "reader cleanup settles the original provider once",
+            "preference workflow never synthesizes or plays audio",
+            "actual reader preferences workflow and cleanup completed"
+          ],
+          "native_voice_preferences": "PASS",
+          "actual_reader_worker": "PASS",
+          "voice_inventory": "SYNTHETIC_DECLARATIONS",
+          "speech_engine": "NOT_RUN",
+          "acoustic_quality": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        },
+        {
+          "label": "native import scan",
+          "line": 6787,
+          "time": "2026-11-27T22:47:19.2308548Z",
+          "result": "PASS",
+          "checks": [
+            "actual wx Windows controls",
+            "installed module: carr_library.application",
+            "exact candidate installed bytes: carr_library.application",
+            "installed module: carr_library.ingest.batch_scan",
+            "exact candidate installed bytes: carr_library.ingest.batch_scan",
+            "installed module: carr_library.ingest.batch_pages",
+            "exact candidate installed bytes: carr_library.ingest.batch_pages",
+            "installed module: carr_library.ingest.batches",
+            "exact candidate installed bytes: carr_library.ingest.batches",
+            "installed module: carr_library.ingest.worker",
+            "exact candidate installed bytes: carr_library.ingest.worker",
+            "installed module: carr_library.ingest.publication",
+            "exact candidate installed bytes: carr_library.ingest.publication",
+            "installed module: carr_library.ui.import_center",
+            "exact candidate installed bytes: carr_library.ui.import_center",
+            "installed module: carr_library.ui.desktop_app",
+            "exact candidate installed bytes: carr_library.ui.desktop_app",
+            "installed module: carr_library.ui.worker_lifetime",
+            "exact candidate installed bytes: carr_library.ui.worker_lifetime",
+            "named native control: Files per scan page",
+            "named native control: Traversal entries per scan page",
+            "named native control: Seconds per source scan page",
+            "native budget controls are actual SpinCtrls",
+            "named native control: Add folder...",
+            "native Space down: Add folder...",
+            "native Space up: Add folder...",
+            "existing-folder picker contract",
+            "first native page retains two queued rows without importing",
+            "native page budget is saved exactly",
+            "first page explicitly reports remaining source entries",
+            "named native control: Exclude or include selected file",
+            "native Space down: Exclude or include selected file",
+            "native Space up: Exclude or include selected file",
+            "native exclusion affects only the selected row",
+            "named native control: Start queued files",
+            "native Space down: Start queued files",
+            "native Space up: Start queued files",
+            "explicit first-page run uses actual verified isolated child",
+            "first-page exact quotation is retained",
+            "named native control: Continue source scan",
+            "native Space down: Continue source scan",
+            "native Space up: Continue source scan",
+            "native continuation creates the exact next saved page without auto import",
+            "continuation preserves reviewed scope and OCR settings",
+            "last native source page proves complete traversal and exact count",
+            "named native control: Start queued files",
+            "native Space down: Start queued files",
+            "native Space up: Start queued files",
+            "second native page imports exactly its selected original",
+            "reopen preserves previous imports exclusions and stable request identities",
+            "actual import and scanning release every resource lease",
+            "all selected source bytes remain unchanged",
+            "native completion focus is readable",
+            "named native control: Close Import Center",
+            "native Space down: Close Import Center",
+            "native Space up: Close Import Center",
+            "native continuation scenario completed",
+            "native host shutdown settles all registered owners",
+            "original desktop HWND is destroyed"
+          ],
+          "origins_module_names": [
+            "carr_library.application",
+            "carr_library.ingest.batch_scan",
+            "carr_library.ingest.batch_pages",
+            "carr_library.ingest.batches",
+            "carr_library.ingest.worker",
+            "carr_library.ingest.publication",
+            "carr_library.ui.import_center",
+            "carr_library.ui.desktop_app",
+            "carr_library.ui.worker_lifetime"
+          ],
+          "source_commit": "b7963b00220c8aa2431750c3afcbdcad2afe5aab",
+          "native_controls": "PASS",
+          "actual_isolated_imports": "PASS",
+          "native_folder_picker": "NOT_RUN",
+          "nvda": "NOT_RUN"
+        },
+        {
+          "label": "selected original source",
+          "line": 6789,
+          "time": "2026-11-27T22:47:30.2057555Z",
+          "status_text": "Opened a viewing copy of Selected source. Source location: Segment 1 (unpaginated). Use the external viewer to navigate to this location. The retained original is unchanged.",
+          "status": "PASS",
+          "platform": "Windows",
+          "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+          "checks": [
+            "actual TXT imports",
+            "native search event",
+            "exact selected result",
+            "native original-source event",
+            "verified viewing-copy bytes",
+            "retained original unchanged",
+            "controls restored",
+            "search-status focus"
+          ],
+          "external_viewer": "recording callback only",
+          "windows_nvda": "NOT_RUN",
+          "desktop_app_sha256": "28cc10d724badc164b34814e24264e81bf1ee1e20e0afedb4c795d30dc29005f",
+          "source_file_sha256": "22ea2004567e2e22489fa0df0864e0414cf01a48d212c42f4c9bf6bf24d7a6fa"
+        },
+        {
+          "label": "document translation",
+          "line": 6850,
+          "time": "2026-11-27T22:47:35.5963082Z",
+          "status": "PASS",
+          "required_checks": [
+            "actual host shutdown has no retained cleanup failure",
+            "actual host worker and progress bind every protocol call",
+            "actual retained catalog and workspace",
+            "actual shared ProgressHub",
+            "actual shared desktop executor",
+            "actual unmodified host run_job",
+            "batch completion retains native status focus",
+            "batch export retains native status focus",
+            "batch preview has exact four paragraph requests",
+            "document translation uses the shared keyboard registry",
+            "document workstation native modal",
+            "exact approved paragraph calls",
+            "installed exact source: carr_library.assistant.profiles",
+            "installed exact source: carr_library.assistant.providers",
+            "installed exact source: carr_library.assistant.translation",
+            "installed exact source: carr_library.assistant.translation_documents",
+            "installed exact source: carr_library.assistant.translation_local",
+            "installed exact source: carr_library.progress",
+            "installed exact source: carr_library.ui.desktop_app",
+            "installed exact source: carr_library.ui.progress_panel",
+            "installed exact source: carr_library.ui.translation_dialog",
+            "installed exact source: carr_library.ui.translation_documents",
+            "installed exact source: carr_library.ui.worker_lifetime",
+            "local completion retains native status focus",
+            "local external budget is zero and readonly",
+            "local preview includes unqualified runtime distinction",
+            "local translation native modal",
+            "native Windows wx",
+            "preparation has no provider calls",
+            "selected original bytes remain unchanged",
+            "source capture makes no provider calls",
+            "two actual published source derivatives"
+          ],
+          "actual_shared_host": "PASS",
+          "synthetic_protocol_calls": 6,
+          "actual_local_model_inference": "NOT_RUN",
+          "translation_quality": "NOT_RUN",
+          "offline_server_egress": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        },
+        {
+          "label": "ordered DSP effects",
+          "line": 6954,
+          "time": "2026-11-27T22:47:40.6773422Z",
+          "status": "PASS",
+          "required_checks": [
+            "actual conversion retains output format",
+            "actual main event loop",
+            "actual typed chain changes rendered audio",
+            "actual wx Windows controls",
+            "basic controls are inactive when ordered chain applies",
+            "conversion preserves original bytes",
+            "conversion releases shared runtime admission",
+            "conversion removes owned temporary staging",
+            "conversion reports the reviewed new output",
+            "dry built-in empties only the editable chain",
+            "exact installed source: carr_library.audio.conversion",
+            "exact installed source: carr_library.audio.dsp",
+            "exact installed source: carr_library.audio.effect_presets",
+            "exact installed source: carr_library.audio.process",
+            "exact installed source: carr_library.durable_state",
+            "exact installed source: carr_library.operations.broker",
+            "exact installed source: carr_library.research.export_file",
+            "exact installed source: carr_library.runtime_settings",
+            "exact installed source: carr_library.ui.audio_conversion",
+            "exact installed source: carr_library.ui.effects_dialog",
+            "exact installed source: carr_library.ui.studio_dialog",
+            "existing Convert audio command is registered",
+            "explicit selected audio executable: ffmpeg",
+            "explicit selected audio executable: ffprobe",
+            "native conversion leaves no retained host cleanup failure",
+            "native edit applies numeric value",
+            "native numeric effect input",
+            "native preset name dialog",
+            "native preset save is durable",
+            "native redo restores position",
+            "native reorder and bypass",
+            "native saved preset reload keeps exact order and bypass",
+            "native undo restores position",
+            "pinned audio executable bytes: ffmpeg",
+            "pinned audio executable bytes: ffprobe",
+            "reviewed native result returns exact typed chain",
+            "saved preset is visible in native status"
+          ],
+          "actual_ffmpeg": "PASS",
+          "native_file_pickers": "NOT_RUN",
+          "acoustic_quality": "NOT_RUN",
+          "manual_nvda": "NOT_RUN",
+          "live_playback_speed_pitch": "NOT_IMPLEMENTED"
+        },
+        {
+          "label": "native BRF",
+          "line": 6956,
+          "time": "2026-11-27T22:47:50.8281357Z",
+          "status": "PASS",
+          "required_checks": [
+            "English uncontracted literal cells",
+            "Ukrainian literal cells",
+            "Unicode archive and private source paths",
+            "actual isolated installed CLI export",
+            "actual isolated installed CLI inspection",
+            "all native reservations released",
+            "destination changed since question remains untouched",
+            "eight-dot cells refused without output",
+            "exact installed module bytes",
+            "installed module bytes unchanged after native execution",
+            "literal backslash is not an escape",
+            "long line beyond legacy CLI buffer",
+            "native Windows x64",
+            "official archive and 17-table source closure",
+            "original bytes unchanged",
+            "source archived after review refuses native work",
+            "unsupported symbol refused without output"
+          ],
+          "installed_origins": 12,
+          "actual_C_API": "PASS",
+          "manual_NVDA": "NOT_RUN",
+          "native_reader_menu": "NOT_RUN",
+          "tactile_language_quality": "NOT_RUN",
+          "languages_135": "NOT_RUN"
+        }
+      ],
+      "installed_trust": {
+        "line": 6166,
+        "time": "2026-11-27T22:35:21.0367895Z",
+        "status": "PASS",
+        "cases": 354,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "tests/packaging/test_managed_launch_boundary.py": 8,
+          "tests/packaging/test_managed_update_native_policy.py": 7,
+          "tests/packaging/test_native_launcher_bundle.py": 19,
+          "tests/packaging/test_standard_installer.py": 102,
+          "tests/security/test_anchor_locking.py": 1,
+          "tests/security/test_canonical_boundary.py": 27,
+          "tests/security/test_controller.py": 10,
+          "tests/security/test_entitlements.py": 30,
+          "tests/security/test_idle_renewal.py": 4,
+          "tests/security/test_independent_review_boundaries.py": 5,
+          "tests/security/test_installation.py": 39,
+          "tests/security/test_managed_installation.py": 34,
+          "tests/security/test_managed_registration.py": 10,
+          "tests/security/test_publication_integrity.py": 18,
+          "tests/security/test_refresh.py": 5,
+          "tests/security/test_updates.py": 23,
+          "tests/ui/test_trust_status_handlers.py": 11,
+          "tests/security/test_windows_vault.py": 1
+        }
+      },
+      "actual_installed_native_transcription": {
+        "line": 6179,
+        "time": "2026-11-27T22:35:54.6680700Z",
+        "report": {
+          "status": "PASS",
+          "checks": [
+            "actual named wx controls",
+            "shared background operation",
+            "actual native profile choice and configure action",
+            "V5 three-source binding",
+            "explicit legacy reconfiguration",
+            "actual named folder action",
+            "background folder intake",
+            "relative source and exclusion count",
+            "actual isolated child protocol",
+            "six verified formats",
+            "separate edit revision",
+            "original unchanged"
+          ],
+          "folder_picker_interaction": "NOT_RUN",
+          "folder_picker_answer": "controlled synthetic directory",
+          "profile_picker_interaction": "programmatic native selection and OK; manual interaction NOT_RUN",
+          "profile_picker_answer": "controlled selections on an actual wx choice dialog",
+          "runtime_profiles": {
+            "status": "PASS",
+            "protocol": "local-file-job/1",
+            "checks": [
+              "actual named runtime inspect/trust/register controls",
+              "complete synthetic Python/distribution/model inventory",
+              "actual file action and retained originals",
+              "actual native Pause and Resume",
+              "same accepted receipt across real child restart",
+              "actual transcript/edit/export controls",
+              "four formats and separate edit",
+              "explicit historical workspace binding without execution",
+              "legacy workspace list remains separate",
+              "exact imported source identities"
+            ],
+            "module_origins": {
+              "carr_library.transcription": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\transcription.py",
+                "sha256": "bacb08d3999bb7268e66209c927a4e950ce2a988cd0086b8f742624a89cd63a5"
+              },
+              "carr_library.backup_transcription": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\backup_transcription.py",
+                "sha256": "ab5ebb982524404c902f1e798050569340bb13400d3f8949810a41ebcc925578"
+              },
+              "carr_library.integrations.transcription_values": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\integrations\\transcription_values.py",
+                "sha256": "8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93"
+              },
+              "carr_library.integrations.transcription_runtime": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\integrations\\transcription_runtime.py",
+                "sha256": "6ed7c95f6b25a3e76a7a14e08f8564850e43ef6091799a38a2a2ba35e0b0bb6e"
+              },
+              "carr_library.integrations.transcription_scope": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\integrations\\transcription_scope.py",
+                "sha256": "d4b262c8f5eb0d9bdf611a3ff01685ef7ad5c6acf9ee13fc7e67b7796ddf697e"
+              },
+              "carr_library.integrations.transcription_backup": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\integrations\\transcription_backup.py",
+                "sha256": "597b136dce426c16b176362fcc1bf1a74096d19386635a9bb865d30a6bcb8f71"
+              },
+              "carr_library.integrations.transcription_protocol": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\integrations\\transcription_protocol.py",
+                "sha256": "42fb1c28bff2dee7df143160b3ffa3d88736a818b3b8868720a29b97d6e6d102"
+              },
+              "carr_library.integrations.transcription_exports": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\integrations\\transcription_exports.py",
+                "sha256": "771769b569b421e9dce377e48714f1303eb5705e477250c7edd1aeb2c6fc28f8"
+              },
+              "carr_library.ui.transcription_dialog": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\transcription_dialog.py",
+                "sha256": "9a88ac9bb96891330e88e91c6da4c866637d821fffcd86dd09faad1dc996e848"
+              },
+              "carr_library.ui.transcription_runtime_dialog": {
+                "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\ui\\transcription_runtime_dialog.py",
+                "sha256": "85039cd064e6a16b420cbdbeb276eb3d6a8c4897f0d2f4156cadb563516f9cbc"
+              }
+            },
+            "file_directory_picker_interaction": "NOT_RUN; answers are controlled",
+            "binding_confirmation_interaction": "NOT_RUN; affirmative answer is controlled",
+            "recognition_backend": "public synthetic file protocol fixture",
+            "acoustic_inference": "NOT_RUN",
+            "manual_NVDA": "NOT_RUN"
+          },
+          "whisper_acoustic_inference": "NOT_RUN",
+          "manual_NVDA": "NOT_RUN"
+        },
+        "scope": "Actual installed complete-bundle native controls/protocol, including exact retained checkpoint Pause/Resume and two child starts. This is independent of the cancelled dedicated ASR installed whole-suite phase. Acoustic inference/manual NVDA remain NOT_RUN."
+      },
+      "last_recorded_epub_output": {
+        "status": "PARTIAL_THEN_CANCELLED",
+        "rows": [
+          {
+            "line": 7376,
+            "time": "2026-11-27T22:48:55.5491801Z",
+            "text": "PASS: actual local production completes"
+          },
+          {
+            "line": 7377,
+            "time": "2026-11-27T22:48:57.2261329Z",
+            "text": "PASS: actual publication imports as a retained EPUB"
+          },
+          {
+            "line": 7378,
+            "time": "2026-11-27T22:48:57.5780428Z",
+            "text": "PASS: existing Reading Desk presents the exact source"
+          },
+          {
+            "line": 7379,
+            "time": "2026-11-27T22:48:57.5790480Z",
+            "text": "PASS: owned native focus: EPUB synchronized recorded audio..."
+          },
+          {
+            "line": 7380,
+            "time": "2026-11-27T22:48:57.5791252Z",
+            "text": "PASS: native key down: EPUB synchronized recorded audio..."
+          },
+          {
+            "line": 7381,
+            "time": "2026-11-27T22:48:57.6201342Z",
+            "text": "PASS: native key release: EPUB synchronized recorded audio..."
+          },
+          {
+            "line": 7382,
+            "time": "2026-11-27T22:48:58.5238231Z",
+            "text": "PASS: recorded preparation borrows the current host worker"
+          },
+          {
+            "line": 7383,
+            "time": "2026-11-27T22:48:58.5239062Z",
+            "text": "PASS: opening recorded audio does not start playback"
+          },
+          {
+            "line": 7384,
+            "time": "2026-11-27T22:55:55.0851105Z",
+            "text": "##[error]The operation was canceled."
+          }
+        ],
+        "cause_after_last_progress": "UNDETERMINED_FROM_THIS_LOG",
+        "qualification": "No recorded-EPUB native PASS or final cleanup/seal claim."
+      }
+    },
+    "owner_delivery": {
+      "status": "OWNER_NOT_REACHED",
+      "steps": [
+        {
+          "name": "Qualify the transferable library bundle without an audio payload",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 42
+        },
+        {
+          "name": "Prepare separate source-bound owner-candidate inputs after no-audio checks",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 43
+        },
+        {
+          "name": "Retain only separately qualified owner-candidate public inputs",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 44
+        },
+        {
+          "name": "Assemble unqualified owner archives and retain only public receipts",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 45
+        }
+      ],
+      "assembled_archive": "NOT_RUN",
+      "public_binary_upload": "NOT_RUN"
+    },
+    "not_completed_or_skipped_steps": [
+      {
+        "name": "Exercise native Import Center and durable batch workflow",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 20
+      },
+      {
+        "name": "Exercise installed document formats and native accessible reading",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 21
+      },
+      {
+        "name": "Exercise native academic comparison, bibliography and catalog review",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 25
+      },
+      {
+        "name": "Exercise native reviewed library workflows and checkpoint recovery",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 26
+      },
+      {
+        "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "number": 41
+      },
+      {
+        "name": "Qualify the transferable library bundle without an audio payload",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 42
+      },
+      {
+        "name": "Prepare separate source-bound owner-candidate inputs after no-audio checks",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 43
+      },
+      {
+        "name": "Retain only separately qualified owner-candidate public inputs",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 44
+      },
+      {
+        "name": "Assemble unqualified owner archives and retain only public receipts",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 45
+      },
+      {
+        "name": "Build pinned standard setup and execute actual install, repair and uninstall",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 46
+      },
+      {
+        "name": "Run required integrated source workflows",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 48
+      },
+      {
+        "name": "Post Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 99
+      }
+    ],
+    "other_job_verdicts": [
+      {
+        "id": 140760242163,
+        "name": "Exact source / Python 3.11 syntax and package metadata",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761348361,
+        "name": "Windows x64 / native commands and draft recovery",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761348460,
+        "name": "Required signed client and maintenance boundaries / Ubuntu CPython 3.11 / strict signed client",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761348493,
+        "name": "Required native managed update / Windows x64 / real standard setup A-to-B and rollback",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761348528,
+        "name": "Required signed client and maintenance boundaries / Windows CPython 3.11 / strict signed client",
+        "conclusion": "cancelled"
+      },
+      {
+        "id": 140761348597,
+        "name": "Required Linux Flite speech / Ubuntu 24.04 / six actual Flite speech cases",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761348599,
+        "name": "Required portable encrypted backup / Ubuntu CPython 3.11 / strict encrypted transfer",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761348663,
+        "name": "Required portable encrypted backup / Windows CPython 3.11 / strict encrypted transfer",
+        "conclusion": "success"
+      },
+      {
+        "id": 140761349211,
+        "name": "Required current composition / Windows source regressions",
+        "conclusion": "cancelled"
+      }
+    ],
+    "fast_source_actual_failure": {
+      "job_id": 140761349211,
+      "status": "CANCELLED_WITH_ONE_PROVEN_COMPLETED_SUITE_FAILURE",
+      "suite": "tests/studio/test_project_effects.py",
+      "passed": 24,
+      "failed": 1,
+      "skipped": 0,
+      "case": "test_book_plan_legacy_role_wire_stays_stable_and_effects_need_separate_review",
+      "rows": [
+        {
+          "line": 1181,
+          "time": "2026-11-27T22:39:01.9756461Z",
+          "text": "E       AssertionError: Regex pattern did not match."
+        },
+        {
+          "line": 1182,
+          "time": "2026-11-27T22:39:01.9756910Z",
+          "text": "E         Expected regex: 'separate reviewed effect contract'"
+        },
+        {
+          "line": 1183,
+          "time": "2026-11-27T22:39:01.9757612Z",
+          "text": "E         Actual message: 'Reviewed role effects require Book plan schema 2; unchanged narration retains schema 1.'"
+        },
+        {
+          "line": 1184,
+          "time": "2026-11-27T22:39:01.9758165Z",
+          "text": ""
+        },
+        {
+          "line": 1185,
+          "time": "2026-11-27T22:39:01.9758339Z",
+          "text": "tests\\studio\\test_project_effects.py:318: AssertionError"
+        },
+        {
+          "line": 1186,
+          "time": "2026-11-27T22:39:01.9758931Z",
+          "text": "- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-a63e7j_n\\junit.xml -"
+        },
+        {
+          "line": 1187,
+          "time": "2026-11-27T22:39:01.9759564Z",
+          "text": "=========================== short test summary info ==========================="
+        },
+        {
+          "line": 1188,
+          "time": "2026-11-27T22:39:01.9760597Z",
+          "text": "FAILED tests/studio/test_project_effects.py::test_book_plan_legacy_role_wire_stays_stable_and_effects_need_separate_review - AssertionError: Regex pattern did not match."
+        },
+        {
+          "line": 1189,
+          "time": "2026-11-27T22:39:01.9761607Z",
+          "text": "  Expected regex: 'separate reviewed effect contract'"
+        },
+        {
+          "line": 1190,
+          "time": "2026-11-27T22:39:01.9762291Z",
+          "text": "  Actual message: 'Reviewed role effects require Book plan schema 2; unchanged narration retains schema 1.'"
+        },
+        {
+          "line": 1191,
+          "time": "2026-11-27T22:39:01.9763007Z",
+          "text": "======================== 1 failed, 24 passed in 39.10s ========================"
+        }
+      ],
+      "reviewed_fixture_successor": "ed90ccf67a6d086fc56081ff8feb4b0be595d524",
+      "successor_status": "STATIC_NOT_RUN",
+      "other_partial_child_output": "Not counted as a completed overall source phase."
+    }
+  },
+  "v3": {
+    "run_id": 46074881862,
+    "job_id": 140760220219,
+    "conclusion": "cancelled",
+    "strict_completed_source": {
+      "whole_suite_executions": 31,
+      "passed": 650,
+      "failed": 0,
+      "skipped": 0,
+      "groups": [
+        {
+          "label": "academic and document boundaries",
+          "whole_suites": 7,
+          "passed": 129
+        },
+        {
+          "label": "intake, raster, search and replay",
+          "whole_suites": 17,
+          "passed": 425
+        },
+        {
+          "label": "voice configuration and worker cleanup",
+          "whole_suites": 7,
+          "passed": 96
+        }
+      ],
+      "verdicts": [
+        {
+          "line": 685,
+          "time": "2026-11-27T22:16:41.9218016Z",
+          "suite": "tests/academic_integration/test_formatting.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 686,
+          "time": "2026-11-27T22:16:41.9219019Z",
+          "suite": "tests/academic_integration/test_documents.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 687,
+          "time": "2026-11-27T22:16:41.9219937Z",
+          "suite": "tests/academic_integration/test_regeneration.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 688,
+          "time": "2026-11-27T22:16:41.9220874Z",
+          "suite": "tests/academic_integration/test_end_to_end.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 689,
+          "time": "2026-11-27T22:16:41.9221801Z",
+          "suite": "tests/academic_integration/test_citation_ui.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 690,
+          "time": "2026-11-27T22:16:41.9222738Z",
+          "suite": "tests/storage/test_durable_state_publication.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 691,
+          "time": "2026-11-27T22:16:41.9223568Z",
+          "suite": "tests/ui/test_profile_project_exports.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1435,
+          "time": "2026-11-27T22:25:35.4793207Z",
+          "suite": "tests/catalog/test_streaming_intake.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1436,
+          "time": "2026-11-27T22:25:35.4794392Z",
+          "suite": "tests/e2e/test_raster_import.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1437,
+          "time": "2026-11-27T22:25:35.4795755Z",
+          "suite": "tests/e2e/test_raster_ocr_native.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1438,
+          "time": "2026-11-27T22:25:35.4796748Z",
+          "suite": "tests/extract/test_raster_pages.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1439,
+          "time": "2026-11-27T22:25:35.4797659Z",
+          "suite": "tests/ingest/test_batch_continuation.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1440,
+          "time": "2026-11-27T22:25:35.4798685Z",
+          "suite": "tests/ingest/test_batch_continuation_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1441,
+          "time": "2026-11-27T22:25:35.4799975Z",
+          "suite": "tests/ui/test_import_center.py",
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1442,
+          "time": "2026-11-27T22:25:35.4800788Z",
+          "suite": "tests/e2e/test_research_search_cli.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1443,
+          "time": "2026-11-27T22:25:35.4801534Z",
+          "suite": "tests/search/test_federated.py",
+          "passed": 100,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1444,
+          "time": "2026-11-27T22:25:35.4802274Z",
+          "suite": "tests/ui/test_federated_search.py",
+          "passed": 114,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1445,
+          "time": "2026-11-27T22:25:35.4803014Z",
+          "suite": "tests/search/test_search_paging.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1446,
+          "time": "2026-11-27T22:25:35.4803997Z",
+          "suite": "tests/ingest/test_scan_root_binding.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1447,
+          "time": "2026-11-27T22:25:35.4804755Z",
+          "suite": "tests/ingest/test_large_source_intake.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1448,
+          "time": "2026-11-27T22:25:35.4805571Z",
+          "suite": "tests/ingest/test_import_replay_identity.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1449,
+          "time": "2026-11-27T22:25:35.4806409Z",
+          "suite": "tests/ingest/test_terminal_replay_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1450,
+          "time": "2026-11-27T22:25:35.4807325Z",
+          "suite": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1451,
+          "time": "2026-11-27T22:25:35.4808115Z",
+          "suite": "tests/ingest/test_import_publication_point.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3912,
+          "time": "2026-11-27T22:45:38.7973078Z",
+          "suite": "tests/integrations/test_dordiai_voices.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3913,
+          "time": "2026-11-27T22:45:38.7973989Z",
+          "suite": "tests/integrations/test_dordiai_speech.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3914,
+          "time": "2026-11-27T22:45:38.7974779Z",
+          "suite": "tests/integrations/test_dordiai_settings.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3915,
+          "time": "2026-11-27T22:45:38.7975608Z",
+          "suite": "tests/integrations/test_dordiai_convergence.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3916,
+          "time": "2026-11-27T22:45:38.7976455Z",
+          "suite": "tests/integrations/test_dordiai_probe_cancellation.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3917,
+          "time": "2026-11-27T22:45:38.7977224Z",
+          "suite": "tests/ui/test_studio_progress_results.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 3918,
+          "time": "2026-11-27T22:45:38.7977912Z",
+          "suite": "tests/ui/test_worker_cleanup.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ]
+    },
+    "installed_integrity": {
+      "line": 3727,
+      "time": "2026-11-27T22:45:22.9091499Z",
+      "status": "PASS",
+      "passed": 1957,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "expected_failures": false,
+      "portable_complete": true,
+      "portable_cases": 24,
+      "recovery_counts": {
+        "test_backup_retained_audio": 22,
+        "test_state_json_reader": 11,
+        "test_durable_state_publication": 27
+      },
+      "completion_counts": {
+        "tests/assistant/test_workflow_templates.py": 31,
+        "tests/assistant/test_workflow_template_handlers.py": 18,
+        "tests/storage/test_backup_studio_draft.py": 26,
+        "tests/assistant/test_translation_local.py": 39,
+        "tests/assistant/test_translation_documents.py": 20,
+        "tests/ui/test_translation_documents.py": 29,
+        "tests/catalog/test_streaming_intake.py": 16,
+        "tests/e2e/test_raster_import.py": 11,
+        "tests/e2e/test_raster_ocr_native.py": 3,
+        "tests/extract/test_raster_pages.py": 23,
+        "tests/ingest/test_batch_continuation.py": 18,
+        "tests/ingest/test_batch_continuation_cli.py": 3,
+        "tests/ui/test_import_center.py": 42,
+        "tests/e2e/test_research_search_cli.py": 15,
+        "tests/search/test_federated.py": 100,
+        "tests/ui/test_federated_search.py": 114,
+        "tests/search/test_search_paging.py": 27,
+        "tests/ingest/test_scan_root_binding.py": 4,
+        "tests/ingest/test_large_source_intake.py": 6,
+        "tests/storage/test_transcription_backup.py": 143,
+        "tests/ingest/test_import_replay_identity.py": 24,
+        "tests/ingest/test_terminal_replay_registration.py": 10,
+        "tests/ingest/test_txt_replay_registration.py": 7,
+        "tests/ingest/test_import_publication_point.py": 2
+      },
+      "reader_complete": true,
+      "reader_counts": {
+        "test_reader_usability": 33,
+        "test_navigation": 27,
+        "test_progress_voice_actions": 22,
+        "test_player_controls": 37,
+        "test_player_transport": 11,
+        "test_reader_playback": 52,
+        "test_reader_playback_actions": 24
+      },
+      "reader_required": [
+        "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged",
+        "test_completed_synthesis_rechecks_current_source_before_late_playback",
+        "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply",
+        "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic",
+        "test_one_thousand_matching_pronunciation_rules_commit_one_undo_step",
+        "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets",
+        "test_regex_backreference_expansion_is_bounded_inside_the_real_child"
+      ],
+      "find_counts": {
+        "test_find_replace_hooks": 13,
+        "test_reader_navigation_ui": 11,
+        "test_find_replace_ui": 13,
+        "test_find_replace": 31
+      },
+      "audio_export_integrity_counts": {
+        "test_audio_runtime": 32,
+        "test_audio_bundle": 11,
+        "test_export_reconciliation": 28
+      },
+      "incremental_counts": {
+        "test_incremental_backup": 38,
+        "test_incremental_backup_cli": 4,
+        "test_vault": 46,
+        "test_incremental_backup_dialog": 20
+      },
+      "ocr_inventory_cases": [
+        "test_directory_inventory_checks_budget_between_entries",
+        "test_empty_directory_inventory_has_a_bound",
+        "test_unreadable_directory_rejects_entire_inventory"
+      ],
+      "ocr_inventory_exact": true,
+      "state_inventory_exact": true,
+      "clip_backup_exact": true,
+      "clip_backup_cases": [
+        "test_same_path_roundtrip_keeps_managed_project_bytes_but_not_local_origin[False]",
+        "test_same_path_roundtrip_keeps_managed_project_bytes_but_not_local_origin[True]",
+        "test_injected_old_nonce_cannot_be_restored_even_to_the_same_path[studio/.local-origin.json]",
+        "test_injected_old_nonce_cannot_be_restored_even_to_the_same_path[Studio/.LOCAL-ORIGIN.JSON]",
+        "test_injected_old_nonce_cannot_be_restored_even_to_the_same_path[studio/.local-origin.json/copied-authority.json]",
+        "test_snapshot_rejects_missing_or_changed_managed_input[missing]",
+        "test_snapshot_rejects_missing_or_changed_managed_input[tampered]",
+        "test_manifest_consistent_restore_still_requires_exact_managed_inputs[missing]",
+        "test_manifest_consistent_restore_still_requires_exact_managed_inputs[tampered]",
+        "test_snapshot_requires_managed_inputs_used_only_by_historical_revision",
+        "test_snapshot_checks_embedded_job_and_exported_project_inputs[job]",
+        "test_snapshot_checks_embedded_job_and_exported_project_inputs[exported-project]",
+        "test_schema2_external_reference_is_rejected_without_opening_it",
+        "test_portable_case_alias_cannot_hide_a_schema2_input_reference[Studio/projects/portable/project.json]",
+        "test_portable_case_alias_cannot_hide_a_schema2_input_reference[studio/projects/portable/PROJECT.JSON]",
+        "test_portable_case_alias_cannot_hide_a_schema2_input_reference[STUDIO/jobs/render-1/JOB.JSON]",
+        "test_restore_refuses_existing_target_nonce_without_changing_live_authority"
+      ],
+      "manual_nvda": "NOT_RUN",
+      "origin_module_names": [
+        "carr_library",
+        "carr_library.state_backup",
+        "carr_library.ingest.worker",
+        "carr_library.backup_transcription",
+        "carr_library.backup_sidecars",
+        "carr_library.backup_producers",
+        "carr_library.durable_state",
+        "carr_library.application",
+        "carr_library.pending_backup",
+        "carr_library.library_backup",
+        "carr_library.speech.reading",
+        "carr_library.speech.source",
+        "carr_library.ui.speech_dialog",
+        "carr_library.speech.player",
+        "carr_library.ui.reader_playback",
+        "carr_library.speech.runtime",
+        "carr_library.acquisition.providers",
+        "carr_library.academic_integration.doi",
+        "carr_library.speech.session",
+        "carr_library.speech.navigation",
+        "carr_library.ui.pronunciation_dialog",
+        "carr_library.ui.reading_shortcuts",
+        "carr_library.ui.find_replace_dialog",
+        "carr_library.audio_runtime",
+        "carr_library.research.export_file",
+        "carr_library.incremental_backup",
+        "carr_library.incremental_backup_cli",
+        "carr_library.sync.vault",
+        "carr_library.file_publication",
+        "carr_library.ui.incremental_backup_dialog",
+        "carr_library.extract.ocr_runtime",
+        "carr_library.storage.revisions",
+        "carr_library.storage.schema_identity",
+        "carr_library.assistant.translation",
+        "carr_library.assistant.providers",
+        "carr_library.ui.translation_dialog",
+        "carr_library.assistant.profiles",
+        "carr_library.assistant.state",
+        "carr_library.assistant.translation_cli",
+        "carr_library.assistant.llm",
+        "carr_library.assistant.service",
+        "carr_library.studio.cli",
+        "carr_library.ui.assistant_dialog",
+        "carr_library.studio.project",
+        "carr_library.studio.managed_inputs",
+        "carr_library.assistant.templates",
+        "carr_library.ui.assistant_templates",
+        "carr_library.backup_book_audio",
+        "carr_library.backup_effect_presets",
+        "carr_library.audio.effect_presets",
+        "carr_library.assistant.translation_local",
+        "carr_library.assistant.translation_documents",
+        "carr_library.ui.translation_documents",
+        "carr_library.speech._wave_output",
+        "carr_library.speech.playlist",
+        "carr_library.speech.playback_devices",
+        "carr_library.ui.audio_playback",
+        "carr_library.ui.desktop_app",
+        "carr_library.studio.clips",
+        "carr_library.ui.save_all",
+        "carr_library.operations.broker",
+        "carr_library.backup_playback_queue",
+        "carr_library.audio.conversion_batch",
+        "carr_library.audio.conversion_batch_cli",
+        "carr_library.audio.conversion",
+        "carr_library.ui.audio_conversion_batch",
+        "carr_library.ui.audio_conversion",
+        "carr_library.catalog.intake",
+        "carr_library.citations.pdf_review_attestation",
+        "carr_library.citations.text_attestation",
+        "carr_library.extract.document_formats",
+        "carr_library.extract.page_ocr",
+        "carr_library.extract.raster_pages",
+        "carr_library.extract.runtime_identity",
+        "carr_library.ingest.asset_copy",
+        "carr_library.ingest.batch_cli",
+        "carr_library.ingest.batch_pages",
+        "carr_library.ingest.batch_scan",
+        "carr_library.ingest.batches",
+        "carr_library.ingest.catalog_asset_copy",
+        "carr_library.ingest.pipeline",
+        "carr_library.ingest.retained_assets",
+        "carr_library.ui.import_center",
+        "carr_library.ingest.publication",
+        "carr_library.ui.source_review",
+        "carr_library.citations.anchors",
+        "carr_library.ui.federated_search",
+        "carr_library.search.paging",
+        "carr_library.search.federated",
+        "carr_library.search.literal",
+        "carr_library.search.semantic_windows",
+        "carr_library.search.thematic",
+        "carr_library.semantic",
+        "carr_library.integrations.transcription_backup",
+        "carr_library.integrations.transcription_values",
+        "carr_library.integrations.transcription_scope",
+        "carr_library.integrations.transcription_runtime",
+        "carr_library.integrations.transcription_protocol",
+        "carr_library.integrations.transcription_exports",
+        "carr_library.transcription"
+      ]
+    },
+    "source_hunspell_c_api": {
+      "label": "source-only exact pinned Hunspell C API",
+      "line": 4707,
+      "time": "2026-11-27T22:46:45.6917130Z",
+      "status": "PASS",
+      "mode": "source",
+      "source_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+      "checks": 28,
+      "module_origins": 12,
+      "library_sha256": "ab94c765ba96a7cb20f2ca7c4d9a4ac625a570bed84b7bdb8d743ca5eee45e0a",
+      "source_inventory_sha256": "f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc",
+      "qualification": "Exact source-only execution; no installed-wheel qualification",
+      "dictionary_quality": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "distribution_clearance": "NOT_GRANTED"
+    },
+    "native_studio_step16": {
+      "label": "completed actual native SAPI, scene, keyboard and restart",
+      "line": 5044,
+      "time": "2026-11-27T22:47:11.8643911Z",
+      "status": "PASS",
+      "checks": 69,
+      "synthetic_rest_calls": 2,
+      "native_keyboard": "PASS",
+      "live_google_api": "WAITING_INPUT",
+      "billing_and_quality": "WAITING_INPUT",
+      "native_approval_and_file_pickers": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "source_publication_step17": {
+      "status": "PARTIAL_THEN_CANCELLED",
+      "final_whole_suite_aggregate": "NOT_EMITTED",
+      "cancel": {
+        "line": 7105,
+        "time": "2026-11-27T22:56:00.6471924Z",
+        "text": "##[error]The operation was canceled."
+      }
+    },
+    "remaining_steps": [
+      {
+        "name": "Require publication, recording, portable clip and reader source contracts",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "number": 17
+      },
+      {
+        "name": "Verify installed publication, recording, clips and EPUB3.3 without egress",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 18
+      },
+      {
+        "name": "Require progress isolation and actual selected-voice rendering regressions",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 19
+      },
+      {
+        "name": "Require Advanced translation permission and checkpoint regressions",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 20
+      },
+      {
+        "name": "Require local proposal scope and review regressions",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 21
+      },
+      {
+        "name": "Native local proposal and actual loopback HTTP with external egress blocked",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 22
+      },
+      {
+        "name": "Validate local services, DSP, integrity and provider permission boundaries",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 23
+      },
+      {
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 49
+      }
+    ]
+  },
+  "asr": {
+    "run_id": 46074881820,
+    "windows": {
+      "job_id": 140760173463,
+      "conclusion": "cancelled",
+      "source": {
+        "whole_suites": 18,
+        "passed": 512,
+        "failed": 0,
+        "skipped": 0,
+        "verdicts": [
+          {
+            "line": 1275,
+            "time": "2026-11-27T22:27:45.4811626Z",
+            "suite": "tests/transcription/test_supplied_worker_bridge.py",
+            "passed": 62,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1276,
+            "time": "2026-11-27T22:27:45.4813785Z",
+            "suite": "tests/transcription/test_v5_worker_profile.py",
+            "passed": 39,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1277,
+            "time": "2026-11-27T22:27:45.4814872Z",
+            "suite": "tests/transcription/test_runtime_interpreter.py",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1278,
+            "time": "2026-11-27T22:27:45.4815964Z",
+            "suite": "tests/operations/test_transcription_admission.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1279,
+            "time": "2026-11-27T22:27:45.4817114Z",
+            "suite": "tests/assistant/test_supplied_transcription.py",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1280,
+            "time": "2026-11-27T22:27:45.4818650Z",
+            "suite": "tests/ui/test_progress_job_review.py",
+            "passed": 48,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1281,
+            "time": "2026-11-27T22:27:45.4819808Z",
+            "suite": "tests/transcription/test_protocol_fixture.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1282,
+            "time": "2026-11-27T22:27:45.4821008Z",
+            "suite": "tests/transcription/test_service.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1283,
+            "time": "2026-11-27T22:27:45.4822838Z",
+            "suite": "tests/transcription/test_admission_boundaries.py",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1284,
+            "time": "2026-11-27T22:27:45.4823930Z",
+            "suite": "tests/transcription/test_runtime_admission.py",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1285,
+            "time": "2026-11-27T22:27:45.4824888Z",
+            "suite": "tests/transcription/test_restore.py",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1286,
+            "time": "2026-11-27T22:27:45.4825831Z",
+            "suite": "tests/storage/test_transcription_backup.py",
+            "passed": 143,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1287,
+            "time": "2026-11-27T22:27:45.4826786Z",
+            "suite": "tests/ui/test_transcription_dialog.py",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1288,
+            "time": "2026-11-27T22:27:45.4827980Z",
+            "suite": "tests/e2e/test_transcription_cli.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1289,
+            "time": "2026-11-27T22:27:45.4828943Z",
+            "suite": "tests/transcription/test_unified_authority.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1290,
+            "time": "2026-11-27T22:27:45.4829938Z",
+            "suite": "tests/transcription/test_export_publication.py",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1291,
+            "time": "2026-11-27T22:27:45.4831028Z",
+            "suite": "tests/transcription/test_native_profiles_fixture.py",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1292,
+            "time": "2026-11-27T22:27:45.4832157Z",
+            "suite": "tests/transcription/test_protocol_fixture_windows.py",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          }
+        ]
+      },
+      "installed": {
+        "status": "PARTIAL_THEN_CANCELLED",
+        "completed_whole_suite_aggregate": "NOT_EMITTED"
+      },
+      "native": {
+        "status": "NOT_RUN_IN_THIS_JOB",
+        "separate_main_native_report": "See main.full_bundle.actual_installed_native_transcription"
+      },
+      "steps": [
+        {
+          "name": "Verify retained inputs, actual child protocol, recovery and CLI",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Verify the same whole suites against the installed package",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "number": 6
+        },
+        {
+          "name": "Install actual native desktop controls",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Exercise actual native controls and shared background operation",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        }
+      ],
+      "cancel": {
+        "line": 1899,
+        "time": "2026-11-27T22:55:53.0062529Z",
+        "text": "##[error]The operation was canceled."
+      }
+    },
+    "linux": {
+      "status": "PASS_FOR_EXACT_HEAD",
+      "source_whole_suites": 17,
+      "source_passed": 514,
+      "installed_whole_suites": 17,
+      "installed_passed": 514,
+      "failed": 0,
+      "skipped": 0,
+      "prior_exact_evidence": "9a171cd47640633b6a2eff32e4706e90c72c6dd2"
+    }
+  },
+  "artifact_metadata": [
+    {
+      "workflow": "main",
+      "id": 15237130226,
+      "name": "carr-completion-source-b7963b00220c8aa2431750c3afcbdcad2afe5aab-1",
+      "size_in_bytes": 67575,
+      "digest": "sha256:d40e3dca9b27e7a030aad3fdb01bc7ae32c66f65a7201385b0a25a21eb13d534",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15236860661,
+      "name": "carr-windows-b7963b00220c8aa2431750c3afcbdcad2afe5aab-1",
+      "size_in_bytes": 3215505,
+      "digest": "sha256:aba5a06a74ae13a891aba1617938876ceaf1766461d49ed4415377730fa4ee32",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15236213843,
+      "name": "carr-phase-diagnostics-b7963b00220c8aa2431750c3afcbdcad2afe5aab-1",
+      "size_in_bytes": 158834,
+      "digest": "sha256:95966ccbbd9bdd1d01f5202ab9cd93884139c7a105fc4566f2f62f2d4a07bb66",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15235931319,
+      "name": "carr-sync-windows-2022-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 5122385,
+      "digest": "sha256:fe637e4ce5e0b848283f87bdbd8fcb4e84285c4eaf85d798d0d3e8309e9268e1",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15235666987,
+      "name": "managed-update-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 88125,
+      "digest": "sha256:a685514ffc9118e740d0518fbce548e4f3423b12ab5ae539562064a8e72033ad",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15235646388,
+      "name": "carr-flite-46074881860-1",
+      "size_in_bytes": 16868,
+      "digest": "sha256:6bee5f40ae918f2ed0fc74a47455ebdcb46737199a6e3b492fbfb6aed01bc6f4",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15235480776,
+      "name": "carr-sync-ubuntu-24.04-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 17584,
+      "digest": "sha256:1de3bb6d922d73c62acbbe58e4c0123e51fd7706d16265c52cc96bbffd61b7fd",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15235010549,
+      "name": "carr-keyboard-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 8084,
+      "digest": "sha256:168cd5b669b3c73405e81ac39b3b60d654f83e6ed5437b4740457b1fecffbbcf",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15234619554,
+      "name": "trusted-client-ubuntu-24.04-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 59219,
+      "digest": "sha256:65c3e169123ce04ee87170207b9190e8e12bfedb82f3c288c1e3f0f4a4e0f20a",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "main",
+      "id": 15234079031,
+      "name": "carr-workflow-syntax-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 14160,
+      "digest": "sha256:9dc4d27e57114bb34e5c0957f52ea6636604f40d930817ba30d2da6a2ecb4413",
+      "workflow_run": {
+        "id": 46074881860,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "v3",
+      "id": 15235934416,
+      "name": "carr-v3-evidence-46074881862-1",
+      "size_in_bytes": 815403,
+      "digest": "sha256:8b241bf0b249efc2374610e57be81abdeb906a4a55fd883d65967f0da9121387",
+      "workflow_run": {
+        "id": 46074881862,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "v3",
+      "id": 15233854700,
+      "name": "carr-flite-46074881862-1",
+      "size_in_bytes": 16875,
+      "digest": "sha256:63ceb1d65b05cd3d760b43d76c3d4e0265e9b7ab4d7e01933af53e47d1edf688",
+      "workflow_run": {
+        "id": 46074881862,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "asr",
+      "id": 15234984993,
+      "name": "carr-asr-windows-2022-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 19339,
+      "digest": "sha256:e524399cfc36db525083368e395e853a7b03dddf8266eb4555323d6d47711b0c",
+      "workflow_run": {
+        "id": 46074881820,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    },
+    {
+      "workflow": "asr",
+      "id": 15234479340,
+      "name": "carr-asr-ubuntu-24.04-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "size_in_bytes": 31933,
+      "digest": "sha256:e7ae6bd5cfd6737812cc9410a7f9d9ed2ae0c50aea4db787c973e8b4b0c0b1b6",
+      "workflow_run": {
+        "id": 46074881820,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3"
+      },
+      "zip_contents_inspected": false
+    }
+  ],
+  "related_exact_evidence": {
+    "managed_A_to_B": "addce64bb3e4b126fc46fb0febef096181d13970",
+    "asr_linux": "9a171cd47640633b6a2eff32e4706e90c72c6dd2"
+  },
+  "limitations": [
+    "No completed result transfers to e763 or future source.",
+    "Actual missing Windows output and waveOut/monitoring failures remain failed hardware-dependent gates.",
+    "No global/native/full-bundle/release or owner-archive qualification is inferred from partial passes.",
+    "Cancellation is recorded separately from completed failures.",
+    "Source case totals are completed suite executions, not deduplicated application tests."
+  ]
+}

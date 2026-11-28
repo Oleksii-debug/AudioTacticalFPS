@@ -77,6 +77,11 @@ def _require_windows():
         raise ValueError('Ці локальні аудіокомпоненти призначені для Windows x64.')
 
 
+def _show_distribution_limits():
+    # The pinned acquisition/verification contract admits only the owner-local profile.
+    print('Лише локальне використання власником. Право на публічне розповсюдження пакета не підтверджено; комплект вихідних кодів сторонніх залежностей неповний.')
+
+
 def _show_plan(records, output):
     print('Локальне налаштування аудіо Резонанс')
     print('Буде завантажено три зафіксовані публічні файли FFmpeg та його вихідних матеріалів.')
@@ -87,6 +92,7 @@ def _show_plan(records, output):
     print('Програма перевірить розміри й SHA-256 за наявним source-lock.')
     print('Документи, голоси, ключі API й налаштування бібліотеки не надсилаються.')
     print('Налаштування двигунів не змінюються автоматично.')
+    _show_distribution_limits()
 
 
 def _prepare(output, records, acquire, prepare):
@@ -114,6 +120,7 @@ def _prepare(output, records, acquire, prepare):
 
 def _show_result(report):
     print('Підготовку завершено. Файли перевірено; аудіопрограми не запускалися.')
+    _show_distribution_limits()
     print('Відкрийте в Резонанс «Local audio, voice and music engines».')
     print('Натисніть «Choose FFmpeg executable» і виберіть:')
     print(report['tools']['ffmpeg'])

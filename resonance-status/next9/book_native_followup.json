@@ -1,0 +1,60 @@
+{
+  "schema": "carr-native-book-correction/1",
+  "status": "DRAFT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "observed_failure": {
+    "commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "run": 46031173898,
+    "job": 140615140983,
+    "evidence_blob": "7370c67a3bce2d3b73a87c955557779a7d0a4480",
+    "last_pass": "confirmation belongs to the book dialog: Prepare reviewed book items",
+    "last_pass_utc": "2026-11-27T17:58:17.7833464Z",
+    "outer_timeout_utc": "2026-11-27T18:35:33.7236323Z",
+    "diagnosis": "The next immediate default-No focus assertion had no settling interval; its failure path ended the suspended parent while native MessageBox was still active. The original probe had no process watchdog. An actual default-focus cause is not proven by the missing traceback; the successor reports it and still fails if No is not observed."
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "4dd4c91feeaa3c3c08cf78c01d3f8b877a95085a",
+      "sha": "4f0d1a8e006bf43963f00d3dcd6f284a2c8f5f67"
+    }
+  ],
+  "production_changes": [],
+  "retained": [
+    "All35 original literal check sites",
+    "All35 required gate labels:23 behavior and12 installed-source identities",
+    "Actual native default-No refusal and explicit native Yes",
+    "Actual selected SAPI synthesis, measured chapter WAVs and source receipts",
+    "Archived-source refusal and exact original/output bytes",
+    "Existing240s work deadline",
+    "Exact pinned external FFmpeg/FFprobe and current12 installed module sources"
+  ],
+  "new_evidence": {
+    "required_gate_count": 36,
+    "installed_module_count": 12,
+    "required_check": "native failure answers only owned question No before unwinding active modal",
+    "required_field": {
+      "native_failure_cleanup": "PASS"
+    },
+    "actual_control": "Real nested wx.Dialog and native MessageBox controlled callback failure must answer only owned No, then cancel only its active wx modal, preserving the Book parent and no jobs/output/synthesis.",
+    "watchdog_seconds": 300,
+    "default_no_wait_seconds": 5,
+    "cleanup": "Real captured host Close, scheduler/native desktop cleanup and retained worker finalizers; watchdog disarms only after temporary-directory disposal."
+  },
+  "peer_review": {
+    "a222064da8cd5361a0388308624ee84538d1a9cf": {
+      "progress": "ACCEPTED_STATIC_NOT_RUN",
+      "canonical": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    "final_successor_delta": "Only watchdog disarm moved after TemporaryDirectory disposal, with explicit owner-release assertion."
+  },
+  "execution": {
+    "syntax": "NOT_RUN",
+    "portable": "NOT_RUN",
+    "windows_native": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN"
+  },
+  "refs_changed": false
+}

@@ -1,0 +1,272 @@
+{
+  "schema": "resonance-b-source-composition/1",
+  "status": "ACCEPTED_SOURCE_COMPOSITION_RUNTIME_PENDING",
+  "base": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "immutable_for_configured_update": true
+  },
+  "changes": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "831c4b891eaee4ad9a1ec52ec6a9c137bad6012b",
+      "git_blob": "1f0c67ee4ad51735fa3805388317c850f482258a"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "9a2f5660178641bb8917f1848de021f9d9753a4a",
+      "git_blob": "69dceb131561dbc78077cfb5451c524797db7e15"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "preimage": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+      "git_blob": "14517f2e4018942a2a0a4c56ce6c59f38de861a4"
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_controls.py",
+      "preimage": "e07f220a0143196b042eb0b301edd43c86073dc1",
+      "git_blob": "d68f5bccde6ebb00809fdc192af1e9643df9c1e6"
+    },
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "preimage": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+      "git_blob": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "c9d5c070e0590b252d055be7f3acfa73db01eb19",
+      "git_blob": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7"
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "62845cc0eab7fb5485ca4f6bce9279a7fc059207",
+      "git_blob": "4965fd48b26b87e75ba14b9e470780943edab649"
+    },
+    {
+      "path": "resonance-status/next66/full_execution_gate_component.json",
+      "preimage": null,
+      "git_blob": "babddbf7327adfe65082baf789c6bf799a190b73"
+    },
+    {
+      "path": "resonance-status/next66/full_execution_gate_peer.json",
+      "preimage": null,
+      "git_blob": "b2783b58d01b151ea9726251ba85baa086934d5d"
+    },
+    {
+      "path": "resonance-status/next66/native_component.json",
+      "preimage": null,
+      "git_blob": "191dd9b53cd20986f90f6fddf9832c8dad530ebf"
+    },
+    {
+      "path": "resonance-status/next66/native_peer.json",
+      "preimage": null,
+      "git_blob": "619a573b0beb095ca0bbadd03a79e1db71acd2dc"
+    },
+    {
+      "path": "resonance-status/next66/recording_component.json",
+      "preimage": null,
+      "git_blob": "5675c3f045d87ba89130c121e77b7da7b671dfe1"
+    },
+    {
+      "path": "resonance-status/next66/recording_peer.json",
+      "preimage": null,
+      "git_blob": "6bca68135dc542682bee531aeece849ece332f2e"
+    },
+    {
+      "path": "resonance-status/next66/library_component.json",
+      "preimage": null,
+      "git_blob": "e2868e09151c0eac9d57e8446b1cd0b86001eaf4"
+    },
+    {
+      "path": "resonance-status/next66/library_peer.json",
+      "preimage": null,
+      "git_blob": "2d2f7db485636f041e1769f7ace5b4c19541fd60"
+    },
+    {
+      "path": "resonance-status/next66/library_pin_peer.json",
+      "preimage": null,
+      "git_blob": "56df294a4fca959857b9be424bdf9cabb126a8a0"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_studio.json",
+      "preimage": null,
+      "git_blob": "557b64c18b1c2c796c57f8f2efb778bc4b1579c4"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_update_linux.json",
+      "preimage": null,
+      "git_blob": "cd1073c510ff8e4edbea743ca4c9690bcf42d320"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_update_windows.json",
+      "preimage": null,
+      "git_blob": "3feb7e7a369fbf9a6b599efca6e27a018c6dcec5"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_update_tls.json",
+      "preimage": null,
+      "git_blob": "914af02a9d6c80d5811148a77257ce50d5f6f459"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_profile.json",
+      "preimage": null,
+      "git_blob": "d20bdf329c3f58e40f2050881f31b5c18c5db415"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_capacity_linux.json",
+      "preimage": null,
+      "git_blob": "d575673830f4659e138b6fb9ea0bfee02ad1bf37"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_library_failure.json",
+      "preimage": null,
+      "git_blob": "2e01da54ae3e96b3577139c1870e553dac8044cc"
+    },
+    {
+      "path": "resonance-status/next66/capacity_path_analysis.json",
+      "preimage": null,
+      "git_blob": "bbadedc88c82d760e0fe2c1352c6c4edef6c993f"
+    },
+    {
+      "path": "resonance-status/next66/actual_a3_corpus_1000.json",
+      "preimage": null,
+      "git_blob": "9dad0cc262c969d2f4b0b4350848326fde24b86d"
+    },
+    {
+      "path": "resonance-status/next61/actual_5b2_launchers_conversion_linux.json",
+      "preimage": null,
+      "git_blob": "da9ee41116118d650f8605c522b204037645fc07"
+    },
+    {
+      "path": "resonance-status/next61/actual_5b2_conversion_windows.json",
+      "preimage": null,
+      "git_blob": "611d4f7601855370905c482f4ac49fac742f7040"
+    },
+    {
+      "path": "resonance-status/next61/actual_5b2_bibliography.json",
+      "preimage": null,
+      "git_blob": "659388d4d4bede86949c5760fdf2b0f8d5d7be94"
+    },
+    {
+      "path": "resonance-status/next61/actual_5b2_source98.json",
+      "preimage": null,
+      "git_blob": "5baa790acc2ed1102d33c827dda9ce965e206c07"
+    },
+    {
+      "path": "resonance-status/next61/actual_5b2_asr_linux.json",
+      "preimage": null,
+      "git_blob": "9f06354f7904f222a0449b6efab62adfc256226a"
+    },
+    {
+      "path": "resonance-status/next61/actual_5b2_asr_windows.json",
+      "preimage": null,
+      "git_blob": "0238f2f8d073eb06f4ea6df6862524295a97daac"
+    }
+  ],
+  "live_changes": 7,
+  "evidence_files": 24,
+  "gate_pin_audit": {
+    "gates": 54,
+    "pins": 823,
+    "mismatches": 0,
+    "missing": 0
+  },
+  "components": {
+    "full_gate": {
+      "manifest": "babddbf7327adfe65082baf789c6bf799a190b73",
+      "peer": "b2783b58d01b151ea9726251ba85baa086934d5d"
+    },
+    "native_a3": {
+      "manifest": "191dd9b53cd20986f90f6fddf9832c8dad530ebf",
+      "peer": "619a573b0beb095ca0bbadd03a79e1db71acd2dc"
+    },
+    "recording_clock": {
+      "manifest": "5675c3f045d87ba89130c121e77b7da7b671dfe1",
+      "peer": "6bca68135dc542682bee531aeece849ece332f2e"
+    },
+    "library_diagnostic": {
+      "manifest": "e2868e09151c0eac9d57e8446b1cd0b86001eaf4",
+      "source_peer": "2d2f7db485636f041e1769f7ace5b4c19541fd60",
+      "pin_peer": "56df294a4fca959857b9be424bdf9cabb126a8a0"
+    }
+  },
+  "inverses": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "hunks": 4,
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "hunks": 3,
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "hunks": 2,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_recording_controls.py",
+      "hunks": 1,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "hunks": 3,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "hunks": 1,
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "hunks": 2,
+      "inverse_exact": true
+    }
+  ],
+  "inventory": {
+    "full_source_wholes": 490,
+    "source_shards": [
+      123,
+      123,
+      122,
+      122
+    ],
+    "main_fast_wholes": 182,
+    "main_installed_selectors": 339,
+    "v3_source_wholes": 220,
+    "v3_installed_wholes": 199,
+    "studio_each_mode": 320,
+    "updater_each_mode": 122,
+    "tls_each_mode": 15,
+    "capacity_each_mode": 315,
+    "recording_cases": 30,
+    "recording_functions": 21
+  },
+  "preserved": {
+    "full_source_case_and_function_obligations": true,
+    "per_suite_600_seconds": true,
+    "v3_source_75_minutes": true,
+    "installed_120_minutes": true,
+    "v3_job_300_minutes": true,
+    "library_internal_watchdog_parent_seconds": [
+      40,
+      60,
+      180
+    ],
+    "required_native_six_checks": true,
+    "owned_payload_and_full_tree_authority": true,
+    "permissions_and_retention": true
+  },
+  "execution": {
+    "new_independent_full_branch": true,
+    "pr173_head_remains": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_and_installed_and_native": "NOT_RUN_ON_B",
+    "historical_receipts": "Each included receipt binds its own exact earlier source. No verdict is transferred to B.",
+    "capacity_two_million": "A3 current run pending; no qualification claimed",
+    "library_opening_cause": "Not yet established. Diagnostic retains original constructor/status evidence."
+  }
+}

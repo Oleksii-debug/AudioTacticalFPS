@@ -1,0 +1,55 @@
+{
+  "schema": "carr-bounded-peer-review/1",
+  "created_utc": "2026-11-28 07:25:18 UTC",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "path": ".github/workflows/carr-configured-update-native.yml",
+  "preimage": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+  "successor": "14517f2e4018942a2a0a4c56ce6c59f38de861a4",
+  "exact_inverse": true,
+  "changes": [
+    {
+      "oldLine": 30,
+      "newLine": 30,
+      "before": [
+        "      CARR_CONFIGURED_SOURCE_A: '8f24cae6dbb657854a07dcb801f77296f3b7e4e3'"
+      ],
+      "after": [
+        "      CARR_CONFIGURED_SOURCE_A: '7bfdbe2ce454bfa83bb2309ee897aaf131d3411f'"
+      ]
+    },
+    {
+      "oldLine": 73,
+      "newLine": 73,
+      "before": [
+        "          @{ source_a=$sourceA; source_b=$sourceB; baseline_policy='immutable corrected configured updater A2; current native proof required'; version_policy='Exact committed wheels; synthetic build1 to2'; runtime_profile='Exact56 pinned full trusted-client wheels, original Python and native DLLs; no model/audio/Node payload' } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')"
+      ],
+      "after": [
+        "          @{ source_a=$sourceA; source_b=$sourceB; baseline_policy='immutable A3 with closed runtime-code admission and exact supervisor launch; current native proof required'; version_policy='Exact committed wheels; synthetic build1 to2'; runtime_profile='Exact56 pinned full trusted-client wheels, original Python and native DLLs; no model/audio/Node payload' } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')"
+      ]
+    }
+  ],
+  "actual_baseline": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "parent": "72713056f6da48a327ce269dc805a42eb3bd1b52",
+    "complete_tree_entries": 2045,
+    "source_binding": {
+      "carr-library/src/carr_library/security/update_handoff.py": "72ec774f28f195589498d95a76da788dbcc3416c",
+      "carr-library/src/carr_library/security/update_runtime.py": "b511efb6bf5ff6d38d1e6df42854501150b20065",
+      "carr-library/src/carr_library/security/update_host.py": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff",
+      "carr-library/scripts/windows_configured_update_smoke.py": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91",
+      "carr-library/tests/audio/test_recording_controls.py": "e07f220a0143196b042eb0b301edd43c86073dc1"
+    }
+  },
+  "findings": [
+    "The only two line changes bind immutable published A3 and describe its corrected runtime-code admission and exact supervisor launch.",
+    "Actual Git commit/tree were independently fetched, nontruncated; handoff72ec/runtimeb511 and unchanged host10ef/probe247f match the published baseline.",
+    "All native assertions,25 labels/15 origins, original56-wheel trusted profile, A/B source binding, real restart/rollback controls and every deadline remain byte-identical.",
+    "The policy text explicitly requires current native proof; no prior A2/B result is transferred."
+  ],
+  "limitations": [
+    "No YAML/native execution performed by this peer.",
+    "No actual activation, restart or production installation success is claimed."
+  ]
+}

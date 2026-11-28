@@ -1,0 +1,1033 @@
+{
+  "schema": "carr-gate-handoff/1",
+  "created_utc": "2026-11-28 01:33:48 UTC",
+  "status": "STATIC_NOT_RUN",
+  "component": "Frozen managed voice lifecycle/UI/native and current reviewed fixture/projection gate reconciliation",
+  "base_head": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "fc1a0828613971d825c2b8a8e6c486a15c6d7f84",
+      "after": "dd5f34e683f674cede473664c17af532e901db8b"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "f6c0f8775a6da838d48fd862931197c256113d37",
+      "after": "be8d027d73cfd0a8a4f70ae77312429ff37d827c"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "38bf6f7030350aa0165a2f9f40abd0b5ff48c1f9",
+      "after": "7a1bc73c9d5fdd5d262d516ac273ae89e722372f"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "before": "5a80f0c5e615113c57912fcfa4a7d03e3e9813d6",
+      "after": "ca044280a3bdd91832836111c5b6c5b467738bd2"
+    }
+  ],
+  "dependencies": {
+    "voice_core": "c469c42421df0a373469d85e34a5fc7664620736",
+    "voice_provider": "a69d154f20d6eba97022a04027c2cd328070c43f",
+    "voice_ownership": "469e4d403e4cd9a96144bae5f6210afee060ef94",
+    "voice_ui": "4920a84c37112bdedeaec9e05e53dcd068cdf817",
+    "voice_native": "4912c7b84fdf39914fafa4f286e0b57233e1f2ad",
+    "actual_ui_fixture_corrections": "edd2b68170ba49062471d3b7c48429a9a3290675",
+    "converter_reader_diagnostics": "49c695be05873b59627fd6960f6008fc6bc8661d",
+    "projection": "b0d0c7225a577f5e584f92fbdc62b7f1f6ff1254",
+    "converter_xml_and_fresh_state": "b42ac97c29d709973e565207814afdd08e50fa17",
+    "converter_fresh_state_test": "e1430ee06f64fd55e472c9cda884bb433e2d570d",
+    "ebook_test": "63a70758799bfa88bc00f042d49a029a4f028a7b",
+    "publication_boundaries_test": "92af546865656226faceae9c1e1cb4ea1b97a64d",
+    "converter_final_diagnostic_union": "7ad123144987a7caf2d4d4f087088a478b92e88f",
+    "converter_structural_diagnostic_tests": "16b19effb90f86ebc7b2b595de9441b69e28d767",
+    "converter_structural_diagnostic_support": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7"
+  },
+  "whole_lanes": [
+    {
+      "lane": "mainfast",
+      "prior_suites": 143,
+      "required_suites": 164,
+      "added_whole_paths": [
+        "tests/audio/test_voice_package_management.py",
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/integrations/test_dordiai_probe_cancellation.py",
+        "tests/integrations/test_dordiai_convergence.py",
+        "tests/audio/test_bundled_runtime_settings.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py",
+        "tests/search/test_window_catalog_projection.py",
+        "tests/ui/test_ebook_dialog.py"
+      ]
+    },
+    {
+      "lane": "mainsource",
+      "prior_suites": 459,
+      "required_suites": 471,
+      "added_whole_paths": [
+        "tests/audio/test_voice_package_management.py",
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/storage/test_state_backup_portability.py",
+        "tests/search/test_window_catalog_projection.py"
+      ]
+    },
+    {
+      "lane": "installed",
+      "prior_suites": 303,
+      "required_suites": 320,
+      "added_whole_paths": [
+        "tests/audio/test_voice_package_management.py",
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py",
+        "tests/search/test_window_catalog_projection.py",
+        "tests/ui/test_ebook_dialog.py"
+      ]
+    },
+    {
+      "lane": "v3source",
+      "prior_suites": 180,
+      "required_suites": 201,
+      "added_whole_paths": [
+        "tests/audio/test_voice_package_management.py",
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/integrations/test_dordiai_probe_cancellation.py",
+        "tests/integrations/test_dordiai_convergence.py",
+        "tests/audio/test_bundled_runtime_settings.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py",
+        "tests/search/test_window_catalog_projection.py",
+        "tests/ui/test_ebook_dialog.py"
+      ]
+    },
+    {
+      "lane": "v3installed",
+      "prior_suites": 159,
+      "required_suites": 180,
+      "added_whole_paths": [
+        "tests/audio/test_voice_package_management.py",
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/integrations/test_dordiai_probe_cancellation.py",
+        "tests/integrations/test_dordiai_convergence.py",
+        "tests/audio/test_bundled_runtime_settings.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py",
+        "tests/search/test_window_catalog_projection.py",
+        "tests/ui/test_ebook_dialog.py"
+      ]
+    }
+  ],
+  "reviewed_contracts": [
+    {
+      "path": "tests/audio/test_voice_package_management.py",
+      "count": 30,
+      "functions": [
+        "test_registration_adds_only_owner_lock_and_exact_current_binding",
+        "test_install_requires_exact_rights_before_owner_mutation",
+        "test_actual_synthetic_owner_install_refreshes_complete_inventory_and_rights",
+        "test_actual_version_activation_keeps_both_immutable_versions_and_rebinds_review",
+        "test_first_managed_install_cannot_retarget_a_legacy_identity",
+        "test_review_never_promotes_an_undeclared_production_language",
+        "test_changed_archive_is_refused_before_install_and_preserves_settings",
+        "test_actual_owner_child_cannot_connect_or_start_an_unowned_child",
+        "test_actual_slow_owner_is_reaped_before_cancellation_releases_admission",
+        "test_owner_helpers_are_captured_and_checked_again_inside_actual_child",
+        "test_owner_install_cannot_rebind_an_unrelated_runtime_change",
+        "test_replaced_library_is_refused_before_any_owner_child_or_recreation",
+        "test_actual_export_contains_exact_reviewed_version_and_preserves_originals",
+        "test_export_requires_separate_exact_permission_before_owner_read",
+        "test_actual_revoke_or_delete_retains_local_revocation_without_legacy_fallback",
+        "test_delete_needs_exact_reviewed_action_before_child",
+        "test_removal_rechecks_review_after_the_actual_owner_lock_is_acquired",
+        "test_changed_ancestor_alias_is_refused_with_same_reference_and_lock_leaf_identities",
+        "test_real_concurrent_stream_lock_waits_before_hashing_administrative_byte"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_management_state.py",
+      "count": 25,
+      "functions": [
+        "test_explicit_engine_cas_refuses_stale_unmanaged_parent_before_any_write",
+        "test_explicit_engine_cas_also_refuses_a_management_binding_added_later",
+        "test_generic_engine_changes_preserve_dormant_binding_instead_of_erasing_revocation",
+        "test_unreviewed_generic_settings_cannot_create_or_edit_managed_authority",
+        "test_management_registration_preserves_latest_unrelated_voice_preferences",
+        "test_cancelled_registration_preserves_all_current_settings_and_manifest",
+        "test_stale_registration_revision_refuses_before_owner_child",
+        "test_passive_binding_decoder_refuses_untyped_or_external_authority",
+        "test_passive_restore_never_opens_external_runtime_and_disables_old_authority",
+        "test_unmanaged_restore_keeps_exact_existing_settings_bytes",
+        "test_real_state_snapshot_restore_keeps_source_bytes_and_makes_binding_dormant",
+        "test_complete_backup_restores_only_dormant_declarations_without_external_assets",
+        "test_real_same_byte_source_substitution_is_refused_by_held_source_boundary",
+        "test_actual_settings_commit_survives_late_scope_or_interruption"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_reference_management.py",
+      "count": 30,
+      "functions": [
+        "test_actual_pcm_and_owner_child_create_exact_local_data_without_installing",
+        "test_no_reference_or_owner_read_before_exact_consent",
+        "test_arbitrary_wav_is_not_converted_into_other_backend_profiles",
+        "test_create_requires_both_current_permission_and_recording_review",
+        "test_exact_source_metadata_or_registration_change_rejects_old_review",
+        "test_unsupported_pcm_shape_is_an_explicit_error_before_native_inspection",
+        "test_truncated_pcm_is_not_a_successful_reference",
+        "test_measured_quality_warnings_are_numeric_not_speaker_or_model_claims",
+        "test_profile_and_transcript_fields_are_explicit_and_bounded",
+        "test_occupied_destination_fails_before_any_external_or_native_reference_read",
+        "test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation",
+        "test_cancel_after_prepared_owner_archive_keeps_external_destination_absent"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_protected_management.py",
+      "count": 15,
+      "functions": [
+        "test_actual_export_uses_same_envelope_and_exact_owner_data",
+        "test_inspection_deletes_plaintext_before_return_and_apply_freshly_rechecks",
+        "test_protected_apply_requires_fresh_exact_permission_before_decryption",
+        "test_wrong_password_never_enters_owner_inspection_or_install",
+        "test_corrupted_envelope_never_produces_an_owner_package",
+        "test_plaintext_with_protected_name_is_not_a_fallback",
+        "test_apply_rejects_stale_identity_before_new_decryption"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_publication_lifetime.py",
+      "count": 9,
+      "functions": [
+        "test_exact_package_publication_uses_actual_create_only_link_and_receipt",
+        "test_existing_competitor_is_never_read_overwritten_or_mislabeled_as_our_commit",
+        "test_same_size_write_during_actual_fsync_fails_before_link",
+        "test_verified_actual_link_retains_commit_truth_after_late_control",
+        "test_real_pending_child_keeps_stage_and_resource_lease_until_exact_quiescence"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_ownership.py",
+      "count": 30,
+      "functions": [
+        "test_real_owner_and_client_exclude_each_other_without_modifying_lock",
+        "test_real_wait_cancellation_does_not_reclaim_the_other_owner",
+        "test_same_byte_replacement_refuses_saved_ticket_without_touching_competitor",
+        "test_callback_root_swap_is_rechecked_before_any_native_acquisition",
+        "test_replacement_between_check_and_open_closes_only_the_opened_descriptor",
+        "test_invalid_lock_bytes_are_refused_without_rewrite_or_retained_lock",
+        "test_checkpoint_rejects_changed_lock_bytes_while_descriptor_is_still_owned",
+        "test_close_never_resolves_or_removes_a_replaced_named_path",
+        "test_missing_explicit_owner_paths_are_never_created_by_capture",
+        "test_nonregular_owner_lock_is_refused_before_open",
+        "test_identity_is_detached_and_explicit_reference_directory_stays_in_runtime",
+        "test_invalid_admission_budget_fails_before_any_descriptor_open",
+        "test_pending_native_child_keeps_owner_lock_until_real_quiescence",
+        "test_cleanup_settlement_requires_the_actual_current_owner_error",
+        "test_held_lock_digest_never_reopens_the_named_locked_file"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_owner_lease.py",
+      "count": 22,
+      "functions": [
+        "test_legacy_enumeration_keeps_original_ids_and_creates_no_owner_namespace",
+        "test_unbound_adapter_never_falls_back_for_any_owned_profile",
+        "test_package_stream_holds_actual_owner_lock_until_child_is_quiescent",
+        "test_actual_pending_child_cleanup_keeps_package_lease_until_native_retry_finishes",
+        "test_first_management_namespace_appearance_retires_existing_legacy_worker",
+        "test_index_mutation_after_pcm_revokes_current_stream_before_another_chunk",
+        "test_same_bytes_do_not_reauthorize_replaced_owner_scope",
+        "test_owner_wait_cancellation_starts_no_probe_and_never_reclaims_the_other_lease",
+        "test_unmanaged_factory_still_checks_current_library_configuration_before_cache",
+        "test_authority_metadata_cannot_escape_its_active_worker_scope"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_authority.py",
+      "count": 18,
+      "functions": [
+        "test_managed_capabilities_and_public_identity_bind_active_version_document_references_and_approval",
+        "test_actual_managed_pcm_uses_existing_registry_and_releases_only_after_child_death",
+        "test_actual_activation_rejects_old_queued_selection_and_changes_new_public_id",
+        "test_actual_revoke_or_delete_never_falls_back_or_reuses_a_saved_plan",
+        "test_explicit_reregistration_does_not_invent_missing_per_profile_rights",
+        "test_changed_exact_asset_refuses_before_any_pcm_or_new_public_handle",
+        "test_current_managed_stream_rechecks_authority_after_each_actual_pcm_yield",
+        "test_restored_binding_stays_dormant_until_explicit_current_registration",
+        "test_managed_lock_digest_uses_only_current_held_descriptor_during_full_fingerprint",
+        "test_direct_adapter_cannot_adopt_a_library_review_without_its_binding"
+      ]
+    },
+    {
+      "path": "tests/ui/test_voice_packages.py",
+      "count": 46,
+      "functions": [
+        "test_existing_worker_inspect_then_fresh_rights_and_password_apply",
+        "test_apply_rechecks_all_inputs_after_password_modal",
+        "test_export_rechecks_review_after_picker_and_password_modal",
+        "test_protected_export_has_separate_permission_and_existing_plain_route",
+        "test_cancelled_inspection_completion_never_becomes_apply_authority",
+        "test_direct_destroy_discards_completed_review_without_touching_controls",
+        "test_queued_cancel_drops_secret_even_when_gui_completion_is_suppressed",
+        "test_secret_submit_failure_clears_handoff_and_restores_idle_state",
+        "test_native_password_entry_clears_controls_and_uses_captured_destroy_identity",
+        "test_completed_inspection_from_replaced_library_is_not_adopted",
+        "test_already_adopted_protected_review_is_revoked_before_owner_cleanup",
+        "test_deferred_native_destroy_revokes_a_result_adopted_before_its_event",
+        "test_completed_removal_approval_is_revoked_on_the_same_owner_close",
+        "test_child_destroy_event_does_not_revoke_the_live_owner_review",
+        "test_borrowed_host_refusal_clears_secret_without_starting_or_owning_another_executor",
+        "test_returned_commit_refreshes_only_live_parent_after_child_close",
+        "test_queued_same_path_replacement_cannot_call_service_or_touch_new_root",
+        "test_every_ordinary_route_refuses_revoked_owner_before_native_control_reads",
+        "test_configure_adopts_returned_commit_without_second_cancellable_configuration_query",
+        "test_reference_creation_requires_current_saved_omnivoice_capability",
+        "test_register_manifest_keeps_default_no_and_captured_revision",
+        "test_saved_settings_receipt_survives_cleanup_failure_and_child_close"
+      ]
+    },
+    {
+      "path": "tests/ui/test_voice_reference.py",
+      "count": 32,
+      "functions": [
+        "test_no_implicit_permission_or_quality_confirmation",
+        "test_actual_borrowed_worker_review_then_explicit_local_handoff",
+        "test_input_edits_remove_prior_consent_and_review",
+        "test_relative_selected_path_is_normalized_only_from_the_worker_result",
+        "test_queued_review_cannot_become_current_after_invalidation",
+        "test_forced_close_inside_destination_picker_never_touches_destroyed_controls",
+        "test_destination_picker_rechecks_authority_before_second_dispatch",
+        "test_late_cancel_after_actual_controlled_commit_is_reported_as_saved",
+        "test_failed_parent_handoff_does_not_turn_a_saved_file_into_a_failed_operation",
+        "test_direct_destroy_during_show_skips_a_second_destroy",
+        "test_child_destroy_does_not_revoke_the_owner",
+        "test_existing_parent_work_is_not_replaced_or_given_another_worker",
+        "test_recorder_is_explicit_and_only_selects_a_new_unapproved_input",
+        "test_delayed_recorder_selection_cannot_cross_reference_scope",
+        "test_package_adapter_reuses_exact_nested_desktop_recorder_and_captured_scope",
+        "test_package_adapter_without_explicit_desktop_cannot_create_a_fallback_dispatcher",
+        "test_package_handoff_uses_read_only_parent_inspection_and_never_applies",
+        "test_parent_root_change_during_reference_dialog_preserves_saved_result_without_handoff",
+        "test_reference_create_preserves_committed_flag_through_borrowed_dispatcher",
+        "test_package_adapter_propagates_actual_host_refusal_to_reference_child",
+        "test_adapter_root_replacement_cannot_admit_recorder_selection_or_worker",
+        "test_repeated_reference_close_revokes_once_and_never_ends_returned_modal"
+      ]
+    },
+    {
+      "path": "tests/ui/test_engine_settings_lifetime.py",
+      "count": 43,
+      "functions": [
+        "test_picker_return_cannot_write_or_probe_a_stale_library",
+        "test_confirmation_return_rechecks_original_owner_before_side_effects",
+        "test_external_metadata_return_cannot_commit_to_a_replaced_original_root",
+        "test_late_callback_after_dialog_lifetime_has_no_reads_writes_or_control_updates",
+        "test_current_explicit_choice_still_persists_through_existing_shared_settings",
+        "test_package_hook_borrows_exact_parent_and_reloads_current_settings_before_next_choice",
+        "test_pending_package_commit_cannot_be_overwritten_from_stale_parent_snapshot",
+        "test_package_callbacks_cannot_refresh_or_write_after_captured_root_changes",
+        "test_late_package_settlement_after_parent_close_does_not_read_settings_or_touch_controls",
+        "test_publish_passes_detached_expected_voice_row_and_keeps_other_preferences",
+        "test_package_final_refresh_failure_is_readable_and_keeps_last_valid_settings",
+        "test_package_entry_requires_idle_host_and_explicit_connected_runtime"
+      ]
+    },
+    {
+      "path": "tests/ui/test_document_conversion.py",
+      "count": 20,
+      "functions": [
+        "test_capture_binds_exact_application_workspace_and_root",
+        "test_picker_rechecks_owner_before_getting_native_selected_path",
+        "test_explicit_picker_cancel_never_admits_a_job",
+        "test_queued_operation_keeps_captured_selection_before_native_admission",
+        "test_actual_saved_receipt_is_preserved_if_worker_reports_late_attention",
+        "test_old_scope_completion_does_not_open_results_in_a_new_library",
+        "test_supported_format_help_does_not_create_an_untyped_state_directory",
+        "test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion",
+        "test_fresh_state_admission_rejects_replaced_existing_library_before_mkdir",
+        "test_fresh_state_creation_never_replaces_an_existing_regular_file"
+      ]
+    },
+    {
+      "path": "tests/extract/test_document_formats_xml.py",
+      "count": 114,
+      "functions": [
+        "test_inert_office_converter_containers_preserve_all_surrounding_reading_text",
+        "test_converter_container_support_never_silently_drops_unknown_text_or_controls",
+        "test_real_supported_document_order_source_hash_and_unverified_locators",
+        "test_fb2_preserves_decomposed_unicode_and_includes_authored_note_body",
+        "test_fictionbook_container_text_cannot_be_silently_dropped",
+        "test_fb3_does_not_promote_paper_page_metadata_or_image_alt_to_quote_text",
+        "test_fb3_declared_primary_body_cannot_be_missing_ambiguous_external_or_different",
+        "test_fb3_unknown_or_clipped_content_fails_closed",
+        "test_odf_preserves_cell_repeats_and_logical_coordinates",
+        "test_empty_spreadsheet_repeats_are_not_expanded_to_records",
+        "test_nonempty_repeat_amplification_is_rejected",
+        "test_odf_formula_and_hidden_rows_are_explicit_omissions",
+        "test_odf_matrix_formula_dependents_never_become_literal_source_cells",
+        "test_hidden_odf_column_group_cannot_expose_hidden_cells",
+        "test_odf_foreign_or_raw_body_text_cannot_be_silently_dropped",
+        "test_hidden_odf_group_cannot_shift_following_logical_row_numbers",
+        "test_supported_hidden_rows_still_advance_repeated_row_coordinates",
+        "test_inherited_table_visibility_never_exposes_hidden_cell_text",
+        "test_odf_unsupported_visibility_changes_and_dynamic_fields_require_review",
+        "test_odf_style_hidden_text_is_not_silently_imported",
+        "test_odf_separator_cannot_silently_discard_embedded_source",
+        "test_odf_encryption_and_active_scripts_are_rejected",
+        "test_pptx_hidden_slides_are_omitted_and_stored_slide_order_retained",
+        "test_pptx_field_and_hidden_shape_rejected",
+        "test_pptx_text_value_nested_source_fails_closed",
+        "test_pptx_external_primary_slide_is_not_loaded",
+        "test_xlsx_real_openpyxl_document_and_literal_unicode",
+        "test_xlsx_shared_strings_rich_text_and_formula_cache_omissions",
+        "test_xlsx_ranged_formula_dependents_are_not_mislabeled_as_literal_values",
+        "test_xlsx_text_and_value_elements_cannot_silently_drop_nested_source",
+        "test_xlsx_hidden_rows_columns_omitted_without_large_range_expansion",
+        "test_xlsx_bad_coordinates_order_and_shared_strings_are_rejected",
+        "test_xlsx_custom_hidden_format_does_not_leak_values",
+        "test_unsafe_zip_member_is_rejected_for_every_container",
+        "test_dtd_entity_is_rejected_without_private_payload_in_error",
+        "test_xml_depth_is_bounded_during_parse",
+        "test_invalid_or_exhausted_budgets_are_rejected",
+        "test_invalid_or_unsupported_format_is_a_controlled_failure",
+        "test_cancellation_inside_real_xml_parse_and_retry",
+        "test_deadline_inside_real_parse_uses_shared_absolute_budget",
+        "test_record_limit_and_empty_visible_content_rejected",
+        "test_empty_disabled_odf_master_header_footer_preserves_exact_visible_sheet",
+        "test_disabled_odf_header_exception_never_admits_hidden_or_misplaced_content",
+        "test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_scan"
+      ]
+    },
+    {
+      "path": "tests/ui/test_ebook_dialog.py",
+      "count": 38,
+      "functions": [
+        "test_session_binds_chapter_descriptors_and_reports_unverified_metadata",
+        "test_canonical_extraction_warnings_are_readable_and_keep_unknown_explanations",
+        "test_invalid_chapter_descriptors_are_rejected",
+        "test_bad_contents_selection_cannot_wrap_to_last_entry",
+        "test_guard_runs_before_and_after_loading_and_revision_mismatch_is_rejected",
+        "test_search_is_literal_case_insensitive_and_uses_original_unicode_positions",
+        "test_native_positions_prove_exact_prefix_with_crlf_and_non_bmp",
+        "test_native_positions_do_not_select_from_changed_text",
+        "test_dialog_real_handlers_navigate_find_wrap_and_preserve_group_headings",
+        "test_dialog_invalid_choice_clears_old_text_and_focuses_readable_error",
+        "test_unavailable_native_position_keeps_chapter_and_explains_fallback",
+        "test_truncated_native_chapter_clears_text_and_cannot_claim_complete_fallback",
+        "test_dialog_changed_scope_on_find_clears_source_without_new_load",
+        "test_dialog_keyboard_find_and_empty_query_keep_text_readable",
+        "test_dialog_initial_chapter_and_callback_failure",
+        "test_action_captures_scope_for_async_service_and_restores_catalog_focus",
+        "test_action_does_not_open_delayed_result_after_selection_changed",
+        "test_action_does_not_read_new_scope_or_focus_old_controls_after_modal_switch",
+        "test_action_no_selection_gives_actionable_error_without_background_job",
+        "test_action_reauthorizes_scope_after_worker_finished",
+        "test_dialog_reauthorizes_scope_after_chapter_callback_before_render",
+        "test_menu_installation_is_idempotent_and_binds_keyboard_command",
+        "test_wrapped_positions_prove_every_boundary_and_exact_unicode_fragment",
+        "test_wrapped_position_rejects_clamped_range_with_unproved_native_length",
+        "test_wrapped_position_requires_actual_prefix_after_matching_length"
+      ]
+    },
+    {
+      "path": "tests/studio/test_publishing_boundaries.py",
+      "count": 19,
+      "functions": [
+        "test_export_cannot_write_anywhere_inside_private_library",
+        "test_measured_speech_is_never_clamped_or_silently_omitted",
+        "test_original_measured_values_and_rounding_are_explicit",
+        "test_chooser_identity_survives_queued_work",
+        "test_atomic_publication_does_not_clobber_a_late_competing_create",
+        "test_cancellation_after_atomic_publication_preserves_complete_result",
+        "test_bounded_profile_rejects_hidden_entities_and_rebound_package_members",
+        "test_total_metadata_limit_is_checked_during_archive_reads",
+        "test_publication_approval_retains_selected_route_and_canonical_target"
+      ]
+    },
+    {
+      "path": "tests/ui/test_native_conversion_diagnostics.py",
+      "count": 13,
+      "functions": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks",
+        "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+        "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings"
+      ]
+    },
+    {
+      "path": "tests/search/test_window_catalog_projection.py",
+      "count": 27,
+      "functions": [
+        "test_private_keys_are_exact_public_view_projection_with_literal_filters",
+        "test_identity_query_does_not_repeat_unused_author_fanout",
+        "test_identity_query_preserves_sqlite_cancellation_and_following_snapshot_read",
+        "test_every_window_keeps_old_wire_and_only_necessary_next_catalog_lookup",
+        "test_cancellation_after_deferred_lookup_returns_no_window_and_preserves_snapshot",
+        "test_new_snapshot_never_adopts_stale_catalog_or_active_continuation",
+        "test_private_projection_preserves_public_authorization_and_input_refusals"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_voices.py",
+      "count": 40,
+      "functions": [
+        "test_private_probe_dynamic_catalogue_policy_and_managed_roles",
+        "test_capabilities_do_not_promise_ssml_emotions_phonemes_or_pronunciation",
+        "test_actual_reference_pull_framing_routes_and_pcm",
+        "test_streamed_loading_and_frame_progress_are_not_percentages",
+        "test_bad_audio_and_engine_errors_do_not_report_success",
+        "test_cancel_out_of_band_drains_old_finished_then_drop_ack",
+        "test_cancel_from_progress_callback_yields_no_stale_pcm",
+        "test_cancel_after_yield_does_not_request_more_native_generation",
+        "test_external_pre_cancel_does_not_start_worker",
+        "test_generic_worker_cancellation_callback_is_supported",
+        "test_timeout_is_bounded_and_next_render_is_synchronized",
+        "test_generator_close_and_busy_are_safe",
+        "test_no_unbounded_audio_when_worker_never_finishes",
+        "test_midstream_package_change_invalidates_render",
+        "test_unsupported_controls_are_not_silently_ignored",
+        "test_unavailable_voice_language_or_unverified_accent_fails_explicitly",
+        "test_changed_worker_cannot_be_silently_used",
+        "test_remote_path_and_missing_interpreter_are_rejected",
+        "test_resolved_path_outside_selected_runtime_is_rejected",
+        "test_process_limits_frames_and_rejects_invalid_json",
+        "test_private_worker_gets_offline_flags_without_host_environment_changes",
+        "test_deep_bounded_json_fails_as_protocol_error_without_dead_reader",
+        "test_stalled_worker_cannot_block_large_stdin_or_shutdown"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_speech.py",
+      "count": 10,
+      "functions": [
+        "test_actual_registry_enumerates_only_ready_pairs",
+        "test_actual_registry_frames_and_publishes_24k_mono_pcm",
+        "test_existing_output_and_unsupported_punctuation_are_preserved",
+        "test_audio_budget_failure_publishes_no_partial_file",
+        "test_midstream_cancellation_publishes_no_partial_file",
+        "test_content_fingerprint_changes_with_model_bytes_not_just_catalog",
+        "test_changed_installation_during_render_is_not_published",
+        "test_changed_base_assets_restart_warm_worker",
+        "test_disabled_configuration_does_not_probe_and_enabled_registers",
+        "test_discover_opt_in_hook_registers_same_provider"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+      "count": 13,
+      "functions": [
+        "test_actual_warm_owner_survives_failed_close_until_explicit_retry",
+        "test_failed_registry_is_strongly_retained_after_ordinary_owner_is_gone",
+        "test_desktop_finalizer_retains_real_service_and_retries_same_native_owner",
+        "test_failed_probe_cleanup_retains_actual_child_and_refuses_a_replacement",
+        "test_generator_cleanup_failure_releases_operation_guard_but_keeps_worker",
+        "test_failed_thread_start_retains_transport_when_native_stop_also_fails",
+        "test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render",
+        "test_inventory_walk_error_preserves_cancellation_without_updating_identity",
+        "test_failed_add_cleanup_keeps_actual_started_provider_without_reactivation",
+        "test_explicit_unconfirmed_close_result_keeps_only_failed_provider",
+        "test_concurrent_close_refuses_late_discovery_publication_without_double_close"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_settings.py",
+      "count": 17,
+      "functions": [
+        "test_legacy_settings_are_normalized_without_rewriting_or_mutating_input",
+        "test_disabled_saved_engine_never_probes_private_paths",
+        "test_bad_declaration_preserves_last_saved_configuration",
+        "test_saved_engine_reaches_actual_shared_render_and_releases_worker",
+        "test_failed_later_provider_releases_already_registered_private_engine",
+        "test_registry_closes_remaining_workers_after_one_cleanup_error"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+      "count": 7,
+      "functions": [
+        "test_cold_probe_cancel_closes_real_child_and_can_retry",
+        "test_pre_cancelled_discovery_never_launches_child_even_for_cached_inventory",
+        "test_cancel_after_inventory_validation_does_not_cache_it",
+        "test_cold_probe_timeout_is_absolute_and_closes_real_child"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_convergence.py",
+      "count": 10,
+      "functions": [
+        "test_two_installations_with_same_profiles_route_to_their_own_workers",
+        "test_terminal_stream_cleanup_happens_before_atomic_publication",
+        "test_utterance_deadline_includes_initial_model_fingerprint",
+        "test_provider_cold_discovery_cancellation_closes_owned_child",
+        "test_model_fingerprint_can_be_cancelled_without_losing_content_checks",
+        "test_same_metadata_model_change_restarts_only_the_changed_warm_worker"
+      ]
+    },
+    {
+      "path": "tests/audio/test_bundled_runtime_settings.py",
+      "count": 8,
+      "functions": [
+        "test_studio_selects_verified_bundle_tools_and_preserves_explicit_settings",
+        "test_voice_discovery_receives_the_same_verified_ffmpeg",
+        "test_invalid_sealed_runtime_never_falls_back_to_an_unverified_tool",
+        "test_installation_without_bundled_audio_keeps_existing_local_discovery"
+      ]
+    },
+    {
+      "path": "tests/storage/test_v3_state_backup.py",
+      "count": 42,
+      "functions": [
+        "test_backup_restores_exact_state_sources_and_evidence_without_cache",
+        "test_optional_generated_cache_roundtrips_exactly",
+        "test_corrupt_state_never_publishes_usable_restore",
+        "test_state_manifest_rejects_unsafe_portable_paths",
+        "test_state_manifest_rejects_case_duplicates_and_byte_overflow",
+        "test_backup_rejects_linked_state",
+        "test_dangling_state_root_is_not_silently_omitted",
+        "test_active_state_database_requires_consistent_adapter",
+        "test_snapshot_detects_changes_to_already_copied_tree",
+        "test_cancelled_backup_never_publishes_success_for_empty_state",
+        "test_state_publication_crash_retains_incomplete_restore_marker",
+        "test_legacy_backup_still_restores_without_state",
+        "test_snapshot_rejects_same_metadata_content_change_before_publication",
+        "test_snapshot_revalidation_can_be_cancelled_before_publication",
+        "test_typed_backup_refuses_inaccessible_optional_root",
+        "test_typed_capture_distinguishes_optional_absence_from_disappearance",
+        "test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged"
+      ]
+    },
+    {
+      "path": "tests/storage/test_library_backup.py",
+      "count": 9,
+      "functions": [
+        "test_full_backup_restores_independent_libraries_and_immutable_research",
+        "test_backup_copies_only_registered_assets",
+        "test_corrupt_or_incomplete_backup_never_publishes_restore",
+        "test_no_overwrite_and_no_nested_destination",
+        "test_interrupted_publication_is_explicitly_unopenable"
+      ]
+    },
+    {
+      "path": "tests/storage/test_state_backup_portability.py",
+      "count": 27,
+      "functions": [
+        "test_portable_manifest_rejects_collisions",
+        "test_portable_manifest_allows_distinct_siblings",
+        "test_snapshot_refuses_unrestorable_portable_names",
+        "test_portable_manifest_rejects_non_windows_names",
+        "test_portable_manifest_keeps_ordinary_unicode_names",
+        "test_snapshot_rejects_nonportable_real_source",
+        "test_portable_snapshot_roundtrip_unicode",
+        "test_state_inventory_rejects_unreadable_subtree",
+        "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree"
+      ]
+    },
+    {
+      "path": "tests/conversion/test_selected_conversion.py",
+      "count": 39,
+      "functions": [
+        "test_actual_owned_worker_publishes_one_exact_triplet_and_read_is_passive",
+        "test_read_refuses_changed_complete_folder_before_use",
+        "test_initial_cancel_does_not_create_broker_or_admit_worker",
+        "test_queued_source_runtime_and_directory_identity_refuse_before_child",
+        "test_source_mutation_before_final_publication_is_refused",
+        "test_late_cancel_before_atomic_rename_leaves_no_partial_triplet",
+        "test_competing_folder_is_never_adopted_removed_or_overwritten",
+        "test_visible_triplet_survives_directory_durability_warning",
+        "test_actual_committed_result_survives_late_reservation_release_error",
+        "test_staging_cleanup_attention_keeps_actual_committed_result",
+        "test_pending_actual_child_keeps_core_stage_and_broker_until_quiescence",
+        "test_optional_selection_never_uses_path_discovery_or_writes_private_library",
+        "test_cancel_after_real_atomic_commit_keeps_returned_receipt",
+        "test_actual_import_retains_only_reading_text_and_survives_external_folder_removal",
+        "test_reading_folder_swap_at_actual_import_boundary_refuses_before_ingest",
+        "test_import_returned_receipt_survives_late_reader_cleanup_error",
+        "test_actual_adapter_stdin_and_logs_remain_inside_unchanged_worker_audit",
+        "test_native_xls_diagnostic_reads_exact_zip_but_retains_only_bounded_structure",
+        "test_native_xls_diagnostic_refuses_changed_unbounded_active_or_cancelled_input",
+        "test_native_xls_observer_preserves_exact_success_arguments_and_restores_runner",
+        "test_native_xls_observer_keeps_original_failure_after_quiescent_exact_intermediate",
+        "test_native_xls_observer_never_reads_intermediate_while_child_owner_is_live",
+        "test_native_xls_diagnostic_failure_never_replaces_or_reveals_original_failure"
+      ]
+    }
+  ],
+  "voice_whole_contract": {
+    "tests/audio/test_voice_package_management.py": 30,
+    "tests/audio/test_voice_management_state.py": 25,
+    "tests/audio/test_voice_reference_management.py": 30,
+    "tests/audio/test_voice_protected_management.py": 15,
+    "tests/audio/test_voice_publication_lifetime.py": 9,
+    "tests/audio/test_voice_ownership.py": 30,
+    "tests/integrations/test_dordiai_owner_lease.py": 22,
+    "tests/integrations/test_dordiai_managed_authority.py": 18,
+    "tests/ui/test_voice_packages.py": 46,
+    "tests/ui/test_voice_reference.py": 32,
+    "tests/ui/test_engine_settings_lifetime.py": 43,
+    "tests/integrations/test_dordiai_voices.py": 40,
+    "tests/integrations/test_dordiai_speech.py": 10,
+    "tests/integrations/test_dordiai_host_lifecycle.py": 13,
+    "tests/integrations/test_dordiai_settings.py": 17,
+    "tests/integrations/test_dordiai_probe_cancellation.py": 7,
+    "tests/integrations/test_dordiai_convergence.py": 10,
+    "tests/audio/test_bundled_runtime_settings.py": 8,
+    "tests/storage/test_v3_state_backup.py": 42,
+    "tests/storage/test_library_backup.py": 9,
+    "tests/storage/test_state_backup_portability.py": 27
+  },
+  "native": {
+    "script": {
+      "path": "carr-library/scripts/windows_voice_management_smoke.py",
+      "before": null,
+      "after": "7f1f806035ab334713a2b9c13c21bbca59bb09f0"
+    },
+    "companion": {
+      "path": "carr-library/tests/audio/voice_management_fixtures.py",
+      "sha": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5",
+      "kind": "Purpose-written synthetic owner protocol and package builder; exact Git blob verified before compile, SHA256 rechecked after cleanup."
+    },
+    "requirements": {
+      "unique_required_checks": 83,
+      "behavior_checks": [
+        "native failure answers owned No before closing only the active inner modal",
+        "registration confirmation defaults to the actual owned No button",
+        "existing engine settings exposes one explicit package-management action",
+        "package child borrows exact engine parent and existing host executor",
+        "unregistered package view has no implicit permission or metadata child",
+        "default No leaves voice registration and owner files unchanged",
+        "explicit manifest registration binds the real current settings map",
+        "Holos does not expose unreviewed reference creation",
+        "saved explicit OmniVoice configuration enables only its reference creator",
+        "reference child starts without recording permission or quality approval",
+        "reference close opens no microphone and dispatches no owner operation",
+        "inspection returns exact source roles and clears permission and languages",
+        "Apply without explicit rights cannot call the owner API",
+        "native keyboard explicitly grants rights and the selected production language",
+        "real owner installation publishes only the reviewed data and language choice",
+        "real installed version listing is visible in the readable status",
+        "installed version review resets export and production permission",
+        "unencrypted export requires separate explicit permission",
+        "actual owner export contains only the reviewed reference version",
+        "export result exposes its actual independently checked SHA256",
+        "empty removal confirmation cannot mutate the reviewed profile",
+        "real deactivation retains files and revokes active production authority",
+        "deletion requires a fresh distinct empty confirmation",
+        "real deletion removes only the explicitly reviewed profile versions",
+        "source package shared models and unrelated voice preferences remain exact",
+        "queued management borrows the retained host executor",
+        "closed queued child cannot call the owner API or deliver a late review",
+        "parent engine view reload preserves the current management binding",
+        "existing engine parent retains one native Close control",
+        "actual isolated owner metadata operations completed with no live Job handles",
+        "current broker has no active voice-management lease after native work",
+        "real native Windows voice controls",
+        "registered engine action belongs to the existing host command registry",
+        "actual host menu contains one existing local-engine command",
+        "native host Close drains the original shared executor and finalizers",
+        "all actual metadata Job process and thread handles are settled before fallback",
+        "no active broker lease survives native host cleanup",
+        "synthetic owner companion remains byte-identical after cleanup",
+        "native voice failure cleanup control completed"
+      ],
+      "required_checks": [
+        "native failure answers owned No before closing only the active inner modal",
+        "registration confirmation defaults to the actual owned No button",
+        "existing engine settings exposes one explicit package-management action",
+        "package child borrows exact engine parent and existing host executor",
+        "unregistered package view has no implicit permission or metadata child",
+        "default No leaves voice registration and owner files unchanged",
+        "explicit manifest registration binds the real current settings map",
+        "Holos does not expose unreviewed reference creation",
+        "saved explicit OmniVoice configuration enables only its reference creator",
+        "reference child starts without recording permission or quality approval",
+        "reference close opens no microphone and dispatches no owner operation",
+        "inspection returns exact source roles and clears permission and languages",
+        "Apply without explicit rights cannot call the owner API",
+        "native keyboard explicitly grants rights and the selected production language",
+        "real owner installation publishes only the reviewed data and language choice",
+        "real installed version listing is visible in the readable status",
+        "installed version review resets export and production permission",
+        "unencrypted export requires separate explicit permission",
+        "actual owner export contains only the reviewed reference version",
+        "export result exposes its actual independently checked SHA256",
+        "empty removal confirmation cannot mutate the reviewed profile",
+        "real deactivation retains files and revokes active production authority",
+        "deletion requires a fresh distinct empty confirmation",
+        "real deletion removes only the explicitly reviewed profile versions",
+        "source package shared models and unrelated voice preferences remain exact",
+        "queued management borrows the retained host executor",
+        "closed queued child cannot call the owner API or deliver a late review",
+        "parent engine view reload preserves the current management binding",
+        "existing engine parent retains one native Close control",
+        "actual isolated owner metadata operations completed with no live Job handles",
+        "current broker has no active voice-management lease after native work",
+        "real native Windows voice controls",
+        "registered engine action belongs to the existing host command registry",
+        "actual host menu contains one existing local-engine command",
+        "native host Close drains the original shared executor and finalizers",
+        "all actual metadata Job process and thread handles are settled before fallback",
+        "no active broker lease survives native host cleanup",
+        "synthetic owner companion remains byte-identical after cleanup",
+        "native voice failure cleanup control completed",
+        "exact installed source: carr_library.application",
+        "exact installed source: carr_library.runtime_settings",
+        "exact installed source: carr_library.durable_state",
+        "exact installed source: carr_library.native_runtime",
+        "exact installed source: carr_library.audio.voice_settings",
+        "exact installed source: carr_library.audio.voice_packages",
+        "exact installed source: carr_library.audio.voice_lifecycle",
+        "exact installed source: carr_library.audio.voice_reference",
+        "exact installed source: carr_library.audio.package_publication",
+        "exact installed source: carr_library.audio.voice_manifest",
+        "exact installed source: carr_library.audio.voice_ownership",
+        "exact installed source: carr_library.audio.voice_transport",
+        "exact installed source: carr_library.audio.process",
+        "exact installed source: carr_library.audio.windows_job",
+        "exact installed source: carr_library.operations.broker",
+        "exact installed source: carr_library.operations._locks",
+        "exact installed source: carr_library.ui.desktop_app",
+        "exact installed source: carr_library.ui.engine_settings",
+        "exact installed source: carr_library.ui.voice_packages",
+        "exact installed source: carr_library.ui.voice_reference",
+        "exact installed source: carr_library.ui.worker_lifetime",
+        "exact installed source: carr_library.ui.recording_dialog",
+        "unchanged installed source after cleanup: carr_library.application",
+        "unchanged installed source after cleanup: carr_library.runtime_settings",
+        "unchanged installed source after cleanup: carr_library.durable_state",
+        "unchanged installed source after cleanup: carr_library.native_runtime",
+        "unchanged installed source after cleanup: carr_library.audio.voice_settings",
+        "unchanged installed source after cleanup: carr_library.audio.voice_packages",
+        "unchanged installed source after cleanup: carr_library.audio.voice_lifecycle",
+        "unchanged installed source after cleanup: carr_library.audio.voice_reference",
+        "unchanged installed source after cleanup: carr_library.audio.package_publication",
+        "unchanged installed source after cleanup: carr_library.audio.voice_manifest",
+        "unchanged installed source after cleanup: carr_library.audio.voice_ownership",
+        "unchanged installed source after cleanup: carr_library.audio.voice_transport",
+        "unchanged installed source after cleanup: carr_library.audio.process",
+        "unchanged installed source after cleanup: carr_library.audio.windows_job",
+        "unchanged installed source after cleanup: carr_library.operations.broker",
+        "unchanged installed source after cleanup: carr_library.operations._locks",
+        "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+        "unchanged installed source after cleanup: carr_library.ui.engine_settings",
+        "unchanged installed source after cleanup: carr_library.ui.voice_packages",
+        "unchanged installed source after cleanup: carr_library.ui.voice_reference",
+        "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+        "unchanged installed source after cleanup: carr_library.ui.recording_dialog"
+      ],
+      "origins": [
+        "carr_library.application",
+        "carr_library.runtime_settings",
+        "carr_library.durable_state",
+        "carr_library.native_runtime",
+        "carr_library.audio.voice_settings",
+        "carr_library.audio.voice_packages",
+        "carr_library.audio.voice_lifecycle",
+        "carr_library.audio.voice_reference",
+        "carr_library.audio.package_publication",
+        "carr_library.audio.voice_manifest",
+        "carr_library.audio.voice_ownership",
+        "carr_library.audio.voice_transport",
+        "carr_library.audio.process",
+        "carr_library.audio.windows_job",
+        "carr_library.operations.broker",
+        "carr_library.operations._locks",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.engine_settings",
+        "carr_library.ui.voice_packages",
+        "carr_library.ui.voice_reference",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.ui.recording_dialog"
+      ],
+      "origin_count": 22,
+      "origin_contract": "Actual installed module origin must be under sys.prefix, outside checkout src, and byte-identical to exact checkout source before and after actual host/native cleanup.",
+      "pass_fields": [
+        "status",
+        "native_keyboard",
+        "native_metadata_lifecycle",
+        "native_queued_close",
+        "native_host_cleanup",
+        "native_failure_cleanup"
+      ],
+      "not_run_fields": [
+        "real_owner_inference",
+        "voice_similarity",
+        "physical_recording",
+        "manual_nvda"
+      ],
+      "synthetic_owner_protocol": true,
+      "qualifiers": {
+        "picker": "explicit fixture file selections; system picker not automated",
+        "interpreter": "only the inert synthetic owner marker is replaced with this installed Python"
+      },
+      "multiplicity": {
+        "registration confirmation defaults to the actual owned No button": 2
+      },
+      "check_policy": "Require the complete named set with no false rows or qualification substitutions. The default-No observation intentionally executes twice, once before No and once before explicit Yes; do not enforce globally unique emitted rows."
+    },
+    "main_order": "Inside existing required native aggregate, before unchanged final complete-bundle seal and evidence retention.",
+    "v3_order": "Inside existing publication firewall, before unchanged required-native aggregate and finally-owned firewall restoration.",
+    "bounds": {
+      "ui_seconds": 240,
+      "cleanup_inclusive_watchdog_seconds": 300,
+      "recommended_parent_timeout_seconds": 330,
+      "keyboard_focus_seconds": 5,
+      "worker_wait_seconds": 40,
+      "queue_barrier_seconds": 20
+    },
+    "codec_model_requirement": "This new management probe takes only source-root; actual model inference, acoustic similarity, recording and NVDA remain explicitly NOT_RUN."
+  },
+  "companions_added": [
+    "tests/audio/voice_management_fixtures.py",
+    "tests/integrations/test_dordiai_voices.py",
+    "tests/integrations/__init__.py",
+    "scripts/selected_conversion_fixture_support.py"
+  ],
+  "new_required_source_modules": [
+    "carr_library.audio.voice_manifest",
+    "carr_library.audio.voice_transport",
+    "carr_library.audio.voice_settings",
+    "carr_library.runtime_settings",
+    "carr_library.audio.voice_packages",
+    "carr_library.audio.package_publication",
+    "carr_library.audio.voice_lifecycle",
+    "carr_library.audio.voice_reference",
+    "carr_library.audio.voice_restore",
+    "carr_library.state_backup",
+    "carr_library.library_backup",
+    "carr_library.audio.voice_ownership",
+    "carr_library.integrations._dordiai_authority",
+    "carr_library.integrations.dordiai_voices",
+    "carr_library.integrations.dordiai_speech",
+    "carr_library.ui.voice_packages",
+    "carr_library.ui.voice_reference",
+    "carr_library.ui.engine_settings"
+  ],
+  "guides": {
+    "prior_count": 53,
+    "required_count": 55,
+    "added": [
+      "VOICE_PACKAGE_MANAGEMENT.md",
+      "DORDIAI_MANAGED_AUTHORITY.md"
+    ]
+  },
+  "static_audit": {
+    "all_old_selector_prefixes_preserved": true,
+    "no_duplicate_whole_paths": true,
+    "old_required_functions_preserved": true,
+    "all_current_case_counts_and_functions_pinned_in_existing_strict_maps": true,
+    "all_21_voice_whole_suites_match_focused_483_contract": true,
+    "main_final_seal_preserved": true,
+    "early_v3_blocks_byte_identical": true,
+    "existing_deadlines_and_parallelism_unchanged": true,
+    "no_source_step_sharding": true,
+    "readback_exact": true,
+    "workflow_utf8_bytes": {
+      "main": 419466,
+      "v3": 473641
+    },
+    "whole_maps": [
+      {
+        "kind": "installed",
+        "old": 119,
+        "next": 143,
+        "fixtureEntries": 49
+      },
+      {
+        "kind": "v3",
+        "old": 95,
+        "next": 119,
+        "fixtureEntries": 48
+      }
+    ],
+    "exact_inverse_reconstruction": {
+      "main": true,
+      "v3": true,
+      "installed": true,
+      "guides": true
+    },
+    "second_stage_exact_inverse": {
+      "main": true,
+      "v3": true,
+      "installed": true
+    }
+  },
+  "review": {
+    "peer": "/root/progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact old map/path/function preservation, all21 voice483 contracts, checked companion/origin inventory, exact native4912 contract, final seal/aggregate/firewall ordering and two-guide inverse.",
+    "details": "Both isolated lanes require current synthetic fixture, existing ACTOR companion and integrations/__init__.py. Native83/22, six PASS/four NOT_RUN and default-No multiplicity2 match final4912. No parser or execution claim.",
+    "additional_peer": {
+      "peer": "/root/progress_completion",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Only selected_conversion29→39, exact23 functions retaining all17 old, one support companion in both isolated copy/hash lists; all other maps/native/seal/firewall/budgets unchanged."
+    }
+  },
+  "runtime": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "powershell_parse": "NOT_RUN"
+  },
+  "refs_changed": false,
+  "supersedes": "712f448b9092337b7427159508c2a75c26415175"
+}

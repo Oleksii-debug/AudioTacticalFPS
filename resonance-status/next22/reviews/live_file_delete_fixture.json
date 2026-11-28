@@ -1,0 +1,33 @@
+{
+  "schema": "resonance-real-deletion-fixture-correction/1",
+  "status": "PEER_ACCEPTED_NOT_RUN",
+  "created_utc": "2026-11-28T00:06:11Z",
+  "base_commit": "db6cce296cc95690bf1036eb9c583df5d7869874",
+  "file": {
+    "path": "carr-library/tests/audio/test_live_metadata_retry.py",
+    "before": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+    "after": "9d97fca2633815e61a55c16f51a06484944f6fbc"
+  },
+  "actual_evidence": "bef98c7c518ee2a2788bf7ff5508fec92aa3c4cf",
+  "actual_result": {
+    "platform": "windows-2022",
+    "whole_suites": 8,
+    "passed": 253,
+    "failed": 1,
+    "skipped": 0,
+    "failed_case": "test_real_open_file_deletion_is_observed_without_cached_fallback",
+    "installed": "NOT_RUN",
+    "native_conversion": "NOT_RUN"
+  },
+  "finding": "Actual native deletion, child exit0, metadata observation, absent output and ready/release assertions succeeded. The fixture alone then incorrectly required a native access-denied error to have occurred; the later explicit reaping assertion was not reached. Empty error observations did not distinguish fresh available metadata from an already-absent path.",
+  "correction": "Record actual present/absent/access-denied observations; require zero bytes when fresh metadata is present; permit only native error5 if one occurs without demanding it. Require actual final lstat after the real child has exited. POSIX requires actual absence.",
+  "preserved": [
+    "All other11 cases are a byte-exact prefix.",
+    "The entire real CreateFileW/DeleteFileW/shared-handle/POSIX open-unlink child program is byte-identical.",
+    "All12 cases and8 functions remain mandatory; all original time limits and child/output/ready/release/reaping conditions remain.",
+    "Controlled cases still enforce exact live error5 retry, immediate foreign/persistent/final refusal, cancellation, timeout, fresh size and disappearance.",
+    "Production process014c47d5297a937a8bf6061420dd009206863669 is unchanged; no additional retries, allowed errors or resource-policy changes."
+  ],
+  "peer": "Progress accepted exact source and both prefix/child invariants; Canonical separately reviewed the final case.",
+  "next": "Refresh only the focused helper fixture pin and two outer helper pins, then require the complete254 source/installed plus six native phases at the new exact head."
+}

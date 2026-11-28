@@ -1,0 +1,282 @@
+{
+  "schema": "carr-complete-backup-capacity-handoff/1",
+  "status": "SOURCE_REVIEWED_NEW_EXECUTION_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "intent": "Explicit caller-only finite large-source-v1 allowance on the existing complete-backup format4/pending1 and historical1–5 readers. No format upgrade, automatic escalation, second service or ref update.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/backup_capacity.py",
+      "preimage": null,
+      "blob": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "preimage": "63a9179eff3816a81523c5fadeeea750ddfbcdc4",
+      "blob": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "preimage": "edf34a6000cb47e7230b8fbcb726f21745b2f187",
+      "blob": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "preimage": "b0b56a25310375d41cfc1bbbc20ca76d7a854cb1",
+      "blob": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "7156285a9254bcec66088cb2b53928180c40a171",
+      "blob": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "preimage": "67aa7dc2ad70cd4929f64dd6ad275e627726117f",
+      "blob": "4544453f62a96993a2f05ed1522a563649289715",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "preimage": "714540bcab93aae319788fbeb57848ea34a8c203",
+      "blob": "99b3c98d5f60cfa6ba1074d74c32acc14250fd16",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_capacity.py",
+      "preimage": null,
+      "blob": "66555889648ec8b76ac11e7ffe5bd54ece6c29e9",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "preimage": "2da122b36792579a442e976548ec72db1b868ab6",
+      "blob": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+      "readback_exact": true,
+      "composition": "REFERENCE_ONLY_APPLY_EXACT_HUNK_ON_CURRENT_HOST"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity.py",
+      "preimage": null,
+      "blob": "895aec39b689aea7101da23db0801413dac324ef",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity_cli.py",
+      "preimage": null,
+      "blob": "741a005ca9f351579b9d51b464a88dda9afb52b7",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/tests/ui/test_backup_capacity.py",
+      "preimage": null,
+      "blob": "26f03b8f46f6425460bb248f94bd3f1347787dc6",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/tests/storage/test_crash_backup.py",
+      "preimage": "95557ea102f80b281727530b560a3c09bb21e8a5",
+      "blob": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "preimage": null,
+      "blob": "dffdce9ac49fcb54cd2393f410f0844ad9c52130",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    },
+    {
+      "path": "carr-library/docs/backup_capacity.md",
+      "preimage": null,
+      "blob": "9181173df5bbcf320b23c9dfd6fb787a62fca051",
+      "readback_exact": true,
+      "composition": "preimage_checked"
+    }
+  ],
+  "shared_hooks": {
+    "blob": "23f8d64fea39bf55e6e72f2cddbdf22ae2e74b36",
+    "apply": "Apply exact preimage-bound application/CLI/desktop hunks to the current composed files. Desktop full blob is reference only; preserve all unrelated current host hooks."
+  },
+  "profile": {
+    "name": "large-source-v1",
+    "selection": "Explicit per operation, ordinary default remains unchanged; no manifest profile field.",
+    "limits": {
+      "database": 68719476736,
+      "journal": 34359738368,
+      "assets": 137438953472,
+      "pending": 68719476736,
+      "manifest": 67108864,
+      "asset_count": 100000,
+      "jobs": 100000,
+      "files": 250000,
+      "checkpoints": 2097152,
+      "journal_seconds": 3600
+    }
+  },
+  "review": {
+    "core": "Root and Canonical independently reviewed; final per-raw-page cancellation correction accepted by Canonical. STATIC_NOT_RUN.",
+    "ui": "Canonical accepted4249d0dc/26f03b8f captured LibraryApp/root, worker, cancellation, returned-commit and stale-callback boundaries. STATIC_NOT_RUN. Root-requested text-only successor 66555889648ec8b76ac11e7ffe5bd54ece6c29e9 has exact reversible three-literal diff; no semantic change.",
+    "native": "Canonical independently accepted dffdce9ac49fcb54cd2393f410f0844ad9c52130: actual current menu/control APIs, shared-worker canonical results,12 before/after origins, owned active-modal cleanup and actual host Close/drain match. STATIC_NOT_RUN; Windows execution remains required.",
+    "readbacks": "All15 complete file blobs re-fetched and compared byte-for-byte to the prepared text."
+  },
+  "tests": {
+    "new_whole": [
+      {
+        "path": "tests/storage/test_backup_capacity.py",
+        "blob": "895aec39b689aea7101da23db0801413dac324ef",
+        "expected_cases": 28,
+        "functions": 16
+      },
+      {
+        "path": "tests/storage/test_backup_capacity_cli.py",
+        "blob": "741a005ca9f351579b9d51b464a88dda9afb52b7",
+        "expected_cases": 3
+      },
+      {
+        "path": "tests/ui/test_backup_capacity.py",
+        "blob": "26f03b8f46f6425460bb248f94bd3f1347787dc6",
+        "expected_cases": 17,
+        "functions": 10
+      }
+    ],
+    "case_count_authority": "Static enumeration only; source and installed execution required with zero unexpected skips/failures/xfailed/xpassed and exact whole membership.",
+    "companions": [],
+    "modified_existing": [
+      {
+        "path": "tests/storage/test_crash_backup.py",
+        "blob": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c",
+        "expected_cases": 5,
+        "note": "All5 old cases/assertions retained; injected full check accepts and asserts actual cancelled callback."
+      }
+    ],
+    "preserve_existing_whole": "Retain all existing library/pending/common4/typed-state/source/nonce/restore/cancellation backup suites. No selection or assertion weakened."
+  },
+  "native": {
+    "path": "scripts/windows_backup_capacity_smoke.py",
+    "blob": "dffdce9ac49fcb54cd2393f410f0844ad9c52130",
+    "arguments": [
+      "--source-root",
+      "<checkout>/carr-library/src"
+    ],
+    "platform": "Actual Windows with installed wheel; no audio/device/runtime/model input.",
+    "watchdog_seconds": 180,
+    "required_pass_fields": [
+      "status",
+      "native_keyboard",
+      "native_backup_restore",
+      "native_failure_cleanup",
+      "native_host_cleanup"
+    ],
+    "required_not_run_fields": [
+      "large_corpus_measurement",
+      "manual_nvda",
+      "physical_media",
+      "power_loss"
+    ],
+    "origins": [
+      "carr_library.application",
+      "carr_library.backup_capacity",
+      "carr_library.library_backup",
+      "carr_library.pending_backup",
+      "carr_library.backup_sidecars",
+      "carr_library.storage.revisions",
+      "carr_library.ingest.catalog_asset_copy",
+      "carr_library.ui.backup_capacity",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.durable_state",
+      "carr_library.native_runtime"
+    ],
+    "essential_checks": [
+      "native failure answers owned No before closing only the active inner modal",
+      "restored-library opening uses actual default-No native confirmation",
+      "capacity dialog starts with the ordinary allowance",
+      "native checksum entry preserves the exact retained manifest identity",
+      "native completion retains focused readable result",
+      "real native Windows controls",
+      "existing host executor owns backup work and finalizers",
+      "actual backup executes on the shared worker",
+      "actual restore executes on the shared worker",
+      "native capacity cancellation opens no folder or worker",
+      "ordinary and large selections reach the real canonical backup",
+      "backup result explicitly includes validated unfinished imports",
+      "native backup presents the independently retainable manifest checksum",
+      "selected allowance preserves complete4 and pending1 wire",
+      "explicit large restore reaches the same canonical fresh-destination API",
+      "real restored library preserves both retained originals and search",
+      "default-No restore leaves the original LibraryApp active",
+      "native backup menus dispatch the existing host workflow",
+      "native host Close drains the actual executor without retained failure",
+      "native failure cleanup control completed"
+    ],
+    "source_identity_checks": [
+      "exact installed source: carr_library.application",
+      "unchanged installed source after cleanup: carr_library.application",
+      "exact installed source: carr_library.backup_capacity",
+      "unchanged installed source after cleanup: carr_library.backup_capacity",
+      "exact installed source: carr_library.library_backup",
+      "unchanged installed source after cleanup: carr_library.library_backup",
+      "exact installed source: carr_library.pending_backup",
+      "unchanged installed source after cleanup: carr_library.pending_backup",
+      "exact installed source: carr_library.backup_sidecars",
+      "unchanged installed source after cleanup: carr_library.backup_sidecars",
+      "exact installed source: carr_library.storage.revisions",
+      "unchanged installed source after cleanup: carr_library.storage.revisions",
+      "exact installed source: carr_library.ingest.catalog_asset_copy",
+      "unchanged installed source after cleanup: carr_library.ingest.catalog_asset_copy",
+      "exact installed source: carr_library.ui.backup_capacity",
+      "unchanged installed source after cleanup: carr_library.ui.backup_capacity",
+      "exact installed source: carr_library.ui.desktop_app",
+      "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+      "exact installed source: carr_library.ui.worker_lifetime",
+      "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+      "exact installed source: carr_library.durable_state",
+      "unchanged installed source after cleanup: carr_library.durable_state",
+      "exact installed source: carr_library.native_runtime",
+      "unchanged installed source after cleanup: carr_library.native_runtime"
+    ],
+    "required_checks_count": 44,
+    "source_identity_count": 12,
+    "folder_selection": "Explicit fixture paths only; actual capacity/checksum/result controls and No confirmation are keyboard-driven; real worker canonical outputs are not simulated.",
+    "peer_review": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "documentation": {
+    "path": "docs/backup_capacity.md",
+    "guide_copy": "Add this guide to existing bundle guide copier; retain all prior guides.",
+    "qualification": "Finite allowances only, no50k backup claim until actual selected-head create/verify/fresh-root restore. Retained corpus with bounded real samples does not prove2M historical journal checks."
+  },
+  "harness_separate": {
+    "script": "ec198e50daffd3d3687048e15882c3744c3c54c4",
+    "tests": "91f6d60f6aa345c85a8b935a72de1cbfe1083e93",
+    "docs": "eb209e39de242485220e683e028c353e76c32af9",
+    "owner": "canonical_regression",
+    "expected_cases": 24,
+    "review": "Explicit profile forwarding to actual three APIs accepted by locate_project STATIC_NOT_RUN; no shared source overwrite."
+  },
+  "runtime": "NOT_RUN: executor unavailable; no compile/pytest/native/corpus result claimed.",
+  "refs": "No branch, tag, commit or pull-request ref changed.",
+  "supersedes": "7ac8b85ee3d76724f4d217f4a57878849cf057aa",
+  "wording_followup": {
+    "blob": "0f16d9879585c7afc9eaeb88cdcddd3dc4c6777f",
+    "prior_source": "4249d0dca01a9d35f9541cac4904c7acd08c4559",
+    "scope": "Root-requested text polish only; all behavior, tests, native indices/control titles/checks unchanged.",
+    "status": "NOT_RUN"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "resonance-desktop-shared-composition/1",
+  "status": "STATIC_COMPOSITION_NOT_RUN",
+  "desktop": "a96d75005fecb5bdcd5152bdc7a8481acf133206",
+  "root_import_search": "dfbe455300173548893a45f11f7079bdbc217d7a",
+  "shared_backup": "0b7927c036ae29647101dbec3ee63899b950a380",
+  "reader": "4ab76414a557cbe4bed0c4fc255f02eacbb1e87a",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "1135886dedf44a1ce0e62ced5fbcb5ca9b6cdaad"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "b087c7f25390b6cdeec969645a2f06627c77c49f"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "2a61d841237c047036b5d7936f84cb5aaf8b4b03"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_job_review.py",
+      "sha": "13f4b9df63d5bd45a49a6ee760dcb4df9801119c"
+    }
+  ],
+  "policy": [
+    "All9 exact additive desktop hunks applied once over composed current sources.",
+    "The existing48-case progress suite retains all prior cleanup assertions and additionally proves desktop reader-control detachment.",
+    "Existing library switch, source paging, serial worker, ProgressPanel and typed backup namespaces remain present."
+  ]
+}

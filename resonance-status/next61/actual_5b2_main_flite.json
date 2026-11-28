@@ -1,0 +1,46 @@
+{
+  "schema": "carr.actual-ci-evidence/1",
+  "recorded_utc": "2026-11-28T05:26:23.731Z",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "job_id": 140873304008,
+  "status": "PASS",
+  "strict_verdict": [
+    {
+      "line": 961,
+      "status": "PASS",
+      "path": "tests/speech/test_flite_runtime.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "receipt": {
+    "status": "PASS",
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      "test_actual_chunked_synthesis_and_budget",
+      "test_actual_local_pcm_speech_and_three_distinct_voices",
+      "test_actual_volume_reduction_and_source_invariance",
+      "test_cancel_synthesis_leaves_no_partial_audio",
+      "test_no_overwrite_existing_audio",
+      "test_unsupported_native_controls_do_not_silently_apply"
+    ],
+    "suite_log_sha256": "f26cc9c1f61e7d9c629d5493d94c2c14cdf19f652681b6e8faf348be44e5ba86",
+    "capability_report_sha256": "eb920a7880d2bcaaf49522cb8788341d90f5871e7ac1d1ca309298e127ef7df5",
+    "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+  },
+  "artifact": {
+    "id": 15249139217,
+    "name": "carr-flite-46110647047-1",
+    "bytes": 16860,
+    "digest": "sha256:917e774a9915b87bf813f64ccd1751d55d9bd9f3e42e94541d29ad299aa21463"
+  },
+  "qualification": "Actual Linux Flite only; no Windows Flite, physical listening, acoustic or NVDA qualification. Other main/V3 gates remain separate."
+}

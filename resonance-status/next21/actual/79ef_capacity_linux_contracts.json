@@ -1,0 +1,158 @@
+{
+  "schema": "resonance-capacity-validation-evidence/1",
+  "captured_utc": "2026-11-27 23:53:49 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "source_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "run_id": 46084373979,
+  "job_id": 140790384059,
+  "platform": "ubuntu-24.04",
+  "job_conclusion": "success",
+  "actual_status": "PASS",
+  "source_suites": [
+    {
+      "suite": "tests/packaging/test_library_scale_benchmark.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0938487Z PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/packaging/test_library_capacity_measurement.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0939083Z PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_backup_capacity.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0939622Z PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_backup_capacity_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0940215Z PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ui/test_backup_capacity.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0940690Z PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0941210Z PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_crash_backup.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0941697Z PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_complete_pending_backup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0942181Z PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_backup_pending_common4.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0942702Z PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_backup_schema_identity.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0943195Z PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ui/test_native_backup_capacity_driver.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:50:40.0943717Z PASS: tests/ui/test_native_backup_capacity_driver.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "source_whole_count": 11,
+  "source_passed": 184,
+  "installed_passed": 184,
+  "source_summary_line": "2026-11-27T23:50:40.0944145Z Required suites complete: 11; passed=11; failed=0",
+  "actual_final_summary": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 184,
+    "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+    "source_passed": 184,
+    "source_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+    "status": "PASS"
+  },
+  "actual_final_summary_line": "2026-11-27T23:51:27.0356846Z {\"all_children_reaped\": true, \"inputs_unchanged\": true, \"installed_passed\": 184, \"source_commit\": \"79ef756d08667919d9a7c4367305aca5dfdaf6c9\", \"source_passed\": 184, \"source_tree\": \"4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a\", \"status\": \"PASS\"}",
+  "artifact": {
+    "id": 15238063877,
+    "name": "capacity-profile-contracts-ubuntu-24.04-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+    "size_in_bytes": 48435,
+    "digest": "sha256:bb6a1d1222a032e5442b07dccf202a8b854fcec0da9b04d596ca19da7aa5cd96",
+    "created_at": "2026-11-27T23:51:29Z",
+    "expired": false
+  },
+  "active_profiles_at_capture": [
+    {
+      "job_id": 140791690854,
+      "books": 1000,
+      "segments_per_book": 20,
+      "status": "RUNNING"
+    },
+    {
+      "job_id": 140791690868,
+      "books": 10000,
+      "segments_per_book": 20,
+      "status": "RUNNING"
+    },
+    {
+      "job_id": 140791690869,
+      "books": 50000,
+      "segments_per_book": 20,
+      "status": "RUNNING"
+    },
+    {
+      "job_id": 140791690855,
+      "books": 50000,
+      "segments_per_book": 40,
+      "status": "RUNNING"
+    }
+  ],
+  "scope": "Actual Linux source and isolated-installed prerequisite only. No profile performance, backup completion, Windows qualification or release result is inferred.",
+  "profile_contract": "Current four declared retained-fixture capacity profiles, page37 and3600-second phase limits unchanged; source setup and actual public-operation measurements remain separately reported.",
+  "windows_job": {
+    "id": 140790384261,
+    "status": "RUNNING",
+    "qualification": "Independent required platform; no Linux result transfer."
+  },
+  "workflow_and_branch_mutation": "None by this reviewer."
+}

@@ -1,8 +1,8 @@
 """Focused persistence/safety regressions for the integrated production service.
 
-Speech integration uses the actual installed FFmpeg Flite provider. Boundary
-wrappers only arrange cancellation or count calls; they do not synthesize fake
-speech and do not stand in for native Windows SAPI acceptance.
+Speech integration uses actual native SAPI on Windows and the original installed
+FFmpeg Flite provider on Linux. Boundary wrappers only arrange cancellation or
+count calls; they do not synthesize fake speech or qualify physical playback.
 """
 from pathlib import Path
 import os
@@ -11,7 +11,7 @@ import shutil
 import pytest
 
 from carr_library.speech import FliteProvider, VoiceRegistry
-from carr_library.speech.runtime import SapiProvider
+from carr_library.speech.runtime import NativeSapiProvider, SapiProvider
 from carr_library.speech import _io
 from carr_library.studio.render import ProductionService
 
@@ -21,10 +21,28 @@ def registry():
     binary = shutil.which('ffmpeg')
     if not binary or not shutil.which('ffprobe'):
         pytest.skip('Actual production requires installed FFmpeg and ffprobe.')
-    value = VoiceRegistry([FliteProvider(binary)])
-    if 'flite:slt' not in {voice.id for voice in value.voices()}:
-        pytest.skip('Actual speech requires the installed Flite slt voice.')
-    return value
+    provider = NativeSapiProvider() if os.name == 'nt' else FliteProvider(binary)
+    value = VoiceRegistry([provider])
+    try:
+        if os.name == 'nt':
+            english = tuple(voice for voice in value.voices()
+                            if voice.language.casefold().split('-')[0] == 'en')
+            assert len({voice.id for voice in english}) >= 2, (
+                'Actual Windows production requires two distinct installed English SAPI tokens.',
+                value.notices, tuple((voice.id, voice.language) for voice in value.voices()))
+        elif 'flite:slt' not in {voice.id for voice in value.voices()}:
+            pytest.skip('Actual speech requires the installed Flite slt voice.')
+        yield value
+    finally:
+        value.close()
+
+
+@pytest.fixture
+def actual_voice_id(registry):
+    if os.name == 'nt':
+        return next(voice.id for voice in registry.voices()
+                    if voice.language.casefold().split('-')[0] == 'en')
+    return 'flite:slt'
 
 
 class CountSpeech:
@@ -44,14 +62,14 @@ class CountSpeech:
         return result
 
 
-def test_completed_actual_speech_is_receipted_before_cancellation(tmp_path, registry):
+def test_completed_actual_speech_is_receipted_before_cancellation(tmp_path, registry, actual_voice_id):
     voices = CountSpeech(registry)
     stopped = [False]
     voices.after = lambda result: stopped.__setitem__(0, True)
     service = ProductionService(tmp_path / 'state', voices=voices)
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
-    project = service.create('One durable speech segment.', voice_ids=('flite:slt',))
+    project = service.create('One durable speech segment.', voice_ids=(actual_voice_id,))
     job = service.submit(project, outputs, stems=False)
     with pytest.raises(InterruptedError):
         service.run(job, cancelled=lambda: stopped[0])

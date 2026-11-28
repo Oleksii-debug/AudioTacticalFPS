@@ -1,0 +1,222 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Existing partitioned translation jobs with retained EPUB XHTML export",
+  "status": "DRAFT_NOT_RUN",
+  "requires_manifest": "54018b48539ce43f4b523d7f56bee1fcbe5ae12f",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout_worker.py",
+      "preimage": null,
+      "sha": "273a0fc92ab088d014cb525387a2892c2b5cc520"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout.py",
+      "preimage": null,
+      "sha": "1708fe7dcb9cab60301fde8762af7ed6cf976a81"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "preimage": "8c87aca1b49e3ff22c2ff6d11903b45f1188190a",
+      "sha": "2428f4fa27656eb692f96ebdd2e665c46754c53e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "preimage": "7810e9e4a70e0b09f86e48093dcbe7e1f8f2e3ef",
+      "sha": "37a12fdba6d69ed7bb88961e38ea3a405b8920d5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_documents.py",
+      "preimage": "3c333e7a45fc8395fca1018fecde2051e6095e5a",
+      "sha": "11c70688e9715cf16cd9026f91beba07eec56d5f"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+      "preimage": "7d01aa55c2af91eb5530778849955fb19896306a",
+      "sha": "36363f86034ec1d4c144506e78855fc81306d93c"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_layout.py",
+      "preimage": null,
+      "sha": "40645987906ab1fd6633ae69ea19f66dc01d1da9"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_epub_layout.py",
+      "preimage": null,
+      "sha": "ea38ea4913dc4bff8bb4d6dbcb49703aff454017"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_cli.py",
+      "preimage": null,
+      "sha": "e38ef4e946c09054f080fb83fc3ea2095d87f517"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+      "preimage": null,
+      "sha": "171600d9dd771a377e9170d2149d5e1c94ccc943"
+    },
+    {
+      "path": "carr-library/scripts/translation_layout_fixtures.py",
+      "preimage": null,
+      "sha": "06c1b4be2a38243a258868ce760b92babc5bd5d6"
+    },
+    {
+      "path": "carr-library/scripts/translation_epubcheck_acceptance.py",
+      "preimage": null,
+      "sha": "f1ac42577e9d99051cc38330a8dad29edc882935"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "preimage": "14de811e7ce29ff2441c0eb2028261fbbf9c4798",
+      "sha": "f7a2de69fc679a734ffba5f1be5943531143bd74"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "preimage": "d13a37cd5bf1626b602f487ab2b16bda71c01f27",
+      "sha": "e7957fa3785e5e7663403fe0b7189223f84ba7cf"
+    }
+  ],
+  "source_contract": {
+    "profile": "carr-epub-xhtml-layout/1",
+    "authority": "One complete canonical retained spine range; private markup-only markers are replayed through the same _chapter parser and must yield exactly unchanged source text; no alternate source parser/position scheme",
+    "transfers": "Existing optional source_partition, approval, UUID, source-current-account and accepted ledger checks; no tags, paths or invented quote authority",
+    "publication": "Same owned process/broker/staging and source-hash snapshot primitives, then existing protected no-clobber publisher; no observer after actual commit",
+    "limits": {
+      "archive_bytes": 67108864,
+      "source_characters": 2000000,
+      "chapters": 1000,
+      "nonempty_units": 2048,
+      "partition_ranges": 4096,
+      "jobs": 1
+    },
+    "limitations": [
+      "mixed-run per-word styles not aligned; first textual slot",
+      "canonical XHTML whitespace normalization with distinct accepted/rendered text digests",
+      "mixed links/inline images/line breaks/explicit hidden attributes/script-event handlers/executable URI schemes/meta refresh/repeated-spine/synchronized SMIL refused; CSS-dependent visibility is not computed and canonical text/layout warnings remain",
+      "external navigation/head titles/image alternatives/original bibliography not translated",
+      "DOCX footnote/endnote/body drawing canonical guards remain unchanged"
+    ],
+    "snapshot_hashing": "The immutable source bytes are hashed once per package pass, not once per spine chapter; all actual source revalidation boundaries remain."
+  },
+  "test_gates": {
+    "counts_kind": "static enumeration, not parsing/collection/execution",
+    "whole_suites": {
+      "tests/assistant/test_translation_epub_layout.py": 31,
+      "tests/ui/test_translation_epub_layout.py": 6,
+      "tests/assistant/test_translation_epub_cli.py": 5
+    },
+    "fixture_companions": [
+      "tests/assistant/test_translation_local.py",
+      "tests/assistant/test_translation_layout.py",
+      "tests/ui/test_translation_layout.py",
+      "tests/ui/test_translation_documents.py"
+    ],
+    "existing_required": "Retain prior DOCX33/UI23/CLI5 and partition26 plus shared translation/source/backup regressions."
+  },
+  "native": {
+    "script": "scripts/windows_translation_epub_smoke.py",
+    "args": [
+      "--source-root",
+      "SOURCE/src"
+    ],
+    "essential": [
+      "native Windows wx",
+      "actual canonical EPUB import",
+      "actual shared desktop executor",
+      "actual unchanged host worker",
+      "actual shared ProgressHub",
+      "actual retained catalog scope",
+      "existing document keyboard command retained",
+      "formatted workstation is a native modal",
+      "limitations visible before approval",
+      "source selection is readonly",
+      "format inspection sends no source text",
+      "review binds mapping and source with no quotation authority",
+      "default-No decision saves no job and makes no request",
+      "preparation makes no provider call",
+      "exact three reviewed paragraph requests",
+      "late Stop retains actual committed completion",
+      "completed export needs no active profile",
+      "exact committed EPUB receipt",
+      "all unselected EPUB parts preserved exactly",
+      "actual XHTML blocks/table/styles/links translation",
+      "original source bytes remain unchanged",
+      "completed export retains readable native status focus",
+      "existing EPUB export never overwritten",
+      "real installed formatting children completed",
+      "format resource leases quiescent",
+      "existing document workstation route preserved",
+      "host shutdown retains no failed cleanup owner"
+    ],
+    "origins": [
+      "carr_library.assistant.translation_layout",
+      "carr_library.assistant.translation_layout_worker",
+      "carr_library.assistant.translation_documents",
+      "carr_library.assistant.translation",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.profiles",
+      "carr_library.ui.translation_documents",
+      "carr_library.ui.translation_layout",
+      "carr_library.research.export_file",
+      "carr_library.reader.reading_desk",
+      "carr_library.durable_state",
+      "carr_library.progress",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.audio.process",
+      "carr_library.operations.broker",
+      "carr_library.assistant.translation_partition",
+      "carr_library.assistant.translation_epub_layout",
+      "carr_library.assistant.translation_epub_layout_worker"
+    ],
+    "required_checks": 65,
+    "required_fields": {
+      "status": "PASS",
+      "native_keyboard": "PASS",
+      "format_children": "PASS",
+      "source_bound_epub": "PASS",
+      "package_preservation": "PASS",
+      "completed_offline_export": "PASS",
+      "late_stop_completion": "PASS",
+      "controlled_pickers_and_consent": true,
+      "real_translation_service": "NOT_RUN",
+      "translation_quality": "NOT_RUN",
+      "visual_layout": "NOT_RUN",
+      "epubcheck": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "fixture_script": "scripts/translation_layout_fixtures.py",
+    "fixture_blob": "06c1b4be2a38243a258868ce760b92babc5bd5d6",
+    "fixture_hash_check": "fixture_sha256 must equal current checked-out fixture bytes; actual script verifies unchanged after cleanup",
+    "audio_prerequisite": false
+  },
+  "conformance": {
+    "script": "scripts/translation_epubcheck_acceptance.py",
+    "args": [
+      "--archive",
+      "EXISTING_PINNED_EPUBCHECK_ZIP",
+      "--java",
+      "EXISTING_JAVA_EXE",
+      "--lock",
+      "EXISTING_EPUBCHECK_LOCK",
+      "--source-root",
+      "SOURCE/src",
+      "--require-installed",
+      "--output",
+      "NEW_REPORT.json"
+    ],
+    "reuse": "Existing scripts/epubcheck_acceptance.py validate(), exact pinned5.3.0 archive, no new acquisition or audio runtime",
+    "required": "3 independently validated actual formatter EPUBs, zero errors/warnings; one deliberate invalid mimetype must fail PKG-007; 5 exact installed formatter/parser module origins before/after plus checker/helper/fixture hashes",
+    "fixtures": "table/style/media; preformatted; whole-block link",
+    "runtime": "NOT_RUN"
+  },
+  "backup": "No new namespace or extra hook beyond optional source_partition in9ee727c. Existing passive source/job/ledger/copied-DB validators remain authoritative.",
+  "entrypoints": "New explicit existing-workstation EPUB button and epub-preview/submit/run/export commands only; no desktop or __main__ overwrite.",
+  "execution": "No executor available; all source/test/native/conformance execution remains NOT_RUN.",
+  "review_corrections": {
+    "parent": "aaee1d0f68d3c3ef55fbf8e43c09e2d14753f69d",
+    "finding": "Executable URI attributes and meta refresh could survive canonical generic import, which treats them as inert source.",
+    "fix": "Bounded parsed-attribute URL checks reject control-obfuscated or nonreviewed schemes and refresh metadata in spine plus local nonspine XHTML; ordinary package/HTTPS links retained without fetching. Explicit hidden/CSS scope stated.",
+    "regressions": "6 actual package rejection cases after canonical import plus3 preserved package/HTTPS-link cases;9 additional static cases, NOT_RUN",
+    "lifecycle": "Both DOCX and EPUB native probes use actual DesktopFrame.Close(force=True), bounded native-HWND death observation, then the same retained executor drain; no direct _closing/Destroy bypass of scheduler/tray ownership. Existing essential check names/counts preserved; required labels are subsets, not exact total report length."
+  }
+}

@@ -1,0 +1,398 @@
+{
+  "schema": "carr-explicit-complete-backup-capacity-ci/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "STATIC_REVIEWED_EXACT_READBACK_NEW_EXECUTION_NOT_RUN",
+  "intent": "Run ten whole source and isolated installed suites on each platform, then independently measure four Linux retained-corpus profiles with explicit complete-backup capacity. No inherited baseline qualification.",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "223d8103219b56f740e2b7cba4d1e965b2554b16",
+      "blob": "c0c95987d85d6c93d8444f279d50b7438aff14ca",
+      "readback_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "2bb337b543e771559288b13709c575d8741fcd74",
+      "blob": "aab43491615288c2929449297d2d9acbf14b4378",
+      "readback_exact": true
+    }
+  ],
+  "suites": [
+    {
+      "path": "tests/packaging/test_library_scale_benchmark.py",
+      "blob": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+      "required_whole_cases": 24
+    },
+    {
+      "path": "tests/packaging/test_library_capacity_measurement.py",
+      "blob": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7",
+      "required_whole_cases": 24
+    },
+    {
+      "path": "tests/storage/test_backup_capacity.py",
+      "blob": "895aec39b689aea7101da23db0801413dac324ef",
+      "required_whole_cases": 28
+    },
+    {
+      "path": "tests/storage/test_backup_capacity_cli.py",
+      "blob": "741a005ca9f351579b9d51b464a88dda9afb52b7",
+      "required_whole_cases": 3
+    },
+    {
+      "path": "tests/ui/test_backup_capacity.py",
+      "blob": "26f03b8f46f6425460bb248f94bd3f1347787dc6",
+      "required_whole_cases": 17
+    },
+    {
+      "path": "tests/storage/test_library_backup.py",
+      "blob": "d14b278b356bb47fe66e822125a257807f2cd895",
+      "required_whole_cases": 9
+    },
+    {
+      "path": "tests/storage/test_crash_backup.py",
+      "blob": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c",
+      "required_whole_cases": 5
+    },
+    {
+      "path": "tests/storage/test_complete_pending_backup.py",
+      "blob": "36fe4b61a3a61351fecc1a88016c1e1db32275d5",
+      "required_whole_cases": 4
+    },
+    {
+      "path": "tests/storage/test_backup_pending_common4.py",
+      "blob": "b7583313b0c30d57fc031832e2fd486803604f00",
+      "required_whole_cases": 27
+    },
+    {
+      "path": "tests/storage/test_backup_schema_identity.py",
+      "blob": "ebed1d823de241c639877dd747de9aa4ce2085ed",
+      "required_whole_cases": 36
+    }
+  ],
+  "strict_totals": {
+    "whole_suites_per_lane": 10,
+    "source_per_platform": 177,
+    "installed_per_platform": 177,
+    "platforms": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "case_counts": "Static expected totals; actual complete zero-failure/zero-skip execution is required."
+  },
+  "excluded_from_this_lane": {
+    "path": "tests/storage/test_pending_backup.py",
+    "reason": "Needs actual OCR and remains required by existing full gates; not part of these177."
+  },
+  "companions": [
+    {
+      "path": "scripts/benchmark_library_scale.py",
+      "blob": "ec198e50daffd3d3687048e15882c3744c3c54c4"
+    },
+    {
+      "path": "scripts/benchmark_semantic_cache.py",
+      "blob": "898b05e37b5a50c018567e35c44ef71f1393535d"
+    }
+  ],
+  "pins": {
+    "scripts/benchmark_library_scale.py": "ec198e50daffd3d3687048e15882c3744c3c54c4",
+    "scripts/benchmark_semantic_cache.py": "898b05e37b5a50c018567e35c44ef71f1393535d",
+    "tests/packaging/test_library_scale_benchmark.py": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+    "tests/packaging/test_library_capacity_measurement.py": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7",
+    "tests/storage/test_backup_capacity.py": "895aec39b689aea7101da23db0801413dac324ef",
+    "tests/storage/test_backup_capacity_cli.py": "741a005ca9f351579b9d51b464a88dda9afb52b7",
+    "tests/ui/test_backup_capacity.py": "26f03b8f46f6425460bb248f94bd3f1347787dc6",
+    "tests/storage/test_library_backup.py": "d14b278b356bb47fe66e822125a257807f2cd895",
+    "tests/storage/test_crash_backup.py": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c",
+    "tests/storage/test_complete_pending_backup.py": "36fe4b61a3a61351fecc1a88016c1e1db32275d5",
+    "tests/storage/test_backup_pending_common4.py": "b7583313b0c30d57fc031832e2fd486803604f00",
+    "tests/storage/test_backup_schema_identity.py": "ebed1d823de241c639877dd747de9aa4ce2085ed",
+    "scripts/ci_check.py": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "src/carr_library/backup_capacity.py": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7",
+    "src/carr_library/application.py": "4544453f62a96993a2f05ed1522a563649289715",
+    "src/carr_library/__main__.py": "99b3c98d5f60cfa6ba1074d74c32acc14250fd16",
+    "src/carr_library/library_backup.py": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+    "src/carr_library/pending_backup.py": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7",
+    "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+    "src/carr_library/storage/revisions.py": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+    "src/carr_library/ui/backup_capacity.py": "66555889648ec8b76ac11e7ffe5bd54ece6c29e9"
+  },
+  "installed_origins": [
+    "bootstrap",
+    "carr_library.application",
+    "carr_library.search.paging",
+    "carr_library.reader.reading_desk",
+    "carr_library.catalog.read_views",
+    "carr_library.storage.revisions",
+    "carr_library.durable_state",
+    "carr_library.catalog.registration",
+    "carr_library.catalog.membership",
+    "carr_library.citations.text_attestation",
+    "carr_library.ingest.retained_assets",
+    "carr_library.ingest.pipeline",
+    "carr_library.ingest.worker",
+    "carr_library.ingest.publication",
+    "carr_library.ingest.batches",
+    "carr_library.ingest.writer_guard",
+    "carr_library.operations.broker",
+    "carr_library.library_backup",
+    "carr_library.pending_backup",
+    "carr_library.backup_capacity"
+  ],
+  "source_and_installed_boundaries": {
+    "source": "Exact event SHA, own committed helper bytes and22 fixed Git blob pins before/after. Existing ci_check runs every whole suite in its own strict child.",
+    "installed": "Build current exact source with already-acquired tools and no index/deps/build isolation; unchanged full application source-wheel proof; install verified wheel without fetch; stage exactly ten suites plus two companions outside checkout; -I/-B with empty pythonpath and existing PYTEST_CHILD.",
+    "policy": "Original installed child text is byte-identical to223d: unchanged offline/XFAIL/XPASS/JUnit/payload checks. Every application/bootstrap wheel payload byte and20 imported origins are verified before/after each whole installed child.",
+    "cleanup": "Existing process-family cleanup on finite child failure and private staging cleanup remain unchanged. Installed setupPython application remains for the following Windows native probe.",
+    "artifacts": "Only bounded text/JSON/XML evidence; no corpus/library/wheel/runtime/audio/model or private data is uploaded."
+  },
+  "envelopes": {
+    "suite_seconds": 600,
+    "source_jobs": 2,
+    "source_aggregate_seconds": 3200,
+    "validation_step_minutes": 170,
+    "validation_job_minutes": 195,
+    "unchanged_build_seconds": 300,
+    "unchanged_install_seconds": 180,
+    "unchanged_pip_check_seconds": 60,
+    "native_step_minutes": 5,
+    "native_probe_cleanup_watchdog_seconds": 180,
+    "corpus_phase_seconds": 3600,
+    "corpus_step_minutes": 304,
+    "corpus_job_minutes": 330,
+    "authorization": "Root explicitly approved expanded outer validation envelopes; no inner-suite/profile budget relaxation.",
+    "source_aggregate_derivation": "Five two-suite waves×(600s child +15s Windows taskkill +10s reap +5s fallback reap +0.2s report retry waits)=3151s;3200s finite aggregate adds49s orchestration allowance. Child controls unchanged.",
+    "job_envelope_derivation": "195min outer validation permits12min acquisition +170min helper +5min Windows native with8min checkout/upload margin. Corpus phases304/330min and3600s unchanged."
+  },
+  "jobs": {
+    "source_installed_linux": "capacity-contracts-linux",
+    "source_installed_windows": "capacity-contracts-windows",
+    "equivalence": "After OS/name/artifact/concurrency normalization and removal of exact Windows-only native insertion, both validation job bodies are identical.",
+    "profiles_require": [
+      "capacity-contracts-linux"
+    ],
+    "windows_status": "Windows177+177 and actual native checks remain required workflow outcomes; Linux measurements do not transfer PASS to Windows or establish overall qualification.",
+    "cancellation": "No continue-on-error, no cancellation of live or sibling runs, all concurrency cancel-in-progress values remain false."
+  },
+  "profiles": [
+    {
+      "books": 1000,
+      "segments_per_book": 20,
+      "source_segments": 20000,
+      "segment_bytes": 256,
+      "construction": "retained-fixture",
+      "public_samples": 12,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN"
+    },
+    {
+      "books": 10000,
+      "segments_per_book": 20,
+      "source_segments": 200000,
+      "segment_bytes": 256,
+      "construction": "retained-fixture",
+      "public_samples": 12,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN"
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 20,
+      "source_segments": 1000000,
+      "segment_bytes": 256,
+      "construction": "retained-fixture",
+      "public_samples": 12,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN"
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 40,
+      "source_segments": 2000000,
+      "segment_bytes": 256,
+      "construction": "retained-fixture",
+      "public_samples": 12,
+      "complete_backup": true,
+      "backup_capacity_profile": "large-source-v1",
+      "status": "NOT_RUN"
+    }
+  ],
+  "profile_contract": {
+    "arguments": [
+      "--construction",
+      "retained-fixture",
+      "--public-samples",
+      "12",
+      "--complete-backup",
+      "--backup-capacity-profile",
+      "large-source-v1"
+    ],
+    "finite_limits": {
+      "phase_seconds": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824
+    },
+    "actual_phases": [
+      "build",
+      "measure",
+      "restart",
+      "operations",
+      "backup"
+    ],
+    "explicit_api_selection": "Selected profile is forwarded by accepted ec198 to actual app.backup, verify_backup and restore_backup; ordinary product defaults and backup formats remain unchanged.",
+    "source_binding": "Eight fixed profile source/script pins plus source commit, same harness20 before/after origins, all successful child identities/counts and report capacity four-key mapping.",
+    "fresh_paths": "ci-large-backup-capacity-results; RUNNER_TEMP/resonance-large-backup-capacity-<books>-<segments>-<run-id>-<attempt>. Contract evidence is ci-capacity-profile-contracts.",
+    "retention": "Existing bounded allowed configuration/report and five phase JSON/stdout/stderr files only. FAIL/PARTIAL/NOT_RUN remain unchanged; no backup refusal becomes PASS.",
+    "distinction": "Retained corpus construction is not sustained ordinary-import throughput.50k×20 is1,000,000 segments;50k×40 is2,000,000. Actual populated backup/verify/fresh-root restore is required separately."
+  },
+  "native": {
+    "insertion_blob": "3cd70b1da3438a74a505a151152d9575295b282d",
+    "metadata_blob": "90d3407d1f848d6dfc773f4b5d9655ee63c72f7a",
+    "probe": "scripts/windows_backup_capacity_smoke.py",
+    "probe_blob": "dffdce9ac49fcb54cd2393f410f0844ad9c52130",
+    "platform": "Windows job only, after successful source+installed177 helper",
+    "checks": 44,
+    "origins": 12,
+    "required_pass_fields": [
+      "status",
+      "native_keyboard",
+      "native_backup_restore",
+      "native_failure_cleanup",
+      "native_host_cleanup"
+    ],
+    "required_not_run_fields": [
+      "large_corpus_measurement",
+      "manual_nvda",
+      "physical_media",
+      "power_loss"
+    ],
+    "runtime_route": "Actual Windows x64 setupPython installed wheel and WXMSW; optional bundled supplement must be absent; no audio dependency, bundled-runtime or Windows11 qualification.",
+    "implementation": "Exact peer-reviewed insertion is byte-identical; source/probe Git pins, before/after installed bytes and source HEAD hashes, typed native fields, bounded logs and failure exit all retained.",
+    "evidence_path": "ci-capacity-profile-contracts/native-backup"
+  },
+  "prerequisites": {
+    "backup_profile_manifest": "dc68c360ac846b3594c0092ecbda503938dee8d0",
+    "prior_backup_manifest": "7ac8b85ee3d76724f4d217f4a57878849cf057aa",
+    "harness_manifest": "6f16872e421c75ba1aa4c5ed22b3432a954a905d",
+    "old_scale_clock_fixture": {
+      "preimage": "0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17",
+      "blob": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+      "cases": 24,
+      "scope": "Root two-hunk actual-clock fixture correction; same elapsed-budget and actual disk refusal assertions."
+    },
+    "capacity_cli_diagnostics": {
+      "preimage": "91f6d60f6aa345c85a8b935a72de1cbfe1083e93",
+      "blob": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7",
+      "cases": 24,
+      "scope": "Progress failure-only bounded synthetic phase diagnostics. Original exit/result/receipt/backup assertions and CLI arguments unchanged; no product fix claimed."
+    }
+  },
+  "baseline": {
+    "source_commit": "97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d",
+    "run_id": 46060395601,
+    "relationship": "SEPARATE_BASELINE_ONLY; branch/run untouched and no verdict inherited.",
+    "reported_actuals": "Root reported Linux42source+42installed PASS; Windows source failed two fixtures and four profiles were skipped by the old shared-matrix dependency. This successor retains strict failures and separates platform dependencies.",
+    "pending_cause": "The Windows capacity CLI nonzero exit lacked phase diagnostics;5f2ab exposes actual retained evidence without assuming a product cause or success."
+  },
+  "static_audit": {
+    "source_helper": "c0c95987d85d6c93d8444f279d50b7438aff14ca",
+    "workflow": "aab43491615288c2929449297d2d9acbf14b4378",
+    "exact_readbacks": true,
+    "validation_platform_bodies_equal_except_named_os_fields": true,
+    "native_block_literal_identical": true,
+    "native_within_windows_only": true,
+    "linux_profile_requires_own_validation": true,
+    "no_continue_on_error": true,
+    "no_cancel_in_progress": true,
+    "all_four_profiles_explicit": true,
+    "profile_phase3600_preserved": true,
+    "profile_job330_preserved": true,
+    "profile_step304_preserved": true,
+    "validation_step170_twice": true,
+    "per_suite600_preserved": true,
+    "original_installed_child_identical": true,
+    "test_pins": [
+      {
+        "path": "tests/packaging/test_library_scale_benchmark.py",
+        "count": 24,
+        "blob": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411"
+      },
+      {
+        "path": "tests/packaging/test_library_capacity_measurement.py",
+        "count": 24,
+        "blob": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7"
+      },
+      {
+        "path": "tests/storage/test_backup_capacity.py",
+        "count": 28,
+        "blob": "895aec39b689aea7101da23db0801413dac324ef"
+      },
+      {
+        "path": "tests/storage/test_backup_capacity_cli.py",
+        "count": 3,
+        "blob": "741a005ca9f351579b9d51b464a88dda9afb52b7"
+      },
+      {
+        "path": "tests/ui/test_backup_capacity.py",
+        "count": 17,
+        "blob": "26f03b8f46f6425460bb248f94bd3f1347787dc6"
+      },
+      {
+        "path": "tests/storage/test_library_backup.py",
+        "count": 9,
+        "blob": "d14b278b356bb47fe66e822125a257807f2cd895"
+      },
+      {
+        "path": "tests/storage/test_crash_backup.py",
+        "count": 5,
+        "blob": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c"
+      },
+      {
+        "path": "tests/storage/test_complete_pending_backup.py",
+        "count": 4,
+        "blob": "36fe4b61a3a61351fecc1a88016c1e1db32275d5"
+      },
+      {
+        "path": "tests/storage/test_backup_pending_common4.py",
+        "count": 27,
+        "blob": "b7583313b0c30d57fc031832e2fd486803604f00"
+      },
+      {
+        "path": "tests/storage/test_backup_schema_identity.py",
+        "count": 36,
+        "blob": "ebed1d823de241c639877dd747de9aa4ce2085ed"
+      }
+    ],
+    "count_per_source_or_installed": 177,
+    "native": {
+      "checks": 44,
+      "origins": 12,
+      "pass_fields": 5,
+      "not_run_fields": 4
+    },
+    "forbidden_old_counts": true,
+    "no_case_runtime_claim": true,
+    "validation_job195_twice": true,
+    "source_aggregate3200": true,
+    "source_preimage_reconstructed": true,
+    "budget_derivation": {
+      "source_five_waves_seconds": 3151,
+      "source_aggregate_seconds": 3200,
+      "installed_ten_children_with_max_cleanup_seconds": 6300,
+      "build_install_check_seconds": 540,
+      "source_plus_installed_and_build_seconds": 10040
+    }
+  },
+  "review": {
+    "helper": "Root independently accepted2bafe four-hunk delta and final5f2ab pin. Final c0c959 adds only reviewed source3200 aggregate/comment after checking actual30s process-tree cleanup. Reverse audit reconstructs223d byte-for-byte.",
+    "native": "Root and Canonical independently accepted3cd70 boundary STATIC_NOT_RUN; inserted literally into Windows job only.",
+    "fixtures": "Canonical accepted root d4bd exact two-hunk real-clock change and Progress5f2ab sole diagnostic insertion; all assertions/case counts retained.",
+    "parser_and_runtime": "NOT_RUN. No local executor/parser/pytest/native/corpus result is claimed for this composed successor.",
+    "envelopes": "Root explicitly requested source cleanup accounting and195min validation jobs; only two job ceilings/helper pins changed over reviewed53c0 workflow."
+  },
+  "refs": "No branch, tag or commit reference moved; parent owns exact integration/publication.",
+  "supersedes": "160eec994c43b2f4d91107085e6b4f07b742c41b"
+}

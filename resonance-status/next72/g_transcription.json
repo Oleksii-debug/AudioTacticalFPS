@@ -1,0 +1,1003 @@
+{
+  "schema": "carr-g-local-transcription-actual/1",
+  "created_utc": "2026-11-28 10:10:05 UTC",
+  "status": "ACTUAL_WINDOWS_FAILURE_LINUX_PASS",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run": 46131516676,
+  "event_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "actual_checked_out_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "workflow": {
+    "path": ".github/workflows/carr-transcription-bridge.yml",
+    "blob": "28da3567fed054331d003bf02aa35b30fed91f1e"
+  },
+  "results": [
+    {
+      "job": {
+        "id": 140937499855,
+        "name": "protocol (windows-2022)",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-28T09:49:43Z",
+        "completed_at": "2026-11-28T10:02:56Z",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install the actual source package and test dependencies",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Verify retained inputs, actual child protocol, recovery and CLI",
+            "status": "completed",
+            "conclusion": "failure"
+          },
+          {
+            "number": 6,
+            "name": "Verify the same whole suites against the installed package",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 7,
+            "name": "Install actual native desktop controls",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 8,
+            "name": "Exercise actual native controls and shared background operation",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 9,
+            "name": "Retain exact-source synthetic transcription evidence",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 18,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 19,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      "actual_checkout": {
+        "command_line": 127,
+        "output_line": 128,
+        "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+        "explicit_action_ref": true
+      },
+      "log": {
+        "sha256": "f40acdec0d668c82c5cf7510bc4ef277acf51829d5828bba261a67e42edbeb86",
+        "bytes": 171145,
+        "normalized_lines": 1377
+      },
+      "source": {
+        "wholes": 18,
+        "whole_pass": 17,
+        "whole_fail": 1,
+        "passed": 511,
+        "failed": 1,
+        "skipped": 0,
+        "rows": [
+          {
+            "line": 1307,
+            "path": "tests/transcription/test_supplied_worker_bridge.py",
+            "status": "PASS",
+            "passed": 62,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_supplied_worker_bridge.py: junit_passed=62, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1308,
+            "path": "tests/transcription/test_v5_worker_profile.py",
+            "status": "PASS",
+            "passed": 39,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_v5_worker_profile.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1309,
+            "path": "tests/transcription/test_runtime_interpreter.py",
+            "status": "PASS",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_runtime_interpreter.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1310,
+            "path": "tests/operations/test_transcription_admission.py",
+            "status": "PASS",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/operations/test_transcription_admission.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1311,
+            "path": "tests/assistant/test_supplied_transcription.py",
+            "status": "PASS",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/assistant/test_supplied_transcription.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1312,
+            "path": "tests/ui/test_progress_job_review.py",
+            "status": "PASS",
+            "passed": 48,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/ui/test_progress_job_review.py: junit_passed=48, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1313,
+            "path": "tests/transcription/test_protocol_fixture.py",
+            "status": "PASS",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_protocol_fixture.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1314,
+            "path": "tests/transcription/test_service.py",
+            "status": "PASS",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1315,
+            "path": "tests/transcription/test_admission_boundaries.py",
+            "status": "FAIL",
+            "passed": 39,
+            "failed": 1,
+            "skipped": 0,
+            "exit": 1,
+            "text": "FAIL: tests/transcription/test_admission_boundaries.py: junit_passed=39, failed=1, skipped=0, pytest_exit=1"
+          },
+          {
+            "line": 1316,
+            "path": "tests/transcription/test_runtime_admission.py",
+            "status": "PASS",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1317,
+            "path": "tests/transcription/test_restore.py",
+            "status": "PASS",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_restore.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1318,
+            "path": "tests/storage/test_transcription_backup.py",
+            "status": "PASS",
+            "passed": 143,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1319,
+            "path": "tests/ui/test_transcription_dialog.py",
+            "status": "PASS",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/ui/test_transcription_dialog.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1320,
+            "path": "tests/e2e/test_transcription_cli.py",
+            "status": "PASS",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/e2e/test_transcription_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1321,
+            "path": "tests/transcription/test_unified_authority.py",
+            "status": "PASS",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_unified_authority.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1322,
+            "path": "tests/transcription/test_export_publication.py",
+            "status": "PASS",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_export_publication.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1323,
+            "path": "tests/transcription/test_native_profiles_fixture.py",
+            "status": "PASS",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_native_profiles_fixture.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1324,
+            "path": "tests/transcription/test_protocol_fixture_windows.py",
+            "status": "PASS",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_protocol_fixture_windows.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0"
+          }
+        ]
+      },
+      "installed": {
+        "status": "NOT_RUN",
+        "reason": "Source failure prevented the installed step"
+      },
+      "native": {
+        "status": "NOT_RUN",
+        "reason": "Source failure prevented Windows native control steps"
+      },
+      "artifact": {
+        "id": 15258840560,
+        "name": "carr-asr-windows-2022-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1",
+        "size_in_bytes": 11765,
+        "digest": "sha256:5a6e4c2e1c50d0b19be9580e5273b1b811c9379ce9f1771b4efffa6ab07550ba",
+        "workflow_run": {
+          "id": 46131516676,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+          "head_sha": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+        }
+      }
+    },
+    {
+      "job": {
+        "id": 140937499997,
+        "name": "protocol (ubuntu-24.04)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T09:57:47Z",
+        "completed_at": "2026-11-28T10:04:20Z",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install the actual source package and test dependencies",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Verify retained inputs, actual child protocol, recovery and CLI",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Verify the same whole suites against the installed package",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Install actual native desktop controls",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 8,
+            "name": "Exercise actual native controls and shared background operation",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 9,
+            "name": "Retain exact-source synthetic transcription evidence",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 18,
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 19,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      "actual_checkout": {
+        "command_line": 140,
+        "output_line": 141,
+        "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+        "explicit_action_ref": true
+      },
+      "log": {
+        "sha256": "b83d8a24ef62551c858c59e34626953463da58a5aba8bcb5f57c0a3a191866bd",
+        "bytes": 273467,
+        "normalized_lines": 1949
+      },
+      "source": {
+        "wholes": 17,
+        "whole_pass": 17,
+        "whole_fail": 0,
+        "passed": 514,
+        "failed": 0,
+        "skipped": 0,
+        "rows": [
+          {
+            "line": 1239,
+            "path": "tests/transcription/test_supplied_worker_bridge.py",
+            "status": "PASS",
+            "passed": 62,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_supplied_worker_bridge.py: junit_passed=62, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1240,
+            "path": "tests/transcription/test_v5_worker_profile.py",
+            "status": "PASS",
+            "passed": 41,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_v5_worker_profile.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1241,
+            "path": "tests/transcription/test_runtime_interpreter.py",
+            "status": "PASS",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_runtime_interpreter.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1242,
+            "path": "tests/operations/test_transcription_admission.py",
+            "status": "PASS",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/operations/test_transcription_admission.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1243,
+            "path": "tests/assistant/test_supplied_transcription.py",
+            "status": "PASS",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/assistant/test_supplied_transcription.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1244,
+            "path": "tests/ui/test_progress_job_review.py",
+            "status": "PASS",
+            "passed": 48,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/ui/test_progress_job_review.py: junit_passed=48, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1245,
+            "path": "tests/transcription/test_protocol_fixture.py",
+            "status": "PASS",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_protocol_fixture.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1246,
+            "path": "tests/transcription/test_service.py",
+            "status": "PASS",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1247,
+            "path": "tests/transcription/test_admission_boundaries.py",
+            "status": "PASS",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_admission_boundaries.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1248,
+            "path": "tests/transcription/test_runtime_admission.py",
+            "status": "PASS",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1249,
+            "path": "tests/transcription/test_restore.py",
+            "status": "PASS",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_restore.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1250,
+            "path": "tests/storage/test_transcription_backup.py",
+            "status": "PASS",
+            "passed": 143,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1251,
+            "path": "tests/ui/test_transcription_dialog.py",
+            "status": "PASS",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/ui/test_transcription_dialog.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1252,
+            "path": "tests/e2e/test_transcription_cli.py",
+            "status": "PASS",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/e2e/test_transcription_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1253,
+            "path": "tests/transcription/test_unified_authority.py",
+            "status": "PASS",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_unified_authority.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1254,
+            "path": "tests/transcription/test_export_publication.py",
+            "status": "PASS",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_export_publication.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+          },
+          {
+            "line": 1255,
+            "path": "tests/transcription/test_native_profiles_fixture.py",
+            "status": "PASS",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0,
+            "text": "PASS: tests/transcription/test_native_profiles_fixture.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0"
+          }
+        ]
+      },
+      "installed": {
+        "log_line": 1896,
+        "status": "PASS",
+        "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+        "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+        "passed": 514,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0,
+        "expected_failures": false,
+        "suite_counts": {
+          "tests/transcription/test_supplied_worker_bridge.py": 62,
+          "tests/transcription/test_v5_worker_profile.py": 41,
+          "tests/transcription/test_runtime_interpreter.py": 3,
+          "tests/operations/test_transcription_admission.py": 10,
+          "tests/assistant/test_supplied_transcription.py": 32,
+          "tests/ui/test_progress_job_review.py": 48,
+          "tests/transcription/test_protocol_fixture.py": 9,
+          "tests/transcription/test_service.py": 28,
+          "tests/transcription/test_admission_boundaries.py": 40,
+          "tests/transcription/test_runtime_admission.py": 13,
+          "tests/transcription/test_restore.py": 1,
+          "tests/storage/test_transcription_backup.py": 143,
+          "tests/ui/test_transcription_dialog.py": 40,
+          "tests/e2e/test_transcription_cli.py": 4,
+          "tests/transcription/test_unified_authority.py": 24,
+          "tests/transcription/test_export_publication.py": 14,
+          "tests/transcription/test_native_profiles_fixture.py": 2
+        },
+        "required_suite_counts": {
+          "tests/transcription/test_service.py": 28,
+          "tests/transcription/test_admission_boundaries.py": 40,
+          "tests/transcription/test_protocol_fixture.py": 9,
+          "tests/storage/test_transcription_backup.py": 143,
+          "tests/transcription/test_native_profiles_fixture.py": 2
+        },
+        "origins": {
+          "carr_library.integrations.transcription_values": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_values.py",
+            "sha256": "8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93"
+          },
+          "carr_library.integrations.transcription_runtime": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_runtime.py",
+            "sha256": "6ed7c95f6b25a3e76a7a14e08f8564850e43ef6091799a38a2a2ba35e0b0bb6e"
+          },
+          "carr_library.integrations.transcription_scope": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_scope.py",
+            "sha256": "d4b262c8f5eb0d9bdf611a3ff01685ef7ad5c6acf9ee13fc7e67b7796ddf697e"
+          },
+          "carr_library.integrations.transcription_backup": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_backup.py",
+            "sha256": "597b136dce426c16b176362fcc1bf1a74096d19386635a9bb865d30a6bcb8f71"
+          },
+          "carr_library.integrations.transcription_protocol": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_protocol.py",
+            "sha256": "42fb1c28bff2dee7df143160b3ffa3d88736a818b3b8868720a29b97d6e6d102"
+          },
+          "carr_library.transcription": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/transcription.py",
+            "sha256": "55fba66aa69239055cdef2095ad423b2e0f0b53cf3708d0c56c834f186fcde52"
+          },
+          "carr_library.backup_transcription": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_transcription.py",
+            "sha256": "f4c0759f7c2f54598f36346aa2e94a562029df7d6c592668bb44f2808f049c00"
+          },
+          "carr_library.state_backup": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/state_backup.py",
+            "sha256": "d4fa70f7cda37b94da6021438711a2d81e64afc440f468193de3cb2b0eb1ad93"
+          },
+          "carr_library.backup_sidecars": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+            "sha256": "687047efa94a0caa5f9557f6cc47eacb92e7765745d9fcb40973819d81ed88a9"
+          },
+          "carr_library.library_backup": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py",
+            "sha256": "d595c7df45cc743c644993613ee8c6edb1c10c5218ea453c32d8a7ff2dbd9ac7"
+          },
+          "carr_library.ui.transcription_runtime_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/transcription_runtime_dialog.py",
+            "sha256": "85039cd064e6a16b420cbdbeb276eb3d6a8c4897f0d2f4156cadb563516f9cbc"
+          },
+          "carr_library.ui.transcription_dialog": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/transcription_dialog.py",
+            "sha256": "7f76d616f6127eba6c30ead115565782ad0ecaae8e6a2dc83e3205a88fcff17f"
+          },
+          "carr_library.transcription_cli": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/transcription_cli.py",
+            "sha256": "3bf641fb564ba667ccbad9c6bb55acdbe46f1403e5dda8b2879514fbca7858c2"
+          },
+          "carr_library.integrations.transcription_exports": {
+            "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_exports.py",
+            "sha256": "771769b569b421e9dce377e48714f1303eb5705e477250c7edd1aeb2c6fc28f8"
+          }
+        },
+        "fixture_sha256": {
+          "tests/transcription/fixture_runtime.py": "9b7c287d706d6eacb6e7354a546df649f27f05ad489b8616b3389c81613dca61",
+          "tests/transcription/fixtures/protocol_worker.py": "4e023787e035c5a9e46f5422fa7233506dcdb6d382f6b3542e11e72de9cf1ada"
+        },
+        "acoustic_inference": "NOT_RUN",
+        "manual_NVDA": "NOT_RUN",
+        "origin_count": 14,
+        "fixture_count": 2
+      },
+      "native": {
+        "status": "NOT_RUN",
+        "reason": "This Linux matrix job does not run Windows native controls"
+      },
+      "artifact": {
+        "id": 15258910441,
+        "name": "carr-asr-ubuntu-24.04-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1",
+        "size_in_bytes": 32008,
+        "digest": "sha256:68d57d16cd73b15e949f19be76d8d03ab939b1223cc17436f53b651b3d755620",
+        "workflow_run": {
+          "id": 46131516676,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+          "head_sha": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+        }
+      }
+    }
+  ],
+  "windows_failure": {
+    "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+    "blob": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+    "case": "test_actual_child_import_never_writes_or_replaces_python_bytecode[True]",
+    "test_call_line": 461,
+    "test_assertion_line": 462,
+    "whole_pass": 39,
+    "whole_fail": 1,
+    "whole_seconds": 587.11,
+    "outer_whole_limit_seconds": 900,
+    "observed_error": "Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "returned_status": "partial",
+    "trace": {
+      "start_line": 1236,
+      "end_line": 1269,
+      "lines": [
+        {
+          "line": 1236,
+          "text": "================================== FAILURES ===================================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1237,
+          "text": "___ test_actual_child_import_never_writes_or_replaces_python_bytecode[True] ___",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1238,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1239,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x000002BA83E560D0>, namespace(root=...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-dihrwt1m/pytest/test_actual_child_import_never1/second.wav')])",
+          "truncated": false,
+          "original_characters": 248
+        },
+        {
+          "line": 1240,
+          "text": "existing_cache = True",
+          "truncated": false,
+          "original_characters": 21
+        },
+        {
+          "line": 1241,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1242,
+          "text": "    @pytest.mark.parametrize('existing_cache', [False, True])",
+          "truncated": false,
+          "original_characters": 61
+        },
+        {
+          "line": 1243,
+          "text": "    def test_actual_child_import_never_writes_or_replaces_python_bytecode(setup, existing_cache):",
+          "truncated": false,
+          "original_characters": 97
+        },
+        {
+          "line": 1244,
+          "text": "        service, runtime, profile, sources = setup",
+          "truncated": false,
+          "original_characters": 50
+        },
+        {
+          "line": 1245,
+          "text": "        probe = runtime.root / 'synthetic_stdlib_probe.py'",
+          "truncated": false,
+          "original_characters": 58
+        },
+        {
+          "line": 1246,
+          "text": "        probe.write_text(\"VALUE = 'old'\\n\", encoding='utf-8')",
+          "truncated": false,
+          "original_characters": 61
+        },
+        {
+          "line": 1247,
+          "text": "        cached = Path(cache_from_source(str(probe)))",
+          "truncated": false,
+          "original_characters": 52
+        },
+        {
+          "line": 1248,
+          "text": "        if existing_cache:",
+          "truncated": false,
+          "original_characters": 26
+        },
+        {
+          "line": 1249,
+          "text": "            py_compile.compile(str(probe), doraise=True)",
+          "truncated": false,
+          "original_characters": 56
+        },
+        {
+          "line": 1250,
+          "text": "        before = cached.read_bytes() if cached.exists() else None",
+          "truncated": false,
+          "original_characters": 65
+        },
+        {
+          "line": 1251,
+          "text": "        probe.write_text(\"VALUE = 'current synthetic source value'\\n\", encoding='utf-8')",
+          "truncated": false,
+          "original_characters": 88
+        },
+        {
+          "line": 1252,
+          "text": "        runtime.options.write_text(json.dumps({'import_probe': str(probe)}), encoding='utf-8')",
+          "truncated": false,
+          "original_characters": 94
+        },
+        {
+          "line": 1253,
+          "text": "        result = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "truncated": false,
+          "original_characters": 82
+        },
+        {
+          "line": 1254,
+          "text": ">       assert result['status'] == 'complete', result['error']",
+          "truncated": false,
+          "original_characters": 62
+        },
+        {
+          "line": 1255,
+          "text": "E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+          "truncated": false,
+          "original_characters": 99
+        },
+        {
+          "line": 1256,
+          "text": "E       assert 'partial' == 'complete'",
+          "truncated": false,
+          "original_characters": 38
+        },
+        {
+          "line": 1257,
+          "text": "E         ",
+          "truncated": false,
+          "original_characters": 10
+        },
+        {
+          "line": 1258,
+          "text": "E         - complete",
+          "truncated": false,
+          "original_characters": 20
+        },
+        {
+          "line": 1259,
+          "text": "E         + partial",
+          "truncated": false,
+          "original_characters": 19
+        },
+        {
+          "line": 1260,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1261,
+          "text": "tests\\transcription\\test_admission_boundaries.py:462: AssertionError",
+          "truncated": false,
+          "original_characters": 68
+        },
+        {
+          "line": 1262,
+          "text": "- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-dihrwt1m\\junit.xml -",
+          "truncated": false,
+          "original_characters": 87
+        },
+        {
+          "line": 1263,
+          "text": "=========================== short test summary info ===========================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1264,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_actual_child_import_never_writes_or_replaces_python_bytecode[True] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable.",
+          "truncated": false,
+          "original_characters": 222
+        },
+        {
+          "line": 1265,
+          "text": "assert 'partial' == 'complete'",
+          "truncated": false,
+          "original_characters": 30
+        },
+        {
+          "line": 1266,
+          "text": "  ",
+          "truncated": false,
+          "original_characters": 2
+        },
+        {
+          "line": 1267,
+          "text": "  - complete",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 1268,
+          "text": "  + partial",
+          "truncated": false,
+          "original_characters": 11
+        },
+        {
+          "line": 1269,
+          "text": "================== 1 failed, 39 passed in 587.11s (0:09:47) ===================",
+          "truncated": false,
+          "original_characters": 79
+        }
+      ]
+    },
+    "reached": "Real cached-bytecode seed, changed synthetic source and actual current worker run were reached; the complete-state prerequisite failed before the three final import/cache assertions.",
+    "not_inferred": "No bytecode mutation or product deadline defect is demonstrated by this timeout."
+  },
+  "service_observation": {
+    "path": "carr-library/tests/transcription/test_service.py",
+    "unchanged_blob": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+    "windows_passed": 28,
+    "windows_seconds": 259.62,
+    "scope": "All original service cases passed using the unchanged fixture policy, including the unclean-runner recovery that failed without a printed reason on E. This does not establish E's missing error or justify a service-wide allowance change."
+  },
+  "pending_H_successor": {
+    "historical_five_call_component": "a5f8066b9eca65c024d5a1f932dd894fd5b81641",
+    "admission_blob": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+    "scope": "Root authorized this sixth positive complete-run prerequisite to use the same explicit30-second allowance; bytecode assertions and all negative controls remain exact. Not executed."
+  },
+  "direct_checkout_witnesses": [
+    {
+      "name": "conversion_windows",
+      "action_ref_line": 37,
+      "action_ref": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+      "git_command_line": 132,
+      "git_output_line": 133,
+      "observed_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+    },
+    {
+      "name": "conversion_linux",
+      "action_ref_line": 37,
+      "action_ref": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+      "git_command_line": 145,
+      "git_output_line": 146,
+      "observed_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+    },
+    {
+      "name": "transcription_windows",
+      "action_ref_line": 37,
+      "action_ref": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+      "git_command_line": 127,
+      "git_output_line": 128,
+      "observed_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+    },
+    {
+      "name": "transcription_linux",
+      "action_ref_line": 37,
+      "action_ref": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+      "git_command_line": 140,
+      "git_output_line": 141,
+      "observed_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+    }
+  ],
+  "conversion_receipt_checkout_confirmation": "The valid conversion4d57d0e798f01fa5015c2bd7f787153f9f212d60 receipt is directG in both jobs, not a synthetic PR merge checkout.",
+  "qualification": {
+    "scope": "Actual current local file/protocol and retained-state contracts with synthetic runtime/model markers and real owned child processes; Linux installed-package origins and fixture identity guards ran.",
+    "acoustic_inference": "NOT_RUN",
+    "manual_NVDA": "NOT_RUN",
+    "physical_device": "NOT_RUN",
+    "windows_installed": "NOT_RUN",
+    "windows_native": "NOT_RUN",
+    "overall_workflow": "FAIL; the Linux success does not qualify Windows or the full release."
+  },
+  "limits": [
+    "Read-only closed log and artifact API inspection only; no archive extraction/execution.",
+    "No G source, ref, budget, selector or assertion was modified.",
+    "The exact G head/tree were confirmed by explicit checkout and git log, independently of API event-head metadata."
+  ]
+}

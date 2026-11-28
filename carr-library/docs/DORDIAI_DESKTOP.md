@@ -51,3 +51,29 @@ The reused public adapter and provider are pinned to AF5 source commit
 not part of this repository. `DORDIAI_VOICES_CONTRACT.md` records the reviewed
 protocol. `DORDIAI_SPEECH_HANDOFF.md` retains the historical provider integration
 notes; its proposed registry changes are already applied here.
+
+
+## Host ownership and registration boundaries
+
+The native local-engine settings dialog binds every selected path and confirmation
+to the original LibraryApp object and the original directory identity. Changing
+the library, replacing its directory at the same pathname, or closing the view
+invalidates the pending choice. Late callbacks neither save settings nor update
+closed controls. This executable-trust choice does not establish rights to a
+speaker reference or grant voice-profile consent.
+
+The canonical voice registry disables discovery and synthesis once closing
+begins. Successfully closed providers are released once; providers whose close
+fails remain owned and the failure is reported. Explicit service/registry close
+or the existing desktop resource finalizer retries the same retained owner.
+Failed constructor or progress-cleanup paths also retain their bound close
+callback for interpreter cleanup. No inference or automatic reconnection follows
+a cleanup failure. Dordiai transport shutdown reuses the existing shared process
+stop helper before closing pipes and retains unconfirmed warm/probe handles.
+This is not new qualification of a private model worker's Windows descendants.
+
+A filesystem walk error invalidates the complete-runtime fingerprint; an
+unreadable subtree cannot silently produce a reusable partial identity. Public
+regressions use synthetic metadata and PCM workers and controlled native-dialog
+answers. They do not establish private-engine inference, speaker similarity,
+pronunciation, acoustic output, NVDA acceptance, or a create/train-profile API.

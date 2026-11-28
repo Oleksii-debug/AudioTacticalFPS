@@ -63,11 +63,36 @@ def test_cancel_after_committed_publication_returns_complete_and_keeps_replay_gu
         with pytest.raises(ValueError):
             reopened.copy(workspace, hit.ref, hit.revision, 'quote')
 
-    # This is now a genuine terminal replay, so cancellation must still prevent
-    # a new membership from being committed even though the source exists.
-    with pytest.raises(InterruptedError, match='cancelled'):
-        reopened._import_file(workspace, source, collections=(requested,),
-                              cancelled=stopped.is_set, **metadata)
+    # Entry cancellation now returns an explicit receipt before intake effects.
+    cancelled = reopened._import_file(workspace, source, collections=(requested,),
+                                      cancelled=stopped.is_set, **metadata)
+    assert cancelled['state'] == 'cancelled' and 'cancelled' in cancelled['message'].lower()
+    assert 'id' not in cancelled and not cancelled.get('publication_recovered')
+    assert reopened.browse(workspace, collection=requested) == ()
+    assert source.read_bytes() == original_bytes
+    stopped.clear()
+    replay_checked = []
+
+    def stop_after_real_replay(ingest, *args, **options):
+        replay = original_run(ingest, *args, **options)
+        assert replay['state'] == 'complete' and replay['id'] == result['id']
+        with closing(sqlite3.connect(reopened.database)) as reader:
+            assert reader.execute('SELECT count(*) FROM catalog_membership '
+                'WHERE workspace=? AND collection=?', (workspace, requested)).fetchone()[0] == 0
+            assert reader.execute('SELECT count(*) FROM revision r JOIN sealed s '
+                                  'ON s.revision=r.id').fetchone()[0] == 1
+        replay_checked.append(replay['id'])
+        stopped.set()
+        return replay
+
+    # This actual terminal replay has passed intake and sealed-source checks.
+    # Its newly requested membership must still roll back on cancellation.
+    with monkeypatch.context() as patch:
+        patch.setattr(Ingest, 'run', stop_after_real_replay)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            reopened._import_file(workspace, source, collections=(requested,),
+                                  cancelled=stopped.is_set, **metadata)
+    assert replay_checked == [result['id']] and stopped.is_set()
     assert reopened.browse(workspace, collection=requested) == ()
     stopped.clear()
     replay = reopened._import_file(workspace, source, collections=(requested,),

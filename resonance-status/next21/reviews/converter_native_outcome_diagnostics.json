@@ -1,0 +1,72 @@
+{
+  "schema": "carr-source-review/1",
+  "created_utc": "2026-11-27T23:48:00Z",
+  "subject": "Preserve native converter failure and observe the actual shared-worker path",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "before": "c976addba03264d8ebd4dc19bf7c8795560a9a1a",
+      "after": "4b67819886d4324a616bce8dff13251fec2370f0"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "before": null,
+      "after": "dc523d350e151eaa6c6d94a63752abf38a37a497"
+    }
+  ],
+  "demonstrated_failure": {
+    "run_id": 46079552487,
+    "job_id": 140775089427,
+    "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "source_gui": "FAIL",
+    "installed_gui": "FAIL",
+    "primary": "50-second wait for the real conversion result window",
+    "secondary": "The later reader-finalizer assertion masked the primary failure because no reader had yet been created.",
+    "product_cause": "NOT_ESTABLISHED"
+  },
+  "changes": [
+    "Observe the existing frame.run_job and ConversionService.extract calls without changing arguments, actual return objects, exceptions, worker ownership or admission.",
+    "Print bounded synthetic-fixture status and actual worker/Future/entry/result/error information at the unchanged failed result-window wait.",
+    "Evaluate every original cleanup predicate within the guarded assertion; preserve the earlier failure before any secondary owner-inspection or cleanup assertion.",
+    "Keep traceback prefix, exception identity and diagnostic bounds in actual worker regressions."
+  ],
+  "gate": {
+    "whole_module": "tests/ui/test_native_conversion_diagnostics.py",
+    "expected_cases": 10,
+    "functions": [
+      "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+      "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+      "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+      "test_native_conversion_observer_preserves_original_admission_error",
+      "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+      "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+      "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks"
+    ],
+    "companions": [
+      "scripts/windows_document_conversion_smoke.py"
+    ],
+    "source_and_isolated_installed": true,
+    "existing_source_and_installed_cases": 209,
+    "proposed_source_and_installed_cases": 219,
+    "native_required": 30,
+    "native_origins": 30,
+    "result_wait_seconds": 50,
+    "native_cleanup_watchdog_seconds": 180,
+    "no_new_dependencies": true,
+    "all_original_success_conditions_retained": true
+  },
+  "reviews": [
+    {
+      "reviewer": "progress_completion",
+      "scope": "actual host forwarding, bounded diagnostics, original-error and cleanup predicate ordering, real worker/AST regression API",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "limitations": [
+    "No product cause or native Pandoc success is inferred from these diagnostics.",
+    "No runtime, parser, installed or Windows GUI execution of the new source has occurred."
+  ]
+}

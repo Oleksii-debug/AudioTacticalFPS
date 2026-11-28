@@ -1,0 +1,100 @@
+{
+  "schema": "carr-voice-windows-profile-handoff/1",
+  "status": "STATIC_NOT_RUN",
+  "baseline_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "purpose": "Measure actual Windows costs before changing production authority, identity, child ownership or any whole-suite deadline.",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "before": null,
+      "after": "35395440d240eb4c283590268e7ac40ea94c193f"
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "before": null,
+      "after": "e51f27129883465851cb29214873f35a08e32e4b"
+    }
+  ],
+  "cases": [
+    {
+      "case": "package",
+      "node": "tests/audio/test_voice_package_management.py::test_actual_version_activation_keeps_both_immutable_versions_and_rebinds_review"
+    },
+    {
+      "case": "reference",
+      "node": "tests/audio/test_voice_reference_management.py::test_actual_pcm_and_owner_child_create_exact_local_data_without_installing"
+    },
+    {
+      "case": "managed",
+      "node": "tests/integrations/test_dordiai_managed_authority.py::test_actual_managed_pcm_uses_existing_registry_and_releases_only_after_child_death"
+    }
+  ],
+  "trigger": "carr/ci-voice-profile-*",
+  "execution": {
+    "platform": "windows-2022",
+    "separate_matrix_cases": 3,
+    "child_seconds": 600,
+    "step_minutes": 12,
+    "job_minutes": 45,
+    "existing_source_suite_gates": "UNCHANGED",
+    "whole_suites": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "real_owner_api": "NOT_RUN",
+    "native_ui": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  },
+  "measurement": {
+    "phases": [
+      "setup",
+      "call",
+      "teardown"
+    ],
+    "profiler": "cProfile current pytest main thread only",
+    "fixed_function_rows_per_phase_max": 600,
+    "overhead_included": true,
+    "child_cpu": "NOT_MEASURED",
+    "threads_other_than_main": "NOT_PROFILED",
+    "binary_profile_saved": false,
+    "argument_values_or_frame_locals_saved": false,
+    "phase_stdout_prefix": "VOICE_PROFILE_PHASE ",
+    "classification": "DIAGNOSTIC_ONLY"
+  },
+  "bindings": {
+    "contract_helper": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45",
+    "ci_check": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "exact_source_pins": 67,
+    "workflow_pins": 9,
+    "all_existing_pins_match_baseline": true,
+    "canonical_pytest_child": "BYTE_IDENTICAL existing source string, transparent plugin append only",
+    "selected_test_bodies": "UNCHANGED",
+    "audio": "Existing exact locked FFmpeg/FFprobe before/after; no audio endpoint needed"
+  },
+  "retention": {
+    "evidence_root": "carr-library/ci-voice-profile",
+    "closed_text_json_xml_only": true,
+    "total_bytes_max": 33554432,
+    "file_bytes_max": 8388608,
+    "models_or_runtimes_or_user_recordings": false
+  },
+  "reviews": [
+    {
+      "agent": "/root/canonical_regression",
+      "scope": "353954 complete helper, actual current fixture/API, unchanged canonical child, numeric profile and source/origin boundaries",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "agent": "/root/progress_completion",
+      "scope": "615b complete acquisition/firewall/retention; e51 only helper-pin successor",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "actual_qualification_context": {
+    "windows_previous_closed_evidence": "f3128ab514f2156bbe7f8a8b1f0e49ab965f2f6b",
+    "current_linux_495_source_and_495_installed": "21ccceef46691afe92d18f57b78db5ed1b62d9d4"
+  },
+  "primary_api_references": [
+    "https://docs.python.org/3.11/library/profile.html",
+    "https://docs.pytest.org/en/stable/how-to/writing_hook_functions.html"
+  ],
+  "no_ref_updates": true
+}

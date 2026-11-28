@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import carr_library
 from carr_library.catalog.read_views import EditionView
 from carr_library.catalog.reference_exchange import preview_references
 from carr_library.research import export_file
@@ -65,7 +66,7 @@ class Executor:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Button', 'Choice', 'ScrolledWindow'):
         setattr(wx, name, Control)
@@ -81,18 +82,20 @@ def module():
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
     wx.MessageBox = Mock(return_value=wx.YES)
-    root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    root = Path(carr_library.__file__).resolve().parent / 'ui'
 
     def load(name, path):
         spec = importlib.util.spec_from_file_location(name, path)
         value = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(value)
+        assert Path(value.__file__).resolve() == path.resolve()
+        assert Path(value.__file__).resolve().parent == root
         return value
 
-    with patch.dict(sys.modules, {'wx': wx}):
-        metadata = load('carr_library.ui._academic_metadata_test', root / 'catalog_metadata_dialog.py')
-        with patch.dict(sys.modules, {'carr_library.ui.catalog_metadata_dialog': metadata}):
-            return load('carr_library.ui._academic_actions_test', root / 'academic_actions.py')
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    metadata = load('carr_library.ui._academic_metadata_test', root / 'catalog_metadata_dialog.py')
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.catalog_metadata_dialog', metadata)
+    return load('carr_library.ui._academic_actions_test', root / 'academic_actions.py')
 
 
 @pytest.fixture
@@ -268,6 +271,31 @@ def finish(frame):
         job.done(result)
 
 
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_completed_export_retains_cleanup_warning_without_reporting_failure(
+        module, edition, tmp_path, monkeypatch, action):
+    from dataclasses import replace
+
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'completed-export.txt'
+    choose(module, monkeypatch, path=destination)
+    actual_write = module.write_export
+    warning = 'Synthetic private staging cleanup needs attention.'
+
+    def write_with_warning(*args, **kwargs):
+        return replace(actual_write(*args, **kwargs), cleanup_warning=warning)
+
+    monkeypatch.setattr(module, 'write_export', write_with_warning)
+    (module.export_bibliography if action == 'bibliography'
+     else module.export_research_outline)(frame)
+    finish(frame)
+    expected = ('Bibliography — Україна\n' if action == 'bibliography'
+                else '# Research — Україна\n')
+    assert destination.read_text(encoding='utf-8') == expected
+    assert len(frame.reports) == 1 and 'exported' in frame.reports[0]
+    assert warning in frame.reports[0] and 'not completed' not in frame.reports[0]
+
+
 def test_import_handler_uses_actual_preview_and_exact_optimistic_book_binding(
         module, edition, reference_file, tmp_path, monkeypatch):
     frame, panel, library = host(tmp_path, edition)
@@ -409,6 +437,124 @@ def test_export_cancellation_after_backend_returns_preserves_existing_destinatio
     assert destination.read_bytes() == b'Existing bytes must remain'
 
 
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_export_keeps_original_private_root_even_if_active_library_changes(
+        module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = library.root / 'keep-private.sqlite'
+    destination.write_bytes(b'Original library bytes')
+    choose(module, monkeypatch, path=destination)
+    if action == 'bibliography': module.export_bibliography(frame)
+    else: module.export_research_outline(frame)
+    other_root = tmp_path / 'another-library'
+    other_root.mkdir()
+    frame.library = SimpleNamespace(root=other_root)
+    assert not frame.jobs
+    assert 'outside the private library' in frame.reports[-1]
+    assert destination.read_bytes() == b'Original library bytes'
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_stale_export_completion_cannot_announce_success_in_another_scope(
+        module, edition, tmp_path, monkeypatch, action):
+    frame, _, _ = host(tmp_path, edition)
+    destination = tmp_path / 'export.txt'
+    choose(module, monkeypatch, path=destination)
+    if action == 'bibliography': module.export_bibliography(frame)
+    else: module.export_research_outline(frame)
+    job = frame.jobs[-1]
+    result = job.operation()
+    frame.active = ('different-library', 'another-topic')
+    job.done(result)
+    assert not frame.reports and destination.exists()
+
+
+@pytest.mark.parametrize('where', ['scope_cancel', 'scope_invalid', 'file_cancel', 'format_invalid'])
+def test_bibliography_cancel_or_invalid_dialog_choice_never_starts_export(
+        module, edition, tmp_path, monkeypatch, where):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'untouched.json'
+    file, chooser = choose(module, monkeypatch, path=destination,
+        choice_result=module.wx.ID_CANCEL if where == 'scope_cancel' else None,
+        selection=-1 if where == 'scope_invalid' else 0,
+        file_result=module.wx.ID_CANCEL if where == 'file_cancel' else None,
+        filter_index=3 if where == 'format_invalid' else 0)
+    module.export_bibliography(frame)
+    assert chooser.destroyed and not frame.jobs and not destination.exists()
+    library.export_bibliography.assert_not_called()
+    if where.startswith('scope'): module.wx.FileDialog.assert_not_called()
+    else: assert file.destroyed
+
+
+def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, edition, tmp_path, monkeypatch):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'outline.md'
+    file, _ = choose(module, monkeypatch, path=destination)
+    module.export_research_outline(frame)
+    finish(frame)
+    library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
+    assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
+    assert file.destroyed and 'Research outline exported' in frame.reports[-1]
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_preserves_file_changed_during_render(module, edition, tmp_path, monkeypatch, action, existing):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'competing.txt'
+    if existing: destination.write_bytes(b'Approved earlier bytes')
+    choose(module, monkeypatch, path=destination)
+    def compete(*args, **kwargs):
+        destination.write_bytes(b'Newer independent work')
+        return 'Older rendered export'
+    method = library.export_bibliography if action == 'bibliography' else library.export_outline
+    method.side_effect = compete
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    assert len(frame.jobs) == 1
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Newer independent work'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_declining_overwrite_stops_before_render_and_queue(module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'declined.txt'
+    destination.write_bytes(b'Keep this work')
+    choose(module, monkeypatch, path=destination)
+    module.wx.MessageBox.return_value = module.wx.NO
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    assert not frame.jobs and destination.read_bytes() == b'Keep this work'
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()
+    module.wx.MessageBox.assert_called_once()
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_changed_destination_during_academic_render_is_preserved(
+        module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected.txt'
+    destination.write_bytes(b'Approved previous export')
+    choose(module, monkeypatch, path=destination)
+
+    def render(*args, **kwargs):
+        destination.write_bytes(b'Independent work saved during rendering')
+        return 'New export must not overwrite independent work'
+
+    if action == 'bibliography':
+        library.export_bibliography.side_effect = render
+        module.export_bibliography(frame)
+    else:
+        library.export_outline.side_effect = render
+        module.export_research_outline(frame)
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Independent work saved during rendering'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 @pytest.mark.parametrize('action,change', [
     ('bibliography', 'workspace'), ('bibliography', 'library'), ('bibliography', 'closing'),
     ('outline', 'workspace'), ('outline', 'library'), ('outline', 'closing'), ('outline', 'topic'),
@@ -502,86 +648,22 @@ def test_bibliography_confirmation_can_change_topic_within_its_selected_workspac
     assert len(frame.reports) == 1 and 'Bibliography exported' in frame.reports[0]
 
 
-@pytest.mark.parametrize('action', ['bibliography', 'outline'])
-def test_export_keeps_original_private_root_even_if_active_library_changes(
-        module, edition, tmp_path, monkeypatch, action):
-    frame, _, library = host(tmp_path, edition)
-    destination = library.root / 'keep-private.sqlite'
-    destination.write_bytes(b'Original library bytes')
-    choose(module, monkeypatch, path=destination)
-    if action == 'bibliography': module.export_bibliography(frame)
-    else: module.export_research_outline(frame)
-    other_root = tmp_path / 'another-library'
-    other_root.mkdir()
-    frame.library = SimpleNamespace(root=other_root)
-    # The original private boundary now rejects before work is queued.
-    assert not frame.jobs
-    assert len(frame.reports) == 1 and 'outside the private library' in frame.reports[0]
-    assert destination.read_bytes() == b'Original library bytes'
-
 
 @pytest.mark.parametrize('action', ['bibliography', 'outline'])
-def test_stale_export_completion_cannot_announce_success_in_another_scope(
+def test_export_picker_scope_change_precedes_destination_inspection(
         module, edition, tmp_path, monkeypatch, action):
-    frame, _, _ = host(tmp_path, edition)
-    destination = tmp_path / 'export.txt'
-    choose(module, monkeypatch, path=destination)
-    if action == 'bibliography': module.export_bibliography(frame)
-    else: module.export_research_outline(frame)
-    job = frame.jobs[-1]
-    result = job.operation()
-    frame.active = ('different-library', 'another-topic')
-    job.done(result)
-    assert not frame.reports and destination.exists()
-
-
-@pytest.mark.parametrize('where', ['scope_cancel', 'scope_invalid', 'file_cancel', 'format_invalid'])
-def test_bibliography_cancel_or_invalid_dialog_choice_never_starts_export(
-        module, edition, tmp_path, monkeypatch, where):
     frame, _, library = host(tmp_path, edition)
-    destination = tmp_path / 'untouched.json'
-    file, chooser = choose(module, monkeypatch, path=destination,
-        choice_result=module.wx.ID_CANCEL if where == 'scope_cancel' else None,
-        selection=-1 if where == 'scope_invalid' else 0,
-        file_result=module.wx.ID_CANCEL if where == 'file_cancel' else None,
-        filter_index=3 if where == 'format_invalid' else 0)
-    module.export_bibliography(frame)
-    assert chooser.destroyed and not frame.jobs and not destination.exists()
+    destination = tmp_path / 'selected-export.txt'
+    original = b'Existing independent export'
+    destination.write_bytes(original)
+    choose(module, monkeypatch, path=destination,
+           file_during=lambda: setattr(frame, 'active', ('different-workspace', 'different-topic')))
+    approval = Mock(side_effect=AssertionError('Stale scope must not inspect the chosen destination.'))
+    monkeypatch.setattr(module, 'confirm_export_destination', approval)
+    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
+    handler(frame)
+    approval.assert_not_called()
     library.export_bibliography.assert_not_called()
-    if where.startswith('scope'): module.wx.FileDialog.assert_not_called()
-    else: assert file.destroyed
-
-
-def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, edition, tmp_path, monkeypatch):
-    frame, _, library = host(tmp_path, edition)
-    destination = tmp_path / 'outline.md'
-    file, _ = choose(module, monkeypatch, path=destination)
-    module.export_research_outline(frame)
-    finish(frame)
-    library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
-    assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
-    assert file.destroyed and 'Research outline exported' in frame.reports[-1]
-
-
-@pytest.mark.parametrize('action', ['bibliography', 'outline'])
-def test_changed_destination_during_academic_render_is_preserved(
-        module, edition, tmp_path, monkeypatch, action):
-    frame, _, library = host(tmp_path, edition)
-    destination = tmp_path / 'selected.txt'
-    destination.write_bytes(b'Approved previous export')
-    choose(module, monkeypatch, path=destination)
-
-    def render(*args, **kwargs):
-        destination.write_bytes(b'Independent work saved during rendering')
-        return 'New export must not overwrite independent work'
-
-    if action == 'bibliography':
-        library.export_bibliography.side_effect = render
-        module.export_bibliography(frame)
-    else:
-        library.export_outline.side_effect = render
-        module.export_research_outline(frame)
-    with pytest.raises(ValueError, match='destination changed'):
-        finish(frame)
-    assert destination.read_bytes() == b'Independent work saved during rendering'
-    assert not list(tmp_path.glob('.research-export-*'))
+    library.export_outline.assert_not_called()
+    assert not frame.jobs and 'selection changed' in frame.reports[-1]
+    assert destination.read_bytes() == original

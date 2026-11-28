@@ -1,0 +1,63 @@
+{
+  "schema": "carr-evidence/actual-conversion-276/1",
+  "created_utc": "2026-11-28 00:59:29 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "2c75b8305c7f9bedcf89c3c998137a5f07a3324e",
+  "run_id": 46089540115,
+  "records": [
+    {
+      "platform": "linux",
+      "job_id": 140806972477,
+      "strict_rows": [
+        "2026-11-28T00:50:42.4812840Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4813382Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4813970Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4814484Z FAIL: tests/ui/test_document_conversion.py: junit_passed=19, failed=1, skipped=0, pytest_exit=1",
+        "2026-11-28T00:50:42.4814998Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=114, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4815530Z PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4816031Z PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4816575Z PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:50:42.4817012Z Required suites complete: 8; passed=7; failed=1"
+      ],
+      "failure": "2026-11-28T00:50:42.4676012Z FAILED tests/ui/test_document_conversion.py::test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion - carr_library.conversion.models.ConversionError: Local document worker failed (exit 1): /opt/hostedtoolcache/Python/3.11.18/x64/bin/python: Error while finding module specification for 'carr_library.conversion.worker' (ModuleNotFoundError: No module named 'carr_library')",
+      "passed": 275,
+      "failed": 1,
+      "skipped": 0,
+      "installed": "NOT_RUN",
+      "native": "NOT_RUN",
+      "artifact_lines": [
+        "2026-11-28T00:50:44.0626731Z SHA256 digest of uploaded artifact is 523a7066ac255c303c6389e0be197f732e9cca2a2878a144962e777dacebdf25",
+        "2026-11-28T00:50:44.6265276Z Artifact selected-conversion-ubuntu-24.04-2c75b8305c7f9bedcf89c3c998137a5f07a3324e-1 has been successfully uploaded! Final size is 14693 bytes. Artifact ID is 15240153797"
+      ]
+    },
+    {
+      "platform": "windows",
+      "job_id": 140806972131,
+      "strict_rows": [
+        "2026-11-28T00:47:24.1151168Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1151531Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1151872Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1152209Z FAIL: tests/ui/test_document_conversion.py: junit_passed=19, failed=1, skipped=0, pytest_exit=1",
+        "2026-11-28T00:47:24.1152551Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=114, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1152881Z PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1153204Z PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1153577Z PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:47:24.1154137Z Required suites complete: 8; passed=7; failed=1"
+      ],
+      "failure": "2026-11-28T00:47:24.1052159Z FAILED tests/ui/test_document_conversion.py::test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion - carr_library.conversion.models.ConversionError: Local document worker failed (exit 1): C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe: Error while finding module specification for 'carr_library.conversion.worker' (ModuleNotFoundError: No module named 'carr_library')",
+      "passed": 275,
+      "failed": 1,
+      "skipped": 0,
+      "installed": "NOT_RUN",
+      "native": "NOT_RUN",
+      "artifact_lines": [
+        "2026-11-28T00:47:25.4622765Z SHA256 digest of uploaded artifact is effbcb8e5100609ce7eefec5f3d1ced8604acea1a77d9682a78eb714e349a680",
+        "2026-11-28T00:47:25.9240926Z Artifact selected-conversion-windows-2022-2c75b8305c7f9bedcf89c3c998137a5f07a3324e-1 has been successfully uploaded! Final size is 14868 bytes. Artifact ID is 15240960254"
+      ]
+    }
+  ],
+  "diagnosis": "The real fresh-library TXT regression reached the conversion worker child, whose source-only interpreter cannot import carr_library. This is not evidence that the corrected empty ODF header/footer admission or the fresh-state creation failed.",
+  "odf": "Exact whole114 source cases PASS on both platforms; actual selected native conversion remains NOT_RUN at this head.",
+  "correction_owner": "/root/locate_project",
+  "claim": "No native, installed or format-quality verdict transferred."
+}

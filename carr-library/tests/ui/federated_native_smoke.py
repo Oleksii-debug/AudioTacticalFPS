@@ -5,6 +5,7 @@ callback. No second wx.App is created. It uses synthetic local text, real search
 source validation, clipboard and topic saving. It does not assert NVDA behavior.
 """
 from hashlib import sha256
+from importlib import import_module
 from pathlib import Path
 import traceback
 
@@ -37,6 +38,16 @@ def _dismiss_modal_descendant(parent):
 
 def run_native_federated_smoke(frame, completed, failed):
     """completed(report: dict) or failed(traceback: str), after modal dismissal."""
+    modules = tuple(import_module(name) for name in (
+        'carr_library.application', 'carr_library.search.paging',
+        'carr_library.search.federated', 'carr_library.search.literal',
+        'carr_library.search.semantic_windows', 'carr_library.search.thematic',
+        'carr_library.semantic', 'carr_library.ui.federated_search',
+        'carr_library.ui.desktop_app'))
+    origins = {module.__name__: {
+        'path': str(Path(module.__file__).resolve(strict=True)),
+        'sha256': sha256(Path(module.__file__).read_bytes()).hexdigest()}
+        for module in modules}
     app = frame.library
     active, book = frame.active, frame.book
     assert active is not None and not frame.working
@@ -45,6 +56,12 @@ def run_native_federated_smoke(frame, completed, failed):
     app.add_text(workspace, 'Native federated source',
                  'Railway native source. Exact context beyond the selected quotation.',
                  authors=('Synthetic native author',), language='en', edition='First')
+    for number in range(11):
+        app.add_text(workspace, f'Native result page {number:02}',
+                     f'Paging sequence document {number}.', authors=('Page fixture author',))
+    app.add_text(workspace, 'Windowed native source',
+                 '\f'.join(f'Cursorcontinuation exact segment {number:03d}.' for number in range(105)),
+                 edition_id='zz-windowed-source')
     host_selections = dict(app._selections)
     native = federated_search.NativeSearchCenter(frame, app.workspaces())
     controller = native.controller
@@ -96,6 +113,7 @@ def run_native_federated_smoke(frame, completed, failed):
         assert native.cancel_button.IsEnabled()
         for control in (native.query, native.libraries_control, native.retrieval,
                         native.presentation, native.search_button, native.results,
+                        native.builder_button, native.previous_button, native.next_button,
                         native.close_button, native.quote_button, native.save_button):
             assert not control.IsEnabled(), control.GetName()
 
@@ -107,6 +125,7 @@ def run_native_federated_smoke(frame, completed, failed):
         assert native.libraries_control.GetName() == 'Libraries to search (Space selects)'
         assert native.results.GetName() == 'Search results with library and verification status'
         assert native.status.GetName() == 'Search Center status'
+        assert not native.previous_button.IsEnabled() and not native.next_button.IsEnabled()
         for index, row in enumerate(native.libraries):
             native.libraries_control.Check(index, row.id in (active[0], workspace))
         event = wx.CommandEvent(wx.EVT_CHECKLISTBOX.typeId, native.libraries_control.GetId())
@@ -211,9 +230,183 @@ def run_native_federated_smoke(frame, completed, failed):
         assert_scope()
         assert wx.Window.FindFocus() is native.results
         checks.append('native topic chooser saves only in result library')
+        state['before_builder'] = (controller.rows, controller.epoch,
+            native.query.GetValue(), native.retrieval.GetSelection())
+        later(builder_cancel_dialog)
+        click(native.builder_button)
+        if errors:
+            return
+        assert state['before_builder'] == (controller.rows, controller.epoch,
+            native.query.GetValue(), native.retrieval.GetSelection())
+        later(builder_use_begin, milliseconds=60)
+
+    def builder_controls():
+        dialog = dialog_with_title('Advanced search query builder')
+        assert dialog is not None and dialog.IsModal()
+        return {child.GetName(): child for child in dialog.GetChildren()}
+
+    def builder_cancel_dialog():
+        controls = builder_controls()
+        assert controls['Current query; shown for reference only'].GetValue() == 'railway'
+        assert wx.Window.FindFocus() is controls['All of these; one word or phrase per line']
+        controls['All of these; one word or phrase per line'].SetValue('a discarded replacement')
+        click(controls['Cancel; keep existing query'])
+
+    def builder_use_begin():
+        assert wx.Window.FindFocus() is native.query
+        checks.append('native builder Cancel preserves query mode results and source scope')
+        native.filters['author'].SetValue('Synthetic native author')
+        state['checked_libraries'] = tuple(row.id for index, row in enumerate(native.libraries)
+            if native.libraries_control.IsChecked(index))
+        later(builder_use_dialog)
+        click(native.builder_button)
+        if errors:
+            return
+        assert native.query.GetValue() == ('"railway" AND ("native" OR "transport") '
+            'AND ("railway" NEAR/1 "source") AND NOT "fiction"')
+        assert federated_search.MODES[native.retrieval.GetSelection()] == 'advanced'
+        assert controller.rows == () and native.results.GetCount() == 0
+        assert native.filters['author'].GetValue() == 'Synthetic native author'
+        assert tuple(row.id for index, row in enumerate(native.libraries)
+            if native.libraries_control.IsChecked(index)) == state['checked_libraries']
+        assert wx.Window.FindFocus() is native.query
+        checks.append('native builder Use preserves checked libraries and filters while withdrawing stale results')
+        click(native.search_button)
+        assert_busy()
+        later(advanced_search_ready)
+
+    def builder_use_dialog():
+        controls = builder_controls()
+        controls['All of these; one word or phrase per line'].SetValue('railway')
+        controls['Any of these; one word or phrase per line'].SetValue('native\ntransport')
+        controls['Exclude; one word or phrase per line'].SetValue('fiction')
+        controls['Nearby first phrase; optional'].SetValue('railway')
+        controls['Nearby second phrase; optional'].SetValue('source')
+        controls['Nearby distance; maximum intervening words, 0 to 100'].SetValue(1)
+        click(controls['Build and preview query'])
+        assert wx.Window.FindFocus() is controls['Generated query preview']
+        assert controls['Use generated query in Search'].IsEnabled()
+        click(controls['Use generated query in Search'])
+
+    def advanced_search_ready():
+        if frame.working:
+            later(advanced_search_ready)
+            return
+        hit, = controller.rows
+        assert hit.workspace == workspace and hit.result.quote == 'Railway native source.'
+        assert wx.Window.FindFocus() is native.results
+        state['advanced_hit'] = hit
+        assert_scope()
+        checks.append('actual multi-library Advanced AND OR NOT and NEAR search with metadata filter')
+        click(native.quote_button)
+        assert_busy()
+        later(advanced_copy_ready)
+
+    def advanced_copy_ready():
+        if frame.working:
+            later(advanced_copy_ready)
+            return
+        assert wx.TheClipboard.Open()
+        try:
+            value = wx.TextDataObject()
+            assert wx.TheClipboard.GetData(value)
+            assert value.GetText() == state['advanced_hit'].result.quote
+        finally:
+            wx.TheClipboard.Close()
+        checks.append('advanced result authentic quotation copied to native clipboard')
+        native.filters['author'].SetValue('')
+        native.limit.SetSelection(0)  # Ten results; the eleventh is on the next page.
+        native.query.SetValue('"paging" AND "sequence"')
+        click(native.search_button)
+        assert_busy()
+        later(first_page_ready)
+
+    def hit_identity(hit):
+        return hit.workspace, hit.result.title, hit.result.quote
+
+    def first_page_ready():
+        if frame.working:
+            later(first_page_ready)
+            return
+        assert len(controller.rows) == 10, native.status.GetValue()
+        assert native.next_button.IsEnabled() and not native.previous_button.IsEnabled()
+        state['first_page'] = tuple(map(hit_identity, controller.rows))
+        click(native.next_button)
+        assert_busy()
+        later(second_page_ready)
+
+    def second_page_ready():
+        if frame.working:
+            later(second_page_ready)
+            return
+        hit, = controller.rows
+        assert hit_identity(hit) not in state['first_page']
+        assert native.previous_button.IsEnabled() and not native.next_button.IsEnabled()
+        assert 'Page 2.' in native.status.GetValue()
+        assert 'No further matching result page' in native.status.GetValue()
+        click(native.previous_button)
+        assert_busy()
+        later(previous_page_ready)
+
+    def previous_page_ready():
+        if frame.working:
+            later(previous_page_ready)
+            return
+        assert tuple(map(hit_identity, controller.rows)) == state['first_page']
+        assert native.next_button.IsEnabled() and not native.previous_button.IsEnabled()
+        assert_scope()
+        checks.extend(['native Next and Previous pages preserve unchanged source order',
+                       'last page stops navigation without duplicate source results',
+                       'page navigation reuses the selected libraries and query'])
+        for control in native.filters.values():
+            control.SetValue('')
+        native.filters['title'].SetValue('Windowed native source')
+        native.retrieval.SetSelection(federated_search.MODES.index('terms'))
+        native.limit.SetSelection(3)
+        native.timeout.SetValue('300')
+        native.query.SetValue('Cursorcontinuation')
+        click(native.search_button)
+        assert_busy()
+        later(first_source_window_ready)
+
+    def first_source_window_ready():
+        if frame.working:
+            later(first_source_window_ready)
+            return
+        assert len(controller.rows) == 100, native.status.GetValue()
+        assert native.scope_buttons['source_next'].IsEnabled()
+        assert not native.scope_buttons['source_previous'].IsEnabled()
+        state['source_window'] = tuple(map(hit_identity, controller.rows))
+        click(native.scope_buttons['source_next'])
+        assert_busy()
+        later(next_source_window_ready)
+
+    def next_source_window_ready():
+        if frame.working:
+            later(next_source_window_ready)
+            return
+        assert len(controller.rows) == 5, native.status.GetValue()
+        assert not set(map(hit_identity, controller.rows)) & set(state['source_window'])
+        assert native.scope_buttons['source_previous'].IsEnabled()
+        assert not native.scope_buttons['source_next'].IsEnabled()
+        click(native.scope_buttons['source_previous'])
+        assert_busy()
+        later(previous_source_window_ready)
+
+    def previous_source_window_ready():
+        if frame.working:
+            later(previous_source_window_ready)
+            return
+        assert tuple(map(hit_identity, controller.rows)) == state['source_window']
+        assert_scope()
+        checks.extend(['actual native source-window continuation across 105 retained segments',
+                       'source-window Previous restores exact source order without autoplay or scope change',
+                       'explicit native 300-second search budget'])
         # A subsequent attempt cannot close the modal while completion is pending.
+        native.filters['title'].SetValue('')
         native.query.SetValue('source')
         assert controller.rows == () and not native.quote_button.IsEnabled()
+        assert not native.previous_button.IsEnabled() and not native.next_button.IsEnabled()
         click(native.search_button)
         assert_busy()
         native.window.Close()
@@ -236,11 +429,11 @@ def run_native_federated_smoke(frame, completed, failed):
 
     def timed_out():
         if not state['completed'] and not errors:
-            errors.append('Research Search Center native smoke exceeded 15 seconds.')
+            errors.append('Research Search Center native smoke exceeded 90 seconds.')
             controller.cancel()
             wait_failure_close()
 
-    timeout = wx.CallLater(15000, timed_out)
+    timeout = wx.CallLater(90000, timed_out)
     later(begin)
     try:
         native.show()
@@ -252,4 +445,5 @@ def run_native_federated_smoke(frame, completed, failed):
         failed('Research Search Center closed before the native workflow completed.')
     else:
         completed({'status': 'PASS', 'checks': checks, 'windows_nvda': 'NOT_RUN',
-                   'federated_ui_sha256': sha256(Path(federated_search.__file__).read_bytes()).hexdigest()})
+                   'federated_ui_sha256': sha256(Path(federated_search.__file__).read_bytes()).hexdigest(),
+                   'origins': origins})

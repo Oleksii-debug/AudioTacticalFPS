@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "kind": "actual_main_native_powershell_parser_failure",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+  "source_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+  "run_id": 46108325018,
+  "job_id": 140868911128,
+  "job_conclusion": "failure",
+  "compilation": {
+    "line": 219,
+    "time": "2026-11-28T04:56:51.7983852",
+    "value": {
+      "explicit_packages": 31,
+      "inventory_sha256": "587d9d20f5785fa07f9146071ee74ac84e3cadcf22b6138d3aee54a1d16ce020",
+      "python_files": 1128,
+      "scope": "Compilation and TOML only; no runtime qualification",
+      "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+      "status": "PASS"
+    }
+  },
+  "workflow_parser": {
+    "line": 231,
+    "time": "2026-11-28T04:56:57.1970441",
+    "value": {
+      "status": "FAIL",
+      "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+      "parsed_bodies": 195,
+      "failed_bodies": 1,
+      "controls": 6,
+      "control_failures": 0,
+      "workflow_size_limit_bytes": 500000,
+      "workflow_size_controls": 4,
+      "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-syntax-results/workflow-powershell.json",
+      "runtime_qualification": "NOT_RUN"
+    }
+  },
+  "diagnostic": {
+    "closed_log_line": 232,
+    "workflow": ".github/workflows/carr-windows.yml",
+    "job": "completion-regressions",
+    "step": "Run required source regressions before the full bundle finishes",
+    "body_line": 181,
+    "column": 45,
+    "yaml_line": 513,
+    "message": "Missing expression after ','.",
+    "exact_last_entry": "'tests/search/test_ascii_mapping_work.py',",
+    "next_syntax": ")"
+  },
+  "artifact": {
+    "id": 15249491010,
+    "name": "carr-workflow-syntax-004494613f855bbd003616e2afe86b980dae2d48-1",
+    "size_in_bytes": 18546,
+    "digest": "sha256:fd79ad05ba37b03460e5b529cc06b3cbe6e143d6495f5445a06c13f509f6110a",
+    "head_sha": "004494613f855bbd003616e2afe86b980dae2d48"
+  },
+  "additional_source_established_issue": {
+    "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+    "preimage": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+    "line": 496,
+    "same_final_array_comma": true,
+    "runtime_parser_verdict": "NOT_REACHED"
+  },
+  "existing_helper_gate": {
+    "step": "Parse and audit the pinned complete source-shard inventory",
+    "sequence": [
+      "Git HEAD object binding",
+      "raw file Git-blob and SHA256/identity checks",
+      "native PowerShell Parser.ParseFile",
+      "strict InventoryOnly output",
+      "after-call source checks"
+    ],
+    "position": "Immediately after workflow-body parsing within source-syntax; all runtime jobs require successful source-syntax."
+  },
+  "outcome": {
+    "full_source487": "NOT_RUN",
+    "configured_native": "SKIPPED",
+    "source_aggregate": "FAILURE",
+    "complete_gate": "PENDING_AT_OBSERVATION",
+    "overall": "NOT_PASS"
+  },
+  "repair_scope": "Remove exactly the final comma from each of the two actual PowerShell arrays and refresh the existing 2+1 source-helper blob pins; preserve all selectors and strict assertions.",
+  "responsibility": "The trailing comma was missed in static gate review; the actual native parser correctly rejected it.",
+  "no_hardware_or_other_run_qualification_transfer": true
+}

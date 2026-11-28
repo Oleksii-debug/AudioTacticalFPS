@@ -1,0 +1,55 @@
+{
+  "schema": "carr-actual-host-lifecycle-fixture-correction/1",
+  "status": "STATIC_NOT_RUN",
+  "observed": {
+    "head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+    "run": 46094267681,
+    "job": 140821929865,
+    "whole_suite": "tests/integrations/test_dordiai_host_lifecycle.py",
+    "passed": 11,
+    "failed": 2,
+    "cases": 13,
+    "failed_cases": [
+      "test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render[PermissionError]",
+      "test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render[FileNotFoundError]"
+    ],
+    "cause": "The original expected inventory ValueError was raised; POSIX TemporaryDirectory cleanup then called os.scandir with an integer directory descriptor, which the test-only wrapper incorrectly passed to pathlib.Path, masking the expected error with TypeError."
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_host_lifecycle.py",
+      "preimage": "52f3cce2330add9be0b7b81f575cdd6ee659e9af",
+      "blob": "54eea6081c72b32b8295addae25f12d399bd5d9e",
+      "expected_cases": 13,
+      "functions": [
+        "test_actual_warm_owner_survives_failed_close_until_explicit_retry",
+        "test_failed_registry_is_strongly_retained_after_ordinary_owner_is_gone",
+        "test_desktop_finalizer_retains_real_service_and_retries_same_native_owner",
+        "test_failed_probe_cleanup_retains_actual_child_and_refuses_a_replacement",
+        "test_generator_cleanup_failure_releases_operation_guard_but_keeps_worker",
+        "test_failed_thread_start_retains_transport_when_native_stop_also_fails",
+        "test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render",
+        "test_inventory_walk_error_preserves_cancellation_without_updating_identity",
+        "test_failed_add_cleanup_keeps_actual_started_provider_without_reactivation",
+        "test_explicit_unconfirmed_close_result_keeps_only_failed_provider",
+        "test_concurrent_close_refuses_late_discovery_publication_without_double_close"
+      ]
+    }
+  ],
+  "changes": [
+    "Forward actual integer directory descriptors to the captured original os.scandir in both existing failure wrappers; retain exact hidden-path failure injection.",
+    "Require no owned .speech-* staging remains after the real refused synthesis.",
+    "All original refusal/privacy/cancellation/identity/no-output/no-request assertions, test functions and parametrizations retained. Product sources unchanged."
+  ],
+  "peer": {
+    "reviewer": "/root/canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact three-hunk inverse reconstruction and independent actual-log/API review."
+  },
+  "verification": {
+    "exact_blob_readback": true,
+    "inverse_preimage_reconstruction": true,
+    "execution": "NOT_RUN",
+    "refs_moved": false
+  }
+}

@@ -39,38 +39,112 @@ def _digest(path, cancelled=lambda: False):
     return result.hexdigest()
 
 
+def capabilities(*, pandoc_selected=False, office_selected=False, calibre_selected=False):
+    pandoc = bool(pandoc_selected)
+    from ..extract.ocr_runtime import discover_ocr_runtime, OcrRuntimeError
+    try:
+        ocr = discover_ocr_runtime() is not None
+    except OcrRuntimeError:
+        ocr = False
+    values = [{'extension': suffix, 'available': True, 'adapter': 'built-in isolated reader',
+               'limitation': 'Reading derivative only; structural and source-review limitations are reported.'}
+              for suffix in BUILTIN]
+    values.append({'extension': '.rtf', 'available': bool(pandoc), 'adapter': 'installed Pandoc --sandbox',
+                   'limitation': 'Requires an installed compatible Pandoc; no images, active content or exact layout.'})
+    for suffix in IMAGES:
+        values.append({'extension': suffix, 'available': ocr,
+                       'adapter': 'installed Tesseract with explicit languages',
+                       'limitation': 'OCR must be explicitly selected; unverified text only, no automatic quotation approval.'})
+    from .office import OFFICE_SUFFIXES
+    from .calibre import CALIBRE_SUFFIXES
+    for suffix in LEGACY:
+        selected = bool(office_selected) if suffix in OFFICE_SUFFIXES else bool(calibre_selected)
+        tool = 'LibreOffice' if suffix in OFFICE_SUFFIXES else 'Calibre'
+        values.append({'extension': suffix, 'available': bool(selected and os.name == 'nt'),
+                       'adapter': 'explicitly selected ' + tool + '; limited reading conversion',
+                       'limitation': 'Requires the owned Windows Job route and an explicitly selected compatible local runtime. '
+                         'The complete external folder retains exact original bytes, reading text and fidelity report. '
+                         'It is not native catalog ingestion or quotation approval; no DRM bypass or scanned-DjVu OCR.'})
+    return tuple(values)
+
+
 class ConversionService:
-    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None):
+    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None,
+                 office=None, calibre=None, state_root=None, guard=lambda: None):
+        if not callable(guard):
+            raise ValueError('A current conversion owner guard is required.')
+        self.guard = guard
+        self.guard()
         self.root = local_path(root)
-        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.input_roots = tuple(local_path(path, exists=True) for path in input_roots)
-        self.budget = budget or ConversionBudget()
+        self.budget = budget or (ConversionBudget(max_source_bytes=64 * 1024**2,
+            memory_bytes=3 * 1024**3) if office is not None or calibre is not None else ConversionBudget())
         if not isinstance(self.budget, ConversionBudget):
             raise TypeError('A typed conversion budget is required.')
-        self.pandoc = local_path(pandoc, exists=True) if pandoc else None
-        if self.pandoc and not self.pandoc.is_file():
-            raise ValueError('Select an installed Pandoc executable.')
+        self.state_root = None
+        directories = set()
+        if state_root is not None:
+            state = Path(state_root).absolute()
+            if state.name != 'state':
+                raise ValueError('Choose the current library state directory for document conversion.')
+            # A fresh LibraryApp has no state directory until a feature needs it.
+            # Create only this child of the already captured existing library.
+            library = local_path(state.parent, exists=True)
+            info = regular(library, directory=True)
+            library_identity = info.st_dev, info.st_ino
+            self.state_root = local_path(library / 'state')
+            if self.root.is_relative_to(library):
+                raise PermissionError('Choose a reading-copy folder outside the research library.')
+            self.guard()
+            info = regular(local_path(library, exists=True), directory=True)
+            if (info.st_dev, info.st_ino) != library_identity:
+                raise ConversionError('The selected library directory changed before state initialization.')
+            self.state_root.mkdir(mode=0o700, exist_ok=True)
+            self.guard()
+            info = regular(local_path(library, exists=True), directory=True)
+            if (info.st_dev, info.st_ino) != library_identity:
+                raise ConversionError('The selected library directory changed during state initialization.')
+            regular(self.state_root, directory=True)
+            directories.update((library, self.state_root))
+        if any(value is not None for value in (pandoc, office, calibre)) and self.state_root is None:
+            raise ConversionUnavailable('Select the current library before using an optional document converter.')
+        from ._selected_files import checked_directory, file_identity, regular_file
+        self._selected_input_files = []
+        for path in self.input_roots:
+            if path.is_dir():
+                directories.add(checked_directory(path))
+            else:
+                self._selected_input_files.append((path, file_identity(regular_file(path))))
+                directories.add(checked_directory(path.parent))
+        self._selected_input_files = tuple(self._selected_input_files)
+        captured = []
+        for path in sorted(directories, key=str):
+            info = regular(path, directory=True)
+            captured.append((path, (info.st_dev, info.st_ino)))
+        self._selected_directories = tuple(captured)
+        from .office import OfficeSelection
+        from .calibre import CalibreSelection
+        self.office = None if office is None else OfficeSelection.capture(office)
+        self.calibre = None if calibre is None else CalibreSelection.capture(calibre)
+        self.pandoc = local_path(pandoc, exists=True) if pandoc is not None else None
+        self._pandoc_identity = self._pandoc_parent_identity = None
+        if self.pandoc is not None:
+            self._pandoc_identity = file_identity(regular_file(self.pandoc))
+            info = regular(self.pandoc.parent, directory=True)
+            self._pandoc_parent_identity = info.st_dev, info.st_ino
+        self.guard()
+        for path, identity in self._selected_directories:
+            info = regular(local_path(path, exists=True), directory=True)
+            if (info.st_dev, info.st_ino) != identity:
+                raise ConversionError('The selected library or input directory changed.')
+        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        info = regular(self.root, directory=True)
+        self._selected_directories += ((self.root, (info.st_dev, info.st_ino)),)
+        self.guard()
 
     def capabilities(self):
-        pandoc = str(self.pandoc) if self.pandoc else shutil.which('pandoc')
-        from ..extract.ocr_runtime import discover_ocr_runtime, OcrRuntimeError
-        try:
-            ocr = discover_ocr_runtime() is not None
-        except OcrRuntimeError:
-            ocr = False
-        values = [{'extension': suffix, 'available': True, 'adapter': 'built-in isolated reader',
-                   'limitation': 'Reading derivative only; structural and source-review limitations are reported.'}
-                  for suffix in BUILTIN]
-        values.append({'extension': '.rtf', 'available': bool(pandoc), 'adapter': 'installed Pandoc --sandbox',
-                       'limitation': 'Requires an installed compatible Pandoc; no images, active content or exact layout.'})
-        for suffix in IMAGES:
-            values.append({'extension': suffix, 'available': ocr,
-                           'adapter': 'installed Tesseract with explicit languages',
-                           'limitation': 'OCR must be explicitly selected; unverified text only, no automatic quotation approval.'})
-        for suffix in LEGACY:
-            values.append({'extension': suffix, 'available': False, 'adapter': 'separate reviewed converter needed',
-                           'limitation': 'Legacy format is not enabled without a tested offline/active-content isolation adapter; no DRM bypass.'})
-        return tuple(values)
+        return capabilities(pandoc_selected=self.pandoc is not None,
+            office_selected=self.office is not None, calibre_selected=self.calibre is not None)
 
     def _input(self, value):
         path = local_path(value, exists=True)
@@ -154,6 +228,12 @@ class ConversionService:
                              'Coordinates, page labels, orientation and document layout are not reconstructed by this text-only export.']}
 
     def extract(self, source, output, *, cancelled=lambda: False, adapter='auto', encoding=None, ocr_languages=()):
+        suffix = Path(source).suffix.casefold()
+        if suffix in LEGACY or suffix == '.rtf':
+            if adapter not in ('auto', 'pandoc') or suffix != '.rtf' and adapter != 'auto':
+                raise ConversionUnavailable('The selected optional adapter cannot replace another document reader.')
+            from .selected import extract_selected
+            return extract_selected(self, source, output, cancelled=cancelled)
         source = self._input(source)
         target, report_path = self._output(output)
         if source == target:

@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_CI_PARTIAL_FAILURE",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run": 46075824746,
+  "job": 140763191204,
+  "platform": "windows-2022 / CPython 3.11.9",
+  "source_commit": "a2d9a436c28bf4fef1b6f93042d32978a630a05a",
+  "source_tree": "0aee68889aa2873b1f93f71b7688381ae0d67bb6",
+  "collected_at": "2026-11-27T22:34:43Z",
+  "portable": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 201,
+    "source_commit": "a2d9a436c28bf4fef1b6f93042d32978a630a05a",
+    "source_passed": 201,
+    "source_tree": "0aee68889aa2873b1f93f71b7688381ae0d67bb6",
+    "status": "PASS"
+  },
+  "acquisition": {
+    "status": "PASS",
+    "versions": {
+      "calibre": "ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>",
+      "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+      "pandoc": "pandoc 3.14\r\nFeatures: +server +lua\r\nScripting engine: Lua 5.4\r\nUser data directory: C:\\Users\\runneradmin\\AppData\\Roaming\\pandoc\r\nCopyright (C) 2006-2025 John MacFarlane. Web:  https://pandoc.org\r\nThis is free software; see the source for copying conditions. There is no\r\nwarranty, not even for merchantability or fitness for a particular purpose."
+    }
+  },
+  "phases": [
+    {
+      "phase": "formats",
+      "mode": "source",
+      "status": "FAIL",
+      "actual_owned_jobs": 11,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): PermissionError: Conversion worker may only write private staging files."
+    },
+    {
+      "phase": "old-suite",
+      "mode": "source",
+      "status": "FAIL",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AssertionError",
+      "error": "The entire old conversion suite failed actual selected-runtime qualification."
+    },
+    {
+      "phase": "formats",
+      "mode": "installed",
+      "status": "FAIL",
+      "actual_owned_jobs": 11,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): PermissionError: Conversion worker may only write private staging files."
+    },
+    {
+      "phase": "old-suite",
+      "mode": "installed",
+      "status": "FAIL",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AssertionError",
+      "error": "The entire old conversion suite failed actual selected-runtime qualification."
+    }
+  ],
+  "old_whole_suite": {
+    "source": {
+      "passed": 33,
+      "failed": 1,
+      "skipped": 0
+    },
+    "installed": {
+      "passed": 33,
+      "failed": 1,
+      "skipped": 0
+    },
+    "failing_case": "test_actual_installed_pandoc_rtf_or_explicit_unavailable",
+    "count": 34,
+    "xfail_xpass": false
+  },
+  "gui": {
+    "source": "FAIL",
+    "installed": "FAIL",
+    "actual_owned_nested_question_cleanup": "PASS in both modes before the failure",
+    "failure": "The initial pump directly read DesktopFrame.conversion_results_dialog before the callback created the attribute.",
+    "complete_30_check_qualification": "NOT_RUN / failed before completion"
+  },
+  "owned_input_cleanup": {
+    "status": "FAIL",
+    "error": "PermissionError [WinError 5] unlinking extracted Calibre app/bin/amatch.dll",
+    "readonly_attribute": "NOT_OBSERVED in this log; guarded retry will require the actual attribute, never infer it.",
+    "no_generic_permission_bypass": true
+  },
+  "bounded_trace_contexts": [
+    {
+      "term": "PermissionError: Conversion worker",
+      "line": 1369,
+      "context": [
+        "Traceback (most recent call last):",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 267, in main",
+        "    (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 57, in formats",
+        "    result = service.extract(source, 'reading.txt')",
+        "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\service.py\", line 224, in extract",
+        "    return extract_selected(self, source, output, cancelled=cancelled)",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\selected.py\", line 262, in extract_selected",
+        "    run_process(command, cwd=work, env=environment, cancelled=admitted,",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py\", line 271, in run_process",
+        "    raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')",
+        "carr_library.audio.models.AudioError: Local audio worker failed (exit 1): PermissionError: Conversion worker may only write private staging files."
+      ]
+    },
+    {
+      "term": "AttributeError: 'DesktopFrame'",
+      "line": 3269,
+      "context": [
+        "PASS: native failure answers owned No before closing only the active inner modal",
+        "PASS: cancelling the source picker admits no conversion or output",
+        "PASS: cancelling the selected runtime picker admits no conversion or output",
+        "FAIL: native conversion callback",
+        "Traceback (most recent call last):",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 634, in run_steps",
+        "    pump(lambda: frame.conversion_results_dialog is not None and not frame.working,",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 267, in pump",
+        "    while not predicate():",
+        "              ^^^^^^^^^^^",
+        "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 634, in <lambda>",
+        "    pump(lambda: frame.conversion_results_dialog is not None and not frame.working,",
+        "                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AttributeError: 'DesktopFrame' object has no attribute 'conversion_results_dialog'"
+      ]
+    },
+    {
+      "term": "PermissionError: [WinError 5]",
+      "line": 3391,
+      "context": [
+        "    return _rmtree_unsafe(path, onerror)",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\shutil.py\", line 629, in _rmtree_unsafe",
+        "    _rmtree_unsafe(fullname, onerror)",
+        "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\shutil.py\", line 629, in _rmtree_unsafe",
+        "    _rmtree_unsafe(fullname, onerror)",
+        "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\shutil.py\", line 629, in _rmtree_unsafe",
+        "    _rmtree_unsafe(fullname, onerror)",
+        "  [Previous line repeated 3 more times]",
+        "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\shutil.py\", line 634, in _rmtree_unsafe",
+        "    onerror(os.unlink, fullname, sys.exc_info())",
+        "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\shutil.py\", line 632, in _rmtree_unsafe",
+        "    os.unlink(fullname)",
+        "PermissionError: [WinError 5] Access is denied: 'D:\\\\a\\\\_temp\\\\carr-selected-conversion-46075824746-1\\\\expanded\\\\calibre\\\\PFiles64\\\\Calibre2\\\\app\\\\bin\\\\amatch.dll'"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15234896864,
+      "name": "selected-conversion-windows-2022-a2d9a436c28bf4fef1b6f93042d32978a630a05a-1",
+      "bytes": 106333,
+      "digest": "sha256:eec66afe6208025455af4a9b1a3d0db6658e881a3b895fe939782d2abee7e085",
+      "head": "a2d9a436c28bf4fef1b6f93042d32978a630a05a"
+    }
+  ],
+  "qualification": "Portable201 source +201 isolated installed passed at this exact head; formats14, old34 and nativeGUI30 overall failed. No native fidelity, physical device, NVDA or release claim.",
+  "corrected_successor_status": "STATIC_NOT_RUN; separate source/test/workflow manifest required"
+}

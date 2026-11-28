@@ -20,7 +20,7 @@ selection starts empty. Check the libraries to include, enter a query, and choos
 Libraries with identical names are distinguished by their stable IDs.
 
 Choose an existing retrieval method: exact phrase, word, all terms on one page,
-thematic keyword search, or the local semantic model. **Short quotations** and
+thematic keyword search, the local semantic model, or Advanced Boolean/proximity queries. **Short quotations** and
 **Thematic excerpts** control presentation. The Author contains and Title contains
 filters retain the host's case-sensitive literal substring semantics; Language
 code and Edition use exact matches. A missing semantic model produces an explicit
@@ -74,14 +74,15 @@ for each selected library; `--search` requires at least one. The installed
 
 | Option | Values or behavior |
 | --- | --- |
-| `--search-mode` | `phrase` (default), `word`, `terms`, `thematic`, `semantic` |
+| `--search-mode` | `phrase` (default), `word`, `terms`, `thematic`, `semantic`, `advanced` |
 | `--result-mode` | `short` (default), `thematic` |
 | `--title`, `--author` | Literal catalog substring filters |
 | `--language`, `--edition` | Exact catalog filters |
-| `--limit-per-library` | 1–100; CLI default 20 |
+| `--limit-per-library` | 1–100 per page; CLI default 20 |
+| `--offset-per-library` | Nonnegative match offset; continuation for `terms` and `advanced` |
 | `--model-dir`, `--model-manifest` | Supply both for the existing verified local model runtime |
 
-Search emits JSON with query, mode, ordering explanation, notices and grouped
+Search emits JSON with query, mode, current offset, `has_more`, ordering explanation, notices and grouped
 library results. Each result includes its existing `verified` flag and source
 identities. Extraction previews remain labelled unverified. Result references
 belong to the in-memory search session; JSON output does not create reusable
@@ -133,7 +134,7 @@ callers should refresh after a concurrent-change error.
 | --- | --- |
 | Selected libraries | Explicit nonempty list/tuple; at most 20 distinct IDs |
 | Source-search query | Nonblank text, at most 500 characters; prohibited control characters and surrogates rejected |
-| Results | 1–100 per library; service/UI default 50; UI choices 10, 25, 50, 100 |
+| Results | 1–100 per library per page; service/UI default 50; UI choices 10, 25, 50, 100 |
 | Catalog scope | Existing host limit of 500 editions per library after filters |
 | Search deadline | One total cooperative budget, greater than 0 and at most 60 seconds |
 | Saved topic queries | Query up to 500 characters; 1–100 results; manager pages up to 100 definitions |
@@ -183,7 +184,7 @@ and execution counts are recorded separately from this product/developer contrac
 The [focused Windows/NVDA protocol](ACADEMIC_SEARCH_NVDA.md) records actual spoken
 names, state, focus restoration and complete keyboard workflows separately.
 
-# Advanced academic source search
+## Advanced academic source search
 
 Choose **Advanced (AND, OR, NOT, NEAR)** in Search mode, or press
 **Ctrl+Alt+Q** to open the query builder. The builder also has a button beside
@@ -273,8 +274,8 @@ Queries are limited to 500 characters, 32 term occurrences and 16 nesting
 levels. NEAR distances are 0–100 words. The existing search scope limits and
 shared operation timeout apply; highly repetitive proximity scans also have an
 explicit occurrence budget. A budget failure or cancellation returns an error,
-not an unmarked partial result set. The desktop displays up to 100 matches and
-does not present that limit as a complete count of all possible matches.
+not an unmarked partial result set. Each results page displays up to 100 matches per library and does not
+present that page size as a complete count of all possible matches.
 
 ## Research basis and implementation decisions
 
@@ -291,6 +292,31 @@ database schema, secondary persistent index or generated quotations. SQLite
 FTS5 only prunes possible pages; the bounded Boolean matcher verifies actual
 source occurrences before a result is published.
 
-Future research views, bibliographic relations, reading plans and evidence
-matrices are separate work. This document does not label those capabilities as
-implemented by the advanced source-search module.
+## Result pages and the command line
+
+Advanced and All words return one source witness per matching page/segment.
+**Next results page** and **Previous results page** retain the selected libraries,
+filters, query and per-library page size. A bounded one-result lookahead checks
+whether another page exists; it cannot evict the displayed page's source handles.
+Every page rechecks live library/collection authority and authenticates sources.
+Ordering is deterministic for unchanged source data; this is a refreshed search,
+not a historical frozen snapshot. If the collection changes, search again from
+the first page. Any explicit query, filter or library change clears navigation.
+
+The match offset has no arbitrary 10,000-result ceiling. Its value controls no
+allocation: per-operation page/source-character budgets, cooperative deadline,
+100 displayed hits per library and 2,000 session handles remain enforced.
+An oversized catalog or source scope still produces an explicit error; this
+change does not claim 50,000-book or multi-gigabyte acceptance. Other retrieval
+modes keep their current single-page result behavior.
+
+CLI example (replace LIBRARY_ID with the ID from `--list-libraries`):
+
+```console
+python -m carr_library --data-dir ./research-data --search 'memory NEAR/3 identity' --search-mode advanced --workspace LIBRARY_ID --limit-per-library 50 --offset-per-library 50
+```
+
+The JSON includes `offset_per_library` and `has_more`; incomplete or cancelled
+work never emits partial result JSON. Saved-topic queries continue to search
+immutable saved quotations and editable notes; source query syntax does not
+change their existing meaning.

@@ -56,8 +56,13 @@ def _seconds(value, name, *, allow_none=False):
 
 @dataclass(frozen=True)
 class ResourceLimits:
-    """Saved operator policy. Defaults do not assert the host has 4 GiB free."""
-    cpu_slots: int = field(default_factory=lambda: max(1, min(4, (os.cpu_count() or 2) - 1)))
+    """Saved operator policy, not measured hardware capacity.
+
+    Two default logical slots preserve existing two-thread audio/ASR jobs even
+    on smaller hosts; this is a cooperative allowance, not a core-count claim.
+    Explicitly selected lower policies are respected without retuning jobs.
+    """
+    cpu_slots: int = field(default_factory=lambda: max(2, min(4, (os.cpu_count() or 2) - 1)))
     memory_bytes: int = 4 * GIB
     disk_bytes: int = 16 * GIB
     min_free_disk_bytes: int = 256 * MIB

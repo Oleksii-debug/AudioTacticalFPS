@@ -230,9 +230,12 @@ def test_incompatible_book_and_cancelled_import_never_publish(tmp_path):
     workspace = app.create_workspace('Rejected inputs')
     source = tmp_path / 'synthetic.epub'
     source.write_bytes(synthetic_epub())
-    with pytest.raises(InterruptedError):
-        app._import_file(workspace, source, cancelled=lambda: True)
-    assert app.browse(workspace) == ()
+    before = source.read_bytes()
+    result = app._import_file(workspace, source, cancelled=lambda: True)
+    assert result == {'state': 'cancelled', 'message': 'Source intake cancelled.'}
+    assert source.read_bytes() == before and app.browse(workspace) == ()
+    assert tuple(app.assets_dir.iterdir()) == ()
+    assert not (app.root / 'imports.sqlite').exists()
     data = BytesIO()
     with ZipFile(BytesIO(synthetic_epub())) as original, ZipFile(data, 'w') as changed:
         for info in original.infolist():

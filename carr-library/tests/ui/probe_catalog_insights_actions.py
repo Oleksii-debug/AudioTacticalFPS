@@ -111,11 +111,6 @@ class Dialogs:
             self.during['destination']()
         return self.path
 
-    def approve_export(self, parent, path, *, private_root):
-        self._main()
-        from carr_library.research.export_file import capture_export_destination
-        return capture_export_destination(path, private_root=private_root)
-
     def show(self, parent, title, value):
         self._main()
         self.shown.append((title, value))
@@ -152,6 +147,21 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.other_workspace = other
         self.frame = Frame(self.library, self.workspace, self.topic)
         self.destination = self.root / 'matrix.csv'
+        self.approve_overwrite = True
+        owner = self
+        def answer_question(*args):
+            assert threading.get_ident() == owner.frame.main_thread
+            return self.wx.YES if owner.approve_overwrite else self.wx.NO
+        self.wx.MessageBox.side_effect = answer_question
+        missing = object()
+        previous_wx = sys.modules.get('wx', missing)
+        sys.modules['wx'] = self.wx
+        def restore_wx():
+            if previous_wx is missing:
+                sys.modules.pop('wx', None)
+            else:
+                sys.modules['wx'] = previous_wx
+        self.addCleanup(restore_wx)
 
     def actions(self, answers=(0,), *, during=None, destination=None):
         dialogs = Dialogs(self.frame, answers,
@@ -423,12 +433,42 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertEqual(self.destination.read_text(encoding='utf-8'), 'Keep existing')
         self.assertIn('cancelled', self.frame.messages[-1])
 
+    def test_matrix_render_cannot_replace_competing_destination_bytes(self):
+        from carr_library.research import literature_matrix
+        original = literature_matrix.render_literature_matrix
+        def competing(*args, **kwargs):
+            value = original(*args, **kwargs)
+            self.destination.write_bytes(b'Newer independently saved matrix')
+            return value
+        for existing in (False, True):
+            with self.subTest(existing=existing):
+                self.destination.unlink(missing_ok=True)
+                if existing:
+                    self.destination.write_bytes(b'Previously approved matrix')
+                actions, _ = self.actions((0, 0))
+                with patch.object(literature_matrix, 'render_literature_matrix', competing):
+                    actions.export_matrix()
+                self.assertEqual(self.destination.read_bytes(), b'Newer independently saved matrix')
+                self.assertIn('destination changed', self.frame.messages[-1])
+                self.assertEqual(list(self.root.glob('.research-export-*')), [])
+
+    def test_matrix_overwrite_decline_prevents_worker_and_restores_focus(self):
+        self.destination.write_bytes(b'Keep existing matrix')
+        self.approve_overwrite = False
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.frame.jobs, [])
+        self.assertEqual(self.destination.read_bytes(), b'Keep existing matrix')
+        self.assertTrue(self.frame.origin.focused)
+
     def test_cancellation_after_publication_is_reported_as_saved(self):
         original = ui.write_export
 
+        warning = 'Completed export; temporary cleanup still needs attention.'
         def cancel_after_write(*args, **kwargs):
-            original(*args, **kwargs)
+            receipt = original(*args, **kwargs)
             self.frame.cancel_event.set()
+            return replace(receipt, cleanup_warning=warning)
 
         actions, _ = self.actions((0, 0))
         with patch.object(ui, 'write_export', cancel_after_write):
@@ -436,6 +476,7 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertTrue(self.destination.is_file())
         self.assertEqual(self.frame.errors, [])
         self.assertIn('file was saved before cancellation', self.frame.messages[-1])
+        self.assertIn(warning, self.frame.messages[-1])
 
     def test_cancellation_during_file_write_preserves_destination_and_removes_temporary(self):
         from carr_library.research import export_file
@@ -466,10 +507,16 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         other = self.clone_library()
         self.frame.after_worker = lambda: setattr(self.frame, 'library', other)
         actions, _ = self.actions((0, 0))
-        actions.export_matrix()
+        original = ui.write_export
+        warning = 'Completed export; temporary cleanup still needs attention.'
+        def completed_with_notice(*args, **kwargs):
+            return replace(original(*args, **kwargs), cleanup_warning=warning)
+        with patch.object(ui, 'write_export', completed_with_notice):
+            actions.export_matrix()
         self.assertTrue(self.destination.is_file())
         self.assertIn('file was saved', self.frame.messages[-1])
         self.assertNotIn(str(self.destination), self.frame.messages[-1])
+        self.assertIn(warning, self.frame.messages[-1])
 
     def test_checked_export_rejects_private_library_destination(self):
         protected = self.library.root / 'matrix.csv'

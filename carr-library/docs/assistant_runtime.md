@@ -154,6 +154,13 @@ flow; an actual local model and its planning quality require separate acceptance
 | ElevenLabs | Speech | Official `/v1/text-to-speech/{voice_id}`, selected model and text; MP3 response |
 | ElevenLabs | Instrumental music | Official `/v1/music`, explicit prompt/duration and instrumental flag; MP3 response |
 | ElevenLabs | Sound effect | Official `/v1/sound-generation`, selected prompt and duration; MP3 response |
+| Google Basic v2 | Plain-text translation and supported-language declarations | Official fixed endpoint, `nmt`, explicitly selected text, API key in the OS vault |
+| Google Advanced v3 | Plain-text translation, existing glossaries and directional language declarations | Explicit numeric project and region, `general/nmt`, exact model/glossary receipts and an expiring OAuth token in the OS vault |
+
+The [translation workspace guide](translation_workstation.md) describes account
+setup, source-bound book/range selection, transfer approval, restart, offline
+export and the shared CLI. Translation uses the same provider and durable-job
+boundaries; its local-model and linguistic-quality limits remain explicit there.
 
 Remote speech recognition, vendor polling, native voice-catalog discovery and
 dynamic vendor pricing are not implemented by this adapter set. These entries
@@ -206,22 +213,17 @@ operation. No real paid or external provider call is part of the automated tests
 
 ## Verification scope
 
-The selectively adopted PR112 local-planning slice passed 41 integrated tests
-across `test_local_planning.py`, `test_local_planning_loopback.py` and
-`test_planning_handlers.py`. The loopback cases use actual HTTP and CLI subprocesses
-with a synthetic server bound to127.0.0.1; other cases use transport/widget
-stand-ins. They verify local-profile selection, typed permission/path validation,
-separate preview and execution, cancellation, changed-input/profile rejection,
-background voice inventory and the current production service's lifecycle.
-They neither execute an LLM nor load its weights.
+The focused local-planning suites cover profile selection, typed permissions,
+separate review and execution, cancellation, changed-input/profile rejection,
+and background voice discovery. Their loopback cases use actual HTTP and CLI
+subprocesses with a synthetic server bound to `127.0.0.1`; the handler cases use
+widget and scheduler stand-ins. They do not execute a language model or load weights.
 
-Donor head `8bf411718548809793748ed01f458c79f3692e98` passed the native planning
-step19 and explicit loopback step24 in Windows run45929429163, job140278375920.
-The donor workflow as a whole was not green. The installed integrated build must
-run `python -I -B scripts/windows_local_planning_smoke.py` and its required source
-suites again. This probe uses real wx widgets/focus and the shared gateway/service
-with synthetic loopback responses; button command events do not establish manual
-keyboard or NVDA acceptance.
+The installed Windows probe `scripts/windows_local_planning_smoke.py` checks real
+wx controls, focus, the shared gateway and durable execution with synthetic
+loopback responses. Automated button events do not establish manual keyboard or
+NVDA acceptance. This probe and the focused suites must run again for a composed
+build; native results from a donor branch do not qualify the new build.
 
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create

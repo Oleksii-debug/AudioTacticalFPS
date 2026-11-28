@@ -1,0 +1,4 @@
+# The required source proof hashes these workflow files as exact Git bytes.
+# Disable checkout newline conversion, matching carr-library/.gitattributes.
+workflows/carr-windows.yml -text
+workflows/carr-integrated-source-shard.yml -text

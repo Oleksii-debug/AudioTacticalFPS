@@ -1,0 +1,136 @@
+{
+  "schema": "carr.studio-ci-data-handoff/1",
+  "recorded_utc": "2026-11-28 06:07:53 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN_DATA_ONLY",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "file": {
+    "path": "carr-library/scripts/ci_studio_timeline_cases.json",
+    "preimage": null,
+    "blob": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+    "bytes": 19559,
+    "readback_exact": true
+  },
+  "data_contract": {
+    "root_keys": [
+      "schema",
+      "suites",
+      "native",
+      "native_script_git_blob"
+    ],
+    "schema": "carr-studio-timeline-contracts/1",
+    "suites": 7,
+    "cases": 320,
+    "functions": 119,
+    "suite_sources": {
+      "tests/studio/test_clip_preview_loop.py": "90f2bfc4b79d8a6bc0abc7351ce7b165a87b0310",
+      "tests/studio/test_project_markers.py": "088083c06c452fa5fbac9e14df1786aba524d3d7",
+      "tests/studio/test_marker_consumers.py": "0877334ad369cc03b3d48edecfdd00b1a8202c9b",
+      "tests/studio/test_clip_operations.py": "a47af2be53416f2a9588a20381063f63422f0940",
+      "tests/studio/test_clip_editing.py": "4583dca913a88091608a91e742aced16e5bdfc64",
+      "tests/studio/test_clip_history_dialog.py": "d5675f91c0b6285ea9188fa90d4ca416cd6967dc",
+      "tests/studio/test_studio_controller.py": "93a093e395388b69d6b7a76f22d7432cc8b60c92"
+    },
+    "suite_counts": {
+      "tests/studio/test_clip_preview_loop.py": {
+        "count": 49,
+        "functions": 22
+      },
+      "tests/studio/test_project_markers.py": {
+        "count": 48,
+        "functions": 13
+      },
+      "tests/studio/test_marker_consumers.py": {
+        "count": 31,
+        "functions": 6
+      },
+      "tests/studio/test_clip_operations.py": {
+        "count": 90,
+        "functions": 22
+      },
+      "tests/studio/test_clip_editing.py": {
+        "count": 34,
+        "functions": 19
+      },
+      "tests/studio/test_clip_history_dialog.py": {
+        "count": 50,
+        "functions": 27
+      },
+      "tests/studio/test_studio_controller.py": {
+        "count": 18,
+        "functions": 10
+      }
+    },
+    "native_manifest": "5e0360bf8e61c6dd0d0825987072ca97b3a2dd3e",
+    "native_script_git_blob": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+    "native_checks": 92,
+    "native_origins": 15,
+    "native_fixed_fields": 13,
+    "suites_object_exactly_equals": "fbd2abab5cb261a064939017e809d1d17a10efd3",
+    "native_object_exactly_equals": "5e0360bf8e61c6dd0d0825987072ca97b3a2dd3e.native"
+  },
+  "peer": {
+    "agent": "/root/progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "exact immutable data only; all seven source/function/count inventories and complete native object compared; loader/verifier excluded"
+  },
+  "loader_draft": {
+    "status": "DRAFT_STATIC_NOT_EXECUTED",
+    "before_pytest": "from hashlib import sha1 as _timeline_sha1\nimport os, stat as _timeline_stat\n_timeline_path = pathlib.Path.cwd() / 'scripts/ci_studio_timeline_cases.json'\ndef _timeline_read():\n    def identity(info):\n        return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,\n                info.st_size, info.st_mtime_ns, getattr(info, 'st_file_attributes', 0))\n    before = _timeline_path.lstat()\n    assert (_timeline_stat.S_ISREG(before.st_mode) and before.st_nlink == 1\n            and not getattr(before, 'st_file_attributes', 0) & 0x400\n            and before.st_size == 19559), 'Studio CI data is not the reviewed ordinary file'\n    with _timeline_path.open('rb') as stream:\n        assert identity(os.fstat(stream.fileno())) == identity(before)\n        raw = stream.read(19560)\n        assert identity(os.fstat(stream.fileno())) == identity(before)\n    assert identity(_timeline_path.lstat()) == identity(before)\n    return raw, identity(before)\n_timeline_raw, _timeline_identity = _timeline_read()\nassert len(_timeline_raw) == 19559\nassert _timeline_sha1(b'blob ' + str(len(_timeline_raw)).encode('ascii') + b'\\0' + _timeline_raw).hexdigest() == '09b75f9c3c7bd2238b8c8c5c64cadf4eee406636'\n_timeline_data = json.loads(_timeline_raw)\nassert set(_timeline_data) == {'schema', 'suites', 'native', 'native_script_git_blob'}\nassert _timeline_data['schema'] == 'carr-studio-timeline-contracts/1'\nassert _timeline_data['native_script_git_blob'] == '4d8d9eb52052200d98f4465ab1a99bb766adb866'\n_timeline_cases = _timeline_data['suites']\nassert {path: [value['count'], len(value['functions'])] for path, value in _timeline_cases.items()} == {\"tests/studio/test_clip_preview_loop.py\":[49,22],\"tests/studio/test_project_markers.py\":[48,13],\"tests/studio/test_marker_consumers.py\":[31,6],\"tests/studio/test_clip_operations.py\":[90,22],\"tests/studio/test_clip_editing.py\":[34,19],\"tests/studio/test_clip_history_dialog.py\":[50,27],\"tests/studio/test_studio_controller.py\":[18,10]}\nassert all(set(value) == {'count', 'functions'} and type(value['count']) is int\n           and isinstance(value['functions'], list)\n           and all(isinstance(name, str) and name.startswith('test_') for name in value['functions'])\n           and len(value['functions']) == len(set(value['functions'])) for value in _timeline_cases.values())\n_timeline_native = _timeline_data['native']\nassert set(_timeline_native) == set([\"path\",\"cli\",\"installed_only\",\"result_key\",\"required_unique_checks\",\"required_unique_count\",\"required_origins\",\"origin_count\",\"source_checks_per_origin\",\"required_fields\",\"check_multiplicity\",\"audio_runtime\",\"limits\",\"positive_paths\",\"passive_loop_boundary\",\"ownership\"])\nassert _timeline_native['required_unique_count'] == 92 == len(set(_timeline_native['required_unique_checks'])) == len(_timeline_native['required_unique_checks'])\nassert _timeline_native['origin_count'] == 15 == len(_timeline_native['required_origins'])\nassert _timeline_native['path'] == 'scripts/windows_clip_editor_smoke.py'\nassert _timeline_native['installed_only'] is True and _timeline_native['result_key'] == 'result'\nassert len(_timeline_native['required_fields']) == 13\n",
+    "after_pytest": "assert _timeline_read() == (_timeline_raw, _timeline_identity), 'Reviewed Studio CI data changed during tests'\n",
+    "after_remaining_inline_map": "assert set(reviewed_feature_cases).isdisjoint(_timeline_cases), 'Duplicate Studio case contracts'\nreviewed_feature_cases.update(_timeline_cases)\n",
+    "unindented_bytes": 3403,
+    "lines": 40
+  },
+  "loader_placement": {
+    "before_pytest": "Immediately before pytest.main and after adding both companions to existing reviewed_fixture_paths; both source paths already have pathlib/json; draft explicitly imports os/stat/hashlib.",
+    "after_pytest": "Run after the child returns and before accepting any case/native verdict; existing fixture SHA256 after-check remains.",
+    "merge": "Only second V3 reviewed_feature_cases map (135 preexisting keys), and installed checker map (159 keys). Remove only their two old Studio keys before disjoint merge; never merge into first V3 20-feature map.",
+    "native": "Load the identical SHA-bound data independently in the native verifier; require native_script_git_blob against actual script before invocation and after completion; consume its exact92/15/fixed13 requirements while retaining all original deadlines, actual process/result checks and audio proofs.",
+    "not_executed": true
+  },
+  "required_companions": [
+    "scripts/ci_studio_timeline_cases.json",
+    "scripts/windows_clip_editor_smoke.py"
+  ],
+  "additional_origin": "carr_library.speech.progress_speech",
+  "case_map_changes": {
+    "remove_only": [
+      "tests/studio/test_clip_operations.py",
+      "tests/studio/test_clip_history_dialog.py"
+    ],
+    "v3_entries_before": 135,
+    "v3_after_merge": 140,
+    "installed_entries_before": 159,
+    "installed_after_merge": 164
+  },
+  "v3_size": {
+    "current_utf8_bytes": 495116,
+    "existing_limit": 500000,
+    "remove_two_inline_entries_bytes": 2031,
+    "before_loader": 493085,
+    "draft_loader_unindented_bytes": 3403,
+    "draft_loader_lines": 40,
+    "at_10_space_yaml_indent_before_selector_native_edits": 496888,
+    "remaining_before_other_additions": 3112,
+    "note": "Final composed workflow must be measured again; no larger file ceiling authorized."
+  },
+  "root_source_ps_peer": {
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "preimage": "a81ec5c2fa1bf1b2b49560246db259b45e9aac47",
+    "blob": "e133ce807f36b223bdc24a04798fe4bcd55a76d7",
+    "whole_selectors": 490,
+    "old_order_preserved": true,
+    "partitions": [
+      123,
+      123,
+      122,
+      122
+    ],
+    "named_studio_contracts": 7,
+    "cases": 320,
+    "changes": 8,
+    "exact_inverse": true,
+    "no_execution_claim": true
+  },
+  "scope": "Only the new data file and this manifest are authored here; root owns gate/script/PINS composition. No refs, dispatch, execution or qualification claim."
+}

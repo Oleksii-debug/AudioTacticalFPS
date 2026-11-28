@@ -1,0 +1,795 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "component": "Studio crossfade baseline geometry correction",
+  "base_commit": "663bff7b5d6be889f0eef54e13e5375c85e7d90b",
+  "base_tree": "592e50424592b9be3c0631d6aea755f1c5ea4107",
+  "prerequisite_manifests": [
+    "5e0360bf8e61c6dd0d0825987072ca97b3a2dd3e",
+    "a92d41220af8eb94759a90cf396e4c175c32fe3b"
+  ],
+  "actual_failure_evidence": "5e8797bc0e6dd4e602ebf9302a41d5fad0af9d25",
+  "cause": {
+    "source": "carr-library/src/carr_library/studio/render.py",
+    "git_blob": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab",
+    "exact_empty_scene_expression": "max(scene.minimum_duration, 1)",
+    "applicable_branch": "Only when there are no clips/cue tracks; existing production behavior remains unchanged.",
+    "direct_offset_expression": "offset += final_info.duration",
+    "inference_boundary": "Actual old source test failed only on78000 vs60000 geometry. Same native fixture assumption was identified statically; native phase did not run on663.",
+    "portable": {
+      "pre_edit_scene_intervals": [
+        [
+          0,
+          2.25
+        ],
+        [
+          2.25,
+          3.25
+        ]
+      ],
+      "sample_rate": 24000,
+      "frames": 78000
+    },
+    "native": {
+      "pre_edit_scene_intervals": [
+        [
+          0,
+          2
+        ],
+        [
+          2,
+          3
+        ]
+      ],
+      "sample_rate": 24000,
+      "frames": 72000
+    }
+  },
+  "correction": {
+    "description": "Render the unchanged retained project first. Assert actual expected chapter intervals and PCM frame geometry; after crossfade require identical full chapter/frame geometry plus unchanged baseline bytes.",
+    "preserved_assertions": [
+      "Exact paired fades, offsets and independently inspected retained source geometry",
+      "One ResourceBroker operation with exactly two actual metadata inspections",
+      "One saved revision and canonical history/CAS",
+      "All original PCM sample/ramp/stereo/silence checks",
+      "All retained original input bytes and hashes",
+      "All native keyboard/modal/default/current-source/Stop/Close/Destroy/worker/lease cleanup checks",
+      "Exact source and installed origins, codec proof, whole wheel payload checks, no-skip/xfail rules"
+    ],
+    "unchanged_product_sources": true,
+    "unchanged_test_names_and_parametrization": true,
+    "unchanged_case_counts": true,
+    "unchanged_native_check_names": true,
+    "unchanged_timeouts": true
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/studio/test_clip_editing.py",
+      "preimage": "4583dca913a88091608a91e742aced16e5bdfc64",
+      "git_blob": "27a3d1d3a156acd48090a08ca7f6264050f2c771",
+      "utf8_bytes": 27022,
+      "exact_readback": true,
+      "inverse_preimage_reconstruction": "PASS",
+      "hunks": [
+        {
+          "old_line": 291,
+          "new_line": 291,
+          "removed": [],
+          "added": [
+            "    # An empty no-cue scene keeps the existing one-second render floor.",
+            "    # Measure the actual unchanged project before testing non-ripple editing.",
+            "    baseline_output = tmp_path / 'crossfade-before'",
+            "    baseline_output.mkdir()",
+            "    baseline = editor.service.run(editor.service.submit(project, baseline_output))",
+            "    assert baseline['status'] == 'complete'",
+            "    baseline_path = Path(baseline['destination']) / 'master.wav'",
+            "    (baseline_left, baseline_right), baseline_rate = pcm(baseline_path)",
+            "    baseline_digest = sha256(baseline_path.read_bytes()).hexdigest()",
+            "    assert baseline_rate == 24000 and len(baseline_left) == len(baseline_right) == 78000",
+            "    assert [(item['start'], item['end']) for item in baseline['result']['chapters']] == [",
+            "        (0, 2.25), (2.25, 3.25)]"
+          ]
+        },
+        {
+          "old_line": 334,
+          "new_line": 346,
+          "removed": [
+            "    assert rate == 24000 and len(left_pcm) == len(right_pcm) == round(2.5 * rate)"
+          ],
+          "added": [
+            "    assert rate == baseline_rate == 24000",
+            "    assert len(left_pcm) == len(right_pcm) == len(baseline_left) == len(baseline_right)",
+            "    assert result['result']['chapters'] == baseline['result']['chapters']",
+            "    assert sha256(baseline_path.read_bytes()).hexdigest() == baseline_digest"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_clip_editor_smoke.py",
+      "preimage": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+      "git_blob": "e202ebe7f61490d2745d315f31330f97372ec705",
+      "utf8_bytes": 45931,
+      "exact_readback": true,
+      "inverse_preimage_reconstruction": "PASS",
+      "hunks": [
+        {
+          "old_line": 503,
+          "new_line": 503,
+          "removed": [],
+          "added": [
+            "                    # The existing renderer gives an empty no-cue scene at",
+            "                    # least one second. Capture the actual unchanged geometry.",
+            "                    press(dialog.buttons['render'])",
+            "                    pump(lambda: not frame.working and not dialog.pending,",
+            "                         'Rendering the unchanged native crossfade baseline')",
+            "                    baselines = [row for row in editor.service.jobs()",
+            "                                 if row['fingerprint'] == paired.fingerprint and row['status'] == 'complete']",
+            "                    if len(baselines) != 1:",
+            "                        raise AssertionError('The actual paired baseline did not complete exactly once.')",
+            "                    baseline_output = Path(baselines[0]['destination']) / 'master.wav'",
+            "                    baseline_digest = sha256(baseline_output.read_bytes()).hexdigest()",
+            "                    baseline_chapters = baselines[0]['result']['chapters']",
+            "                    if [(row['start'], row['end']) for row in baseline_chapters] != [(0, 2), (2, 3)]:",
+            "                        raise AssertionError('The actual original scene boundaries differ.')",
+            "                    with wave.open(str(baseline_output), 'rb') as stream:",
+            "                        baseline_shape = (stream.getframerate(), stream.getnchannels(),",
+            "                                          stream.getsampwidth(), stream.getnframes())",
+            "                        baseline_pcm = stream.readframes(stream.getnframes())",
+            "                    if (baseline_shape != (24000, 2, 2, 72000)",
+            "                            or len(baseline_pcm) != 72000 * 2 * 2):",
+            "                        raise AssertionError('The actual original PCM geometry differs.')"
+          ]
+        },
+        {
+          "old_line": 532,
+          "new_line": 553,
+          "removed": [
+            "                          crossfade_shape == (24000, 2, 2, 60000)"
+          ],
+          "added": [
+            "                          crossfade_shape == baseline_shape == (24000, 2, 2, 72000)",
+            "                           and matching[0]['result']['chapters'] == baseline_chapters",
+            "                           and sha256(baseline_output.read_bytes()).hexdigest() == baseline_digest"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_studio_timeline_cases.json",
+      "preimage": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+      "git_blob": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+      "utf8_bytes": 19559,
+      "exact_readback": true,
+      "inverse_preimage_reconstruction": "PASS",
+      "exact_replacements": [
+        {
+          "old": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+          "replacement": "e202ebe7f61490d2745d315f31330f97372ec705",
+          "occurrences": 1
+        },
+        {
+          "old": "2.5s/60000frame",
+          "replacement": "3.0s/72000frame",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/check_studio_timeline_native.py",
+      "preimage": "6e5bea855c6341c1c052b23bb8e9fbce1703fe2d",
+      "git_blob": "cc67469e59aee71504b60640b61619171e7566f1",
+      "utf8_bytes": 10797,
+      "exact_readback": true,
+      "inverse_preimage_reconstruction": "PASS",
+      "exact_replacements": [
+        {
+          "old": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+          "replacement": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+          "occurrences": 1
+        },
+        {
+          "old": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+          "replacement": "e202ebe7f61490d2745d315f31330f97372ec705",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_studio_timeline_contracts.py",
+      "preimage": "b8d8dcc6e1b4ac642b328a0e8c00a450bc9f400b",
+      "git_blob": "eb7653c7b2b057bf3db892561990e72935b534ec",
+      "utf8_bytes": 26394,
+      "exact_readback": true,
+      "inverse_preimage_reconstruction": "PASS",
+      "exact_replacements": [
+        {
+          "old": "4583dca913a88091608a91e742aced16e5bdfc64",
+          "replacement": "27a3d1d3a156acd48090a08ca7f6264050f2c771",
+          "occurrences": 1
+        },
+        {
+          "old": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+          "replacement": "e202ebe7f61490d2745d315f31330f97372ec705",
+          "occurrences": 1
+        },
+        {
+          "old": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+          "replacement": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+          "occurrences": 1
+        },
+        {
+          "old": "6e5bea855c6341c1c052b23bb8e9fbce1703fe2d",
+          "replacement": "cc67469e59aee71504b60640b61619171e7566f1",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-studio-timeline.yml",
+      "preimage": "f97c059b72c00d517bf7a0b18bcfc77c1160e4ca",
+      "git_blob": "e1e4802235ea0ab5c9590862d731c65827ce23c3",
+      "utf8_bytes": 12545,
+      "exact_readback": true,
+      "inverse_preimage_reconstruction": "PASS",
+      "exact_replacements": [
+        {
+          "old": "b8d8dcc6e1b4ac642b328a0e8c00a450bc9f400b",
+          "replacement": "eb7653c7b2b057bf3db892561990e72935b534ec",
+          "occurrences": 1
+        },
+        {
+          "old": "6e5bea855c6341c1c052b23bb8e9fbce1703fe2d",
+          "replacement": "cc67469e59aee71504b60640b61619171e7566f1",
+          "occurrences": 1
+        },
+        {
+          "old": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+          "replacement": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+          "occurrences": 1
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "source_whole_suites": 7,
+    "source_cases": 320,
+    "isolated_installed_whole_suites": 7,
+    "isolated_installed_cases": 320,
+    "required_test_functions": 119,
+    "native_unique_required_checks": 92,
+    "native_origins": 15,
+    "helper_pins": 54,
+    "installed_loaded_origins": 35
+  },
+  "suites": {
+    "tests/studio/test_clip_preview_loop.py": {
+      "count": 49,
+      "functions": [
+        "test_explicit_repeat_reuses_exact_preview_and_real_player_state",
+        "test_repeat_waits_for_real_quiet_hold_and_coalesces_timer_notifications",
+        "test_stale_repeat_releases_quiet_hold_without_restarting_owned_preview",
+        "test_modal_repeat_review_cannot_follow_replaced_library",
+        "test_invalid_repeat_boundaries_do_not_change_playback_or_acquire_quiet_hold",
+        "test_clear_repeat_on_stopped_preview_does_not_start_audio",
+        "test_changed_pcm_is_refused_before_real_player_repeat_and_native_owner_closes",
+        "test_unconfirmed_native_close_retains_preview_until_real_release",
+        "test_timer_failure_never_bypasses_owned_native_stop_or_deletes_live_preview",
+        "test_cancelled_repeat_review_keeps_current_playback_and_saved_project",
+        "test_current_preview_generation_binds_saved_asset_without_automatic_repeat",
+        "test_explicit_repeat_play_handles_eof_during_range_review_without_rerender",
+        "test_native_loop_destroy_observer_requires_external_event_and_captured_ids",
+        "test_native_loop_key_waits_for_prior_release_and_enabled_current_control",
+        "test_native_loop_focus_refusal_never_dispatches_a_key",
+        "test_native_loop_modal_discovery_refuses_foreign_or_inactive_windows",
+        "test_native_loop_modal_admission_requires_one_actual_running_owned_loop",
+        "test_native_loop_cleanup_waits_for_the_real_shared_worker_before_destroy_and_exit",
+        "test_native_loop_failure_cleanup_closes_only_one_captured_modal_per_later_turn",
+        "test_native_loop_missing_destroy_acknowledgement_retains_original_loop",
+        "test_native_loop_passive_fixture_uses_real_pcm_and_player_without_opening_output",
+        "test_native_loop_keyup_failure_preserves_original_failure_and_modifier_release"
+      ]
+    },
+    "tests/studio/test_project_markers.py": {
+      "count": 48,
+      "functions": [
+        "test_every_legacy_project_wire_and_fingerprint_stays_exact",
+        "test_schema_four_roundtrip_keeps_sample_positions_without_changing_scene_duration",
+        "test_marker_wire_rejects_invalid_positions_labels_and_ambiguous_identity",
+        "test_schema_four_requires_closed_typed_marker_wire",
+        "test_marker_collection_admits_exact_bound_and_refuses_growth_before_store_write",
+        "test_add_edit_remove_and_history_share_exact_existing_revision_cas",
+        "test_stale_marker_edits_cannot_overwrite_an_actual_competing_saved_project",
+        "test_noop_marker_update_keeps_bytes_inode_history_and_fresh_cas",
+        "test_marker_identity_refusals_leave_current_and_history_exact",
+        "test_marker_cancellation_before_publication_preserves_original_files_and_exception",
+        "test_late_cancel_after_actual_marker_publication_returns_committed_revision",
+        "test_actual_book_plan_ownership_refuses_marker_edits_and_preserves_backup_linkage",
+        "test_legacy_external_clip_cannot_gain_marker_schema_without_managed_input_admission"
+      ]
+    },
+    "tests/studio/test_marker_consumers.py": {
+      "count": 31,
+      "functions": [
+        "test_marker_backup_preserves_current_history_inputs_and_passive_output_boundary",
+        "test_resigned_marker_backup_still_requires_typed_identity_effects_and_retained_sources",
+        "test_restored_marker_job_needs_fresh_output_before_any_recorded_path_or_runtime_access",
+        "test_effect_edits_keep_marker_schema_identity_and_the_existing_history",
+        "test_schema_four_source_resolution_keeps_fresh_hash_and_original_cancellation",
+        "test_actual_marker_only_render_reuses_speech_and_preserves_pcm_timing_and_restored_effects"
+      ]
+    },
+    "tests/studio/test_clip_operations.py": {
+      "count": 90,
+      "functions": [
+        "test_split_retains_original_identity_bytes_and_exact_scene_grid",
+        "test_split_invalid_boundary_cannot_create_a_piece",
+        "test_split_inside_existing_fade_is_refused_without_reshaping_it",
+        "test_completed_outer_fades_survive_split_and_rejoin",
+        "test_curve_shift_matches_independent_piecewise_function_at_every_sample",
+        "test_pan_curve_split_rejoins_without_resetting_original_motion",
+        "test_eight_point_shift_stays_in_existing_wire_bound_and_bypass_is_unchanged",
+        "test_stateful_clip_processing_requires_explicit_render_before_edit",
+        "test_cut_leaves_original_scene_time_and_source_ranges",
+        "test_invalid_cut_is_refused",
+        "test_join_cannot_discard_different_content_routing_or_internal_fade",
+        "test_join_keeps_external_fades_and_refuses_changed_bypassed_controls",
+        "test_invalid_inspected_geometry_or_new_identity_is_refused",
+        "test_split_and_prefix_cut_use_one_captured_integer_scene_origin",
+        "test_unaligned_source_selection_requires_explicit_conversion",
+        "test_fractional_scene_end_that_changes_rounding_is_explicitly_refused",
+        "test_crossfade_keeps_both_original_selections_and_outer_ramps",
+        "test_crossfade_rejects_invalid_or_unaligned_overlap",
+        "test_crossfade_requires_distinct_contiguous_sample_aligned_scene_pair",
+        "test_crossfade_never_replaces_boundary_or_overlapping_outer_fades",
+        "test_crossfade_retains_existing_editable_effect_boundary",
+        "test_crossfade_requires_exact_inspected_selected_lengths"
+      ]
+    },
+    "tests/studio/test_clip_editing.py": {
+      "count": 34,
+      "functions": [
+        "test_clip_only_production_does_not_discover_or_require_any_voice",
+        "test_schema_one_roundtrip_preserves_original_fingerprint_and_wire_fields",
+        "test_edit_retains_exact_bytes_and_noop_keeps_revision",
+        "test_invalid_clip_cannot_publish_a_project_revision",
+        "test_receipt_binding_rejects_changed_recording",
+        "test_cancel_after_copy_starts_keeps_project_and_original",
+        "test_source_change_during_retention_is_not_admitted",
+        "test_add_does_not_authorize_neighbouring_inputs",
+        "test_move_is_one_revision_and_keeps_clip_identity_and_original",
+        "test_actual_trim_position_pan_fades_and_complete_clip_stems",
+        "test_actual_recording_receipt_becomes_an_editable_managed_clip",
+        "test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision",
+        "test_crossfade_refuses_nonselectable_pair_before_decoder_or_save",
+        "test_crossfade_fade_conflict_cannot_publish_half_of_the_pair",
+        "test_crossfade_cancellation_preserves_the_entire_saved_pair",
+        "test_crossfade_rechecks_both_retained_sources_after_real_metadata",
+        "test_crossfade_refuses_a_changed_project_before_publication",
+        "test_crossfade_final_project_write_keeps_revision_and_fingerprint_cas",
+        "test_crossfade_cannot_bypass_the_reviewed_book_plan_boundary"
+      ]
+    },
+    "tests/studio/test_clip_history_dialog.py": {
+      "count": 50,
+      "functions": [
+        "test_split_binds_saved_project_scene_clip_and_time_before_queue",
+        "test_cut_binds_both_reviewed_positions_before_queue",
+        "test_invalid_cut_entry_starts_no_worker",
+        "test_cancelled_native_picker_never_starts_an_edit",
+        "test_join_queues_exact_selected_following_section",
+        "test_changed_library_while_queued_prevents_clip_mutation",
+        "test_session_history_tracks_successful_whole_project_edits_and_redo_branch",
+        "test_history_is_cleared_when_switching_project_identity",
+        "test_undo_redo_uses_exact_saved_reference_and_only_pops_after_success",
+        "test_failed_restore_keeps_session_history_available",
+        "test_cancelled_queued_restore_preserves_history_and_saved_project",
+        "test_committed_restore_is_shown_after_late_cancel_but_not_in_another_library",
+        "test_history_pagination_queues_existing_store_cursor_without_loading_all_content",
+        "test_history_modal_scope_change_never_restores_into_new_library",
+        "test_crossfade_menu_freezes_pair_and_sample_rounded_overlap_before_queue",
+        "test_invalid_crossfade_input_never_starts_owned_work",
+        "test_cancelled_crossfade_review_never_starts_owned_work",
+        "test_crossfade_modal_scope_or_project_change_refuses_review",
+        "test_queued_crossfade_never_mutates_after_stop_or_library_replacement",
+        "test_crossfade_service_refusal_preserves_current_saved_review",
+        "test_marker_add_freezes_current_scene_position_and_name_before_queue",
+        "test_marker_edit_preserves_identity_and_prefills_current_values",
+        "test_marker_removal_is_explicit_and_keeps_actual_project_history_route",
+        "test_marker_cancel_at_each_native_review_starts_no_write",
+        "test_marker_modal_scope_or_project_change_refuses_late_write",
+        "test_queued_marker_work_is_revoked_by_stop_or_root_replacement",
+        "test_committed_marker_is_shown_after_late_cancellation"
+      ]
+    },
+    "tests/studio/test_studio_controller.py": {
+      "count": 18,
+      "functions": [
+        "test_plain_prose_colons_are_not_silently_removed_in_faithful_mode",
+        "test_save_reopen_revision_and_noop_preserve_project_identity",
+        "test_role_custom_voice_pan_gain_rate_volume_and_language_survive_save",
+        "test_invalid_script_draft_survives_without_replacing_valid_project",
+        "test_project_edit_detects_stale_revision",
+        "test_music_plan_rejects_values_not_supported_by_runtime",
+        "test_script_controller_preserves_exact_saved_markers_and_noop_revision",
+        "test_script_controller_refuses_marker_retargeting_and_retains_invalid_draft",
+        "test_duplicate_scene_titles_never_retarget_existing_markers",
+        "test_duplicate_scene_titles_allow_unchanged_script_and_project_title_edits"
+      ]
+    }
+  },
+  "native": {
+    "path": "scripts/windows_clip_editor_smoke.py",
+    "git_blob": "e202ebe7f61490d2745d315f31330f97372ec705",
+    "required_unique_checks": [
+      "actual clip and host Destroy events precede original loop exit",
+      "actual clip and host native windows are closed",
+      "real wx Windows controls",
+      "original selection requires an existing file",
+      "clip and host have distinct captured native window IDs",
+      "real native main loop is active",
+      "native project choice binds saved identity",
+      "all timing controls have readable names",
+      "native Add retains an actual clip",
+      "native Add retains a portable content identity",
+      "native Save persists reviewed numeric controls",
+      "native Render creates exactly one completed saved project job",
+      "native render completion exposes its destination in readable status",
+      "actual left-only timeline and one-second duration",
+      "stale native edit cannot replace a newer revision",
+      "remove changes project but retains original bytes",
+      "native pair setup retains two exact original selections",
+      "native crossfade saves exactly one paired project revision",
+      "native crossfade preserves retained originals and later scene placement",
+      "native crossfade renders the exact saved project",
+      "actual crossfade PCM keeps old scene extent and later silence",
+      "native marker Add saves exact scene-relative name and time",
+      "native marker Edit retains exact selected identity without moving audio",
+      "native marker reload retains the complete typed project",
+      "native project history restores markers as a fresh revision",
+      "native marker Remove changes one revision and retains scene audio",
+      "native removed marker stays removed after reload",
+      "native marker render binds the current saved revision",
+      "marker edits and history leave actual rendered PCM and original bytes unchanged",
+      "passive loop fixture uses the original shared preview worker",
+      "actual passive preview retains its exact path without opening output",
+      "native repeat chooser Cancel keeps passive audio and project unchanged",
+      "native repeat range Cancel never starts the selected preview",
+      "passive loop fixture uses actual silent A-B state and native timer",
+      "native Clear repeat is silent and retains the owned preview",
+      "native Stop revokes repeat generation before passive owner release",
+      "native keyboard close finishes cleanly",
+      "native Close discards preview only after confirmed passive release",
+      "original clip host executor drains without retained cleanup failure",
+      "clip render and preview resource leases are released",
+      "passive loop owner remains silent after actual host settlement",
+      "installed module origin: carr_library.studio.clips",
+      "exact installed source bytes: carr_library.studio.clips",
+      "unchanged installed source after clip work: carr_library.studio.clips",
+      "installed module origin: carr_library.studio.managed_inputs",
+      "exact installed source bytes: carr_library.studio.managed_inputs",
+      "unchanged installed source after clip work: carr_library.studio.managed_inputs",
+      "installed module origin: carr_library.studio.render",
+      "exact installed source bytes: carr_library.studio.render",
+      "unchanged installed source after clip work: carr_library.studio.render",
+      "installed module origin: carr_library.studio.project",
+      "exact installed source bytes: carr_library.studio.project",
+      "unchanged installed source after clip work: carr_library.studio.project",
+      "installed module origin: carr_library.audio.process",
+      "exact installed source bytes: carr_library.audio.process",
+      "unchanged installed source after clip work: carr_library.audio.process",
+      "installed module origin: carr_library.audio.windows_job",
+      "exact installed source bytes: carr_library.audio.windows_job",
+      "unchanged installed source after clip work: carr_library.audio.windows_job",
+      "installed module origin: carr_library.ui.studio_clips",
+      "exact installed source bytes: carr_library.ui.studio_clips",
+      "unchanged installed source after clip work: carr_library.ui.studio_clips",
+      "installed module origin: carr_library.studio.clip_operations",
+      "exact installed source bytes: carr_library.studio.clip_operations",
+      "unchanged installed source after clip work: carr_library.studio.clip_operations",
+      "installed module origin: carr_library.application",
+      "exact installed source bytes: carr_library.application",
+      "unchanged installed source after clip work: carr_library.application",
+      "installed module origin: carr_library.ui.desktop_app",
+      "exact installed source bytes: carr_library.ui.desktop_app",
+      "unchanged installed source after clip work: carr_library.ui.desktop_app",
+      "installed module origin: carr_library.speech.player",
+      "exact installed source bytes: carr_library.speech.player",
+      "unchanged installed source after clip work: carr_library.speech.player",
+      "installed module origin: carr_library.speech.playlist",
+      "exact installed source bytes: carr_library.speech.playlist",
+      "unchanged installed source after clip work: carr_library.speech.playlist",
+      "installed module origin: carr_library.speech.progress_speech",
+      "exact installed source bytes: carr_library.speech.progress_speech",
+      "unchanged installed source after clip work: carr_library.speech.progress_speech",
+      "installed module origin: carr_library.durable_state",
+      "exact installed source bytes: carr_library.durable_state",
+      "unchanged installed source after clip work: carr_library.durable_state",
+      "installed module origin: carr_library.operations.broker",
+      "exact installed source bytes: carr_library.operations.broker",
+      "unchanged installed source after clip work: carr_library.operations.broker",
+      "explicit selected external executable: ffmpeg",
+      "pinned external executable bytes: ffmpeg",
+      "explicit selected external executable: ffprobe",
+      "pinned external executable bytes: ffprobe",
+      "installed module: carr_library.ui.studio_clips",
+      "installed module: carr_library.studio.clips"
+    ],
+    "required_fields": {
+      "result": "PASS",
+      "native_keyboard": "PASS",
+      "native_crossfade": "PASS",
+      "native_scene_markers": "PASS",
+      "native_loop_cancel_clear_stop_close": "PASS",
+      "native_owner_cleanup": "PASS",
+      "repeat_playback": "NOT_RUN",
+      "physical_audio_output": "NOT_RUN",
+      "listening_quality": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "native_file_pickers": "NOT_RUN",
+      "physical_microphone": "NOT_RUN",
+      "loop_fixture": "actual passive WavePlayer; no output opened"
+    },
+    "required_origins": {
+      "carr_library.studio.clips": {
+        "path": "carr-library/src/carr_library/studio/clips.py",
+        "sha": "598d0c450e3697c699a03c74d806783173fc3ab5"
+      },
+      "carr_library.studio.managed_inputs": {
+        "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+        "sha": "fdc163215c53240dd6058e8f4235d2e8aa03db10"
+      },
+      "carr_library.studio.render": {
+        "path": "carr-library/src/carr_library/studio/render.py",
+        "sha": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab"
+      },
+      "carr_library.studio.project": {
+        "path": "carr-library/src/carr_library/studio/project.py",
+        "sha": "63a20c64909db77b9958e9c16627b78f08050d95"
+      },
+      "carr_library.audio.process": {
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "sha": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b"
+      },
+      "carr_library.audio.windows_job": {
+        "path": "carr-library/src/carr_library/audio/windows_job.py",
+        "sha": "27aeb47c39660ac74335d791e22e58b44058db3b"
+      },
+      "carr_library.ui.studio_clips": {
+        "path": "carr-library/src/carr_library/ui/studio_clips.py",
+        "sha": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a"
+      },
+      "carr_library.studio.clip_operations": {
+        "path": "carr-library/src/carr_library/studio/clip_operations.py",
+        "sha": "a9b2856c445f6d9f67105b754c23deb23fe3e60d"
+      },
+      "carr_library.application": {
+        "path": "carr-library/src/carr_library/application.py",
+        "sha": "82af31743ca5cc6557477f6492c08b912751f4a4"
+      },
+      "carr_library.ui.desktop_app": {
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "sha": "85c0991f744bd521ca247a0e15da93aa585ea30d"
+      },
+      "carr_library.speech.player": {
+        "path": "carr-library/src/carr_library/speech/player.py",
+        "sha": "6f758c6073e239f771a7b8627713aca8bff51d7f"
+      },
+      "carr_library.speech.playlist": {
+        "path": "carr-library/src/carr_library/speech/playlist.py",
+        "sha": "544f845fa425ff643620f68fad777421a85004f4"
+      },
+      "carr_library.speech.progress_speech": {
+        "path": "carr-library/src/carr_library/speech/progress_speech.py",
+        "sha": "40fc50742fb2c50a1bfb2920e25af692017c0aaf"
+      },
+      "carr_library.durable_state": {
+        "path": "carr-library/src/carr_library/durable_state.py",
+        "sha": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb"
+      },
+      "carr_library.operations.broker": {
+        "path": "carr-library/src/carr_library/operations/broker.py",
+        "sha": "f09561333d33ae68480260668ec05b617cd72213"
+      }
+    },
+    "check_multiplicity": {
+      "description": "Require all92 unique names as a subset of successful actual checks, not checks list length92. Keyboard-control checks and original-file picker check repeat across legitimate actions.",
+      "original_file_picker_minimum": 3,
+      "allowed_dynamic_prefixes": [
+        "keyboard focus: ",
+        "Space key down: ",
+        "Space key up: ",
+        "native key down: ",
+        "native key up: ",
+        "native choice keyboard input: ",
+        "native text keyboard input: "
+      ]
+    }
+  },
+  "companions": [
+    {
+      "path": "scripts/windows_clip_editor_smoke.py",
+      "git_blob": "e202ebe7f61490d2745d315f31330f97372ec705",
+      "required_by": "tests/studio/test_clip_preview_loop.py",
+      "copied_and_hash_checked_before_after": true
+    }
+  ],
+  "final_helper_pins": {
+    "src/carr_library/studio/clips.py": "598d0c450e3697c699a03c74d806783173fc3ab5",
+    "src/carr_library/studio/managed_inputs.py": "fdc163215c53240dd6058e8f4235d2e8aa03db10",
+    "src/carr_library/studio/render.py": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab",
+    "src/carr_library/studio/project.py": "63a20c64909db77b9958e9c16627b78f08050d95",
+    "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+    "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
+    "src/carr_library/ui/studio_clips.py": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a",
+    "src/carr_library/studio/clip_operations.py": "a9b2856c445f6d9f67105b754c23deb23fe3e60d",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "src/carr_library/speech/player.py": "6f758c6073e239f771a7b8627713aca8bff51d7f",
+    "src/carr_library/speech/playlist.py": "544f845fa425ff643620f68fad777421a85004f4",
+    "src/carr_library/speech/progress_speech.py": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+    "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
+    "src/carr_library/studio/project_history.py": "ad9dd72a8101639cf03a02420dbb0c2b0c0cc7be",
+    "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+    "src/carr_library/ui/studio_dialog.py": "ce11e96477841cebe30702001a1b5f4d6107178b",
+    "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+    "src/carr_library/backup_producers.py": "0fb5e91a440ded8b62b806b944bdd4722f288e65",
+    "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+    "src/carr_library/backup_book_audio.py": "4fd92f122d2907c0530fee912c18b45457748682",
+    "src/carr_library/state_backup.py": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+    "src/carr_library/speech/source.py": "cef32840ecbb5b07c0313e206d9bf622ee20db87",
+    "src/carr_library/studio/book_audio.py": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb",
+    "src/carr_library/audio/__init__.py": "2346d1b0b458b392f0289da2cc692aa5da7ea87e",
+    "src/carr_library/audio/envelopes.py": "52bbc4b960784ac774c77071ba8682b2be5ca60c",
+    "src/carr_library/audio/recording.py": "7a71d0975cba5ada05772b43b881998e87b61326",
+    "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
+    "src/carr_library/operations/__init__.py": "7929cba7686f36f15c212833396b5dc9cf464791",
+    "src/carr_library/operations/models.py": "1b8e354327d20dc134a30783c648b88f37cfa337",
+    "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
+    "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
+    "src/carr_library/speech/__init__.py": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+    "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+    "tests/studio/test_clip_preview_loop.py": "90f2bfc4b79d8a6bc0abc7351ce7b165a87b0310",
+    "tests/studio/test_project_markers.py": "088083c06c452fa5fbac9e14df1786aba524d3d7",
+    "tests/studio/test_marker_consumers.py": "0877334ad369cc03b3d48edecfdd00b1a8202c9b",
+    "tests/studio/test_clip_operations.py": "a47af2be53416f2a9588a20381063f63422f0940",
+    "tests/studio/test_clip_editing.py": "27a3d1d3a156acd48090a08ca7f6264050f2c771",
+    "tests/studio/test_clip_history_dialog.py": "d5675f91c0b6285ea9188fa90d4ca416cd6967dc",
+    "tests/studio/test_studio_controller.py": "93a093e395388b69d6b7a76f22d7432cc8b60c92",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "packaging/prepare_windows_audio.py": "65b172ac432f28e865200aed2f8e610dda1ac7cf",
+    "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+    "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+    "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
+    "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
+    "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+    "scripts/windows_clip_editor_smoke.py": "e202ebe7f61490d2745d315f31330f97372ec705",
+    "scripts/ci_studio_timeline_cases.json": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+    "scripts/check_studio_timeline_native.py": "cc67469e59aee71504b60640b61619171e7566f1",
+    "docs/STUDIO_CLIP_HISTORY.md": "b1ced7ecd98cebfdb9b0b817d9617e3bee2ca625"
+  },
+  "inverse_validation": {
+    "old_test_functions": [
+      "test_clip_only_production_does_not_discover_or_require_any_voice",
+      "test_schema_one_roundtrip_preserves_original_fingerprint_and_wire_fields",
+      "test_edit_retains_exact_bytes_and_noop_keeps_revision",
+      "test_invalid_clip_cannot_publish_a_project_revision",
+      "test_receipt_binding_rejects_changed_recording",
+      "test_cancel_after_copy_starts_keeps_project_and_original",
+      "test_source_change_during_retention_is_not_admitted",
+      "test_add_does_not_authorize_neighbouring_inputs",
+      "test_move_is_one_revision_and_keeps_clip_identity_and_original",
+      "test_actual_trim_position_pan_fades_and_complete_clip_stems",
+      "test_actual_recording_receipt_becomes_an_editable_managed_clip",
+      "test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision",
+      "test_crossfade_refuses_nonselectable_pair_before_decoder_or_save",
+      "test_crossfade_fade_conflict_cannot_publish_half_of_the_pair",
+      "test_crossfade_cancellation_preserves_the_entire_saved_pair",
+      "test_crossfade_rechecks_both_retained_sources_after_real_metadata",
+      "test_crossfade_refuses_a_changed_project_before_publication",
+      "test_crossfade_final_project_write_keeps_revision_and_fingerprint_cas",
+      "test_crossfade_cannot_bypass_the_reviewed_book_plan_boundary"
+    ],
+    "new_test_functions": [
+      "test_clip_only_production_does_not_discover_or_require_any_voice",
+      "test_schema_one_roundtrip_preserves_original_fingerprint_and_wire_fields",
+      "test_edit_retains_exact_bytes_and_noop_keeps_revision",
+      "test_invalid_clip_cannot_publish_a_project_revision",
+      "test_receipt_binding_rejects_changed_recording",
+      "test_cancel_after_copy_starts_keeps_project_and_original",
+      "test_source_change_during_retention_is_not_admitted",
+      "test_add_does_not_authorize_neighbouring_inputs",
+      "test_move_is_one_revision_and_keeps_clip_identity_and_original",
+      "test_actual_trim_position_pan_fades_and_complete_clip_stems",
+      "test_actual_recording_receipt_becomes_an_editable_managed_clip",
+      "test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision",
+      "test_crossfade_refuses_nonselectable_pair_before_decoder_or_save",
+      "test_crossfade_fade_conflict_cannot_publish_half_of_the_pair",
+      "test_crossfade_cancellation_preserves_the_entire_saved_pair",
+      "test_crossfade_rechecks_both_retained_sources_after_real_metadata",
+      "test_crossfade_refuses_a_changed_project_before_publication",
+      "test_crossfade_final_project_write_keeps_revision_and_fingerprint_cas",
+      "test_crossfade_cannot_bypass_the_reviewed_book_plan_boundary"
+    ],
+    "native_literal_check_count": 54,
+    "old_literal_checks_exact": true,
+    "suite_specs_exact": true,
+    "native_unique_count": 92,
+    "origin_count": 15
+  },
+  "pin_validation": {
+    "same_data_bytes": 19559,
+    "suite_specs_unchanged": true,
+    "native_required_names_unchanged": true,
+    "required_fields_unchanged": true,
+    "origins_unchanged": true,
+    "check_multiplicity_unchanged": true,
+    "helper_changed_pin_paths": [
+      "tests/studio/test_clip_editing.py",
+      "scripts/windows_clip_editor_smoke.py",
+      "scripts/ci_studio_timeline_cases.json",
+      "scripts/check_studio_timeline_native.py"
+    ],
+    "four_full_pin_inverse": true,
+    "workflow_three_pin_inverse": true
+  },
+  "guide": {
+    "path": "carr-library/docs/STUDIO_CLIP_HISTORY.md",
+    "git_blob": "b1ced7ecd98cebfdb9b0b817d9617e3bee2ca625",
+    "changed": false,
+    "reason": "No60000/2.5s fixture claim is present."
+  },
+  "limits": {
+    "source_seconds": 2000,
+    "source_jobs": 2,
+    "whole_test_seconds": 600,
+    "installed_whole_tests_sequential": true,
+    "wheel_build_seconds": 300,
+    "wheel_install_seconds": 180,
+    "pip_check_seconds": 60,
+    "origin_snapshot_seconds_each": 60,
+    "native_parent_seconds": 330,
+    "native_watchdog_seconds": 300,
+    "native_checker_seconds_each": 60,
+    "workflow_acquisition_minutes": 20,
+    "workflow_execution_minutes": 115,
+    "workflow_retention_minutes": 2,
+    "workflow_job_minutes": 145,
+    "individual_evidence_bytes": 8388608,
+    "aggregate_note": "The inherited finite source and workflow caps fail closed. They are not a promise that every child can simultaneously consume its entire maximum duration."
+  },
+  "syntax_gate_plan": {
+    "workflow_preflight": "Before acquisition: exact head/helper/checker/data/lock pins; compile all pinned helper Python, compile unchanged embedded children, require seven source contracts/320 cases equal shared data.",
+    "github_admission": "GitHub must admit this workflow YAML; static read is not an admission result.",
+    "execution": "Strict source320 then verified-current-wheel isolated installed320 then native92/15; failed result remains a failed job. Required actual runtime remains NOT_RUN.",
+    "actual_driver_source_parse": "The unchanged49-case loop whole suite loads the exact native-script companion through its scoped Python AST driver extraction; source320 must succeed before installed/native admission."
+  },
+  "required_actual_acceptance": "Execute complete source320, complete isolated installed320 and native92/15 with unchanged strict bounds; old319/1 and static peers cannot qualify successors.",
+  "full_gate_handoff": {
+    "owner": "/root",
+    "action": "Replace only current data/checker/native and clip-editing test source bindings where present; seven suite counts/functions, native92 subset semantics and15 origins remain unchanged. Full490 gates are not edited by this component."
+  },
+  "peers": {
+    "source_and_native": {
+      "agent": "/root/progress_completion",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "test_blob": "27a3d1d3a156acd48090a08ca7f6264050f2c771",
+      "native_blob": "e202ebe7f61490d2745d315f31330f97372ec705"
+    },
+    "pins": {
+      "agent": "/root/progress_completion",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Four-file geometry pin closure; independent exact inverse2/2/4/3 replacements; all320/119/92/15 unchanged.",
+      "data_blob": "5d6c9fa8eed10b037bdb056ce0d942a0ce21de00",
+      "checker_blob": "cc67469e59aee71504b60640b61619171e7566f1",
+      "helper_blob": "eb7653c7b2b057bf3db892561990e72935b534ec",
+      "workflow_blob": "e1e4802235ea0ab5c9590862d731c65827ce23c3"
+    }
+  },
+  "new_runtime": "NOT_RUN",
+  "refs_modified": false,
+  "recorded_utc": "2026-11-28 06:43:53 UTC"
+}

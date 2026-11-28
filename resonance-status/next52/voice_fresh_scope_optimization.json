@@ -1,0 +1,124 @@
+{
+  "schema": "carr-voice-scope-check-work/1",
+  "created_utc": "2026-11-28 03:28:01 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "execution": "NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "preimage": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "blob": "f09561333d33ae68480260668ec05b617cd72213",
+      "exact_readback": true,
+      "hunks": [
+        {
+          "before": "    def _check_scope(self):\n        for path, expected in self._scope_directories:\n            try:\n                current = _directory_identity(path)\n            except (OSError, ValueError) as error:\n                raise ResourceStateError(\n                    'The selected resource directory changed; reopen the selected library before retrying.') from error\n            if current != expected:\n                raise ResourceStateError(\n                    'The selected resource directory changed; reopen the selected library before retrying.')\n",
+          "after": "    def _check_scope(self):\n        # Resolve each maximal captured branch once in this check.  local_path\n        # still rejects linked ancestors; every captured identity stays fresh.\n        for path, _expected in self._scope_directories:\n            if any(other != path and other.is_relative_to(path)\n                   for other, _identity in self._scope_directories):\n                continue\n            try:\n                if local_path(path, exists=True) != path:\n                    raise ValueError('The resource directory path changed.')\n            except (OSError, ValueError) as error:\n                raise ResourceStateError(\n                    'The selected resource directory changed; reopen the selected library before retrying.') from error\n        for path, expected in self._scope_directories:\n            try:\n                value = regular(path, directory=True)\n                current = value.st_dev, value.st_ino\n            except (OSError, ValueError) as error:\n                raise ResourceStateError(\n                    'The selected resource directory changed; reopen the selected library before retrying.') from error\n            if current != expected:\n                raise ResourceStateError(\n                    'The selected resource directory changed; reopen the selected library before retrying.')\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_settings.py",
+      "preimage": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+      "blob": "64e745302ea2bffb84dc0d713be9d1e0f70eff1e",
+      "exact_readback": true,
+      "hunks": [
+        {
+          "before": "    def check(self):\n        self.scope_guard()\n        if (_identity(self.root) != self._root_identity\n                or _identity(self.state_root) != self._state_identity):\n            raise ValueError('The selected library changed; reopen local voice management.')\n        if self._audio_identity is not None and _identity(self.path.parent) != self._audio_identity:\n            raise ValueError('The selected engine settings directory changed.')\n        return self.root\n",
+          "after": "    def check(self):\n        self.scope_guard()\n        # One fresh lexical walk covers these nested captured directories.\n        # Their identities are still read separately on every invocation.\n        leaf = self.path.parent if self._audio_identity is not None else self.state_root\n        if local_path(leaf, exists=True) != leaf:\n            raise ValueError('The selected library changed; reopen local voice management.')\n        for path, expected in ((self.root, self._root_identity),\n                               (self.state_root, self._state_identity)):\n            info = regular(path, directory=True)\n            if (info.st_dev, info.st_ino) != expected:\n                raise ValueError('The selected library changed; reopen local voice management.')\n        if self._audio_identity is not None:\n            info = regular(self.path.parent, directory=True)\n            if (info.st_dev, info.st_ino) != self._audio_identity:\n                raise ValueError('The selected engine settings directory changed.')\n        return self.root\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "preimage": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c",
+      "blob": "df687d0d557fbc57af8c44ab029b7dd080084721",
+      "exact_readback": true,
+      "hunks": [
+        {
+          "before": "        for path, identity in self._directories:\n            if _directory(path) != (path, identity):\n                self._reject('The selected voice runtime directory changed.')\n",
+          "after": "        # Recheck the deepest captured path, then every original directory\n        # identity.  This is local to this invocation, never cached authority.\n        if local_path(self.references, exists=True) != self.references:\n            self._reject('The selected voice runtime directory changed.')\n        for path, identity in self._directories:\n            info = regular(path, directory=True)\n            if (info.st_dev, info.st_ino) != identity:\n                self._reject('The selected voice runtime directory changed.')\n"
+        },
+        {
+          "before": "    def _check_settings_scope(self):\n        for path, identity in self._state_directories:\n            if _directory(path) != (path, identity):\n                self._reject('The selected voice settings directory changed.')\n        if self._store is not None:\n            self._store.check()\n",
+          "after": "    def _check_settings_scope(self):\n        if self._state_directories:\n            leaf = self._state_directories[-1][0]\n            if local_path(leaf, exists=True) != leaf:\n                self._reject('The selected voice settings directory changed.')\n        for path, identity in self._state_directories:\n            info = regular(path, directory=True)\n            if (info.st_dev, info.st_ino) != identity:\n                self._reject('The selected voice settings directory changed.')\n        if self._store is not None:\n            self._store.check()\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_scope_checks.py",
+      "preimage": null,
+      "blob": "1397674e847d3128ac7a38f2463103ad0b3c06de",
+      "exact_readback": true
+    }
+  ],
+  "test_contract": {
+    "path": "carr-library/tests/audio/test_voice_scope_checks.py",
+    "blob": "1397674e847d3128ac7a38f2463103ad0b3c06de",
+    "cases": 42,
+    "functions": {
+      "test_fresh_scope_checks_reduce_real_ancestor_walks_without_caching": 4,
+      "test_broker_rechecks_both_branches_and_each_captured_identity": 8,
+      "test_voice_settings_rechecks_each_captured_identity_after_path_resolution": 6,
+      "test_authority_rechecks_all_runtime_and_state_identities_after_path_resolution": 12,
+      "test_actual_linked_scope_refuses_even_when_it_reaches_the_original_directory": 4,
+      "test_voice_settings_guard_cancellation_precedes_fresh_path_reads": 1,
+      "test_resource_cancellation_keeps_the_real_existing_reservation": 1,
+      "test_authority_cancellation_keeps_the_actual_package_lease_until_unwind": 2,
+      "test_settings_with_no_captured_audio_directory_preserves_passive_behavior": 1,
+      "test_fresh_scope_optimization_preserves_owner_namespace_presence_guard": 2,
+      "test_broker_checks_disjoint_explicit_policy_branch_without_recreating_it": 1
+    },
+    "companions": [],
+    "required_origins": [
+      "carr_library.operations.broker",
+      "carr_library.audio.voice_settings",
+      "carr_library.integrations._dordiai_authority"
+    ],
+    "old_suites": "All existing broker scope/resources, voice state/ownership/package/reference/managed authority/provider and backend suites stay unchanged. Add this whole suite; do not split or relax existing deadlines."
+  },
+  "measured_basis": {
+    "evidence_blob": "f232f3f12e5bea51d590917e4ba7b53daa0e20f1",
+    "commit": "cf6b55b8216fe41ca446cd2df45604be117cff3f",
+    "run": 46098492883,
+    "qualification": "Two actual single-case Windows source cProfile observations; main-thread Python work with profiling overhead, not child CPU, whole-module throughput, acoustic or installed acceptance.",
+    "package_setup": {
+      "elapsed_seconds": 20.4825798,
+      "scope_checks": 7378,
+      "scope_cumulative_seconds": 13.438902,
+      "identity_calls": 29520,
+      "identity_cumulative_seconds": 13.4248968
+    },
+    "managed_call": {
+      "elapsed_seconds": 7.8262016,
+      "base_checks": 265,
+      "base_cumulative_seconds": 5.7089878,
+      "settings_scope_checks": 530,
+      "settings_scope_cumulative_seconds": 2.8140197
+    }
+  },
+  "design": {
+    "broker": "Resolve every maximal captured lexical branch freshly, including disjoint policy roots; then perform a fresh regular(dev,ino) check for every original captured directory.",
+    "settings": "Call the original scope guard first, resolve the deepest captured directory once, then freshly check root/state/audio identities. Preserve originally absent audio behavior.",
+    "authority": "Resolve the deepest captured runtime/settings leaf once per current check and freshly validate each captured ancestor. Leave the separate package-presence path check and both sides of the current settings read intact.",
+    "unchanged": [
+      "No cross-call metadata/identity/authority cache.",
+      "No constructor, directory inventory or on-disk schema changes.",
+      "No new public authority or fallback.",
+      "No hash, manifest, receipt, version, current-configuration or package-presence check removed.",
+      "No cancellation call site, native lock, worker retirement or pending cleanup path changed.",
+      "No test/deadline/budget changes and no Git ref moved."
+    ]
+  },
+  "verification": {
+    "source_reverse": "Each replacement was unique and reversing exactly the recorded hunks reconstructs its complete predecessor bytes.",
+    "tests": "42 statically enumerated cases in 11 functions. Actual lstat comparison, every selected directory substitution before/after lexical validation, actual symlink/junction exclusion, cancellation with real native reservations, missing audio/presence and disjoint policy coverage.",
+    "peer": {
+      "agent": "/root/progress_completion",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact source predecessors, constructors, regular/local_path APIs, all new42 fixture/API cases."
+    },
+    "speedup": "NOT_MEASURED; no result transfer from prior source/installed or profile runs.",
+    "required_runtime": "Execute the whole new42 and unchanged existing suites at their existing600-second bounds on each platform; separately measure the previously expensive complete modules."
+  }
+}

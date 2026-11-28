@@ -1,0 +1,110 @@
+{
+  "schema": "carr-source-review/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "subject": "Preserve the exact measured Book output request across preview and publication",
+  "base_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/publishing.py",
+      "before": "fb44f78ddc87d6c220d82f14784711c91ba76472",
+      "after": "bf9a653f5baa37e452430658b1043b9a9019d90a"
+    },
+    {
+      "path": "carr-library/tests/studio/test_measured_audio.py",
+      "before": "cf6d9eb7e9344836285e4575edcc4095c10767fa",
+      "after": "717ad80542669ecf0543ea6d971f3e7f2e849444"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "42383f649ca2d3d5c682cc036f1b5540c12c28aa",
+      "after": "9f78d1bb9ae3a2db1f0691c849a97342b5de5da0"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "ad6d08e68e0bd6df219f80453b2f1ec6e986e70e",
+      "after": "2bd226a077d2a6cbf659d4d5a07f0de3162bede3"
+    }
+  ],
+  "dependency": {
+    "manifest": "fdba1d7ee7679f57b18d2859e7592880c0d99d6f",
+    "path": "carr-library/src/carr_library/audio/process.py",
+    "before": "71ee75c41ce4b57ace15fbb735e507bd2592409b",
+    "after": "014c47d5297a937a8bf6061420dd009206863669",
+    "ownership": "root",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "issue": {
+    "actual_evidence": "9968dfdc4d4b409442fa16d78855474ab377f595",
+    "head": "115cb66458b5f4748fb478fe1c573498c6b4ad30",
+    "run_id": 46078591045,
+    "job_id": 140772029234,
+    "source_cases_passed": 106,
+    "installed_cases_passed": 106,
+    "native": "FAIL",
+    "observed_error": "The measured audio ranges, names, source or output changed. Review them again.",
+    "demonstrated_source_bug": "Preview retains and hashes both original requested route and resolved target. Publication previously replaced the requested route by its resolved spelling before recapturing the approval.",
+    "exact_native_spelling": "Not recorded by the old probe; the connection to its actual Windows mismatch is an inference pending corrected execution."
+  },
+  "behavior": [
+    "Only pcm-parts captures the caller's original absolute Path before local_path normalization.",
+    "Every unchanged destination_snapshot now checks that same requested route against its original target and parent identity.",
+    "Resolved output I/O, source validation, absence/conflict checks, resource leases, locks, publication receipts and committed cleanup handling remain unchanged.",
+    "EPUB and DAISY continue using their existing resolved output branch.",
+    "The review document wire and approval hash algorithm are unchanged; equal resolved targets do not authorize a new requested spelling."
+  ],
+  "gate": {
+    "changed_module": "tests/studio/test_measured_audio.py",
+    "old_cases": 34,
+    "new_cases": 36,
+    "old_functions": 20,
+    "new_functions": 21,
+    "added_function": "test_measured_review_binds_original_route_and_resolved_target_separately",
+    "parameters": [
+      "change_requested_route=False",
+      "change_requested_route=True"
+    ],
+    "all_old_test_bytes_prefix": true,
+    "obligations": [
+      "Actual same-request noncanonical route publishes the exact reviewed PCM/content and verifies its receipt.",
+      "Changing the request spelling to the same resolved target is refused before any publication.",
+      "Original source hashes/timestamps/job state/voice calls remain unchanged; leases/staging close."
+    ],
+    "book_whole_suites": 7,
+    "source_cases": 108,
+    "isolated_installed_cases": 108,
+    "native_required_checks": 77,
+    "native_installed_origins": 18,
+    "native_script": "fe4d7f64686da37557e3913805f8d27a4a130724",
+    "whole_child_seconds": 600,
+    "source_aggregate_seconds": 2000,
+    "native_parent_seconds": 330,
+    "native_watchdog_seconds": 300,
+    "companions_unchanged": true,
+    "dependencies_unchanged": true,
+    "firewall_and_evidence_retention_unchanged": true,
+    "current_application_pin": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "ci_check_pin": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+  },
+  "readback": "All four output blobs match exactly; helper/workflow inverse reconstruction matches the stated preimages.",
+  "reviews": [
+    {
+      "reviewer": "progress_completion",
+      "scope": "two-hunk product correction and real route regressions",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "root",
+      "scope": "exact four helper changes and workflow pin/five count changes, product delta and old test prefix preservation",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "qualification": {
+    "new_source": "NOT_RUN",
+    "new_installed": "NOT_RUN",
+    "new_native": "NOT_RUN",
+    "old115cb_failure_preserved": true,
+    "refs_moved": false
+  },
+  "created_utc": "2026-11-27T23:51:59Z"
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "resonance-native-restore-path-observation/1",
+  "status": "PEER_REVIEWED_NOT_RUN",
+  "created_utc": "2026-11-28T00:18:49Z",
+  "base_commit": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+  "base_tree": "1a9cf51a75e3e5e860ded1bca2b041cb52f399e4",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "preimage": "50397caa3170495a562a2220a80d4a00eb36ab9a",
+      "sha": "412bae4ad7ffe7600497ede1add0c9c4a14fbf4b"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "3c24baad724a0ebf354bf3f1121834e03b3a0a32",
+      "sha": "841bc48f36b70415d0aedbd67987e0bcd5f2d409"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "0ae1d79faaadd8627f12639de5d40956bd4e9927",
+      "sha": "363e9a4e3d99dff012479e8452f8c9036e42a162"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "772fbbecd31f9148711c2b59f67ba97b479d8d4f",
+      "sha": "f0901304cffb1ed0406235f81dfa39eabb6b8386"
+    }
+  ],
+  "review_manifest": "23df55bb7b0e2ec1802375585a14486f08809cbf",
+  "actual_evidence": "fb50c5b15614a29fe325120e59592cf8cdc4ec21",
+  "actual_scope": "At db6 bothOS189 source+189 installed passed. Windows native completed actual ordinary/large backups and actual restore, then failed the unchanged compound restore-binding assertion after39 of44 checks. Close/drain and12 after-origins passed; remaining5 checks were not reached.",
+  "change": "Resolve the probe-owned TemporaryDirectory root strictly once, matching the canonical restore API's resolved-parent contract; add a bounded actual profile/parent/checksum diagnostic on the same compound failure.",
+  "preservation": [
+    "All four original compound conditions and44 native/12 origin checks retained byte-for-byte.",
+    "All application/product/restore/checksum/ownership code unchanged.",
+    "All189 source+189 installed cases across11 whole suites remain unchanged; the backup driver remains11 cases/9functions.",
+    "All21 benchmark origins, page37,3600-second phases, workloads and resource/deadline rules unchanged.",
+    "Only the native helper pin and corresponding two helper/one native workflow pins change."
+  ],
+  "peer": "Progress accepted source/API seam; root independently read the two exact native hunks and reversed every helper/workflow pin delta to its exact predecessor.",
+  "refs": "Advance only the capacity-repair-final branch. Keep Bookdb6, converter5cc, mainPR e763 and performance79ef runs undisturbed.",
+  "qualification": "No new native result, full restore acceptance, release or current-head performance claim."
+}

@@ -1,0 +1,103 @@
+{
+  "schema": "resonance-paged-literal-candidate-work/1",
+  "status": "STATIC_NOT_RUN",
+  "base": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "base_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "4f7b9c34bd161bf8d7918f6a09535c563d2c139d",
+      "sha": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "preimage": "4544453f62a96993a2f05ed1522a563649289715",
+      "sha": "82af31743ca5cc6557477f6492c08b912751f4a4"
+    },
+    {
+      "path": "carr-library/tests/search/test_paged_candidate_work.py",
+      "preimage": null,
+      "sha": "ea166160975d395f11e41f99bf102686c7d9f6a9"
+    },
+    {
+      "path": "carr-library/docs/SEARCH_PAGED_CANDIDATE_WORK.md",
+      "preimage": null,
+      "sha": "5a1bf556b82100cc8a13aac823dbace6e343d706"
+    }
+  ],
+  "tests": {
+    "path": "tests/search/test_paged_candidate_work.py",
+    "whole_cases": 30,
+    "functions": [
+      "test_actual_page37_keeps_two_fresh_reads_and_hidden_attestation_with_one_candidate_index",
+      "test_actual_lookahead_still_reauthenticates_retained_bytes_before_handle_publication",
+      "test_fresh_lookahead_does_not_reuse_schema_or_workspace_authority",
+      "test_current_collection_change_still_rejects_the_changed_window",
+      "test_real_sql_cancellation_in_the_second_snapshot_closes_work_and_preserves_previous_handles",
+      "test_candidate_cleanup_finishes_before_any_new_public_handles",
+      "test_shared_and_independent_actual_sqlite_search_have_identical_unicode_raw_spans",
+      "test_complete_fresh_sql_row_changes_rebuild_candidate_work_without_stale_results",
+      "test_damaged_unmatched_row_cannot_hide_behind_a_matching_retained_index",
+      "test_reused_index_drops_old_deadline_callback_and_obeys_the_new_one",
+      "test_normalization_retention_is_bounded_and_large_pages_are_not_cached",
+      "test_public_source_page_cannot_accept_a_caller_supplied_internal_receiver",
+      "test_closed_candidate_work_cannot_be_reopened_as_a_later_search"
+    ],
+    "companions": [],
+    "status": "NOT_RUN"
+  },
+  "essential_existing_whole_suites": [
+    {
+      "path": "tests/search/test_search_paging.py",
+      "cases": 27
+    },
+    {
+      "path": "tests/search/test_search_query_work.py",
+      "cases": 17
+    },
+    {
+      "path": "tests/search/test_literal_integrity.py",
+      "cases": 6
+    },
+    {
+      "path": "tests/search/test_literal_readonly.py",
+      "cases": 6
+    },
+    {
+      "path": "tests/e2e/test_retained_source_search_integrity.py",
+      "cases": 11
+    }
+  ],
+  "source_changes": [
+    "Keep both original independent read snapshots and entire probe.search/current window comparison/hidden-result materialization and attestation.",
+    "Reuse only in-memory literal candidate FTS/normalization computation after each search freshly reads and SHA-checks all scoped raw rows, and exact equality of all11 row fields is established.",
+    "Rebuild on any fresh row difference; no digest-only authority or stored asset/attestation verdict.",
+    "One public search_page owns the object; finally-close is completed before public handle publication; no cross-call persistence.",
+    "Shared index is within existing100-source-page/5M-character window. Cached short maps total at most32768 source characters, each<=2048, at most100 entries.",
+    "Refresh each literal invocation's SQL cancellation/deadline callback and detach it before returning. Ordinary nonpaged and thematic/semantic paths retain their independent behavior."
+  ],
+  "preserved": [
+    "page_size37",
+    "phase_timeout3600",
+    "all old integrity/cancellation/source/locator tests",
+    "exact cursor/window wire",
+    "fresh hidden-result retained bytes and attestation",
+    "previous public selections on failure",
+    "full cold/open/backup audits",
+    "no cross-call source cache",
+    "no workflow/ref mutations"
+  ],
+  "actual_baseline_evidence": {
+    "head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "run": 46065560954,
+    "inspection_run": 46078653374,
+    "full_evidence": "a632d4ef5f71b4c8d5364ef8c33e12128cadab6a",
+    "summary": "317971359e6be78a9e885625e2b905c9b9c6334d",
+    "outcomes": "1k/10k/50k at20segments allfivePASS;50k at40segments buildPASS/measurePARTIAL, laterphasesNOT_RUN"
+  },
+  "benchmark_note": "Optimization has not executed or measured. Before new performance runs, require the whole regression suite and peer review, preserve the workload/limits, and bind carr_library.search.literal in the harness before/after origins (21 with existing capacity modules). Root owns harness diagnostics/pins.",
+  "independent_reviews": {
+    "core": "Progress accepted literal9aa66/application82af STATIC_NOT_RUN on owner/current-authority seam; exact reads and cleanup preserved.",
+    "tests": "Locate bounded fixture/API review requested; pending at this immutable checkpoint."
+  }
+}

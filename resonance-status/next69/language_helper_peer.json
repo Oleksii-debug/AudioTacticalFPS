@@ -1,0 +1,84 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Focused language evidence helper source/installed/native receipt and inventory",
+  "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+  "blob": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+  "inherited_helper": "f6d1fa87319f86f777333aa66576254d5ec4fa2d",
+  "reviewed_base": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+  "inventory": {
+    "whole_suites": 5,
+    "cases": 147,
+    "pins": 48,
+    "imported_origins": 36,
+    "companions": 1,
+    "new_cases": 109,
+    "native_required_checks": 75,
+    "native_origins": 14,
+    "native_required_fields": 16,
+    "default_no_observations": 3
+  },
+  "companion": {
+    "path": "tests/language_qualification/evidence_fixture.py",
+    "blob": "72944369f7304650e8742f97372d41415e3e35da"
+  },
+  "contract": "6797df44d708230f38ba999760bbfd3cb8581e40",
+  "native": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+  "inherited_exact": {
+    "functions": [
+      {
+        "name": "require",
+        "equal": true
+      },
+      {
+        "name": "load",
+        "equal": true
+      },
+      {
+        "name": "write",
+        "equal": true
+      },
+      {
+        "name": "sources",
+        "equal": true
+      },
+      {
+        "name": "git",
+        "equal": true
+      },
+      {
+        "name": "child",
+        "equal": true
+      }
+    ],
+    "installed_child": true,
+    "origin_child": true
+  },
+  "findings": [
+    "All48 pins independently match the immutable current C tree plus the already reviewed language source/test/fixture/native/data overlays. All36 origin names have a pinned actual source path.",
+    "The five complete modules preserve old catalog31/UI7 and new54+27+28; source uses current ci_check offline policy and exact success/count grammar. Every installed whole runs separately with strict no-skip counts.",
+    "Installed and origin children are byte-identical to the accepted Studio machinery; they verify the complete actual wheel before and after, reject checkout sys.path injection and retain actual module origins.",
+    "The sole adjacent fixture is copied and hashed before and after isolated installed work. Source/module/data bytes are checked against fixed Git identities.",
+    "The held bounded JSON reader rejects duplicate/nonfinite fields, links/reparse/multiple links, size/identity changes during its read and mismatched fixed Git bytes before use.",
+    "Native CLI matches the reviewed probe. Independent installed whole-payload/origin snapshots bracket the real330-second child even on failure; parent then requires zero exit, all exact report fields, all75 labels, exact log/report occurrence sequence, default-No multiplicity3 and admitted original worker rows.",
+    "The complete fixed contract is reread after native work. Synthetic reviewer/language/current-device/audio/file-picker/NVDA boundaries remain explicit."
+  ],
+  "budgets": {
+    "source_parent": 1500,
+    "source_jobs": 3,
+    "whole_child": 600,
+    "installed_wholes": 5,
+    "native_parent": 330,
+    "native_watchdog": 300,
+    "build": 300,
+    "install": 180,
+    "pip_check": 60,
+    "origin_snapshots": 120,
+    "declared_child_seconds": 5490,
+    "proposed_helper_seconds": 6000
+  },
+  "limits": [
+    "Workflow acquisition/firewall/closed retention is independently reviewed by Locate.",
+    "No parser, pytest, native execution or production/language qualification claim."
+  ]
+}

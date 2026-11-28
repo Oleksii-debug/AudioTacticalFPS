@@ -11,6 +11,7 @@ import pytest
 
 from carr_library.speech.progress_speech import activate_progress_voice, play_when_quiet
 from carr_library.speech.runtime import Voice, VoiceRegistry
+from carr_library.durable_state import local_path, regular
 
 
 def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=False):
@@ -33,7 +34,8 @@ def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=Fa
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions
     namespace = {'Path': Path, 'VoiceRegistry': VoiceRegistry,
-                 'play_when_quiet': play_when_quiet, '__package__': 'carr_library.ui'}
+                 'play_when_quiet': play_when_quiet, 'local_path': local_path, 'regular': regular,
+                 '__package__': 'carr_library.ui'}
     namespace.update(globals_ or {})
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
@@ -166,17 +168,24 @@ def reader(tmp_path, monkeypatch):
     reports, choice = [], Choice()
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
-    values = dict(parent=parent, progress=progress, voice_choice=choice,
+    values = dict(parent=parent, library=parent.library, library_root=Path(parent.library.root),
+        library_identity=(tmp_path.stat().st_dev, tmp_path.stat().st_ino),
+        progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
-        alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
+        alive=True, busy=False, playback_generation=0, repeat_scheduled=None,
+        remembered_voice_id='', reader_tabs=None,
+        cancel=threading.Event(), player=Mock(), playback_timer=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
-        source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
+        source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
-        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
+        unregister=Mock(), detach_desktop=Mock(),
+        owned_registries={registry}, owned_progress_voices=set(), owned_listening=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
+        ['check_current', 'reload', 'select_progress_voice', 'playback_scope',
+         'playback_failed', 'start_playback', 'stop_audio',
+         'confirm_current_close', 'reader_tools_notice', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
@@ -236,6 +245,7 @@ def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(read
         reader.values['dialog'].EndModal.assert_called_once_with(1)
         # Execute the real outer finally block when the simulated modal unwinds.
         reader.handlers.cleanup()
+        reader.values['detach_desktop'].assert_called_once_with()
         reader.values['player'].close.assert_called_once()
         reader.values['dialog'].Destroy.assert_called_once()
         reader.values['audio_files'].cleanup.assert_not_called()
@@ -285,13 +295,17 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     local, parent, player = Progress('studio'), Progress('parent'), Mock()
     dialog = Mock()
     dialog._audio_player = player
-    values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+    library = SimpleNamespace(root=tmp_path)
+    frame = SimpleNamespace(library=library, _closing=False)
+    service = SimpleNamespace(get=lambda job: {'destination': str(tmp_path)}, close=Mock())
+    values = dict(current_job='completed-test-job', service=service, dialog=dialog,
+        frame=frame, library=library, library_root=tmp_path,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
         timer=Mock(), executor=CleanupQueue(), owned_progress_voices=set())
-    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close'], values)
+    handlers = callbacks('studio_dialog.py', 'show_studio', ['scope_current', 'preview', 'close'], values)
+    assert handlers.scope_current()
     handlers.preview()
     assert local.players == parent.players == [player]
     player.play.assert_not_called()
@@ -299,6 +313,7 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     scheduler.tick()
     player.play.assert_not_called()
     handlers.close()
+    assert not handlers.scope_current()
     parent.ready = True
     scheduler.tick()
     player.play.assert_not_called()
@@ -306,6 +321,9 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     assert all(hold.closed for owner in (local, parent) for hold in owner.holds)
     assert scheduler.pending == []
     assert reports == []
+    service.close.assert_not_called()
+    values['executor'].finish().result()
+    service.close.assert_called_once_with()
 
 
 def test_quiet_helper_deduplicates_controllers_then_refreshes_transport_before_release():
@@ -482,6 +500,7 @@ def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reade
 def test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup(reader):
     reader.progress.unregister_player = Mock(side_effect=RuntimeError('Progress observer detached'))
     reader.handlers.cleanup()
+    reader.values['detach_desktop'].assert_called_once_with()
     reader.values['player'].close.assert_called_once()
     reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=False)
     reader.values['dialog'].Destroy.assert_called_once()

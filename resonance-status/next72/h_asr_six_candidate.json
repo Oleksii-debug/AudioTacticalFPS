@@ -1,0 +1,736 @@
+{
+  "schema": "carr-h-asr-positive-fixture-contracts/1",
+  "created_utc": "2026-11-28 10:12:54 UTC",
+  "status": "DRAFT_STATIC_NOT_RUN_PENDING_ROOT_PEER",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a"
+  },
+  "purpose": "Match six positive real-child prerequisite/recovery calls to the existing explicit 30-second positive-fixture allowance, retain all negative controls, and expose the returned service state when its separately unproved resume failure recurs.",
+  "actual_failure_evidence": {
+    "blob": "3d3e475e2cb592db23bc5aac89d6df4726616e4e",
+    "path": "resonance-status/E_Transcription_Inner_Timeout_Analysis_20261128.json",
+    "head": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+    "run": 46128930916,
+    "service": {
+      "job": 140931167670,
+      "passed": 27,
+      "failed": 1,
+      "skipped": 0,
+      "whole": 28,
+      "seconds": 420.63,
+      "observed": "Explicit acknowledgement succeeded; resume returned partial. Original assertion did not print the returned error, so the reason is not established."
+    },
+    "admission": {
+      "job": 140931167701,
+      "passed": 35,
+      "failed": 5,
+      "skipped": 0,
+      "whole": 40,
+      "seconds": 643.01,
+      "observed": "Each failed at a positive prerequisite or final clean recovery with the reported Audio worker exceeded its time allowance error; the 900-second outer whole limit was not reached."
+    }
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "blob": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "sha256": "94520b6f7d36372d2af5f6f91689f8adb815dd5c481b37630c9c53d25001eb08",
+      "bytes": 28704,
+      "readback_exact": true,
+      "inverse_reconstructs_complete_preimage": true,
+      "operations": [
+        {
+          "function": "test_export_rejects_changed_payload_before_external_publication",
+          "old": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 2137,
+          "scope": "single occurrence in this test function"
+        },
+        {
+          "function": "test_edited_copy_decodes_only_the_bytes_it_verifies",
+          "old": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 7227,
+          "scope": "single occurrence in this test function"
+        },
+        {
+          "function": "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+          "old": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 9829,
+          "scope": "single occurrence in this test function"
+        },
+        {
+          "function": "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+          "old": "    resumed = service.resume(state['id'])",
+          "replacement": "    resumed = service.resume(state['id'], timeout=30)",
+          "preimage_offset": 17352,
+          "scope": "single occurrence in this test function"
+        },
+        {
+          "function": "test_stop_during_historical_receipt_hash_preserves_durable_results",
+          "old": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 23706,
+          "scope": "single occurrence in this test function"
+        },
+        {
+          "function": "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+          "old": "    result = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    result = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 20757,
+          "scope": "single occurrence in this test function"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "preimage": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "blob": "0f23ffe48b509fea2a173c5b16676c7cf2c9bca5",
+      "sha256": "945b607d252ea19bc3d3b4d53c1b20423c5e5927c2d1ed9cd9388767bba872b8",
+      "bytes": 19641,
+      "readback_exact": true,
+      "inverse_reconstructs_complete_preimage": true,
+      "operations": [
+        {
+          "old": "    service.acknowledge_interruption(created['id'], worker_stopped=True)\n    assert service.resume(created['id'])['status'] == 'complete'",
+          "replacement": "    service.acknowledge_interruption(created['id'], worker_stopped=True)\n    resumed = service.resume(created['id'])\n    assert resumed['status'] == 'complete', resumed",
+          "offset": 17358
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "blob": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+      "sha256": "86b45622e1e8d2833b9984e939a3b55f9074bbe2ab343b485fd94e9e25143af7",
+      "bytes": 34604,
+      "readback_exact": true,
+      "inverse_reconstructs_complete_preimage": true,
+      "operations": [
+        {
+          "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+          "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+          "blob": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+          "old": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+          "replacement": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+      "blob": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+      "sha256": "2bcd072489e648c57186f529db010cc0d34bec7ee397862dedc4985faacec650",
+      "bytes": 12796,
+      "readback_exact": true,
+      "inverse_reconstructs_complete_preimage": true,
+      "operations": [
+        {
+          "path": ".github/workflows/carr-installed-failure-contracts.yml",
+          "preimage": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+          "blob": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+          "old": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+          "replacement": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+          "occurrences": 1
+        }
+      ]
+    }
+  ],
+  "inventories": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "blob": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "whole_count": 40,
+      "functions": [
+        "test_export_rejects_changed_payload_before_external_publication",
+        "test_export_receipt_verification_observes_cancellation",
+        "test_export_payload_is_bounded_and_interruptible",
+        "test_saved_receipt_decodes_only_verified_bytes",
+        "test_saved_receipt_corruption_blocks_external_export",
+        "test_verified_json_preserves_strict_state_parsing",
+        "test_edited_copy_decodes_only_the_bytes_it_verifies",
+        "test_edited_copy_export_uses_the_captured_revision",
+        "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+        "test_stop_interrupts_admission_hash_and_reaches_child_cleanup",
+        "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+        "test_failed_archive_keeps_durable_cache_rejection_until_retry",
+        "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+        "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+        "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop",
+        "test_cancelled_post_admission_check_preserves_committed_valid_receipt",
+        "test_stop_during_historical_receipt_hash_preserves_durable_results",
+        "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+        "test_terminal_status_retains_strict_schema_and_exact_budget"
+      ],
+      "function_names_unchanged": true,
+      "function_count": 19,
+      "assertion_lines_before": 99,
+      "assertion_lines_after": 99,
+      "assertions_exact": true,
+      "literalPins": [
+        {
+          "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+          "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+          "old": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+          "new": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+          "occurrences": 1
+        }
+      ],
+      "selectorCallers": [
+        {
+          "path": ".github/workflows/carr-next9-final-source.yml",
+          "sha": "6e3788f45af909d00d250658f49c6b38e33bf162",
+          "occurrences": 2
+        },
+        {
+          "path": ".github/workflows/carr-transcription-bridge.yml",
+          "sha": "28da3567fed054331d003bf02aa35b30fed91f1e",
+          "occurrences": 5
+        },
+        {
+          "path": "carr-library/scripts/ci_check.py",
+          "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+          "occurrences": 1
+        },
+        {
+          "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+          "sha": "6032567fb09dd4e235caca7a3480d27845fcf889",
+          "occurrences": 6
+        },
+        {
+          "path": "carr-library/scripts/check_installed_bundle.py",
+          "sha": "93eb4eab03bdb37ae09373ce1adee74632300167",
+          "occurrences": 3
+        },
+        {
+          "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+          "sha": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+          "occurrences": 4
+        }
+      ],
+      "countDeclarationMapping": {
+        "count": 40,
+        "declarations": 5,
+        "gates": [
+          ".github/workflows/carr-transcription-bridge.yml",
+          "carr-library/scripts/check_installed_bundle.py",
+          "carr-library/scripts/check_integrated_source_shard.ps1",
+          "carr-library/scripts/ci_installed_failure_contracts.py"
+        ]
+      }
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "preimage": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "blob": "0f23ffe48b509fea2a173c5b16676c7cf2c9bca5",
+      "whole_count": 28,
+      "functions": [
+        "test_inspection_and_registration_never_execute_selected_code",
+        "test_untrusted_profile_cannot_start_a_process",
+        "test_stale_inspection_cannot_authorize_changed_dependency",
+        "test_changed_reviewed_bytes_block_execution_before_native_start",
+        "test_actual_process_receipts_reading_and_subtitle_rollover",
+        "test_isolated_worker_preserves_unicode_paths_and_diagnostics",
+        "test_invalid_worker_protocol_cannot_become_success",
+        "test_diagnostics_are_bounded_even_when_worker_exits_fast",
+        "test_cancel_stops_unresponsive_worker_and_releases_resource_lease",
+        "test_pause_intent_wins_over_ui_cancel_and_resume_reuses_verified_source",
+        "test_export_failure_preserves_recognition_and_retry_needs_no_second_inference",
+        "test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint",
+        "test_rebind_preserves_accepted_artifact_and_its_original_profile",
+        "test_rebind_cannot_move_an_unreviewed_interrupted_worker",
+        "test_retained_input_change_blocks_processing_without_touching_original",
+        "test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust",
+        "test_export_never_overwrites_and_rejects_entire_private_library",
+        "test_saved_export_with_surviving_staging_link_remains_truthful_success",
+        "test_model_rebinding_cannot_mix_changed_weights_in_one_job",
+        "test_unclean_runner_requires_explicit_review_before_resume",
+        "test_folder_selection_is_bounded_explicit_and_link_safe",
+        "test_changed_dependency_after_resource_wait_is_rechecked_before_launch",
+        "test_cuda_mask_cannot_silently_target_a_different_reserved_gpu"
+      ],
+      "function_names_unchanged": true,
+      "function_count": 23,
+      "assertion_lines_before": 95,
+      "assertion_lines_after": 95,
+      "assertions_exact": false,
+      "literalPins": [],
+      "selectorCallers": [
+        {
+          "path": ".github/workflows/carr-transcription-bridge.yml",
+          "sha": "28da3567fed054331d003bf02aa35b30fed91f1e",
+          "occurrences": 4
+        },
+        {
+          "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+          "sha": "6032567fb09dd4e235caca7a3480d27845fcf889",
+          "occurrences": 2
+        },
+        {
+          "path": "carr-library/scripts/check_installed_bundle.py",
+          "sha": "93eb4eab03bdb37ae09373ce1adee74632300167",
+          "occurrences": 3
+        }
+      ],
+      "countDeclarationMapping": {
+        "count": 28,
+        "declarations": 4,
+        "gates": [
+          ".github/workflows/carr-transcription-bridge.yml",
+          "carr-library/scripts/check_installed_bundle.py",
+          "carr-library/scripts/check_integrated_source_shard.ps1"
+        ]
+      }
+    }
+  ],
+  "allowance_precedents": [
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "blob": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "function": "test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint",
+      "existing": "replace(service.budget, timeout=30)",
+      "actual_E_pass_line": 4144,
+      "job": 140931167670
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "blob": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "function": "test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust",
+      "existing": "service.run(..., timeout=30)",
+      "actual_E_pass_line": 4263,
+      "job": 140931167670
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "blob": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "function": "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+      "existing": "service.run(..., progress=observe, timeout=30)",
+      "actual_E_pass_line": 3171,
+      "job": 140931167701
+    }
+  ],
+  "reasoning": {
+    "positive_contract": "These calls establish successful checkpoint/export/edit/recovery prerequisites. They do not assert a five-second performance requirement. They continue to use the real child, real reviewed runtime/source hashing and durable receipt verification.",
+    "clock_boundary": "The current audio worker clock begins after real Popen/JobProcess creation; poll/admission verification runs under that clock. Initial prelaunch checks are outside it. No product callback or deadline is altered.",
+    "service_limit": "The service fixture remains at its original five-second allowance. Only its assertion now retains the exact returned state. No common cause is inferred from the admission failures.",
+    "measurement_limit": "Existing actual positive 30-second controls supply a concrete local precedent. No per-call latency distribution or claim that thirty seconds is necessary/sufficient was established."
+  },
+  "unchanged_control_blocks": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "function": "setup",
+      "sha256": "4ba2616ec984e34d22d1eabab0293cb48b585f318fabc704f22b60bd4570eefc",
+      "bytes": 529,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "function": "historical_job",
+      "sha256": "9ad775e3d1f0b72ef86393f0822bcce2c22add1a88ecaf4562c38d86b2dc1ea1",
+      "bytes": 475,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "function": "test_stop_interrupts_admission_hash_and_reaches_child_cleanup",
+      "sha256": "ee0ab65697156f88d4694475a25906e5ecb00b96846b9a51f373196f127b089c",
+      "bytes": 3957,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "function": "test_failed_archive_keeps_durable_cache_rejection_until_retry",
+      "sha256": "0bb922d3fc00281827a73d164c076fba2cf62b210c2e3f90a9be72bc1104ce24",
+      "bytes": 1432,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "function": "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop",
+      "sha256": "23c24f39fe94c83e57e9ced2c9cc7a58a61a6b4a844a02b75e534846cace2900",
+      "bytes": 1176,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "function": "test_terminal_status_retains_strict_schema_and_exact_budget",
+      "sha256": "0bd1670d8af1297a26f2cf67bb08fd4b4d806cbf3dedb8fd576d2dd17d5a0432",
+      "bytes": 302,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "function": "setup",
+      "sha256": "2b80fff38149ebcd7f89f2ef0c8ce57df42b9dcf58f75ca08d815db5954e1f31",
+      "bytes": 454,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "function": "test_cancel_stops_unresponsive_worker_and_releases_resource_lease",
+      "sha256": "bbfc83959e6820b89841e22d2e73ebaa112e8aca8bc2b3dfe326c30a9f3581fc",
+      "bytes": 574,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "function": "test_pause_intent_wins_over_ui_cancel_and_resume_reuses_verified_source",
+      "sha256": "68efe3aae23a6a2be44036db11dd3b47c1d2cbad94626c3d695e1ac188377399",
+      "bytes": 1190,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "function": "test_invalid_worker_protocol_cannot_become_success",
+      "sha256": "74060c41569c86cfd17ae6e9fda008b747d1ac48904eb8c99313ab3d56c7cbdc",
+      "bytes": 322,
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "function": "test_diagnostics_are_bounded_even_when_worker_exits_fast",
+      "sha256": "d4700cd780dfb94a57734eadf2e98a3f61bcef3430d520a8b41b715d2ff64f1d",
+      "bytes": 314,
+      "unchanged": true
+    }
+  ],
+  "unchanged_source_and_fixture_pins": [
+    {
+      "path": "carr-library/src/carr_library/transcription.py",
+      "blob": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e",
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+      "blob": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_runtime.py",
+      "blob": "4d73f5a609e9d1e2760072beca896464a2cb5827",
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "blob": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/models.py",
+      "blob": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/fixture_runtime.py",
+      "blob": "b4168929226bbe224e75a29f9899b3c63f237eda",
+      "unchanged": true
+    },
+    {
+      "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+      "blob": "db988156c9c16504a8b82f8b65d4349086fec388",
+      "unchanged": true
+    }
+  ],
+  "gate_closure": {
+    "literal_test_pins": 1,
+    "helper_pins": 1,
+    "helper_source_pins": 60,
+    "helper_all_pins_match_prospective_map": true,
+    "pins": [
+      {
+        "path": "carr-library/tests/studio/test_book_batch.py",
+        "sha": "860b5e112e803527add77983733b0f1833b465e5"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_translation_documents.py",
+        "sha": "ed45b92ed96f43ed6fc0a8af14c13e2ff46cbfa2"
+      },
+      {
+        "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+        "sha": "aa4e03e782fbb34c19344e2b1911af38c9fac65e"
+      },
+      {
+        "path": "carr-library/tests/speech/test_voice_preferences.py",
+        "sha": "a5037b0d64dfc1e1c97f939bc1edffa7d6f846af"
+      },
+      {
+        "path": "carr-library/tests/assistant/test_translation_local.py",
+        "sha": "3db04918a25fa59567e5325be789ee7039b84d59"
+      },
+      {
+        "path": "carr-library/tests/transcription/fixture_runtime.py",
+        "sha": "b4168929226bbe224e75a29f9899b3c63f237eda"
+      },
+      {
+        "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+        "sha": "db988156c9c16504a8b82f8b65d4349086fec388"
+      },
+      {
+        "path": "carr-library/tests/studio/test_book_audio.py",
+        "sha": "f98140e413d0fb32784493045c0882011f6a081c"
+      },
+      {
+        "path": "carr-library/tests/reader/test_ebook_reader.py",
+        "sha": "39f3837d66bac1dc69ab9b2b05f9e31e6e1be849"
+      },
+      {
+        "path": "carr-library/bootstrap/__init__.py",
+        "sha": "6981b7faa1cca8d29f37fe85751c110c693dae55"
+      },
+      {
+        "path": "carr-library/src/carr_library/application.py",
+        "sha": "82af31743ca5cc6557477f6492c08b912751f4a4"
+      },
+      {
+        "path": "carr-library/src/carr_library/durable_state.py",
+        "sha": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb"
+      },
+      {
+        "path": "carr-library/src/carr_library/library_backup.py",
+        "sha": "0ccbba5db4c41e78143f0ef11aef51bd3df55339"
+      },
+      {
+        "path": "carr-library/src/carr_library/backup_producers.py",
+        "sha": "0fb5e91a440ded8b62b806b944bdd4722f288e65"
+      },
+      {
+        "path": "carr-library/src/carr_library/state_backup.py",
+        "sha": "65c75e75f82c78ba3153da01d687669b276428e3"
+      },
+      {
+        "path": "carr-library/src/carr_library/runtime_settings.py",
+        "sha": "00df790d393f9d54f87d0dcf891e6506916437a1"
+      },
+      {
+        "path": "carr-library/src/carr_library/speech/runtime.py",
+        "sha": "f5c43ef5f03af626f44096be0a2b10f034c09c80"
+      },
+      {
+        "path": "carr-library/src/carr_library/speech/reading.py",
+        "sha": "8fcebccb61d1e0a3b616928a75a22f3e9306ed77"
+      },
+      {
+        "path": "carr-library/src/carr_library/speech/source.py",
+        "sha": "cef32840ecbb5b07c0313e206d9bf622ee20db87"
+      },
+      {
+        "path": "carr-library/src/carr_library/speech/marks.py",
+        "sha": "5f2459052d21d0c358641738cb595b265ef01a48"
+      },
+      {
+        "path": "carr-library/src/carr_library/catalog/intake.py",
+        "sha": "8518f012491b542a57593af75993907983ddda0d"
+      },
+      {
+        "path": "carr-library/src/carr_library/operations/broker.py",
+        "sha": "f09561333d33ae68480260668ec05b617cd72213"
+      },
+      {
+        "path": "carr-library/src/carr_library/operations/_locks.py",
+        "sha": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/models.py",
+        "sha": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "sha": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/windows_job.py",
+        "sha": "27aeb47c39660ac74335d791e22e58b44058db3b"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/cleanup.py",
+        "sha": "77d69f8406db93dc0ff6110b9597ad805bd92dc5"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/models.py",
+        "sha": "1700d0191b4a27b09d18bb6e231b822cf183bd8a"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/profiles.py",
+        "sha": "a3adbe7cc693bc8a3972144007ee15cc85b3b200"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/providers.py",
+        "sha": "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/translation.py",
+        "sha": "29324c1891c4e1fc278f410af6221e50ae3f9b04"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/translation_local.py",
+        "sha": "6be65ce3dd519777343b4b014722e1ea608ac225"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/translation_documents.py",
+        "sha": "c4b72384ddede9f7e9f20c1e175bc8c97b602b78"
+      },
+      {
+        "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+        "sha": "36363f86034ec1d4c144506e78855fc81306d93c"
+      },
+      {
+        "path": "carr-library/src/carr_library/transcription.py",
+        "sha": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e"
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+        "sha": "e1f49c8ba5e928234dd80de9157403de31eacb1e"
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_runtime.py",
+        "sha": "4d73f5a609e9d1e2760072beca896464a2cb5827"
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_scope.py",
+        "sha": "19726ef6b0f239eccdcd76ceaedb7ebfcedf846c"
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_values.py",
+        "sha": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab"
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_exports.py",
+        "sha": "873892f7dfd0a0865835bc988f3f0f719a646724"
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_backup.py",
+        "sha": "ba9889e81a8d0cf85dfc567cf0ebf8a0812a21ad"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/restore.py",
+        "sha": "7c752b0203eb3d85bf3dfdeb2dea9a8c76013f37"
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/book_batch.py",
+        "sha": "1b414a49cb44894a27a4d17d79560cc1ccddd268"
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/book_audio.py",
+        "sha": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb"
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/project.py",
+        "sha": "63a20c64909db77b9958e9c16627b78f08050d95"
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/render.py",
+        "sha": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab"
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/publishing.py",
+        "sha": "e369f0d40cbc818d9374e1d4f84bc3e28e09ad63"
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+        "sha": "fdc163215c53240dd6058e8f4235d2e8aa03db10"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/dsp.py",
+        "sha": "f7833b5f600e3a822a3fa2f2068661c922576230"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/ebook.py",
+        "sha": "014a056ddaaa2a671d09b169d3b6ea7f6ee59634"
+      },
+      {
+        "path": "carr-library/src/carr_library/reader/reading_desk.py",
+        "sha": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a"
+      },
+      {
+        "path": "carr-library/scripts/ci_check.py",
+        "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+      },
+      {
+        "path": "carr-library/packaging/source_wheel.py",
+        "sha": "478de248451d59a44b35784eb808fb2974f0af67"
+      },
+      {
+        "path": "carr-library/packaging/windows-cp311.lock",
+        "sha": "8dad99c0ea80470b7253873aee78e08857affec6"
+      },
+      {
+        "path": "carr-library/packaging/windows-sync-cp311.lock",
+        "sha": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3"
+      },
+      {
+        "path": "carr-library/packaging/windows-sync-test-cp311.lock",
+        "sha": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a"
+      },
+      {
+        "path": "carr-library/packaging/trusted-client.lock",
+        "sha": "6c4b48ac09572dc259d62d0d801057ab47c04583"
+      },
+      {
+        "path": "carr-library/packaging/linux-sync-core-cp311.lock",
+        "sha": "08f945066be748972a10d5b0ce46480fff722959"
+      },
+      {
+        "path": "carr-library/packaging/prepare_windows_audio.py",
+        "sha": "65b172ac432f28e865200aed2f8e610dda1ac7cf"
+      },
+      {
+        "path": "carr-library/packaging/windows-audio.lock.json",
+        "sha": "2bc706ffc6208f5596a10abee61d3da33f20e6c6"
+      }
+    ],
+    "whole_modules": 4,
+    "total_cases_per_mode": 112,
+    "functions": 66,
+    "origins": 42,
+    "companions": 5,
+    "default_child_seconds": 600,
+    "admission_child_seconds": 900,
+    "case_or_function_changes": 0,
+    "selectors_or_order_changes": 0,
+    "negative_or_product_deadline_changes": 0,
+    "source_policy_or_native_changes": 0,
+    "shared_full_gate_edits": 0
+  },
+  "peer": {
+    "previous_five_call": {
+      "blob": "b08b16ca9d6aab87699c4b39a5505f776cbd3ae0",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    "sixth_call_and_cascade": {
+      "reviewer": "/root",
+      "status": "PENDING"
+    },
+    "scope": "The prior accepted source/caller/negative-control review remains; the incremental sixth positive call and exact pin cascade await root's independent peer."
+  },
+  "limits": [
+    "STATIC_NOT_RUN: none of these H successors has executed.",
+    "Running G refs, tested SHA and original failures remain unchanged.",
+    "No product bug, acoustic recognition, external runtime/model, physical device, paid service or NVDA qualification is claimed."
+  ],
+  "supersedes": {
+    "component": "a5f8066b9eca65c024d5a1f932dd894fd5b81641",
+    "scope": "Adds exactly one further positive per-call30 allowance after a new closed G failure; prior component remains a historical five-call proposal."
+  },
+  "actual_G_failure_evidence": {
+    "receipt": "bf11e0c76f4eb0a5b17ba2052a4fb4fd297b562a",
+    "head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "actual_checkout_is_direct_head": true,
+    "run": 46131516676,
+    "job": 140937499855,
+    "failed_case": "test_actual_child_import_never_writes_or_replaces_python_bytecode[True]",
+    "call_line": 461,
+    "assertion_line": 462,
+    "whole_passed": 39,
+    "whole_failed": 1,
+    "whole_seconds": 587.11,
+    "outer_limit_seconds": 900,
+    "error": "Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "service28": "Passed on Windows in259.62seconds with original5-second fixture unchanged; its H change remains diagnostics only."
+  }
+}

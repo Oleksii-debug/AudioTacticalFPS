@@ -1,0 +1,88 @@
+name: CARR owned Windows dialog inventory diagnostic
+
+on:
+  push:
+    branches: ['carr/ci-next14-native-dialog-*']
+    paths: ['carr-library/scripts/windows_native_dialog_inventory.py', '.github/workflows/carr-next14-native-dialog.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-dialog-inventory:
+    name: Inspect synthetic owned message dialog only
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Admit exact diagnostic and current pinned wx runtime
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $verify = @'
+          from hashlib import sha1
+          from pathlib import Path
+          pins = {'scripts/windows_native_dialog_inventory.py': '67de0f57908edfc436fda7401f83010d2d2d4a7d',
+                  'packaging/windows-cp311.lock': '8dad99c0ea80470b7253873aee78e08857affec6'}
+          for name, expected in pins.items():
+              path = Path(name)
+              assert path.is_file() and not path.is_symlink()
+              raw = path.read_bytes()
+              assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == expected
+              if name.endswith('.py'):
+                  compile(raw, name, 'exec')
+          print('Diagnostic-only input identity checked; no product qualification.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic input differs.' }
+          & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Current pinned wx dependency acquisition failed.' }
+      - name: Capture only this process and its synthetic question
+        timeout-minutes: 2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          New-Item -ItemType Directory -Path ci-native-dialog -ErrorAction Stop | Out-Null
+          & python -I -B -X utf8 scripts/windows_native_dialog_inventory.py ci-native-dialog/inventory.json 2>&1 | Tee-Object ci-native-dialog/diagnostic.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic process did not finish; retained inventory is not product acceptance.' }
+          $verify = @'
+          import json
+          from pathlib import Path
+          folder = Path('ci-native-dialog')
+          assert {path.name for path in folder.iterdir()} == {'inventory.json', 'diagnostic.txt'}
+          for path in folder.iterdir():
+              assert path.is_file() and not path.is_symlink() and path.stat().st_size <= 512 * 1024
+          report = json.loads((folder/'inventory.json').read_text(encoding='utf-8'))
+          assert report['status'] == 'DIAGNOSTIC_ONLY'
+          assert report['product_qualification'] == report['native_no_button'] == report['keyboard_qualification'] == 'NOT_RUN'
+          print('Owned-window inventory captured. Required native product checks remain separate.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Diagnostic artifact boundary failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: native-dialog-inventory-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-native-dialog/inventory.json
+            carr-library/ci-native-dialog/diagnostic.txt
+          if-no-files-found: error

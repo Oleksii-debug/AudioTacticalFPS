@@ -16,7 +16,7 @@ from .builtin_keyboard_commands import MAIN_COMMANDS, builtin_commands, plain_ca
 from .command_registry import CommandRegistry, normalize_shortcut
 
 
-CONTEXT_NAMES = {'main': 'Main window', 'reader': 'Reading Desk'}
+CONTEXT_NAMES = {'main': 'Main window', 'reader': 'Reading Desk', 'voice_reader': 'Voice reader'}
 
 
 @dataclass

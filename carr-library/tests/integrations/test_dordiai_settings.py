@@ -130,9 +130,21 @@ def test_registry_closes_remaining_workers_after_one_cleanup_error():
             calls.append(self.name)
             if self.name == 'first':
                 raise OSError('Synthetic close failure.')
-    registry = VoiceRegistry([Provider('first'), Provider('second')])
-    registry.close()
-    assert calls == ['first', 'second']
-    assert len(registry.notices) == 1 and 'first' in registry.notices[0]
-    registry.close()
-    assert calls == ['first', 'second']
+    first, second = Provider('first'), Provider('second')
+    registry = VoiceRegistry([first, second])
+    try:
+        with pytest.raises(RuntimeError, match='owner is retained'):
+            registry.close()
+        assert calls == ['first', 'second']
+        assert len(registry.notices) == 1 and 'first' in registry.notices[0]
+        assert registry._providers == [first] and not registry.voices()
+        with pytest.raises(RuntimeError, match='closed'):
+            registry.reload()
+        first.close = lambda: calls.append('first-retry')
+        registry.close()
+        registry.close()
+        assert calls == ['first', 'second', 'first-retry']
+        assert registry._providers == [] and not registry._cleanup_registered
+    finally:
+        first.close = lambda: None
+        registry.close()

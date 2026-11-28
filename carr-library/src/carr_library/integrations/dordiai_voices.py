@@ -8,7 +8,9 @@ See docs/DORDIAI_VOICES_CONTRACT.md for the reviewed upstream interfaces.
 
 from __future__ import annotations
 
+import atexit
 import base64
+from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
@@ -21,6 +23,8 @@ import subprocess
 from threading import Event, Lock, RLock, Thread
 from time import monotonic
 from typing import Callable, Iterator
+
+from ..speech._io import stop_process
 
 
 ENGINE_ID = "dordiai-voices"
@@ -99,6 +103,8 @@ class DordiaiCapabilities:
     word_timestamps: bool = False
     emotion: bool = False
     pronunciation_verified: bool = False
+    managed_authority_sha256: str | None = None
+    managed_asset_versions: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -157,22 +163,31 @@ class _JsonLinesProcess:
 
     def __init__(self, command: list[str], cwd: Path, *, max_reply_bytes: int = MAX_REPLY_BYTES):
         self._closed = Event()
+        self._close_lock = Lock()
+        self._cleanup_done = False
+        self._cleanup_registered = False
         self._send_lock = Lock()
         self._responses: Queue[dict | Exception | None] = Queue(maxsize=8)
         self._outgoing: Queue[bytes] = Queue(maxsize=2)
         self._max_reply_bytes = max_reply_bytes
         flags = (getattr(subprocess, "CREATE_NO_WINDOW", 0)
-                 | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0))
+                 | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
+                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
         try:
             self.process = subprocess.Popen(command, cwd=str(cwd), stdin=subprocess.PIPE,
                                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                            env=_offline_environment(), creationflags=flags)
+                                            env=_offline_environment(), creationflags=flags,
+                                            start_new_session=os.name == 'posix', shell=False)
         except (OSError, ValueError):
             raise DordiaiUnavailable("The private dordiai-voices interpreter could not start") from None
         self._reader = Thread(target=self._read, daemon=True, name="CARR dordiai replies")
         self._writer = Thread(target=self._write, daemon=True, name="CARR dordiai requests")
-        self._reader.start()
-        self._writer.start()
+        try:
+            self._reader.start()
+            self._writer.start()
+        except BaseException:
+            self.close()
+            raise
 
     def _put(self, value: dict | Exception | None) -> None:
         while not self._closed.is_set():
@@ -248,30 +263,42 @@ class _JsonLinesProcess:
         return value
 
     def close(self) -> None:
-        if self._closed.is_set():
+        with self._close_lock:
+            try:
+                self._close()
+            except BaseException:
+                # Also retain a transport whose constructor failed while
+                # starting its threads, before an adapter could adopt it.
+                if not self._cleanup_registered:
+                    atexit.register(self.close)
+                    self._cleanup_registered = True
+                raise
+            else:
+                if self._cleanup_registered:
+                    atexit.unregister(self.close)
+                    self._cleanup_registered = False
+
+    def _close(self) -> None:
+        if self._cleanup_done:
             return
         self._closed.set()
-        self._writer.join(timeout=0.1)
+        # Stop the owned process group before closing stdin. A worker exiting
+        # on EOF must not leave a model child holding its inherited reply pipe.
+        stop_process(self.process)
+        if self._writer.ident is not None:
+            self._writer.join(timeout=1.0)
         if not self._writer.is_alive():
             try:
                 self.process.stdin.close()
             except (OSError, ValueError):
                 pass
-        try:
-            self.process.wait(timeout=1.0)
-        except subprocess.TimeoutExpired:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=1.0)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait(timeout=2.0)
-        self._writer.join(timeout=1.0)
-        if not self._writer.is_alive():
-            self.process.stdin.close()
-        self._reader.join(timeout=1.0)
+        if self._reader.ident is not None:
+            self._reader.join(timeout=1.0)
         if not self._reader.is_alive():
             self.process.stdout.close()
+        if self._writer.is_alive() or self._reader.is_alive() or self.process.poll() is None:
+            raise DordiaiError('The local voice worker has not confirmed cleanup; its handle is retained for retry.')
+        self._cleanup_done = True
 
 
 class DordiaiVoicesAdapter:
@@ -286,7 +313,7 @@ class DordiaiVoicesAdapter:
     def __init__(self, runtime_directory: str | Path, *,
                  python_executable: str | Path | None = None,
                  expected_worker_sha256: str = REVIEWED_WORKER_SHA256,
-                 request_timeout: float = 120.0):
+                 request_timeout: float = 120.0, authority=None):
         self.runtime = _local_path(runtime_directory, directory=True)
         self.python = _local_path(python_executable or self.runtime / "python/python.exe", directory=False)
         if not isinstance(expected_worker_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_worker_sha256):
@@ -299,11 +326,19 @@ class DordiaiVoicesAdapter:
         self._state = RLock()
         self._operation = Lock()
         self._worker: _JsonLinesProcess | None = None
+        self._probe_child: _JsonLinesProcess | None = None
         self._inventory: dict | None = None
         self._inventory_epoch: tuple | None = None
         self._active_cancel: Event | None = None
         self._closed = False
         self._validate_installation()
+        from ._dordiai_authority import DordiaiAuthority
+        if authority is None:
+            authority = DordiaiAuthority(self.runtime)
+        if type(authority) is not DordiaiAuthority:
+            raise TypeError('Use the current captured dordiai authority.')
+        self._authority = authority
+        authority.attach(self)
 
     def _validate_installation(self) -> None:
         script = _inside(self.runtime, "nvda_worker.py")
@@ -328,8 +363,29 @@ class DordiaiVoicesAdapter:
                 rows.append((name, None))
         return tuple(rows)
 
+    @contextmanager
+    def _authority_scope(self, *, cancelled=None):
+        from ._dordiai_authority import AuthorityBusy
+        try:
+            with self._authority.operation(cancelled=cancelled, timeout=self.request_timeout):
+                yield
+        except AuthorityBusy as error:
+            raise DordiaiBusy("This dordiai-voices adapter already has an active operation") from error
+        except InterruptedError as error:
+            raise DordiaiCancelled("dordiai-voices operation was cancelled") from error
+
     def _probe(self, refresh: bool = False, *,
                cancelled: Event | Callable[[], bool] | None = None) -> dict:
+        with self._authority_scope(cancelled=cancelled):
+            def guarded():
+                self._authority.checkpoint()
+                return (bool(cancelled()) if callable(cancelled)
+                        else cancelled is not None and cancelled.is_set())
+            result = self._probe_current(refresh, cancelled=guarded)
+            return self._authority.filter_inventory(result)
+
+    def _probe_current(self, refresh: bool = False, *,
+                       cancelled: Event | Callable[[], bool] | None = None) -> dict:
         def check_cancelled() -> None:
             requested = (bool(cancelled()) if callable(cancelled)
                          else cancelled is not None and cancelled.is_set())
@@ -341,6 +397,8 @@ class DordiaiVoicesAdapter:
             check_cancelled()
             if self._closed:
                 raise DordiaiUnavailable("The dordiai-voices adapter is closed")
+            if self._probe_child is not None or (self._worker is not None and self._worker._closed.is_set()):
+                raise DordiaiUnavailable("Close the retained dordiai-voices worker before reconnecting.")
             epoch = self._epoch()
             if not refresh and self._inventory is not None and epoch == self._inventory_epoch:
                 return self._inventory
@@ -355,7 +413,12 @@ class DordiaiVoicesAdapter:
             helper = Path(__file__).with_name("_dordiai_probe.py").resolve()
             check_cancelled()
             deadline = monotonic() + min(self.request_timeout, 60.0)
-            child = _JsonLinesProcess([str(self.python), "-I", "-B", "-u", str(helper), str(self.runtime)], self.runtime)
+            configuration = self._authority.runtime_configuration()
+            command = [str(self.python), "-I", "-B", "-u", str(helper), str(self.runtime)]
+            if configuration['reference_engine'] != 'holos':
+                command.extend((configuration['reference_engine'], configuration['reference_model']))
+            child = _JsonLinesProcess(command, self.runtime)
+            self._probe_child = child
             try:
                 while True:
                     check_cancelled()
@@ -370,6 +433,7 @@ class DordiaiVoicesAdapter:
                     break
             finally:
                 child.close()
+                self._probe_child = None
             check_cancelled()
             self._validate_inventory(inventory)
             if epoch != self._epoch():
@@ -387,12 +451,17 @@ class DordiaiVoicesAdapter:
                 or not isinstance(value.get("voices"), list)
                 or not isinstance(value.get("languages"), list)):
             raise DordiaiProtocolError("Unexpected dordiai-voices inventory contract")
+        backend = self._authority.runtime_configuration()['reference_engine']
+        if value.get("reference_engine", "holos") != backend:
+            raise DordiaiProtocolError("The discovered reference backend differs from current approval")
         ids, codes = set(), set()
         for language in value["languages"]:
             if (not isinstance(language, dict) or not isinstance(language.get("code"), str)
                     or not language["code"] or language["code"] in codes
                     or not isinstance(language.get("resources_present"), bool)
-                    or language.get("route") not in {None, "wide", "native_profile", "native_locale", "ukrainian"}):
+                    or language.get("route") not in (
+                        {None, "wide", "native_profile", "native_locale", "ukrainian"}
+                        if backend == "holos" else {None, "reference"})):
                 raise DordiaiProtocolError("Invalid dordiai-voices language inventory")
             codes.add(language["code"])
         for voice in value["voices"]:
@@ -412,8 +481,13 @@ class DordiaiVoicesAdapter:
                      for v in self._probe(refresh, cancelled=cancelled)["voices"] if v["languages"])
 
     def capabilities(self, *, cancelled: Event | Callable[[], bool] | None = None) -> DordiaiCapabilities:
-        inventory = self._probe(cancelled=cancelled)
-        return DordiaiCapabilities(inventory.get("engine_version"), inventory["worker_sha256"])
+        with self._authority_scope(cancelled=cancelled):
+            inventory = self._probe(cancelled=cancelled)
+            authority, versions = self._authority.capability_identity()
+            backend = self._authority.runtime_configuration()['reference_engine']
+            return DordiaiCapabilities(inventory.get("engine_version"), inventory["worker_sha256"],
+                streaming_pcm=backend != "omnivoice", loading_progress=backend == "holos",
+                managed_authority_sha256=authority, managed_asset_versions=versions)
 
     def language_statuses(self, *, cancelled: Event | Callable[[], bool] | None = None) -> tuple[dict, ...]:
         """Copy of installed-resource status, including missing/partial entries."""
@@ -425,19 +499,43 @@ class DordiaiVoicesAdapter:
                 raise DordiaiUnavailable("The dordiai-voices adapter is closed")
             if self._worker is None:
                 self._validate_installation()
-                reference_model = _inside(self.runtime, "models/Holos", directory=True)
+                configuration = self._authority.runtime_configuration()
+                reference_model = _inside(self.runtime, configuration['reference_model'], directory=True)
                 command = [str(self.python), "-I", "-B", "-u", str(self.runtime / "nvda_worker.py"),
-                           str(self.runtime / "models"), "--reference-model", str(reference_model),
-                           "--references", str(self.runtime / "models/voices"),
-                           "--reference-engine", "holos", "--preload-language", "mixed"]
+                           str(self.runtime / configuration['models']), "--reference-model", str(reference_model),
+                           "--references", str(self.runtime / configuration['references']),
+                           "--reference-engine", configuration['reference_engine'], "--preload-language", "mixed"]
                 self._worker = _JsonLinesProcess(command, self.runtime)
             return self._worker
 
     def _forget_worker(self, worker: _JsonLinesProcess) -> None:
+        worker.close()
         with self._state:
             if self._worker is worker:
                 self._worker = None
-        worker.close()
+
+    def _retire_authority_workers(self):
+        """Close actual owned children before releasing a package lease."""
+        self.cancel()
+        with self._state:
+            children = (("_probe_child", self._probe_child), ("_worker", self._worker))
+        errors = []
+        for name, child in children:
+            if child is None:
+                continue
+            try:
+                child.close()
+                if not child._cleanup_done:
+                    raise DordiaiError("The managed voice child has not confirmed cleanup.")
+            except BaseException as error:
+                errors.append(error)
+            else:
+                with self._state:
+                    if getattr(self, name) is child:
+                        setattr(self, name, None)
+        if errors:
+            raise errors[0]
+        return True
 
     def _drain_after_cancel(self, worker: _JsonLinesProcess, pending: bool) -> None:
         """Cancel has no acknowledgement; drain the old reply before drop's ack."""
@@ -455,6 +553,20 @@ class DordiaiVoicesAdapter:
             self._forget_worker(worker)
 
     def stream_pcm(self, text: str, voice_id: str, language: str, *, speed: float = 1.0,
+                   pitch: int = 50, timbre: int = 50, volume: int = 100,
+                   style: str = "neutral", cancelled: Event | Callable[[], bool] | None = None,
+                   progress: Callable[[DordiaiProgress], None] | None = None) -> Iterator[PCMChunk]:
+        with self._authority_scope(cancelled=cancelled):
+            self._authority.profile_identity(voice_id, select=True)
+            def guarded():
+                self._authority.checkpoint()
+                return (bool(cancelled()) if callable(cancelled)
+                        else cancelled is not None and cancelled.is_set())
+            yield from self._stream_pcm(text, voice_id, language, speed=speed,
+                pitch=pitch, timbre=timbre, volume=volume, style=style,
+                cancelled=guarded, progress=progress)
+
+    def _stream_pcm(self, text: str, voice_id: str, language: str, *, speed: float = 1.0,
                    pitch: int = 50, timbre: int = 50, volume: int = 100,
                    style: str = "neutral", cancelled: Event | Callable[[], bool] | None = None,
                    progress: Callable[[DordiaiProgress], None] | None = None) -> Iterator[PCMChunk]:
@@ -499,11 +611,13 @@ class DordiaiVoicesAdapter:
                 raise DordiaiCancelled("dordiai-voices rendering was cancelled")
             worker = self._start_worker()
             route = selected["route"]
+            backend = inventory.get("reference_engine", "holos")
+            terminal_pcm = backend == "omnivoice"
             request = {"mode": "reference", "profile": voice_id, "language": language,
-                       "text": text, "speed": float(speed), "stream": True,
+                       "text": text, "speed": float(speed), "stream": not terminal_pcm,
                        "controls": {"pitch": pitch, "timbre": timbre, "volume": volume},
                        "nativeProfile": route == "native_profile", "nativeLocale": route == "native_locale",
-                       "wideLocale": route == "wide", "reportLoading": True,
+                       "wideLocale": route == "wide", "reportLoading": backend == "holos",
                        "nativeEnglish": False, "character": False, "numberLanguage": "auto"}
             worker.send(request)
             pending = True
@@ -526,7 +640,7 @@ class DordiaiVoicesAdapter:
                 except DordiaiTimeout:
                     continue
                 if "loadingStage" in reply:
-                    if reply["loadingStage"] not in LOADING_STAGES or len(reply) != 1:
+                    if backend != "holos" or reply["loadingStage"] not in LOADING_STAGES or len(reply) != 1:
                         raise DordiaiProtocolError("Unexpected dordiai-voices loading stage")
                     if progress is not None and not is_cancelled:
                         progress(DordiaiProgress(reply["loadingStage"], frames))
@@ -543,10 +657,13 @@ class DordiaiVoicesAdapter:
                         raise DordiaiEngineError("EmptyAudio")
                     completed = True
                     return
-                if "chunk" not in reply or not isinstance(reply["chunk"], str) or "finished" in reply:
+                field = "pcm" if terminal_pcm else "chunk"
+                if (field not in reply or not isinstance(reply[field], str) or "finished" in reply
+                        or (terminal_pcm and set(reply) != {"pcm"})
+                        or (not terminal_pcm and "pcm" in reply)):
                     raise DordiaiProtocolError("Unexpected dordiai-voices PCM reply")
                 try:
-                    data = base64.b64decode(reply["chunk"], validate=True)
+                    data = base64.b64decode(reply[field], validate=True)
                 except (ValueError, TypeError):
                     raise DordiaiProtocolError("dordiai-voices returned malformed base64 PCM") from None
                 if not data or len(data) % 2:
@@ -562,15 +679,22 @@ class DordiaiVoicesAdapter:
                 yield chunk
                 if cancellation_requested():
                     raise DordiaiCancelled("dordiai-voices rendering was cancelled")
+                if terminal_pcm:
+                    # The reviewed OmniVoice worker already completed this one
+                    # reply. Do not manufacture a streaming next/finish cycle.
+                    completed = True
+                    return
                 worker.send({"mode": "next"})
                 pending = True
                 deadline = monotonic() + self.request_timeout
         finally:
-            if worker is not None and not completed:
-                self._drain_after_cancel(worker, pending)
-            with self._state:
-                self._active_cancel = None
-            self._operation.release()
+            try:
+                if worker is not None and not completed:
+                    self._drain_after_cancel(worker, pending)
+            finally:
+                with self._state:
+                    self._active_cancel = None
+                self._operation.release()
 
     def cancel(self) -> None:
         """Signal only this adapter's active request; no fabricated cancel RPC ack."""
@@ -583,9 +707,21 @@ class DordiaiVoicesAdapter:
         self.cancel()
         with self._state:
             self._closed = True
-            worker, self._worker = self._worker, None
-        if worker is not None:
-            worker.close()
+            children = (("_probe_child", self._probe_child), ("_worker", self._worker))
+        errors = []
+        for name, child in children:
+            if child is None:
+                continue
+            try:
+                child.close()
+            except BaseException as error:
+                errors.append(error)
+            else:
+                with self._state:
+                    if getattr(self, name) is child:
+                        setattr(self, name, None)
+        if errors:
+            raise errors[0]
 
     def __enter__(self) -> DordiaiVoicesAdapter:
         return self

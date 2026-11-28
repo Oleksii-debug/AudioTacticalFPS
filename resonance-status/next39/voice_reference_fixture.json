@@ -1,0 +1,59 @@
+{
+  "schema": "carr-correction-handoff/1",
+  "status": "STATIC_NOT_RUN",
+  "component": "Reference competitor fixture uses independent genuine create-only writer",
+  "files": [
+    {
+      "path": "carr-library/tests/audio/test_voice_reference_management.py",
+      "before": "e7c0f0829d9b15e2f8ee40021c9b445cb85ed2f2",
+      "after": "48da3169be41c3524ebd5af86e7af686450013a2"
+    }
+  ],
+  "exact_contract": {
+    "cases": 30,
+    "functions": [
+      "test_actual_pcm_and_owner_child_create_exact_local_data_without_installing",
+      "test_no_reference_or_owner_read_before_exact_consent",
+      "test_arbitrary_wav_is_not_converted_into_other_backend_profiles",
+      "test_create_requires_both_current_permission_and_recording_review",
+      "test_exact_source_metadata_or_registration_change_rejects_old_review",
+      "test_unsupported_pcm_shape_is_an_explicit_error_before_native_inspection",
+      "test_truncated_pcm_is_not_a_successful_reference",
+      "test_measured_quality_warnings_are_numeric_not_speaker_or_model_claims",
+      "test_profile_and_transcript_fields_are_explicit_and_bounded",
+      "test_occupied_destination_fails_before_any_external_or_native_reference_read",
+      "test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation",
+      "test_cancel_after_prepared_owner_archive_keeps_external_destination_absent"
+    ],
+    "companions_unchanged": true
+  },
+  "actual_evidence": {
+    "head": "4ccb38169775cf515b0d2a0a0cbcb0683617b4dd",
+    "run_id": 46095602628,
+    "job_id": 140826105764,
+    "platform": "Linux",
+    "source": {
+      "whole": 21,
+      "passed": 494,
+      "failed": 1,
+      "skipped": 0
+    },
+    "failure": "test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation",
+    "trace": "Fixture competing() calls target.write_bytes -> pathlib.Path.write_bytes calls self.open(mode='wb') -> fixture no_competing_read rejects the independent writer itself. Product competitor handling has not been reached.",
+    "installed": "NOT_RUN",
+    "actual_owner": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "correction": "Only the fixture's independent competing writer uses captured original_open(target, 'xb'). Every product Path.open remains intercepted; original expected error, unchanged competitor bytes and original PCM assertions remain exact.",
+  "verification": {
+    "inverse_reconstruction": true,
+    "exact_readback": true,
+    "old_test_functions_and_parameterizations_preserved": true,
+    "peer": {
+      "agent": "/root/progress_completion",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  },
+  "runtime": "NOT_RUN",
+  "refs_changed": false
+}

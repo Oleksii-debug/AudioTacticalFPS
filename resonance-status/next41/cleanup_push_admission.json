@@ -1,0 +1,31 @@
+{
+  "schema": "resonance-dedicated-cleanup-push-admission/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_head": "43edd62326248759877fa69c1aee7869d8d0bd8c",
+  "base_tree": "c9a0bfeb8f5035285920d0288ab50c09521f6c72",
+  "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+  "before": "7197de71f082fcb1f0212af1472b8622ae1bfe57",
+  "after": "d18a77751c024481508b0af0809cbaae79b62506",
+  "change": "Remove only the redundant path filter from the already dedicated carr/ci-native-audio-cleanup-* push trigger.",
+  "reason": "Creating a Git ref did not create a qualifying workflow run; the subsequent evidence-only push changed neither of the two formerly admitted paths. The dedicated branch trigger is sufficient to bind intentional focused acceptance pushes.",
+  "inverse": "Reinserting the sole removed paths line reconstructs the prior workflow byte-for-byte.",
+  "preserved": [
+    "branch filter",
+    "workflow_dispatch",
+    "25 source pins",
+    "13 source cases",
+    "13 isolated installed cases",
+    "15 required native cleanup checks",
+    "independent default46 diagnostic",
+    "600/120/90-second bounds",
+    "all job and step limits",
+    "firewall acquisition and cleanup",
+    "closed public diagnostic retention"
+  ],
+  "review": {
+    "root": "exact inverse accepted",
+    "component_author": "/root/canonical_regression"
+  },
+  "runtime": "NOT_RUN",
+  "release": "NOT_DONE"
+}

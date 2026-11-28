@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "status": "STATIC_COMPOSITION_FRESH_CI_REQUIRED",
+  "integration_parent": "7b2a10271660b5fac936a0dc44cd9eb58cf4342c",
+  "incoming_delta": "385377eee0c17139f46e79a7584e3369f88d91fc...7b2a10271660b5fac936a0dc44cd9eb58cf4342c",
+  "preserved": "Incoming source provenance, reopening authorization and WAV geometry plus current reader tabs/tools/preferences/desktop lifecycle; only two additive UI context conflicts resolved.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "sha": "8fcebccb61d1e0a3b616928a75a22f3e9306ed77",
+      "from": "incoming-narration-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "sha": "73abb2139623cfb0873fae3e13a4d6557f09169b",
+      "from": "incoming-narration-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "d4e6f21083b393dd31135626b7bc475cab011c62",
+      "from": "incoming-narration-composition"
+    }
+  ]
+}

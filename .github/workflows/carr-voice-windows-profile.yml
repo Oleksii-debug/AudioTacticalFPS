@@ -1,0 +1,194 @@
+name: Diagnostic Windows voice execution profiles
+
+on:
+  push:
+    branches: ['carr/ci-voice-profile-*']
+    paths: ['carr-library/**', '.github/workflows/carr-voice-windows-profile.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    name: Diagnostic voice profile / Windows / ${{ matrix.case }}
+    runs-on: windows-2022
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [package, reference, managed]
+    concurrency:
+      group: carr-voice-profile-${{ github.sha }}-${{ matrix.case }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+      CARR_PROFILE_CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        timeout-minutes: 3
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        timeout-minutes: 5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify exact source and acquire only existing hashed test inputs
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact voice diagnostic source head differs.' }
+          $verify = @'
+          from hashlib import sha1
+          import importlib.util, pathlib, sys
+          pins = {"scripts/ci_voice_windows_profile.py":"ba360c132a2a5daa1cb63a8e162e56ad08fcd1f6","scripts/ci_voice_management_contracts.py":"63bb13715248fae83bcac87c1a403af534532aa6","scripts/ci_check.py":"6ad3055cfcd7c6a1b1af8544ae462c5d51adb473","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          for name, expected in pins.items():
+              path = pathlib.Path(name)
+              assert path.is_file() and not path.is_symlink()
+              raw = path.read_bytes()
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == expected, name
+              if name.endswith('.py'):
+                  compile(raw, name, 'exec')
+          path = pathlib.Path('scripts/ci_voice_windows_profile.py').resolve()
+          spec = importlib.util.spec_from_file_location('voice_profile_preflight', path)
+          module = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = module
+          spec.loader.exec_module(module)
+          contract = module.load('voice_exact_profile_contract', 'scripts/ci_voice_management_contracts.py', module.CONTRACT_SHA)
+          ci = module.load('voice_exact_profile_ci', 'scripts/ci_check.py', module.CI_SHA)
+          contract.sources()
+          assert len(contract.PINS) == 67 and len(module.CASES) == 3
+          for node in module.CASES.values():
+              source = pathlib.Path(node.split('::', 1)[0])
+              assert source.as_posix() in contract.PINS
+              compile(source.read_bytes(), str(source), 'exec')
+          compile(ci.PYTEST_CHILD, '<unchanged canonical pytest child>', 'exec')
+          print('Exact diagnostic source, fixed nodes and existing child policy admitted; no qualification claim.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Voice diagnostic source preflight failed.' }
+          New-Item -ItemType Directory -Path 'ci-voice-profile' -ErrorAction Stop | Out-Null
+          & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned voice profiling dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'voice profiling dependency closure is inconsistent.' }
+          $audio = Join-Path $env:RUNNER_TEMP ('carr-profile-audio-' + [guid]::NewGuid().ToString('N'))
+          $audioCache = Join-Path $env:RUNNER_TEMP ('carr-profile-audio-cache-' + [guid]::NewGuid().ToString('N'))
+          & python -I -B packaging/prepare_windows_audio.py --cache $audioCache --output $audio --download 2>&1 | Tee-Object 'ci-voice-profile/audio-preparation.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Exact locked audio acquisition failed.' }
+          Copy-Item -LiteralPath (Join-Path $audio 'runtime-manifest.json') -Destination 'ci-voice-profile/audio-manifest.json' -ErrorAction Stop
+          "CARR_VOICE_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Profile one unchanged real case within its existing 600 second bound
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $python = (Get-Command python -ErrorAction Stop).Source
+          $pythonPrograms = @(& $python -I -B -c "import pathlib,sys; p=pathlib.Path(sys.executable).resolve(); b=pathlib.Path(getattr(sys,'_base_executable',sys.executable)).resolve(); print(p); print(b); print(p.with_name('pythonw.exe')); print(b.with_name('pythonw.exe'))")
+          if ($LASTEXITCODE -ne 0) { throw 'Exact interpreter inventory failed.' }
+          $programs = @(@($pythonPrograms) + @((Join-Path $env:CARR_VOICE_AUDIO_DIR 'bin/ffmpeg.exe'), (Join-Path $env:CARR_VOICE_AUDIO_DIR 'bin/ffprobe.exe')) | ForEach-Object { [IO.Path]::GetFullPath($_) } | Sort-Object -Unique)
+          foreach ($program in $programs) {
+            if (-not (Test-Path -LiteralPath $program -PathType Leaf)) { throw ('Required offline executable is missing: ' + $program) }
+            if (((Get-Item -LiteralPath $program -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw ('Offline executable is a reparse point: ' + $program) }
+          }
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3) { throw 'All three firewall profile states must be captured.' }
+          $rules = [System.Collections.Generic.List[string]]::new()
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            $active = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+            if ($active.Count -ne 3 -or @($active | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Every firewall profile must be active before actual voice profiling work.' }
+            foreach ($program in $programs) {
+              $name = 'CARR-Voice-Profile-' + [guid]::NewGuid().ToString('N')
+              $rules.Add($name)
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+              $rule = Get-NetFirewallRule -Name $name -ErrorAction Stop
+              $filter = @($rule | Get-NetFirewallApplicationFilter -ErrorAction Stop)
+              if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block' -or $filter.Count -ne 1 -or [IO.Path]::GetFullPath($filter[0].Program) -ne [IO.Path]::GetFullPath($program)) { throw 'Exact-program outbound rule was not admitted.' }
+            }
+            @{ status='ACTIVE'; programs=$programs; rules=$rules.ToArray(); profiles=$active; direction='Outbound'; action='Block'; qualification='All acquisition finished before these rules' } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-voice-profile/firewall.json'
+            & $python -I -B -X utf8 scripts/ci_voice_windows_profile.py --case $env:CARR_PROFILE_CASE --evidence ci-voice-profile/contracts --expected-head $env:EXPECTED_SOURCE_SHA --audio-directory $env:CARR_VOICE_AUDIO_DIR
+            if ($LASTEXITCODE -ne 0) { throw 'The representative diagnostic case or its source checks failed.' }
+          } finally {
+            $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+            foreach ($name in $rules) {
+              try { Remove-NetFirewallRule -Name $name -ErrorAction Stop } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $restored = Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop
+                if ($restored.Enabled -ne $profile.Enabled) { throw ('Profile state was not restored: ' + $profile.Name) }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            @{ status=$(if ($cleanupFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); original_profiles=$profilesBefore; removed_rules=$rules.ToArray(); errors=$cleanupFailures.ToArray() } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-voice-profile/firewall-cleanup.json'
+            if ($cleanupFailures.Count -ne 0) { throw ('Owned voice profiling firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          }
+      - name: Admit only bounded public diagnostic text
+        id: evidence_contract
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $validate = @'
+          import json, pathlib, stat, xml.etree.ElementTree as ET
+          root = pathlib.Path('ci-voice-profile')
+          assert root.is_dir() and not root.is_symlink()
+          allowed = {'audio-preparation.txt','audio-manifest.json','firewall.json','firewall-cleanup.json'}
+          contract = {'identity-before.json','identity-after.json','events.jsonl','profile.json',
+                      'child-summary.json','summary.json','pytest.txt','pytest.xml'}
+          allowed.update('contracts/'+name for name in contract)
+          files = list(root.rglob('*'))
+          assert files and len(files) <= len(allowed)+1
+          total = 0
+          for path in files:
+              info = path.lstat()
+              assert not path.is_symlink() and not getattr(info,'st_file_attributes',0) & 1024
+              name = path.relative_to(root).as_posix()
+              if stat.S_ISDIR(info.st_mode):
+                  assert name == 'contracts'
+                  continue
+              assert name in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink == 1, name
+              assert info.st_size <= 8*1024*1024, name
+              total += info.st_size
+              assert total <= 32*1024*1024
+              raw = path.read_bytes()
+              assert b'\0' not in raw, name
+              if path.suffix == '.json':
+                  json.loads(raw.decode('utf-8-sig'))
+              elif path.suffix == '.jsonl':
+                  assert len(raw) <= 128*1024
+                  for line in raw.decode('utf-8').splitlines():
+                      assert len(line) < 8192
+                      json.loads(line)
+              elif path.suffix == '.xml':
+                  ET.fromstring(raw)
+          print('Closed text/JSON/XML only. No binary profile, model, reference recording, archive or runtime retained.')
+          '@
+          $validate | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Voice diagnostic evidence inventory is invalid.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        timeout-minutes: 3
+        if: ${{ always() && steps.evidence_contract.outcome == 'success' }}
+        with:
+          name: voice-profile-${{ matrix.case }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-voice-profile/
+          if-no-files-found: error

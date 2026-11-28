@@ -128,7 +128,7 @@ class HistoricalReaderIntegration(unittest.TestCase):
     def test_unknown_label_never_exported_as_verified(self):
         with self.store.transaction():
             out = export_saved('library-a', 'topic', [SavedEvidence('topic', 'e2', self.b)], self.loader())
-            self.assertIn('PDF page 6; printed page unknown', out)
+            self.assertIn('Physical page 6; printed page unknown', out)
             self.assertNotIn('printed page v', out)
 
 

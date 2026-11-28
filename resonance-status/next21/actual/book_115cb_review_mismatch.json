@@ -1,0 +1,214 @@
+{
+  "schema": "carr-actual-ci-evidence/1",
+  "observed_utc": "2026-11-27T23:48:34Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "115cb66458b5f4748fb478fe1c573498c6b4ad30",
+  "tree": "cb4a7d0ac2dde204aaefaa7a64b72fd7fc19ea83",
+  "run": {
+    "id": 46078591045,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078591045",
+    "branch": "carr/ci-next12-book-20261127-5a9e",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "job": {
+    "id": 140772029234,
+    "platform": "windows-2022",
+    "conclusion": "failure"
+  },
+  "source": {
+    "status": "PASS",
+    "whole_suites": 7,
+    "passed": 106,
+    "failed": 0,
+    "skipped": 0,
+    "verdicts": [
+      {
+        "module": "tests/studio/test_book_effects.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/studio/test_measured_audio.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/studio/test_measured_pcm.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/studio/test_book_measured_cli.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_book_effects.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_book_duration_dialog.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_native_book_publication_driver.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "status": "PASS",
+    "whole_suites": 7,
+    "passed": 106,
+    "failed": 0,
+    "skipped": 0,
+    "summaries": [
+      {
+        "module": "tests/studio/test_book_effects.py",
+        "passed": 14,
+        "seconds": 40.05,
+        "timestamp": "2026-11-27T23:32:03.8427011Z"
+      },
+      {
+        "module": "tests/studio/test_measured_audio.py",
+        "passed": 34,
+        "seconds": 257.56,
+        "timestamp": "2026-11-27T23:36:22.1393391Z"
+      },
+      {
+        "module": "tests/studio/test_measured_pcm.py",
+        "passed": 19,
+        "seconds": 0.17,
+        "timestamp": "2026-11-27T23:36:23.0305666Z"
+      },
+      {
+        "module": "tests/studio/test_book_measured_cli.py",
+        "passed": 9,
+        "seconds": 36.13,
+        "timestamp": "2026-11-27T23:36:59.8829902Z"
+      },
+      {
+        "module": "tests/ui/test_book_effects.py",
+        "passed": 5,
+        "seconds": 1.77,
+        "timestamp": "2026-11-27T23:37:02.3730744Z"
+      },
+      {
+        "module": "tests/ui/test_book_duration_dialog.py",
+        "passed": 17,
+        "seconds": 126.22,
+        "timestamp": "2026-11-27T23:39:09.3236559Z"
+      },
+      {
+        "module": "tests/ui/test_native_book_publication_driver.py",
+        "passed": 8,
+        "seconds": 0.22,
+        "timestamp": "2026-11-27T23:39:10.2528464Z"
+      }
+    ]
+  },
+  "native": {
+    "status": "FAIL",
+    "required_checks": 77,
+    "required_origins": 18,
+    "installed_origins_before": "PASS",
+    "installed_origins_after": "NOT_RUN",
+    "primary_error": "ValueError: The measured audio ranges, names, source or output changed. Review them again.",
+    "primary_path": [
+      "BookAudioService.publish_duration",
+      "BookAudioService._measured_publication",
+      "PublicationService.export_pcm_parts",
+      "PublicationService._export line880"
+    ],
+    "actual_observation": {
+      "started": true,
+      "returned": false,
+      "ui_status": "The measured audio ranges, names, source or output changed. Review them again."
+    },
+    "secondary_error": "native Escape closes the book dialog",
+    "actual_host_close_and_retained_finalizers": "PASS",
+    "timed_out": false,
+    "selected_pass_excerpts": [
+      "PASS: exact installed source: carr_library.studio.book_audio",
+      "PASS: exact installed source: carr_library.ui.book_audio_dialog",
+      "PASS: exact installed source: carr_library.ui.worker_lifetime",
+      "PASS: exact installed source: carr_library.studio.render",
+      "PASS: exact installed source: carr_library.studio.project",
+      "PASS: exact installed source: carr_library.reader.reading_desk",
+      "PASS: exact installed source: carr_library.speech.source",
+      "PASS: exact installed source: carr_library.runtime_settings",
+      "PASS: exact installed source: carr_library.operations.broker",
+      "PASS: exact installed source: carr_library.audio.dsp",
+      "PASS: exact installed source: carr_library.audio.process",
+      "PASS: exact installed source: carr_library.ui.desktop_app",
+      "PASS: exact installed source: carr_library.studio.measured_audio",
+      "PASS: exact installed source: carr_library.studio.publishing",
+      "PASS: exact installed source: carr_library.ui.book_duration_dialog",
+      "PASS: exact installed source: carr_library.ui.effects_dialog",
+      "PASS: exact installed source: carr_library.audio.effect_presets",
+      "PASS: exact installed source: carr_library.audio.envelopes",
+      "PASS: existing shared worker owns finalizers",
+      "PASS: native role gain measurably changes completed masters while reusing SAPI",
+      "PASS: native measured preview displays actual frames and honest whole-line scope",
+      "PASS: native host shutdown has no retained cleanup failure"
+    ],
+    "diagnostic_and_trace": "DIAG: actual measured Book publication {\"started\": true}\nDIAG: actual measured Book publication {\"error\": \"ValueError: The measured audio ranges, names, source or output changed. Review them again.\", \"traceback\": \"Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_book_audio_smoke.py\\\", line 505, in observed_publish_duration\\n    result = actual_publish_duration(*arguments, **options)\\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\book_audio.py\\\", line 778, in publish_duration\\n    return self._measured_publication(plan_id, index, output, maximum_ms=maximum_ms,\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\book_audio.py\\\", line 758, in _measured_publication\\n    return publisher.export_pcm_parts(plan.job_id(index), output,\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\publishing.py\\\", line 742, in export_pcm_parts\\n    return self._export(job_id, output, book_format='pcm-parts', language='und', creator='',\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\publishing.py\\\", line 880, in _export\\n    raise ValueError('The measured audio ranges, names, source or output changed. Review them again.')\\nValueError: The measured audio ranges, names, source or output changed. Review them again.\\n\"}\nDIAG: measured Book idle UI {\"status\": \"The measured audio ranges, names, source or output changed. Review them again.\", \"started\": true, \"returned\": false, \"error\": \"ValueError: The measured audio ranges, names, source or output changed. Review them again.\", \"preview_enabled\": true, \"publish_enabled\": true}\nFAIL: native Book probe callback\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 270, in invoke\ncallback()\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 763, in drive\nraise RuntimeError('Actual measured Book publication failed: '\nRuntimeError: Actual measured Book publication failed: ValueError: The measured audio ranges, names, source or output changed. Review them again.\n\nFAIL: native Book probe callback\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 829, in open_dialog\ncheck('native Escape closes the book dialog', stage == 12)\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 66, in check\nraise AssertionError(name)\nAssertionError: native Escape closes the book dialog\n\nPASS: native host shutdown has no retained cleanup failure\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 904, in <module>\nraise SystemExit(main())\n^^^^^^\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 871, in main\nraise RuntimeError('\\n'.join(errors))\nRuntimeError: Traceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 270, in invoke\ncallback()\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 763, in drive\nraise RuntimeError('Actual measured Book publication failed: '\nRuntimeError: Actual measured Book publication failed: ValueError: The measured audio ranges, names, source or output changed. Review them again.\n\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 829, in open_dialog\ncheck('native Escape closes the book dialog', stage == 12)\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 66, in check\nraise AssertionError(name)\nAssertionError: native Escape closes the book dialog\n\n\n\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_book_measured_contracts.py\", line 444, in <module>\nmain()\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_book_measured_contracts.py\", line 428, in main\nnative = native_contract(work=work, wheel=wheel, contract=contract,\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_book_measured_contracts.py\", line 314, in native_contract\nrequire(result == 0, 'Actual native Book process failed; no synthetic substitute is allowed.')\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_book_measured_contracts.py\", line 82, in require\nraise ValueError(message)\nValueError: Actual native Book process failed; no synthetic substitute is allowed.\nException: D:\\a\\_temp\\5512c6f5-fcbb-4af3-914b-612a9ef775bd.ps1:29"
+  },
+  "public_artifact": {
+    "id": 15238625606,
+    "name": "book-effects-measured-windows-115cb66458b5f4748fb478fe1c573498c6b4ad30-1",
+    "size_in_bytes": 41572,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238625606",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238625606/zip",
+    "expired": false,
+    "created_at": "2026-11-27T23:39:49Z",
+    "expires_at": "2027-02-25T22:45:54Z",
+    "updated_at": "2026-11-27T23:39:49Z",
+    "digest": "sha256:41742d7acd6b1a6e1fe15a7c2cea98e825044d123c8fc8a7797148fbf73f6607",
+    "workflow_run": {
+      "id": 46078591045,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-next12-book-20261127-5a9e",
+      "head_sha": "115cb66458b5f4748fb478fe1c573498c6b4ad30"
+    },
+    "archive_downloaded": false,
+    "metadata_reconciled_with_upload_log": true,
+    "retention": "37 bounded text/JSON/XML files; no binary/runtime/corpus archive"
+  },
+  "diagnosis": {
+    "demonstrated": "Actual reviewed measured publication refused before committing its output.",
+    "bounded_source_finding": "The preview hashes both original requested route and resolved output. The publisher resolves the output before recapturing, changing the requested-route component for noncanonical spellings.",
+    "native_exact_path_cause": "INFERENCE_PENDING_CORRECTED_NATIVE_RUN",
+    "proposed_product_fix": "bf9a653f5baa37e452430658b1043b9a9019d90a",
+    "proposed_regressions": "717ad80542669ecf0543ea6d971f3e7f2e849444",
+    "new_code_runtime": "NOT_RUN"
+  },
+  "qualifications": {
+    "overall_pass": false,
+    "native77": false,
+    "manual_keyboard": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "listening_quality": "NOT_RUN",
+    "private_model_inference": "NOT_RUN"
+  },
+  "evidence_source": "Actual completed job log plus Actions run/artifact metadata; no previous head's result transferred."
+}

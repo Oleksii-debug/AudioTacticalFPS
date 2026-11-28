@@ -1,0 +1,38 @@
+# Integration fragment, not an independent workflow. Merge these steps after the
+# full sealed bundle has passed its existing production installation/native gate.
+# Keep every enclosing source/native gate and its existing timeout policy.
+# Acquire the exact pinned Inno toolchain in an explicit earlier dependency
+# preparation step, before enabling the installed-runtime offline firewall.
+# No setup/runtime/model/compiler binary is uploaded.
+- name: Build pinned standard setup and execute actual install, repair and uninstall
+  timeout-minutes: 20
+  shell: pwsh
+  working-directory: carr-library
+  run: |
+    $ErrorActionPreference = 'Stop'
+    $bundle = $env:CARR_CI_BUNDLE
+    if (-not $bundle -or -not (Test-Path (Join-Path $bundle 'bundle-manifest.json') -PathType Leaf)) { throw 'The previously verified full bundle is required.' }
+    $python = Join-Path $bundle '.venv/Scripts/python.exe'
+    if (-not (Test-Path $python -PathType Leaf)) { throw 'The verified bundle must already be installed.' }
+    $identity = [Guid]::NewGuid().ToString('N')
+    $compilerRoot = $env:CARR_CI_INNO_ROOT
+    if (-not $compilerRoot -or -not (Test-Path (Join-Path $compilerRoot 'toolchain-receipt.json') -PathType Leaf)) { throw 'The previously verified pinned Inno toolchain is required.' }
+    $buildRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-setup-' + $identity)
+    $workRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-lifecycle-' + $identity)
+    $report = Join-Path (Resolve-Path 'ci-results').Path 'standard-installer'
+    $manifest = (Get-FileHash -LiteralPath (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+    & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --installed-bundle --output $buildRoot --iscc (Join-Path $compilerRoot 'tools/ISCC.exe') --toolchain-receipt (Join-Path $compilerRoot 'toolchain-receipt.json') 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & $python -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $buildRoot 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $buildRoot 'setup-build.json') --work $workRoot --report $report 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    $result = Get-Content (Join-Path $report 'result.json') -Raw | ConvertFrom-Json
+    $build = Get-Content (Join-Path $buildRoot 'setup-build.json') -Raw | ConvertFrom-Json
+    if ($result.status -ne 'PASS' -or -not $result.actual_inno_install -or -not $result.actual_repair -or -not $result.actual_uninstall -or -not $result.live_job_preserved -or -not $result.populated_library_bytes_preserved -or -not $result.fresh_shortcut_collision_refused -or -not $result.uninstaller_wrapper_removed) { throw 'The complete native standard installation lifecycle did not pass.' }
+    if ($result.bundle_manifest_sha256 -ne $manifest -or $result.setup_sha256 -ne $build.setup_sha256 -or $result.source_commit -ne $build.source_commit) { throw 'Native lifecycle evidence is not bound to this exact setup and source.' }
+    if ($result.authenticode_verified -or $result.nvda_verified -or $result.native_network_trace -ne 'NOT_RUN' -or $result.unprivileged_account_qualification -ne 'NOT_RUN') { throw 'This gate cannot claim unrelated release qualifications.' }
+    Copy-Item (Join-Path $buildRoot 'setup-build.json') (Join-Path $report 'setup-build.json')
+    Copy-Item (Join-Path $compilerRoot 'toolchain-receipt.json') (Join-Path $report 'toolchain-receipt.json')
+
+# The enclosing workflow already has a report-only upload step. Its narrow
+# allowlist should include ci-results/standard-installer/*.json and these text
+# reports, never RUNNER_TEMP, buildRoot, workRoot or a wildcard binary payload.

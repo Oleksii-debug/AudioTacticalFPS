@@ -2,11 +2,14 @@
 
 No synthetic speech mocks substitute for successful audio rendering here.
 The source scripts and spoken text are purpose-written test fixtures.
+Windows uses actual installed English native SAPI tokens; its three roles may
+share a real token. Linux retains the exact three distinct Flite voices.
 """
 from dataclasses import replace
 from hashlib import sha256
 import json
 import math
+import os
 from pathlib import Path
 import shutil
 import struct
@@ -14,7 +17,7 @@ import wave
 
 import pytest
 
-from carr_library.speech import FliteProvider, VoiceRegistry
+from carr_library.speech import FliteProvider, NativeSapiProvider, VoiceRegistry
 from carr_library.studio.project import Cue, Project, ProjectStore, parse_script
 from carr_library.studio.render import ProductionService
 
@@ -24,11 +27,34 @@ def actual_voices():
     executable = shutil.which('ffmpeg')
     if not executable or not shutil.which('ffprobe'):
         pytest.skip('This actual production acceptance requires installed FFmpeg and ffprobe.')
-    registry = VoiceRegistry([FliteProvider(executable)])
-    selected = ('flite:awb', 'flite:rms', 'flite:slt')
-    if not set(selected) <= {voice.id for voice in registry.voices()}:
-        pytest.skip('This actual production acceptance requires three installed Flite voices.')
-    return registry
+    # The pinned Windows FFmpeg Essentials build has no libflite. Use the
+    # existing actual native COM provider explicitly on Windows, never aliases
+    # or a fallback synthetic speech provider. Three roles may share one of
+    # the real installed tokens, exactly as the native Studio acceptance does.
+    provider = NativeSapiProvider() if os.name == 'nt' else FliteProvider(executable)
+    registry = VoiceRegistry([provider])
+    try:
+        if os.name == 'nt':
+            english = tuple(voice for voice in registry.voices()
+                            if voice.language.casefold().split('-')[0] == 'en')
+            assert len({voice.id for voice in english}) >= 2, (
+                'Actual Windows production requires two distinct installed English SAPI tokens.',
+                registry.notices, tuple((voice.id, voice.language) for voice in registry.voices()))
+        else:
+            selected = ('flite:awb', 'flite:rms', 'flite:slt')
+            if not set(selected) <= {voice.id for voice in registry.voices()}:
+                pytest.skip('This actual production acceptance requires three installed Flite voices.')
+        yield registry
+    finally:
+        registry.close()
+
+
+@pytest.fixture(scope='module')
+def actual_voice_ids(actual_voices):
+    if os.name == 'nt':
+        return tuple(voice.id for voice in actual_voices.voices()
+                     if voice.language.casefold().split('-')[0] == 'en')[:3]
+    return ('flite:awb', 'flite:rms', 'flite:slt')
 
 
 SCRIPT = '''[Scene: The archive]
@@ -56,13 +82,13 @@ def energy(values):
 
 
 @pytest.fixture(scope='module')
-def rendered(tmp_path_factory, actual_voices):
+def rendered(tmp_path_factory, actual_voices, actual_voice_ids):
     root = tmp_path_factory.mktemp('actual-production')
     outputs = root / 'Готові аудіофайли'
     outputs.mkdir()
     service = ProductionService(root / 'private-state', voices=actual_voices)
     project = service.create(SCRIPT, title='Synthetic three-role production',
-                             voice_ids=('flite:awb', 'flite:rms', 'flite:slt'), mode='authored')
+                             voice_ids=actual_voice_ids, mode='authored')
     original = project.to_dict()
     job = service.submit(project, outputs, operation_id='three-role-acceptance')
     complete = service.run(job)
@@ -175,12 +201,12 @@ def test_completed_operation_is_idempotent_and_outputs_are_reverified(rendered):
         service.submit(changed, Path(complete['destination']).parent, operation_id=complete['id'])
 
 
-def test_pause_restart_and_one_corrupt_speech_chunk_repaired(tmp_path, actual_voices):
+def test_pause_restart_and_one_corrupt_speech_chunk_repaired(tmp_path, actual_voices, actual_voice_ids):
     service = ProductionService(tmp_path / 'state', voices=actual_voices)
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
     text = 'Alice [left]: First verified line.\nBob [right]: Second retained line.\nNarrator [center]: Last line.'
-    project = service.create(text, voice_ids=('flite:awb', 'flite:rms', 'flite:slt'), mode='authored')
+    project = service.create(text, voice_ids=actual_voice_ids, mode='authored')
     job = service.submit(project, outputs, stems=False)
     speech_started = 0
     def pause_before_third(message):
@@ -212,12 +238,12 @@ def test_pause_restart_and_one_corrupt_speech_chunk_repaired(tmp_path, actual_vo
     assert len(list(outputs.iterdir())) == 1
 
 
-def test_edit_one_scene_reuses_unchanged_speech_and_source_original(tmp_path, actual_voices):
+def test_edit_one_scene_reuses_unchanged_speech_and_source_original(tmp_path, actual_voices, actual_voice_ids):
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
     service = ProductionService(tmp_path / 'state', voices=actual_voices)
     text = '[Scene: First]\nNarrator: First scene.\n[Scene: Second]\nNarrator: The unchanged second scene.'
-    project = service.create(text, voice_ids=('flite:slt',), mode='authored')
+    project = service.create(text, voice_ids=actual_voice_ids[-1:], mode='authored')
     first = service.run(service.submit(project, outputs, stems=False))
     speech = {key: value for key, value in first['nodes'].items() if value['kind'] == 'speech'}
     line = replace(project.scenes[0].lines[0], text='Only the first scene is revised.')
@@ -233,11 +259,11 @@ def test_edit_one_scene_reuses_unchanged_speech_and_source_original(tmp_path, ac
     assert len(list(service.projects.directory(project.id).joinpath('revisions').glob('*.json'))) == 1
 
 
-def test_completed_output_tampering_is_not_silently_overwritten(tmp_path, actual_voices):
+def test_completed_output_tampering_is_not_silently_overwritten(tmp_path, actual_voices, actual_voice_ids):
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
     service = ProductionService(tmp_path / 'state', voices=actual_voices)
-    project = service.create('A short output-integrity check.', voice_ids=('flite:slt',))
+    project = service.create('A short output-integrity check.', voice_ids=actual_voice_ids[-1:])
     job = service.submit(project, outputs, stems=False)
     complete = service.run(job)
     output = Path(complete['destination']) / 'master.wav'
@@ -247,12 +273,12 @@ def test_completed_output_tampering_is_not_silently_overwritten(tmp_path, actual
     assert output.read_bytes() == b'user modified this file'
 
 
-def test_corrupt_receipt_is_recoverable_like_corrupt_audio(tmp_path, actual_voices):
+def test_corrupt_receipt_is_recoverable_like_corrupt_audio(tmp_path, actual_voices, actual_voice_ids):
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
     service = ProductionService(tmp_path / 'state', voices=actual_voices)
     project = service.create('Narrator: A recoverable line.\nNarrator: A second line.',
-                             voice_ids=('flite:slt',), mode='authored')
+                             voice_ids=actual_voice_ids[-1:], mode='authored')
     job = service.submit(project, outputs, stems=False)
     def stop_after_first(message):
         if message == 'voice placement: rendering local audio':
@@ -267,7 +293,7 @@ def test_corrupt_receipt_is_recoverable_like_corrupt_audio(tmp_path, actual_voic
     assert complete['nodes'][key]['reused'] is False
 
 
-def test_actual_selected_local_sfx_routing_and_source_audio_invariance(tmp_path, actual_voices):
+def test_actual_selected_local_sfx_routing_and_source_audio_invariance(tmp_path, actual_voices, actual_voice_ids):
     inputs = tmp_path / 'selected-assets'
     inputs.mkdir()
     effect = inputs / 'synthetic-door-click.wav'
@@ -285,7 +311,7 @@ def test_actual_selected_local_sfx_routing_and_source_audio_invariance(tmp_path,
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
     service = ProductionService(tmp_path / 'state', voices=actual_voices, input_roots=(inputs,))
-    base = parse_script('Narrator: Hello.', voice_ids=('flite:slt',), mode='authored')
+    base = parse_script('Narrator: Hello.', voice_ids=actual_voice_ids[-1:], mode='authored')
     scene = replace(base.scenes[0], cues=(Cue('door', str(effect), start=3, gain_db=0, pan=1),))
     project = replace(base, scenes=(scene,))
     complete = service.run(service.submit(project, outputs, stems=False))
@@ -296,7 +322,7 @@ def test_actual_selected_local_sfx_routing_and_source_audio_invariance(tmp_path,
     assert sha256(effect.read_bytes()).hexdigest() == original_hash
 
 
-def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_voices):
+def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_voices, actual_voice_ids):
     outside = tmp_path / 'not-selected.wav'
     with wave.open(str(outside), 'wb') as audio:
         audio.setnchannels(1)
@@ -306,7 +332,7 @@ def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_
     service = ProductionService(tmp_path / 'state', voices=actual_voices)
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
-    base = parse_script('Narrator: Local only.', voice_ids=('flite:slt',), mode='authored')
+    base = parse_script('Narrator: Local only.', voice_ids=actual_voice_ids[-1:], mode='authored')
     project = replace(base, scenes=(replace(base.scenes[0], cues=(Cue('outside', str(outside)),)),))
     job = service.submit(project, outputs, stems=False)
     with pytest.raises(ValueError, match='selected input'):

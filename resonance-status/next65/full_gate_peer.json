@@ -1,0 +1,319 @@
+{
+  "schema": "carr-bounded-peer-review/1",
+  "created_utc": "2026-11-28 07:14:01 UTC",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Updater case metadata extraction, unchanged bounded held-file reader generalization, exact reviewed count/function updates, and corresponding main/source/reusable/native-checker pins.",
+  "paths": [
+    {
+      "path": "carr-library/scripts/ci_updater_case_contracts.json",
+      "preimage": null,
+      "successor": "0680e817d062f563ea5b9c429da2cd7716310f4d"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "bd8cd0de1dddad2bc2aab5ef7617b2db50ba0b72",
+      "successor": "9a2f5660178641bb8917f1848de021f9d9753a4a"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "d265fbddd94a57cde2c375b53bb3cb37647a5b18",
+      "successor": "76a4ba5f1e899a3d6d1233c15b0313f68ff53b1a"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "e133ce807f36b223bdc24a04798fe4bcd55a76d7",
+      "successor": "162be91cb9e49f64ddbdc7ce7e64271f687dd3e7"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "733d434978d0e40d25e14b1286c382354fa7af2a",
+      "successor": "831c4b891eaee4ad9a1ec52ec6a9c137bad6012b"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "93acee032b1e9e1dacd01a5eda1d7ebee605d3f4",
+      "successor": "69bc261f3b1e03603bdc780b04f905bd4fbe6e96"
+    },
+    {
+      "path": "carr-library/scripts/check_studio_timeline_native.py",
+      "preimage": "6e5bea855c6341c1c052b23bb8e9fbce1703fe2d",
+      "successor": "cc67469e59aee71504b60640b61619171e7566f1"
+    }
+  ],
+  "data_contract": {
+    "schema": "carr-updater-case-contracts/1",
+    "bytes": 5205,
+    "wholes": 4,
+    "cases": 122,
+    "functions": 57,
+    "exact_source_function_names": [
+      {
+        "path": "tests/security/test_update_handoff.py",
+        "sha": "057be5e81624330f63d0519569247e1129444781",
+        "functions": 22,
+        "order_and_names_exact": true,
+        "expected_cases": 53
+      },
+      {
+        "path": "tests/security/test_update_runtime.py",
+        "sha": "91bab7040584adfb1a23dcd84d92047d44f1bf0c",
+        "functions": 13,
+        "order_and_names_exact": true,
+        "expected_cases": 40
+      },
+      {
+        "path": "tests/security/test_update_ui.py",
+        "sha": "4b7c1e0b0d379654d769da667b11e453cb55a221",
+        "functions": 12,
+        "order_and_names_exact": true,
+        "expected_cases": 15
+      },
+      {
+        "path": "tests/security/test_update_controller_actions.py",
+        "sha": "1daad6582495e049952e9c36404214059453ada1",
+        "functions": 10,
+        "order_and_names_exact": true,
+        "expected_cases": 14
+      }
+    ]
+  },
+  "checks": {
+    "v3": {
+      "bytes": 497546,
+      "ascii": true,
+      "selector_arrays_unchanged": true,
+      "selector_arrays": [
+        {
+          "count": 65,
+          "unique": 65
+        },
+        {
+          "count": 199,
+          "unique": 199
+        }
+      ],
+      "budgets_jobs_diagnostics_unchanged": true,
+      "loader_exact_generalization": true
+    },
+    "installed": {
+      "bytes": 202806,
+      "ascii": true,
+      "selector_arrays_unchanged": true,
+      "selector_arrays": [
+        {
+          "count": 339,
+          "unique": 339,
+          "directory_selectors": [
+            "tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory",
+            "tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound",
+            "tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries"
+          ]
+        }
+      ],
+      "budgets_jobs_diagnostics_unchanged": true,
+      "loader_exact_generalization": true
+    },
+    "source": {
+      "bytes": 52466,
+      "ascii": true,
+      "selector_arrays_unchanged": true,
+      "selector_arrays": [
+        {
+          "count": 490,
+          "unique": 490,
+          "non_tests_prefix": [
+            "bootstrap/semantic_compat/test_probe.py"
+          ]
+        }
+      ],
+      "budgets_jobs_diagnostics_unchanged": true,
+      "exact_named_reconstruction": true
+    },
+    "main": {
+      "bytes": 400668,
+      "ascii": false,
+      "selector_arrays_unchanged": true,
+      "selector_arrays": [
+        {
+          "count": 182,
+          "unique": 182
+        }
+      ],
+      "budgets_jobs_diagnostics_unchanged": true,
+      "exact_named_reconstruction": true
+    },
+    "reusable": {
+      "bytes": 11536,
+      "ascii": true,
+      "selector_arrays_unchanged": true,
+      "selector_arrays": [],
+      "budgets_jobs_diagnostics_unchanged": true,
+      "exact_one_pin_reconstruction": true
+    }
+  },
+  "expanded_map_audit": {
+    "v3": [
+      {
+        "map_index": 0,
+        "old_keys": 20,
+        "inline_new_keys": 20,
+        "expanded_new_keys": 20,
+        "lost": [],
+        "added": [],
+        "changes": []
+      },
+      {
+        "map_index": 1,
+        "old_keys": 133,
+        "inline_new_keys": 129,
+        "expanded_new_keys": 133,
+        "lost": [],
+        "added": [],
+        "changes": [
+          {
+            "path": "tests/studio/test_daisy_schema_resolver.py",
+            "old_count": 20,
+            "new_count": 27,
+            "old_functions": 6,
+            "new_functions": 7,
+            "removed_functions": [],
+            "added_functions": [
+              "test_closed_schema_resolver_refuses_missing_or_non_string_identifiers"
+            ]
+          },
+          {
+            "path": "tests/security/test_update_handoff.py",
+            "old_count": 30,
+            "new_count": 53,
+            "old_functions": 15,
+            "new_functions": 22,
+            "removed_functions": [],
+            "added_functions": [
+              "test_sealed_venv_launch_binds_current_base_cfg_launcher_and_ignores_ambient_overrides",
+              "test_sealed_venv_launch_refuses_unowned_or_ambiguous_interpreter_authority",
+              "test_sealed_venv_launch_rechecks_each_real_identity_after_review",
+              "test_sealed_venv_launch_cancellation_preserves_original_control_and_starts_no_child",
+              "test_real_temporary_venv_preserves_direct_pid_installed_prefix_and_handoff_ownership",
+              "test_ready_refusal_keeps_exact_identity_and_live_process_diagnostics",
+              "test_changed_launch_binding_after_real_spawn_reaps_only_precommit_owner"
+            ]
+          },
+          {
+            "path": "tests/security/test_update_runtime.py",
+            "old_count": 18,
+            "new_count": 40,
+            "old_functions": 9,
+            "new_functions": 13,
+            "removed_functions": [],
+            "added_functions": [
+              "test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code",
+              "test_pip_code_exception_preserves_every_private_component_refusal",
+              "test_pip_code_exception_is_closed_to_exact_observed_relative_files",
+              "test_pip_code_exception_cannot_bypass_owner_hash_or_path_identity"
+            ]
+          },
+          {
+            "path": "tests/search/test_ascii_mapping_work.py",
+            "old_count": 56,
+            "new_count": 73,
+            "old_functions": 15,
+            "new_functions": 19,
+            "removed_functions": [],
+            "added_functions": [
+              "test_bulk_ascii_runs_match_all_boundaries",
+              "test_bulk_ascii_runs_keep_checkpoints_and_bounded_work",
+              "test_bulk_ascii_runs_keep_mark_cluster_edges",
+              "test_bulk_ascii_runs_keep_validation_and_stop"
+            ]
+          }
+        ]
+      }
+    ],
+    "installed": [
+      {
+        "map_index": 0,
+        "old_keys": 157,
+        "inline_new_keys": 153,
+        "expanded_new_keys": 157,
+        "lost": [],
+        "added": [],
+        "changes": [
+          {
+            "path": "tests/studio/test_daisy_schema_resolver.py",
+            "old_count": 20,
+            "new_count": 27,
+            "old_functions": 6,
+            "new_functions": 7,
+            "removed_functions": [],
+            "added_functions": [
+              "test_closed_schema_resolver_refuses_missing_or_non_string_identifiers"
+            ]
+          },
+          {
+            "path": "tests/security/test_update_handoff.py",
+            "old_count": 30,
+            "new_count": 53,
+            "old_functions": 15,
+            "new_functions": 22,
+            "removed_functions": [],
+            "added_functions": [
+              "test_sealed_venv_launch_binds_current_base_cfg_launcher_and_ignores_ambient_overrides",
+              "test_sealed_venv_launch_refuses_unowned_or_ambiguous_interpreter_authority",
+              "test_sealed_venv_launch_rechecks_each_real_identity_after_review",
+              "test_sealed_venv_launch_cancellation_preserves_original_control_and_starts_no_child",
+              "test_real_temporary_venv_preserves_direct_pid_installed_prefix_and_handoff_ownership",
+              "test_ready_refusal_keeps_exact_identity_and_live_process_diagnostics",
+              "test_changed_launch_binding_after_real_spawn_reaps_only_precommit_owner"
+            ]
+          },
+          {
+            "path": "tests/security/test_update_runtime.py",
+            "old_count": 18,
+            "new_count": 40,
+            "old_functions": 9,
+            "new_functions": 13,
+            "removed_functions": [],
+            "added_functions": [
+              "test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code",
+              "test_pip_code_exception_preserves_every_private_component_refusal",
+              "test_pip_code_exception_is_closed_to_exact_observed_relative_files",
+              "test_pip_code_exception_cannot_bypass_owner_hash_or_path_identity"
+            ]
+          },
+          {
+            "path": "tests/search/test_ascii_mapping_work.py",
+            "old_count": 56,
+            "new_count": 73,
+            "old_functions": 15,
+            "new_functions": 19,
+            "removed_functions": [],
+            "added_functions": [
+              "test_bulk_ascii_runs_match_all_boundaries",
+              "test_bulk_ascii_runs_keep_checkpoints_and_bounded_work",
+              "test_bulk_ascii_runs_keep_mark_cluster_edges",
+              "test_bulk_ascii_runs_keep_validation_and_stop"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "findings": [
+    "All57 updater function names and order match the four exact current test blobs. Typed53/40/15/14 counts match their accepted inventories.",
+    "The generic reader is an exact parameterization of the previous reader: identical regular/single-link/no-reparse/full named-held identity checks, bounded read, descriptor closure and fresh named checks.",
+    "Both exact Git hashes, fixed5205/19559 lengths and closed schemas are checked before pytest, then original raw bytes and full captured identities are checked again afterward.",
+    "Data is added to the existing reviewed companion hash inventory. Neither loader imports or executes the metadata.",
+    "The four updater contracts are removed only from their previous inline map, then merged with explicit disjointness. All old suite keys and required function names survive. Only the reviewed DAISY27, ASCII73, handoff53 and runtime40 additions change counts/functions.",
+    "The first V3 recovery map and every existing selected suite sequence, timeout/jobs/diagnostic policy are unchanged.",
+    "Source490, fast182, V3 installed65/199 selector arrays and full installed339 selectors remain exact; the source includes its existing bootstrap semantic test and full installed retains its three existing OCR nodes.",
+    "Main/source/reusable reconstruct exactly using only the named four scalar count changes and fixed source/native helper pin replacements.",
+    "V3 is497546 ASCII bytes, below the unchanged500000-byte limit.",
+    "The native checker changes only its two Studio data/probe pins; the previously reviewed native control and proof body is unchanged."
+  ],
+  "limitations": [
+    "No YAML/PowerShell/Python parsing or runtime execution is claimed.",
+    "This is an incremental review against accepted predecessors, not a new blanket source or native qualification.",
+    "All required native, installed, full-source and capacity obligations remain mandatory."
+  ]
+}

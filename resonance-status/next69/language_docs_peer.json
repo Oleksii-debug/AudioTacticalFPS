@@ -1,0 +1,27 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "Language qualification documentation",
+  "reviewed_path": "carr-library/docs/language_qualification.md",
+  "preimage": "0762689c5b844dd7498da2ee70b46f72d29e7e51",
+  "successor": "2329190cc1096188bbb7f2debb6e762baab51d3d",
+  "reviewed_source": {
+    "evidence": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "backup": "45f11351d946bd10587d2842dca80c3e4eb7a39a",
+    "catalog": "236a61ecb765b544ca4e0005fb94e6b462256996",
+    "ui": "3c5a50d5117f25b58a5333f4165a661db22f80b0"
+  },
+  "findings": [
+    "Three prior capability statements are updated and an evidence workflow/API/restore section appended; the document retains the distinction between recorded assessment and actual current-device qualification.",
+    "Default qualification remains zero. The selected recorded app/environment only qualifies a canonical entry when all 22 capabilities have accepted complete PASS records for the same language tag/scope/coverage; each capability retains its own engine and pack identity.",
+    "Current UI has the named passive import, recorded-context selection, exact-observation assessment and create-only external report actions. Import uses default-No, review binds the displayed complete digest, and the details show the latest 32 reviews while reports retain the full bounded history.",
+    "Reviewer identities and independence are explicitly recorded assertions, not authenticated people or proof of independent experimentation.",
+    "The documented schema, EvidenceStore signatures, exact-byte token/CAS, cancellation/late-commit behavior, 64 KiB observation and 32 MiB collection bounds match the reviewed implementation.",
+    "Both reviewed backup routes retain original history while making prior positive reviews dormant after restore; new local review is required for renewed positive status.",
+    "No actual 135-language qualification, engine execution, production rights, physical playback or NVDA listening result is claimed."
+  ],
+  "scope_limits": [
+    "Documentation-only peer; no parser, pytest or native execution performed.",
+    "Latest UI source was checked for the documented controls and history/export behavior; its ownership/lifetime test peer is separately owned by Locate."
+  ]
+}

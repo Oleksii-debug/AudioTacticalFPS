@@ -1,0 +1,192 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_SOURCE_FAILURE_INSTALLED_NATIVE_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "commit": "72713056f6da48a327ce269dc805a42eb3bd1b52",
+  "tree": "bb23926e8057e48a0033cdaf6937013f86bfef0b",
+  "run_id": 46118039419,
+  "job_id": 140896145872,
+  "branch": "carr/ci-studio-timeline-corrected-20261128-5a9e",
+  "source": {
+    "whole_suites": 7,
+    "whole_pass": 6,
+    "whole_fail": 1,
+    "passed": 319,
+    "failed": 1,
+    "skipped": 0,
+    "case_total": 320,
+    "rows": [
+      {
+        "line": 811,
+        "status": "FAIL",
+        "path": "tests/studio/test_clip_preview_loop.py",
+        "passed": 48,
+        "failed": 1,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "line": 812,
+        "status": "PASS",
+        "path": "tests/studio/test_project_markers.py",
+        "passed": 48,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 813,
+        "status": "PASS",
+        "path": "tests/studio/test_marker_consumers.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 814,
+        "status": "PASS",
+        "path": "tests/studio/test_clip_operations.py",
+        "passed": 90,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 815,
+        "status": "PASS",
+        "path": "tests/studio/test_clip_editing.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 816,
+        "status": "PASS",
+        "path": "tests/studio/test_clip_history_dialog.py",
+        "passed": 50,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 817,
+        "status": "PASS",
+        "path": "tests/studio/test_studio_controller.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "verdict": "FAIL"
+  },
+  "installed": {
+    "verdict": "NOT_RUN",
+    "reason": "Strict source whole-suite failure prevented installed/native admission."
+  },
+  "native": {
+    "verdict": "NOT_RUN",
+    "required_unique_checks": 92,
+    "required_origins": 15
+  },
+  "crossfade_correction": {
+    "test_blob": "27a3d1d3a156acd48090a08ca7f6264050f2c771",
+    "whole": "tests/studio/test_clip_editing.py",
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "previous_failed_test": "test_atomic_crossfade_uses_real_admission_pcm_and_one_history_revision",
+    "qualification": "Actual corrected source case now passed with all original PCM/history/ownership checks; no installed or native qualification."
+  },
+  "failure": {
+    "test_blob": "90f2bfc4b79d8a6bc0abc7351ce7b165a87b0310",
+    "node": "tests/studio/test_clip_preview_loop.py::test_changed_pcm_is_refused_before_real_player_repeat_and_native_owner_closes",
+    "line": 338,
+    "failed_assertion": "assert preview.player._stamp(preview.path) != old_identity",
+    "actual_old_and_after_tuple_strings": [
+      "2695480082",
+      "5066549581478140",
+      "32044",
+      "1795848501030826500",
+      "1795848501015197300"
+    ],
+    "later_repeat_refusal_owner_assertions": "NOT_REACHED",
+    "traceback_excerpt": [
+      "2026-11-28T06:48:50.2734075Z _ test_changed_pcm_is_refused_before_real_player_repeat_and_native_owner_closes _",
+      "2026-11-28T06:48:50.2734317Z ",
+      "2026-11-28T06:48:50.2734925Z preview = namespace(dialog=<carr_library.ui._clip_repeat_test.ClipDialog object at 0x000001F753A36110>, player=<carr_library.spe...ema=2, effects=(), markers=()), selected=[0], settle=<function preview.<locals>.settle at 0x000001F753ACA660>, work=[])",
+      "2026-11-28T06:48:50.2735574Z ",
+      "2026-11-28T06:48:50.2735776Z     def test_changed_pcm_is_refused_before_real_player_repeat_and_native_owner_closes(preview):",
+      "2026-11-28T06:48:50.2736099Z         apply(preview)",
+      "2026-11-28T06:48:50.2736293Z         old_identity = preview.player._identity",
+      "2026-11-28T06:48:50.2736522Z         pcm(preview.path, value=11)",
+      "2026-11-28T06:48:50.2736825Z >       assert preview.player._stamp(preview.path) != old_identity",
+      "2026-11-28T06:48:50.2737851Z E       AssertionError: assert (2695480082, 5066549581478140, 32044, 1795848501030826500, 1795848501015197300) != (2695480082, 5066549581478140, 32044, 1795848501030826500, 1795848501015197300)",
+      "2026-11-28T06:48:50.2738990Z E        +  where (2695480082, 5066549581478140, 32044, 1795848501030826500, 1795848501015197300) = <function WavePlayer._stamp at 0x000001F753784B80>(WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-ybdnl1k9/pytest/test_changed_pcm_is_refused_be0/clip-preview-real-pcm.wav'))",
+      "2026-11-28T06:48:50.2740047Z E        +    where <function WavePlayer._stamp at 0x000001F753784B80> = <carr_library.speech.player.WavePlayer object at 0x000001F7536E9110>._stamp",
+      "2026-11-28T06:48:50.2744842Z E        +      where <carr_library.speech.player.WavePlayer object at 0x000001F7536E9110> = namespace(dialog=<carr_library.ui._clip_repeat_test.ClipDialog object at 0x000001F753A36110>, player=<carr_library.speech.player.WavePlayer object at 0x000001F7536E9110>, transport=<test_clip_preview_loop.NativeTransport object at 0x000001F7536E9590>, path=WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-ybdnl1k9/pytest/test_changed_pcm_is_refused_be0/clip-preview-real-pcm.wav'), progress=<test_clip_preview_loop.Progress object at 0x000001F7536E8390>, scheduled=[], wx=namespace(Dialog=<class 'object'>, ID_OK=1, ID_CANCEL=2, EVT_TIMER=<object object at 0x000001F7538BF7E0>, Timer=<class 'test_clip_preview_loop.Timer'>, CallLater=<function preview.<locals>.<lambda> at 0x000001F753AE5580>), project=Project(id='project', title='Project', roles=(), scenes=(Scene(id='scene', title='Scene', lines=(), music=None, cues=(Cue(id='first', path='inputs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.audio', start=0, gain_db=-6, pan=0, role='sfx', trim_start=0, duration=2, fade_in=0, fade_out=0, title='', effects=()), Cue(id='second', path='inputs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.audio', start=0, gain_db=-6, pan=0, role='sfx', trim_start=0, duration=2, fade_in=0, fade_out=0, title='', effects=())), minimum_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=2, effects=(), markers=()), selected=[0], settle=<function preview.<locals>.settle at 0x000001F753ACA660>, work=[]).player",
+      "2026-11-28T06:48:50.2753379Z E        +    and   WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-ybdnl1k9/pytest/test_changed_pcm_is_refused_be0/clip-preview-real-pcm.wav') = namespace(dialog=<carr_library.ui._clip_repeat_test.ClipDialog object at 0x000001F753A36110>, player=<carr_library.speech.player.WavePlayer object at 0x000001F7536E9110>, transport=<test_clip_preview_loop.NativeTransport object at 0x000001F7536E9590>, path=WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-ybdnl1k9/pytest/test_changed_pcm_is_refused_be0/clip-preview-real-pcm.wav'), progress=<test_clip_preview_loop.Progress object at 0x000001F7536E8390>, scheduled=[], wx=namespace(Dialog=<class 'object'>, ID_OK=1, ID_CANCEL=2, EVT_TIMER=<object object at 0x000001F7538BF7E0>, Timer=<class 'test_clip_preview_loop.Timer'>, CallLater=<function preview.<locals>.<lambda> at 0x000001F753AE5580>), project=Project(id='project', title='Project', roles=(), scenes=(Scene(id='scene', title='Scene', lines=(), music=None, cues=(Cue(id='first', path='inputs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.audio', start=0, gain_db=-6, pan=0, role='sfx', trim_start=0, duration=2, fade_in=0, fade_out=0, title='', effects=()), Cue(id='second', path='inputs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.audio', start=0, gain_db=-6, pan=0, role='sfx', trim_start=0, duration=2, fade_in=0, fade_out=0, title='', effects=())), minimum_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=2, effects=(), markers=()), selected=[0], settle=<function preview.<locals>.settle at 0x000001F753ACA660>, work=[]).path",
+      "2026-11-28T06:48:50.2757638Z ",
+      "2026-11-28T06:48:50.2757850Z tests\\studio\\test_clip_preview_loop.py:338: AssertionError"
+    ]
+  },
+  "artifact": {
+    "id": 15252458086,
+    "name": "studio-timeline-windows-72713056f6da48a327ce269dc805a42eb3bd1b52-1",
+    "size_in_bytes": 14927,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15252458086",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15252458086/zip",
+    "expired": false,
+    "created_at": "2026-11-28T06:48:51Z",
+    "expires_at": "2027-02-26T06:44:56Z",
+    "updated_at": "2026-11-28T06:48:51Z",
+    "digest": "sha256:e22b14ec4c67c844702f91ab201d944a91c1081e2468522ec493ce30c3097c94",
+    "workflow_run": {
+      "id": 46118039419,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-studio-timeline-corrected-20261128-5a9e",
+      "head_sha": "72713056f6da48a327ce269dc805a42eb3bd1b52"
+    }
+  },
+  "authority_audit": {
+    "player": {
+      "path": "carr-library/src/carr_library/speech/player.py",
+      "git_blob": "6f758c6073e239f771a7b8627713aca8bff51d7f",
+      "stamp": "dev, inode, size, mtime_ns, ctime_ns",
+      "restart": "Fresh actual stat before existing expected-identity _play; repeated stat checks around PCM-header and native-admission calls.",
+      "same_metadata_content_hash_contract": false
+    },
+    "clip_preview": {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "git_blob": "598d0c450e3697c699a03c74d806783173fc3ab5",
+      "boundary": "Retained source is checked before real preview rendering. The produced preview is an owned temporary Path, not a separately hash-bearing PCM receipt."
+    },
+    "current_ui": {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "git_blob": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a",
+      "boundary": "Current player/path/project/clip/generation and quiet ownership bind repeated playback; existing WavePlayer authority remains unchanged."
+    },
+    "existing_player_control_regression": {
+      "path": "carr-library/tests/speech/test_player_controls.py",
+      "git_blob": "be20379e71ffb74c1bbebf60c153dbe93344012f",
+      "mutations": "Changed size or same-byte inode replacement, not same-metadata-content hashing."
+    },
+    "docs": {
+      "url": "https://docs.python.org/3.11/library/os.html#os.stat_result",
+      "observations": "On Windows st_ctime_ns is creation time; timestamp precision depends on OS/filesystem. os.utime(ns=...) changes actual filesystem times.",
+      "limits": "The runner's exact filesystem clock resolution was not measured; no narrower OS timing cause is claimed."
+    },
+    "fixture_correction": "Keep actual same-size PCM byte mutation; explicitly change actual modification time using os.utime, verify actual stat and bytes, then run every original repeat/refusal/close check.",
+    "same_metadata_tamper_protection": "NOT_ADDED_OR_QUALIFIED",
+    "product_change": false,
+    "case_change": false,
+    "timeout_change": false
+  },
+  "proposed_fixture_blob": "c2690ed5b36b2860238e6dc1d5d9420f355baf54",
+  "runtime_successor": "NOT_RUN",
+  "refs_modified": false,
+  "recorded_utc": "2026-11-28 06:55:10 UTC"
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "carr.reviewed-source-delta/1",
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "base_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "purpose": "Align the existing schema-1 BookPlan refusal assertion with the explicitly reviewed schema-2 effects contract.",
+  "files": [
+    {
+      "path": "carr-library/tests/studio/test_project_effects.py",
+      "before": "dc9c8bb6a0e9004594a16af2d692fc26825a6efe",
+      "after": "ed90ccf67a6d086fc56081ff8feb4b0be595d524"
+    }
+  ],
+  "actual_evidence": {
+    "head": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+    "job_id": 140761349211,
+    "suite": "tests/studio/test_project_effects.py",
+    "passed": 24,
+    "failed": 1,
+    "case": "test_book_plan_legacy_role_wire_stays_stable_and_effects_need_separate_review",
+    "cause": "The existing schema-1 effects refusal was correct; only the old rejection-message regex was stale after reviewed Plan2 support."
+  },
+  "change": "One anchored raw-regex assertion matches the complete actual current refusal. No product code changes.",
+  "contract": {
+    "whole_cases": 25,
+    "test_functions": 16,
+    "prior_role_wire_fingerprint_schema_refusal_and_no_write_assertions": "BYTE_IDENTICAL",
+    "gate_counts": "UNCHANGED",
+    "new_execution": "NOT_RUN"
+  },
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact one-line diff, complete actual message and all unchanged assertions/case inventory."
+  },
+  "readback": "Exact new source and e763 preimage fetched and compared. No refs moved."
+}

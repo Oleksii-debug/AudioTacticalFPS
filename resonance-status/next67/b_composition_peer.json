@@ -1,0 +1,137 @@
+{
+  "schema": "carr-bounded-composition-peer/1",
+  "reviewer": "canonical_regression",
+  "created_utc": "2026-11-28 07:49:54 UTC",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Independent B seven-live-path composition, cross-component pins, immutable updater A3 baseline, independent full-gate branch triggers and V3 size",
+  "base": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea"
+  },
+  "candidate": {
+    "commit": "26beb805aab1e9e202d134008441927523cdcb94",
+    "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+    "parent": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f"
+  },
+  "files": [
+    {
+      "kind": "main",
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "831c4b891eaee4ad9a1ec52ec6a9c137bad6012b",
+      "blob": "1f0c67ee4ad51735fa3805388317c850f482258a"
+    },
+    {
+      "kind": "v3",
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "9a2f5660178641bb8917f1848de021f9d9753a4a",
+      "blob": "69dceb131561dbc78077cfb5451c524797db7e15"
+    },
+    {
+      "kind": "configured",
+      "path": ".github/workflows/carr-configured-update-native.yml",
+      "preimage": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+      "blob": "14517f2e4018942a2a0a4c56ce6c59f38de861a4"
+    },
+    {
+      "kind": "recording",
+      "path": "carr-library/tests/audio/test_recording_controls.py",
+      "preimage": "e07f220a0143196b042eb0b301edd43c86073dc1",
+      "blob": "d68f5bccde6ebb00809fdc192af1e9643df9c1e6"
+    },
+    {
+      "kind": "library_probe",
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "preimage": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+      "blob": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0"
+    },
+    {
+      "kind": "library_helper",
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "c9d5c070e0590b252d055be7f3acfa73db01eb19",
+      "blob": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7"
+    },
+    {
+      "kind": "library_workflow",
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "62845cc0eab7fb5485ca4f6bce9279a7fc059207",
+      "blob": "4965fd48b26b87e75ba14b9e470780943edab649"
+    }
+  ],
+  "tree_audit": {
+    "complete_nontruncated": true,
+    "base_files": 1897,
+    "candidate_files": 1922,
+    "changed_paths": 32,
+    "live_paths": 7,
+    "record_only_additions": 25,
+    "all_other_file_hashes_and_modes_unchanged": true,
+    "removed": []
+  },
+  "inverses": {
+    "main": {
+      "hunks": 4,
+      "inverse_exact": true
+    },
+    "v3": {
+      "hunks": 3,
+      "inverse_exact": true
+    },
+    "configured": {
+      "hunks": 2,
+      "inverse_exact": true
+    },
+    "library_helper": {
+      "hunks": 1,
+      "inverse_exact": true
+    },
+    "library_workflow": {
+      "hunks": 1,
+      "inverse_exact": true
+    },
+    "recording": {
+      "exact_accepted_source": true,
+      "old_reconstructed": true,
+      "functions_unchanged": true,
+      "whole_cases": 30
+    },
+    "library_probe": {
+      "literal_checks_unchanged": true
+    }
+  },
+  "changed_library_pin_maps": {
+    "helper": {
+      "entries": 12,
+      "unique": 12,
+      "mismatches": []
+    },
+    "workflow": {
+      "entries": 13,
+      "unique": 13,
+      "mismatches": []
+    }
+  },
+  "findings": [
+    "The exact commit has A3 as its sole parent and the supplied tree. Independent full recursive comparison finds exactly seven existing live-path replacements plus 25 new JSON evidence records; every other file hash and mode is unchanged.",
+    "The library helper's 12 literal source pins and workflow's 13 literal pins match the exact composed candidate tree. The new probe9ff and helper3e46 are bound; none of the seven old component hashes remains in the seven new live files.",
+    "Main binds the exact configured-native workflow14517, whose immutable A source is the actual published7bfd. B remains the exact event head and the existing A/B-distinct guard is unchanged.",
+    "Only the carr/ci-full-final-* pattern is appended to main and V3 push branches. Existing PR/path filters, permissions and ref-specific concurrency remain; seven live updates include matching carr-library/workflow paths. Launch requires an actual matching push and is not claimed by this review.",
+    "Both new early uploads refer to the exact existing phase text paths and unique preceding step IDs, retain the pinned upload action, bounded three-minute step and three-day retention, and refuse missing files. The original source/native commands and their failed outcomes are unchanged.",
+    "The complete inverse leaves all selectors, count/function maps, strict summaries, installed verification, original timeout/job policy and native checks byte-identical. Recording remains30 cases/21 functions; library behavior labels remain the original six.",
+    "V3 is exactly498151 ASCII bytes, below500000 with1849 bytes remaining. Main has401264 UTF-8 bytes. No size allowance was increased.",
+    "A3 capacity/profile/source138 workflows, helpers, product source and exact source identity are untouched by the candidate's seven live changes. Their in-flight results remain attributable only to A3."
+  ],
+  "prior_component_reviews": {
+    "full": "b2783b58d01b151ea9726251ba85baa086934d5d",
+    "native": "619a573b0beb095ca0bbadd03a79e1db71acd2dc",
+    "recording": "6bca68135dc542682bee531aeece849ece332f2e",
+    "library": "2d2f7db485636f041e1769f7ace5b4c19541fd60",
+    "library_pins": "56df294a4fca959857b9be424bdf9cabb126a8a0"
+  },
+  "limits": [
+    "No new YAML/PowerShell/Python parser or runtime execution claim.",
+    "This bounded composition review does not repeat every component's source-semantic review or independently claim root's complete823-pin audit.",
+    "Historical and A3 receipts do not qualify candidate B or compiled A3-to-B native Apply.",
+    "No ref, dispatch, cancellation or rerun was performed."
+  ]
+}

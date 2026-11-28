@@ -1,0 +1,56 @@
+{
+  "schema": "resonance-checkpoint-fixture-and-ci-output-correction/1",
+  "parent_commit": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+  "parent_tree": "37b723f6aa4f69381cdabcb793aa461dc5633b0e",
+  "status": "SOURCE_REVIEWED_SUCCESSOR_NOT_RUN",
+  "changes": [
+    {
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "base": "b7583313b0c30d57fc031832e2fd486803604f00",
+      "sha": "bbed36da78265d635317880b264fd90b59ed4235"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "base": "c0c95987d85d6c93d8444f279d50b7438aff14ca",
+      "sha": "52964b9bd59f59694642ec13d6d23660b9ea5d69"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "base": "aab43491615288c2929449297d2d9acbf14b4378",
+      "sha": "3cda0948e0827a1af4323c6faa5445d624fed371"
+    }
+  ],
+  "durable_reports": [
+    {
+      "path": "resonance-status/next11/capacity_checkpoint_and_output_corrections.json",
+      "sha": "70d999b5c4d8127b23a1c5c921e65f24aa265752"
+    },
+    {
+      "path": "resonance-status/next11/actual_capacity_e6e869.json",
+      "sha": "8250059191d3de4573c45c9eb8667ab201fcfcad"
+    },
+    {
+      "path": "resonance-status/next11/actual_flite_e6e869.json",
+      "sha": "34e765b81052496055fb108a4dc8552d0fd164ce"
+    },
+    {
+      "path": "resonance-status/next11/actual_bibliography_e6e869.json",
+      "sha": "9afe35291333d5ba7ad3523b42cb92709a0b064b"
+    }
+  ],
+  "review": {
+    "status": "STATIC_NOT_RUN",
+    "accepted": true,
+    "fixture": "bbed36da78265d635317880b264fd90b59ed4235",
+    "helper": "52964b9bd59f59694642ec13d6d23660b9ea5d69",
+    "workflow": "3cda0948e0827a1af4323c6faa5445d624fed371",
+    "scope": "Actual first durable checkpoint instead of arbitrary poll count; original27wholecases and recovery assertions preserved; additional checkpoint/source/no-publication proofs. Helper-owned stdout encoding only, all child policies unchanged."
+  },
+  "actual_failure": "C2 Linux151PASS/26FAIL, all26 before backup in the old poll-count fixture; Windows orchestrator stdout raised UnicodeEncodeError before any child verdict could be displayed. Both installed177 phases and four corpus profiles NOT_RUN.",
+  "correction": "Use actual first committed import checkpoint for cancellation; retain27wholecases and add exact checkpoint/source/no-publication proofs. Configure only the helper's own stdout as UTF-8/backslashreplace; all child argv/environment/strict policy and177counts remain unchanged.",
+  "application_source": "Every runtime package source blob is unchanged from e6e869. No speculative product/harness repair.",
+  "required_execution": "New exact-head source and isolated installed177 on bothplatforms, installedWindowsnative44/12, fouractualLinuxlargebackupprofiles and allpreservedPRgates; previousresultsremainseparate.",
+  "additional_scope_work": "A current-spec review identified explicit BookPlan role effects/duration-split and requested legacy-format gaps; those are assigned as separate reviewed implementation work, not relabeled as hardware-only qualification.",
+  "canonical_ref": "UNCHANGED",
+  "external_automations": "UNCHANGED"
+}

@@ -1,0 +1,319 @@
+name: CARR capacity repair source installed and Windows controls
+
+on:
+  push:
+    branches: ['carr/ci-next11-capacity-repair-*']
+    paths: ['carr-library/**', '.github/workflows/carr-next11-capacity-repair.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The original complete four-profile workflow remains required and unchanged in scope.
+# This follow-up runs its exact two platform contract jobs while those measurements finish.
+jobs:
+  capacity-contracts-linux:
+    name: Exact source and installed capacity contracts on ubuntu-24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 195
+    concurrency:
+      group: carr-capacity-contracts-${{ github.sha }}-ubuntu-24.04
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare the existing hashed application and test closure
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact capacity source changed.' }
+          if ($env:RUNNER_OS -eq 'Windows') {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='d5260f6f704c162b2b8b6abf0868bcac26e99127'; compile(raw,str(p),'exec')"
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
+      - name: Require all 216 source and 216 isolated installed cases
+        timeout-minutes: 170
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & python -I -B scripts/ci_capacity_contracts.py --evidence ci-capacity-profile-contracts --expected-head $env:EXPECTED_SOURCE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Whole source and installed capacity contracts did not pass.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: capacity-profile-contracts-ubuntu-24.04-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-capacity-profile-contracts/
+          if-no-files-found: error
+
+  capacity-contracts-windows:
+    name: Exact source and installed capacity contracts on windows-2022
+    runs-on: windows-2022
+    timeout-minutes: 195
+    concurrency:
+      group: carr-capacity-contracts-${{ github.sha }}-windows-2022
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare the existing hashed application and test closure
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact capacity source changed.' }
+          if ($env:RUNNER_OS -eq 'Windows') {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned capacity dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity dependencies are inconsistent.' }
+          & python -I -B -c "from hashlib import sha1; from pathlib import Path; p=Path('scripts/ci_capacity_contracts.py'); raw=p.read_bytes(); assert sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()=='d5260f6f704c162b2b8b6abf0868bcac26e99127'; compile(raw,str(p),'exec')"
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity verifier source or syntax differs.' }
+      - name: Require all 216 source and 216 isolated installed cases
+        timeout-minutes: 170
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & python -I -B scripts/ci_capacity_contracts.py --evidence ci-capacity-profile-contracts --expected-head $env:EXPECTED_SOURCE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'Whole source and installed capacity contracts did not pass.' }
+      - name: Require real installed Windows complete-backup controls and restore
+        id: native_backup_capacity
+        if: ${{ success() && runner.os == 'Windows' }}
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $python = (Get-Command python -ErrorAction Stop).Source
+          $nativeEvidence = Join-Path (Get-Location) 'ci-capacity-profile-contracts/native-backup'
+          $nativeCapture = Join-Path $env:RUNNER_TEMP ('carr-native-backup-' + [guid]::NewGuid().ToString('N') + '.txt')
+          $verifyNativeBackupCapacity = @'
+          from hashlib import sha1, sha256
+          import importlib, json, os, pathlib, platform, re, struct, subprocess, sys, traceback
+          
+          MODULES = ["carr_library.application","carr_library.backup_capacity","carr_library.library_backup","carr_library.pending_backup","carr_library.backup_sidecars","carr_library.storage.revisions","carr_library.ingest.catalog_asset_copy","carr_library.ui.backup_capacity","carr_library.ui.desktop_app","carr_library.ui.worker_lifetime","carr_library.durable_state","carr_library.native_runtime"]
+          REQUIRED = set(["native failure answers owned No before closing only the active inner modal","restored-library opening uses actual default-No native confirmation","capacity dialog starts with the ordinary allowance","native checksum entry preserves the exact retained manifest identity","native completion retains focused readable result","real native Windows controls","existing host executor owns backup work and finalizers","actual backup executes on the shared worker","actual restore executes on the shared worker","native capacity cancellation opens no folder or worker","ordinary and large selections reach the real canonical backup","backup result explicitly includes validated unfinished imports","native backup presents the independently retainable manifest checksum","selected allowance preserves complete4 and pending1 wire","explicit large restore reaches the same canonical fresh-destination API","real restored library preserves both retained originals and search","default-No restore leaves the original LibraryApp active","native backup menus dispatch the existing host workflow","native host Close drains the actual executor without retained failure","native failure cleanup control completed","exact installed source: carr_library.application","unchanged installed source after cleanup: carr_library.application","exact installed source: carr_library.backup_capacity","unchanged installed source after cleanup: carr_library.backup_capacity","exact installed source: carr_library.library_backup","unchanged installed source after cleanup: carr_library.library_backup","exact installed source: carr_library.pending_backup","unchanged installed source after cleanup: carr_library.pending_backup","exact installed source: carr_library.backup_sidecars","unchanged installed source after cleanup: carr_library.backup_sidecars","exact installed source: carr_library.storage.revisions","unchanged installed source after cleanup: carr_library.storage.revisions","exact installed source: carr_library.ingest.catalog_asset_copy","unchanged installed source after cleanup: carr_library.ingest.catalog_asset_copy","exact installed source: carr_library.ui.backup_capacity","unchanged installed source after cleanup: carr_library.ui.backup_capacity","exact installed source: carr_library.ui.desktop_app","unchanged installed source after cleanup: carr_library.ui.desktop_app","exact installed source: carr_library.ui.worker_lifetime","unchanged installed source after cleanup: carr_library.ui.worker_lifetime","exact installed source: carr_library.durable_state","unchanged installed source after cleanup: carr_library.durable_state","exact installed source: carr_library.native_runtime","unchanged installed source after cleanup: carr_library.native_runtime"])
+          PINS = {"scripts/windows_backup_capacity_smoke.py":"412bae4ad7ffe7600497ede1add0c9c4a14fbf4b","src/carr_library/backup_capacity.py":"1fd11ab8d3a2be5434e32bdcba65447c55730ad7","src/carr_library/storage/revisions.py":"417a9920d4c25eacd36cc81f7441ea321c18d632","src/carr_library/library_backup.py":"0ccbba5db4c41e78143f0ef11aef51bd3df55339","src/carr_library/pending_backup.py":"b2c3fc3a52e9d2fef5c019196ef239381c519fc7","src/carr_library/backup_sidecars.py":"4052234a20b12d26d825463363e2126585f73211","src/carr_library/ui/backup_capacity.py":"66555889648ec8b76ac11e7ffe5bd54ece6c29e9","src/carr_library/native_runtime.py":"50ca93914325753f7d9cb91f1bc4f48fc9ae230f"}
+          FIELDS = {
+              'status':'PASS', 'native_keyboard':'PASS', 'native_backup_restore':'PASS',
+              'native_failure_cleanup':'PASS', 'native_host_cleanup':'PASS',
+              'large_corpus_measurement':'NOT_RUN', 'manual_nvda':'NOT_RUN',
+              'physical_media':'NOT_RUN', 'power_loss':'NOT_RUN',
+              'folder_picker':'explicit fixture selections; system picker not automated',
+          }
+          MAX_LOG = 8 * 1024 * 1024
+          mode, evidence_arg, log_arg, exit_arg, before_digest = sys.argv[1:]
+          assert mode in ('before', 'after')
+          evidence = pathlib.Path(evidence_arg)
+          before_path, final_path = evidence/'preflight.json', evidence/'native-backup-capacity.json'
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          source_root = checkout/'src'
+          
+          def require(value, message):
+              if not value:
+                  raise AssertionError(message)
+          
+          def blob(raw):
+              return sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+          
+          def git(*arguments):
+              value = subprocess.run(['git', *arguments], cwd=checkout, capture_output=True,
+                                     text=True, encoding='utf-8', timeout=20, check=True)
+              return value.stdout.strip()
+          
+          def file_proof(path):
+              info = path.lstat()
+              require(path.is_file() and not path.is_symlink() and info.st_nlink == 1,
+                      'Proof input is not a private regular file: ' + str(path))
+              raw = path.read_bytes()
+              require(len(raw) == info.st_size, 'Proof input changed size.')
+              return dict(bytes=len(raw), sha256=sha256(raw).hexdigest(), git_blob=blob(raw))
+          
+          def snapshot():
+              require(sys.platform == 'win32' and sys.version_info[:2] == (3, 11)
+                      and struct.calcsize('P') == 8, 'This gate requires actual Windows x64 / CPython 3.11.')
+              require(git('rev-parse', 'HEAD') == os.environ['EXPECTED_SOURCE_SHA'],
+                      'Capacity checkout differs from its expected source commit.')
+              from carr_library.native_runtime import activate_bundled_runtime
+              handle = activate_bundled_runtime()
+              if handle is not None:
+                  handle.close()
+                  raise AssertionError('Expected installed setupPython route, found a bundled runtime supplement.')
+              import wx
+              require(wx.Platform == '__WXMSW__', 'Actual Windows wx controls are required.')
+              source, installed = {}, {}
+              for name in MODULES:
+                  path = source_root.joinpath(*name.split('.')).with_suffix('.py')
+                  relative = path.relative_to(checkout).as_posix()
+                  item = file_proof(path)
+                  require(item['git_blob'] == git('rev-parse', os.environ['EXPECTED_SOURCE_SHA'] + ':carr-library/' + relative),
+                          'Source module differs from the exact commit: ' + name)
+                  if relative in PINS:
+                      require(item['git_blob'] == PINS[relative], 'Reviewed source pin differs: ' + name)
+                  actual = pathlib.Path(importlib.import_module(name).__file__).resolve(strict=True)
+                  require(actual.is_relative_to(pathlib.Path(sys.prefix).resolve())
+                          and not actual.is_relative_to(source_root), 'Module did not come from the installed wheel: ' + name)
+                  actual_item = file_proof(actual)
+                  require(actual_item == item, 'Installed/source module bytes differ: ' + name)
+                  source[name] = dict(path=relative, **item)
+                  installed[name] = dict(path=str(actual), **actual_item)
+              probe = checkout/'scripts/windows_backup_capacity_smoke.py'
+              probe_item = file_proof(probe)
+              require(probe_item['git_blob'] == PINS['scripts/windows_backup_capacity_smoke.py']
+                      == git('rev-parse', os.environ['EXPECTED_SOURCE_SHA'] + ':carr-library/scripts/windows_backup_capacity_smoke.py'),
+                      'Exact reviewed native probe differs.')
+              executable = pathlib.Path(sys.executable).resolve(strict=True)
+              return dict(source_commit=os.environ['EXPECTED_SOURCE_SHA'], source_tree=git('rev-parse', 'HEAD^{tree}'),
+                  source=source, installed=installed, probe=probe_item,
+                  python=dict(path=str(executable), version=sys.version, sha256=sha256(executable.read_bytes()).hexdigest(),
+                              prefix=str(pathlib.Path(sys.prefix).resolve())),
+                  wx=dict(version=wx.version(), platform=wx.Platform),
+                  host=dict(platform=platform.platform(), windows_version=list(platform.win32_ver()),
+                            windows_edition=platform.win32_edition()),
+                  route='verified application wheel in setupPython; optional bundled supplement absent',
+                  windows11_qualification='NOT_RUN', bundled_runtime_qualification='NOT_RUN',
+                  audio_or_model_input='NONE')
+          
+          if mode == 'before':
+              require(not evidence.exists(), 'Native proof needs a fresh evidence directory.')
+              current = snapshot()
+              evidence.mkdir(parents=True)
+              with before_path.open('x', encoding='utf-8', newline='\n') as stream:
+                  json.dump(current, stream, ensure_ascii=True, indent=2)
+                  stream.write('\n')
+              print(json.dumps(dict(status='READY', source_commit=current['source_commit'],
+                                    installed_origins=len(current['installed']), route=current['route']), ensure_ascii=True))
+          else:
+              result = dict(status='FAIL', source_commit=os.environ['EXPECTED_SOURCE_SHA'],
+                            native_execution='NOT_QUALIFIED', windows11_qualification='NOT_RUN',
+                            bundled_runtime_qualification='NOT_RUN', process_exit_code=int(exit_arg))
+              try:
+                  require(before_path.is_file() and not before_path.is_symlink(), 'Native preflight proof is missing.')
+                  before_raw = before_path.read_bytes()
+                  require(len(before_raw) <= 1024*1024 and sha256(before_raw).hexdigest() == before_digest,
+                          'Native preflight proof changed.')
+                  before = json.loads(before_raw.decode('utf-8'))
+                  log = pathlib.Path(log_arg)
+                  require(log.is_file() and not log.is_symlink() and log.stat().st_nlink == 1,
+                          'Native process log is missing or linked.')
+                  with log.open('rb') as stream:
+                      raw = stream.read(MAX_LOG + 1)
+                  require(len(raw) <= MAX_LOG, 'Native process log exceeds the finite retention limit.')
+                  text = raw.decode('utf-8-sig')
+                  with (evidence/'native-backup-capacity.txt').open('x', encoding='utf-8', newline='\n') as stream:
+                      stream.write(text)
+                  current = snapshot()
+                  require(current == before, 'Source, installed modules, selected interpreter or runtime changed during native work.')
+                  require(int(exit_arg) == 0, 'The actual native backup process failed.')
+                  reports = []
+                  for match in re.finditer(r'(?m)^\{', text):
+                      try:
+                          value, _ = json.JSONDecoder().raw_decode(text[match.start():])
+                      except ValueError:
+                          continue
+                      if type(value) is dict and 'native_backup_restore' in value:
+                          reports.append(value)
+                  require(len(reports) == 1, 'Actual native report is missing or ambiguous.')
+                  report = reports[0]
+                  require(all(type(report.get(key)) is type(value) and report.get(key) == value
+                              for key, value in FIELDS.items()), 'Required native outcome/limitation field differs.')
+                  checks = report.get('checks')
+                  require(type(checks) is list and all(type(name) is str for name in checks),
+                          'Native checks are invalid.')
+                  require(len(REQUIRED) == 44 and REQUIRED <= set(checks),
+                          'Required native checks are missing: ' + repr(sorted(REQUIRED - set(checks))))
+                  origins = report.get('origins')
+                  require(type(origins) is dict and set(origins) == set(MODULES) and len(origins) == 12,
+                          'Native source origin inventory differs.')
+                  require(all(origins[name] == before['source'][name]['sha256'] for name in MODULES),
+                          'Native module identities differ from the exact selected source.')
+                  result = dict(report, source_commit=before['source_commit'], source_tree=before['source_tree'],
+                      runtime_route=before['route'], runtime=before['python'], host=before['host'], wx=before['wx'],
+                      preflight_sha256=before_digest, process_exit_code=0,
+                      source_and_installed_before_after='PASS', required_checks=44, installed_origins=12,
+                      windows11_qualification='NOT_RUN', bundled_runtime_qualification='NOT_RUN')
+              except Exception as error:
+                  result.update(error_type=type(error).__name__, error=str(error))
+                  print(traceback.format_exc(), file=sys.stderr, flush=True)
+              with final_path.open('x', encoding='utf-8', newline='\n') as stream:
+                  json.dump(result, stream, ensure_ascii=True, indent=2)
+                  stream.write('\n')
+              require(set(path.name for path in evidence.iterdir()) <= {
+                          'preflight.json','native-backup-capacity.json','native-backup-capacity.txt'},
+                      'Unexpected native evidence file.')
+              require(all(path.is_file() and not path.is_symlink() and path.stat().st_nlink == 1
+                          and path.stat().st_size <= MAX_LOG for path in evidence.iterdir()),
+                      'Native evidence is not a bounded JSON/text-only inventory.')
+              print(json.dumps(dict(status=result['status'], source_commit=result['source_commit'],
+                                    required_checks=44, installed_origins=12,
+                                    native_execution='PASS' if result['status']=='PASS' else 'FAIL',
+                                    windows11_qualification='NOT_RUN', bundled_runtime_qualification='NOT_RUN'),
+                               ensure_ascii=True), flush=True)
+              raise SystemExit(0 if result['status'] == 'PASS' else 1)
+          '@
+          try {
+            $verifyNativeBackupCapacity | & $python -I -B -X utf8 - before $nativeEvidence $nativeCapture 0 '-'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native backup preflight source/runtime proof failed.' }
+            $beforeNativeHash = (Get-FileHash -LiteralPath (Join-Path $nativeEvidence 'preflight.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+            & $python -I -B -X utf8 scripts/windows_backup_capacity_smoke.py --source-root (Join-Path (Get-Location) 'src') 2>&1 | Tee-Object -FilePath $nativeCapture
+            $nativeExit = $LASTEXITCODE
+            $verifyNativeBackupCapacity | & $python -I -B -X utf8 - after $nativeEvidence $nativeCapture $nativeExit $beforeNativeHash
+            if ($LASTEXITCODE -ne 0) { throw 'Required independent installed Windows backup proof failed.' }
+          } finally {
+            if (Test-Path -LiteralPath $nativeCapture) { Remove-Item -LiteralPath $nativeCapture -Force -ErrorAction Stop }
+          }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: capacity-profile-contracts-windows-2022-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-capacity-profile-contracts/
+          if-no-files-found: error
+

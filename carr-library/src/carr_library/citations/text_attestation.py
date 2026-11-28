@@ -3,6 +3,7 @@ from hashlib import sha256
 import re
 
 from .anchors import Identity, Locator, digest
+from ..catalog.intake import FileSnapshot, text_segments, source_limit
 
 # Exact canonical extraction configuration from CARR-10 PR31.
 CONFIG = '{"adapter":"strict-utf8-v1","kind":"logical_segment"}'
@@ -10,7 +11,7 @@ MAX_BYTES = 64 * 1024 * 1024
 MAX_SEGMENTS = 1000
 
 
-def strict_text_attestor(db, workspace, resolve_asset):
+def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: False):
     """Return a callback for historical_loader, never approve PDF or OCR here.
 
     resolve_asset(identity) must return bounded immutable original bytes from an
@@ -36,8 +37,25 @@ def strict_text_attestor(db, workspace, resolve_asset):
             return False
         try:
             data = resolve_asset(identity)
+        except (InterruptedError, TimeoutError):
+            raise
         except (OSError, LookupError, ValueError):
             return False
+        if isinstance(data, FileSnapshot):
+            if (data.mime != 'text/plain' or data.digest != identity.asset_sha256
+                    or not 0 < data.size <= source_limit(data.mime)):
+                return False
+            try:
+                selected, count, nonempty = None, 0, False
+                for count, segment in enumerate(text_segments(data, cancelled=cancelled), 1):
+                    nonempty = nonempty or bool(segment.strip())
+                    if count == locator.index:
+                        selected = digest(segment)
+                return count == row[1] and nonempty and selected == raw_sha256
+            except (InterruptedError, TimeoutError):
+                raise
+            except (OSError, LookupError, ValueError, UnicodeError):
+                return False
         if (type(data) is not bytes or not 0 < len(data) <= MAX_BYTES
                 or sha256(data).hexdigest() != identity.asset_sha256):
             return False

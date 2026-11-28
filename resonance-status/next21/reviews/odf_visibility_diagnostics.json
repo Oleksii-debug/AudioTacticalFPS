@@ -1,0 +1,50 @@
+{
+  "schema": "carr-reviewed-change-manifest/1",
+  "title": "Exact ODF visibility refusal context for selected XLS native diagnosis",
+  "status": "STATIC_ACCEPTED_NOT_RUN",
+  "base_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "before": "a09bc00a438e14ee631978498884961e8e396f00",
+      "after": "238207043c10273984fe2244153f5cf965bc9ade"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "before": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+      "after": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4"
+    }
+  ],
+  "actual_evidence": "018044edf278981c9bd2cbbaa2d66c6ae294b631",
+  "reason": "Actual selected LibreOffice XLS intermediate failed the existing hidden-text check; old message records neither XML section nor matched condition. No precise compatibility relaxation is justified yet.",
+  "changes": [
+    "Existing hidden-text predicate, per-node budget check and ValueError refusal are unchanged.",
+    "The same error prefix now includes only three closed vocabulary fields: section(content.xml/styles.xml/other), recognized element category(or other), and matched visibility attribute kind.",
+    "No document text, arbitrary XML names, attribute values, URL or filesystem path is included.",
+    "The existing generated hidden-style negative retains its rejection and now asserts exact redacted context."
+  ],
+  "primary_semantic_context": {
+    "url": "https://docs.oasis-open.org/office/OpenDocument/v1.3/os/part3-schema/OpenDocument-v1.3-os-part3-schema.html",
+    "section": "19.475 style:display",
+    "finding": "The standard assigns style:display to six header/footer element kinds. This suggests a compatibility case to investigate, but does not establish which attribute/element failed in the recorded XLS run."
+  },
+  "gates": {
+    "whole_path": "tests/extract/test_document_formats_xml.py",
+    "cases": 95,
+    "test_functions": 41,
+    "portable_conversion_total": 209,
+    "counts_or_selectors_changed": false,
+    "required_revalidation": "Entire source and isolated installed portable suites, then all existing selected-format/whole34/GUI native phases."
+  },
+  "independent_peer": {
+    "agent": "/root/progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact refusal/budget preservation, bounded vocabulary and same95-case fixture inventory"
+  },
+  "verification": {
+    "exact_readbacks": true,
+    "new_execution": "NOT_RUN",
+    "refs_changed": false
+  },
+  "composition": "Refresh the exact XML source/test pins in current ci_selected_conversion_contracts.py and its workflow callers as part of the coordinated native successor. Combine separately reviewed old-suite b4c607 path-wire fix, GUI successor and root-owned live-lock change; do not alter active refs independently."
+}

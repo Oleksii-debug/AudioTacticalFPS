@@ -1,0 +1,100 @@
+{
+  "schema": "carr-component-handoff/1",
+  "created_utc": "2026-11-28 01:52:03 UTC",
+  "base_head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+  "status": "STATIC_NOT_RUN",
+  "component": "Preserve explicit legacy state directories with current provider scope checks",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "before": "ed4abebffe6baab4a6c17ba30f8f0ea28e2dcb83",
+      "after": "d67becf3f47b9157710f4020caf47fd60b7a3fab"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_owner_lease.py",
+      "before": "a1ec1bbb76e22a9e966a480324107475f0b88c41",
+      "after": "282bc60cf1d94ce29a32602a6ead0440def271e8"
+    }
+  ],
+  "suite": {
+    "path": "tests/integrations/test_dordiai_owner_lease.py",
+    "before_cases": 22,
+    "after_cases": 28,
+    "functions": [
+      "test_legacy_enumeration_keeps_original_ids_and_creates_no_owner_namespace",
+      "test_unbound_adapter_never_falls_back_for_any_owned_profile",
+      "test_package_stream_holds_actual_owner_lock_until_child_is_quiescent",
+      "test_actual_pending_child_cleanup_keeps_package_lease_until_native_retry_finishes",
+      "test_first_management_namespace_appearance_retires_existing_legacy_worker",
+      "test_index_mutation_after_pcm_revokes_current_stream_before_another_chunk",
+      "test_same_bytes_do_not_reauthorize_replaced_owner_scope",
+      "test_owner_wait_cancellation_starts_no_probe_and_never_reclaims_the_other_lease",
+      "test_unmanaged_factory_still_checks_current_library_configuration_before_cache",
+      "test_authority_metadata_cannot_escape_its_active_worker_scope",
+      "test_explicit_legacy_state_scope_cannot_rebind_to_same_byte_directory"
+    ],
+    "old_prefix_byte_identical": true
+  },
+  "required_unchanged_suites": [
+    {
+      "path": "tests/integrations/test_dordiai_settings.py",
+      "sha": "3f4a49f3ef04d72cd4ad05d7ca4fe170925359a8",
+      "cases": 17
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_authority.py",
+      "sha": "7e1522e102826b75eea702d5ddc44eec2afe86f5",
+      "cases": 18
+    }
+  ],
+  "diagnosis": {
+    "actual_run": 46094267681,
+    "actual_job": 140821929865,
+    "actual_head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+    "old_settings_two_failures": "The new authority imposed a state basename requirement on the existing explicit arbitrary-state runtime_settings API, before the intended real synthesis/later-provider-failure assertions.",
+    "old_owner_lease_one_failure": "A disabled current row reached the management-store connection precondition instead of the captured provider configuration comparison; the original expected stale-authority refusal assertion stays unchanged.",
+    "exact_failure_verdicts": [
+      {
+        "line": 1506,
+        "verdict": "FAILED tests/integrations/test_dordiai_owner_lease.py::test_unmanaged_factory_still_checks_current_library_configuration_before_cache[disabled] - AssertionError: Regex pattern did not match."
+      },
+      {
+        "line": 2088,
+        "verdict": "FAILED tests/integrations/test_dordiai_host_lifecycle.py::test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render[PermissionError] - TypeError: expected str, bytes or os.PathLike object, not int"
+      },
+      {
+        "line": 2089,
+        "verdict": "FAILED tests/integrations/test_dordiai_host_lifecycle.py::test_actual_unreadable_asset_subtree_refuses_fingerprint_and_render[FileNotFoundError] - TypeError: expected str, bytes or os.PathLike object, not int"
+      },
+      {
+        "line": 2287,
+        "verdict": "FAILED tests/integrations/test_dordiai_settings.py::test_saved_engine_reaches_actual_shared_render_and_releases_worker - ValueError: Use the current library state directory."
+      },
+      {
+        "line": 2288,
+        "verdict": "FAILED tests/integrations/test_dordiai_settings.py::test_failed_later_provider_releases_already_registered_private_engine - AssertionError: Regex pattern did not match."
+      }
+    ]
+  },
+  "change": [
+    "Capture exact explicitly selected state/audio and all ancestor directory identities.",
+    "Bracket the passive _read_settings read with current identity checks and compare the exact captured dordiai row.",
+    "Require canonical library/state and current VoiceSettingsStore only when a managed binding actually exists.",
+    "Keep adapter operation/lease/warm-worker retirement and every original22 test byte unchanged.",
+    "Six real subprocess regressions replace library, state or audio with identical bytes before or after the read; require warm child retirement and no later request/output."
+  ],
+  "related_independent_host_fixture": {
+    "before": "52f3cce2330add9be0b7b81f575cdd6ee659e9af",
+    "after": "54eea6081c72b32b8295addae25f12d399bd5d9e",
+    "cases": 13,
+    "owner": "Locate",
+    "scope": "Only mocked os.scandir forwards actual integer directory descriptors; original inventory rejection retained."
+  },
+  "qualification": {
+    "readback": "EXACT",
+    "peer": "Progress ACCEPTED_STATIC_NOT_RUN for d67becf3/282bc60c after exact delta/source/fixture review.",
+    "source_execution": "NOT_RUN",
+    "installed_execution": "NOT_RUN",
+    "actual_model_inference": "NOT_RUN"
+  }
+}

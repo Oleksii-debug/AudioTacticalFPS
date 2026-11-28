@@ -1,0 +1,45 @@
+{
+  "schema": "resonance-integration/1",
+  "created_utc": "2026-11-28T01:03:00Z",
+  "parent": "de46e79215a4c2603506704b1784b349d7c475d8",
+  "parent_tree": "340e9c503a50ec5383d5dce78299a327f16a1b54",
+  "classification": "CONVERTER_SOURCE_FIXTURE_REPAIR_PENDING_EXECUTION",
+  "changes": [
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "before": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd",
+      "after": "e1430ee06f64fd55e472c9cda884bb433e2d570d"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "1af25e62f74c7e7aed8415b693efeb072be1b985",
+      "after": "dc9bb968e9e5153bef8fef6f7859a684f28ef6f5"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "a77117519744b111f57e9235e1793b0093afb337",
+      "after": "43f181e01867305b728b4439ef3fe152d4b6605e"
+    }
+  ],
+  "component_manifest": "fe0a4f893efb5d474f53e3c3592845ea0d6eed03",
+  "actual_predecessor_failure": "eda88c623afc750c6b691321745241fe40698b0d",
+  "qualified_parent_reading_publication": "ca6a971bf39d3db7c53f260b41b0b11cfe222039",
+  "reason": "Source-only fresh-library actual-worker test lacked checkout import roots in its isolated child. The new launcher is restricted to the exact current checkout worker path and verifies origin and SHA; installed -m argv remains unchanged. Product source unchanged.",
+  "contract": {
+    "whole_suites": 8,
+    "source_cases": 276,
+    "installed_cases": 276,
+    "source_pins": 29,
+    "origin_modules": 19,
+    "native": "Unchanged six required source/installed phases:14 formats, whole34, GUI30/30origins;50s/180s unchanged.",
+    "child_policy": "INSTALLED_CHILD and all600 limits unchanged.",
+    "retention": "Eight installed XML/text/origin triples and existing closed native maps unchanged."
+  },
+  "review": "Root verified all preimages, exact one-pin helper delta and two-pin workflow delta, and independently read the source-only origin/hash-bound child launcher. Product conversion sources, counts and native assertions remain unchanged.",
+  "limits": [
+    "New converter run is NOT_RUN at composition.",
+    "Reading69/native qualification applies to de46 exact source and stated gates only.",
+    "Voice integration remains a separate pending coherent handoff.",
+    "No merge, release, audio quality or manual NVDA assertion."
+  ]
+}

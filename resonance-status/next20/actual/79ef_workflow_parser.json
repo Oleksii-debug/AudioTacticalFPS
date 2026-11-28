@@ -1,0 +1,31 @@
+{
+  "schema": "resonance-actual-workflow-parser/1",
+  "status": "PASS_SCOPED",
+  "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "source_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "run_id": 46081148451,
+  "job_id": 140780168945,
+  "job_conclusion": "success",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46081148451/job/140780168945",
+  "actual_verdict": {
+    "status": "PASS",
+    "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+    "parsed_bodies": 146,
+    "failed_bodies": 0,
+    "controls": 6,
+    "control_failures": 0,
+    "workflow_size_limit_bytes": 500000,
+    "workflow_size_controls": 4,
+    "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/ci-next9-parser/workflow-powershell.json",
+    "runtime_qualification": "NOT_RUN"
+  },
+  "actual_verdict_time": "2026-11-27T23:24:16.1792425Z",
+  "artifact": {
+    "id": 15237715405,
+    "name": "next9-final-workflow-parser-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+    "size_in_bytes": 14153,
+    "digest": "sha256:1823a34d22e20e6cb33a75b0efec948f171eb667d352f4dde38c03a322aa0f80"
+  },
+  "authority": "Actual completed job log plus matching artifact API metadata; ZIP contents were not inspected.",
+  "limits": "Only YAML/PowerShell parser and its controls are qualified. Python application execution,30-case source regression,450/449 focused source, installed/native/benchmark/owner/release remain NOT_RUN for this scoped evidence. No result transfers to a different source."
+}

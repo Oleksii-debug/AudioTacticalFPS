@@ -1,0 +1,74 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Immutable A3 corpus inspector declaration/data successor only",
+  "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+  "preimage": "21774e1c6fa3c871299727949bf9fc868b4fb3e7",
+  "successor": "f551f2906d4df2689825ad41d7915ad1fd641f82",
+  "exact_bytes": 26023,
+  "changed_lines": [
+    1,
+    5,
+    22,
+    44,
+    45,
+    46,
+    51,
+    271
+  ],
+  "inverse_exact": true,
+  "source": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "run": 46121242674
+  },
+  "artifact_data": [
+    {
+      "artifact": 15253578936,
+      "job": 140909164680,
+      "bytes": 27325,
+      "sha256": "68354746247499efb61e4fe8cf775e7323aa40fc805c7334399791573c09aa28",
+      "declared_status": "PASS",
+      "retained_members": 17,
+      "receipt": "9dad0cc262c969d2f4b0b4350848326fde24b86d"
+    },
+    {
+      "artifact": 15254900810,
+      "job": 140909164614,
+      "bytes": 27300,
+      "sha256": "dfd8033551fb7652f565070425bd5a1835790feb186f8d62a9f6d557419e7f88",
+      "declared_status": "PASS",
+      "retained_members": 17,
+      "receipt": "1afc4e4c8e362e5811989dc005c6e217adbcc47d"
+    },
+    {
+      "artifact": 15255574442,
+      "job": 140909164761,
+      "bytes": 27397,
+      "sha256": "5ce16f967f05cfdee3a43f33f608c6efd52cad2656dc1fa5a39051d68b47c22a",
+      "declared_status": "PASS",
+      "retained_members": 17,
+      "receipt": "6bac2e22e8cf11bc901263274aafc7a0a6117b7b"
+    },
+    {
+      "artifact": 15256606056,
+      "job": 140909164644,
+      "bytes": 13479,
+      "sha256": "7aa34a6b9891908fc8bec7488bb2428a604e7135be4701d45026d2079a96488f",
+      "declared_status": "PARTIAL",
+      "retained_members": 8,
+      "receipt": "86a8a14841ecfe4128c644f05171d5198c8e9f60"
+    }
+  ],
+  "findings": [
+    "All four fixed artifact IDs/names/archive sizes/archive digests/source heads independently match current GitHub artifact metadata and the four immutable closed receipts.",
+    "Each exact retained member name/size/hash map and phase status/reason list matches its closed receipt, with17 members for each completed profile and8 for the2M partial profile.",
+    "Only the display/branch/step/run/head/tree/artifact declarations and final scope text change. Reverting those eight lines reconstructs the accepted predecessor byte-for-byte.",
+    "Authenticated API request handling, redirect/token isolation, in-memory ZIP and strict JSON checks, output bounds and six-minute job body remain unchanged.",
+    "The scope retains build PASS/measure PARTIAL(BudgetExceeded) and later NOT_RUN for2M; it does not turn this into completed qualification or infer detailed counters before reading the fixed reports."
+  ],
+  "limits": [
+    "Data-only static peer; no inspector execution, benchmark execution, product/source change or ref mutation.",
+    "Actual detailed metrics remain the separate inspector's output; no cross-head or throughput claim."
+  ]
+}

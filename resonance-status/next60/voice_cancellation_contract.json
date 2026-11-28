@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "status": "PEER_ACCEPTED_STATIC_NOT_RUN",
+  "task": "Preserve the public voice cancellation contract while proving real cleanup before resource release",
+  "base": "343efc505230f969ec9519bd04e4340381f07909",
+  "files": [
+    {
+      "path": "carr-library/tests/audio/test_voice_package_management.py",
+      "preimage": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+      "blob": "f37fb8af516898fed38b26cdebe7fd943e188db7",
+      "readback": true
+    }
+  ],
+  "actual_failure": {
+    "run": 46107719816,
+    "job_id": 140864112926,
+    "evidence_blob": "001578f515a565d8b00cb4464067a05ac428a5ec",
+    "whole": "tests/audio/test_voice_package_management.py",
+    "passed": 29,
+    "failed": 1,
+    "seconds": 379.65,
+    "remaining_source_wholes": {
+      "cases": 465,
+      "status": "PASS"
+    },
+    "post_cancel_assertions": "NOT_REACHED in the original failing case",
+    "error": "ResourceCancelled from existing ResourceLease.checkpoint via VoicePackageManager.apply stop callback; test previously allowed only AudioCancelled and InterruptedError",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46107719816/job/140864112926",
+    "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+    "helper": "56de4b31e3a5cf39aaaad9a238a4d5729a5ba1f8",
+    "later_phases": {
+      "installed": "NOT_RUN",
+      "actual_owner": "NOT_RUN",
+      "native83": "NOT_RUN"
+    }
+  },
+  "contract": {
+    "public_exports": {
+      "path": "carr-library/src/carr_library/operations/__init__.py",
+      "blob": "7929cba7686f36f15c212833396b5dc9cf464791"
+    },
+    "models": {
+      "path": "carr-library/src/carr_library/operations/models.py",
+      "blob": "1b8e354327d20dc134a30783c648b88f37cfa337"
+    },
+    "broker": {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "blob": "f09561333d33ae68480260668ec05b617cd72213",
+      "boundary": "ResourceCancelled is explicitly raised at both pre-admission and active checkpoint cancellation."
+    },
+    "manager": {
+      "path": "carr-library/src/carr_library/audio/voice_packages.py",
+      "blob": "824275dcace7617ce65123d469537593877d51d3",
+      "boundary": "The public operation/reservation wrappers preserve this typed exception and existing pending-owner settlement."
+    },
+    "transport": {
+      "path": "carr-library/src/carr_library/audio/voice_transport.py",
+      "blob": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e"
+    },
+    "process": {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "blob": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b"
+    },
+    "windows_job": {
+      "path": "carr-library/src/carr_library/audio/windows_job.py",
+      "blob": "27aeb47c39660ac74335d791e22e58b44058db3b"
+    },
+    "ui": {
+      "path": "carr-library/src/carr_library/ui/voice_packages.py",
+      "blob": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da",
+      "boundary": "The actual error callback clears pending review and reports stopped work; no class-specific retry/success path or commit is introduced."
+    }
+  },
+  "correction": {
+    "product_changes": 0,
+    "whole_cases": 30,
+    "functions": 19,
+    "changed_cases": 1,
+    "other_case_bodies": "BYTE_IDENTICAL",
+    "whole_child_timeout_seconds": 600,
+    "ordinary_gates": "No selector, count, function inventory, companion, origin or deadline change; only tracked test pins need refresh.",
+    "pre_cancel": "Actual manager.apply must raise exact public ResourceCancelled without any metadata child, marker or state change.",
+    "slow_child": "Keep all original marker, unchanged settings, no installed package and empty reservation checks. Accept only the existing named AudioCancelled, InterruptedError and ResourceCancelled types.",
+    "cleanup_observation": "Forward actual JobProcess/Popen construction and actual ResourceLease.release unchanged. At both voice-data and voice-package release entries require the one real child already exited and both diagnostic streams closed; on Windows require its Job, process and thread handles already closed.",
+    "no_generic_exception_widening": true
+  },
+  "review": {
+    "agent": "Locate",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Independent exact inverse, public pre-cancel API, actual process fields and both release boundaries; no product or deadline changes."
+  },
+  "execution": "NOT_RUN",
+  "refs": "NO_REF_MUTATION"
+}

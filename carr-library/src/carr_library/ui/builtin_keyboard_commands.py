@@ -65,14 +65,46 @@ READER_COMMANDS = (
     CommandSpec('reader.bookmark_add', 'Add named page bookmark', 'reader', 'Ctrl+B'),
     CommandSpec('reader.bookmarks', 'Manage page bookmarks', 'reader', 'Ctrl+Shift+B'),
     CommandSpec('reader.help', 'Reader keyboard guide', 'reader', 'F1'),
+    CommandSpec('reader.audio', 'EPUB synchronized recorded audio', 'reader'),
+    CommandSpec('reader.appearance', 'Reading appearance', 'reader'),
     CommandSpec('reader.commands', 'Find a reader command', 'reader', 'Ctrl+Shift+P'),
     CommandSpec('reader.settings', 'Reader keyboard shortcuts', 'reader', 'Ctrl+Alt+K'),
 )
 
 
+VOICE_READER_COMMANDS = (
+    CommandSpec('voice_reader.read', 'Read selection or all', 'voice_reader', 'F6'),
+    CommandSpec('voice_reader.cursor', 'Read from cursor', 'voice_reader'),
+    CommandSpec('voice_reader.line', 'Read current logical line', 'voice_reader'),
+    CommandSpec('voice_reader.paragraph', 'Read current paragraph', 'voice_reader'),
+    CommandSpec('voice_reader.clipboard', 'Read clipboard once', 'voice_reader'),
+    CommandSpec('voice_reader.dictionary', 'Pronunciation dictionary', 'voice_reader'),
+    CommandSpec('voice_reader.find', 'Find and replace', 'voice_reader', 'Ctrl+F'),
+    CommandSpec('voice_reader.spelling', 'Spelling review with Hunspell', 'voice_reader'),
+    CommandSpec('voice_reader.tools', 'Bookmarks and paragraph tools', 'voice_reader'),
+    CommandSpec('voice_reader.appearance', 'Reading appearance', 'voice_reader'),
+    CommandSpec('voice_reader.voice_preferences', 'Voice preferences', 'voice_reader'),
+    CommandSpec('voice_reader.tab_new', 'New reading tab', 'voice_reader', 'Ctrl+T'),
+    CommandSpec('voice_reader.tab_close', 'Close reading tab', 'voice_reader', 'Ctrl+W'),
+    CommandSpec('voice_reader.tab_rename', 'Rename reading tab', 'voice_reader'),
+    CommandSpec('voice_reader.playback', 'Playback controls', 'voice_reader'),
+    CommandSpec('voice_reader.previous_unit', 'Previous text unit', 'voice_reader'),
+    CommandSpec('voice_reader.current_unit', 'Select current text unit', 'voice_reader'),
+    CommandSpec('voice_reader.next_unit', 'Next text unit', 'voice_reader'),
+    CommandSpec('voice_reader.read_unit', 'Read current text unit', 'voice_reader'),
+    CommandSpec('voice_reader.inspect_audio', 'Inspect saved WAV provenance', 'voice_reader'),
+    CommandSpec('voice_reader.pause', 'Pause or resume speech', 'voice_reader', 'F7'),
+    CommandSpec('voice_reader.stop', 'Stop speech operation', 'voice_reader', 'F8'),
+    CommandSpec('voice_reader.save', 'Save reading copy', 'voice_reader', 'Ctrl+S'),
+    CommandSpec('voice_reader.save_as', 'Save reading copy as', 'voice_reader', 'Ctrl+Shift+S'),
+    CommandSpec('voice_reader.commands', 'Find a voice reader command', 'voice_reader', 'Ctrl+Shift+P'),
+    CommandSpec('voice_reader.settings', 'Voice reader keyboard shortcuts', 'voice_reader', 'Ctrl+Alt+K'),
+)
+
+
 def builtin_commands():
     return tuple(CommandSpec(identity, caption, 'main', shortcut)
-                 for identity, _, caption, shortcut in MAIN_COMMANDS) + READER_COMMANDS
+                 for identity, _, caption, shortcut in MAIN_COMMANDS) + READER_COMMANDS + VOICE_READER_COMMANDS
 
 
 def plain_caption(label):

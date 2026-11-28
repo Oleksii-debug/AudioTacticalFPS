@@ -1,0 +1,293 @@
+{
+  "schema": "carr-actual-full-source-shard-failure/1",
+  "recorded_utc": "2026-11-28 06:18:04 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run": 46110647047,
+  "status": "FAIL",
+  "scope": "All four designated full-source partitions closed before executing their assigned whole suites. Other source/native jobs retain their own separate results.",
+  "rows": [
+    {
+      "partition": 0,
+      "job_id": 140873303784,
+      "name": "Required whole source partition 1 of 4 / Required integrated source 0 / Windows x64",
+      "job_status": "completed",
+      "conclusion": "failure",
+      "source_whole_suites_completed": 0,
+      "source_case_executions_completed": 0,
+      "failing_stage": "before-test source proof",
+      "trace": [
+        {
+          "line": 709,
+          "text": "2026-11-28T05:52:29.6398643Z Traceback (most recent call last):"
+        },
+        {
+          "line": 710,
+          "text": "2026-11-28T05:52:29.6404727Z   File \"<string>\", line 56, in <module>"
+        },
+        {
+          "line": 711,
+          "text": "2026-11-28T05:52:29.6405231Z ValueError: A source file changed while opening."
+        },
+        {
+          "line": 712,
+          "text": "2026-11-28T05:52:29.8144659Z Exception: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\check_integrated_source_shard.ps1:888"
+        },
+        {
+          "line": 713,
+          "text": "2026-11-28T05:52:29.8147235Z Line |"
+        },
+        {
+          "line": 714,
+          "text": "2026-11-28T05:52:29.8148087Z  888 |  … CODE -ne 0) { throw 'The required before-test source proof failed.' }"
+        },
+        {
+          "line": 715,
+          "text": "2026-11-28T05:52:29.8148887Z      |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        },
+        {
+          "line": 716,
+          "text": "2026-11-28T05:52:29.8149637Z      | The required before-test source proof failed."
+        },
+        {
+          "line": 717,
+          "text": "2026-11-28T05:52:29.8625120Z ##[error]Process completed with exit code 1."
+        }
+      ],
+      "artifact": {
+        "id": 15250857243,
+        "name": "carr-required-source-0-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+        "size_in_bytes": 11672,
+        "digest": "sha256:e6d1085801392a81d56ad96eb8f71d7a453ced156d7dc3eee50bff5ec46e81f8",
+        "expired": false,
+        "workflow_run": {
+          "id": 46110647047,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+          "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+        },
+        "metadata_matches_closed_log": true
+      },
+      "log_characters": 80098
+    },
+    {
+      "partition": 1,
+      "job_id": 140873303811,
+      "name": "Required whole source partition 2 of 4 / Required integrated source 1 / Windows x64",
+      "job_status": "completed",
+      "conclusion": "failure",
+      "source_whole_suites_completed": 0,
+      "source_case_executions_completed": 0,
+      "failing_stage": "before-test source proof",
+      "trace": [
+        {
+          "line": 709,
+          "text": "2026-11-28T05:49:15.8604325Z Traceback (most recent call last):"
+        },
+        {
+          "line": 710,
+          "text": "2026-11-28T05:49:15.8609044Z   File \"<string>\", line 56, in <module>"
+        },
+        {
+          "line": 711,
+          "text": "2026-11-28T05:49:15.8609272Z ValueError: A source file changed while opening."
+        },
+        {
+          "line": 712,
+          "text": "2026-11-28T05:49:15.9588659Z Exception: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\check_integrated_source_shard.ps1:888"
+        },
+        {
+          "line": 713,
+          "text": "2026-11-28T05:49:15.9590177Z Line |"
+        },
+        {
+          "line": 714,
+          "text": "2026-11-28T05:49:15.9590618Z  888 |  … CODE -ne 0) { throw 'The required before-test source proof failed.' }"
+        },
+        {
+          "line": 715,
+          "text": "2026-11-28T05:49:15.9591049Z      |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        },
+        {
+          "line": 716,
+          "text": "2026-11-28T05:49:15.9591444Z      | The required before-test source proof failed."
+        },
+        {
+          "line": 717,
+          "text": "2026-11-28T05:49:15.9986965Z ##[error]Process completed with exit code 1."
+        }
+      ],
+      "artifact": {
+        "id": 15250868046,
+        "name": "carr-required-source-1-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+        "size_in_bytes": 11669,
+        "digest": "sha256:48da24bce2f6da63e21ff70b1381da1bef258d33b684b897599aefa1e86d63ce",
+        "expired": false,
+        "workflow_run": {
+          "id": 46110647047,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+          "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+        },
+        "metadata_matches_closed_log": true
+      },
+      "log_characters": 80096
+    },
+    {
+      "partition": 2,
+      "job_id": 140873303877,
+      "name": "Required whole source partition 3 of 4 / Required integrated source 2 / Windows x64",
+      "job_status": "completed",
+      "conclusion": "failure",
+      "source_whole_suites_completed": 0,
+      "source_case_executions_completed": 0,
+      "failing_stage": "before-test source proof",
+      "trace": [
+        {
+          "line": 709,
+          "text": "2026-11-28T06:16:28.4577678Z Traceback (most recent call last):"
+        },
+        {
+          "line": 710,
+          "text": "2026-11-28T06:16:28.4584064Z   File \"<string>\", line 56, in <module>"
+        },
+        {
+          "line": 711,
+          "text": "2026-11-28T06:16:28.4584641Z ValueError: A source file changed while opening."
+        },
+        {
+          "line": 712,
+          "text": "2026-11-28T06:16:28.6343368Z Exception: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\check_integrated_source_shard.ps1:888"
+        },
+        {
+          "line": 713,
+          "text": "2026-11-28T06:16:28.6345439Z Line |"
+        },
+        {
+          "line": 714,
+          "text": "2026-11-28T06:16:28.6346070Z  888 |  … CODE -ne 0) { throw 'The required before-test source proof failed.' }"
+        },
+        {
+          "line": 715,
+          "text": "2026-11-28T06:16:28.6347133Z      |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        },
+        {
+          "line": 716,
+          "text": "2026-11-28T06:16:28.6348687Z      | The required before-test source proof failed."
+        },
+        {
+          "line": 717,
+          "text": "2026-11-28T06:16:28.6804699Z ##[error]Process completed with exit code 1."
+        }
+      ],
+      "artifact": {
+        "id": 15251582124,
+        "name": "carr-required-source-2-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+        "size_in_bytes": 11676,
+        "digest": "sha256:c380d664804e62087f00ed5c22c28ffc710e21168b021a3c13b7592a50ea6587",
+        "expired": false,
+        "workflow_run": {
+          "id": 46110647047,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+          "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+        },
+        "metadata_matches_closed_log": true
+      },
+      "log_characters": 80075
+    },
+    {
+      "partition": 3,
+      "job_id": 140873303824,
+      "name": "Required whole source partition 4 of 4 / Required integrated source 3 / Windows x64",
+      "job_status": "completed",
+      "conclusion": "failure",
+      "source_whole_suites_completed": 0,
+      "source_case_executions_completed": 0,
+      "failing_stage": "before-test source proof",
+      "trace": [
+        {
+          "line": 709,
+          "text": "2026-11-28T05:57:41.3781802Z Traceback (most recent call last):"
+        },
+        {
+          "line": 710,
+          "text": "2026-11-28T05:57:41.3787633Z   File \"<string>\", line 56, in <module>"
+        },
+        {
+          "line": 711,
+          "text": "2026-11-28T05:57:41.3788086Z ValueError: A source file changed while opening."
+        },
+        {
+          "line": 712,
+          "text": "2026-11-28T05:57:41.5541759Z Exception: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\check_integrated_source_shard.ps1:888"
+        },
+        {
+          "line": 713,
+          "text": "2026-11-28T05:57:41.5543759Z Line |"
+        },
+        {
+          "line": 714,
+          "text": "2026-11-28T05:57:41.5544582Z  888 |  … CODE -ne 0) { throw 'The required before-test source proof failed.' }"
+        },
+        {
+          "line": 715,
+          "text": "2026-11-28T05:57:41.5545516Z      |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        },
+        {
+          "line": 716,
+          "text": "2026-11-28T05:57:41.5546182Z      | The required before-test source proof failed."
+        },
+        {
+          "line": 717,
+          "text": "2026-11-28T05:57:41.5993705Z ##[error]Process completed with exit code 1."
+        }
+      ],
+      "artifact": {
+        "id": 15251240602,
+        "name": "carr-required-source-3-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+        "size_in_bytes": 11662,
+        "digest": "sha256:857e66a1afc66b7e4db14bbdc759e035e35c01eda8e03d5a235fbb9df8edd57b",
+        "expired": false,
+        "workflow_run": {
+          "id": 46110647047,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+          "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+        },
+        "metadata_matches_closed_log": true
+      },
+      "log_characters": 80080
+    }
+  ],
+  "planned": {
+    "whole_modules": 487,
+    "partition_modules": [
+      122,
+      122,
+      122,
+      121
+    ]
+  },
+  "actual": {
+    "completed_whole_suites": 0,
+    "completed_case_executions": 0,
+    "failure_count": 4
+  },
+  "diagnosis": {
+    "actual": "All four logs report Python line56 ValueError: A source file changed while opening; PowerShell check_integrated_source_shard.ps1 line888 refuses the before-test proof.",
+    "source_established": "CPython3.11.9 pathname stat adds execute suffix bits for .exe/.bat/.cmd/.com while descriptor fstat does not. Current full stamp comparison incorrectly requires those two representations equal.",
+    "limitation": "The old failed proof did not print the tracked pathname or identity tuple, so no specific failing tracked file is established by these logs.",
+    "repair_manifest": "3e5a823d4ede51c2f9879f57dada9fb268fb1812",
+    "repair_source": "a81ec5c2fa1bf1b2b49560246db259b45e9aac47",
+    "repair_status": "ACCEPTED_STATIC_NOT_RUN",
+    "repair_boundary": "Normalize only the documented cross Path/FD suffix comparison, retain full FD-to-FD and Path-to-Path identities and hashes; eight actual temporary-file controls precede the proof."
+  },
+  "full_source_qualification": "NOT_PASSED",
+  "refs_modified": false
+}

@@ -1,0 +1,293 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Canonical rich DOCX notes and inline pictures with existing partitioned translation",
+  "status": "DRAFT_NOT_RUN",
+  "requires_manifest": "7e9e39f2099e89e412036bb103b54aecdd03fa91",
+  "baseline_test_correction": "8caaeee36ca5a4fcfa05968ea701206396c1f8fa",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/extract/docx_rich.py",
+      "preimage": null,
+      "sha": "809217cb1718c7422bca6b13498a0f54f30862d3"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/docx_ordered.py",
+      "preimage": "a2f59b8b5840e2c425fe428fe856a20bbf9c424e",
+      "sha": "67fb9fe39762285be0af4038f524ccac4a66be60"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_docx_rich.py",
+      "preimage": null,
+      "sha": "0fb5c483bf503a79fb4b6372a8733558385394dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "preimage": "6430dea3a6c56e30e33ab958df653e8472b1f85e",
+      "sha": "ed5d9734edd89ac3c40ce19ccd6fc866f8c31d0f"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "preimage": "2428f4fa27656eb692f96ebdd2e665c46754c53e",
+      "sha": "f91173da3d90bb6b17be4d184799993ddfa91def"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "preimage": "c16d50ac29e2a89edc5d498a833108f0116d395b",
+      "sha": "db1fc8bc4c01149059cd8af346f23778fdc18855"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "preimage": "37a12fdba6d69ed7bb88961e38ea3a405b8920d5",
+      "sha": "6cab457cf792b39217f0c7733cf0ccf93234263d"
+    },
+    {
+      "path": "carr-library/scripts/translation_rich_docx_fixtures.py",
+      "preimage": null,
+      "sha": "2e36000ad9b6f2bdef4d6ae2a99cb4e696cc8d38"
+    },
+    {
+      "path": "carr-library/tests/extract/test_docx_rich.py",
+      "preimage": null,
+      "sha": "a58b721be5abc4f74016d9cbf7265d5cb8350b63"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx.py",
+      "preimage": null,
+      "sha": "0f59e27cf30a76636c61293a0e957a9be60d5918"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_rich_docx.py",
+      "preimage": null,
+      "sha": "2926bc215df907b8efd754c012942874953f8375"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx_cli.py",
+      "preimage": null,
+      "sha": "50319fe1b7c91561a6e1d3b42d2e01b6104a3115"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_rich_docx_smoke.py",
+      "preimage": null,
+      "sha": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "preimage": "f7a2de69fc679a734ffba5f1be5943531143bd74",
+      "sha": "826c94c39467df1087cb81d71278359aebb34f63"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "preimage": "e7957fa3785e5e7663403fe0b7189223f84ba7cf",
+      "sha": "3dff8332d0ee7507c9ee3dfaffac2eabff099796"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+      "preimage": "171600d9dd771a377e9170d2149d5e1c94ccc943",
+      "sha": "4b26382f7f71449f896ec7f29afd75f2ebd63824"
+    }
+  ],
+  "source": {
+    "profiles": [
+      "carr-docx-rich-source/1",
+      "carr-docx-rich-layout/1"
+    ],
+    "plain_compatibility": "Original branch records, warnings, provenance and full encoded identity unchanged without actual body rich constructs; no old record migration.",
+    "notes": "Exact canonical relationship/content type/part, unique normal ID↔body reference↔own first-paragraph label; independent note records retain part/kind/id/block locators after original body, first-reference order. No invented page or label/quote text. Ordinary preserved paragraph/run formatting is admitted in otherwise exact single-marker separators; the same global property-content refusal applies.",
+    "images": "Only ordinary internal inline PNG/JPEG, exact relationship/blob/header/dimensions/hash and canonical DrawingML marker identity; original bytes untouched, no OCR/rendering.",
+    "text": "Exact full original body+notes ReadingDocument and optional existing source_partition. Fixed pictures/note labels/references/bookmarks/proof markers and link boundaries delimit fragments; all nonblank source covered. Text/run/marker descendants inside preserved properties refused.",
+    "authority": "Original source, approval, account, whole-text partitions, ledger receipts, resource broker, owned Windows process, cleanup and protected no-clobber export reused. One existing translation/2 job; no extra store/queue.",
+    "publication": "Canonical replay proves exact expected text, unchanged locator/marker identity plus measured offset shifts, same image bytes and all unchanged ZIP members. Only main document and present note parts change. No postcommit callback.",
+    "limits": {
+      "archive_bytes": 67108864,
+      "source_characters": 2000000,
+      "nonempty_fragments": 2048,
+      "partition_ranges": 4096,
+      "canonical_records": 10000,
+      "notes": 2048,
+      "images": 2048,
+      "xml_nodes": 100000,
+      "xml_depth": 128
+    },
+    "limitations": [
+      "Whole-fragment first-run formatting, no per-word alignment",
+      "No Word pagination, Office interoperability/visual quality, language quality or quotation approval",
+      "Only simple rectangular tables; floating/linked pictures, fields, tracked/hidden/custom text, complex structures, nontrivial separators, signed/macro packages refused",
+      "Headers and image alternatives remain unchanged and untranslated",
+      "Original plain notes/drawings rejection becomes a closed separate validated profile only, not a relaxed generic guard"
+    ]
+  },
+  "tests": {
+    "counts_kind": "Static enumeration only; not parsed, collected or executed",
+    "suites": {
+      "tests/extract/test_docx_rich.py": 55,
+      "tests/assistant/test_translation_rich_docx.py": 17,
+      "tests/ui/test_translation_rich_docx.py": 5,
+      "tests/assistant/test_translation_rich_docx_cli.py": 4
+    },
+    "fixture_companions": [
+      "scripts/translation_rich_docx_fixtures.py",
+      "tests/assistant/test_translation_layout.py",
+      "tests/assistant/test_translation_layout_cli.py",
+      "tests/assistant/test_translation_local.py",
+      "tests/ui/test_translation_layout.py",
+      "tests/ui/test_translation_documents.py"
+    ],
+    "existing_required": [
+      "tests/extract/test_docx_ordered.py",
+      "tests/extract/test_docx_omitted_content.py",
+      "tests/extract/test_docx_hidden_styles.py",
+      "tests/ingest/test_application_atomic_docx_gate.py",
+      "tests/assistant/test_translation_partition.py",
+      "tests/assistant/test_translation_layout.py",
+      "tests/ui/test_translation_layout.py",
+      "tests/assistant/test_translation_layout_cli.py",
+      "tests/storage/test_backup_translation.py",
+      "tests/assistant/test_translation_epub_layout.py",
+      "tests/ui/test_translation_epub_layout.py",
+      "tests/assistant/test_translation_epub_cli.py"
+    ],
+    "key_negatives": [
+      "12 property-content body/note cases plus valid tabstop",
+      "Missing/duplicate/orphan/nested/wrong note identities and own labels",
+      "Missing/external/linked/corrupt/floating/nonpicture/zero-extent images",
+      "Unchanged hidden/field/custom/math refusals cover body and both notes",
+      "Actual fixed bookmark/proof marker offsets after text replacement",
+      "Exact old plain record/provenance wire",
+      "Real complete backup+delete old source/root/export+restore+offline export",
+      "Same-byte competing create remains FileExistsError",
+      "Source/root/mapping mutations before transfer or publication, no late committed observer",
+      "One saved rich partition, pause/resume no repeat, exact accepted plaintext/ledger outputs",
+      "Actual isolated CLI origin and ASCII JSON pipe"
+    ]
+  },
+  "native": {
+    "script": "scripts/windows_translation_rich_docx_smoke.py",
+    "args": [
+      "--source-root",
+      "SOURCE/src"
+    ],
+    "essential": [
+      "native Windows wx",
+      "actual canonical DOCX import",
+      "actual shared desktop executor",
+      "actual unchanged host worker",
+      "actual shared ProgressHub",
+      "actual retained catalog scope",
+      "existing document keyboard command retained",
+      "formatted workstation is a native modal",
+      "limitations visible before approval",
+      "source selection is readonly",
+      "format inspection sends no source text",
+      "rich source profile and limitations visible before approval",
+      "body and independent note canonical records bound",
+      "review binds mapping and source with no quotation authority",
+      "default-No decision saves no job and makes no request",
+      "preparation makes no provider call",
+      "one exact rich partition job",
+      "exact reviewed rich fragment requests",
+      "late Stop retains actual committed completion",
+      "completed export needs no active profile",
+      "exact committed DOCX receipt",
+      "all unselected DOCX parts preserved exactly",
+      "actual paragraph and simple-table translation",
+      "actual footnote and endnote text translated with exact locators",
+      "embedded picture bytes and identity retained",
+      "fixed bookmark proof and note marker identities retained",
+      "rich output binds every accepted fragment digest",
+      "original source bytes remain unchanged",
+      "completed export retains readable native status focus",
+      "existing DOCX export never overwritten",
+      "real installed formatting children completed",
+      "format resource leases quiescent",
+      "existing document workstation route preserved",
+      "host shutdown retains no failed cleanup owner",
+      "nested native failure unwinds only the active owned modal"
+    ],
+    "origins": [
+      "carr_library.assistant.translation_layout",
+      "carr_library.assistant.translation_layout_worker",
+      "carr_library.assistant.translation_documents",
+      "carr_library.assistant.translation",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.profiles",
+      "carr_library.ui.translation_documents",
+      "carr_library.ui.translation_layout",
+      "carr_library.research.export_file",
+      "carr_library.reader.reading_desk",
+      "carr_library.durable_state",
+      "carr_library.progress",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.audio.process",
+      "carr_library.operations.broker",
+      "carr_library.assistant.translation_partition",
+      "carr_library.assistant.translation_docx_rich",
+      "carr_library.extract.docx_ordered",
+      "carr_library.extract.docx_rich"
+    ],
+    "required_checks": 75,
+    "fixture_script": "scripts/translation_rich_docx_fixtures.py",
+    "fixture_blob": "2e36000ad9b6f2bdef4d6ae2a99cb4e696cc8d38",
+    "required_fields": {
+      "status": "PASS",
+      "native_keyboard": "PASS",
+      "format_children": "PASS",
+      "source_bound_docx": "PASS",
+      "rich_source_mapping": "PASS",
+      "independent_notes": "PASS",
+      "fixed_markers": "PASS",
+      "original_media": "PASS",
+      "package_preservation": "PASS",
+      "completed_offline_export": "PASS",
+      "late_stop_completion": "PASS",
+      "controlled_pickers_and_consent": true,
+      "real_translation_service": "NOT_RUN",
+      "translation_quality": "NOT_RUN",
+      "Word_layout": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "native_failure_cleanup": "PASS"
+    },
+    "fixture_hash_check": "Report fixture_sha256 equals checked-out helper bytes; probe rechecks after actual host Close/drain",
+    "audio_prerequisite": false,
+    "watchdog_seconds": 180,
+    "scope": "Installed source identities before/after, actual wx keyboard/host/executor/ProgressHub/format child/publication; controlled pickers/consent/local HTTP only. No Office/model/hardware claim."
+  },
+  "backup": "No new namespace or whole shared-file replacement. Existing exact retained asset/revision/translation source/ledger/copied-DB validators remain authoritative; profile added only to closed partition enum. Actual full roundtrip regression supplied, NOT_RUN.",
+  "reviews": [
+    {
+      "reviewer": "root",
+      "finding": "Fixed bookmark/proof boundaries could otherwise be crossed",
+      "resolution": "Flush and hash every fixed marker; actual generated fixture verifies original nodes and new exact offsets"
+    },
+    {
+      "reviewer": "canonical",
+      "finding": "Malformed text below skipped property containers could be omitted by both text walks",
+      "resolution": "Existing bounded tree propagates property context; body/note negatives retain rich trigger; legitimate tab-stop regression",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "canonical",
+      "scope": "Ordinary note graph, immutable media, no fixed provenance3-key blocker",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "self",
+      "finding": "Exact single-marker separators unnecessarily rejected ordinary nontext paragraph/run properties",
+      "resolution": "Reuse bounded no-content property admission; generated footnote/endnote cases verify unchanged separator XML after actual format rendering",
+      "status": "DRAFT_NOT_RUN"
+    },
+    {
+      "reviewer": "root",
+      "finding": "Native failure could EndModal a suspended parent and bypass active-loop ordering",
+      "resolution": "Exact owned window/handle/loop, queued active-only unwind and actual nested failure control across all three siblings; host Close/drain preserved",
+      "status": "DRAFT_NOT_RUN"
+    },
+    {
+      "reviewer": "canonical",
+      "scope": "Final separator properties and55 extractor-case test source",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "execution": "Executor unavailable; all new rich parsing, test collection, portable/source/installed/native results NOT_RUN. Existing plain/partition/EPUB results do not qualify this new profile.",
+  "sibling_native_correction": "abafa33ecb95cce140081b4632f6c30af951b842"
+}

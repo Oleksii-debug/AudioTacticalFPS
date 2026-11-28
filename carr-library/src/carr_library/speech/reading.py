@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import difflib
+import io
 import json
 import os
 from pathlib import Path
@@ -82,15 +83,18 @@ def _unique(pairs):
     return value
 
 
-def _validated_source_anchor(value, text):
-    """Validate a retained-source locator as data, not as quotation authority.
+def _validated_source_anchor(value, text=None, *, source_characters=None):
+    """Validate retained-source shape; with text, also verify its exact slices.
 
-    The library still must authorize and resolve each ReadingLocation. A portable
-    file may be edited externally; this checks its internal structure and exact
-    snapshot slices, not the truth of its claimed library identity.
+    Shape-only callers inspect inert derivative receipts, not source authority.
+    The library still must authorize and resolve each ReadingLocation.
     """
     from ..reader.reading_state import ReadingLocation
 
+    if text is not None:
+        source_characters = len(text)
+    if type(source_characters) is not int or not 0 <= source_characters <= 2_000_000:
+        raise ValueError('Invalid reading-copy source length.')
     if (type(value) is not dict or set(value) != {'workspace', 'edition', 'revision',
             'asset_sha256', 'positions', 'quotation_authority'}
             or value['quotation_authority'] is not False
@@ -103,7 +107,7 @@ def _validated_source_anchor(value, text):
                 'start', 'end', 'text_sha256', 'text_verified_at_capture'}
                 or type(row['ordinal']) is not int or not 1 <= row['ordinal'] <= 10000
                 or type(row['start']) is not int or type(row['end']) is not int
-                or not 0 <= row['start'] <= row['end'] <= len(text)
+                or not 0 <= row['start'] <= row['end'] <= source_characters
                 or type(row['text_verified_at_capture']) is not bool):
             raise ValueError('Invalid reading-copy source position.')
         ReadingLocation(value['workspace'], value['edition'], value['revision'],
@@ -114,12 +118,13 @@ def _validated_source_anchor(value, text):
         elif (row['ordinal'] != previous['ordinal'] + 1
               or row['kind'] != previous['kind'] or row['index'] <= previous['index']
               or row['start'] != previous['end'] + 2
-              or text[previous['end']:row['start']] != '\n\n'):
+              or (text is not None and text[previous['end']:row['start']] != '\n\n')):
             raise ValueError('Invalid source position order or narration separator.')
-        if sha256(text[row['start']:row['end']].encode('utf-8')).hexdigest() != row['text_sha256']:
+        if (text is not None and sha256(text[row['start']:row['end']].encode('utf-8')).hexdigest()
+                != row['text_sha256']):
             raise ValueError('Reading-copy source position checksum mismatch.')
         previous = row
-    if previous['end'] != len(text):
+    if previous['end'] != source_characters:
         raise ValueError('Unmapped text follows the last source position.')
     return deepcopy(value)
 
@@ -172,6 +177,33 @@ def _import_pre_release_anchor(value, text):
     return anchor
 
 
+def _pronunciation_rewrite(value, matches, cancelled):
+    """Admit each segment before allocating a bounded replacement document."""
+    position = size = 0
+    with io.StringIO() as output:
+        for number, row in enumerate(matches):
+            if number % 128 == 0:
+                check_cancelled(cancelled)
+            if (type(row) not in (tuple, list) or len(row) != 3
+                    or type(row[0]) is not int or type(row[1]) is not int
+                    or not position <= row[0] <= row[1] <= len(value)
+                    or type(row[2]) is not str):
+                raise ValueError('Invalid pronunciation substitution result.')
+            start, end, replacement = row
+            size += start - position + len(replacement)
+            if size > 2_000_000:
+                raise ValueError('Pronunciation output exceeds its character budget. Split it into chapters.')
+            output.write(value[position:start])
+            output.write(replacement)
+            position = end
+        size += len(value) - position
+        if size > 2_000_000:
+            raise ValueError('Pronunciation output exceeds its character budget. Split it into chapters.')
+        check_cancelled(cancelled)
+        output.write(value[position:])
+        return text_value(output.getvalue(), 'pronunciation output', empty=True)
+
+
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
     def __init__(self, source_text, *, title='Reading copy', source_path=None, source_anchor=None):
@@ -184,6 +216,7 @@ class ReadingDocument:
         self._anchor_signature = json.dumps(self._source_anchor, sort_keys=True, ensure_ascii=False)
         self._states = [_original_runs(self._source, self._source_anchor)]
         self._edits = []
+        self._bookmarks = ()
         self._position = 0
         self._saved_path = None
         self._saved_digest = None
@@ -229,9 +262,40 @@ class ReadingDocument:
     def dirty(self):
         return self._signature() != self._saved_signature
 
-    def _signature(self):
+    def _text_signature(self):
         return (self.title, self._source_hash, self._anchor_signature, self._position,
                 tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
+
+    def _signature(self):
+        base = self._text_signature()
+        return base + (self._bookmarks,) if self._bookmarks else base
+
+    @property
+    def bookmarks(self):
+        return self._bookmarks
+
+    def add_bookmark(self, label, offset):
+        from .marks import MAX_MARKS, ReadingBookmark
+        if len(self._bookmarks) >= MAX_MARKS:
+            raise ValueError('Keep at most 256 bookmarks in one reading copy.')
+        bookmark = ReadingBookmark.create(label, self.text, offset)
+        self._bookmarks = (*self._bookmarks, bookmark)
+        return bookmark
+
+    def remove_bookmark(self, identity):
+        if not any(item.id == identity for item in self._bookmarks):
+            raise ValueError('Choose an existing reading-copy bookmark.')
+        self._bookmarks = tuple(item for item in self._bookmarks if item.id != identity)
+
+    def bookmark_position(self, identity):
+        from .marks import text_digest
+        bookmark = next((item for item in self._bookmarks if item.id == identity), None)
+        if bookmark is None:
+            raise ValueError('Choose an existing reading-copy bookmark.')
+        if bookmark.text_sha256 != text_digest(self.text):
+            raise ValueError('The reading text changed since this bookmark. Undo to that version or create a new bookmark.')
+        self._range(bookmark.offset, bookmark.offset)
+        return bookmark.offset
 
     def _range(self, start, end):
         if type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(self.text):
@@ -319,8 +383,9 @@ class ReadingDocument:
         rules = tuple(rules)
         if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
             raise ValueError('Use at most 1000 validated pronunciation rules.')
-        # Compute on a private clone first: errors/cancel never leave partial edits.
-        clone = ReadingDocument(self.text)
+        # Only the final working value enters undo history. A thousand rules
+        # must not create a thousand transient copies or consume edit slots.
+        value = self.text
         for rule in sorted(rules, key=lambda r: bool(r.language) + 2 * bool(r.voice_id)):
             check_cancelled(cancelled)
             if rule.language and rule.language != language:
@@ -328,23 +393,20 @@ class ReadingDocument:
             if rule.voice_id and rule.voice_id != voice_id:
                 continue
             if rule.regex:
-                payload = json.dumps({'text': clone.text, 'pattern': rule.pattern,
+                payload = json.dumps({'text': value, 'pattern': rule.pattern,
                     'replacement': rule.replacement, 'ignore_case': rule.ignore_case}, ensure_ascii=False).encode('utf-8')
                 reply, _, _ = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-S', str(Path(__file__).with_name('regex_worker.py'))],
                                           input_bytes=payload, timeout=timeout, cancelled=cancelled)
                 matches = json.loads(reply.decode('utf-8'))['matches']
-                result, position = [], 0
-                for start, end, replacement in matches:
-                    result.extend((clone.text[position:start], replacement))
-                    position = end
-                result.append(clone.text[position:])
-                value = ''.join(result)
+                if type(matches) is not list or len(matches) > 10000:
+                    raise ValueError('Invalid pronunciation substitution result.')
             else:
-                flags = re.IGNORECASE if rule.ignore_case else 0
-                value = re.sub(re.escape(rule.pattern), lambda match: rule.replacement, clone.text, flags=flags)
-            clone.set_text(value)
+                pattern = re.compile(re.escape(rule.pattern), re.IGNORECASE if rule.ignore_case else 0)
+                matches = ((match.start(), match.end(), rule.replacement)
+                           for match in pattern.finditer(value))
+            value = _pronunciation_rewrite(value, matches, cancelled)
         check_cancelled(cancelled)
-        return self.set_text(clone.text, label='Pronunciation reading layer')
+        return self.set_text(value, label='Pronunciation reading layer')
 
     def to_dict(self):
         data = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
@@ -353,6 +415,9 @@ class ReadingDocument:
         if self._source_anchor is not None:
             data['schema'] = 'carr.reading-copy.v2'
             data['source_anchor'] = self.source_anchor
+        if self._bookmarks:
+            data['schema'] = 'carr.reading-copy.v3'
+            data['bookmarks'] = [bookmark.to_dict() for bookmark in self._bookmarks]
         return data
 
     def save(self, path, *, cancelled=lambda: False):
@@ -415,7 +480,19 @@ class ReadingDocument:
             raise ValueError('Invalid reading-project fields.')
         version = data.get('schema')
         pre_release = False
-        if version == 'carr.reading-copy.v1' and set(data) == fields:
+        bookmarks = ()
+        if (version == 'carr.reading-copy.v3'
+                and set(data) in (fields | {'bookmarks'}, fields | {'bookmarks', 'source_anchor'})):
+            from .marks import validate_bookmarks
+            bookmarks = validate_bookmarks(data['bookmarks'])
+            anchor = data.get('source_anchor')
+            if 'source_anchor' in data:
+                if type(anchor) is not dict:
+                    raise ValueError('Invalid reading-project source anchor.')
+                if 'schema' in anchor:
+                    anchor = _import_pre_release_anchor(anchor, data['source_text'])
+                    pre_release = True
+        elif version == 'carr.reading-copy.v1' and set(data) == fields:
             anchor = None
         elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_anchor'}
                 and type(data['source_anchor']) is dict):
@@ -438,6 +515,7 @@ class ReadingDocument:
         if type(data['revision']) is not int or not 0 <= data['revision'] <= len(data['edits']):
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']
+        document._bookmarks = bookmarks
         document._pre_release_format = pre_release
         return document
 
@@ -451,20 +529,27 @@ class ReadingDocument:
         return digest(target)
 
 
-def export_dictionary(rules, path):
+def export_dictionary(rules, path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     rules = tuple(rules)
     if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
         raise ValueError('Use at most 1000 validated pronunciation rules.')
     payload = json.dumps({'schema': 'carr.pronunciations.v1', 'rules': [asdict(rule) for rule in rules]}, ensure_ascii=False)
-    with new_output(path) as temporary:
+    with new_output(path, cancelled=cancelled) as temporary:
         temporary.write_text(payload, encoding='utf-8')
 
 
-def import_dictionary(path):
+def import_dictionary(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     source = local_file(path)
     if source.stat().st_size > 8_000_000:
         raise ValueError('The pronunciation dictionary exceeds its size budget.')
-    data = json.loads(source.read_text(encoding='utf-8'), object_pairs_hook=_unique)
+    with source.open('rb') as stream:
+        payload = stream.read(8_000_001)
+    check_cancelled(cancelled)
+    if len(payload) > 8_000_000:
+        raise ValueError('The pronunciation dictionary exceeds its size budget.')
+    data = json.loads(payload.decode('utf-8'), object_pairs_hook=_unique)
     if not isinstance(data, dict) or set(data) != {'schema', 'rules'} or data['schema'] != 'carr.pronunciations.v1':
         raise ValueError('Unsupported pronunciation dictionary.')
     if not isinstance(data['rules'], list) or len(data['rules']) > 1000:

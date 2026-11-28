@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "status": "SOURCE_COMPOSED_FRESH_CI_REQUIRED",
+  "integration_parent": "f68c53fb653812d4da838fa67d92941e7017eadb",
+  "canonical_parent": "a44fac04072389caa40e0d6e799b13797712f797",
+  "preserved": [
+    "Bounded export descriptor hashing, metadata refusal before handle reads, cleanup receipts, actual-native and portable-native regression assertions.",
+    "73 inert narration receipt cases; physical source captions also cover raster pages.",
+    "Canonical optional ASR recognition-cache policy ported into the existing canonical implementation and dual-schema wrapper, without replacing old protocol support.",
+    "All128 canonical cache layout/inclusion cases plus real restore rejection case and all current14 cases."
+  ],
+  "files": [
+    {
+      "path": "carr-library/docs/PRIMARY_STATE_BACKUP.md",
+      "sha": "5f45fcaeae604dbcce8f9977e26babdfee71862b",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "7156285a9254bcec66088cb2b53928180c40a171",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "sha": "b5ef583cedcf120b9a0a03369e10b07631a01722",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_backup.py",
+      "sha": "ba9889e81a8d0cf85dfc567cf0ebf8a0812a21ad",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/tests/storage/test_transcription_backup.py",
+      "sha": "e1b61592543d840abe092958b3daecc61affd9e2",
+      "from": "canonical-asr-cache-composition"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_reconciliation.py",
+      "sha": "474a72e6d3f7c62bdb0bfb4ed748d11c6ef3a21a",
+      "from": "combined-export-28"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/narration_receipt.py",
+      "sha": "ca91ea958c84d4056768d2b42a74e31654f9eecb",
+      "from": "incoming-narration-physical-locator"
+    },
+    {
+      "path": "carr-library/tests/speech/test_narration_receipt.py",
+      "sha": "e90777a844f2a3775e942735e5e4e669d98c7352",
+      "from": "incoming-narration-73"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "335fd4d03ed4e612d628ec2f93b615feba49e97d",
+      "from": "incoming-strong-export"
+    }
+  ]
+}

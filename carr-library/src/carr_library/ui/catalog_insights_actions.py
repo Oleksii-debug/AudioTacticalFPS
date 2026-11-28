@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
-from ..research.export_file import write_export, export_completion
+from ..research.export_file import write_export
 from .export_destination import confirm_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
@@ -234,7 +234,8 @@ class CatalogInsightsActions:
                 self._cancel(scope)
                 return
             path = Path(path)
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
+            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root,
+                                                   title='Replace source comparison matrix')
             if approval is None:
                 self._cancel(scope)
                 return
@@ -251,7 +252,7 @@ class CatalogInsightsActions:
                 # atomic publication. No reads of frame.library occur here.
                 self._authorize(scope, collection, cancellable=True)
                 receipt = write_export(path, text, private_root=scope.library.root,
-                                       cancelled=scope.cancel_event.is_set, approval=approval)
+                             cancelled=scope.cancel_event.is_set, approval=approval)
                 # Once publication succeeds, cancellation cannot undo it. A
                 # receipt lets the callback describe that outcome truthfully.
                 return _ExportReceipt(path, format, getattr(receipt, 'cleanup_warning', None))
@@ -263,13 +264,13 @@ class CatalogInsightsActions:
                     self._authorize(scope, collection, cancellable=True)
                 except Exception:
                     if not getattr(self.frame, '_closing', False):
-                        self.frame.report(export_completion(
-                            'The matrix file was saved before cancellation or a library change '
-                            'was detected. Reopen the command to make a current report.', result))
+                        self.frame.report('The matrix file was saved before cancellation or a library change '
+                                          'was detected. Reopen the command to make a current report.'
+                                          + ('\n' + result.cleanup_warning if result.cleanup_warning else ''))
                     return
-                self.frame.report(export_completion(
-                    'Source comparison matrix saved to ' + display_value(str(path))
-                    + '. Quotations and notes are not included.', result))
+                self.frame.report('Source comparison matrix saved to ' + display_value(str(path))
+                                  + '. Quotations and notes are not included.'
+                                  + ('\n' + result.cleanup_warning if result.cleanup_warning else ''))
 
             self.frame.run_job('Exporting source comparison matrix', operation, done,
                                lambda error: self._failed(title, error))

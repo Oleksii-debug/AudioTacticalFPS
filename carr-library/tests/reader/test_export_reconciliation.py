@@ -1,6 +1,7 @@
 """Cross-candidate export guards on the canonical native metadata/receipt API."""
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -126,8 +127,12 @@ def test_mismatched_existing_approval_rejected_before_open(tmp_path, monkeypatch
     private = tmp_path / 'private'
     approval = e.capture_export_destination(first, private_root=private)
     actual_private = tmp_path / 'other-private' if mismatch == 'private_root' else private
-    opened = []
-    real_open = os.open
+    opened, inspected = [], []
+    real_open, real_destination = os.open, e._destination
+    def inspect(path, private_root):
+        inspected.append(path)
+        return real_destination(path, private_root)
+    monkeypatch.setattr(e, '_destination', inspect)
     def observed(path, *args, **kwargs):
         if Path(path) == target:
             opened.append(path.name)
@@ -139,6 +144,7 @@ def test_mismatched_existing_approval_rejected_before_open(tmp_path, monkeypatch
     assert target.read_bytes() == b'Independent work'
     assert not list(tmp_path.glob('.research-export-*'))
     assert not opened
+    assert not inspected
 
 
 @pytest.mark.parametrize('phase', ('before-write', 'after-staging'))
@@ -165,16 +171,74 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
             replace_destination()
         monkeypatch.setattr(e.os, 'fsync', competing_writer)
 
-    opened = []
-    real_open = os.open
+    opened, native_queries = [], []
+    real_open, real_native = os.open, e._windows_change_time
     def observe(path, *args, **kwargs):
         if changed and Path(path) == target:
             opened.append(path)
         return real_open(path, *args, **kwargs)
+    def native_metadata(path):
+        if changed and Path(path) == target:
+            native_queries.append(path)
+        return real_native(path)
     monkeypatch.setattr(e.os, 'open', observe)
+    monkeypatch.setattr(e, '_windows_change_time', native_metadata)
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert changed
-    assert not opened
+    assert not opened and not native_queries
     assert target.read_bytes() == unrelated
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('phase', ('explicit', 'approved-absence', 'before-write', 'after-staging'))
+def test_unapproved_windows_native_metadata_is_not_queried(publication, monkeypatch, phase):
+    target, private, publish = publication
+    windows_os = SimpleNamespace(**vars(os))
+    windows_os.name = 'nt'
+    monkeypatch.setattr(e, 'os', windows_os)
+    changed = False
+    native_queries = []
+
+    def query(path):
+        if changed:
+            pytest.fail('A known unapproved destination must not open a native metadata handle.')
+        native_queries.append(path)
+        return 12345678
+
+    monkeypatch.setattr(e, '_windows_change_time', query)
+    approval = None
+    if phase in ('before-write', 'after-staging'):
+        target.write_bytes(b'Approved original')
+        approval = e.capture_export_destination(target, private_root=private)
+        assert native_queries
+    elif phase == 'approved-absence':
+        approval = e.capture_export_destination(target, private_root=private)
+    replacement = target.with_name('unrelated')
+    unrelated = b'Independent replacement of different length'
+    replacement.write_bytes(unrelated)
+
+    def replace_destination():
+        nonlocal changed
+        os.replace(replacement, target)
+        changed = True
+
+    if phase == 'after-staging':
+        fsync = os.fsync
+
+        def competing_writer(fd):
+            fsync(fd)
+            replace_destination()
+
+        monkeypatch.setattr(e.os, 'fsync', competing_writer)
+    else:
+        replace_destination()
+
+    if phase == 'explicit':
+        with pytest.raises(FileExistsError):
+            publish(require_absent=True)
+    else:
+        with pytest.raises(ValueError, match='destination changed'):
+            publish(approval=approval)
+    assert changed and target.read_bytes() == unrelated
     assert not list(target.parent.glob('.research-export-*'))

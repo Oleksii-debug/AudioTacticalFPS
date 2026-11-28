@@ -1,0 +1,230 @@
+{
+  "schema": 1,
+  "kind": "remote-stt-native-parent-refresh-correction",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "a7205dd2a49328d820be858fd06e739340f791ae",
+  "base_tree": "7cce3541d4bfffc4977d092c08f247798188e0d4",
+  "component_manifest": "20711bab4b5a77221f7059b40e7e8f3a0ccf861d",
+  "actual_evidence": "4eb3c9e643330fbea8d7ab5431966a10d3f9a408",
+  "paths": [
+    {
+      "path": "carr-library/scripts/windows_transcription_remote_smoke.py",
+      "preimage": "62e7d85daf58c7aeadbc83fa8cc2227e09825103",
+      "blob_sha": "bc32ee0a787bd70e67d0b6fab5c64ff9f0d91309",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_remote.py",
+      "preimage": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29",
+      "blob_sha": "fff4d63049cb191c56be757ec2e3f7a3c14e387d",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "preimage": "c0f0f2a2abac8fb5d50f63020da136acc0868d1f",
+      "blob_sha": "429faf6f460ac9480cc4d026a8ea703d737a50ac",
+      "exact_readback": true
+    },
+    {
+      "path": ".github/workflows/carr-remote-stt.yml",
+      "preimage": "4b0c8796c81cc2bbf04c16e775fe50844b3bffe3",
+      "blob_sha": "5f79bab970d6038f3fa782bec3bbccc8472f283c",
+      "exact_readback": true
+    }
+  ],
+  "diagnosis": {
+    "runtime": "Last required PASS was cancelled queued review; old focus message did not name the yielded control. Actual cleanup subsequently passed.",
+    "source": "Returning the second remote child calls the existing parent refresh(current), which starts retained-text reading and disables parent Close. The old native driver requested Close focus immediately after child HWND destruction.",
+    "correction": "Wait for the exact same parent modal, actual original host worker idle and real Close enabled before unchanged native keyboard helper. Keep five-second focus bound; add only bounded requested window/control names to its diagnostic.",
+    "product_change": false,
+    "remaining": "A fresh native run must establish the actual corrected outcome."
+  },
+  "suite": {
+    "path": "tests/ui/test_transcription_remote.py",
+    "count": 18,
+    "old_count": 17,
+    "functions": [
+      "test_review_is_local_shows_exact_bytes_destination_and_local_budget",
+      "test_unchecked_consent_refuses_even_after_local_review",
+      "test_explicit_default_no_or_yes_uses_one_existing_worker_and_retained_receipt",
+      "test_current_inputs_cannot_reuse_an_earlier_transfer_review",
+      "test_modal_confirmation_rechecks_current_view_and_selected_recording",
+      "test_queued_close_cancels_before_source_retention_or_remote_admission",
+      "test_busy_close_requests_stop_and_keeps_host_ownership_until_settlement",
+      "test_late_completed_receipt_is_retained_without_touching_a_replaced_view",
+      "test_actual_same_path_library_change_refuses_queued_remote_work_without_canary_writes",
+      "test_host_admission_refusal_never_leaves_a_busy_remote_child",
+      "test_repeated_close_never_repeats_the_modal_finish",
+      "test_native_parent_close_waits_for_actual_refresh_and_enabled_modal_control"
+    ],
+    "companions": [
+      "tests/transcription/remote_fixture.py",
+      "scripts/windows_transcription_remote_smoke.py"
+    ],
+    "old_test_prefix_exact": true,
+    "new_case": "Actual main/direct close_parent generator verifies pending worker, disabled button, nonmodal refusal, admitted keyboard only after readiness and subsequent HWND disappearance."
+  },
+  "offline_gate": {
+    "whole_suites": 3,
+    "source_cases": 86,
+    "installed_cases": 86,
+    "existing_other_suites": {
+      "tests/assistant/test_transcription_provider.py": 39,
+      "tests/transcription/test_remote_service.py": 29
+    }
+  },
+  "loopback_gate": {
+    "source_cases": 6,
+    "installed_cases": 6,
+    "unchanged": true
+  },
+  "native_gate": {
+    "required_checks": [
+      "owned failure answers native No before closing only the active inner modal",
+      "transfer confirmation defaults to the actual owned No button",
+      "registered transcription keeps its existing local default controls",
+      "remote child borrows exact local parent and original shared executor",
+      "opening remote transcription grants no transfer consent or implicit work",
+      "actual local review binds original bytes and normal retention without a child call",
+      "review alone leaves actual native consent unchecked and Send disabled",
+      "actual native Space grants only the reviewed selected-recording checkbox",
+      "observed default No retains no remote job or usage reservation",
+      "one explicit Yes runs one current Gateway child on the shared host worker",
+      "actual retained transcript has exact source and inactive public provider snapshot",
+      "real usage and retained remote receipt expose provider timestamps without local inference",
+      "completed child settles its actual Windows Job before returning the transcript",
+      "native completion clears review and permission before another transfer",
+      "existing transcription editor displays the verified remote text",
+      "native edit keeps original audio and recognition text unchanged",
+      "busy native Close requests cancellation and retains the current modal until settlement",
+      "cancelled queued review creates no second job or provider attempt",
+      "all explicit picker answers remain bound to the selected original",
+      "actual remote transcription controls use native Windows wx",
+      "existing host registry retains its explicit transcription command",
+      "one existing host menu opens the shared transcription workflow",
+      "actual host Close drains original shared worker and finalizers",
+      "all actual STT Job handles are settled before fallback cleanup",
+      "no STT resource lease survives actual host cleanup",
+      "synthetic STT fixture remains byte-identical through owner cleanup",
+      "actual remote-STT nested failure control completed",
+      "exact installed source: carr_library.application",
+      "exact installed source: carr_library.transcription",
+      "exact installed source: carr_library.assistant.models",
+      "exact installed source: carr_library.assistant.profiles",
+      "exact installed source: carr_library.assistant.providers",
+      "exact installed source: carr_library.assistant.credentials",
+      "exact installed source: carr_library.assistant.transcription_provider",
+      "exact installed source: carr_library.assistant.transcription_worker",
+      "exact installed source: carr_library.integrations.transcription_remote",
+      "exact installed source: carr_library.integrations.transcription_remote_values",
+      "exact installed source: carr_library.integrations.transcription_values",
+      "exact installed source: carr_library.backup_transcription",
+      "exact installed source: carr_library.backup_producers",
+      "exact installed source: carr_library.ui.transcription_dialog",
+      "exact installed source: carr_library.ui.transcription_remote_dialog",
+      "exact installed source: carr_library.ui.desktop_app",
+      "exact installed source: carr_library.ui.worker_lifetime",
+      "exact installed source: carr_library.operations.broker",
+      "exact installed source: carr_library.audio.process",
+      "exact installed source: carr_library.audio.windows_job",
+      "exact installed source: carr_library.audio.voice_transport",
+      "exact installed source: carr_library.native_runtime",
+      "exact installed source: carr_library.durable_state",
+      "unchanged installed source after cleanup: carr_library.application",
+      "unchanged installed source after cleanup: carr_library.transcription",
+      "unchanged installed source after cleanup: carr_library.assistant.models",
+      "unchanged installed source after cleanup: carr_library.assistant.profiles",
+      "unchanged installed source after cleanup: carr_library.assistant.providers",
+      "unchanged installed source after cleanup: carr_library.assistant.credentials",
+      "unchanged installed source after cleanup: carr_library.assistant.transcription_provider",
+      "unchanged installed source after cleanup: carr_library.assistant.transcription_worker",
+      "unchanged installed source after cleanup: carr_library.integrations.transcription_remote",
+      "unchanged installed source after cleanup: carr_library.integrations.transcription_remote_values",
+      "unchanged installed source after cleanup: carr_library.integrations.transcription_values",
+      "unchanged installed source after cleanup: carr_library.backup_transcription",
+      "unchanged installed source after cleanup: carr_library.backup_producers",
+      "unchanged installed source after cleanup: carr_library.ui.transcription_dialog",
+      "unchanged installed source after cleanup: carr_library.ui.transcription_remote_dialog",
+      "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+      "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+      "unchanged installed source after cleanup: carr_library.operations.broker",
+      "unchanged installed source after cleanup: carr_library.audio.process",
+      "unchanged installed source after cleanup: carr_library.audio.windows_job",
+      "unchanged installed source after cleanup: carr_library.audio.voice_transport",
+      "unchanged installed source after cleanup: carr_library.native_runtime",
+      "unchanged installed source after cleanup: carr_library.durable_state"
+    ],
+    "unique_required_checks": 73,
+    "origin_modules": [
+      "carr_library.application",
+      "carr_library.transcription",
+      "carr_library.assistant.models",
+      "carr_library.assistant.profiles",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.credentials",
+      "carr_library.assistant.transcription_provider",
+      "carr_library.assistant.transcription_worker",
+      "carr_library.integrations.transcription_remote",
+      "carr_library.integrations.transcription_remote_values",
+      "carr_library.integrations.transcription_values",
+      "carr_library.backup_transcription",
+      "carr_library.backup_producers",
+      "carr_library.ui.transcription_dialog",
+      "carr_library.ui.transcription_remote_dialog",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.operations.broker",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.voice_transport",
+      "carr_library.native_runtime",
+      "carr_library.durable_state"
+    ],
+    "origin_count": 23,
+    "pass_fields": [
+      "status",
+      "native_keyboard",
+      "explicit_approval",
+      "retained_remote_receipt",
+      "queued_cancel_close",
+      "native_host_cleanup",
+      "native_failure_cleanup"
+    ],
+    "not_run_fields": [
+      "paid_provider_call",
+      "acoustic_quality",
+      "language_coverage",
+      "manual_nvda"
+    ],
+    "multiplicity": {
+      "transfer confirmation defaults to the actual owned No button": 2
+    },
+    "synthetic_transport": true,
+    "picker": "explicit fixture file selection; system picker not automated"
+  },
+  "limits": {
+    "source_seconds": 1300,
+    "installed_child_seconds": 600,
+    "loopback_child_seconds": 600,
+    "native_parent_seconds": 330,
+    "native_watchdog_seconds": 300,
+    "focus_seconds": 5,
+    "parent_refresh_wait_seconds": 45,
+    "workflow_helper_minutes": 100,
+    "job_minutes": 120
+  },
+  "inverse_audit": {
+    "native_three_hunks": true,
+    "old_tests_exact_prefix": true,
+    "helper_four_replacements": true,
+    "workflow_only_helper_pin_and_six_85_to_86": true
+  },
+  "pending_composition": "Root independently owns broker f095 pin reconciliation. This exact helper successor does not overwrite or include that separate pending pin; compose against its exact current blob.",
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact native lifetime/control diff, actual AST regression, copied companion and helper/workflow counts/pins; unchanged old controls and deadlines."
+  },
+  "execution": "NOT_RUN"
+}

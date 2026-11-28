@@ -1,0 +1,78 @@
+{
+  "schema": "carr-bounded-source-handoff/1",
+  "created_utc": "2026-11-28 00:40:55 UTC",
+  "status": "STATIC_NOT_RUN",
+  "scope": "Empty disabled ODF master-page header/footer compatibility only",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_head": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "old": "238207043c10273984fe2244153f5cf965bc9ade",
+      "new": "f2f712af05cdf154bd4633ba818661b926a954a7"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "old": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4",
+      "new": "fbf155467e7217eb1870167849241756690d01cb"
+    }
+  ],
+  "tests": {
+    "whole_suite": "tests/extract/test_document_formats_xml.py",
+    "before_cases": 95,
+    "after_static_cases": 114,
+    "old_test_bytes": "UNCHANGED_PREFIX",
+    "after_functions": 44,
+    "new_functions": [
+      "test_empty_disabled_odf_master_header_footer_preserves_exact_visible_sheet",
+      "test_disabled_odf_header_exception_never_admits_hidden_or_misplaced_content",
+      "test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_scan"
+    ],
+    "new_case_counts": [
+      6,
+      12,
+      1
+    ],
+    "companions": [],
+    "execution": "NOT_RUN"
+  },
+  "behavior": {
+    "admitted": "Only the six documented elements under document-styles/master-styles/master-page, with the sole display=false attribute, zero children and whitespace-only or absent text/tail.",
+    "preserved": [
+      "Complete per-element cancellation/visibility traversal",
+      "Active and conditional text refusal",
+      "All other text:display, fo:visibility and style:display refusals",
+      "Inherited spreadsheet visibility checks",
+      "Existing incomplete-reading-copy warning",
+      "Every old hidden-content test and source-byte assertion"
+    ]
+  },
+  "actual_evidence": {
+    "manifest": "d59209010842f15ebe1e3f474ca21f8496020659",
+    "head": "7beb65f317e8ceddb385048c1c442342f0bf608c",
+    "run": 46086133789,
+    "job": 140796017523,
+    "observed": "Both source and installed actual XLS conversion failed on styles.xml/style:header-left/style:display after actual DOC and PPT passed.",
+    "limit": "The generated XLS-to-ODS archive was not retained. Exact exporter source explains a valid empty shape; the new native run must prove the fixture reaches that shape and then completes. No native result is claimed."
+  },
+  "primary_sources": [
+    {
+      "url": "https://docs.oasis-open.org/office/OpenDocument/v1.3/os/part3-schema/OpenDocument-v1.3-os-part3-schema.html",
+      "sections": [
+        "16.10–16.15",
+        "19.475"
+      ],
+      "finding": "The display flag belongs to the six header/footer elements. A false flag suppresses that header/footer; these elements belong to a master page."
+    },
+    {
+      "repository": "LibreOffice/core",
+      "commit": "861effc5289d539f15c4c18d1ba8579ffd78728b",
+      "path": "sc/source/filter/xml/XMLTableMasterPageExport.cxx",
+      "blob": "61899e651e53818b307097287a699e9cf2ee264b",
+      "url": "https://github.com/LibreOffice/core/blob/861effc5289d539f15c4c18d1ba8579ffd78728b/sc/source/filter/xml/XMLTableMasterPageExport.cxx",
+      "finding": "exportHeaderFooter adds display=false for a disabled header/footer and adds content only for nonempty left, center or right regions. Empty disabled regions therefore have an empty element in this exact exporter."
+    }
+  ],
+  "peer": "Requested Progress review; pending at creation",
+  "no_ref_changes": true
+}

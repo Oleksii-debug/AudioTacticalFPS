@@ -1,0 +1,89 @@
+{
+  "schema": "carr-retained-capacity-closed-result/1",
+  "recorded_utc": "2026-11-28 08:53:48 UTC",
+  "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+  "run_id": 46121242674,
+  "job_id": 140909164644,
+  "status": "PARTIAL",
+  "geometry": {
+    "books": 50000,
+    "segments_per_book": 40,
+    "segments": 2000000
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121242674/job/140909164644",
+  "job_conclusion": "failure",
+  "phase_receipt": {
+    "books": 50000,
+    "phases": [
+      {
+        "phase": "build",
+        "reason": null,
+        "status": "PASS"
+      },
+      {
+        "phase": "measure",
+        "reason": "BudgetExceeded",
+        "status": "PARTIAL"
+      }
+    ],
+    "qualification": "Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.",
+    "retained": {
+      "50000/build.json": {
+        "bytes": 5979,
+        "sha256": "5cabeead59ad09f3432ac758b60b33dd6f74f59c14e28c8fb8f16a45c863aa0a"
+      },
+      "50000/build.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "50000/build.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "50000/measure.json": {
+        "bytes": 5596,
+        "sha256": "b9a19dbf5afc85bed611952e6946a6f1eb9f02d827a87a57659e883c71b69f26"
+      },
+      "50000/measure.stderr.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "50000/measure.stdout.txt": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "configuration.json": {
+        "bytes": 5462,
+        "sha256": "509d7eb6fdaebdb1a9d4b3b31daf41f7b6b3c19baad5c6059eaa89660f787c7b"
+      },
+      "library-corpus-scale.json": {
+        "bytes": 19236,
+        "sha256": "a8fdab234505c52045aba8d25a70c2c62d52ad809aa1697a3cdfcaaf054fa177"
+      }
+    },
+    "segments": 2000000,
+    "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "status": "PARTIAL"
+  },
+  "phase_receipt_log_line": 459,
+  "decoded_log_utf8": {
+    "sha256": "9d1d827565b0f92b7b657244030f4ee39167d12395749a042c093a704ab47bf6",
+    "bytes": 48515
+  },
+  "artifact": {
+    "id": 15256606056,
+    "name": "retained-capacity-large-source-v1-50000x40-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+    "bytes": 13479,
+    "digest": "sha256:7aa34a6b9891908fc8bec7488bb2428a604e7135be4701d45026d2079a96488f",
+    "created_at": "2026-11-28T08:50:55Z",
+    "expired": false
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "limits": [
+    "The exact A3 head built the declared 50,000 books and 2,000,000 retained segments; measure ended PARTIAL with BudgetExceeded.",
+    "Restart, public operations and backup phases were not run for this geometry. The required complete 2M qualification remains unmet.",
+    "The exact eight retained report-member identities are known; measured elapsed time and progress counters require the separate bounded immutable-artifact inspector.",
+    "No other source head, environment, throughput ratio, real whole-corpus intake or native/acoustic qualification is inferred."
+  ]
+}

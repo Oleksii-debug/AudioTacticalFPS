@@ -1,0 +1,1175 @@
+"""Durable orchestration of the supplied, explicitly trusted local worker.
+
+This is a file-protocol adapter, not an ASR implementation. It reuses the
+application's atomic state, bounded subprocess runner and resource broker.
+"""
+from dataclasses import replace
+from hashlib import sha256
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import stat
+import tempfile
+import time
+from uuid import uuid4
+
+from ..audio.models import AudioBudget, AudioCancelled, AudioCleanupPending, AudioError
+from ..audio.process import publish_file, run_process
+from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
+                             read_json, regular, state_lock, sync_directory, MAX_JSON_BYTES, _unique)
+from ..research.export_file import write_binary_export, ExportReceipt
+from .transcription_exports import TranscriptionExportedError
+from .transcription_values import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
+                     fingerprint, settings as validate_settings, validated_result,
+                     worker_settings)
+from .transcription_runtime import (file_identity, inspect_runtime, stopped, _stamp,
+                                    LOCAL_FILE_PROTOCOL, RUNTIME_PROTOCOLS)
+from .transcription_scope import check_scope, read_binding, write_binding, local_origin, _bounded_json
+
+SCHEMA = 'resonance-transcription-job/1'
+MAX_SOURCES = 512
+MAX_SOURCE_BYTES = 32 * 1024**3
+MAX_JOB_BYTES = 64 * 1024**3
+ACTIVE = frozenset(('running', 'pausing', 'cancelling'))
+# A synthetic peer retries Windows atomic status replacement, but a selected
+# external worker need not. Never hold its mutable status open while it runs;
+# accepted immutable checkpoints still supply measured progress on Windows.
+_LIVE_STATUS_SNAPSHOTS = os.name != 'nt'
+
+
+
+def _observer(callback):
+    """A failed optional UI observer cannot change durable producer results."""
+    available = callable(callback)
+    def report(event):
+        nonlocal available
+        if available:
+            try:
+                callback(event)
+            except Exception:
+                available = False
+    return report if available else None
+
+
+class _RuntimeProfileChanged(ValueError):
+    """A selected execution identity could no longer be verified."""
+
+
+def _id(value):
+    if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{32}', value):
+        raise ValueError('Invalid transcription identity.')
+    return value
+
+
+def _label(value, maximum=512):
+    if not isinstance(value, str) or not value.strip() or len(value) > maximum or any(ord(c) < 32 for c in value):
+        raise ValueError('Enter a valid transcription name.')
+    return value.strip()
+
+
+def _protocol_digest(value):
+    return sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                             separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+
+
+def expand_sources(paths, *, recursive=False, cancel=None):
+    if not isinstance(paths, (list, tuple)) or not paths or type(recursive) is not bool:
+        raise ValueError('Select local audio/video files or folders.')
+    found, pending, visited = {}, [], 0
+    for value in paths:
+        path = local_path(value, exists=True)
+        if path.is_dir():
+            pending.append(path)
+        elif path.suffix.lower() in AUDIO_EXTENSIONS:
+            found[str(path)] = path
+        else:
+            raise ValueError('The selected file is not a supported audio/video container.')
+    while pending:
+        folder = pending.pop()
+        with os.scandir(folder) as entries:
+            for entry in entries:
+                stopped(cancel)
+                visited += 1
+                if visited > 100000:
+                    raise ValueError('The selected folder exceeds its inventory budget.')
+                path = local_path(entry.path, exists=True)
+                if path.is_dir():
+                    if recursive:
+                        pending.append(path)
+                elif path.suffix.lower() in AUDIO_EXTENSIONS:
+                    found[str(path)] = path
+                if len(found) > MAX_SOURCES:
+                    raise ValueError(f'A transcription job supports at most {MAX_SOURCES} sources.')
+    result = tuple(found[key] for key in sorted(found))
+    if not result or len(result) > MAX_SOURCES:
+        raise ValueError('No supported sources were selected, or the source limit was exceeded.')
+    return result
+
+
+def _snapshot(source, target, *, cancel=None):
+    before = regular(source)
+    if not 0 < before.st_size <= MAX_SOURCE_BYTES:
+        raise ValueError('Choose nonempty audio within the 32 GiB per-source budget.')
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    descriptor, temporary = tempfile.mkstemp(prefix='.pending-source-', dir=target.parent)
+    temporary = Path(temporary)
+    digest, count = sha256(), 0
+    try:
+        with source.open('rb') as incoming, os.fdopen(descriptor, 'wb') as outgoing:
+            if _stamp(os.fstat(incoming.fileno())) != _stamp(before):
+                raise ValueError('The audio changed while opening.')
+            while block := incoming.read(1024 * 1024):
+                stopped(cancel)
+                count += len(block)
+                if count > MAX_SOURCE_BYTES:
+                    raise ValueError('The audio grew beyond its byte budget.')
+                outgoing.write(block)
+                digest.update(block)
+            outgoing.flush()
+            os.fsync(outgoing.fileno())
+            if _stamp(os.fstat(incoming.fileno())) != _stamp(before):
+                raise ValueError('The audio changed while retaining its original bytes.')
+        if count != before.st_size or _stamp(regular(source)) != _stamp(before):
+            raise ValueError('The audio changed while retaining its original bytes.')
+        expected = {'sha256': digest.hexdigest(), 'size': count}
+        if file_identity(temporary, cancel=cancel) != expected:
+            raise ValueError('The retained audio copy could not be verified.')
+        publish_file(temporary, target, cancelled=cancel or (lambda: False))
+        temporary.unlink()
+        return expected
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _published_identity(path):
+    """Verify this call's published file even if its staging hardlink remains.
+
+    The shared export writer reports that cleanup condition as successful
+    publication. This narrow post-publication check does not admit linked inputs.
+    """
+    path = Path(path)
+    local_path(path.parent, exists=True)
+    before = path.lstat()
+    if not stat.S_ISREG(before.st_mode) or getattr(before, 'st_file_attributes', 0) & 0x400:
+        raise ValueError('The published export is not a regular file.')
+    digest, size = sha256(), 0
+    with path.open('rb') as stream:
+        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+            raise ValueError('The published export changed before verification.')
+        while block := stream.read(1024 * 1024):
+            size += len(block)
+            if size > 32 * 1024**2:
+                raise ValueError('The published export exceeds its byte budget.')
+            digest.update(block)
+        if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+            raise ValueError('The published export changed during verification.')
+    if _stamp(path.lstat()) != _stamp(before):
+        raise ValueError('The published export changed during verification.')
+    return {'sha256': digest.hexdigest(), 'size': size}
+
+
+def _worker_status(path, total):
+    """Read the same bounded strict status schema before/after terminal cleanup."""
+    current = _bounded_json(path, 256 * 1024)
+    if type(current) is not dict or not isinstance(current.get('state'), str):
+        raise ValueError('The worker returned invalid status.')
+    for name in ('done', 'failed', 'total'):
+        if type(current.get(name)) is not int or not 0 <= current[name] <= total:
+            raise ValueError('The worker returned invalid progress counts.')
+    return current
+
+
+def _export_payload(path, record, *, cancel=None, maximum=MAX_RESULT_BYTES,
+                    changed_message='A saved transcript changed before export; no changed bytes were published.'):
+    """Bind the actual bytes to the receipt before publishing outside the library."""
+    stopped(cancel)
+    size = record['size']
+    if type(size) is not int or not 0 <= size <= maximum:
+        raise ValueError('The transcript export exceeds its byte budget.')
+    if regular(path).st_size != size:
+        raise ValueError(changed_message)
+    payload = bytearray()
+    with path.open('rb') as stream:
+        while True:
+            stopped(cancel)
+            # Read at most one byte beyond the declared length, even if a
+            # concurrent writer grows the file after the initial stat.
+            block = stream.read(min(1024 * 1024, size - len(payload) + 1))
+            if not block:
+                break
+            payload.extend(block)
+            if len(payload) > size:
+                raise ValueError(changed_message)
+    stopped(cancel)
+    if len(payload) != size or sha256(payload).hexdigest() != record['sha256']:
+        raise ValueError(changed_message)
+    return bytes(payload)
+
+
+def _verified_json(path, digest, *, cancel=None, changed_message='A saved transcript changed before export; no changed bytes were published.'):
+    """Decode only the bounded bytes authenticated by the saved digest."""
+    stopped(cancel)
+    payload = _export_payload(path, {'size': regular(path).st_size, 'sha256': digest},
+                              cancel=cancel, maximum=MAX_JSON_BYTES, changed_message=changed_message)
+    value = json.loads(payload.decode('utf-8'), object_pairs_hook=_unique,
+                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    stopped(cancel)
+    return value
+
+class LocalFileJobProtocol:
+    def __init__(self, host, *, budget=None, stop_grace=2.0):
+        self.host = host
+        host._authorize()
+        self.root = local_path(host.root)
+        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.profiles_root = self.root / 'profiles'
+        self.jobs_root = self.root / 'jobs'
+        self.profiles_root.mkdir(exist_ok=True)
+        self.jobs_root.mkdir(exist_ok=True)
+        self.broker = host._broker
+        self.budget = budget or AudioBudget(timeout=24 * 3600, max_inputs=MAX_SOURCES,
+            max_output_bytes=8 * 1024**3, max_staging_files=100000,
+            reserve_disk_bytes=64 * 1024**2)
+        if type(stop_grace) not in (int, float) or not .05 <= stop_grace <= 30:
+            raise ValueError('Invalid cooperative stop allowance.')
+        self.stop_grace = float(stop_grace)
+
+    @property
+    def library_root(self):
+        self.host._authorize()
+        return Path(self.host.app.root)
+
+    inspect_runtime = staticmethod(inspect_runtime)
+    expand_sources = staticmethod(expand_sources)
+
+    def register_runtime(self, name, python_executable, worker_path, model_directory, *,
+                         owner_trusted=False, expected_fingerprint=None, cancel=None, progress=None,
+                         protocol=LOCAL_FILE_PROTOCOL):
+        self.host._authorize()
+        progress = _observer(progress)
+        name = _label(name)
+        if type(owner_trusted) is not bool:
+            raise ValueError('Runtime trust must be an explicit owner decision.')
+        inspected = inspect_runtime(python_executable, worker_path, model_directory,
+                                    cancel=cancel, progress=progress, protocol=protocol)
+        if owner_trusted and inspected['fingerprint'] != expected_fingerprint:
+            raise ValueError('Inspect and explicitly approve these exact current runtime/model bytes first.')
+        identity = inspected['fingerprint'][:32]
+        profile = {**inspected, 'id': identity, 'name': name, 'trusted': owner_trusted,
+                   'qualification': 'unqualified', 'registered': time.time(), 'restored': False}
+        stopped(cancel)
+        self.host._authorize()
+        with state_lock(self.profiles_root, 'profiles'):
+            target = self.profiles_root / (identity + '.json')
+            atomic_json(target, profile, replace=target.exists())
+        return profile
+
+    def _profile(self, identity):
+        self.host._authorize()
+        value = read_json(self.profiles_root / (_id(identity) + '.json'))
+        from .transcription_backup import _profile
+        _profile(value, identity)
+        return value
+
+    def list_runtimes(self):
+        self.host._authorize()
+        paths = sorted(self.profiles_root.glob('*.json'))
+        if len(paths) > 1024:
+            raise ValueError('The runtime-profile inventory exceeds its budget.')
+        return tuple(self._profile(path.stem) for path in paths)
+
+    def _verify_profile(self, profile, *, cancel=None, progress=None):
+        if profile.get('trusted') is not True:
+            raise PermissionError('Review and explicitly trust the local runtime/model profile before execution.')
+        stopped(cancel)
+        try:
+            if self._profile(profile['id']) != profile:
+                raise _RuntimeProfileChanged('The selected runtime profile changed during verification.')
+            current = inspect_runtime(profile['python_executable'], profile['worker_path'],
+                                      profile['model_directory'], cancel=cancel, progress=progress,
+                                      protocol=profile['protocol'])
+        except InterruptedError:
+            raise
+        except (OSError, ValueError) as error:
+            raise _RuntimeProfileChanged('Runtime or model identity could not be verified: ' + str(error)) from error
+        if current['fingerprint'] != profile['fingerprint']:
+            raise _RuntimeProfileChanged('Runtime or model files changed; inspect and register the exact new bytes.')
+        stopped(cancel)
+        return profile
+
+    def _job_root(self, identity):
+        return local_path(self.jobs_root / _id(identity), root=self.root)
+
+    @staticmethod
+    def _plan(state):
+        return fingerprint({name: state[name] for name in ('id', 'profile_id', 'profile_fingerprint', 'sources', 'settings')})
+
+    def _load(self, identity):
+        self.host._authorize()
+        value = read_json(self._job_root(identity) / 'job.json')
+        from .transcription_backup import _job
+        # The same strict passive schema rejects mixed V5 run_context and
+        # malformed history before any path or execution decision.
+        _job(value, identity)
+        check_scope(self.host, self._job_root(identity), value)
+        validate_settings(value['settings'])
+        if not isinstance(value['sources'], list) or not 0 < len(value['sources']) <= MAX_SOURCES:
+            raise ValueError('Invalid retained transcription sources.')
+        if len({_id(source['id']) for source in value['sources']}) != len(value['sources']):
+            raise ValueError('Duplicate transcription source identity.')
+        return value
+
+    def _save(self, state):
+        check_scope(self.host, self._job_root(state['id']), state, execution=True)
+        state['updated'] = time.time()
+        target = self._job_root(state['id']) / 'job.json'
+        atomic_json(target, state, replace=target.exists())
+
+    def create_job(self, profile_id, sources, *, settings=None, title='Transcription',
+                   recursive=False, cancel=None, progress=None):
+        self.host._authorize()
+        progress = _observer(progress)
+        profile = self._profile(profile_id)
+        if profile['protocol'] != LOCAL_FILE_PROTOCOL:
+            raise ValueError('This API requires an explicitly reviewed local-file-job/1 profile; use the existing V5/receipt submit API for that protocol.')
+        selected = expand_sources(sources, recursive=recursive, cancel=cancel)
+        options = validate_settings(settings)
+        total_bytes = sum(regular(path).st_size for path in selected)
+        if total_bytes > MAX_JOB_BYTES:
+            raise ValueError('The selected sources exceed the 64 GiB job budget.')
+        if shutil.disk_usage(self.root).free < total_bytes + self.budget.reserve_disk_bytes:
+            raise OSError('Not enough free disk space to retain the selected original audio.')
+        identity = uuid4().hex
+        job_root = self._job_root(identity)
+        job_root.mkdir()
+        retained = []
+        try:
+            for index, source in enumerate(selected):
+                stopped(cancel)
+                source_id = uuid4().hex
+                relative = f'inputs/{source_id}/source{source.suffix.lower()}'
+                if progress:
+                    progress({'phase': 'Retaining original audio', 'status': 'running',
+                              'done': index, 'total': len(selected), 'current': source.name, 'indeterminate': False})
+                value = _snapshot(source, job_root / relative, cancel=cancel)
+                retained.append({'id': source_id, 'original_path': str(source), 'name': source.name,
+                                 'retained_path': relative, **value})
+            state = {'schema': SCHEMA, 'id': identity, 'title': _label(title), 'status': 'pending',
+                     'profile_id': profile_id, 'profile_fingerprint': profile['fingerprint'],
+                     'sources': retained, 'settings': options, 'results': [], 'edits': {},
+                     'done': 0, 'total': len(retained), 'error': '', 'created': time.time(),
+                     'recovery_review_required': False, 'restored': False}
+            state['plan_fingerprint'] = self._plan(state)
+            write_binding(self.host, job_root, state)
+            self._save(state)
+            atomic_json(job_root / 'control.json', {'action': 'run'})
+            return state
+        except BaseException:
+            # This is a new uncommitted private staging directory only; originals
+            # and every previously committed job remain untouched.
+            if not (job_root / 'job.json').exists():
+                shutil.rmtree(job_root)
+            raise
+
+    def get_job(self, identity):
+        value = self._load(identity)
+        binding = check_scope(self.host, self._job_root(identity), value)
+        reviewed = bool(binding is not None and not binding['review_required']
+                        and binding['origin'] == local_origin(self.host)
+                        and binding['reviewed_plan_fingerprint'] == value['plan_fingerprint'])
+        if not reviewed:
+            # Historical data is visible without mutating it or inferring
+            # workspace/execution authority from a portable backup.
+            value = dict(value, execution_review_required=True)
+            if value['status'] in ACTIVE:
+                value.update(status='interrupted', recovery_review_required=True)
+            return value
+        if value['status'] in ACTIVE:
+            try:
+                with state_lock(self._job_root(identity), 'run'):
+                    value = self._load(identity)
+                    if value['status'] in ACTIVE:
+                        value['status'] = 'interrupted'
+                        value['recovery_review_required'] = True
+                        value['error'] = 'The previous runner ended without closure. Confirm its worker stopped before resuming.'
+                        self._save(value)
+            except RuntimeError:
+                pass  # A live process still owns the durable run lock.
+        return value
+
+    def list_jobs(self):
+        self.host._authorize()
+        paths = sorted(self.jobs_root.glob('*/job.json'))
+        if len(paths) > 4096:
+            raise ValueError('The canonical job inventory exceeds its budget.')
+        result = []
+        for path in paths:
+            binding = read_binding(self.host, path.parent, path.parent.name)
+            if binding is not None and binding['workspace'] != self.host.workspace:
+                continue
+            result.append(self.get_job(path.parent.name))
+        return tuple(result)
+
+    get = get_job
+    jobs = list_jobs
+
+
+    def bind_workspace(self, identity, *, reviewed=False, worker_stopped=False, cancel=None):
+        """Explicitly adopt historical data without converting its receipts."""
+        if reviewed is not True:
+            raise ValueError('Explicitly review this retained job before binding it to the current workspace.')
+        root = self._job_root(identity)
+        with state_lock(root, 'run'):
+            state = self._load(identity)
+            if (state['status'] in ACTIVE or state.get('recovery_review_required')
+                    and not state.get('restored')) and worker_stopped is not True:
+                raise ValueError('Confirm the prior external worker stopped before binding this job.')
+            for source in state['sources']:
+                self._verify_source(state, source, cancel=cancel)
+            for result in state['results']:
+                self._receipt(state, result, cancel=cancel)
+            stopped(cancel)
+            write_binding(self.host, root, state)
+            if state['status'] in ACTIVE:
+                state.update(status='interrupted', recovery_review_required=True)
+                self._save(state)
+            # Binding is not runtime trust and does not clear interruption.
+            return self.get_job(identity)
+
+    def verify(self, identity, *, cancel=None):
+        state = self._load(identity)
+        for source in state['sources']:
+            self._verify_source(state, source, cancel=cancel)
+        for result in state['results']:
+            self._receipt(state, result, cancel=cancel)
+        return state
+
+    def _control(self, identity):
+        path = self._job_root(identity) / 'control.json'
+        value = read_json(path) if path.exists() else {'action': 'run'}
+        if value.get('action') not in ('run', 'pause', 'cancel'):
+            raise ValueError('Invalid transcription control state.')
+        return value['action']
+
+    def _set_control(self, identity, action):
+        state = self._load(identity)
+        check_scope(self.host, self._job_root(identity), state, execution=True)
+        job_root = self._job_root(identity)
+        with state_lock(job_root, 'control'):
+            atomic_json(job_root / 'control.json', {'action': action}, replace=True)
+        value = self._load(identity)
+        value['status'] = 'pausing' if action == 'pause' else 'cancelling'
+        return value
+
+    def pause(self, identity):
+        return self._set_control(identity, 'pause')
+
+    def cancel(self, identity):
+        return self._set_control(identity, 'cancel')
+
+    def acknowledge_interruption(self, identity, *, worker_stopped=False):
+        if worker_stopped is not True:
+            raise ValueError('Confirm the previous external worker stopped before retrying this job.')
+        with state_lock(self._job_root(identity), 'run'):
+            state = self._load(identity)
+            check_scope(self.host, self._job_root(identity), state, execution=True)
+            state['recovery_review_required'] = False
+            if state['status'] != 'complete':
+                state['status'] = 'paused'
+            self._save(state)
+            return state
+
+    def _archive_worker(self, state, profile_id):
+        """Move an inactive, rejected workspace without deleting its evidence."""
+        job_root = self._job_root(state['id'])
+        worker = job_root / 'worker'
+        if os.path.lexists(worker):
+            regular(local_path(worker, root=job_root, exists=True), directory=True)
+            history = local_path(job_root / 'worker-history', root=job_root)
+            history.mkdir(exist_ok=True)
+            local_path(history, root=job_root, exists=True)
+            archived = history / (_id(profile_id) + '-' + uuid4().hex)
+            if os.path.lexists(archived):
+                raise FileExistsError('The previous worker workspace history already exists.')
+            worker.rename(archived)
+            sync_directory(history)
+            sync_directory(job_root)
+
+    def rebind_runtime(self, identity, profile_id):
+        job_root = self._job_root(identity)
+        with state_lock(job_root, 'run'):
+            state = self._load(identity)
+            if state['status'] in ACTIVE or (state.get('recovery_review_required') and not state.get('restored')):
+                raise RuntimeError('Confirm the interrupted external worker stopped before rebinding this job.')
+            check_scope(self.host, job_root, state, execution=True)
+            profile = self._profile(profile_id)
+            if profile['protocol'] != LOCAL_FILE_PROTOCOL:
+                raise ValueError('A retained canonical job cannot change worker protocol.')
+            if profile.get('trusted') is not True:
+                raise PermissionError('Choose an explicitly reviewed local runtime first.')
+            self._verify_profile(profile)
+            previous = self._profile(state['profile_id'])
+            if (profile['model_content_fingerprint'] != previous['model_content_fingerprint'] or
+                    profile['worker_identity'] != previous['worker_identity']):
+                raise ValueError('Resuming requires the same model content and worker; create a new job for a different engine/model.')
+            if (profile['fingerprint'] != previous['fingerprint'] or state.get('restored')
+                    or state.get('worker_cache_rejected')):
+                # A worker checkpoint cannot acquire a newly reviewed profile.
+                # Accepted historical artifacts stay in place.
+                self._archive_worker(state, previous['id'])
+                state.pop('worker_cache_rejected', None)
+            state['profile_id'], state['profile_fingerprint'] = profile_id, profile['fingerprint']
+            state['plan_fingerprint'] = self._plan(state)
+            write_binding(self.host, job_root, state)
+            if state.get('restored'):
+                state['recovery_review_required'] = False
+            self._save(state)
+            return state
+
+    def continue_job(self, identity):
+        state = self._load(identity)
+        check_scope(self.host, self._job_root(identity), state, execution=True)
+        job_root = self._job_root(identity)
+        with state_lock(job_root, 'run'):
+            state = self._load(identity)
+            if state['status'] in ACTIVE:
+                state.update(status='interrupted', recovery_review_required=True)
+                self._save(state)
+                raise RuntimeError('The prior runner did not close; confirm its worker stopped before resuming.')
+            if state.get('recovery_review_required') and not state.get('restored'):
+                raise RuntimeError('Confirm the interrupted worker stopped before resuming.')
+            atomic_json(job_root / 'control.json', {'action': 'run'}, replace=True)
+            for name in ('pause.flag', 'stop.flag', 'job_status.json'):
+                path = job_root / 'worker' / name
+                if path.exists() or path.is_symlink():
+                    local_path(path, root=job_root, exists=True).unlink()
+            if state['status'] != 'complete':
+                state['status'] = 'pending'
+                state['error'] = ''
+                self._save(state)
+            return state
+
+    def resume(self, identity, *, progress=None, cancel=None):
+        self.continue_job(identity)
+        return self.run(identity, progress=progress, cancel=cancel)
+
+    def _source_path(self, state, source):
+        check_scope(self.host, self._job_root(state['id']), state)
+        return local_path(self._job_root(state['id']) / source['retained_path'],
+                          root=self._job_root(state['id']), exists=True)
+
+    def _verify_source(self, state, source, *, cancel=None):
+        if file_identity(self._source_path(state, source), cancel=cancel, maximum=MAX_SOURCE_BYTES) != {
+                'sha256': source['sha256'], 'size': source['size']}:
+            raise ValueError('Retained source audio changed; it was not silently replaced.')
+
+    def _receipt(self, state, result, *, cancel=None):
+        root = self._job_root(state['id'])
+        check_scope(self.host, root, state)
+        path = local_path(root / result['receipt'], root=root, exists=True)
+        receipt = _verified_json(path, result['sha256'], cancel=cancel,
+                                 changed_message='The saved transcript receipt changed.')
+        if (not isinstance(receipt, dict) or receipt.get('schema') != 'resonance-transcription-result/1'
+                or receipt.get('source_id') != result['source_id']):
+            raise ValueError('Invalid saved transcript receipt.')
+        source = next((x for x in state['sources'] if x['id'] == result['source_id']), None)
+        if source is None or receipt['provenance']['source_sha256'] != source['sha256']:
+            raise ValueError('The transcript belongs to a different retained source.')
+        for record in receipt['files'].values():
+            target = local_path(root / record['path'], root=root, exists=True)
+            if file_identity(target, cancel=cancel, maximum=MAX_RESULT_BYTES) != {'sha256': record['sha256'], 'size': record['size']}:
+                raise ValueError('A completed transcript export changed; the existing file was preserved.')
+        check_scope(self.host, root, state)
+        return receipt
+
+    def _publish_result(self, state, source, result, provenance, *, cancel=None, verify=None):
+        stopped(cancel)
+        root = self._job_root(state['id'])
+        check_scope(self.host, root, state, execution=True)
+        folder = root / 'artifacts' / source['id'] / uuid4().hex
+        folder.mkdir(parents=True)
+        files = {}
+        for format, payload in encoded_outputs(result, provenance).items():
+            stopped(cancel)
+            if not state['settings']['output_' + format]:
+                continue
+            if len(payload) > MAX_RESULT_BYTES:
+                raise ValueError('The transcript export exceeds its byte budget.')
+            target = folder / ('transcript.' + format)
+            atomic_bytes(target, payload)
+            actual = file_identity(target, cancel=cancel, maximum=MAX_RESULT_BYTES)
+            expected = {'sha256': sha256(payload).hexdigest(), 'size': len(payload)}
+            if actual != expected:
+                raise OSError('A transcript export failed its durable byte verification.')
+            files[format] = {'path': target.relative_to(root).as_posix(), **actual}
+        receipt = {'schema': 'resonance-transcription-result/1', 'source_id': source['id'],
+                   'result': result, 'provenance': provenance, 'files': files,
+                   'created': time.time(), 'status': 'complete'}
+        target = folder / 'receipt.json'
+        stopped(cancel)
+        atomic_json(target, receipt)
+        record = {'source_id': source['id'], 'receipt': target.relative_to(root).as_posix(),
+                  'sha256': file_identity(target, cancel=cancel, maximum=32 * 1024**2)['sha256'],
+                  'formats': list(files), 'language': result['language'],
+                  'duration': result['duration'], 'segments': len(result['segments'])}
+        self._receipt(state, record, cancel=cancel)
+        if verify is not None:
+            verify()  # New durable files remain unaccepted until identity passes.
+        stopped(cancel)
+        check_scope(self.host, root, state, execution=True)
+        state['results'].append(record)
+        state['done'] = len(state['results'])
+        self._save(state)
+
+    def _checkpoints(self, cache_root, *, cancel=None):
+        """Bound and cancel traversal, including directories without markers."""
+        pending, entries, markers = [cache_root], 0, 0
+        while pending:
+            stopped(cancel)
+            folder = local_path(pending.pop(), root=cache_root, exists=True)
+            regular(folder, directory=True)
+            with os.scandir(folder) as children:
+                for entry in children:
+                    stopped(cancel)
+                    entries += 1
+                    if entries > self.budget.max_staging_files:
+                        raise ValueError('The worker cache exceeds its bounded file inventory.')
+                    if entry.is_dir(follow_symlinks=False):
+                        pending.append(local_path(entry.path, root=cache_root, exists=True))
+                    elif entry.name.endswith('.cache.json'):
+                        markers += 1
+                        if markers > MAX_SOURCES * 16:
+                            raise ValueError('The worker cache exceeds its bounded checkpoint inventory.')
+                        yield local_path(entry.path, root=cache_root, exists=True)
+
+    def _admit_results(self, state, profile, expected_settings, *, cancel=None):
+        """Admit atomic worker recognition checkpoints into app-owned receipts.
+
+        Accepted artifacts live outside cache, so ordinary data backup preserves
+        them even if the optional worker cache is omitted.
+        """
+        stopped(cancel)
+        if state.get('worker_cache_rejected'):
+            raise ValueError('The rejected worker workspace must be archived before admitting checkpoints.')
+        root = self._job_root(state['id'])
+        cache_root = root / 'worker' / 'logs' / 'cache'
+        if not cache_root.exists():
+            return
+        accepted = {result['source_id'] for result in state['results']}
+        sources = {}
+        for source in state['sources']:
+            stopped(cancel)
+            if source['id'] not in accepted:
+                sources[str(self._source_path(state, source))] = source
+        if not sources:
+            return
+        admitted = False
+        for marker in self._checkpoints(cache_root, cancel=cancel):
+            checkpoint = read_json(marker)
+            identity = checkpoint.get('identity', {})
+            source = sources.get(identity.get('source', {}).get('path'))
+            if source is None or source['id'] in accepted:
+                continue
+            if identity.get('settings') != expected_settings:
+                continue  # An older, differently configured checkpoint is not reused.
+            key = marker.name[:-len('.cache.json')]
+            if not re.fullmatch('[0-9a-f]{64}', key) or key != _protocol_digest(identity):
+                raise ValueError('The worker checkpoint does not match its content identity.')
+            if (identity.get('source', {}).get('sha256') != source['sha256'] or
+                    identity.get('source', {}).get('size') != source['size']):
+                raise ValueError('The worker checkpoint used different source audio.')
+            model, runtime = identity.get('model', {}), identity.get('runtime', {})
+            if (model.get('files') != profile['model_files'] or model.get('name') != profile['model_name']
+                    or model.get('root') != profile['model_directory']
+                    or runtime.get('worker') != profile['worker_identity']
+                    or runtime.get('executable') != profile['python_identity']
+                    or runtime.get('packages') != profile['runtime_distributions']):
+                raise ValueError('The worker checkpoint does not match the selected runtime/model identity.')
+            self._verify_source(state, source, cancel=cancel)
+            text_path, meta_path = marker.with_name(key + '.txt'), marker.with_name(key + '.json')
+            if (file_identity(text_path, cancel=cancel, maximum=MAX_RESULT_BYTES) != checkpoint.get('text') or
+                    file_identity(meta_path, cancel=cancel, maximum=MAX_RESULT_BYTES) != checkpoint.get('meta')):
+                raise ValueError('A worker recognition checkpoint was modified or incomplete.')
+            meta = read_json(meta_path)
+            stopped(cancel)
+            result = validated_result(meta, text_path.read_text(encoding='utf-8'))
+            stopped(cancel)
+            effective = meta.get('effective_settings', meta.get('settings'))
+            if not isinstance(effective, dict) or effective.get('language') != expected_settings['language'] or effective.get('task') != expected_settings['task']:
+                raise ValueError('The worker silently changed the requested language or task.')
+            provenance = {'derived': True, 'citation_authority': False, 'quality': 'unqualified',
+                          'source_sha256': source['sha256'], 'source_bytes': source['size'],
+                          'profile_id': profile['id'], 'profile_fingerprint': profile['fingerprint'],
+                          'model_content_fingerprint': profile['model_content_fingerprint'],
+                          'worker_sha256': profile['worker_identity']['sha256'],
+                          'python_sha256': profile['python_identity']['sha256'],
+                          'runtime_identity_sha256': fingerprint(runtime),
+                          'worker_checkpoint_sha256': file_identity(marker, cancel=cancel, maximum=32 * 1024**2)['sha256'],
+                          'settings': state['settings'], 'effective_settings': effective,
+                          'translation_target': 'en' if expected_settings['task'] == 'translate' else None,
+                          'diarization': False}
+            self._publish_result(state, source, result, provenance, cancel=cancel,
+                                 verify=lambda: self._verify_profile(profile, cancel=cancel))
+            accepted.add(source['id'])
+            admitted = True
+        if admitted:
+            # A final/resume admission can itself be the last work before
+            # `complete`; verify its snapshot again after the actual commits.
+            # This does no runtime hashing on an idle poll.
+            self._verify_profile(profile, cancel=cancel)
+
+    def run(self, identity, *, progress=None, cancel=None, timeout=None):
+        progress = _observer(progress)
+        process_budget = self.budget if timeout is None else replace(self.budget, timeout=timeout)
+        job_root = self._job_root(identity)
+        with state_lock(job_root, 'run'):
+            state = self._load(identity)
+            if state['status'] in ACTIVE:
+                state.update(status='interrupted', recovery_review_required=True)
+                self._save(state)
+                raise RuntimeError('The prior runner did not close; confirm its worker stopped before resuming.')
+            read_only_complete = state['status'] == 'complete'
+            if not read_only_complete:
+                check_scope(self.host, job_root, state, execution=True)
+            if (state.get('recovery_review_required') and not state.get('restored')
+                    and not read_only_complete):
+                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
+
+            def action():
+                check_scope(self.host, job_root, state, execution=not read_only_complete)
+                selected = self._control(identity)
+                if selected == 'run' and cancel is not None and cancel():
+                    # Reading a completed restored/unbound result is not
+                    # permission to change its portable control state.
+                    if read_only_complete:
+                        return 'cancel'
+                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
+                    selected = 'cancel'
+                return selected
+
+            try:
+                for result in state['results']:
+                    self._receipt(state, result, cancel=lambda: action() != 'run')
+                stopped(lambda: action() != 'run')
+                if read_only_complete:
+                    for source in state['sources']:
+                        self._verify_source(state, source, cancel=lambda: action() != 'run')
+                    return state
+            except InterruptedError:
+                selected = action()
+                if read_only_complete or selected == 'run':
+                    raise
+                state['status'] = 'paused' if selected == 'pause' else 'cancelled'
+                state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
+                self._save(state)
+                if progress:
+                    progress({'phase': 'Transcript job ' + state['status'],
+                              'status': state['status'], 'done': state['done'],
+                              'total': state['total'], 'current': state.get('current', ''),
+                              'indeterminate': False})
+                return state
+            profile = self._profile(state['profile_id'])
+            if profile['protocol'] != LOCAL_FILE_PROTOCOL:
+                raise ValueError('A canonical job cannot execute a different worker protocol.')
+            previous_results = list(state['results'])
+            if state.get('worker_cache_rejected'):
+                # A prior archive failure or interruption cannot make rejected
+                # raw checkpoints eligible merely because old bytes returned.
+                self._archive_worker(state, profile['id'])
+                state.pop('worker_cache_rejected', None)
+                self._save(state)
+            stop_started, last_report, last_admit = None, None, 0.0
+            expected_settings = worker_settings(state['settings'], profile['model_name'])
+            worker_root = job_root / 'worker'
+            worker_root.mkdir(exist_ok=True)
+            for name in ('results', 'logs'):
+                (worker_root / name).mkdir(exist_ok=True)
+
+            def report(phase, *, terminal=False):
+                nonlocal last_report
+                event = {'phase': phase, 'status': state['status'], 'done': state['done'],
+                         'total': state['total'], 'current': state.get('current', ''),
+                         'indeterminate': not terminal and state['done'] == state['total']}
+                key = (phase, event['status'], event['done'], event['current'])
+                if progress and key != last_report:
+                    progress(event)
+                    last_report = key
+
+            def poll():
+                nonlocal stop_started, last_admit
+                selected = action()
+                if selected != 'run':
+                    state['status'] = 'pausing' if selected == 'pause' else 'cancelling'
+                    if stop_started is None:
+                        stop_started = time.monotonic()
+                        atomic_bytes(worker_root / 'stop.flag', b'1', replace=(worker_root / 'stop.flag').exists())
+                        if selected == 'pause':
+                            atomic_bytes(worker_root / 'pause.flag', b'1', replace=(worker_root / 'pause.flag').exists())
+                        self._save(state)
+                    report('Stopping at the next worker checkpoint')
+                    return time.monotonic() - stop_started >= self.stop_grace
+                status_path = worker_root / 'job_status.json'
+                if _LIVE_STATUS_SNAPSHOTS and status_path.exists():
+                    current = _worker_status(status_path, len(state['sources']))
+                    state['current'] = str(current.get('current', ''))[:2048]
+                if time.monotonic() - last_admit >= .25:
+                    try:
+                        self._admit_results(state, profile, expected_settings,
+                                            cancel=lambda: action() != 'run')
+                    except InterruptedError:
+                        if action() == 'run':
+                            raise
+                        # Route a stop observed inside a long hash through the
+                        # same cooperative flag/grace path as an idle poll.
+                        return poll()
+                    last_admit = time.monotonic()
+                report('Transcribing locally; verified files are retained')
+                return False
+
+            try:
+                if state['settings']['device'] == 'cuda':
+                    if os.environ.get('CUDA_VISIBLE_DEVICES') not in (None, '0') or os.environ.get('CUDA_DEVICE_ORDER'):
+                        raise ValueError('CUDA execution requires the default unmasked device order for the cuda:0 reservation; review CUDA_VISIBLE_DEVICES/CUDA_DEVICE_ORDER.')
+                self._verify_profile(profile, cancel=lambda: action() != 'run', progress=progress)
+                if profile['fingerprint'] != state['profile_fingerprint']:
+                    raise ValueError('The job is bound to a different reviewed runtime profile.')
+                for source in state['sources']:
+                    self._verify_source(state, source, cancel=lambda: action() != 'run')
+                self._admit_results(state, profile, expected_settings, cancel=lambda: action() != 'run')
+                pending = [source for source in state['sources'] if source['id'] not in {x['source_id'] for x in state['results']}]
+                if not pending:
+                    state.update(status='complete', done=state['total'], error='')
+                    self._save(state)
+                    report('All requested transcript exports verified', terminal=True)
+                    return state
+                for name in ('pause.flag', 'stop.flag', 'job_status.json'):
+                    path = worker_root / name
+                    if path.exists() or path.is_symlink():
+                        local_path(path, root=worker_root, exists=True).unlink()
+                configuration = {'job_name': state['title'],
+                    'folders': [str(self._source_path(state, source).parent) for source in pending],
+                    'models_dir': str(Path(profile['model_directory']).parent),
+                    'results_root': str(worker_root / 'results'), 'settings': expected_settings}
+                atomic_json(worker_root / 'job_config.json', configuration, replace=(worker_root / 'job_config.json').exists())
+                atomic_json(worker_root / 'settings_live.json', {}, replace=(worker_root / 'settings_live.json').exists())
+                state.update(status='running', error='', recovery_review_required=False, restored=False)
+                self._save(state)
+                report('Waiting for local CPU, memory and disk resources')
+                # Keep the single host's resource policy and conservative
+                # declared CPU/memory/disk allowance. No second broker/queue.
+                admission = {'id': identity, 'settings': state['settings'],
+                             'sources': [{'size_bytes': item['size']} for item in state['sources']]}
+                environment = {key: value for key, value in os.environ.items()
+                    if not key.upper().startswith(('PYTHON', 'PIP_'))
+                    and key.upper() != '__PYVENV_LAUNCHER__'}
+                environment.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1',
+                    HF_HUB_DISABLE_TELEMETRY='1', PYTHONUTF8='1',
+                    PYTHONDONTWRITEBYTECODE='1', OMP_NUM_THREADS='2', OPENBLAS_NUM_THREADS='2')
+                process_active = False
+                with self.host._resource_admission(job_root, admission,
+                        lambda: not process_active and action() != 'run',
+                        process_budget.timeout) as lease:
+                    self._verify_profile(profile, cancel=lambda: action() != 'run', progress=progress)
+                    check_scope(self.host, job_root, state, execution=True)
+                    process_active = True
+                    def checked_poll():
+                        lease.checkpoint()
+                        return poll()
+                    try:
+                        run_process([profile['python_executable'], '-I', '-B', '-X', 'utf8', profile['worker_path'],
+                                     '--job-dir', str(worker_root)], budget=process_budget,
+                                    cancelled=checked_poll, watch=(worker_root / 'logs', worker_root / 'results'),
+                                    env=environment, cwd=worker_root, owned_windows_job=os.name == 'nt')
+                    except AudioCleanupPending as pending:
+                        # No cache reads, archive, durable closure or resource
+                        # release before the retained native owner is quiet.
+                        lease.settle_cleanup(pending)
+                        raise
+                selected = action()
+                if selected != 'run':
+                    state['status'] = 'paused' if selected == 'pause' else 'cancelled'
+                else:
+                    self._verify_profile(profile, cancel=lambda: action() != 'run')
+                    self._admit_results(state, profile, expected_settings, cancel=lambda: action() != 'run')
+                    status = _worker_status(worker_root / 'job_status.json', len(state['sources']))
+                    if status.get('state') != 'завершено' or status.get('failed') != 0 or state['done'] != state['total']:
+                        raise ValueError('The worker exited without a complete set of verified requested results.')
+                    state['status'] = 'complete'
+                state['error'] = ''
+            except Exception as error:
+                check_scope(self.host, job_root, state, execution=True)
+                invalid_runtime = error if isinstance(error, _RuntimeProfileChanged) else None
+                if invalid_runtime is None and action() == 'run':
+                    try:
+                        self._verify_profile(profile, cancel=lambda: action() != 'run')
+                        self._admit_results(state, profile, expected_settings, cancel=lambda: action() != 'run')
+                    except _RuntimeProfileChanged as invalid:
+                        invalid_runtime = invalid
+                    except Exception as invalid:
+                        state['error'] = str(error) + ' Checkpoint admission: ' + str(invalid)
+                if invalid_runtime is not None:
+                    # run_process has closed its child/readers before this
+                    # handler. Preserve every historical receipt and all bytes,
+                    # but retract this attempt's new records and reject its raw
+                    # cache durably before moving the inactive workspace.
+                    state['results'], state['done'] = previous_results, len(previous_results)
+                    state['worker_cache_rejected'] = True
+                    state['status'] = 'partial' if previous_results else 'failed'
+                    state['error'] = str(invalid_runtime) + ' New results from this attempt were rejected; prior verified results are retained.'
+                    self._save(state)
+                    try:
+                        self._archive_worker(state, profile['id'])
+                    except (OSError, ValueError) as archive_error:
+                        state['error'] += ' Worker evidence could not be archived yet: ' + str(archive_error)
+                    else:
+                        state.pop('worker_cache_rejected', None)
+                elif action() != 'run':
+                    state['status'] = 'paused' if action() == 'pause' else 'cancelled'
+                    state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
+                else:
+                    state['status'] = 'partial' if state['results'] else 'failed'
+                    state['error'] = state['error'] or str(error)
+            self._save(state)
+            report('Transcript job ' + state['status'], terminal=True)
+            return state
+
+    def _read_edit(self, state, source_id, *, cancel=None):
+        check_scope(self.host, self._job_root(state['id']), state)
+        stopped(cancel)
+        record = state.get('edits', {}).get(source_id)
+        if record is None:
+            raise FileNotFoundError('No edited reading copy exists for this transcript.')
+        root = self._job_root(state['id'])
+        path = local_path(root / record['path'], root=root, exists=True)
+        # Old edit records have a digest but no size. Bound the read by
+        # the actual stat and the existing JSON budget, then decode only
+        # the very bytes that matched the saved digest.
+        value = _verified_json(path, record['sha256'], cancel=cancel)
+        if (not isinstance(value, dict) or value.get('id') != record['id']
+                or value.get('source_id') != source_id or value.get('edited') is not True
+                or not isinstance(value.get('text'), str) or not isinstance(value.get('provenance'), dict)):
+            raise ValueError('Invalid saved edited reading copy.')
+        check_scope(self.host, self._job_root(state['id']), state)
+        stopped(cancel)
+        return value
+
+    def read_transcript(self, identity, source_id=None, *, edited=False, cancel=None):
+        state = self._load(identity)
+        if source_id is None:
+            if len(state['results']) != 1:
+                raise ValueError('Choose the source transcript to read.')
+            source_id = state['results'][0]['source_id']
+        source = next((source for source in state['sources'] if source['id'] == source_id), None)
+        result = next((result for result in state['results'] if result['source_id'] == source_id), None)
+        if source is None or result is None:
+            raise FileNotFoundError('This source does not yet have a verified transcript.')
+        self._verify_source(state, source, cancel=cancel)
+        receipt = self._receipt(state, result, cancel=cancel)
+        if edited:
+            return self._read_edit(state, source_id, cancel=cancel)
+        check_scope(self.host, self._job_root(identity), state)
+        stopped(cancel)
+        return {'text': receipt['result']['text'], 'source_id': source_id, 'edited': False,
+                'provenance': receipt['provenance'], 'segments': receipt['result']['segments'],
+                'language': receipt['result']['language'], 'duration': receipt['result']['duration']}
+
+    def save_edit(self, identity, source_id, text, *, cancel=None):
+        if not isinstance(text, str) or len(text.encode('utf-8')) > MAX_RESULT_BYTES or '\x00' in text:
+            raise ValueError('The edited reading copy exceeds its text budget.')
+        with state_lock(self._job_root(identity), 'run'):
+            state = self._load(identity)
+            check_scope(self.host, self._job_root(identity), state, execution=True)
+            original = self.read_transcript(identity, source_id, cancel=cancel)
+            state = self._load(identity)
+            edit_id = uuid4().hex
+            relative = f'edits/{_id(source_id)}/{edit_id}.json'
+            value = {'id': edit_id, 'source_id': source_id, 'text': text, 'edited': True,
+                     'provenance': {**original['provenance'], 'revision_kind': 'user-edited-transcript',
+                                    'original_transcript_sha256': sha256(original['text'].encode('utf-8')).hexdigest()},
+                     'created': time.time(), 'path': relative}
+            target = self._job_root(identity) / relative
+            stopped(cancel)
+            check_scope(self.host, self._job_root(identity), state, execution=True)
+            atomic_json(target, value)
+            checksum = digest_file(target)
+            state.setdefault('edits', {})[source_id] = {'id': edit_id, 'path': relative, 'sha256': checksum}
+            self._save(state)
+            return {**value, 'sha256': checksum}
+
+    def export(self, identity, directory, *, formats=None, include_edits=True, cancel=None):
+        state = self._load(identity)
+        selected_cancel = cancel
+        def cancel():
+            check_scope(self.host, self._job_root(identity), state)
+            return selected_cancel is not None and selected_cancel()
+        selected = tuple(formats) if formats is not None else tuple(name for name in FORMATS if state['settings']['output_' + name])
+        if not selected or len(set(selected)) != len(selected) or any(name not in FORMATS for name in selected):
+            raise ValueError('Choose distinct TXT, SRT, VTT or JSON exports.')
+        destination = local_path(directory, exists=True)
+        regular(destination, directory=True)
+        if destination.is_relative_to(self.library_root) or self.library_root.is_relative_to(destination):
+            raise ValueError('Choose a separate export directory outside the entire private library.')
+        files, warnings, committed = [], [], []
+        attempted = None
+        manifest_path = None
+        durable = False
+
+        def publish(target, payload, record):
+            nonlocal attempted
+            # An ordinary existing destination is a pre-publication conflict,
+            # never evidence that this invocation saved it.
+            if os.path.lexists(target):
+                raise FileExistsError('The transcription export destination already exists.')
+            attempted = {**record, 'path': str(target)}
+            result = write_binary_export(target, payload, private_root=self.library_root,
+                                         cancelled=cancel, require_absent=True)
+            saved = {**attempted, 'path': str(result.path), 'verification': 'pending'}
+            committed.append(saved)  # record the returned commit before further IO
+            attempted = None
+            if result.cleanup_warning:
+                warnings.append(result.cleanup_warning)
+            if _published_identity(result.path) != {'sha256': record['sha256'], 'size': record['size']}:
+                raise OSError('An exported transcript failed byte verification.')
+            saved['verification'] = 'verified'
+            return result
+
+        try:
+            for result in state['results']:
+                stopped(cancel)
+                receipt = self._receipt(state, result, cancel=cancel)
+                source = next(source for source in state['sources'] if source['id'] == result['source_id'])
+                self._verify_source(state, source, cancel=cancel)
+                for name in selected:
+                    if name not in receipt['files']:
+                        raise ValueError('This format was not requested for the job; create a reviewed export plan first.')
+                    record = receipt['files'][name]
+                    root = self._job_root(identity)
+                    path = local_path(root / record['path'], root=root, exists=True)
+                    payload = _export_payload(path, record, cancel=cancel)
+                    target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}.{name}"
+                    item = {'source_id': result['source_id'], 'format': name,
+                            'sha256': record['sha256'], 'size': record['size'], 'edited': False}
+                    published = publish(target, payload, item)
+                    files.append({'path': str(published.path), **item})
+                if include_edits and result['source_id'] in state.get('edits', {}):
+                    # Use the exact selected state revision, not a later edit
+                    # which happened while the preceding files were exported.
+                    edited = self._read_edit(state, result['source_id'], cancel=cancel)
+                    payload = edited['text'].encode('utf-8')
+                    target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}-edited.txt"
+                    item = {'source_id': result['source_id'], 'format': 'txt',
+                            'sha256': sha256(payload).hexdigest(), 'size': len(payload), 'edited': True,
+                            'provenance': edited['provenance']}
+                    published = publish(target, payload, item)
+                    files.append({'path': str(published.path), **item})
+            if not files:
+                raise ValueError('No verified transcript results are available to export.')
+            manifest = {'schema': 'resonance-transcription-export/1', 'job_id': identity,
+                        'status': 'complete', 'job_status': state['status'], 'files': files,
+                        'derived': True, 'citation_authority': False, 'warnings': warnings}
+            target = destination / f'transcripts-{identity[:12]}-manifest.json'
+            payload = encode(manifest)
+            record = {'kind': 'manifest', 'sha256': sha256(payload).hexdigest(), 'size': len(payload)}
+            receipt = publish(target, payload, record)
+            manifest_path = str(receipt.path)
+            manifest['manifest_path'] = manifest_path
+            manifest['manifest_sha256'] = record['sha256']
+            sync_directory(destination)
+            durable = True
+            return manifest
+        except BaseException as error:
+            uncertain = []
+            carried = getattr(error, 'receipt', None)
+            if (attempted is not None and isinstance(carried, ExportReceipt)
+                    and Path(carried.path) == Path(attempted['path'])):
+                committed.append({**attempted, 'verification': 'unconfirmed-after-writer-error'})
+                if carried.cleanup_warning:
+                    warnings.append(carried.cleanup_warning)
+                attempted = None
+            elif (attempted is not None and not isinstance(error, FileExistsError)
+                    and os.path.lexists(attempted['path'])):
+                # An unreceipted same-name file is not adopted as our output.
+                # Retain only an explicit uncertainty record for the user.
+                uncertain.append({**attempted, 'publication': 'unconfirmed',
+                                  'reason': 'The writer raised without a completion receipt.'})
+            if committed or uncertain:
+                status = ('published' if manifest_path is not None
+                          else 'uncertain' if uncertain
+                          or any(item['verification'] != 'verified' for item in committed)
+                          else 'partial')
+                publication = {'schema': 'resonance-transcription-publication/1',
+                    'status': status, 'directory': str(destination), 'job_id': identity,
+                    'job_status': state['status'], 'complete_payload': manifest_path is not None,
+                    'files': files, 'published_files': committed, 'uncertain_files': uncertain,
+                    'manifest_path': manifest_path, 'warnings': warnings,
+                    'citation_authority': False}
+                raise TranscriptionExportedError(publication,
+                    durability_confirmed=durable) from error
+            raise
+
+
+def prepare_restored_state(state_root, destination_root=None, *, cancelled=None):
+    """Revoke external execution trust and mark restored work for explicit review.
+
+    ``state_root`` is the complete staged state directory. No external runtime,
+    model or original path is opened, copied, executed or modified here.
+    """
+    stopped(cancelled)
+    root = local_path(Path(state_root) / 'transcription', exists=True)
+    regular(root, directory=True)
+    profiles = jobs = 0
+    engine = root / 'engine.json'
+    if engine.exists():
+        from ..backup_transcription import _engine
+        value = read_json(engine)
+        _engine(value)
+        value.update(restored=True, review_required=True)
+        atomic_json(engine, value, replace=True)
+    for path in sorted((root / 'profiles').glob('*.json')):
+        stopped(cancelled)
+        value = read_json(path)
+        from .transcription_backup import _profile
+        _profile(value, path.stem)
+        value.update(trusted=False, restored=True)
+        atomic_json(path, value, replace=True)
+        profiles += 1
+    for path in sorted((root / 'jobs').glob('*/job.json')):
+        stopped(cancelled)
+        value = read_json(path)
+        from .transcription_backup import _job
+        _job(value, path.parent.name)
+        if value['status'] in ACTIVE or value['status'] in ('pending', 'preparing', 'interrupted'):
+            value['status'] = 'interrupted'
+        value.update(restored=True, recovery_review_required=True)
+        if value['status'] != 'complete':
+            value['error'] = 'Restored job: review and register the local runtime/model before resuming.'
+        atomic_json(path, value, replace=True)
+
+        binding_path = path.parent / 'workspace.json'
+        if binding_path.exists():
+            from .transcription_scope import validate_binding
+            binding = validate_binding(read_json(binding_path), value['id'])
+            binding.update(origin=None, review_required=True)
+            atomic_json(binding_path, binding, replace=True)
+        atomic_json(path.parent / 'control.json', {'action': 'run'}, replace=(path.parent / 'control.json').exists())
+        workspaces = [path.parent / 'worker']
+        history = path.parent / 'worker-history'
+        if os.path.lexists(history):
+            regular(local_path(history, root=root, exists=True), directory=True)
+            for count, archived in enumerate(history.iterdir(), 1):
+                stopped(cancelled)
+                if count > 1024 or not re.fullmatch('[0-9a-f]{32}-[0-9a-f]{32}', archived.name):
+                    raise ValueError('Invalid or excessive restored worker workspace history.')
+                regular(local_path(archived, root=root, exists=True), directory=True)
+                workspaces.append(archived)
+        for worker in workspaces:
+            stopped(cancelled)
+            for name in ('job_config.json', 'settings_live.json', 'job_status.json', 'pause.flag', 'stop.flag'):
+                candidate = worker / name
+                if candidate.exists() or candidate.is_symlink():
+                    local_path(candidate, root=root, exists=True).unlink()
+        jobs += 1
+    stopped(cancelled)
+    return {'profiles_revoked': profiles, 'jobs_reviewed': jobs, 'external_files_executed': False}

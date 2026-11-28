@@ -1,0 +1,346 @@
+{
+  "schema": "resonance-word-bridge-handoff/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_base": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "status": "DRAFT_NOT_RUN",
+  "code_files": 15,
+  "files": {
+    "carr-library/src/carr_library/academic_integration/word_records.py": {
+      "sha": "8691e78ec4e2f5bc2c963e4c5056c918186ed110",
+      "preimage": null,
+      "bytes": 25019,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/src/carr_library/academic_integration/word_native.py": {
+      "sha": "dd4f85eae9f0b4ac373f84d1260c49d5f174692a",
+      "preimage": null,
+      "bytes": 26183,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/src/carr_library/academic_integration/word_worker.py": {
+      "sha": "1bfa3dd64d64e691ab82502d16fc16a0bf47d224",
+      "preimage": null,
+      "bytes": 7409,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/src/carr_library/academic_integration/word_bridge.py": {
+      "sha": "25dc2c34cc43ea42fd724235a68a33a092ffb9a8",
+      "preimage": null,
+      "bytes": 30534,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/tests/academic_integration/word_fixtures.py": {
+      "sha": "d1a4fda7e3b855fd789784672a7efc5f7d004727",
+      "preimage": null,
+      "bytes": 7965,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/tests/academic_integration/test_word_records.py": {
+      "sha": "eabe21cc425d105283c6e7e93333338552fe05d2",
+      "preimage": null,
+      "bytes": 11177,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/tests/academic_integration/test_word_bridge.py": {
+      "sha": "e671c0e984be3d875a86ffa57b1a1e03feb04a56",
+      "preimage": null,
+      "bytes": 21226,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/tests/academic_integration/test_word_worker.py": {
+      "sha": "75dfd2037108e9fe1a85cadff26a418212b3b709",
+      "preimage": null,
+      "bytes": 13349,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/src/carr_library/ui/word_citations_dialog.py": {
+      "sha": "0f02c39331589a0e19ec7356d827af97703401fb",
+      "preimage": null,
+      "bytes": 19797,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/src/carr_library/ui/citation_styles_dialog.py": {
+      "sha": "7e0d4cc204d1aff574de0963a2d8c847bd7d3a5a",
+      "preimage": "365f9ce02fea9e05524bdeae06069a27a1c698a3",
+      "bytes": 18124,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/tests/ui/test_word_citations.py": {
+      "sha": "71ae5ac1fec9aef6a8f5a706a075d001784918e5",
+      "preimage": null,
+      "bytes": 15090,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/scripts/windows_word_bridge_smoke.py": {
+      "sha": "a922321f082dea1f725825371e375dd2cc8d6d61",
+      "preimage": null,
+      "bytes": 20163,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/scripts/windows_word_office_probe.py": {
+      "sha": "7424f93899cc5693a74feae8c4dd48ffec7a8fa0",
+      "preimage": null,
+      "bytes": 11378,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/docs/WORD_BRIDGE.md": {
+      "sha": "6a539032dfb33d1a72043beff56da5426c91f5cc",
+      "preimage": null,
+      "bytes": 9989,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "carr-library/docs/WORD_BRIDGE_VALIDATION.md": {
+      "sha": "5a8d1be83580f55ba4f8e9f7261c4b4ddb08e532",
+      "preimage": null,
+      "bytes": 12921,
+      "readback": "EXACT",
+      "execution": "NOT_RUN"
+    }
+  },
+  "shared_hooks": {
+    "sha": "da58c425e182a9b2fb1e8ce4306a11cfa763c8be",
+    "content": {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "preimage": "365f9ce02fea9e05524bdeae06069a27a1c698a3",
+      "hunks": [
+        {
+          "before": "            self.export_button = wx.Button(self, label='&Export bibliography')",
+          "after": "            self.export_button = wx.Button(self, label='&Export bibliography')\n            self.word_button = wx.Button(self, label='Already-open &Word...')\n            self.word_button.SetName('Review citations in already-open Word')\n            self.word_button.Bind(wx.EVT_BUTTON, self.on_word)"
+        },
+        {
+          "before": "            for button in (self.copy_bibliography, self.copy_citations, self.export_button):",
+          "after": "            for button in (self.copy_bibliography, self.copy_citations, self.export_button, self.word_button):"
+        },
+        {
+          "before": "            for control in (self.copy_bibliography, self.copy_citations, self.export_button):",
+          "after": "            for control in (self.copy_bibliography, self.copy_citations, self.export_button, self.word_button):"
+        },
+        {
+          "before": "        def on_export(self, event=None):",
+          "after": "        def on_word(self, event=None):\n            if self.pending is not None:\n                return\n            dialog = None\n            try:\n                selected = self.preview\n                self.workbench.check(selected)\n                library, workspace = controller.library, controller.workspace\n                chain, node, host = [], self, None\n                while node is not None and all(node is not item for item in chain):\n                    chain.append(node)\n                    if getattr(node, 'library', None) is library:\n                        host = node\n                        break\n                    node = node.GetParent()\n                if host is None:\n                    raise ValueError('Open this workbench from the selected library desktop before using Word.')\n\n                host_scope = host.active\n                if not isinstance(host_scope, tuple) or not host_scope or host_scope[0] != workspace:\n                    raise ValueError('The active desktop workspace differs from this bibliography.')\n\n                def current():\n                    if (not self.alive or self.preview is not selected\n                            or controller.library is not library or controller.workspace != workspace\n                            or host.library is not library or host.active != host_scope or getattr(host, '_closing', False)\n                            or any(getattr(owner, 'alive', True) is False for owner in chain)):\n                        raise ValueError('The library or bibliography review changed; reopen Word review.')\n\n                current()\n                from .word_citations_dialog import create_word_citation_dialog\n                dialog = create_word_citation_dialog(self, self.workbench, selected,\n                    executor=self.executor, guard=current)\n                dialog.ShowModal()\n                current()\n                self.report('Word review closed. The bridge never saves or closes Word; inspect any uncertain change there.')\n            except Exception as exc:\n                if self.alive:\n                    self.report(f'Word review unavailable: {exc}')\n            finally:\n                if dialog is not None:\n                    dialog.Destroy()\n\n        def on_export(self, event=None):"
+        }
+      ],
+      "postimage": "7e0d4cc204d1aff574de0963a2d8c847bd7d3a5a"
+    }
+  },
+  "implementation": {
+    "transport": "One fixed held child through capture, preview, explicit approval, Word-ready snapshot, fresh host source grant and bounded mutation; one existing caller executor and ResourceBroker lease.",
+    "document_authority": "Held canonical COM identities, native HWND/PID/creation time, exact complete capture, immutable proposal and source/workspace/root guards.",
+    "outcome": "Valid immutable completion wins late cancellation and deferred interruption after quiescence. Visible grant/begun without completed receipt is UNCERTAIN; no automatic retry.",
+    "allowed_operations": [
+      "inspect already-open document",
+      "insert citation",
+      "edit managed citation with stable ID",
+      "regenerate managed bibliography",
+      "copy inert document references"
+    ],
+    "unsupported": [
+      "open/save/close/quit Word",
+      "change macro/security/revision policy",
+      "convert foreign/Zotero fields",
+      "automatic legacy metadata migration",
+      "automatic undo",
+      "automatic uncertain retry",
+      "qualification of all Office versions, NVDA or visual layout"
+    ],
+    "dependencies": "No new dependency; reuse exact existing comtypes 1.5.0, canonical QuickJS CSL and native process/resource primitives.",
+    "persistent_library_state": "No new namespace, backup producer or durable execution authority.",
+    "budgets": {
+      "session_default_seconds": 180,
+      "session_max_seconds": 300,
+      "approval_seconds": 60,
+      "source_grant_before_first_write_seconds": 5,
+      "protocol_bytes": 16777216,
+      "max_text_units": 2000000,
+      "max_controls": 512,
+      "max_clusters": 128,
+      "max_references": 1000,
+      "broker_memory_bytes": 1610612736,
+      "broker_disk_bytes": 222298112,
+      "broker_cpu_slots": 1
+    }
+  },
+  "required_validation": {
+    "whole_source_and_installed_suites": {
+      "tests/academic_integration/test_word_records.py": 47,
+      "tests/academic_integration/test_word_bridge.py": 20,
+      "tests/academic_integration/test_word_worker.py": 17,
+      "tests/ui/test_word_citations.py": 17
+    },
+    "total_static_expected_cases": 101,
+    "counts_status": "STATIC_DECORATOR_ENUMERATION_NOT_COLLECTED",
+    "companions": [
+      "carr-library/tests/academic_integration/word_fixtures.py"
+    ],
+    "installed_test_layout": "Preserve tests/academic_integration and tests/ui relative layout. UI suite loads adjacent academic_integration/word_fixtures.py. Bind carr_library imports only to installed application, never test companion source root.",
+    "preserve_existing": "All CSL, bibliography workbench, citation, document regeneration, DOCX/export, source-authority and cleanup gates remain required.",
+    "required_windows_native": {
+      "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+      "sha": "a922321f082dea1f725825371e375dd2cc8d6d61",
+      "command": [
+        "<installed-python>",
+        "-I",
+        "-B",
+        "scripts/windows_word_bridge_smoke.py",
+        "--source-root",
+        "<exact-checkout>/carr-library/src",
+        "--require-installed",
+        "--synthetic-transport",
+        "--output",
+        "<new-report>/word-bridge-native.json"
+      ],
+      "total_deadline_seconds": 180,
+      "companion": "Exact checked-out tests/academic_integration/word_fixtures.py; report its SHA256.",
+      "report_expected": {
+        "status": "PASS",
+        "actual_native_ui": "PASS",
+        "actual_csl": "PASS",
+        "synthetic_word_protocol": "PASS",
+        "owned_child_cleanup": "PASS",
+        "owned_child_invocations": 3,
+        "actual_word": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "office_document_quality": "NOT_RUN"
+      },
+      "required_checks": [
+        "all twenty Word host and protocol module bytes match their requested origins",
+        "every invoked Word action is enabled in its actual native state",
+        "native Word application confirmation starts on No",
+        "actual current DesktopFrame owns the selected library and one worker",
+        "opening Word review launches no child or document mutation",
+        "Word operation and preview controls have distinct accessible names",
+        "actual inspection uses one reaped protocol child without a mutation",
+        "document references remain a read-only inert display",
+        "native Space selects an explicit source reference",
+        "actual canonical CSL preview is not a synthetic citation string",
+        "the held preview retains its child staging and shared reservation",
+        "preview alone does not write a mutation or final grant",
+        "native No leaves the held preview unapplied",
+        "explicit native Yes completes exactly the reviewed proposal",
+        "confirmed completion returns accessible status and releases the private Job",
+        "native copy exposes only the reviewed inert document references",
+        "busy Close stops and reports before destroying the native review",
+        "review closure never shuts down its borrowed desktop worker",
+        "existing workbench formatting remains the Word entrypoint",
+        "all Word protocol work uses the existing single off-main worker",
+        "bibliographic source bytes remain exact after every native action",
+        "actual host finalizers settle before native completion is reported",
+        "application and synthetic companion bytes remain unchanged after native cleanup"
+      ],
+      "installed_origins": [
+        "carr_library.academic_integration.word_bridge",
+        "carr_library.academic_integration.word_worker",
+        "carr_library.academic_integration.word_native",
+        "carr_library.academic_integration.word_records",
+        "carr_library.academic_integration.formatting",
+        "carr_library.citations.bibliography_workbench",
+        "carr_library.citations.csl",
+        "carr_library.ui.word_citations_dialog",
+        "carr_library.ui.citation_styles_dialog",
+        "carr_library.ui.academic_library_dialog",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.audio.process",
+        "carr_library.audio.windows_job",
+        "carr_library.audio.cleanup",
+        "carr_library.operations.broker",
+        "carr_library.operations.models",
+        "carr_library.application",
+        "carr_library.durable_state",
+        "carr_library.native_runtime"
+      ],
+      "check_count": 23,
+      "origin_count": 20,
+      "classification": "Actual Windows/wx/keyboard/CSL/resource/owned-process checks with an explicitly synthetic COM backend. This cannot qualify Microsoft Word itself."
+    },
+    "optional_actual_office": {
+      "path": "carr-library/scripts/windows_word_office_probe.py",
+      "sha": "7424f93899cc5693a74feae8c4dd48ffec7a8fa0",
+      "mandatory_ci": false,
+      "command": [
+        "<installed-python>",
+        "-I",
+        "-B",
+        "scripts/windows_word_office_probe.py",
+        "--source-root",
+        "<exact-checkout>/carr-library/src",
+        "--require-installed",
+        "--document-name",
+        "<exact disposable document name>",
+        "--style",
+        "apa|chicago-notes",
+        "--approve-disposable-edits",
+        "--output",
+        "<new-report>/word-office.json"
+      ],
+      "conditions": "Interactive terminal and explicit consent; exact already-open disposable marker document with collapsed initial caret, no controls/fields/metadata/endnotes, unprotected and Track Changes off. No lease or child is held during prompted inter-phase caret movement.",
+      "total_deadline_seconds": 600,
+      "report_expected": {
+        "status": "PASS",
+        "actual_word": "EXECUTED",
+        "saved_or_closed_by_bridge": false,
+        "manual_nvda": "NOT_RUN",
+        "visual_layout_review": "NOT_RUN",
+        "all_office_versions": "NOT_QUALIFIED",
+        "foreign_document_conversion": "NOT_RUN"
+      },
+      "required_checks": [
+        "actual already-open Word attaches without opening or saving a document",
+        "disposable document starts at its exact unprotected main-text caret",
+        "actual Word insertion returns an exact completed stable citation receipt",
+        "actual Word edit preserves the stable citation and document identity",
+        "actual Word bibliography is a separate managed completed range",
+        "actual Word remains open with the original unmanaged text and latest complete metadata",
+        "the source library and all native resource reservations remain unchanged or released",
+        "application module bytes remain unchanged after actual Office work"
+      ],
+      "installed_origins": [
+        "carr_library.academic_integration.word_bridge",
+        "carr_library.academic_integration.word_worker",
+        "carr_library.academic_integration.word_native",
+        "carr_library.academic_integration.word_records",
+        "carr_library.academic_integration.formatting",
+        "carr_library.citations.bibliography_workbench",
+        "carr_library.citations.csl",
+        "carr_library.audio.process",
+        "carr_library.audio.windows_job",
+        "carr_library.audio.cleanup",
+        "carr_library.operations.broker"
+      ],
+      "check_count": 8,
+      "origin_count": 11,
+      "current_execution": "NOT_RUN; Office unavailable/unobserved must never count as a passing execution."
+    }
+  },
+  "docs": {
+    "user_guide": "carr-library/docs/WORD_BRIDGE.md",
+    "validation_guide": "carr-library/docs/WORD_BRIDGE_VALIDATION.md",
+    "guide_packaging_request": "Add WORD_BRIDGE.md to the existing guide inventory if included in the final delivery; no builder changes are part of this source manifest.",
+    "primary_reference_retrieval_date": "2026-11-27"
+  },
+  "review": {
+    "source_hash_readback": "EXACT for every listed blob",
+    "lexical_delimiters": "Balanced via limited JavaScript lexical check only; NOT a Python parser.",
+    "python_parse": "NOT_RUN",
+    "pytest": "NOT_RUN",
+    "native_windows": "NOT_RUN",
+    "actual_office": "NOT_RUN",
+    "progress_peer": "Accepted bounded bridge/native/records/worker seams after deferred-interruption and aggregate/native-offset corrections, STATIC_NOT_RUN.",
+    "locate_peer": "Accepted borrowed-worker/modal/queued dialog lifetime on b351; final dialog differs only by accurate AutoSave wording. Correct frame.library/active hook and final native control check review requested.",
+    "refs": "No refs/branches/workflows changed by this handoff."
+  }
+}

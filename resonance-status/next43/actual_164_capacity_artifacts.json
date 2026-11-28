@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "created_utc": "2026-11-28 02:44:07 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+  "run_id": 46092769234,
+  "all_profiles_complete": true,
+  "artifact_metadata": [
+    {
+      "id": 15244590371,
+      "name": "retained-capacity-large-source-v1-50000x20-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 27133,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244590371",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244590371/zip",
+      "expired": false,
+      "created_at": "2026-11-28T02:26:01Z",
+      "expires_at": "2027-02-26T01:22:21Z",
+      "updated_at": "2026-11-28T02:26:01Z",
+      "digest": "sha256:767941da1da413586976f46bda5a3b81ccdb7246487b9a9effed58f3ff3b14f1",
+      "workflow_run": {
+        "id": 46092769234,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+      }
+    },
+    {
+      "id": 15244431976,
+      "name": "retained-capacity-large-source-v1-50000x40-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 13133,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244431976",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244431976/zip",
+      "expired": false,
+      "created_at": "2026-11-28T02:36:04Z",
+      "expires_at": "2027-02-26T01:22:21Z",
+      "updated_at": "2026-11-28T02:36:04Z",
+      "digest": "sha256:40e0e86ae3698e3f21a5673235383efd08a1a2aaa0a5542abc273a51efadfc97",
+      "workflow_run": {
+        "id": 46092769234,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+      }
+    },
+    {
+      "id": 15242283527,
+      "name": "retained-capacity-large-source-v1-10000x20-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 27019,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242283527",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242283527/zip",
+      "expired": false,
+      "created_at": "2026-11-28T01:41:01Z",
+      "expires_at": "2027-02-26T01:22:21Z",
+      "updated_at": "2026-11-28T01:41:01Z",
+      "digest": "sha256:15d8b14bf585b8734a97498fcbbeb23533206fe5abad529e909399d268acd5b1",
+      "workflow_run": {
+        "id": 46092769234,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+      }
+    },
+    {
+      "id": 15242148018,
+      "name": "retained-capacity-large-source-v1-1000x20-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 26915,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242148018",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242148018/zip",
+      "expired": false,
+      "created_at": "2026-11-28T01:25:36Z",
+      "expires_at": "2027-02-26T01:22:21Z",
+      "updated_at": "2026-11-28T01:25:36Z",
+      "digest": "sha256:2eff95eb8a973fa1b87b984076d909bd7eec7a46d15cb484e624fe52ad4b943b",
+      "workflow_run": {
+        "id": 46092769234,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+      }
+    }
+  ],
+  "largest_profile": {
+    "job_id": 140817741038,
+    "log_sha256": "88b2dbadef245a0f1668253e4e43398acadf2d2c3bef63b5a2659afaa144f5b3",
+    "log_characters": 47296,
+    "summary": {
+      "books": 50000,
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": "ValueError",
+          "status": "FAIL"
+        }
+      ],
+      "qualification": "Measured exact declared synthetic source profile only; no native GUI, acoustic or sustained whole-corpus import claim.",
+      "retained": {
+        "50000/build.json": {
+          "bytes": 5980,
+          "sha256": "d064a929a7d956cce6d40c80e38eca1f8af78e9597bfedb2ec2ddaa2cf09d383"
+        },
+        "50000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.json": {
+          "bytes": 5569,
+          "sha256": "99eea7ae67711c7faa1b6395d89248548c1104a227cb682b56112b0785097c5a"
+        },
+        "50000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "50000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5462,
+          "sha256": "30d3b30aff6b1d24910c3e3dc44d7752fe5c87c704380f994ccffcd023d60167"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 19208,
+          "sha256": "aacc8849016c008a410c8da7e28ec1b082ee2787987328a3cca61e30ad9bfdbf"
+        }
+      },
+      "segments": 2000000,
+      "source_commit": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+      "status": "FAIL"
+    }
+  },
+  "qualification": "API/log result only. Three smaller profiles succeeded; 50k x40 build passed and measure failed with ValueError. Exact phase timing/counters/reason require the bounded artifact inspector; no inferred speed or capacity claim."
+}

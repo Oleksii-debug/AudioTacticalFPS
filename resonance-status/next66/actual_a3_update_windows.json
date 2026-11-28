@@ -1,0 +1,164 @@
+{
+  "schema": "carr-actual-updater-contracts/1",
+  "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+  "run_id": 46121235190,
+  "job_id": 140905995402,
+  "job_status": "completed",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T07:36:33Z",
+  "completed_at": "2026-11-28T07:39:20Z",
+  "workflow_git_blob": "b8424c11ae2c68be238a273b1fcbe6b1a057fe51",
+  "helper_git_blob": "59d3642396f88529e17d82f68bb4675382145c9f",
+  "platform": "Windows",
+  "source_whole_receipts": [
+    {
+      "line": 542,
+      "text": "PASS: tests/security/test_update_handoff.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 543,
+      "text": "PASS: tests/security/test_update_runtime.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 544,
+      "text": "PASS: tests/security/test_update_ui.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "line": 545,
+      "text": "PASS: tests/security/test_update_controller_actions.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "installed_wholes": {
+    "tests/security/test_update_handoff.py": {
+      "count": 53,
+      "functions": [
+        "test_offline_handoff_reverifies_actual_signed_metadata_and_complete_target",
+        "test_exact_external_runtime_seal_refuses_every_unreviewed_payload_change",
+        "test_same_byte_runtime_root_replacement_never_reuses_owner_configuration",
+        "test_owner_configuration_changes_are_refused_before_launch",
+        "test_real_supervisor_ready_never_means_apply_and_cancel_reaps_it",
+        "test_wrong_supervisor_ready_identity_is_refused_and_actual_child_is_reaped",
+        "test_only_actual_close_boolean_can_commit_the_exact_owned_handoff",
+        "test_visible_commit_survives_postpublication_error_without_terminating_host",
+        "test_uncertain_commit_retains_fixed_host_without_falsely_claiming_activation",
+        "test_external_host_uses_actual_exclusive_lease_and_existing_complete_transaction",
+        "test_external_host_failure_retains_exact_existing_rollback_and_backup",
+        "test_external_host_recovery_finishes_already_committed_b_without_rollback",
+        "test_real_application_child_excludes_host_until_its_own_lease_is_released",
+        "test_runtime_manifest_survives_only_outside_every_managed_payload",
+        "test_restart_uses_only_exact_owned_installed_entrypoint_and_current_library",
+        "test_sealed_venv_launch_binds_current_base_cfg_launcher_and_ignores_ambient_overrides",
+        "test_sealed_venv_launch_refuses_unowned_or_ambiguous_interpreter_authority",
+        "test_sealed_venv_launch_rechecks_each_real_identity_after_review",
+        "test_sealed_venv_launch_cancellation_preserves_original_control_and_starts_no_child",
+        "test_real_temporary_venv_preserves_direct_pid_installed_prefix_and_handoff_ownership",
+        "test_ready_refusal_keeps_exact_identity_and_live_process_diagnostics",
+        "test_changed_launch_binding_after_real_spawn_reaps_only_precommit_owner"
+      ],
+      "git_blob": "057be5e81624330f63d0519569247e1129444781"
+    },
+    "tests/security/test_update_runtime.py": {
+      "count": 40,
+      "functions": [
+        "test_preparation_copies_only_exact_distribution_then_seals_new_offline_host",
+        "test_wrong_independent_a_identity_is_refused_before_copy_or_child",
+        "test_changed_exact_distribution_source_never_starts_offline_installer",
+        "test_changed_fixed_helper_is_refused_before_import_or_copy",
+        "test_explicit_external_destination_cannot_overlap_or_replace_owned_material",
+        "test_cancellation_before_preparation_creates_no_runtime_or_receipts",
+        "test_offline_installer_failure_retains_owned_attempt_and_leaves_a_untouched",
+        "test_real_competing_publication_is_never_overwritten",
+        "test_visible_final_configuration_retains_truth_if_acknowledgment_fails",
+        "test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code",
+        "test_pip_code_exception_preserves_every_private_component_refusal",
+        "test_pip_code_exception_is_closed_to_exact_observed_relative_files",
+        "test_pip_code_exception_cannot_bypass_owner_hash_or_path_identity"
+      ],
+      "git_blob": "91bab7040584adfb1a23dcd84d92047d44f1bf0c"
+    },
+    "tests/security/test_update_ui.py": {
+      "count": 15,
+      "functions": [
+        "test_actual_host_close_and_registered_finalizer_cannot_race_before_commit",
+        "test_native_close_veto_or_missing_closing_state_cancels_only_owned_handoff",
+        "test_late_callback_never_closes_changed_host_or_applies_after_cancel",
+        "test_real_host_shutdown_settles_prepared_helper_without_any_gui_callback",
+        "test_refused_shared_host_submission_creates_no_supervisor",
+        "test_close_between_preparation_and_cleanup_registration_reaps_real_helper",
+        "test_real_shared_progress_reports_received_bytes_without_premature_acceptance",
+        "test_same_byte_library_root_replacement_refuses_new_update_job_before_worker",
+        "test_uncertain_durable_commit_is_retained_through_actual_host_cleanup",
+        "test_consented_idle_check_uses_existing_worker_without_focus_download_or_close",
+        "test_idle_check_cooperatively_stops_for_new_foreground_work_on_same_worker",
+        "test_closed_host_stops_timer_and_drops_late_idle_completion_without_focus"
+      ],
+      "git_blob": "4b7c1e0b0d379654d769da667b11e453cb55a221"
+    },
+    "tests/security/test_update_controller_actions.py": {
+      "count": 14,
+      "functions": [
+        "test_unconfigured_status_never_creates_update_authority_or_contacts_a_site",
+        "test_explicit_current_library_obtains_only_actual_tuf_package_capability",
+        "test_wrong_library_is_refused_before_creating_update_cache",
+        "test_stale_same_byte_directory_scope_refuses_before_client_or_handoff",
+        "test_background_update_setting_requires_typed_explicit_consent",
+        "test_background_consent_is_bound_to_exact_owner_configuration_and_manual_by_default",
+        "test_consent_for_another_configuration_never_enables_idle_network_checks",
+        "test_offline_only_configuration_cannot_enable_background_network",
+        "test_explicit_preparation_changes_only_this_controller_to_verified_apply_service",
+        "test_update_check_outage_preserves_unmanaged_reading_permission_and_no_apply"
+      ],
+      "git_blob": "1daad6582495e049952e9c36404214059453ada1"
+    }
+  },
+  "installed_summaries": [
+    {
+      "line": 790,
+      "text": "============================= 53 passed in 13.06s ============================="
+    },
+    {
+      "line": 841,
+      "text": "============================= 40 passed in 17.31s ============================="
+    },
+    {
+      "line": 867,
+      "text": "============================= 15 passed in 5.73s =============================="
+    },
+    {
+      "line": 892,
+      "text": "============================= 14 passed in 1.89s =============================="
+    }
+  ],
+  "final_report": {
+    "line": 894,
+    "value": {
+      "all_children_reaped": true,
+      "inputs_unchanged": true,
+      "installed_passed": 122,
+      "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+      "source_passed": 122,
+      "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+      "status": "PASS"
+    }
+  },
+  "decoded_log": {
+    "sha256": "0bb3160758023b40e48cb4ddbd71ce6a2f386ad6b9991025af7b7be86c3caf0f",
+    "bytes": 109507
+  },
+  "artifact": {
+    "id": 15253234117,
+    "name": "configured-update-windows-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+    "size_in_bytes": 35744,
+    "digest": "sha256:dbe813f3cc262886548765a7ef1c038c9655f984a3d9273355807c3316015efd",
+    "head_sha": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f"
+  },
+  "verdict": "ACTUAL_SOURCE122_AND_ISOLATED_INSTALLED122_PASS",
+  "limitations": {
+    "https15": "IN_PROGRESS_AT_OBSERVATION",
+    "compiled_configured_native": "NOT_RUN_FOR_A3",
+    "production_private_signed_rollout": "NOT_RUN",
+    "physical_audio": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_QUALIFIED"
+  }
+}

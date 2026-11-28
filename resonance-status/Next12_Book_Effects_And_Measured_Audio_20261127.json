@@ -1,0 +1,201 @@
+{
+  "schema": "resonance-book-effects-measured-composition/1",
+  "parent_commit": "2f0c1f51261e8f037b53d3f394dad3f0d0c15242",
+  "parent_tree": "42e5a97757a71d547dc13006b90218f13b660f38",
+  "status": "SOURCE_AND_GATES_REVIEWED_EXACT_SUCCESSOR_NOT_RUN",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "preimage": "1b41db402b78523af4f19405245eedf3f2f9a4fd",
+      "sha": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/measured_audio.py",
+      "preimage": null,
+      "sha": "3e4227b536a5a40edde371c829f44bd20f28685f"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing.py",
+      "preimage": "b336218623e8b925028247257d888bb99eb649a9",
+      "sha": "fb44f78ddc87d6c220d82f14784711c91ba76472"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "preimage": "8a6fa07bb4241c2265c0b2ac5a7e4c501ba860bf",
+      "sha": "0d89734850a1a1954ff0ca8312e4f6575b6c3b30"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_duration_dialog.py",
+      "preimage": null,
+      "sha": "0f9daced19fca2bf4fd60cf91f96a493d07cdb75"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "preimage": "335d74a0a3c139cbc45a192a9eed4ffb652c37e7",
+      "sha": "38a26a21e314a8872b01393edd1801fb5e3ea273"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_effects.py",
+      "preimage": null,
+      "sha": "76453a8a97571696f494258425191236e76205b0"
+    },
+    {
+      "path": "carr-library/tests/studio/test_measured_audio.py",
+      "preimage": null,
+      "sha": "cf6d9eb7e9344836285e4575edcc4095c10767fa"
+    },
+    {
+      "path": "carr-library/tests/studio/test_measured_pcm.py",
+      "preimage": null,
+      "sha": "a7de7443e179fc378a4137427056ec22ce17317f"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_measured_cli.py",
+      "preimage": null,
+      "sha": "2d703df23fe6591cc48cf80152b465070cb365fc"
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_effects.py",
+      "preimage": null,
+      "sha": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb"
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_duration_dialog.py",
+      "preimage": null,
+      "sha": "c1c1baa6a4b63e52732fd46e176da52725c43b7c"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "4f0d1a8e006bf43963f00d3dcd6f284a2c8f5f67",
+      "sha": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61"
+    },
+    {
+      "path": "carr-library/docs/BOOK_AUDIO.md",
+      "preimage": "77d210ebc14121f82e647bcc4855ed66266c0878",
+      "sha": "bcc78b120503e76848fd7d890b84562c36a75abd"
+    },
+    {
+      "path": "carr-library/docs/BOOK_BATCHES.md",
+      "preimage": "8ca7505177859fb6235df914e2959513a2abed8a",
+      "sha": "270edf1edd504f889f734cf412be3b7e8cb3960e"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "3e2f3d8a4c9a92fa203d25861d1664710db78eb2",
+      "sha": "6b6882f510fa8db15bfbfe4e44b1839dbdc803f7"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "653ad7fe298561a52565601a89a0237d141b8379",
+      "sha": "219b215dcd04737fb126b42725e347c74907e659"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "35ef4e960ab04074ad6ea8c56a9dbd2cf2d565dd",
+      "sha": "584ec6b77d5d57f2006298a4b13fbc7cb10e93c9"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": null,
+      "sha": "c703f6820091cda802fa77dd88fef9b5118064ec"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": null,
+      "sha": "a1b4b0e65ea15a3810287ba3ee76a81a52c7f8bf"
+    }
+  ],
+  "durable_reports": [
+    {
+      "path": "resonance-status/next12/book_effects_measured_source.json",
+      "sha": "9bfc2216ec758a15fdfb9cad486b96f7bf60b2be"
+    },
+    {
+      "path": "resonance-status/next12/book_and_capacity_full_gates.json",
+      "sha": "7e587dc231014110b37ce4f14662fcf7c6339dc8"
+    },
+    {
+      "path": "resonance-status/next12/book_independent_diagnostic.json",
+      "sha": "487b48be0849ffdabc32a6fde131c2a7c938b3e0"
+    },
+    {
+      "path": "resonance-status/next12/actual_source_asr_bibliography_b524b3.json",
+      "sha": "54aaa55ed8f8d1cf4952f91ea0e4d93cfbd6979d"
+    },
+    {
+      "path": "resonance-status/next12/actual_completed_main_v3_b524b3.json",
+      "sha": "bc24dfef236d71929e437522d3a5d464119816e1"
+    }
+  ],
+  "reviews": {
+    "product": "ACCEPTED_STATIC_NOT_RUN",
+    "full_gates": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "allOldPathsAndNamedCasesRetained": true,
+      "newWholeCases": 98,
+      "native": 77,
+      "capacity": 25,
+      "actualExecution": "NOT_RUN"
+    },
+    "diagnostic": {
+      "helper": "c703f6820091cda802fa77dd88fef9b5118064ec",
+      "workflow": "a1b4b0e65ea15a3810287ba3ee76a81a52c7f8bf",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "source_pins": 43,
+      "whole_suites": 6,
+      "source_cases": 98,
+      "installed_cases": 98,
+      "native_checks": 77,
+      "native_origins": 18,
+      "wheel_origin_modules": 20,
+      "all_expected_source_preimages_match": true,
+      "workflow_size": 11962
+    }
+  },
+  "acceptance_required": {
+    "new_whole_suites": 6,
+    "source_cases": 98,
+    "isolated_installed_cases": 98,
+    "native_checks": 77,
+    "native_module_identities": 18,
+    "full_wheel_origin_inventory": 20,
+    "actual_native": "Required original EPUB, original Plan1/Project2 flow, explicit effect editor, Plan2/Project3, real SAPI cache reuse, measured -12dB change, measured UI default-No/Yes, exact master PCM reassembly and preserved original provenance."
+  },
+  "actual_parent_capacity_linux": {
+    "run": 46068132683,
+    "job": 140738313889,
+    "head": "2f0c1f51261e8f037b53d3f394dad3f0d0c15242",
+    "source_passed": 178,
+    "installed_passed": 178,
+    "real_hot_rollback_case": "PASS in both source and installed executions",
+    "artifact_id": 15231489217,
+    "artifact_sha256": "9a9cd2fe0c2e09e81f323fedae476289db0aff355843335a313b663a9af5dcd9",
+    "windows": "IN_PROGRESS; no result inferred"
+  },
+  "compatibility": [
+    "Existing no-effect Plan1 and Project2 byte/fingerprint contracts retained.",
+    "Existing Studio service, renderer, queue, effects, worker and publication boundaries reused.",
+    "No new backup namespace; passive source/receipt validation extends current readers.",
+    "Exact PCM parts use original completed artifacts; no estimated text duration or fabricated word timestamps.",
+    "All old full source/installed/native selectors and required names retained; capacity new real hot-journal case remains25."
+  ],
+  "isolation": {
+    "branch": "carr/ci-next12-book-20261127-5a9e",
+    "canonical": "UNCHANGED",
+    "integration_pr_173": "UNCHANGED at b524b3 while current full jobs complete",
+    "capacity_profiles": "UNCHANGED active b524b3 run"
+  },
+  "outstanding": [
+    "Actual execution of this exact new source/installed/native Book tree.",
+    "Separate legacy converter source/native completion and additive final gate union.",
+    "Observed full C3 Import Center, V3 source/installed and Windows partition fixture failures remain required to diagnose or verify; current logs are not fabricated.",
+    "Full owner assembly, private engine/runtime inference, accessibility/quality and distribution approval are separate from these code changes."
+  ],
+  "publication": {
+    "audio_binaries": "EXCLUDED",
+    "node": "EXCLUDED",
+    "private_inputs": "EXCLUDED",
+    "public_release": "NOT_AUTHORIZED",
+    "qualification": "NOT_ESTABLISHED"
+  }
+}

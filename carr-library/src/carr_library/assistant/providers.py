@@ -34,6 +34,11 @@ class ProviderError(RuntimeError):
     """User-safe provider failure, without remote response bodies or credentials."""
 
 
+def translation_receipt_sha256(value, detected_source):
+    """Bind decoded translation and detected language independently of wire JSON."""
+    return sha256(canonical({'text': value, 'detected_source': detected_source}).encode('utf-8')).hexdigest()
+
+
 def money(value):
     try:
         result = Decimal(str(value))
@@ -72,13 +77,30 @@ class Authorization:
             raise ValueError('Approve exact provider profiles and endpoints.')
         for identity, address in self.profiles:
             validate_profile_id(identity)
-            endpoint(address, local=False)
+            endpoint(address, local=type(self) is LocalTranslationAuthorization)
         if not self.operations or any(o not in CAPABILITIES for o in self.operations):
             raise ValueError('Invalid authorized operation.')
-        if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'synthetic-test') for x in self.data_classes):
+        if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'selected-audio', 'synthetic-test') for x in self.data_classes):
             raise ValueError('Approve a bounded selected data class; whole-library uploads are unavailable.')
         if any(not re.fullmatch('[0-9a-f]{64}', h) for h in self.request_hashes):
             raise ValueError('Invalid authorized request checksum.')
+
+
+class LocalTranslationAuthorization(Authorization):
+    """Explicit zero-cost selected-data approval for one loopback translator.
+
+    Uses the unchanged authorization fields/digest and existing usage ledger.
+    It cannot authorize a remote endpoint, chat operation or paid request.
+    """
+    def __post_init__(self):
+        super().__post_init__()
+        if (money(self.budget) != 0 or tuple(self.operations) not in (
+                ('translation.text',), ('translation.languages',))):
+            raise ValueError('Local translation approval permits one translation purpose and a zero external cost bound.')
+
+
+def translation_authorization_type(profile):
+    return LocalTranslationAuthorization if profile.adapter == 'libretranslate-local' else Authorization
 
 
 class UsageLedger:
@@ -148,6 +170,9 @@ def _request(profile, operation, payload):
         raise ValueError('Provider request must be a typed JSON object.')
     if operation not in profile.capabilities:
         raise PermissionError('The provider profile does not support this operation.')
+    if profile.adapter == 'libretranslate-local':
+        from .translation_local import request
+        return request(operation, payload)
     if profile.adapter in ('google-translation-v2', 'google-translation-v3'):
         def language(value):
             if not isinstance(value, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', value):
@@ -203,6 +228,9 @@ def _request(profile, operation, payload):
         return '/chat/completions', body, 'application/json'
     if profile.adapter != 'elevenlabs':
         raise ValueError('Unsupported provider adapter.')
+    if operation == 'speech.transcribe':
+        from .transcription_provider import request
+        return request(profile, payload)
     if operation == 'speech.synthesize':
         if set(payload) != {'text'} or not profile.voice:
             raise ValueError('Speech synthesis requires text and a configured voice ID.')
@@ -261,10 +289,12 @@ class Gateway:
         self.mode = mode
         self.vault = vault or WindowsCredentialVault()
         self.ledger = UsageLedger(Path(directory) / 'usage')
+        from .google_oauth import GoogleTokenSession
+        self._google_tokens = GoogleTokenSession()
 
     def request(self, profile, operation, payload, *, task_id, data_class,
                 authorization=None, max_cost=None, operation_id=None, output=None,
-                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024):
+                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024, upload=None):
         if not isinstance(profile, ProviderProfile) or not profile.enabled:
             raise PermissionError('Enable and explicitly select this provider profile first.')
         if self.mode not in MODES:
@@ -274,6 +304,16 @@ class Gateway:
         if type(max_response_bytes) is not int or not 1 <= max_response_bytes <= 1024 * 1024 * 1024:
             raise ValueError('Invalid response byte budget.')
         route, body, expected_type = _request(profile, operation, payload)
+        transcription = operation == 'speech.transcribe'
+        if transcription:
+            from .transcription_provider import AudioUpload, MAX_RESPONSE_BYTES
+            if not isinstance(upload, AudioUpload) or data_class != 'selected-audio':
+                raise ValueError('Remote transcription requires one explicitly selected, checksum-bound audio upload.')
+            if timeout > 120:
+                raise ValueError('One remote transcription request is bounded to 120 seconds.')
+            max_response_bytes = min(max_response_bytes, MAX_RESPONSE_BYTES)
+        elif upload is not None:
+            raise ValueError('This provider operation does not accept an audio upload.')
         raw = canonical(body).encode('utf-8')
         if len(raw) > 2 * 1024 * 1024:
             raise ValueError('Provider request exceeds the selected-data limit.')
@@ -282,18 +322,25 @@ class Gateway:
         target = endpoint(profile.endpoint, local=profile.local)
         reserved = False
         sent = False
-        if not profile.local:
-            if self.mode == 'LOCAL_ONLY':
+        local_translation = profile.adapter == 'libretranslate-local'
+        if not profile.local or local_translation:
+            if not profile.local and self.mode == 'LOCAL_ONLY':
                 raise PermissionError('LOCAL ONLY blocks external providers before credentials or connections are opened.')
-            if not isinstance(authorization, Authorization) or authorization.expires_at <= time():
-                raise PermissionError('An active, explicit remote production authorization is required.')
+            if not isinstance(authorization, translation_authorization_type(profile)) or authorization.expires_at <= time():
+                raise PermissionError('An active, explicit local selected-data approval is required.' if local_translation
+                                      else 'An active, explicit remote production authorization is required.')
             if (authorization.task_id != task_id or (profile.id, profile.endpoint) not in tuple(tuple(x) for x in authorization.profiles)
                     or operation not in authorization.operations or data_class not in authorization.data_classes
                     or (authorization.request_hashes and request_hash not in authorization.request_hashes)):
                 raise PermissionError('This task, destination, operation or selected data is outside the approved envelope.')
+            if transcription and (tuple(authorization.request_hashes) != (request_hash,)
+                    or authorization.max_calls != 1):
+                raise PermissionError('Approve this exact recording and request for one remote transcription call.')
             if max_cost is None:
                 raise PermissionError('The cost is unknown; approve an explicit maximum before calling this provider.')
             bound = money(max_cost)
+            if local_translation and bound != 0:
+                raise ValueError('Local translation cannot reserve external charges.')
             self.ledger.reserve(authorization, operation_id, request_hash, bound, profile, operation)
             reserved = True
         elif max_cost not in (None, 0, '0'):
@@ -305,6 +352,13 @@ class Gateway:
                    'User-Agent': 'UniversalResearchLibrary/0.2'}
         secret_bytes = None
         started = monotonic()
+        def transcription_guard():
+            if cancelled() or monotonic() - started >= timeout:
+                raise InterruptedError('Remote transcription was cancelled or exceeded its time allowance before transmission.')
+            if self.mode == 'LOCAL_ONLY' or self.mode not in MODES:
+                raise PermissionError('LOCAL ONLY blocks external transcription before credentials or transmission.')
+            if authorization.expires_at <= time():
+                raise PermissionError('Remote transcription approval expired before transmission.')
         try:
             if output is not None:
                 if expected_type == 'application/json':
@@ -317,13 +371,27 @@ class Gateway:
                 raise ValueError('Choose a new output file for generated audio.')
             if cancelled():
                 raise InterruptedError('Provider operation cancelled before transmission.')
+            if transcription:
+                from .transcription_provider import multipart
+                raw, headers['Content-Type'] = multipart(body, upload, cancelled=cancelled)
+                transcription_guard()
             if profile.credential_ref:
                 secret = self.vault.get(profile.id, profile.credential_ref)
                 if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
                     raise ProviderError('The stored provider credential is invalid.')
                 if profile.adapter == 'google-translation-v3':
+                    def credential_guard():
+                        if cancelled() or monotonic() - started >= timeout:
+                            raise InterruptedError('Provider operation cancelled or timed out before transmission.')
+                        if self.mode == 'LOCAL_ONLY' or self.mode not in MODES:
+                            raise PermissionError('LOCAL ONLY blocks external token renewal and translation.')
+                        if authorization.expires_at <= time():
+                            raise PermissionError('The remote authorization expired before transmission.')
                     try:
-                        secret, expires_at = google_oauth_token(secret, profile.endpoint)
+                        secret = self._google_tokens.token(profile, secret,
+                            timeout=max(0.001, timeout - (monotonic() - started)),
+                            guard=credential_guard)
+                        credential_guard()
                     except ValueError as error:
                         raise ProviderError(str(error)) from None
                     headers['X-goog-user-project'] = google_v3_parent(profile.endpoint).split('/')[1]
@@ -337,6 +405,8 @@ class Gateway:
                 raise ProviderError('Reconnect this remote provider account before generation.')
             if cancelled():
                 raise InterruptedError('Provider operation cancelled before transmission.')
+            if transcription:
+                transcription_guard()
             cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
             options = {'timeout': min(timeout, 30.0)}
             if target.scheme == 'https':
@@ -346,6 +416,8 @@ class Gateway:
             prefix = target.path.rstrip('/')
             if profile.adapter == 'elevenlabs' and not prefix:
                 prefix = '/v1'
+            if transcription:
+                transcription_guard()
             sent = True
             method = 'GET' if operation == 'translation.languages' else 'POST'
             connection.request(method, prefix + route, body=None if method == 'GET' else raw, headers=headers)
@@ -402,7 +474,24 @@ class Gateway:
                       'local': profile.local, 'actual_cost': None, 'artifacts': []}
             if expected_type == 'application/json':
                 parsed = json.loads(b''.join(chunks))
-                if profile.adapter == 'google-translation-v3':
+                if transcription:
+                    from .transcription_provider import response as transcription_response
+                    _reject_decoded_credential(parsed, secret_bytes)
+                    result.update(transcription_response(parsed))
+                    usage = {'submitted_audio_bytes': body['audio']['size_bytes'],
+                             'transcript_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                             'provider_timestamp_count': sum(len(segment['words'])
+                                 for segment in result['transcript']['segments'])}
+                elif local_translation:
+                    from .translation_local import response as local_response
+                    decoded = local_response(b''.join(chunks), operation, body, maximum=max_response_bytes)
+                    result.update(decoded)
+                    if operation == 'translation.text':
+                        usage = {'submitted_characters': len(body['q']),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                                 'decoded_translation_sha256': translation_receipt_sha256(
+                                     result['text'], result['detected_source'])}
+                elif profile.adapter == 'google-translation-v3':
                     if type(parsed) is not dict:
                         raise ProviderError('The Advanced v3 response schema is invalid.')
                     if operation == 'translation.languages':
@@ -438,11 +527,15 @@ class Gateway:
                         # text/plain output is already text. HTML-unescaping would
                         # corrupt literal entities in Advanced v3 source derivatives.
                         result['text'] = text(row['translatedText'], 'translation output', maximum=max_response_bytes)
-                        detected = row.get('detectedLanguageCode') or None
+                        detected = row.get('detectedLanguageCode')
+                        if detected == '':
+                            detected = None
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result.update(detected_source=detected, reported_model=row['model'], glossary_config=glossary)
-                        usage = {'submitted_characters': len(body['contents'][0])}
+                        usage = {'submitted_characters': len(body['contents'][0]),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                                 'decoded_translation_sha256': translation_receipt_sha256(result['text'], detected)}
                 elif profile.adapter == 'google-translation-v2':
                     data = parsed.get('data') if type(parsed) is dict else None
                     if type(data) is not dict:
@@ -462,12 +555,15 @@ class Gateway:
                         if (not isinstance(translations, list) or len(translations) != 1
                                 or type(translations[0]) is not dict or type(translations[0].get('translatedText')) is not str):
                             raise ProviderError('The text translation response is invalid.')
-                        result['text'] = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        decoded = html.unescape(text(translations[0]['translatedText'], 'translation output', maximum=max_response_bytes))
+                        result['text'] = text(decoded, 'translation output', maximum=max_response_bytes)
                         detected = translations[0].get('detectedSourceLanguage')
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result['detected_source'] = detected
-                        usage = {'submitted_characters': len(body['q'])}
+                        usage = {'submitted_characters': len(body['q']),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                                 'decoded_translation_sha256': translation_receipt_sha256(result['text'], detected)}
                 else:
                     choices = parsed.get('choices') if type(parsed) is dict else None
                     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):

@@ -1,0 +1,37 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Native library first-open/resume idle admission and exact pin closure",
+  "files": [
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "preimage": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+      "successor": "2bc30526bfb15076f168a2706bb79cc6b5744f66",
+      "inverse": "Exactly one four-line insertion removed"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+      "successor": "8ffc5598f8ed0bcbf570b3bd676f86a14f30c16c",
+      "inverse": "Exactly one native-script pin reversed"
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "4965fd48b26b87e75ba14b9e470780943edab649",
+      "successor": "b50202409935cd0a8ca6816313fb641b5f4e600b",
+      "inverse": "Exactly native-script and helper pins reversed"
+    }
+  ],
+  "reviewed_behavior": [
+    "Both initial and resume menu admissions use the same open_from_menu callback.",
+    "A busy/working host returns through the existing wait_for and wx.CallLater guarded callback; only actual both-idle state resumes admission.",
+    "The original global monotonic40-second deadline is checked by wait_for, with original40-second native watchdog and60-second outer watchdog unchanged.",
+    "No flag writes, no synthetic completion, no alternate menu invocation, no new timer mechanism.",
+    "Actual menu ProcessEvent, fresh constructed-view requirement, original constructor traceback and bounded status observations remain.",
+    "All six original required checks, nine loaded origins, exact source-wheel proof and all cleanup bytes retained."
+  ],
+  "outside_scope": [
+    "No actual rerun or product qualification claimed",
+    "No source/ref/timeout changes by this review"
+  ]
+}

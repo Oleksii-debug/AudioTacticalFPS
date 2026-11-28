@@ -1,0 +1,128 @@
+{
+  "schema": "resonance-actual-book-source-installed-native/1",
+  "status": "PARTIAL_NATIVE_FAILURE",
+  "overall_workflow": "failure",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "source_tree": "5e6fc0103905093513421653b3fc388e0c87684c",
+  "run_id": 46071941795,
+  "run_attempt": 1,
+  "job_id": 140750714664,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071941795/job/140750714664",
+  "workflow_blob": "3141764b3c0ea1b8c76c4a3d0396c1e12022340d",
+  "helper_blob": "f13660682c7174720821e684a5af7e936f79656a",
+  "native_blob": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+  "fixture_correction_manifest": "f7cfe4f87bb25d5df2a543f46efa147017c41473",
+  "source": {
+    "status": "PASS",
+    "whole_suites": 6,
+    "passed": 98,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  "installed": {
+    "status": "PASS",
+    "whole_suites": 6,
+    "passed": 98,
+    "failed": 0,
+    "skipped": 0,
+    "isolation": "-I -B; independent staged tests outside checkout; original strict PYTEST_CHILD",
+    "provenance": "Per-suite installed wrapper rehashes every current wheel payload file plus20 imported module origins before/after and emits receipt; main requires zero exit, exact JUnit count and receipt before advancing",
+    "current_wheel": {
+      "filename": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "bytes": 2153550,
+      "sha256": "ce351b55618cc03b89dbdfd2f4028224ec7609da29963abdae386e740be18d52"
+    }
+  },
+  "suites": [
+    {
+      "path": "tests/studio/test_book_effects.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "source_seconds": 36.79,
+      "installed_seconds": 23.56
+    },
+    {
+      "path": "tests/studio/test_measured_audio.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "source_seconds": 213.45,
+      "installed_seconds": 157.16
+    },
+    {
+      "path": "tests/studio/test_measured_pcm.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "source_seconds": 0.24,
+      "installed_seconds": 0.11
+    },
+    {
+      "path": "tests/studio/test_book_measured_cli.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "source_seconds": 31.78,
+      "installed_seconds": 22.55
+    },
+    {
+      "path": "tests/ui/test_book_effects.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "source_seconds": 2.58,
+      "installed_seconds": 1.31
+    },
+    {
+      "path": "tests/ui/test_book_duration_dialog.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "source_seconds": 102.58,
+      "installed_seconds": 76.16
+    }
+  ],
+  "case_executions": 196,
+  "unique_suite_cases": 98,
+  "native": {
+    "status": "FAIL",
+    "initial_installed_origins_passed": 18,
+    "required_checks": 77,
+    "reached": "Actual native controls, retained EPUB import, selected locked FFmpeg/FFprobe, existing shared worker/command registry/catalog selection",
+    "failure": "AssertionError: The owned Book confirmation has no native No button.",
+    "failure_location": "scripts/windows_book_audio_smoke.py, dismiss_owned_question, line151",
+    "result": "Actual MessageBox remained open;300-second cleanup-inclusive watchdog failed the child; helper refused synthetic substitution",
+    "same_installed_payload_before_after": "Enforced snapshots before/after actual native attempt completed: helper reached its subsequent result==0 refusal rather than identity failure",
+    "user_workflow": "NOT_COMPLETED",
+    "native_sapi_render": "NOT_RUN",
+    "native_measured_export": "NOT_RUN",
+    "final_report": "NOT_CREATED",
+    "native_cleanup": "FAIL",
+    "diagnosis": "Same measured TaskDialog shape as actual inventory46071950490: nested real No/Yes Button HWNDs have ID0; direct GetDlgItem(7) is invalid for this runtime",
+    "reviewed_fix_manifest": "02573858c642fc1262d673c3b02259eb54af0bcd",
+    "fix_execution": "NOT_RUN"
+  },
+  "final_all_input_head_codec_postcheck": "NOT_REACHED after native failure; no complete contracts-summary PASS claimed",
+  "artifact": {
+    "id": 15233448358,
+    "name": "book-effects-measured-windows-ddd372d67fd5c06852c0f29f137fbf49ee10e29e-1",
+    "bytes": 36646,
+    "sha256": "8a699b9c2be252a7d6ed98e5af48276f2bbd3e6a5901df02ab7cda66123466dc",
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233448358"
+  },
+  "evidence_method": "Complete actual job log and run/job/artifact metadata inspected; uploaded ID/size/SHA reconciled between log and API. Artifact archive not downloaded in this audit.",
+  "preserved_limits": {
+    "source_children_seconds": 600,
+    "native_watchdog_seconds": 300,
+    "native_parent_seconds": 330
+  },
+  "limitations": [
+    "No overall Book/native qualification follows from the196 passing source/installed executions.",
+    "No acoustic quality, physical output device, private model inference, manual NVDA, Windows11 or distribution qualification claimed.",
+    "All required native controls remain mandatory in the corrected successor."
+  ],
+  "previous_attempt_evidence": "f3ee610ff05b4b22b88ab627281ccb5e773d061b"
+}

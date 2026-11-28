@@ -1,6 +1,7 @@
 """Actual CLI, isolated synthetic protocol process and checked transcript exports."""
 import importlib.util
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -19,7 +20,10 @@ def runtime(root, **options):
 
 
 def call(root, capsys, *arguments, expected=0):
-    assert main(['transcription', '--data-dir', str(root), *map(str, arguments)]) == expected
+    with sqlite3.connect(Path(root) / 'library.sqlite') as database:
+        [(workspace,)] = database.execute('SELECT workspace FROM workspace_meta').fetchall()
+    assert main(['transcription', '--data-dir', str(root), '--workspace', workspace,
+                 *map(str, arguments)]) == expected
     captured = capsys.readouterr()
     return json.loads(captured.out) if captured.out else None, captured.err
 
@@ -27,6 +31,7 @@ def call(root, capsys, *arguments, expected=0):
 def prepare(tmp_path, capsys, **options):
     engine = runtime(tmp_path / 'existing runtime', **options)
     app = LibraryApp(tmp_path / 'дані')
+    app.create_workspace('Explicit CLI workspace')
     ResourceBroker.for_app(app.root).configure(ResourceLimits(min_free_disk_bytes=0))
     values = ['--python', engine.python, '--worker', engine.worker, '--model', engine.model]
     inspected, _ = call(app.root, capsys, 'inspect-runtime', *values)
@@ -83,8 +88,29 @@ def test_cli_failed_inference_is_nonzero_with_saved_job_and_no_success_export(tm
 
 def test_cli_requires_exact_review_fingerprint_before_trusting_runtime(tmp_path, capsys):
     with pytest.raises(SystemExit) as error:
-        main(['transcription','--data-dir',str(tmp_path / 'library'),'register-runtime',
+        main(['transcription','--data-dir',str(tmp_path / 'library'),'--workspace','not-created','register-runtime',
               '--name','Unreviewed','--python','python','--worker','worker.py','--model','model','--trust-runtime'])
     assert error.value.code == 2
     assert 'exact --fingerprint' in capsys.readouterr().err
     assert not (tmp_path / 'library').exists()
+
+
+def test_cli_keeps_canonical_history_separate_and_requires_binding_for_historical_execution(tmp_path, capsys):
+    app, engine, profile = prepare(tmp_path, capsys)
+    source = tmp_path / 'retained.wav'
+    source.write_bytes(b'Synthetic retained source, not speech.')
+    job, _ = call(app.root, capsys, 'submit', source, '--profile', profile['id'])
+    assert call(app.root, capsys, 'jobs')[0] == []
+    assert [row['id'] for row in call(app.root, capsys, 'jobs', '--canonical')[0]] == [job['id']]
+    (app.root / 'state/transcription/jobs' / job['id'] / 'workspace.json').unlink()
+    before = call(app.root, capsys, 'status', job['id'])[0]
+    assert before['execution_review_required'] is True
+    _, error = call(app.root, capsys, 'resume', job['id'], expected=1)
+    assert 'bind' in error.lower()
+    _, error = call(app.root, capsys, 'bind-workspace', job['id'], expected=1)
+    assert 'review' in error.lower()
+    bound, _ = call(app.root, capsys, 'bind-workspace', job['id'], '--reviewed')
+    assert bound['status'] == 'pending'
+    assert not engine.worker.with_name('fixture-starts.log').exists()
+    completed, _ = call(app.root, capsys, 'resume', job['id'])
+    assert completed['status'] == 'complete'

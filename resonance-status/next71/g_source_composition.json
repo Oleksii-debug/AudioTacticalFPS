@@ -1,0 +1,231 @@
+{
+  "schema": "carr-source-composition/3",
+  "label": "G coherent candidate for final source, installed, native and capacity execution",
+  "status": "SOURCE_INTEGRATED_EXACT_HEAD_EXECUTION_NOT_RUN",
+  "created_utc": "2026-11-28 09:39:20 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent_commit": "8c954a11bd62ab158e59593e73bfbed4f9b8bb6c",
+  "parent_tree": "92d0c0c6c2caff7076da950408a8d3f2cc4fbe02",
+  "changes": [
+    {
+      "path": ".github/workflows/carr-next9-edit-docx.yml",
+      "before": "bce5296f5e70ac6964c8d3346ec30dfe6d503f94",
+      "sha": "8c590761d7963a0ef37f0ab4e6a31633d8a50ace",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "b200463d532ea53ddaef904663497465b9e05352",
+      "sha": "6e3788f45af909d00d250658f49c6b38e33bf162",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "before": "a6fce2331c62cfaad0beaf7c4c5268e1311620f8",
+      "sha": "ba3c85502a9a983c0ec15866fab9167ac157ab25",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "fbb5941c2c8fb73861f0ea28469c33717080059c",
+      "sha": "6032567fb09dd4e235caca7a3480d27845fcf889",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "bbcb5500262598eb3935d36aac7c18561ea51151",
+      "sha": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "96665bb20740c6f56fea8f8614fbee94882d39ea",
+      "sha": "7d32d1153af6f612c82b319e608fc8e10bc128de",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "cebd24c6219e5d4d653bd3b54ad8cf85f3e92365",
+      "sha": "2530ad683289a6d9d16f5282fc470cf819e791b2",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence.py",
+      "before": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+      "sha": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence_ui.py",
+      "before": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+      "sha": "a367681b16b41b161e9a581444cdb463220d1547",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+      "before": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+      "sha": "460e6ba9397c956660b9658b8f29047952e4243d",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-language-evidence.yml",
+      "before": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+      "sha": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+      "mode": "100644"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next71/focused_count_candidate.json",
+      "sha": "d5920dee179cb890b5e4f4312e5762c7111916c4",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/focused_count_component.json",
+      "sha": "88b81c59284433b24b9eae95dc53136d0fc30f99",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/focused_count_peer.json",
+      "sha": "7f503bfaa332dbd2be405e7ff5b3f2030b4fdfb6",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/focused_count_second_peer.json",
+      "sha": "c0285107b74c3abdee23561ec6f3c22b83ae2db9",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/language_component.json",
+      "sha": "ed508495d975d88ca35f5aead933ba2afacda50b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/language_peer.json",
+      "sha": "731dbf7c9b49431368c043c93212788de042683e",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/scheduling_assessment_initial.json",
+      "sha": "28ea3101ccb28ce55ad286c91947f3166c0eb3b9",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/scheduling_assessment.json",
+      "sha": "424694bcbf8011f022ac522d09756902e0510492",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/scheduling_candidate.json",
+      "sha": "9b171988b0c5c65376f49bdccc2729f6411d24a9",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/scheduling_component.json",
+      "sha": "25a045db3f57af1479b56af54b72bdc7b238eb4c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/scheduling_peer.json",
+      "sha": "616ab14657adb0c04fddc1fa861e2afb6d723c6b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next71/old_v3_actual.json",
+      "sha": "ac2c27cc81c93726d37f219d52ef7fc0c26eb3a7",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/G_Final_Pin_Count_Composition_Peer_20261128.json",
+      "sha": "6c697d077d1b4c650e589c38e773934ef1a24356",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "independent_root_audit": {
+    "files": 2025,
+    "changes": 11,
+    "hunks": 31,
+    "pins": 946,
+    "gates": 62,
+    "full_map_digest": {
+      "bytes": 204349,
+      "sha256": "6ac677412529904818c77c88a203cc47d43910785931cc996f665b531e69848b"
+    },
+    "all_preimages_verified": true,
+    "all_hunks_full_inverse": true,
+    "bad_pins": 0,
+    "missing_pins": 0,
+    "stale_changed_source_hashes": 0,
+    "main_bytes": 404556,
+    "v3_bytes": 402441
+  },
+  "independent_final_peer": "6c697d077d1b4c650e589c38e773934ef1a24356",
+  "case_closure": {
+    "declarations": 1489,
+    "unique_test_paths": 244,
+    "conflicts": 0,
+    "benchmark_declarations": 12,
+    "benchmark_cases": 30,
+    "non_case_exclusions": "Exactly five partition anchors and three ASR timeout entries."
+  },
+  "source_scope": {
+    "product_src_files_unchanged_from_F": 401,
+    "new_paths": 0,
+    "new_modules": 0,
+    "new_cases": 0,
+    "complete_whole_source": 493,
+    "source_shards": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "fast_source": 185,
+    "installed_selectors": 342,
+    "installed_wholes": 339,
+    "V3_source": 223,
+    "V3_installed": 202,
+    "language_source": 147,
+    "language_installed": 147,
+    "native_language_unique_checks": 75,
+    "native_language_origins": 14
+  },
+  "components": {
+    "language": "ed508495d975d88ca35f5aead933ba2afacda50b",
+    "focused_count": "88b81c59284433b24b9eae95dc53136d0fc30f99",
+    "scheduling": "25a045db3f57af1479b56af54b72bdc7b238eb4c"
+  },
+  "execution_plan": {
+    "main_and_V3": "Advance the existing PR173 head only after its older closed V3 log is safely retained; use the synchronize-triggered exact-G workflows.",
+    "capacity": "Retain all four geometries and all five phases, including full2M traversal with the original3600-second phase bound; source/installed321 each remain prerequisites.",
+    "profile": "176 source cases and the same instrumented1k×40 profile; no unprofiled speed inference.",
+    "installed_diagnostic": "112 source and112 isolated installed cases, same600/900 bounds; preserve failures.",
+    "duplicate_F_runs": "None launched; F is an immutable integration parent."
+  },
+  "older_head_records": {
+    "old5b2_V3": "ClosedFAIL: explicit75-minute outer source timeout after203 completed pytest summaries; no full strict source aggregate. Installed4375passed/2DAISYfailed, broad3917passed/2samefailed/14skipped. Durable receipt ac2c retained here.",
+    "E_language": "Both callers95passed/52failed; installed/nativeNOT_RUN. Typed constructor sentinel correction is present in G; actual G result remains required.",
+    "D_diagnostic": "Source Book ran alone; source ASR ran with translation/preferences. Installed eachwhole was separate. Book29 andASR40 passed both modes, while two encoding fixture failures remained. F fixes those fixture reads without product encoding changes.",
+    "A3_capacity": "1k×20,10k×20 and50k×20 completed all phases.50k×40 measured1,202,800 of2,000,000 before3600.303092 seconds. F's Path-only optimization has no actual throughput result yet."
+  },
+  "unchanged_boundaries": [
+    "All child600/ASR900-second timers, corpus3600-second phases, case assertions, no-skip policies, fresh filesystem checks, source proofs and native watchdogs remain.",
+    "Main fast and source shards group only evidence-identified heavy wholes serially, then retain remaining pool3. Each real group summary is verified; no fabricated185 PASS line exists.",
+    "V3 retains its exact223-selector serial command and300-minute job. Only its source outer allowance75→100 changes based on the closed complete earlier log.",
+    "Real physical audio, microphone/monitoring, human Windows11/NVDA, actual private engines/models, independent135-language quality, production publisher configuration and distribution clearance remain separate.",
+    "No merge, release, production deployment or private asset publication has been performed."
+  ]
+}

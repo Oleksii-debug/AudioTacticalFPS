@@ -1,0 +1,291 @@
+{
+  "schema": "carr-measured-corpus-scan-handoff/1",
+  "recorded_utc": "2026-11-28T04:19:58Z",
+  "base_commit": "652b98eb47da2b7afb1710ae69e51b2b3e9a15c5",
+  "actual_profile_basis": "40dbdb37ac4a2d74fe730ac977e38367a6660387",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "preimage": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+      "blob": "8518f012491b542a57593af75993907983ddda0d"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88",
+      "blob": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/presentation.py",
+      "preimage": "215bec49315c8ef83254f3258f3deb8163bdbcda",
+      "blob": "8ba46fa6ba4d7bafae451fab06d84ab4046bf64a"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_text_screen_work.py",
+      "preimage": null,
+      "blob": "3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f",
+      "cases": 26,
+      "functions": {
+        "test_text_screen_preserves_every_ascii_code_point": 2,
+        "test_all_non_ascii_unicode_scalars_remain_valid_text": 4,
+        "test_invalid_utf8_precedes_the_control_character_refusal": 8,
+        "test_real_small_snapshot_retains_exact_utf8_and_whitespace_bytes": 2,
+        "test_real_snapshot_cancellation_never_admits_or_leaks_a_reader": 6,
+        "test_actual_replacement_before_open_is_refused_and_owned_reader_closes": 2,
+        "test_each_real_snapshot_screens_and_hashes_current_file_bytes": 2
+      },
+      "companions": []
+    },
+    {
+      "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+      "preimage": null,
+      "blob": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+      "cases": 41,
+      "functions": {
+        "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary": 12,
+        "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds": 6,
+        "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries": 4,
+        "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work": 6,
+        "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners": 1,
+        "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication": 2,
+        "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch": 1,
+        "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy": 6,
+        "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries": 1,
+        "test_actual_sparse_inverse_preserves_cancellation_during_iteration": 2
+      },
+      "companions": []
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "d5849508e7f0c3fcdaf811d98810610044cc237c",
+      "blob": "f5bd70522a58e35aa7d52d27d7b65334d9217be0"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "f99b44db5c2e3b5d0eda655f10b2c8fa6e7d99be",
+      "blob": "0d102dccf94ff0993fed4488aac4c27e4747aeda"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "fcab460375aaf6bbe806bfe232be20f5b210bb50",
+      "blob": "33d55583b27e42ed2b3d1f8b4b2f8ff7b1ef41a5"
+    }
+  ],
+  "invariants": [
+    "Every original source selector, count, required origin and copied companion remains present.",
+    "The capacity installed-child literal, current source-wheel proof, child policy and full installed-payload verification remain byte-identical.",
+    "The optional cProfile invocation, benchmark05bf, profiletest4e79, source-root bindings and all declared measurement options are unchanged.",
+    "Every benchmark phase retains3600s; full traversal remains50k×40/2M with resultpage37, window100, repeats9.",
+    "All four original scale profiles retain the exact publication/recovery/backup phases and explicit large-source-v1 selection.",
+    "No source/installed/native or capacity qualification is inferred from the old diagnostic."
+  ],
+  "profile": {
+    "before_cases": 71,
+    "new_cases": 67,
+    "total_cases": 138,
+    "whole_suites": 6,
+    "pins": 38,
+    "source_jobs": 3,
+    "each_suite_seconds": 600,
+    "source_step_minutes": 30,
+    "actual_measurement": "Same instrumented1000books×40segments complete build/measure/restart diagnostic.",
+    "measured_step_minutes": 200,
+    "job_minutes": 270
+  },
+  "capacity": {
+    "before_cases_per_mode": 216,
+    "new_cases_per_mode": 67,
+    "total_cases_per_mode": 283,
+    "whole_suites": 14,
+    "pins": 33,
+    "installed_origins": 23,
+    "origins": "All21 existing harness origins plus catalog.intake and search.presentation; benchmark report retains its unchanged21-origin schema.",
+    "each_suite_seconds": 600,
+    "source_jobs": 2,
+    "source_parent_seconds": 4600,
+    "source_derivation": "7waves×(600child+30process-tree cleanup+0.2temporary-directory cleanup)=4411.4s;188.6s orchestration reserve remains inside4600.",
+    "installed_children_seconds": 8400,
+    "wheel_build_install_pip_check_seconds": 540,
+    "contract_step_minutes": 240,
+    "contract_derivation": "4600source+8400installed+540build/install/check=13540s;860s remains for installed cleanup, full wheel/source checks and orchestration within14400s.",
+    "job_minutes": 270,
+    "stage_minutes": {
+      "checkout": 3,
+      "python": 5,
+      "preparation": 12,
+      "contracts": 240,
+      "native_backup": 5,
+      "upload": 3,
+      "total": 268,
+      "reserve": 2
+    },
+    "native_contract": "Unchanged44checks/12origins in the existing Windows5-minute step.",
+    "benchmark_origins": 21,
+    "profile_step_minutes": 304,
+    "profile_job_minutes": 330,
+    "phase_seconds": 3600,
+    "geometries": [
+      [
+        1000,
+        20
+      ],
+      [
+        10000,
+        20
+      ],
+      [
+        50000,
+        20
+      ],
+      [
+        50000,
+        40
+      ]
+    ]
+  },
+  "tests": {
+    "carr-library/tests/catalog/test_text_screen_work.py": {
+      "blob": "3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f",
+      "cases": 26,
+      "functions": {
+        "test_text_screen_preserves_every_ascii_code_point": 2,
+        "test_all_non_ascii_unicode_scalars_remain_valid_text": 4,
+        "test_invalid_utf8_precedes_the_control_character_refusal": 8,
+        "test_real_small_snapshot_retains_exact_utf8_and_whitespace_bytes": 2,
+        "test_real_snapshot_cancellation_never_admits_or_leaks_a_reader": 6,
+        "test_actual_replacement_before_open_is_refused_and_owned_reader_closes": 2,
+        "test_each_real_snapshot_screens_and_hashes_current_file_bytes": 2
+      },
+      "companions": []
+    },
+    "carr-library/tests/search/test_ascii_mapping_work.py": {
+      "blob": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+      "cases": 41,
+      "functions": {
+        "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary": 12,
+        "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds": 6,
+        "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries": 4,
+        "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work": 6,
+        "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners": 1,
+        "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication": 2,
+        "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch": 1,
+        "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy": 6,
+        "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries": 1,
+        "test_actual_sparse_inverse_preserves_cancellation_during_iteration": 2
+      },
+      "companions": []
+    }
+  },
+  "exact_reverse_checks": true,
+  "source_pin_verification": "All38 profile pins and33 helper pins equal current652b98 tree or accepted new source/test blobs.",
+  "qualification": {
+    "execution": "NOT_RUN",
+    "parser": "NOT_RUN",
+    "new_speedup": "NOT_MEASURED",
+    "new_2m_capacity": "NOT_RUN"
+  },
+  "source_reviews": {
+    "intake": "Progress accepted8518/3e14 strict UTF-8 decode/error precedence and26 real admission/equivalence cases.",
+    "literal_and_presentation": "Locate accepted47b9/8ba46/c960: original ASCII reuse plus lazy items and checked compact inverse preserve all raw spans, Unicode source/copy identity, cancellation and bounded memory. All399 current product modules were surveyed."
+  },
+  "gate_review": "Progress accepted f5bd7052/0d102dcc/33d55583 over the earlier accepted gates: exact new source/test/presentation pins,283/138 and one added origin; installed child and every budget/job/native/policy body unchanged.",
+  "source_changes": [
+    "Intake validates the same strict UTF-8-sig input before applying the already existing streamed-text C0 byte predicate.",
+    "ASCII pages of every size use the existing production sparse whitespace map. The Unicode mapper is unchanged.",
+    "Each current source snapshot, complete fresh raw-row SHA pass, all11-field candidate equality, both independent searches, hidden-result attestation and copy verification remain unchanged.",
+    "No cross-operation cache, retained-source trust shortcut, alternate benchmark path or budget change is introduced.",
+    "Presentation consumes sparse ASCII.items lazily through its existing checked compact inverse-array path, covering Unicode source whose NFC normalization is ASCII without dictionary fanout."
+  ],
+  "verified_preimages": "All8 exact preimages and all33 helper/38 profile pins independently matched full current652b98 tree or the accepted5-source/test overlay.",
+  "full_gate_inventory_peer": "Prior58 subset accepted; Locate owns the additive ASCII32→41/three-function update and presentation origin on the same487-module fullgate inventory.",
+  "helper_pins": {
+    "tests/search/test_window_catalog_projection.py": "a1b813b72e036a68fa8683be40bd91293d6b8d51",
+    "src/carr_library/catalog/read_views.py": "53bdbf577bd7da349347d8a58cb7f0f5792db138",
+    "src/carr_library/search/paging.py": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615",
+    "scripts/benchmark_library_scale.py": "05bf43b062f160f973f1521d31a259a69d5f3224",
+    "scripts/benchmark_semantic_cache.py": "898b05e37b5a50c018567e35c44ef71f1393535d",
+    "tests/packaging/test_library_scale_benchmark.py": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+    "tests/packaging/test_library_capacity_measurement.py": "a4677e149a71c76832896902db936b232f0f246e",
+    "tests/storage/test_backup_capacity.py": "895aec39b689aea7101da23db0801413dac324ef",
+    "tests/storage/test_backup_capacity_cli.py": "741a005ca9f351579b9d51b464a88dda9afb52b7",
+    "tests/ui/test_backup_capacity.py": "26f03b8f46f6425460bb248f94bd3f1347787dc6",
+    "tests/storage/test_library_backup.py": "d14b278b356bb47fe66e822125a257807f2cd895",
+    "tests/storage/test_crash_backup.py": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c",
+    "tests/storage/test_complete_pending_backup.py": "36fe4b61a3a61351fecc1a88016c1e1db32275d5",
+    "tests/storage/test_backup_pending_common4.py": "20707e52c7a9220df5213668138db552ef74d2b9",
+    "tests/storage/test_backup_schema_identity.py": "ebed1d823de241c639877dd747de9aa4ce2085ed",
+    "tests/ui/test_native_backup_capacity_driver.py": "a1b0af9bc556c1159794d8b0cdbf3399fbc64dd0",
+    "scripts/windows_backup_capacity_smoke.py": "412bae4ad7ffe7600497ede1add0c9c4a14fbf4b",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "src/carr_library/backup_capacity.py": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "src/carr_library/__main__.py": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72",
+    "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+    "src/carr_library/pending_backup.py": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7",
+    "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+    "src/carr_library/storage/revisions.py": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+    "src/carr_library/ui/backup_capacity.py": "66555889648ec8b76ac11e7ffe5bd54ece6c29e9",
+    "tests/catalog/test_text_screen_work.py": "3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f",
+    "tests/search/test_ascii_mapping_work.py": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
+    "src/carr_library/search/literal.py": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+    "src/carr_library/search/presentation.py": "8ba46fa6ba4d7bafae451fab06d84ab4046bf64a",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213"
+  },
+  "profile_pins": {
+    "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "src/carr_library/search/paging.py": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615",
+    "src/carr_library/search/literal.py": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+    "src/carr_library/reader/reading_desk.py": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a",
+    "src/carr_library/catalog/read_views.py": "53bdbf577bd7da349347d8a58cb7f0f5792db138",
+    "src/carr_library/storage/revisions.py": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+    "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "src/carr_library/catalog/registration.py": "337a2573b1483aeef87a1e3fc1fcd1b6f52fb0a9",
+    "src/carr_library/catalog/membership.py": "ddffa3b2bcd23fc23dbca5c8f1104031a4887908",
+    "src/carr_library/citations/text_attestation.py": "81f85562d1c12517567e9adc6bcd0b2580f6cac6",
+    "src/carr_library/ingest/retained_assets.py": "acbaabd4b5661daadc83dfec6cda9394deb35ce3",
+    "src/carr_library/ingest/pipeline.py": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+    "src/carr_library/ingest/worker.py": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+    "src/carr_library/ingest/publication.py": "a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5",
+    "src/carr_library/ingest/batches.py": "07cec2575e5e72e4b252afcd787a3e7ce7c4aa66",
+    "src/carr_library/ingest/writer_guard.py": "2445a40f97cdb45bd590e64da415a18fae31ce54",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
+    "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+    "src/carr_library/pending_backup.py": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7",
+    "src/carr_library/backup_capacity.py": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7",
+    "src/carr_library/citations/printed_label_attestation.py": "4c9a65a79a27ad068452e2eb9cb50df4998a51c9",
+    "src/carr_library/citations/pdf_review_attestation.py": "f0fceb11ca212c02101277f4d67f7ac9c2ee15ad",
+    "src/carr_library/citations/historical.py": "4438576d15534f2f72a361e1ff3ef5d84b49f528",
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
+    "scripts/benchmark_semantic_cache.py": "898b05e37b5a50c018567e35c44ef71f1393535d",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "tests/packaging/test_library_scale_benchmark.py": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+    "tests/packaging/test_library_capacity_measurement.py": "a4677e149a71c76832896902db936b232f0f246e",
+    "packaging/linux-sync-core-cp311.lock": "08f945066be748972a10d5b0ce46480fff722959",
+    "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
+    "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+    "tests/citations/test_attestation_cancellation.py": "8e1fe70637ed839a6120c2414e2933bfe16e2858",
+    "scripts/benchmark_library_scale.py": "05bf43b062f160f973f1521d31a259a69d5f3224",
+    "tests/packaging/test_library_scale_profile.py": "4e79f8e4299f7adc414e575a0c59ba509984ead4",
+    "tests/catalog/test_text_screen_work.py": "3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f",
+    "tests/search/test_ascii_mapping_work.py": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+    "src/carr_library/search/presentation.py": "8ba46fa6ba4d7bafae451fab06d84ab4046bf64a"
+  },
+  "scope_limits": {
+    "refs_moved": false,
+    "execution_performed": false,
+    "benchmark_source_changed": false,
+    "benchmark_git_blob": "05bf43b062f160f973f1521d31a259a69d5f3224",
+    "corrected_profile_test_git_blob": "4e79f8e4299f7adc414e575a0c59ba509984ead4",
+    "source_child_policy_git_blob": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "unprofiled_speedup": "NOT_MEASURED",
+    "full_2m_capacity": "NOT_RUN_FOR_THIS_SUCCESSOR"
+  },
+  "supersedes": [
+    "f2569a83b70edc141b04170cc236cc3b00ad338b",
+    "a0292e42f7da24ecbecae625d9aff32bcb9438e4"
+  ],
+  "mapper_consumer_audit": "fc785342fb5f641a473936d1b099b46bccb20048"
+}

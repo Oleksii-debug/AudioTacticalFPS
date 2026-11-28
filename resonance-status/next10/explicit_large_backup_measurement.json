@@ -1,0 +1,316 @@
+{
+  "schema": "carr-library-source-handoff/1",
+  "title": "Explicit complete-backup capacity selection in the existing retained-library benchmark",
+  "status": "SOURCE_ONLY_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "previous_handoff": "3451c23ba8d09b0b0ed110f85f738ce7c1ba3314",
+  "published_baseline": {
+    "commit": "9f0418ee690dead1e151a579fd4162552fe155c5",
+    "tree": "622aaaf8b85cc9c9109da668ad4d283b994a1e22",
+    "capacity_run_head": "97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d",
+    "capacity_run": 46060395601,
+    "scope": "Existing 18+24 source/installed contracts and declared profiles run separately; this successor is not included and no prior acceptance transfers."
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "before": "ee805f665bd1722f0464860ac662af6981567666",
+      "sha": "ec198e50daffd3d3687048e15882c3744c3c54c4",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_capacity_measurement.py",
+      "before": "422374a17ec1eb1eed78527cf86125ae0efa8858",
+      "sha": "91f6d60f6aa345c85a8b935a72de1cbfe1083e93",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/docs/LIBRARY_SCALE_BENCHMARK.md",
+      "before": "0866fc0c1eed4fc929a704e6d7cc486615ce4e52",
+      "sha": "eb209e39de242485220e683e028c353e76c32af9",
+      "readback_exact": true
+    }
+  ],
+  "changes": [
+    "Add only explicit --backup-capacity-profile large-source-v1 to the existing benchmark; it requires --complete-backup.",
+    "Validate the optional profile name and phase requirement before creating output. Do not infer a profile from corpus size, backup bytes or manifest fields.",
+    "Use the product backup_capacity.capacity validator after selected module activation, record all caller-selected finite allowances, and forward the same exact capacity_profile to create_backup through LibraryApp.backup, verify_backup and restore_backup.",
+    "Preserve default ordinary-import mode, existing three-key CAPACITY_DEFAULTS, old schema, per-phase budgets, measured disk/free-space admission, no-clobber outputs, complete content verification and identity-checked source retirement.",
+    "Keep all original 18 capacity cases byte-identical; append six cases. Existing 24-case ordinary benchmark suite and semantic-cache measurement companion are unchanged.",
+    "Add the exact backup_capacity module to the optional capacity origin inventory; default ordinary mode retains seven origins."
+  ],
+  "required_product_dependencies": [
+    {
+      "path": "carr-library/src/carr_library/backup_capacity.py",
+      "sha": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "4544453f62a96993a2f05ed1522a563649289715",
+      "contract": "LibraryApp.backup accepts capacity_profile=None and forwards it unchanged; root may compose other independent application hunks."
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "sha": "417a9920d4c25eacd36cc81f7441ea321c18d632"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "d36d2ab93043bff46048bb6146769a1a19f29db8"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "sha": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525"
+    }
+  ],
+  "required_validation": {
+    "whole_new_suite": "tests/packaging/test_library_capacity_measurement.py",
+    "static_cases": 24,
+    "test_functions": 15,
+    "count_basis": "15 literal test functions; existing seven-value parameterization adds six and new four-value parameterization adds three. NOT_COLLECTED.",
+    "original_cases": 18,
+    "additional_cases": 6,
+    "original_test_prefix_byte_identical": true,
+    "required_test_names": [
+      "test_actual_fixture_uses_retained_catalog_pages_and_existing_full_cursor_reader",
+      "test_fixture_batch_failure_rolls_back_only_uncommitted_batch_and_has_no_ready_receipt",
+      "test_fixture_full_audit_refuses_actual_index_damage_before_ready_receipt",
+      "test_actual_capacity_cli_keeps_separate_setup_public_receipts_restart_and_backup",
+      "test_public_sample_rejectable_commit_failure_keeps_prior_corpus_and_no_false_receipt",
+      "test_public_samples_do_not_accept_a_forged_returned_source_receipt",
+      "test_retained_corruption_refuses_public_samples_before_new_workspace_or_input",
+      "test_invalid_capacity_options_refuse_before_any_output",
+      "test_declared_backup_disk_refusal_is_not_a_success_or_destructive_restore",
+      "test_fixture_cli_without_public_samples_keeps_three_phases_and_truthful_empty_measurement",
+      "test_two_million_profile_is_explicit_geometry_not_an_executed_capacity_claim",
+      "test_fixture_entry_cancellation_creates_no_library_or_ready_receipt",
+      "test_backup_profile_requires_an_explicit_supported_name_and_backup_phase",
+      "test_explicit_backup_profile_reaches_actual_isolated_phase_and_report",
+      "test_selected_profile_is_forwarded_to_each_real_backup_api_without_wire_authority"
+    ],
+    "new_functions": [
+      {
+        "name": "test_backup_profile_requires_an_explicit_supported_name_and_backup_phase",
+        "static_cases": 4
+      },
+      {
+        "name": "test_explicit_backup_profile_reaches_actual_isolated_phase_and_report",
+        "static_cases": 1
+      },
+      {
+        "name": "test_selected_profile_is_forwarded_to_each_real_backup_api_without_wire_authority",
+        "static_cases": 1
+      }
+    ],
+    "retain_whole_old_suite": "tests/packaging/test_library_scale_benchmark.py",
+    "old_static_cases": 24,
+    "total_per_source_or_installed": 48,
+    "source_and_installed": true,
+    "platforms": [
+      "Linux",
+      "Windows"
+    ],
+    "companions": [
+      {
+        "path": "scripts/benchmark_library_scale.py",
+        "sha": "ec198e50daffd3d3687048e15882c3744c3c54c4"
+      },
+      {
+        "path": "scripts/benchmark_semantic_cache.py",
+        "sha": "898b05e37b5a50c018567e35c44ef71f1393535d"
+      }
+    ],
+    "unchanged_old_test_sha": "0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17",
+    "optional_measurement_origins": [
+      "bootstrap",
+      "carr_library.application",
+      "carr_library.search.paging",
+      "carr_library.reader.reading_desk",
+      "carr_library.catalog.read_views",
+      "carr_library.storage.revisions",
+      "carr_library.durable_state",
+      "carr_library.catalog.registration",
+      "carr_library.catalog.membership",
+      "carr_library.citations.text_attestation",
+      "carr_library.ingest.retained_assets",
+      "carr_library.ingest.pipeline",
+      "carr_library.ingest.worker",
+      "carr_library.ingest.publication",
+      "carr_library.ingest.batches",
+      "carr_library.ingest.writer_guard",
+      "carr_library.operations.broker",
+      "carr_library.library_backup",
+      "carr_library.pending_backup",
+      "carr_library.backup_capacity"
+    ],
+    "origin_count": 20,
+    "ordinary_default_origin_count": 7,
+    "installed_requirement": "Preserve companion relative paths and exact bytes. Invoke installed Python -I -B with source injection disabled. Actual CLI fixture chooses --installed when the current application origin is installed and requires that exact path; child imports remain source/byte bound.",
+    "runtime_requirements": "Existing normal application/test closure and SQLite FTS5; actual TXT owned-import child; no FFmpeg, OCR binary, network, model or device required.",
+    "mandatory_outcome": "Both whole modules must actually run with zero failed/skipped/XFAIL/XPASS. Existing 600-second suite and finite child/phase limits remain. The new real CLI uses four separately owned processes; the original five-phase CLI case is unchanged.",
+    "execution": "NOT_RUN"
+  },
+  "ci_integration": {
+    "current_isolated_helper": "223d8103219b56f740e2b7cba4d1e965b2554b16",
+    "required_updates": "On a new composed candidate only: update harness/test pins; capacity suite count18->24, total42->48 per source/installed; add three exact function names where selected; optional origin19->20. Dynamic MODULES+CAPACITY_MODULES already supplies the extra origin. Preserve whole old24, both companions and all offline/origin/wheel/source/600s gates.",
+    "live_baseline_action": "NONE; do not change or cancel run46060395601 or the earlier baseline branches.",
+    "complete_backup_arguments": [
+      "--complete-backup",
+      "--backup-capacity-profile",
+      "large-source-v1"
+    ],
+    "qualification": "A requested backup outside selected bounds or disk/time budget remains NOT_ADMITTED/PARTIAL; no refusal counts as backup PASS."
+  },
+  "declared_profiles": [
+    {
+      "name": "retained-1000x20",
+      "books": 1000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 20000,
+      "original_utf8_bytes": 5139000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    },
+    {
+      "name": "retained-10000x20",
+      "books": 10000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 200000,
+      "original_utf8_bytes": 51390000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    },
+    {
+      "name": "retained-50000x20",
+      "books": 50000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 1000000,
+      "original_utf8_bytes": 256950000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    },
+    {
+      "name": "retained-50000x40",
+      "books": 50000,
+      "segments_per_book": 40,
+      "segment_bytes": 256,
+      "source_segments": 2000000,
+      "original_utf8_bytes": 513950000,
+      "public_samples": 12,
+      "complete_backup": false,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN"
+    }
+  ],
+  "limits": {
+    "library_backup_format": "Unchanged complete4/pending1; no capacity profile is embedded or trusted from a backup manifest.",
+    "product_limits": "Use the exact supported caller-selected profile; no constant monkeypatching or test-only backup path.",
+    "actual_large_capacity": "NOT_RUN",
+    "sustained_fifty_thousand_public_imports": "NOT_ESTABLISHED; retained fixture setup is separate from bounded actual public import samples."
+  },
+  "peer_review": {
+    "root": "ACCEPTED_STATIC_NOT_RUN after exact source delta and six appended cases; no parser/runtime qualification.",
+    "backup_source_peer": "The exact underlying profile sources and cancellation correction were independently reviewed before this integration.",
+    "locate_project": "ACCEPTED_STATIC_NOT_RUN after exact ec198/91f6/eb209 review against ee805/422 and the current backup APIs; no concrete blocker."
+  },
+  "refs_changed": false,
+  "tests_executed_locally": false,
+  "declared_backup_profiles": [
+    {
+      "name": "retained-1000x20-complete-backup",
+      "books": 1000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 20000,
+      "original_utf8_bytes": 5139000,
+      "public_samples": 12,
+      "complete_backup": true,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN",
+      "backup_capacity_profile": "large-source-v1"
+    },
+    {
+      "name": "retained-10000x20-complete-backup",
+      "books": 10000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 200000,
+      "original_utf8_bytes": 51390000,
+      "public_samples": 12,
+      "complete_backup": true,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN",
+      "backup_capacity_profile": "large-source-v1"
+    },
+    {
+      "name": "retained-50000x20-complete-backup",
+      "books": 50000,
+      "segments_per_book": 20,
+      "segment_bytes": 256,
+      "source_segments": 1000000,
+      "original_utf8_bytes": 256950000,
+      "public_samples": 12,
+      "complete_backup": true,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN",
+      "backup_capacity_profile": "large-source-v1"
+    },
+    {
+      "name": "retained-50000x40-complete-backup",
+      "books": 50000,
+      "segments_per_book": 40,
+      "segment_bytes": 256,
+      "source_segments": 2000000,
+      "original_utf8_bytes": 513950000,
+      "public_samples": 12,
+      "complete_backup": true,
+      "result_page_size": 37,
+      "repeats": 9,
+      "phase_timeout": 3600,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824,
+      "execution": "NOT_RUN",
+      "backup_capacity_profile": "large-source-v1"
+    }
+  ]
+}

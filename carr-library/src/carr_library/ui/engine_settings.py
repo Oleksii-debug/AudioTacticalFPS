@@ -1,13 +1,19 @@
 """Native explicit local runtime setup; users select previously installed assets."""
 from pathlib import Path
-from ..durable_state import read_json
+from copy import deepcopy
+from ..durable_state import local_path, read_json, regular
 from ..runtime_settings import load_settings, save_settings
 
 
 def show_engine_settings(frame):
     import wx
-    state_root = frame.library.root / 'state'
+    library = frame.library
+    root = local_path(library.root, exists=True)
+    info = regular(root, directory=True)
+    root_identity = info.st_dev, info.st_ino
+    state_root = root / 'state'
     settings = load_settings(state_root)
+    closed = False
     dialog = wx.Dialog(frame, title='Local audio, voice and music engines', size=(800, 650),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
@@ -15,8 +21,26 @@ def show_engine_settings(frame):
     status.SetName('Local engine configuration and availability')
     layout.Add(status, 1, wx.EXPAND | wx.ALL, 6)
 
+    def current():
+        if closed or getattr(frame, '_closing', False) or frame.library is not library:
+            return False
+        try:
+            selected = local_path(library.root, exists=True)
+            info = regular(selected, directory=True)
+            return selected == root and (info.st_dev, info.st_ino) == root_identity
+        except (OSError, ValueError, RuntimeError):
+            return False
+
+    def require_current():
+        if not current():
+            raise InterruptedError('Reopen local engine settings in the current library.')
+
+    def report(value):
+        if current():
+            status.ChangeValue(value)
+
     def describe():
-        status.ChangeValue('All paths below refer to local installations. No download or remote API is started.\n'
+        report('All paths below refer to local installations. No download or remote API is started.\n'
             'FFmpeg: ' + str(settings['ffmpeg'] or 'Discover installed executable') + '\n'
             'FFprobe: ' + str(settings['ffprobe'] or 'Discover installed executable') + '\n'
             f'Piper registrations: {len(settings["piper"])}\n'
@@ -29,88 +53,148 @@ def show_engine_settings(frame):
             'Generic voice helpers and the reviewed dordiai-voices adapter use separate contracts. '
             'Resource availability is not a pronunciation or voice-quality assessment.')
 
+    def publish(candidate):
+        require_current()
+        save_settings(state_root, candidate,
+                      expected_dordiai=deepcopy(settings['dordiai']))
+        refresh_settings()
+
+    def refresh_settings():
+        require_current()
+        current_settings = load_settings(state_root)
+        require_current()
+        settings.clear()
+        settings.update(current_settings)
+        describe()
+
+    def manage_voice_packages(event):
+        if not current() or getattr(frame, 'working', False):
+            return
+        if not settings['dordiai'] or settings['dordiai'].get('enabled') is not True:
+            report('Connect the installed dordiai-voices runtime before managing its local voice packages.')
+            return
+        from .voice_packages import show_voice_packages
+        try:
+            show_voice_packages(frame, window_parent=dialog, scope_guard=require_current,
+                                on_settled=refresh_settings)
+        except Exception as exc:
+            report(str(exc))
+        finally:
+            if current() and not getattr(frame, 'working', False):
+                try:
+                    refresh_settings()
+                except Exception as exc:
+                    # Keep the last readable settings if a concurrent local asset
+                    # change makes the new configuration temporarily unavailable.
+                    report(str(exc))
+
     def executable(key):
+        if not current():
+            return
         picker = wx.FileDialog(dialog, 'Choose installed ' + key, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
             if picker.ShowModal() == wx.ID_OK:
+                require_current()
                 candidate = {**settings, key: picker.GetPath()}
-                save_settings(state_root, candidate)
-                settings.update(candidate)
-                describe()
+                publish(candidate)
         except Exception as exc:
-            status.ChangeValue(str(exc))
+            report(str(exc))
         finally:
             picker.Destroy()
 
     def register(kind):
+        if not current():
+            return
         picker = wx.FileDialog(dialog, 'Choose reviewed local engine registration JSON',
                                wildcard='JSON (*.json)|*.json', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
             if picker.ShowModal() != wx.ID_OK:
                 return
+            require_current()
             row = read_json(Path(picker.GetPath()))
+            require_current()
             if kind == 'voice_helpers':
                 if wx.MessageBox('Enable this reviewed local executable? It runs with your account permissions. '
                                  'Only register a helper you intentionally installed and trust.',
                                  'Enable local voice helper', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                     return
+                require_current()
                 row['enabled'] = True
             candidate = {**settings, kind: [*settings[kind], row]}
-            save_settings(state_root, candidate)
-            settings.update(candidate)
-            describe()
+            publish(candidate)
         except Exception as exc:
-            status.ChangeValue(str(exc))
+            report(str(exc))
         finally:
             picker.Destroy()
 
     def reset(event):
-        if wx.MessageBox('Remove local engine overrides? Installed files will remain on disk.', 'Reset configuration',
-                         wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+        if not current():
             return
-        settings.update(ffmpeg=None, ffprobe=None, piper=[], voice_helpers=[], music_models=[], fluidsynth=None,
-                        dordiai=None)
-        save_settings(state_root, settings)
-        describe()
+        try:
+            if wx.MessageBox('Remove local engine overrides? Installed files will remain on disk.', 'Reset configuration',
+                             wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
+                return
+            require_current()
+            candidate = {**settings, 'ffmpeg': None, 'ffprobe': None, 'piper': [], 'voice_helpers': [],
+                         'music_models': [], 'fluidsynth': None, 'dordiai': None}
+            publish(candidate)
+        except Exception as exc:
+            report(str(exc))
 
     def connect_dordiai(event):
+        if not current():
+            return
         picker = wx.DirDialog(dialog, 'Choose the installed dordiai-voices kx47Runtime directory',
                               style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
         try:
             if picker.ShowModal() != wx.ID_OK:
                 return
+            require_current()
+            selected = picker.GetPath()
             if wx.MessageBox('Enable this installed local voice engine? Its reviewed worker runs with '
                              'your account permissions when voices are loaded or used. No model is downloaded.',
                              'Enable dordiai-voices', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                 return
+            require_current()
             # Constructor checks local paths and the reviewed worker identity.
             # Enumeration and synthesis remain in the reader/Studio background job.
             from ..integrations.dordiai_voices import DordiaiVoicesAdapter
-            adapter = DordiaiVoicesAdapter(picker.GetPath())
+            adapter = DordiaiVoicesAdapter(selected)
             adapter.close()
-            candidate = {**settings, 'dordiai': {'enabled': True, 'runtime_directory': picker.GetPath()}}
-            save_settings(state_root, candidate)
-            settings.update(candidate)
-            describe()
+            require_current()
+            candidate = {**settings, 'dordiai': {'enabled': True, 'runtime_directory': selected}}
+            publish(candidate)
         except Exception as exc:
-            status.ChangeValue(str(exc))
+            report(str(exc))
         finally:
             picker.Destroy()
 
     def disconnect_dordiai(event):
+        if not current():
+            return
         try:
             candidate = {**settings, 'dordiai': None}
-            save_settings(state_root, candidate)
-            settings.update(candidate)
-            describe()
+            publish(candidate)
         except Exception as exc:
-            status.ChangeValue(str(exc))
+            report(str(exc))
+
+    def close(event):
+        nonlocal closed
+        closed = True
+        dialog.EndModal(wx.ID_CLOSE)
+
+    def destroyed(event):
+        nonlocal closed
+        if event.GetEventObject() is dialog:
+            closed = True
+        event.Skip()
 
     for label, callback in [('Choose FFmpeg executable', lambda event: executable('ffmpeg')),
         ('Choose FFprobe executable', lambda event: executable('ffprobe')),
         ('Register a local Piper voice manifest', lambda event: register('piper')),
         ('Connect installed &dordiai-voices', connect_dordiai),
         ('Disable dordiai-voices', disconnect_dordiai),
+        ('Manage reviewed voice packages and references...', manage_voice_packages),
         ('Register a MusicGen or ACE-Step installation', lambda event: register('music_models')),
         ('Register a reviewed local voice helper', lambda event: register('voice_helpers')),
         ('Reset overrides', reset)]:
@@ -119,10 +203,14 @@ def show_engine_settings(frame):
         layout.Add(button, 0, wx.EXPAND | wx.ALL, 4)
     layout.Add(dialog.CreateButtonSizer(wx.CLOSE), 0, wx.ALL, 5)
     dialog.SetEscapeId(wx.ID_CLOSE)
-    dialog.Bind(wx.EVT_BUTTON, lambda event: dialog.EndModal(wx.ID_CLOSE), id=wx.ID_CLOSE)
+    dialog.Bind(wx.EVT_BUTTON, close, id=wx.ID_CLOSE)
+    dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     dialog.SetSizer(layout)
     describe()
     try:
-        dialog.ShowModal()
+        if current():
+            dialog.ShowModal()
     finally:
+        closed = True
         dialog.Destroy()

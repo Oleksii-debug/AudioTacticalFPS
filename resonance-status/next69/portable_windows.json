@@ -1,0 +1,586 @@
+{
+  "schema": "carr-actual-required-lane/1",
+  "status": "PASS",
+  "lane": "portable_windows",
+  "observed_at_utc": "2026-11-28T08:27:42Z",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job_id": 140911207122,
+  "job": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:50:04Z",
+    "completed_at": "2026-11-28T07:54:02Z"
+  },
+  "claims": {
+    "source_wholes": 8,
+    "source_cases": 272,
+    "installed_wholes": 8,
+    "installed_cases": 272,
+    "installed_origins": 12,
+    "native_distinct_checks": 32,
+    "native_check_occurrences": 44
+  },
+  "strict_whole_rows": [
+    {
+      "line": 827,
+      "path": "tests/sync/test_archive.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 828,
+      "path": "tests/sync/test_crypto.py",
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 829,
+      "path": "tests/sync/test_service.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 830,
+      "path": "tests/sync/test_complete_state.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 831,
+      "path": "tests/sync/test_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 832,
+      "path": "tests/sync/test_vault.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 833,
+      "path": "tests/sync/test_service_commit_boundaries.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 834,
+      "path": "tests/ui/test_portable_sync.py",
+      "passed": 103,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_json_reports": [
+    {
+      "line": 395,
+      "data": {
+        "installed_pins": {
+          "bibtexparser": "2.1.0",
+          "cffi": "2.1.1",
+          "colorama": "0.4.6",
+          "comtypes": "1.5.0",
+          "cryptography": "50.0.2",
+          "defusedxml": "0.7.1",
+          "filelock": "3.29.0",
+          "iniconfig": "2.3.1",
+          "lxml": "6.1.3",
+          "numpy": "2.4.6",
+          "packaging": "26.4",
+          "pillow": "13.0.0",
+          "platformdirs": "4.10.0",
+          "pluggy": "1.7.0",
+          "pycparser": "3.12",
+          "pygments": "2.21.0",
+          "pylatexenc": "2.11",
+          "pypdf": "7.1.1",
+          "pypdfium2": "5.13.0",
+          "pytest": "9.0.2",
+          "python-docx": "1.2.0",
+          "quickjs-ng": "0.18.0.2",
+          "securesystemslib": "1.6.0",
+          "setuptools": "84.2.1",
+          "tuf": "7.0.1",
+          "typing-extensions": "4.16.0",
+          "urllib3": "2.8.0",
+          "wheel": "0.48.0",
+          "wxpython": "4.2.4"
+        },
+        "locks": {
+          "packaging/trusted-client.lock": "51117188b2dbce9dac63c45ffdf0e913b19778eb8e44f1dcfb6a2a723d5ff856",
+          "packaging/windows-cp311.lock": "a080f413266ed8942deb0dedd82304721cb39ea7b9eddd96d2cba542086d7f4a",
+          "packaging/windows-sync-cp311.lock": "0a827bc66a49ddd698a97f4ae4e4d39006e734b2fefd0fc2994875e41275ebdf",
+          "packaging/windows-sync-test-cp311.lock": "ea8bab4a5fc3b7e579f75244439ddc1a38872070a46867f9f18719bec7af69fc"
+        },
+        "platform": "Windows-10-10.0.20348-SP0",
+        "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "status": "PASS",
+        "wheels": [
+          {
+            "bytes": 50128,
+            "name": "bibtexparser-2.1.0-py3-none-any.whl",
+            "sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+          },
+          {
+            "bytes": 185096,
+            "name": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+            "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0"
+          },
+          {
+            "bytes": 25335,
+            "name": "colorama-0.4.6-py2.py3-none-any.whl",
+            "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
+          },
+          {
+            "bytes": 325563,
+            "name": "comtypes-1.5.0-py3-none-any.whl",
+            "sha256": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+          },
+          {
+            "bytes": 3824692,
+            "name": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+            "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
+          },
+          {
+            "bytes": 25604,
+            "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+            "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+          },
+          {
+            "bytes": 39812,
+            "name": "filelock-3.29.0-py3-none-any.whl",
+            "sha256": "96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"
+          },
+          {
+            "bytes": 7552,
+            "name": "iniconfig-2.3.1-py3-none-any.whl",
+            "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
+          },
+          {
+            "bytes": 4032700,
+            "name": "lxml-6.1.3-cp311-cp311-win_amd64.whl",
+            "sha256": "7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559"
+          },
+          {
+            "bytes": 12608406,
+            "name": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+            "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+          },
+          {
+            "bytes": 140049,
+            "name": "packaging-26.4-py3-none-any.whl",
+            "sha256": "81383611a09c1bc0b08b76e0fd5829d7c6824c65b27a6aee339da133f4233ea2"
+          },
+          {
+            "bytes": 7278471,
+            "name": "pillow-13.0.0-cp311-cp311-win_amd64.whl",
+            "sha256": "d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3"
+          },
+          {
+            "bytes": 22743,
+            "name": "platformdirs-4.10.0-py3-none-any.whl",
+            "sha256": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a"
+          },
+          {
+            "bytes": 27082,
+            "name": "pluggy-1.7.0-py3-none-any.whl",
+            "sha256": "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec"
+          },
+          {
+            "bytes": 62600,
+            "name": "pycparser-3.12-py3-none-any.whl",
+            "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+          },
+          {
+            "bytes": 1250147,
+            "name": "pygments-2.21.0-py3-none-any.whl",
+            "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9"
+          },
+          {
+            "bytes": 137533,
+            "name": "pylatexenc-2.11-py2.py3-none-any.whl",
+            "sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+          },
+          {
+            "bytes": 421026,
+            "name": "pypdf-7.1.1-py3-none-any.whl",
+            "sha256": "04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1"
+          },
+          {
+            "bytes": 3885553,
+            "name": "pypdfium2-5.13.0-py3-none-win_amd64.whl",
+            "sha256": "47dcca2a8d507b5fd24f94c3c9d48fb379430f097bc20f01beff6c963ffbcedb"
+          },
+          {
+            "bytes": 374801,
+            "name": "pytest-9.0.2-py3-none-any.whl",
+            "sha256": "711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b"
+          },
+          {
+            "bytes": 252987,
+            "name": "python_docx-1.2.0-py3-none-any.whl",
+            "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+          },
+          {
+            "bytes": 401365,
+            "name": "quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl",
+            "sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+          },
+          {
+            "bytes": 874777,
+            "name": "securesystemslib-1.6.0-py3-none-any.whl",
+            "sha256": "1c1aa00f058f4851f038d409c8ca4a727db854a91f07ec3a0fa047bb93e43e0e"
+          },
+          {
+            "bytes": 876263,
+            "name": "setuptools-84.2.1-py3-none-any.whl",
+            "sha256": "ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2"
+          },
+          {
+            "bytes": 56253,
+            "name": "tuf-7.0.1-py3-none-any.whl",
+            "sha256": "d30434bda6e079ab303fb30d1b3006d939a10ca34783b1573d61cd9b802fa45c"
+          },
+          {
+            "bytes": 45571,
+            "name": "typing_extensions-4.16.0-py3-none-any.whl",
+            "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+          },
+          {
+            "bytes": 135717,
+            "name": "urllib3-2.8.0-py3-none-any.whl",
+            "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"
+          },
+          {
+            "bytes": 33320,
+            "name": "wheel-0.48.0-py3-none-any.whl",
+            "sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab"
+          },
+          {
+            "bytes": 16538730,
+            "name": "wxpython-4.2.4-cp311-cp311-win_amd64.whl",
+            "sha256": "f48fe7b9f22c7733a06b5901559b5b7e4835fa852cbef0f620ffd0a0030aaf73"
+          }
+        ]
+      }
+    },
+    {
+      "line": 442,
+      "data": {
+        "payload_files": 485,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 414,
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "status": "PASS",
+        "wheel_sha256": "97121880947dc95ac00f5cb65501f0a0bd506fb3e876be0feb41d329b49fb429"
+      }
+    },
+    {
+      "line": 877,
+      "data": {
+        "status": "PASS",
+        "installed_module": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py",
+        "tests": 272,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "test_portable_sync": 103,
+          "test_vault": 46,
+          "test_service_commit_boundaries": 13,
+          "test_archive": 26,
+          "test_cli": 5,
+          "test_crypto": 59,
+          "test_complete_state": 2,
+          "test_service": 18
+        },
+        "source_origins": {
+          "carr_library.sync.archive": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\archive.py",
+            "source_sha256": "c61ec3488a48029c4236f8c478dc518d71c5b69f1dbb62e90f5c1d708b12ec4d"
+          },
+          "carr_library.sync.crypto": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\crypto.py",
+            "source_sha256": "5096319ea0d41e1e78052434641e51be093d700be7c3600afc5793970c1ff805"
+          },
+          "carr_library.sync.service": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py",
+            "source_sha256": "d23a2e87ea6a0c1f53605929e331c28aa1a311b59b4283c9ebc2727ecf614734"
+          },
+          "carr_library.sync.vault": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\vault.py",
+            "source_sha256": "9984a6b9641b212dbbb5739fcba2622b977784511f57c1f2a13aa0e9f056aa22"
+          },
+          "carr_library.sync.cli": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\cli.py",
+            "source_sha256": "aab55ca7490c150c80427adc3c993d133dc153b11ff808972ddf86b1c0783240"
+          },
+          "carr_library.ui.portable_sync": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+            "source_sha256": "e70d507f9abe57f61d8801dbdc4fda390a30720713880ef038366c60c33ef47a"
+          },
+          "carr_library.file_publication": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\file_publication.py",
+            "source_sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "source_sha256": "d012d328d95fac01ffb67cba2956a644409bbaa7d0395f17bdd1c35fd1029b51"
+          },
+          "carr_library.pending_backup": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\pending_backup.py",
+            "source_sha256": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b"
+          },
+          "carr_library.backup_sidecars": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\backup_sidecars.py",
+            "source_sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+          },
+          "carr_library.backup_producers": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\backup_producers.py",
+            "source_sha256": "0d94d3ee0608f21cda12f55b523345159b2fca0b3592cc20135a0750b553122a"
+          },
+          "carr_library.state_backup": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\state_backup.py",
+            "source_sha256": "c6bf568510fc48e6e5c103003d08cc00918a7b9819d30cbabd50a4e9b87d4ccb"
+          }
+        },
+        "nvda": "NOT_RUN"
+      }
+    },
+    {
+      "line": 960,
+      "data": {
+        "status": "NATIVE_DIALOG",
+        "method": "TDM_CLICK_BUTTON",
+        "pid": 5812,
+        "hwnd": 66284,
+        "owner": 66234,
+        "title": "Publish all saved libraries in this data folder?",
+        "button_id": 6,
+        "closed": true
+      }
+    },
+    {
+      "line": 973,
+      "data": {
+        "status": "NATIVE_DIALOG",
+        "method": "TDM_CLICK_BUTTON",
+        "pid": 5812,
+        "hwnd": 262892,
+        "owner": 66234,
+        "title": "Restore the verified snapshot into a new folder?",
+        "button_id": 6,
+        "closed": true
+      }
+    },
+    {
+      "line": 997,
+      "data": {
+        "status": "PASS",
+        "checks": [
+          "modules are loaded from the installed distribution",
+          "real desktop Library menu opens the snapshot window",
+          "snapshot window is modeless and parent-owned",
+          "paths, code, history, preview and status have accessible names",
+          "native command is enabled: Refresh history",
+          "native button event: Refresh history",
+          "snapshot worker finishes through the event loop",
+          "native command is enabled: Publish snapshot…",
+          "password entry uses named native masked controls",
+          "native button event: Publish snapshot…",
+          "snapshot worker finishes through the event loop",
+          "real service publishes a transfer receipt",
+          "publication and listing never autofill the trust code",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "snapshot worker finishes through the event loop",
+          "verified scope includes the archived library",
+          "restore becomes available only after verification",
+          "native command is enabled: Restore to new folder…",
+          "password entry uses named native masked controls",
+          "native button event: Restore to new folder…",
+          "snapshot worker finishes through the event loop",
+          "real verified library exists at the new destination",
+          "restored library retains archived scope",
+          "current library and notebook never switch",
+          "main frame stays available",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "worker reaches cancellation boundary",
+          "native command is enabled: Cancel operation",
+          "native button event: Cancel operation",
+          "snapshot worker finishes through the event loop",
+          "cancelled work never accepts a verification preview",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "second worker reaches close boundary",
+          "native command is enabled: Close",
+          "native button event: Close",
+          "normal close waits for worker cancellation",
+          "window closes after safe worker completion",
+          "parent drops the closed modeless window"
+        ],
+        "python": "3.11.9",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+        "encrypted": true,
+        "modules": {
+          "carr_library.ui.portable_sync": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+          "carr_library.sync.service": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py"
+        },
+        "nvda": "NOT_RUN"
+      }
+    },
+    {
+      "line": 998,
+      "data": {
+        "status": "PASS",
+        "checks": [
+          "modules are loaded from the installed distribution",
+          "real desktop Library menu opens the snapshot window",
+          "snapshot window is modeless and parent-owned",
+          "paths, code, history, preview and status have accessible names",
+          "native command is enabled: Refresh history",
+          "native button event: Refresh history",
+          "snapshot worker finishes through the event loop",
+          "native command is enabled: Publish snapshot…",
+          "password entry uses named native masked controls",
+          "native button event: Publish snapshot…",
+          "snapshot worker finishes through the event loop",
+          "real service publishes a transfer receipt",
+          "publication and listing never autofill the trust code",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "snapshot worker finishes through the event loop",
+          "verified scope includes the archived library",
+          "restore becomes available only after verification",
+          "native command is enabled: Restore to new folder…",
+          "password entry uses named native masked controls",
+          "native button event: Restore to new folder…",
+          "snapshot worker finishes through the event loop",
+          "real verified library exists at the new destination",
+          "restored library retains archived scope",
+          "current library and notebook never switch",
+          "main frame stays available",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "worker reaches cancellation boundary",
+          "native command is enabled: Cancel operation",
+          "native button event: Cancel operation",
+          "snapshot worker finishes through the event loop",
+          "cancelled work never accepts a verification preview",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "second worker reaches close boundary",
+          "native command is enabled: Close",
+          "native button event: Close",
+          "normal close waits for worker cancellation",
+          "window closes after safe worker completion",
+          "parent drops the closed modeless window"
+        ],
+        "python": "3.11.9",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+        "encrypted": true,
+        "modules": {
+          "carr_library.ui.portable_sync": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+          "carr_library.sync.service": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py"
+        },
+        "nvda": "NOT_RUN"
+      }
+    },
+    {
+      "line": 1048,
+      "data": {
+        "status": "PASS",
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "wheels": [
+          {
+            "distribution": "cffi",
+            "name": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+            "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0",
+            "bytes": 185096
+          },
+          {
+            "distribution": "cryptography",
+            "name": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+            "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+            "bytes": 3824692
+          },
+          {
+            "distribution": "pycparser",
+            "name": "pycparser-3.12-py3-none-any.whl",
+            "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+            "bytes": 62600
+          },
+          {
+            "distribution": "securesystemslib",
+            "name": "securesystemslib-1.6.0-py3-none-any.whl",
+            "sha256": "1c1aa00f058f4851f038d409c8ca4a727db854a91f07ec3a0fa047bb93e43e0e",
+            "bytes": 874777
+          },
+          {
+            "distribution": "tuf",
+            "name": "tuf-7.0.1-py3-none-any.whl",
+            "sha256": "d30434bda6e079ab303fb30d1b3006d939a10ca34783b1573d61cd9b802fa45c",
+            "bytes": 56253
+          },
+          {
+            "distribution": "urllib3",
+            "name": "urllib3-2.8.0-py3-none-any.whl",
+            "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+            "bytes": 135717
+          }
+        ],
+        "locks": {
+          "packaging/windows-cp311.lock": "a080f413266ed8942deb0dedd82304721cb39ea7b9eddd96d2cba542086d7f4a",
+          "packaging/trusted-client.lock": "51117188b2dbce9dac63c45ffdf0e913b19778eb8e44f1dcfb6a2a723d5ff856",
+          "packaging/windows-sync-test-cp311.lock": "ea8bab4a5fc3b7e579f75244439ddc1a38872070a46867f9f18719bec7af69fc",
+          "packaging/windows-sync-cp311.lock": "0a827bc66a49ddd698a97f4ae4e4d39006e734b2fefd0fc2994875e41275ebdf"
+        },
+        "source_tests": "PASS",
+        "installed_tests": "PASS",
+        "native_encrypted_transfer": "PASS",
+        "production_entitlement": "UNCONFIGURED",
+        "manual_nvda": "NOT_RUN"
+      }
+    }
+  ],
+  "artifact": {
+    "id": 15254214357,
+    "name": "carr-sync-windows-2022-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 5122385,
+    "digest": "sha256:6b6092f0c670df1eb9f73ea37dbf4a37c818db25c44d9b4d2630b2246b86f3ad"
+  },
+  "log": {
+    "bytes": 137703,
+    "sha256": "6c93ab8bc8fc021584c8a62ef02c71e977294e00845200786f9da228598c3e17",
+    "line_count": 1106
+  },
+  "qualification": "Actual encrypted transfer/native controls with synthetic data on this Windows host. Production entitlement and manual NVDA are unqualified; no production endpoint or private data is claimed.",
+  "aggregate_boundary": "This is one required lane at exact B; full-source, integrated installed, V3, physical audio, manual accessibility and later compositions remain separate."
+}

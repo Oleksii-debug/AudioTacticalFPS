@@ -1,0 +1,214 @@
+"""Real publication boundaries after retained-source validation.
+
+All audio is small synthetic PCM; these cases require no voice engine, audio
+device, symbolic-link privilege, or network access.
+"""
+from hashlib import sha256
+import os
+import wave
+
+import pytest
+
+from carr_library.speech.runtime import Voice, VoiceRegistry
+
+
+class SyntheticPCM:
+    name = 'Synthetic publication fixture'
+
+    def voices(self, *, cancelled=lambda: False):
+        return [Voice('publication-fixture', 'Synthetic PCM', self.name, 'en')]
+
+    def render(self, text, voice, destination, settings, cancelled):
+        with wave.open(str(destination), 'wb') as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(22050)
+            audio.writeframes(b'\x01\x00' * 220)
+
+
+@pytest.fixture
+def registry():
+    result = VoiceRegistry([SyntheticPCM()])
+    try:
+        yield result
+    finally:
+        result.close()
+
+
+def test_valid_callback_publishes_the_exact_measured_wave(tmp_path, registry):
+    target = tmp_path / 'speech.wav'
+    observed = []
+
+    def validate(staged):
+        assert not target.exists()
+        with wave.open(str(staged), 'rb') as audio:
+            assert (audio.getnchannels(), audio.getsampwidth(), audio.getframerate(),
+                    audio.getnframes()) == (1, 2, 22050, 220)
+            assert audio.readframes(220) == b'\x01\x00' * 220
+        observed.append((staged, sha256(staged.read_bytes()).hexdigest()))
+
+    result = registry.synthesize('A synthetic publication.', 'publication-fixture',
+                                 target, before_publish=validate)
+
+    assert len(observed) == 1
+    assert result.path == target and result.frames == 220 and result.chunks == 1
+    assert result.sha256 == observed[0][1] == sha256(target.read_bytes()).hexdigest()
+    assert not observed[0][0].exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+def test_callback_parent_replacement_rejects_identical_staging_bytes(tmp_path, registry):
+    parent = tmp_path / 'selected-output'
+    parent.mkdir()
+    target = parent / 'speech.wav'
+    moved = tmp_path / 'moved-output'
+    proof = {}
+
+    def replace_parent(staged):
+        relative = staged.relative_to(parent)
+        payload = staged.read_bytes()
+        proof['sha256'] = sha256(payload).hexdigest()
+        proof['original_parent'] = (parent.stat().st_dev, parent.stat().st_ino)
+        parent.rename(moved)
+        parent.mkdir()
+        (parent / 'unrelated.txt').write_bytes(b'Keep the replacement directory intact.')
+        staged.parent.mkdir()
+        staged.write_bytes(payload)
+        proof['replacement_parent'] = (parent.stat().st_dev, parent.stat().st_ino)
+        # The production synthesis checksum still matches. The destination
+        # directory authority must independently refuse this replacement.
+        assert sha256(staged.read_bytes()).hexdigest() == proof['sha256']
+        assert (moved / relative).read_bytes() == payload
+
+    with pytest.raises(ValueError, match='output folder changed'):
+        registry.synthesize('A synthetic publication.', 'publication-fixture',
+                            target, before_publish=replace_parent)
+
+    assert proof['original_parent'] != proof['replacement_parent']
+    assert not target.exists() and not (moved / 'speech.wav').exists()
+    assert (parent / 'unrelated.txt').read_bytes() == b'Keep the replacement directory intact.'
+
+
+def test_callback_staging_hardlink_alias_cannot_be_published(tmp_path, registry):
+    target = tmp_path / 'speech.wav'
+    alias = tmp_path / 'retained-alias.wav'
+    retained = []
+
+    def alias_staging(staged):
+        retained.append(staged.read_bytes())
+        os.link(staged, alias)
+        assert staged.stat().st_nlink == 2
+        assert alias.read_bytes() == retained[0]
+
+    with pytest.raises(ValueError, match='must not have links'):
+        registry.synthesize('A synthetic publication.', 'publication-fixture',
+                            target, before_publish=alias_staging)
+
+    assert not target.exists()
+    assert alias.read_bytes() == retained[0]
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+@pytest.mark.parametrize('change', ['shorter', 'rate', 'truncated'])
+def test_utterance_geometry_cannot_change_between_measurement_and_copy(tmp_path, registry, monkeypatch, change):
+    from carr_library.speech import runtime
+
+    actual = runtime._wave_info
+
+    def mutate_after_measurement(path, **kwargs):
+        result = actual(path, **kwargs)
+        if path.name == 'utterance.wav':
+            if change == 'truncated':
+                # Preserve the original data-chunk length, remove real PCM.
+                path.write_bytes(path.read_bytes()[:-40])
+            else:
+                with wave.open(str(path), 'wb') as audio:
+                    audio.setnchannels(1)
+                    audio.setsampwidth(2)
+                    audio.setframerate(16000 if change == 'rate' else 22050)
+                    audio.writeframes(b'\x01\x00' * (110 if change == 'shorter' else 220))
+        return result
+
+    monkeypatch.setattr(runtime, '_wave_info', mutate_after_measurement)
+    target = tmp_path / 'speech.wav'
+    with pytest.raises(ValueError, match='voice output (geometry|length) changed'):
+        registry.synthesize('Synthetic narration.', 'publication-fixture', target,
+                            before_publish=lambda staged: None)
+    assert not target.exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+def test_oversized_utterance_container_is_rejected_before_pcm_inspection(tmp_path, registry, monkeypatch):
+    from carr_library.speech import runtime
+
+    provider = registry._selection('publication-fixture')[1]
+    original = provider.render
+
+    def oversized(text, voice, destination, settings, cancelled):
+        original(text, voice, destination, settings, cancelled)
+        with destination.open('ab') as stream:
+            stream.write(b'\0' * 4096)
+
+    monkeypatch.setattr(provider, 'render', oversized)
+    target = tmp_path / 'speech.wav'
+    with pytest.raises(ValueError, match='audio-output budget'):
+        registry.synthesize('Synthetic narration.', 'publication-fixture', target,
+                            settings=runtime.SpeechSettings(max_output_bytes=4096))
+    assert not target.exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+@pytest.mark.parametrize('change', ['none', 'foreign-workspace', 'stale-revision',
+                                    'forged-asset', 'archived-topic'])
+def test_reopened_narration_source_publication(tmp_path, registry, change):
+    from carr_library.application import LibraryApp
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech import ReadingDocument
+    from carr_library.speech.source import read_source_range, attest_saved_narration_copy
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Original source')
+    foreign = app.create_workspace('Other source')
+    topic = app.create_topic(workspace, 'Narration')
+    original = 'Exact оригінал. Žltý e\u0301.\nSecond line.'
+    imported = app.add_text(workspace, 'Synthetic source', original)
+    app.add_text(foreign, 'Synthetic source', original)
+    desk = ReadingDesk(app, workspace, imported['edition'], topic=topic)
+    document = read_source_range(desk, 1, 1).reading_document()
+    document.replace(0, 5, 'Edited')
+    saved = tmp_path / 'copy.reading.json'
+    document.save(saved)
+    reopened = ReadingDocument.load(saved)
+    assert reopened.text != reopened.source_text
+    if change == 'forged-asset':
+        payload = reopened.to_dict()
+        payload['source_anchor']['asset_sha256'] = '0' * 64
+        reopened = ReadingDocument.from_dict(payload)
+    snapshot = reopened.to_dict()
+    target = tmp_path / 'narration.wav'
+
+    def reauthorize(staged):
+        assert staged.is_file() and not target.exists()
+        if change == 'stale-revision':
+            app.update_metadata(workspace, imported['edition'], title='New source metadata')
+        elif change == 'archived-topic':
+            with app.topic_transaction(workspace) as tree:
+                tree.archive(topic)
+        attest_saved_narration_copy(app, reopened,
+            foreign if change == 'foreign-workspace' else workspace,
+            topic=topic)
+
+    if change == 'none':
+        result = registry.synthesize(reopened.text, 'publication-fixture', target,
+                                     before_publish=reauthorize)
+        assert target.is_file() and result.sha256 == sha256(target.read_bytes()).hexdigest()
+    else:
+        with pytest.raises(ValueError):
+            registry.synthesize(reopened.text, 'publication-fixture', target,
+                                before_publish=reauthorize)
+        assert not target.exists()
+    assert reopened.to_dict() == snapshot
+    assert reopened.source_anchor['quotation_authority'] is False
+    assert ReadingDocument.load(saved).source_text == original
+    assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
+    assert not list(tmp_path.glob('.speech-*'))

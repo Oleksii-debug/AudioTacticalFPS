@@ -1,0 +1,54 @@
+{
+  "schema": "resonance-finite-reader-inventory/1",
+  "status": "DOCUMENTED_SOURCE_SCOPE_RUNTIME_SEPARATE",
+  "base": {
+    "commit": "6042d1eb52ea32ded3769f9cb67459b119a4016c",
+    "tree": "9d88b8a0475f88fc75cf20ffffe6c7b37bce2e57"
+  },
+  "authority": {
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "detailed": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+  },
+  "files": [
+    {
+      "path": "carr-library/docs/REQUESTED_READER_WORKFLOWS.md",
+      "preimage": null,
+      "git_blob": "ef5851da5aef09d17197b1a2c86f1f4ff8786223",
+      "rows": 20
+    },
+    {
+      "path": "carr-library/docs/READING_DESK.md",
+      "preimage": "ef8f6f4c47c98108b8aa9b839126c1d6752302e8",
+      "git_blob": "3960b092f20cfaee4e3d07a52c752d7075e625be",
+      "hunks": [
+        {
+          "before": "These playback controls do not promise independent playback\nspeed, pitch shifting, or pitch-preserving time stretch.",
+          "after": "For independent listening speed and pitch, use the explicit **Apply** action\nin these controls to prepare a verified private listening copy. It supports\n0.25–4 times speed and −12 to +12 semitones through the existing typed converter;\nit preserves the original audio and does not start playback. See\n[Independent listening speed and pitch](LISTENING_SPEED.md) for the measured\nframe mapping, resource limits and ownership contract."
+        }
+      ],
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "preimage": "34967033f85e82491335d27a9abda5139da66c44",
+      "git_blob": "a8b28e278352d23d8f156bd3153d01551d7ed2a7",
+      "hunks": [
+        {
+          "before": "  inference and the remaining finite Balabolka-equivalent acceptance checklist.\n  Each advertised control and language must match the actual chosen engine.",
+          "after": "  inference and actual acceptance of the [finite requested reader workflow\n  checklist](REQUESTED_READER_WORKFLOWS.md). Each advertised control and language\n  must match the actual chosen engine."
+        }
+      ],
+      "inverse_exact": true
+    }
+  ],
+  "purpose": "Complete the finite requested reader/synthesis acceptance inventory, preserve its exact implementation/quality boundaries, and correct the stale statement that independent listening speed/pitch is absent.",
+  "primary_behavioral_references": [
+    "https://www.cross-plus-a.com/balabolka.htm",
+    "https://www.cross-plus-a.com/bfaq.htm",
+    "https://www.cross-plus-a.com/bconsole.htm"
+  ],
+  "read_local_links": 114,
+  "missing_local_links": 0,
+  "execution": "No new test execution is claimed for these documentation-only changes. Exact earlier receipt sources remain explicit; the Book timeout, zero output device and manual/engine qualification gaps are retained.",
+  "source_changes": 0
+}

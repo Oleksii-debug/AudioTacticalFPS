@@ -1,0 +1,93 @@
+{
+  "schema": "carr-voice-source-scheduling-handoff/1",
+  "recorded_utc": "2026-11-28 04:06:18 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "path": "carr-library/scripts/ci_voice_management_contracts.py",
+  "preimage": "19f5178dc3f9eaa10d706e69a3651d7c82ab5af0",
+  "blob": "56de4b31e3a5cf39aaaad9a238a4d5729a5ba1f8",
+  "repository_preimage": "ca412b958498884897c53e4623a8144308d5e8e2",
+  "required_intermediate": "19f5178dc3f9eaa10d706e69a3651d7c82ab5af0 is only the independently accepted intake5a55→8518 pin over the repository preimage.",
+  "evidence": "d660b512570aca0fedb6e03a91c29c1933596643",
+  "review": {
+    "root": "ACCEPTED_STATIC_NOT_RUN: exact ordered21 union, both strict group verdicts and global exact-once495; bounded8MiB same closed artifact; Linux/installed/native unchanged.",
+    "locate": "ACCEPTED_STATIC_NOT_RUN: independently isolated sole source block; exact original ordered21 union, per-group and complete495 strict verdicts, bounded failure logs and unchanged Linux/installed/owner/native/PINS. Scheduling hypothesis awaits actual Windows proof."
+  },
+  "changed_scope": "Only the source scheduling and complete-source-verdict block inside main().",
+  "unchanged": {
+    "product_sources": true,
+    "test_sources": true,
+    "source_whole_suites": 21,
+    "source_cases": 495,
+    "installed_whole_suites": 21,
+    "installed_cases": 495,
+    "each_suite_seconds": 600,
+    "source_pins": true,
+    "source_wheel_proof": true,
+    "installed_child_literal": true,
+    "actual_owner_checks_per_mode": 25,
+    "native_checks": 83,
+    "helper_minutes": 325,
+    "job_minutes": 360,
+    "artifact_inventory": true
+  },
+  "source_scheduling": {
+    "linux": {
+      "whole_suites": 21,
+      "cases": 495,
+      "jobs": 3,
+      "parent_seconds": 4500,
+      "command": "Original command preserved."
+    },
+    "windows": [
+      {
+        "whole_suites": 1,
+        "cases": 30,
+        "selected": "tests/audio/test_voice_package_management.py",
+        "jobs": 1,
+        "parent_seconds": 660
+      },
+      {
+        "whole_suites": 20,
+        "cases": 465,
+        "selected": "Every remaining original suite in its original order.",
+        "jobs": 4,
+        "parent_seconds": 3300
+      }
+    ],
+    "windows_parent_sum_seconds": 3960,
+    "original_source_envelope_seconds": 4500,
+    "grouping": "The ordered flattened group tuple must equal tuple(SUITES), with the exact original distinct21 paths.",
+    "admission": "Each group must have exit0, all exact case-count PASS rows once, and its exact actual complete-summary tail. Across the combined retained log, every original whole PASS row must occur exactly once.",
+    "report": "Success source-summary retains495 and adds the two actual execution-group records. A failed group cannot create a PASS source summary.",
+    "cleanup": "Use the unchanged owned child supervisor; retain each completed or failed raw group log inside the existing bounded8MiB source-contracts.txt, then remove only the owned temporary log directory."
+  },
+  "dependencies_owned_by_root": [
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "preimage": "c3856e713239b827b82f35ae1c34dbf5c4ea726f",
+      "change": "Only two19f517→56de helper pins."
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "preimage": "0a58e1bcf85e4064e5fa0ec903fb2befa672aeff",
+      "change": "Only CONTRACT_SHA19f517→56de."
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "preimage": "9d8fcecf8d85aac98d168cb9cd1285f31dec251b",
+      "change": "Only contract/helper pins to the exact reviewed successors."
+    }
+  ],
+  "validation": "No additional product test module: the existing strict495source+495installed suite obligations are unchanged and their actual execution is required. This CI-only scheduling change has no runtime qualification yet.",
+  "exact_inverse_to_intermediate": true,
+  "qualification": {
+    "contention_cause": "HYPOTHESIS",
+    "successor_source": "NOT_RUN",
+    "successor_installed": "NOT_RUN",
+    "source_deadline_relaxation": false,
+    "whole_suite_split": false,
+    "case_omission": false,
+    "refs_moved": false
+  },
+  "supersedes_metadata": "8326c611b55661addddb456c86079302f3fd6449"
+}

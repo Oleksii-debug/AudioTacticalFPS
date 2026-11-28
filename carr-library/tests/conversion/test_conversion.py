@@ -268,9 +268,14 @@ def test_actual_installed_pandoc_rtf_or_explicit_unavailable(service):
         with pytest.raises(ConversionUnavailable):
             converter.extract(source, 'rich.txt')
         return
-    result, report = converted(service, source)
+    library = inputs.parent / 'library'
+    (library / 'state').mkdir(parents=True)
+    converter = ConversionService(outputs, input_roots=(inputs,),
+        pandoc=Path(shutil.which('pandoc')).resolve(strict=True), state_root=library / 'state')
+    result, report = converted((converter, inputs, outputs), source)
     assert 'First paragraph.' in result and 'Second bold' in result
-    assert report['engine'] == 'installed-pandoc-sandbox'
+    assert report['engine'] == 'selected-pandoc-rtf-sandbox'
+    assert (outputs / 'rich-files' / 'original.rtf').read_bytes() == source.read_bytes()
 
 
 def test_actual_pandoc_does_not_fetch_iframe_or_execute_filters(service, tmp_path):

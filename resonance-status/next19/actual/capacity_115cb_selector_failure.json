@@ -1,0 +1,337 @@
+{
+  "schema": "carr.actual-qualification-evidence/1",
+  "status": "FAIL_SOURCE_DRIVER_SELECTOR",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "115cb66458b5f4748fb478fe1c573498c6b4ad30",
+  "source_tree": "cb4a7d0ac2dde204aaefaa7a64b72fd7fc19ea83",
+  "workflow": ".github/workflows/carr-next11-capacity-repair.yml",
+  "run_id": 46078597979,
+  "run_attempt": 1,
+  "branch": "carr/ci-next11-capacity-repair-20261127-5a9e",
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078597979",
+  "workflow_conclusion": "failure",
+  "jobs": [
+    {
+      "platform": "ubuntu-24.04",
+      "id": 140772051711,
+      "conclusion": "failure",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078597979/job/140772051711",
+      "source": {
+        "status": "FAIL",
+        "whole_suites": 11,
+        "passed": 178,
+        "failed": 6,
+        "skipped": 0,
+        "suites": [
+          {
+            "path": "tests/packaging/test_library_scale_benchmark.py",
+            "status": "PASS",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/packaging/test_library_capacity_measurement.py",
+            "status": "PASS",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_capacity.py",
+            "status": "PASS",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_capacity_cli.py",
+            "status": "PASS",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/ui/test_backup_capacity.py",
+            "status": "PASS",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_library_backup.py",
+            "status": "PASS",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_crash_backup.py",
+            "status": "PASS",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_complete_pending_backup.py",
+            "status": "PASS",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_pending_common4.py",
+            "status": "PASS",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_schema_identity.py",
+            "status": "PASS",
+            "passed": 36,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/ui/test_native_backup_capacity_driver.py",
+            "status": "FAIL",
+            "passed": 0,
+            "failed": 6,
+            "skipped": 0,
+            "pytest_exit": 1
+          }
+        ],
+        "verdicts": [
+          "PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+          "FAIL: tests/ui/test_native_backup_capacity_driver.py: junit_passed=0, failed=6, skipped=0, pytest_exit=1"
+        ]
+      },
+      "installed": {
+        "status": "NOT_RUN",
+        "reason": "The source whole-suite aggregate failed before wheel/installed execution."
+      },
+      "native": {
+        "status": "NOT_RUN",
+        "workflow_step": "NOT_CONFIGURED",
+        "reason": "Required source and installed helper did not succeed."
+      },
+      "failed_nodes": [
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance[ordinary]",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance[large]",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_refuses_a_down_key_that_did_not_change_the_live_list",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_refuses_ambiguous_embedded_lists_before_any_key",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_default_requires_actual_ordinary_list_not_cached_result_only",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_cancel_does_not_select_or_accept_any_allowance"
+      ]
+    },
+    {
+      "platform": "windows-2022",
+      "id": 140772052037,
+      "conclusion": "failure",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078597979/job/140772052037",
+      "source": {
+        "status": "FAIL",
+        "whole_suites": 11,
+        "passed": 178,
+        "failed": 6,
+        "skipped": 0,
+        "suites": [
+          {
+            "path": "tests/packaging/test_library_scale_benchmark.py",
+            "status": "PASS",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/packaging/test_library_capacity_measurement.py",
+            "status": "PASS",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_capacity.py",
+            "status": "PASS",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_capacity_cli.py",
+            "status": "PASS",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/ui/test_backup_capacity.py",
+            "status": "PASS",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_library_backup.py",
+            "status": "PASS",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_crash_backup.py",
+            "status": "PASS",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_complete_pending_backup.py",
+            "status": "PASS",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_pending_common4.py",
+            "status": "PASS",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/storage/test_backup_schema_identity.py",
+            "status": "PASS",
+            "passed": 36,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "path": "tests/ui/test_native_backup_capacity_driver.py",
+            "status": "FAIL",
+            "passed": 0,
+            "failed": 6,
+            "skipped": 0,
+            "pytest_exit": 1
+          }
+        ],
+        "verdicts": [
+          "PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+          "FAIL: tests/ui/test_native_backup_capacity_driver.py: junit_passed=0, failed=6, skipped=0, pytest_exit=1"
+        ]
+      },
+      "installed": {
+        "status": "NOT_RUN",
+        "reason": "The source whole-suite aggregate failed before wheel/installed execution."
+      },
+      "native": {
+        "status": "NOT_RUN",
+        "workflow_step": "SKIPPED",
+        "reason": "Required source and installed helper did not succeed."
+      },
+      "failed_nodes": [
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance[ordinary]",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance[large]",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_refuses_a_down_key_that_did_not_change_the_live_list",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_refuses_ambiguous_embedded_lists_before_any_key",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_default_requires_actual_ordinary_list_not_cached_result_only",
+        "tests/ui/test_native_backup_capacity_driver.py::test_native_capacity_cancel_does_not_select_or_accept_any_allowance"
+      ]
+    }
+  ],
+  "totals": {
+    "source_case_executions": 368,
+    "passed": 356,
+    "failed": 12,
+    "skipped": 0,
+    "whole_suite_executions": 22,
+    "distinct_cases": 184,
+    "installed_case_executions": 0,
+    "native_check_executions": 0,
+    "note": "Repeated case executions across two platforms, not 368 distinct tests. All ten old suites/178 cases passed on each platform; all six new driver cases failed at selector setup."
+  },
+  "diagnosis": {
+    "category": "TEST_FIXTURE",
+    "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+    "blob": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c",
+    "line": 15,
+    "actual": "assert len(functions) == 1; observed 2",
+    "cause": "Global ast.walk matched both the newly present native_question_button.visit descendant-enumeration callback and the intended main.command.visit chooser callback.",
+    "behavior_reached": false,
+    "product_defect_evidence": "None from these failures; no chooser assertions or native operation executed."
+  },
+  "correction": {
+    "manifest": "34530d63b60273872b54e1f9397ce89157b4390d",
+    "driver": "1d8e7ec4a91edb7f6abaffe4b69422007b666697",
+    "change": "Require one direct main, then one direct command, then its one direct visit; every test body/case and native44/12 contract is unchanged.",
+    "peer": "ACCEPTED_STATIC_NOT_RUN",
+    "published_head": "79931ff2ca200f1669619a731fc26d1d538f4fc3",
+    "new_run_id": 46080361160,
+    "new_execution": "PENDING_EXACT_HEAD"
+  },
+  "artifacts": [
+    {
+      "id": 15237120917,
+      "name": "capacity-profile-contracts-windows-2022-115cb66458b5f4748fb478fe1c573498c6b4ad30-1",
+      "bytes": 8371,
+      "sha256": "ee711ce1048b468187a93631a10874d12f0c5fb3817d916db226ec40c72b4ae0",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078597979/artifacts/15237120917",
+      "metadata_matches_job_upload": true,
+      "access": "Exact GitHub metadata reconciled with actual upload logs; archive bytes were not downloaded or inspected."
+    },
+    {
+      "id": 15236515905,
+      "name": "capacity-profile-contracts-ubuntu-24.04-115cb66458b5f4748fb478fe1c573498c6b4ad30-1",
+      "bytes": 7713,
+      "sha256": "2514634f7b90586cb891dc6ab81d217ef707e58d73e69c05ed8f73203b4cb8b0",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078597979/artifacts/15236515905",
+      "metadata_matches_job_upload": true,
+      "access": "Exact GitHub metadata reconciled with actual upload logs; archive bytes were not downloaded or inspected."
+    }
+  ],
+  "limits": [
+    "The overall source gates failed; neither platform reached the required isolated installed184 tests.",
+    "Windows native44/12 was skipped by its unchanged success dependency. No native PASS is claimed.",
+    "No profile/corpus qualification follows from these source-only unit cases.",
+    "Prior6e95 source/installed178 PASS evidence remains separate and is not transferred to115cb or79931."
+  ]
+}

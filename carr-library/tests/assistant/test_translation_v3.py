@@ -355,7 +355,10 @@ def test_cli_requires_exact_review_then_uses_existing_jobs_and_gateway(tmp_path,
     assert review['glossary'] == GLOSSARY and review['endpoint'] == ENDPOINT
     submit_args = base + ['submit'] + args + ['--review-sha256', review['review_sha256']]
     assert translation_cli.main(submit_args) == 1
-    assert 'Explicitly approve' in capsys.readouterr().err
+    assert capsys.readouterr().err == ('Translation: Approve this exact selected destination '
+        'with --approve-local or --approve-remote.\n')
+    assert len(transport['calls']) == 1
+    assert not TranslationService(app.root / 'state' / 'translation').list()
     assert translation_cli.main(submit_args + ['--approve-remote']) == 0
     submitted = json.loads(capsys.readouterr().out)
     assert len(transport['calls']) == 1 and submitted['status'] == 'queued'
@@ -421,6 +424,7 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def SetSelection(self, value): self.selection = value
         def GetSelection(self): return self.selection
         def GetValue(self): return self.value
+        def SetEditable(self, value): self.editable = value
         def ChangeValue(self, value): self.value = value
         def Enable(self, value=True): self.enabled = value
         def Disable(self): self.enabled = False
@@ -461,7 +465,9 @@ def translation_handlers(tmp_path, transport, monkeypatch):
     def complete():
         callback, done, failed = state['queue'].pop(0)
         try: result = callback()
-        except Exception as error: failed(error)
+        except Exception as error:
+            failed(error)
+            return error
         else: done(result)
     def scenario(callback):
         state['scenario'] = callback
@@ -483,9 +489,13 @@ def test_actual_native_handlers_queue_reviewed_glossary_and_focus_readable_compl
     e = translation_handlers
     def scenario():
         prepare_handler(e)
+        status = e.find('Preview, supported languages and job status')
+        assert status.focused and 'source: True' in status.value
         assert GLOSSARY not in e.state['approvals'][0]  # Discovery sends no glossary or text.
+        status.focused = False
         e.press('Preview')
-        assert GLOSSARY in e.find('Preview, supported languages and job status').value
+        assert GLOSSARY in status.value and status.focused
+        status.focused = False
         e.press('Translate / resume')
         assert len(transport['calls']) == 1 and len(e.state['queue']) == 1
         assert not e.find('Advanced v3 glossary resource; blank for none').enabled
@@ -515,13 +525,12 @@ def test_actual_handlers_reject_changed_review_without_call(translation_handlers
     e.scenario(scenario)
 
 
-def test_handler_close_before_queued_request_preserves_paused_job_without_transmission(translation_handlers, transport):
+def test_handler_close_before_queued_request_prevents_job_publication_and_transmission(translation_handlers, transport):
     e = translation_handlers
     def scenario():
         prepare_handler(e); e.press('Preview'); e.press('Translate / resume'); e.press('Close')
         e.complete()
-        job, = e.service.list()
-        assert job['status'] == 'paused' and not job['receipts']
+        assert not e.service.list()
         assert len(transport['calls']) == 1
     e.scenario(scenario)
 
@@ -530,12 +539,52 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
     e = translation_handlers
     def scenario():
         prepare_handler(e); e.press('Preview'); e.press('Translate / resume')
+        status = e.find('Preview, supported languages and job status')
+        prior_status = status.value
+        status.focused = False
         e.frame.library = LibraryApp(tmp_path / 'different library')
-        e.complete()
-        assert 'library changed' in e.find('Preview, supported languages and job status').value
-        job, = e.service.list()
-        assert job['status'] == 'queued' and not job['receipts']
+        failure = e.complete()
+        assert isinstance(failure, ValueError)
+        assert 'library or research topic changed' in str(failure)
+        assert status.value == prior_status and not status.focused
+        assert not e.service.list()
         assert len(transport['calls']) == 1
         e.press('Translate / resume')
-        assert not e.state['queue'] and len(e.service.list()) == 1
+        assert not e.state['queue'] and not e.service.list()
     e.scenario(scenario)
+
+
+@pytest.mark.parametrize('invalid', [False, 0, [], {}])
+def test_advanced_rejects_falsey_nonlanguage_response(tmp_path, transport, invalid):
+    service, p, _ = ready(tmp_path, transport)
+    identity, approval = submit(service, p)
+    def response(document):
+        document['translations'][0]['detectedLanguageCode'] = invalid
+        return document
+    transport['response'] = response
+    with pytest.raises(ProviderError, match='detected translation language'):
+        service.resume(identity)
+    assert not service.jobs.load(identity)['receipts']
+    assert service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['status'] == 'uncertain'
+
+
+def test_advanced_detected_language_cannot_be_rebound(tmp_path, transport):
+    from carr_library.assistant.providers import translation_receipt_sha256
+    service, p, _ = ready(tmp_path, transport)
+    value = 'Synthetic original.'
+    approval, cost = translation_approval(p, value, 'auto', 'uk', '1')
+    identity = service.submit(p, value, 'auto', 'uk', authorization=approval, per_call_cost=cost)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    row = job['receipts'][0]
+    assert row['detected_source'] == 'en'
+    assert row['decoded_translation_sha256'] == service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['usage']['decoded_translation_sha256']
+    row['detected_source'] = 'fr'
+    row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], 'fr')
+    service.jobs.save(job)
+    calls = len(transport['calls'])
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.resume(identity)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, tmp_path / 'unpublished')
+    assert not (tmp_path / 'unpublished').exists() and len(transport['calls']) == calls

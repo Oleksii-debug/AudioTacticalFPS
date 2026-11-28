@@ -1,0 +1,125 @@
+{
+  "schema": "carr-source-review/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "created_utc": "2026-11-27T23:57:24Z",
+  "subject": "Read the real checksum text before modal acceptance and bind the accepted value to actual restore",
+  "base_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "before": "3f633a875f8232d4c0cce5cdf40e47d9064f9987",
+      "after": "50397caa3170495a562a2220a80d4a00eb36ab9a"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+      "before": "1d8e7ec4a91edb7f6abaffe4b69422007b666697",
+      "after": "a1b0af9bc556c1159794d8b0cdbf3399fbc64dd0"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "f367299bdfc55c6af6a409c020b437fd1bd1c416",
+      "after": "3c24baad724a0ebf354bf3f1121834e03b3a0a32"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "b9a05871fa6dc6b9e951799da8201b8660b9410a",
+      "after": "0ae1d79faaadd8627f12639de5d40956bd4e9927"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "before": "d5dd53c0874cf4d701bc248cefc26d9ac6e353e8",
+      "after": "772fbbecd31f9148711c2b59f67ba97b479d8d4f"
+    }
+  ],
+  "actual_evidence": "99ce0535dfa7bc7c4fe5ea0841461e2f4531c55a",
+  "observed": {
+    "head": "79931ff2ca200f1669619a731fc26d1d538f4fc3",
+    "run_id": 46080361160,
+    "linux_job": 140777668973,
+    "windows_job": 140777669387,
+    "linux_source": 184,
+    "linux_installed": 184,
+    "windows_source": 184,
+    "windows_installed": 184,
+    "all_case_verdicts": "PASS",
+    "native44": "FAIL",
+    "native_backup": "Both actual ordinary and large backups returned verified complete4/pending1 manifests.",
+    "native_restore": "NOT_RUN: pre-OK checksum assertion refused before restore admission.",
+    "native_origins_before": 12,
+    "native_origins_after": 12,
+    "host_cleanup": "PASS"
+  },
+  "primary_sources": [
+    {
+      "url": "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/include/wx/generic/textdlgg.h",
+      "fact": "wxTextEntryDialog::GetValue returns cached m_value."
+    },
+    {
+      "url": "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/generic/textdlgg.cpp",
+      "fact": "TransferDataFromWindow copies m_textctrl->GetValue; the actual OK handler calls it before EndModal."
+    }
+  ],
+  "changes": [
+    "Only the two pre-OK checksum comparisons change from cached dialog.GetValue to the already unique actual TextCtrl.GetValue.",
+    "Native Text(bytes), actual control focus, default-No, keyboard OK, all existing deadlines and owned modal cleanup remain unchanged.",
+    "The observer records the checksum passed to the actual restore API and the existing final API assertion additionally requires the saved manifest checksum.",
+    "Old six driver cases remain an exact byte prefix; five new cases execute the exact scoped native visit body."
+  ],
+  "gate": {
+    "module": "tests/ui/test_native_backup_capacity_driver.py",
+    "old_cases": 6,
+    "new_cases": 11,
+    "functions": [
+      "test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance",
+      "test_native_capacity_refuses_a_down_key_that_did_not_change_the_live_list",
+      "test_native_capacity_refuses_ambiguous_embedded_lists_before_any_key",
+      "test_native_capacity_default_requires_actual_ordinary_list_not_cached_result_only",
+      "test_native_capacity_cancel_does_not_select_or_accept_any_allowance",
+      "test_native_backup_checksum_observes_live_text_before_modal_value_is_committed",
+      "test_native_backup_checksum_rejects_wrong_live_text_even_if_cached_value_matches",
+      "test_native_backup_checksum_refuses_missing_or_ambiguous_live_control",
+      "test_native_backup_checksum_never_accepts_failed_native_keyboard_input"
+    ],
+    "companion": "scripts/windows_backup_capacity_smoke.py",
+    "whole_suites": 11,
+    "source_cases": 189,
+    "isolated_installed_cases": 189,
+    "native_required_checks": 44,
+    "native_origins": 12,
+    "native_old_literal_sites": 22,
+    "native_literal_sites_unchanged": true,
+    "source_aggregate_seconds": 3200,
+    "whole_child_seconds": 600,
+    "helper_step_minutes": 170,
+    "native_watchdog_seconds": 180,
+    "native_step_minutes": 5,
+    "source_and_installed_origins": 21,
+    "benchmark_page_size": 37,
+    "benchmark_phase_seconds": 3600,
+    "benchmark_pin": "652833b7e0672cb62db2293f53187fe97fcd8669",
+    "application_pin": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "no_new_dependency": true,
+    "no_product_change": true,
+    "no_process_pin_added": true
+  },
+  "pin_audit": {
+    "helper": "Exactly three changed lines: driver6→11 and test/native blob pins.",
+    "each_workflow": "Exactly two helper pins, one native probe pin and four184→189 step labels.",
+    "inverse_reconstruction": "All three exact preimages reconstructed without any other byte change."
+  },
+  "reviews": [
+    {
+      "reviewer": "progress_completion",
+      "scope": "primary wx cached-value contract, native live-control and accepted-checksum boundary, actual scoped driver APIs/counts",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "qualification": {
+    "new_code_source": "NOT_RUN",
+    "new_code_installed": "NOT_RUN",
+    "new_native44": "NOT_RUN",
+    "old184_results_preserved": true,
+    "refs_moved": false
+  }
+}

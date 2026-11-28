@@ -1,0 +1,267 @@
+{
+  "schema": "resonance-live-metadata-conversion-book-backup-gates/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+    "tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+    "active_pr_unchanged": "e7636ca3f9e6b7474145f6e1799bd19a135a3250"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "0d7eb204d92c12ff3dd9ee98c3c529580d019e37",
+      "composition_preimage": "b99657f61d17f79b47fde57d08697d59d9d9ae66",
+      "sha": "fc1a0828613971d825c2b8a8e6c486a15c6d7f84",
+      "bytes": 402771,
+      "exact_readback": true
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "ba1e074bef27b7e4d9217521f1d409a95be9e742",
+      "composition_preimage": "1cd88286545e5af0a63af27a458d46aaf2ae20c3",
+      "sha": "f6c0f8775a6da838d48fd862931197c256113d37",
+      "bytes": 432855,
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "14c04e7a5b4431da9787548f0da705a2bf34666a",
+      "composition_preimage": "ff0336c3169cc6baee9f7b11c4ecdfe49857d63a",
+      "sha": "38bf6f7030350aa0165a2f9f40abd0b5ff48c1f9",
+      "bytes": 159136,
+      "exact_readback": true
+    }
+  ],
+  "dependency_manifests": [
+    "fa4a26b5714e56a78f65de999ad1c7a4a673672e",
+    "fdba1d7ee7679f57b18d2859e7592880c0d99d6f",
+    "7f31907f4f05a5bb6dc46bff93de153e31002ade",
+    "4a5a08885b73f945640521c71466ed070ff2f1b1",
+    "d274eedd6268cf6d4f6793ec1f49359e313becf0"
+  ],
+  "new_whole_suites": [
+    {
+      "path": "tests/audio/test_live_metadata_retry.py",
+      "count": 12,
+      "functions": [
+        "test_live_refusal_requires_a_new_size_observation",
+        "test_persistent_live_denial_remains_a_failure_and_reaps_child",
+        "test_other_metadata_denials_are_not_retried",
+        "test_cancellation_interrupts_metadata_retry",
+        "test_existing_time_budget_interrupts_metadata_retry",
+        "test_child_exit_during_live_refusal_uses_fresh_final_lstat",
+        "test_final_lstat_denial_is_never_retried",
+        "test_real_open_file_deletion_is_observed_without_cached_fallback"
+      ]
+    },
+    {
+      "path": "tests/ui/test_native_conversion_diagnostics.py",
+      "count": 10,
+      "functions": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks"
+      ]
+    }
+  ],
+  "changed_existing_whole_suite": {
+    "path": "tests/studio/test_measured_audio.py",
+    "source_blob": "717ad80542669ecf0543ea6d971f3e7f2e849444",
+    "before_cases": 34,
+    "after_cases": 36,
+    "existing_functions": "ALL_RETAINED",
+    "added_function": "test_measured_review_binds_original_route_and_resolved_target_separately",
+    "new_parameter_cases": 2
+  },
+  "companion": {
+    "path": "scripts/windows_document_conversion_smoke.py",
+    "source_blob": "4b67819886d4324a616bce8dff13251fec2370f0",
+    "gate": "Relative layout retained in copied installed fixtures; existing exact current-checkout before/after hashes required."
+  },
+  "existing_process_suite": {
+    "path": "tests/audio/test_audio_process.py",
+    "source_blob": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+    "cases_static": 23,
+    "change": "NONE; existing whole selectors retained."
+  },
+  "full_gate_inventory": {
+    "main_fast": {
+      "before_suites": 141,
+      "after_suites": 143
+    },
+    "main_source": {
+      "before_suites": 457,
+      "after_suites": 459
+    },
+    "main_installed_additive": {
+      "before_suites": 301,
+      "after_suites": 303
+    },
+    "v3_publication_source": {
+      "before_suites": 178,
+      "after_suites": 180
+    },
+    "v3_publication_installed": {
+      "before_suites": 157,
+      "after_suites": 159
+    },
+    "expected_cases_added_per_complete_new_selection": 29,
+    "old_paged_candidate_suite30": "RETAINED",
+    "first_v3_early_feature_map": "BYTE_IDENTICAL",
+    "matching_feature_maps": [
+      {
+        "key": "v3",
+        "map": "reviewed_feature_cases",
+        "oldKeys": 93,
+        "newKeys": 95,
+        "onlyOldChanged": "tests/studio/test_measured_audio.py",
+        "oldNamesRetained": true,
+        "additional_changed_old_count": "tests/ui/test_native_backup_capacity_driver.py6->11"
+      },
+      {
+        "key": "v3",
+        "map": "completed_feature_expected",
+        "oldKeys": 100,
+        "newKeys": 102,
+        "onlyOldChanged": "tests/studio/test_measured_audio.py",
+        "oldNamesRetained": true,
+        "additional_changed_old_count": "tests/ui/test_native_backup_capacity_driver.py6->11"
+      },
+      {
+        "key": "installed",
+        "map": "reviewed_feature_cases",
+        "oldKeys": 117,
+        "newKeys": 119,
+        "onlyOldChanged": "tests/studio/test_measured_audio.py",
+        "oldNamesRetained": true,
+        "additional_changed_old_count": "tests/ui/test_native_backup_capacity_driver.py6->11"
+      },
+      {
+        "key": "installed",
+        "map": "completed_feature_expected",
+        "oldKeys": 120,
+        "newKeys": 122,
+        "onlyOldChanged": "tests/studio/test_measured_audio.py",
+        "oldNamesRetained": true,
+        "additional_changed_old_count": "tests/ui/test_native_backup_capacity_driver.py6->11"
+      }
+    ],
+    "exact_functions_match_component_sources": true
+  },
+  "preservation": {
+    "reverse_exact_to_each_preimage": true,
+    "old_suite_paths_and_functions": "ALL_RETAINED",
+    "native_blocks_and_names": "BYTE_IDENTICAL",
+    "book_native": {
+      "required": 77,
+      "origins": 18
+    },
+    "conversion_native": "Separate required durable workflow; no duplication or qualification transfer.",
+    "current_source_and_installed_origins": "UNCHANGED; already include audio.process and relevant conversion/UI modules.",
+    "inner_suite_limits": "UNCHANGED600/900",
+    "outer_envelopes": "UNCHANGED",
+    "firewall_cleanup": "BYTE_IDENTICAL",
+    "owner_inputs_assembly_boundary": "BYTE_IDENTICAL",
+    "final_payload_seals_and_failure_aggregation": "BYTE_IDENTICAL"
+  },
+  "sizes_utf8_bytes": {
+    "main": 402771,
+    "v3": 432855,
+    "installed": 159136
+  },
+  "verification": {
+    "exact_upload_readbacks": true,
+    "static_reverse_and_map_audits": true,
+    "python_yaml_powershell_execution": "NOT_RUN",
+    "new_whole_suite_collection": "NOT_RUN",
+    "runtime_native_release_qualification": "NOT_ESTABLISHED",
+    "independent_peer": {
+      "canonical": "Accepted b996/1cd/ff033 retry12 source/fast/installed, exact8function inventory and old23/paged30 preservation.",
+      "locate": "Accepted b996/1cd/ff033 GUI10/companion and measuredBook34->36/newfunction; old paths and functions retained.",
+      "root": "Independently accepted b996/1cd/ff033 exact JSON dictionaries and old command tokens.",
+      "backup_gate_followup": "Locate accepted fc1a/f6c0/38bf: exact reconstruction changes only6->11 and four new functions; all old companion/native44/12/policies/seals/deadlines byte-identical."
+    },
+    "final_reverse_chain": "Final3 files reverse exactly through accepted b996/1cd/ff033 to79ef0d7/ba1e/14c; no extra gate changes."
+  },
+  "refs_changed": false,
+  "changed_existing_backup_driver": {
+    "path": "tests/ui/test_native_backup_capacity_driver.py",
+    "count": 11,
+    "functions": [
+      "test_native_capacity_uses_live_list_then_requires_actual_modal_acceptance",
+      "test_native_capacity_refuses_a_down_key_that_did_not_change_the_live_list",
+      "test_native_capacity_refuses_ambiguous_embedded_lists_before_any_key",
+      "test_native_capacity_default_requires_actual_ordinary_list_not_cached_result_only",
+      "test_native_capacity_cancel_does_not_select_or_accept_any_allowance",
+      "test_native_backup_checksum_observes_live_text_before_modal_value_is_committed",
+      "test_native_backup_checksum_rejects_wrong_live_text_even_if_cached_value_matches",
+      "test_native_backup_checksum_refuses_missing_or_ambiguous_live_control",
+      "test_native_backup_checksum_never_accepts_failed_native_keyboard_input"
+    ],
+    "addedFunctions": [
+      "test_native_backup_checksum_observes_live_text_before_modal_value_is_committed",
+      "test_native_backup_checksum_rejects_wrong_live_text_even_if_cached_value_matches",
+      "test_native_backup_checksum_refuses_missing_or_ambiguous_live_control",
+      "test_native_backup_checksum_never_accepts_failed_native_keyboard_input"
+    ],
+    "source_blob": "a1b0af9bc556c1159794d8b0cdbf3399fbc64dd0",
+    "native_companion": "50397caa3170495a562a2220a80d4a00eb36ab9a",
+    "before_cases": 6,
+    "old_case_prefix": "BYTE_IDENTICAL",
+    "existing_native_contract": {
+      "required_names": 44,
+      "origins": 12,
+      "change": "NONE"
+    }
+  },
+  "backup_component": {
+    "native_path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+    "native_preimage": "3f633a875f8232d4c0cce5cdf40e47d9064f9987",
+    "native_sha": "50397caa3170495a562a2220a80d4a00eb36ab9a",
+    "test_path": "carr-library/tests/ui/test_native_backup_capacity_driver.py",
+    "test_preimage": "1d8e7ec4a91edb7f6abaffe4b69422007b666697",
+    "test_sha": "a1b0af9bc556c1159794d8b0cdbf3399fbc64dd0",
+    "source_peer": "ACCEPTED_STATIC_NOT_RUN by progress_completion; exact official wxWidgets3.2.8 cached-result versus live-control contract checked.",
+    "scope": "Existing live checksum controls before OK plus exact checksum at the real completed restore API; all native labels and bounds retained."
+  },
+  "focused_component_gates": {
+    "book": {
+      "manifest": "4a5a08885b73f945640521c71466ed070ff2f1b1",
+      "helper": "9f78d1bb9ae3a2db1f0691c849a97342b5de5da0",
+      "workflow": "2bd226a077d2a6cbf659d4d5a07f0de3162bede3",
+      "source_cases": 108,
+      "installed_cases": 108,
+      "native_required": 77,
+      "native_origins": 18,
+      "peer": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    "conversion": {
+      "manifest": "7f31907f4f05a5bb6dc46bff93de153e31002ade",
+      "helper": "cd41df858e39ef0d8397a531a62780f43533e900",
+      "workflow": "28418b5d618cf805c997b4bab467ca52e7758a2a",
+      "source_cases": 254,
+      "installed_cases": 254,
+      "peer": "ACCEPTED_STATIC_NOT_RUN; exact reverse to4f9/01df, installed child byte-identical, six actual native phases unchanged."
+    },
+    "capacity": {
+      "manifest": "d274eedd6268cf6d4f6793ec1f49359e313becf0",
+      "helper": "3c24baad724a0ebf354bf3f1121834e03b3a0a32",
+      "workflows": [
+        "0ae1d79faaadd8627f12639de5d40956bd4e9927",
+        "772fbbecd31f9148711c2b59f67ba97b479d8d4f"
+      ],
+      "source_cases": 189,
+      "installed_cases": 189,
+      "native_required": 44,
+      "native_origins": 12,
+      "peer": "ACCEPTED_STATIC_NOT_RUN; exact inverse to f367/b9a/d5dd."
+    }
+  },
+  "actual_scope_note": "Current e763 PR runs remain separate and unmodified. No completed result transfers to the changed Book route/process/diagnostic/backup sources or these new gate files.",
+  "created_utc": "2026-11-27 23:57:31 UTC"
+}

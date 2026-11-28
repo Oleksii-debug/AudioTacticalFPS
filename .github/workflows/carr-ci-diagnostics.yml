@@ -1,0 +1,82 @@
+name: Read prior synthetic CI failure evidence
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths: ['.github/workflows/carr-ci-diagnostics.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  previous-managed-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      CARR_DIAGNOSTIC_TOKEN: ${{ github.token }}
+    steps:
+      - name: Read the exact earlier synthetic install failure
+        shell: python {0}
+        run: |
+          from hashlib import sha256
+          from io import BytesIO
+          import json, os, urllib.request, urllib.error, zipfile
+          repository = 'Oleksii-debug/AudioTacticalFPS'
+          artifact = 15194548131
+          expected_commit = 'ec5133b4f102b712b5bbdb9b33527e6b080a4d6b'
+          expected_digest = 'f6430d2c3505da31b2369efd6543028d90669dca85b1da3f7dd37e9ff633d51b'
+          endpoint = 'https://api.github.com/repos/' + repository + '/actions/artifacts/' + str(artifact)
+          headers = {'Authorization': 'Bearer ' + os.environ['CARR_DIAGNOSTIC_TOKEN'],
+                     'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
+          with urllib.request.urlopen(urllib.request.Request(endpoint, headers=headers), timeout=20) as response:
+              metadata = json.loads(response.read(1024 * 1024 + 1))
+          assert metadata['id'] == artifact and not metadata['expired']
+          assert metadata['workflow_run']['head_sha'] == expected_commit
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+                  return None
+          opener = urllib.request.build_opener(NoRedirect)
+          try:
+              opener.open(urllib.request.Request(endpoint + '/zip', headers=headers), timeout=20)
+          except urllib.error.HTTPError as response:
+              assert response.code == 302
+              location = response.headers['Location']
+          else:
+              raise AssertionError('The authenticated artifact endpoint did not return its download redirect.')
+          assert location.startswith('https://')
+          # The temporary storage request receives no GitHub credential.
+          with urllib.request.urlopen(location, timeout=30) as response:
+              archive = response.read(2 * 1024 * 1024 + 1)
+          assert len(archive) == 50906 and sha256(archive).hexdigest() == expected_digest
+          print('DIAGNOSTIC ONLY: previous commit ' + expected_commit + '; no current-source acceptance claim.')
+          print(json.dumps({'artifact': artifact, 'bytes': len(archive), 'sha256': expected_digest}))
+          with zipfile.ZipFile(BytesIO(archive)) as bundle:
+              members = bundle.infolist()
+              assert len(members) <= 200 and sum(item.file_size for item in members) <= 16 * 1024 * 1024
+              print(json.dumps({'members': [item.filename for item in members]}))
+              for item in members:
+                  if item.is_dir() or item.file_size > 2 * 1024 * 1024 or not item.filename.endswith(('.log', '.txt', '.json')):
+                      continue
+                  raw = bundle.read(item)
+                  text = raw.decode('utf-8-sig', errors='replace')
+                  if raw.startswith((b'\xff\xfe', b'\xfe\xff')):
+                      text = raw.decode('utf-16', errors='replace')
+                  lines = text.splitlines()
+                  # The failure tail is a separate bounded section. Extraction
+                  # of files such as errors.py must not consume its evidence budget.
+                  if 'install-a' in item.filename.casefold():
+                      print('INSTALL-A FINAL TAIL: ' + item.filename)
+                      for number in range(max(0, len(lines) - 120), len(lines)):
+                          print(str(number + 1) + ': ' + lines[number][:2000])
+                  interesting = {number for number, line in enumerate(lines)
+                      if not line.lstrip().casefold().startswith(('extracting ', 'extracting:', 'inflating:'))
+                      and any(word in line.casefold() for word in ('traceback (most recent call last)',
+                          'error:', 'exception:', 'failed:', 'exit code', 'aborted'))}
+                  selected = sorted({nearby for number in interesting
+                      for nearby in range(max(0, number - 3), min(len(lines), number + 4))})
+                  if selected:
+                      print('ARTIFACT MEMBER: ' + item.filename)
+                      for number in selected[:250]:
+                          print(str(number + 1) + ': ' + lines[number][:2000])

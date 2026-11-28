@@ -1,0 +1,67 @@
+{
+  "schema": "carr.source-handoff/1",
+  "kind": "document-conversion-fresh-library-state",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "c037d9721e92ef390932c63c7be9225e903872c0",
+  "source_evidence": {
+    "run_id": 46086133789,
+    "job_id": 140796017523,
+    "conclusion": "GUI conversion was not admitted: current fresh LibraryApp has no state directory. The existing observer recorded zero service extraction calls, zero worker admissions and zero native children, with WinError 2 at library/state. No Pandoc failure is inferred."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "before": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab",
+      "after": "85fab268d21295106f3f05794cb68768167f3cd9"
+    },
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "before": "a92b5e20180462812634dda50266a61df8b9d4e3",
+      "after": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd"
+    }
+  ],
+  "changes": [
+    "Initialize only the exact missing state child of an already existing captured library; no parents=True.",
+    "Retain output-outside-library refusal before state creation and root/caller/directory-identity guards before and after creation.",
+    "Never replace a preexisting file or link; all existing queued owner/runtime/input/output/publication controls remain.",
+    "Remove artificial state.mkdir from the UI fixture and exercise actual first builtin conversion through its existing service and worker."
+  ],
+  "gate": {
+    "whole_suite": "tests/ui/test_document_conversion.py",
+    "old_cases": 17,
+    "new_cases": 20,
+    "functions": 10,
+    "required_functions": [
+      "test_capture_binds_exact_application_workspace_and_root",
+      "test_picker_rechecks_owner_before_getting_native_selected_path",
+      "test_explicit_picker_cancel_never_admits_a_job",
+      "test_queued_operation_keeps_captured_selection_before_native_admission",
+      "test_actual_saved_receipt_is_preserved_if_worker_reports_late_attention",
+      "test_old_scope_completion_does_not_open_results_in_a_new_library",
+      "test_supported_format_help_does_not_create_an_untyped_state_directory",
+      "test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion",
+      "test_fresh_state_admission_rejects_replaced_existing_library_before_mkdir",
+      "test_fresh_state_creation_never_replaces_an_existing_regular_file"
+    ],
+    "companions": [],
+    "focused_converter_old_total": 254,
+    "focused_converter_new_total": 257,
+    "native_required": 30,
+    "native_origins": 30,
+    "native_stage_seconds": 50,
+    "native_watchdog_seconds": 180
+  },
+  "preservation": [
+    "Every prior test function and parametrization retained.",
+    "Picker cancellation and pre-admission owner changes assert no state creation.",
+    "Actual root replacement preserves the replacement canary and denies state/output creation.",
+    "No native script, dependency, workflow, ref or private user asset was changed."
+  ],
+  "review": {
+    "reviewer": "canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Single constructor hunk; all prior17 cases; three actual fresh-state/identity/file-refusal regressions."
+  },
+  "execution": "Source parsing, new tests and actual Windows GUI rerun have not yet executed."
+}

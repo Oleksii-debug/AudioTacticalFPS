@@ -1,0 +1,56 @@
+{
+  "schema": "resonance-import-center-native-layout-correction/1",
+  "status": "DRAFT_NOT_RUN",
+  "baseline": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+  "evidence": {
+    "manifest": "7370c67a3bce2d3b73a87c955557779a7d0a4480",
+    "run": 46031173898,
+    "job": 140615140983,
+    "source": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "actual_failure": "native_import_center_smoke.py line99: root sizer minimum height exceeds actual client area"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "preimage": "505553ef6bf28eb073133ad1f4597a15930924f9",
+      "sha": "b304c895432fe69f68b7ea7a768ee0c70c9d4f0d"
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "preimage": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+      "sha": "cd36b78bab9ca11ec3113f2c6f5f4434da7c1078"
+    }
+  ],
+  "changes": [
+    "Same handlers and control identities in native keyboard-traversable scrolling body; status/Cancel/Close stay fixed.",
+    "Initial and minimum outer geometry respects current display work area in native DPI units.",
+    "Preserves both original native min-size assertions; adds actual compact viewport, fixed action visibility, and automatic focus scrolling in both directions.",
+    "Preserves all23 original native assertions and actual plan/exclude/import/search/reopen/retained request identity.",
+    "Only active captured owned modal may be unwound; retire timers before real host Close and executor cleanup, no manual closing flag/Destroy bypass.",
+    "120-second process watchdog includes90-second operation bound and actual host/finalizer/temp cleanup."
+  ],
+  "verification": {
+    "whole_source": "tests/ui/test_import_center.py",
+    "source_cases": 42,
+    "source_suite_changed": false,
+    "source": "NOT_RUN",
+    "native": "NOT_RUN",
+    "native_fields": {
+      "status": "PASS",
+      "native_controls": "PASS",
+      "planned_import_search_reopen": "PASS",
+      "compact_layout": "PASS",
+      "native_host_cleanup": "PASS",
+      "nvda": "NOT_RUN"
+    }
+  },
+  "references": [
+    "https://docs.wxpython.org/wx.Scrolled.html",
+    "https://docs.wxpython.org/wx.ScrolledWindow.html"
+  ],
+  "unchanged": [
+    "No import/cancellation/publication/model/persistence business logic changes.",
+    "No private data, engines, audio endpoints or external automations.",
+    "No source edits outside the constructor and its native acceptance probe."
+  ]
+}

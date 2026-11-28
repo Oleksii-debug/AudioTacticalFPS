@@ -1,0 +1,106 @@
+name: Actual pinned owner voice metadata API
+
+on:
+  push:
+    branches: ['carr/ci-owner-voice-api-*']
+    paths:
+      - '.github/workflows/carr-owner-voice-api.yml'
+      - 'carr-library/scripts/ci_owner_voice_api_smoke.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-owner-metadata:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify exact acceptance source and immutable candidate identity
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          import ast, hashlib, os, pathlib, subprocess
+          source=pathlib.Path('scripts/ci_owner_voice_api_smoke.py')
+          raw=source.read_bytes()
+          expected='e22c226ef24cf48957d04c32f25cb472e48c764e'
+          assert hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()==expected
+          ast.parse(raw,filename=str(source))
+          def git(*args):
+              return subprocess.check_output(['git',*args],text=True).strip()
+          head=git('rev-parse','HEAD')
+          assert head==os.environ['EXPECTED_SOURCE_SHA']
+          assert git('status','--porcelain','--untracked-files=no')==''
+          proof=pathlib.Path('ci-owner-api')
+          proof.mkdir()
+          (proof/'tested-commit.txt').write_text(head+'\n',encoding='ascii')
+          (proof/'tested-tree.txt').write_text(git('rev-parse','HEAD^{tree}')+'\n',encoding='ascii')
+          print('Exact immutable acceptance source and candidate identity verified.')
+          PY
+      - name: Execute actual owner create inspect install activate export deactivate and remove
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          python -I -B -X utf8 scripts/ci_owner_voice_api_smoke.py --acquire --report ci-owner-api/owner-api.json
+      - name: Retain only bounded JSON proof and candidate identities
+        if: always()
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          import json,pathlib,stat
+          root=pathlib.Path('ci-owner-api')
+          assert root.is_dir() and not root.is_symlink()
+          allowed={'tested-commit.txt','tested-tree.txt','owner-api.json'}
+          total=0
+          for path in root.iterdir():
+              info=path.lstat()
+              assert path.name in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink==1
+              assert not path.is_symlink() and not getattr(info,'st_file_attributes',0)&1024
+              raw=path.read_bytes()
+              assert len(raw)<=32*1024 and b'\0' not in raw
+              total+=len(raw)
+              if path.suffix=='.json':
+                  value=json.loads(raw)
+                  assert value['schema']=='carr-actual-owner-voice-api/1'
+                  assert value['owner_revision']=='a1c73a5747bc86eb11f0c037120442e0c2593e91'
+                  assert value['status'] in {'PASS','FAIL'}
+                  assert value['limits']['public_owner_source_or_audio_payload'] is False
+                  if value['status']=='PASS':
+                      assert len(value['checks'])>=30
+                      assert len(value['source_receipts'])==3
+              else:
+                  assert len(raw.strip())==40 and all(c in b'0123456789abcdef' for c in raw.strip())
+          assert total<=40*1024
+          print('Only bounded JSON receipts and commit/tree identities are retained.')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: actual-owner-voice-api-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-owner-api/
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: false

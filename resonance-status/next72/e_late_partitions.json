@@ -1,0 +1,3914 @@
+{
+  "schema": "carr-e-late-source-partitions-actual/1",
+  "created_utc": "2026-11-28 10:09:07 UTC",
+  "status": "ACTUAL_FAILURE_PRESERVED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run": 46128930916,
+  "event_head": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "actual_checked_out_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "comparison_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "comparison_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "partitions": [
+    {
+      "job": {
+        "id": 140931167785,
+        "name": "Required whole source partition 4 of 4 / Required integrated source 3 / Windows x64",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-28T09:33:11Z",
+        "completed_at": "2026-11-28T09:56:50Z"
+      },
+      "checkout": {
+        "command_line": 140,
+        "output_line": 141,
+        "observed": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71"
+      },
+      "log": {
+        "sha256": "29b9c0edc193055fdac094559cf52e90d1a9c89e090e8833a90fb1d3090e3c0e",
+        "bytes": 698165,
+        "normalized_lines": 5142
+      },
+      "whole_results": [
+        {
+          "line": 4900,
+          "status": "FAIL",
+          "path": "tests/search/test_search_paging.py",
+          "passed": null,
+          "failed": null,
+          "skipped": null,
+          "exit": null,
+          "text": "FAIL: tests/search/test_search_paging.py: required suite did not complete cleanly; last phase=pytest process; TimeoutExpired: Command '['D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Scripts\\\\python.exe', '-B', '-c', \"\\nimport sys\\nimport socket\\n\\ndef offline_network(*args, **kwargs):\\n    raise OSError('Network access is disabled during offline verification')\\n\\nsocket.socket.connect = offline_network\\nsocket.socket.connect_ex = offline_network\\nsocket.create_connection = offline_network\\nsocket.getaddrinfo = offline_network\\n\\ntry:\\n    import onnxruntime\\nexcept ImportError:\\n    pass\\nelse:\\n    onnxruntime.disable_telemetry_events()\\n\\nimport pytest\\n\\ndef _needs_gil_stack_dump(platform=sys.platform, implementation=sys.implementation.name,\\n                          version=sys.version_info[:2]):\\n    return platform == 'win32' and implementation == 'cpython' and tuple(version) == (3, 11)\\n\\nclass GilTimedStackDump:\\n    # CPython 3.11's native timed dumper walks changing frames without the GIL\\n    # (python/cpython#140815; pytest-dev/pytest#7022). A Python thread calls the\\n    # synchronous, bounded dumper while it owns the GIL instead. Fatal exception\\n    # handling remains pytest's own; the parent's 600/900 s deadline is unchanged.\\n    timeout = 0.0\\n    exit_on_timeout = False\\n\\n    @pytest.hookimpl(tryfirst=True)\\n    def pytest_configure(self, config):\\n        timeout = float(config.getini('faulthandler_timeout') or 0.0)\\n        if timeout <= 0:\\n            return\\n        import math\\n        if not math.isfinite(timeout):\\n            raise ValueError('A timed stack diagnostic needs a finite interval.')\\n        self.timeout = timeout\\n        self.exit_on_time … tatus = pytest.ExitCode.TESTS_FAILED\\nraise SystemExit(status)\\n\", '-v', '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-lt0_o6o3\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-lt0_o6o3\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\search\\\\test_search_paging.py']' timed out after 600 seconds",
+          "full_line_sha256": "9f78645e2536b2c59c49a58d763d91ba6b058bf71dc993ef2b6ad3c54033acbe"
+        },
+        {
+          "line": 4901,
+          "status": "PASS",
+          "path": "tests/studio/test_production_cancellation_outcomes.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_production_cancellation_outcomes.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d8eef11a8fcf17774a1d1492982b61ebc4f8435663cd0b0fb947f36c70c196fd"
+        },
+        {
+          "line": 4902,
+          "status": "PASS",
+          "path": "tests/ui/test_progress_voice_actions.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_progress_voice_actions.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "57e27fa24c8ec585fe4789d0d631597e2d22f8b5df7e30d916230de9c155275f"
+        },
+        {
+          "line": 4903,
+          "status": "PASS",
+          "path": "tests/packaging/test_install_bytecode.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d7ea4c1344de4257564c50a21b1b40ed2661501736f621d004f2975416b2054a"
+        },
+        {
+          "line": 4904,
+          "status": "PASS",
+          "path": "tests/e2e/test_result_presentation.py",
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_result_presentation.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "12e8f0e50f6b13c10254e8cbe3be22fed4673bd0a7fead8dca3a55fd2b2ac62d"
+        },
+        {
+          "line": 4905,
+          "status": "PASS",
+          "path": "tests/ui/test_ocr_model_manager.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_ocr_model_manager.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6595e6e96eeb95226fb2dbbf525e48bb668107a7a44bf26a809908e1cdde0e81"
+        },
+        {
+          "line": 4906,
+          "status": "PASS",
+          "path": "tests/extract/test_document_formats_text.py",
+          "passed": 82,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/extract/test_document_formats_text.py: junit_passed=82, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "b4375edd0210f0e42af59b95b3f7c10080877d08e55de538592133d7336a9a8c"
+        },
+        {
+          "line": 4907,
+          "status": "PASS",
+          "path": "tests/reader/test_ebook_reader.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_ebook_reader.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6f0097f2411520f48074e8ef410fad4711eb38eeaf78dfc829065a0509b8e2d9"
+        },
+        {
+          "line": 4908,
+          "status": "PASS",
+          "path": "tests/e2e/test_epub_library.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_epub_library.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a40e5c847f048b29a1512ced16389fd8bd334eecc5222baf2701059097f993f3"
+        },
+        {
+          "line": 4909,
+          "status": "PASS",
+          "path": "tests/e2e/test_research_workflows.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_research_workflows.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "608ee32e90bea35c1827200259bc28553c0081629f68fc72d4d53d3709ca9464"
+        },
+        {
+          "line": 4910,
+          "status": "PASS",
+          "path": "tests/e2e/test_current_topic_scope.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_current_topic_scope.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "fa465667f8848b7dad38810e3eca37fc8b772c9573445213da218a21384a21f5"
+        },
+        {
+          "line": 4911,
+          "status": "PASS",
+          "path": "tests/ingest/test_worker_isolated_launch.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ingest/test_worker_isolated_launch.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f3469c10c683f61c6733d12dd212576aef4ba832c9a4486a23d62a7a51142283"
+        },
+        {
+          "line": 4912,
+          "status": "PASS",
+          "path": "tests/search/test_semantic_cache_boundary.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_semantic_cache_boundary.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5ca1cf90585bba0f47e6fd1e21e41223aa6800b00e87060c8893084871e380b7"
+        },
+        {
+          "line": 4913,
+          "status": "PASS",
+          "path": "tests/e2e/test_data_directory_containment.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_data_directory_containment.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "0837e4c44ad4ef260a9e884ac0835ebee3905a6638ab708ebcbfbdbef6a6f493"
+        },
+        {
+          "line": 4914,
+          "status": "PASS",
+          "path": "tests/storage/test_library_backup_reading_state.py",
+          "passed": 126,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_library_backup_reading_state.py: junit_passed=126, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "20cf90a3a195aa6f4db078c4ce670a0a625416011fe66cfb11e628579fea65e2"
+        },
+        {
+          "line": 4915,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_schema_identity.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7b0799a6c61db7ccf9c89a45e9d04f7814352fdb4c7f39de73ad2e9457d703fb"
+        },
+        {
+          "line": 4916,
+          "status": "PASS",
+          "path": "tests/citations/test_finish_label_integrity.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/citations/test_finish_label_integrity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2c1ed60839fb2ad00cdf61d2890a5e651492682f7972a7caa889e0c104ffabac"
+        },
+        {
+          "line": 4917,
+          "status": "PASS",
+          "path": "tests/catalog/test_catalog_reports.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/catalog/test_catalog_reports.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ae9c39b762ec11bdc3b1a0c9f3c859f44f2e12057b960a758fb1d343fed75082"
+        },
+        {
+          "line": 4918,
+          "status": "PASS",
+          "path": "tests/acquisition/test_acquisition_workflow.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/acquisition/test_acquisition_workflow.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "939deac845e7aa09360b535857d0cf67f8e167a58162a4707b5ec04a8fcfab6f"
+        },
+        {
+          "line": 4919,
+          "status": "PASS",
+          "path": "tests/ui/test_catalog_tools_dialog.py",
+          "passed": 44,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_catalog_tools_dialog.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "9e0be7762dbefe0c91dcd57ceaa2eed96eb5d06f431ccc265c657710e88c46b7"
+        },
+        {
+          "line": 4920,
+          "status": "PASS",
+          "path": "tests/reader/test_saved_topic_query.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_saved_topic_query.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "bd0ac862faf923e79f75167d0f0b78ac097634ef7e775d6c9c481ea3a10a5525"
+        },
+        {
+          "line": 4921,
+          "status": "PASS",
+          "path": "tests/reader/test_bibliographic_locators.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_bibliographic_locators.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d13ac233d8121285ac4e0c8c9c36418580b168b9deeb5282b66bb925eb6db91a"
+        },
+        {
+          "line": 4922,
+          "status": "PASS",
+          "path": "tests/research/test_notebook_search.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/research/test_notebook_search.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d35f4c9d0db1ac3a584acf420405f7bfcc2693fdf08dfffd5ecb4f10f9f76896"
+        },
+        {
+          "line": 4923,
+          "status": "PASS",
+          "path": "tests/catalog/test_quality.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/catalog/test_quality.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "cf1bcfe0cce3641dbedb08130d3b132f3d8805ec4d786b7d5ba6a8a89544d216"
+        },
+        {
+          "line": 4924,
+          "status": "PASS",
+          "path": "tests/ui/test_catalog_quality.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_catalog_quality.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e895e8d77a8920e9ab8286d874ce5f43699b3a02f79d13b8ed2e32882044e654"
+        },
+        {
+          "line": 4925,
+          "status": "PASS",
+          "path": "tests/search/test_thematic_work_diversity.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_thematic_work_diversity.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7135330b39c0377559036129bbe1257e85755dd89c9ffaed1bf961530d4ec4e3"
+        },
+        {
+          "line": 4926,
+          "status": "PASS",
+          "path": "tests/ui/test_scope_labels.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_scope_labels.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6d4074f37887287cfb864df55b9423cd75ab95fec97bb1687138035f285c4ce8"
+        },
+        {
+          "line": 4927,
+          "status": "PASS",
+          "path": "tests/ui/test_notebook_search_actions.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_notebook_search_actions.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "90a2f2b8c419d6cb04322a2e8c45eb595162e199150680474e18ac3e4a8a2694"
+        },
+        {
+          "line": 4928,
+          "status": "PASS",
+          "path": "tests/ui/test_reader_command_dispatch.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_reader_command_dispatch.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ecadc48dadc20a9d273743aac88e0dc75cca79838cb90b322a27c22d55c7dd2b"
+        },
+        {
+          "line": 4929,
+          "status": "PASS",
+          "path": "tests/storage/test_keyboard_preferences.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_keyboard_preferences.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f782fd03810951309002af89fb59ddfcff96744d0b80bc5598d0605fd3ddb4a7"
+        },
+        {
+          "line": 4930,
+          "status": "PASS",
+          "path": "tests/ui/probe_catalog_insights_actions.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/probe_catalog_insights_actions.py: junit_passed=34, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5a09ed010d7a2ba0cf9f19cb32fc2da8af510d30db731e16ac8c947fc7501d8b"
+        },
+        {
+          "line": 4931,
+          "status": "PASS",
+          "path": "tests/catalog/test_reference_exchange.py",
+          "passed": 64,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/catalog/test_reference_exchange.py: junit_passed=64, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "4ccf125598e918a2039d9dca5775b964f482ed6e903daa8cb13ae36a5b68dc44"
+        },
+        {
+          "line": 4932,
+          "status": "PASS",
+          "path": "tests/e2e/test_research_search_cli.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_research_search_cli.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "9458af627d7c29da25a1bf8a05b53aff043de6afdfa850e9024bf3ffa743883b"
+        },
+        {
+          "line": 4933,
+          "status": "PASS",
+          "path": "tests/search/test_federated_independent.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_federated_independent.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6d4264f9094502552afec4f5e0d91a24a2065694f3ea44a1c7f4fded2015ab89"
+        },
+        {
+          "line": 4934,
+          "status": "PASS",
+          "path": "tests/e2e/test_research_workflow_roundtrip.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_research_workflow_roundtrip.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "92bc7b4d0eb42cc070b93f154cb04a7f3e0dcb5f9b0c1c34ac1a0a10cb4fe378"
+        },
+        {
+          "line": 4935,
+          "status": "PASS",
+          "path": "tests/storage/test_research_schema.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_research_schema.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5718782348054661099815c4db7c5d5e9e97ab3ca8ed4916bb6feb52a8d4ca19"
+        },
+        {
+          "line": 4936,
+          "status": "PASS",
+          "path": "tests/storage/test_finish_workspace_integrity.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_finish_workspace_integrity.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "19fb0e7f47c1f10fc8d46db99a3554d0d2cbbca375d0164a768d1343ba807cb9"
+        },
+        {
+          "line": 4937,
+          "status": "PASS",
+          "path": "tests/ingest/test_import_metadata_shape.py",
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ingest/test_import_metadata_shape.py: junit_passed=58, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "09cf88a8b9111bc2922cf2956c93b872844d5184a7ccb83a106343c7f2c0b4ba"
+        },
+        {
+          "line": 4938,
+          "status": "PASS",
+          "path": "tests/ui/test_federated_labels.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_federated_labels.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5bbd7b932efacb592f905a17b5a69049f3c6d1263018cab24714ea07e88b6489"
+        },
+        {
+          "line": 4939,
+          "status": "PASS",
+          "path": "tests/assistant/test_backup_receipt.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_backup_receipt.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "858ed587d57a67cc57471238e52d2d57800c98066d63293eba99b10a62b1d86d"
+        },
+        {
+          "line": 4940,
+          "status": "PASS",
+          "path": "tests/ui/test_studio_keyboard_registration.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_studio_keyboard_registration.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5d54dc68fd4a6ef689dc83ebf6fefc8fbff5e06c49b5c639015e29539938dfb0"
+        },
+        {
+          "line": 4941,
+          "status": "PASS",
+          "path": "tests/integrations/test_dordiai_convergence.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/integrations/test_dordiai_convergence.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "3461c08e1b83168ffad5f741516f0c27f4d1d59af004a4c95080328b91dfb22d"
+        },
+        {
+          "line": 4942,
+          "status": "PASS",
+          "path": "tests/assistant/test_local_assistant.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_local_assistant.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2c4492593cca64e1c218d9d440ca419ce2f14c88595a247c15d34ad7d510d788"
+        },
+        {
+          "line": 4943,
+          "status": "PASS",
+          "path": "tests/speech/test_reading.py",
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_reading.py: junit_passed=62, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "fb5ec440f0b5f86b3c5296282ac7a288bebdd406b1839cd6ae475ac96805cc9d"
+        },
+        {
+          "line": 4944,
+          "status": "PASS",
+          "path": "tests/audio/test_publication_fsync.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_publication_fsync.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "63656e28ced95cd64abd109cf251efd6333775352d9aa5f8d83326f640ff00c0"
+        },
+        {
+          "line": 4945,
+          "status": "PASS",
+          "path": "tests/ingest/test_import_replay_identity.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ingest/test_import_replay_identity.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "536117bc9b11e92671d97ba9c537392b96c39e58c50ef405672c235cc7cb8642"
+        },
+        {
+          "line": 4946,
+          "status": "PASS",
+          "path": "tests/ui/test_progress_job_results.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_progress_job_results.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d17a17cafadb3e1161edd1d2152f1a7364eaf4ff031a612930a4000e4049063c"
+        },
+        {
+          "line": 4947,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_translation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_translation.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "44550150e9088a338ef217340cb333dab9ac70ba5dd43c9e521b340ace18d85d"
+        },
+        {
+          "line": 4948,
+          "status": "PASS",
+          "path": "tests/ui/test_translation_documents.py",
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_translation_documents.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e31f32c64880e033d6bb7e2a8791c1ce11f608630cf59aa373ae1262c80d1627"
+        },
+        {
+          "line": 4949,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_retained_audio.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_retained_audio.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "fb770bf14e08b9e5e193c89627df38a6998273c30415ca13f71adc17fc82e194"
+        },
+        {
+          "line": 4950,
+          "status": "PASS",
+          "path": "tests/audio/test_bundled_runtime_settings.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_bundled_runtime_settings.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7a8e2a3139645efc92858e0ca75b1d83dd536e4febbb673e01f45590d9e8e629"
+        },
+        {
+          "line": 4951,
+          "status": "PASS",
+          "path": "tests/progress/test_progress_reporting_failure.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/progress/test_progress_reporting_failure.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "0bef25920d867b7681cd395f8f79ab4ea67558196fa62b545664732d79577482"
+        },
+        {
+          "line": 4952,
+          "status": "PASS",
+          "path": "tests/citations/test_custom_csl.py",
+          "passed": 132,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/citations/test_custom_csl.py: junit_passed=132, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "29704690c16c701f4095c56868a869f974ae86c0e3c26f0613fe0a456179dc4b"
+        },
+        {
+          "line": 4953,
+          "status": "PASS",
+          "path": "tests/e2e/test_import_files_cancellation.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_import_files_cancellation.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e67d17d6ca6d3c1fbfe64213ef29cec4c5b75e4ec73d7d1a0c4aebc8fa7c754f"
+        },
+        {
+          "line": 4954,
+          "status": "PASS",
+          "path": "tests/reader/test_export_publication_boundary.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_export_publication_boundary.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "39e5b37c637ddb47e639074f66f1c8152d197fd0ec5b8ea250da8b245b7a5dd3"
+        },
+        {
+          "line": 4955,
+          "status": "PASS",
+          "path": "tests/storage/test_v3_state_backup.py",
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_v3_state_backup.py: junit_passed=42, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6585f33f25fdff32a2faf466d41e9fdedf0c79fba265596be8c9e77751523280"
+        },
+        {
+          "line": 4956,
+          "status": "PASS",
+          "path": "tests/studio/test_clip_restoration.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_clip_restoration.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "23a87c8999677bc89e28e3ee784ed596c4e0a0a1ecc53ed92ae5813faae49d6e"
+        },
+        {
+          "line": 4957,
+          "status": "PASS",
+          "path": "tests/audio/test_recording.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_recording.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "b62b5e52a9184269a92efb6a448ab96c96e98596c85335ee706fbf586cc45c3d"
+        },
+        {
+          "line": 4958,
+          "status": "PASS",
+          "path": "tests/ui/test_recording_dialog.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_recording_dialog.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "3cb5e70538865fa8bc1e5daf6708d9aede6578b23c8831110cab0decced1f8ed"
+        },
+        {
+          "line": 4959,
+          "status": "PASS",
+          "path": "tests/ui/test_audio_conversion.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_audio_conversion.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "cdf5509bc4dccd58d251159407f172f55cd274400842b9671c79bbd62fddf733"
+        },
+        {
+          "line": 4960,
+          "status": "PASS",
+          "path": "tests/studio/test_publishing.py",
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_publishing.py: junit_passed=48, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "408bb1caca22c00937756ca2b70196142788c9420af26d35cb7615ce4791e20d"
+        },
+        {
+          "line": 4961,
+          "status": "PASS",
+          "path": "tests/assistant/test_translation_advanced_source.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_translation_advanced_source.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d346242b0bac01371afc515a440ee2e36010419622ca4ef1d1999d2a48155c2e"
+        },
+        {
+          "line": 4962,
+          "status": "PASS",
+          "path": "tests/assistant/test_workflow_templates.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_workflow_templates.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "25bf80769d2b839d9014ec669a03fe670776cb83ff9ae0474958af06f320af09"
+        },
+        {
+          "line": 4963,
+          "status": "PASS",
+          "path": "tests/ui/test_worker_lifetime.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_worker_lifetime.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "fe4211715994a519c0225c5342a3465795b98e78882442a61dd633de85129d07"
+        },
+        {
+          "line": 4964,
+          "status": "PASS",
+          "path": "tests/e2e/test_import_worker.py",
+          "passed": 38,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_import_worker.py: junit_passed=38, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ef93a71198d8fbddd98088202d44e35d869ac445b5b0a5b05673c02cfc083b18"
+        },
+        {
+          "line": 4965,
+          "status": "PASS",
+          "path": "tests/packaging/test_refresh_private_bundle_review.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_refresh_private_bundle_review.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "dc9e241a28bcc0b2ce9df1f1d7ad5cb9d14d69ca9a68138ab06eb854aa7d7240"
+        },
+        {
+          "line": 4966,
+          "status": "PASS",
+          "path": "tests/ui/test_operation_progress.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_operation_progress.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "b05418c3361f40ef59120e4c29e3d64a83faae73f0e5b613e21f93bc20584d64"
+        },
+        {
+          "line": 4967,
+          "status": "PASS",
+          "path": "tests/transcription/test_runtime_interpreter.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/transcription/test_runtime_interpreter.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d31c67af13286562db30ac43fc271694204c8f4dd4cd14cfbd43b53343951a30"
+        },
+        {
+          "line": 4968,
+          "status": "PASS",
+          "path": "tests/transcription/test_runtime_admission.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c5deef7592ad70910c87547b07b83c81e1e82f17b9252f45f00719ce42acfe7d"
+        },
+        {
+          "line": 4969,
+          "status": "PASS",
+          "path": "tests/e2e/test_transcription_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_transcription_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "66df8198e42af09ead74793edc2e10f032a8de397f8a75b14a32c49babd53be7"
+        },
+        {
+          "line": 4970,
+          "status": "PASS",
+          "path": "tests/ui/test_export_destination.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_export_destination.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "8f1e3094cf5efa6556d206f2c100fc89aaa9569e3fadb8e4ce3a456a3841d068"
+        },
+        {
+          "line": 4971,
+          "status": "PASS",
+          "path": "tests/speech/test_navigation.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_navigation.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7061f038fc76c290608dce495897b44163ea724e61cf85ab0b75c368b896578a"
+        },
+        {
+          "line": 4972,
+          "status": "PASS",
+          "path": "tests/speech/test_player_controls.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_player_controls.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "cec5cc3d6055d20ef5d4cedb51e41227f7bfe32259b270f94f2764a5c7922eb7"
+        },
+        {
+          "line": 4973,
+          "status": "PASS",
+          "path": "tests/packaging/test_audio_runtime.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_audio_runtime.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7bc0a15be4963e07fcacf1ff68bc063ba24cbbaf61bcc78dce11ecc3ba957895"
+        },
+        {
+          "line": 4974,
+          "status": "PASS",
+          "path": "tests/storage/test_incremental_backup_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_incremental_backup_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2106a4a6d3490f7820264965a2cc31489a8395a3e2ecdbf56377fd61315e931c"
+        },
+        {
+          "line": 4975,
+          "status": "PASS",
+          "path": "tests/studio/test_audiobook_publication.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_audiobook_publication.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7c5832558cb8c9f8d78529f23631201ee0ce5679f31b575e49002c0b9876f027"
+        },
+        {
+          "line": 4976,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_publication_formats.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_publication_formats.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "927be819e2d068b1417d4b79f51bf43d4bec271ddac1fcfc035a796ca6199927"
+        },
+        {
+          "line": 4977,
+          "status": "PASS",
+          "path": "tests/packaging/test_standard_installer.py",
+          "passed": 102,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_standard_installer.py: junit_passed=102, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "67a5c160dc81137c061e0300acf9ceace8876a43fad3cad930f2417f5d9a6572"
+        },
+        {
+          "line": 4978,
+          "status": "PASS",
+          "path": "tests/security/test_entitlements.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_entitlements.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "404ac306f59fd92ef9de5d23cdd691850f221edfbc1cb04d51ae91ada629df87"
+        },
+        {
+          "line": 4979,
+          "status": "PASS",
+          "path": "tests/security/test_managed_installation.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_managed_installation.py: junit_passed=34, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "470470ff64bae359eeb74118717e7bcf75740530e4b077904382ae811a6e1976"
+        },
+        {
+          "line": 4980,
+          "status": "PASS",
+          "path": "tests/security/test_updates.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_updates.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f4cadb1cd598394cc251ada13d8c1ff0cc284d929fcbf547ee2d9cdbc12f5f0f"
+        },
+        {
+          "line": 4981,
+          "status": "PASS",
+          "path": "tests/ui/test_reader_navigation_ui.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_reader_navigation_ui.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "17ebde48432de6ee92f7a6d86d5b0921a3fe6c5fc0506448b23af0e69876d115"
+        },
+        {
+          "line": 4982,
+          "status": "PASS",
+          "path": "tests/operations/test_import_admission.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/operations/test_import_admission.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "4471c27656320494002bc32d2f463e907c7b7edf0a709e9382cf7297a64267b2"
+        },
+        {
+          "line": 4983,
+          "status": "PASS",
+          "path": "tests/operations/test_current_union.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/operations/test_current_union.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1ce402711ab7e7169260ab084a18470296042a63e79a1da3a22f27a2f981e86b"
+        },
+        {
+          "line": 4984,
+          "status": "PASS",
+          "path": "tests/reader/test_braille.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_braille.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "98c68bc4b205692fd7d604246d711c1394a11a3ffd20fe1576fed9f5b242a27f"
+        },
+        {
+          "line": 4985,
+          "status": "PASS",
+          "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/integrations/test_dordiai_host_lifecycle.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "66be431030675ff62b6cd6c12b8ccfcf9479e6b61d67bd3daef850ac0d802746"
+        },
+        {
+          "line": 4986,
+          "status": "PASS",
+          "path": "tests/ui/test_reader_listening_hooks.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_reader_listening_hooks.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "204e2597ef5c182ecce6751f69d2a3d515bd3bd0238390227499031103659a59"
+        },
+        {
+          "line": 4987,
+          "status": "PASS",
+          "path": "tests/speech/test_playlist_recovery.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_playlist_recovery.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e53eed46cbdcf1c69864d86ff5046f92019ba61fbb587b9babb3480386b6e2b5"
+        },
+        {
+          "line": 4988,
+          "status": "PASS",
+          "path": "tests/studio/test_conversion_batch_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_conversion_batch_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ca07ced355a3dd8f8e76a9b6c98c4cad199796b2c43c9a5a20afc959bb4b7453"
+        },
+        {
+          "line": 4989,
+          "status": "PASS",
+          "path": "tests/speech/test_reading_tabs.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_reading_tabs.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "16d4ce7c7816c06cb078420024519faeb85165acb7aa2fed59e0b4a668a55d74"
+        },
+        {
+          "line": 4990,
+          "status": "PASS",
+          "path": "tests/speech/test_reading_presentation_reader_hook.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_reading_presentation_reader_hook.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "8ea857de62a117d7aa3ee7c5dc2e4edb74c81eedddb38354cd87bf3762369362"
+        },
+        {
+          "line": 4991,
+          "status": "PASS",
+          "path": "tests/ui/test_voice_preferences_dialog.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_voice_preferences_dialog.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5ebfe14e4adcaee085089f5256d46ecef65cfcac447451633b01d16894ba95be"
+        },
+        {
+          "line": 4992,
+          "status": "PASS",
+          "path": "tests/ui/test_book_batch_dialog.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_book_batch_dialog.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "790118d23b0939fc7022d2b10641c4370fe5b2a19bb00087afe37d398006309b"
+        },
+        {
+          "line": 4993,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_recording_controls.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_recording_controls.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c82623370ad790e2ad6879cb7a855596a1c169912c135fe474bb979735295fce"
+        },
+        {
+          "line": 4994,
+          "status": "PASS",
+          "path": "tests/extract/test_raster_pages.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/extract/test_raster_pages.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ea6174d7ad79d7f0f86ff9dfc18a015ba40d38915d1908f47e1e1e2ac6ebad62"
+        },
+        {
+          "line": 4995,
+          "status": "PASS",
+          "path": "tests/storage/test_desktop_preferences.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_desktop_preferences.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2acc4b016f6c353d65e3759f5917ef4e17cbd531decbf99603acb9fba0c90252"
+        },
+        {
+          "line": 4996,
+          "status": "PASS",
+          "path": "tests/speech/test_narration_receipt.py",
+          "passed": 79,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_narration_receipt.py: junit_passed=79, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6ebb445112bf6efb6ff523c617533ae45ae94ec067b49ebc4b2fa6e134d8b93c"
+        },
+        {
+          "line": 4997,
+          "status": "PASS",
+          "path": "tests/packaging/test_local_schedules_cli.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_local_schedules_cli.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1c56adbefc000728a398ddf63280d07767f72a448a5c5004e3f8064dacabca4e"
+        },
+        {
+          "line": 4998,
+          "status": "PASS",
+          "path": "tests/packaging/test_hunspell_build.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_hunspell_build.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "eb0f22f49b3d7c5547d3edbb265634c76e17bb2074bd620d1a31d86f0055b96d"
+        },
+        {
+          "line": 4999,
+          "status": "PASS",
+          "path": "tests/studio/test_clip_operations.py",
+          "passed": 90,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_clip_operations.py: junit_passed=90, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c6b64002bb59e477c7200a1643e8d4e82d40955cbd25e0c374e0d641860f9039"
+        },
+        {
+          "line": 5000,
+          "status": "PASS",
+          "path": "tests/ui/test_translation_layout.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_translation_layout.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "24541c8ae07d6f27be15a351a769fcaee0221f0c90459f53826c030fdfeba51e"
+        },
+        {
+          "line": 5001,
+          "status": "PASS",
+          "path": "tests/academic_integration/test_word_bridge.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/academic_integration/test_word_bridge.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "aaaafd5d4b9ded34b3beab00654e892bf79cf4e5ae0fdcf56f5845866ad5a60d"
+        },
+        {
+          "line": 5002,
+          "status": "PASS",
+          "path": "tests/ui/test_google_oauth.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_google_oauth.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7a356044c8ea72e5fa13cffe843f531a23b4b132a05fed462a392d0fa69e718c"
+        },
+        {
+          "line": 5003,
+          "status": "PASS",
+          "path": "tests/studio/test_clip_copy.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_clip_copy.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6a3fc046f4310a91129c43e9d6b0292ac691c48dfdc34cb341f3795b38074757"
+        },
+        {
+          "line": 5004,
+          "status": "PASS",
+          "path": "tests/ui/test_translation_rich_docx.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_translation_rich_docx.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "fb168f13112a2c049b045e04a9aebdcf1960264a79c46a4492db8241b6fd74e1"
+        },
+        {
+          "line": 5005,
+          "status": "PASS",
+          "path": "tests/ui/test_native_recording_driver.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_native_recording_driver.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "13e9f9c299ae4cac87801eba16439f8f4c7d6014b2edd18d790e1064b7faa6b3"
+        },
+        {
+          "line": 5006,
+          "status": "PASS",
+          "path": "tests/search/test_search_query_work.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_search_query_work.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "67d26cd2c442eeb078eb15c8f39993726658661ae4e2f8053acf6d36bf7d122b"
+        },
+        {
+          "line": 5007,
+          "status": "PASS",
+          "path": "tests/storage/test_revisions.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_revisions.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "baa005677d7b0bde18ae8d2718658a38b4e941a07c7e5ca802d2414ca0de4d14"
+        },
+        {
+          "line": 5008,
+          "status": "PASS",
+          "path": "tests/search/test_literal_integrity.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_literal_integrity.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "54c5435f9fbbbc9237c4d328433c0a1e9ecffdb8b50a3e9cd2bed32489dd8fca"
+        },
+        {
+          "line": 5009,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_capacity_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "450409d5d1ec5cbd0d6e20156fba168b0064648ee85353b53b8a3e46bf71ce4f"
+        },
+        {
+          "line": 5010,
+          "status": "PASS",
+          "path": "tests/studio/test_measured_pcm.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_measured_pcm.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7acd2474146bbf0d27de70c2e0c34d6d7de6b880721152e10397c86f5d91a611"
+        },
+        {
+          "line": 5011,
+          "status": "PASS",
+          "path": "tests/packaging/test_owner_candidate_archives.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_owner_candidate_archives.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "437e419762857d8a51bec9f9cd28315f5db68199b5bd6c85c19a23951731ee2b"
+        },
+        {
+          "line": 5012,
+          "status": "PASS",
+          "path": "tests/ui/test_document_conversion.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_document_conversion.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7e1154ac199092d9fb2ba4ac75c7ad16eb753a564a2b5d73018b15c096586d63"
+        },
+        {
+          "line": 5013,
+          "status": "PASS",
+          "path": "tests/ui/test_native_book_publication_driver.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_native_book_publication_driver.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5e24e13dbff065f3998e25ec26a9a5f9c8d91eeb26d1dbe540fa12e87a35517b"
+        },
+        {
+          "line": 5014,
+          "status": "PASS",
+          "path": "tests/audio/test_voice_package_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_voice_package_management.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f64d49101bc3625e04ba42bb72fe2f0f6196497b96c5e740d9b1b97356b6ed7e"
+        },
+        {
+          "line": 5015,
+          "status": "PASS",
+          "path": "tests/audio/test_voice_publication_lifetime.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_voice_publication_lifetime.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f3e2e21e62deeeaa3c5370224df655663ce6cb2269cb9786277ab944ec1fe74e"
+        },
+        {
+          "line": 5016,
+          "status": "PASS",
+          "path": "tests/ui/test_voice_packages.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_voice_packages.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "dbcba9856bb3fefb5e21f868e502e436f0a0fa4987a32294c960b12e9d599551"
+        },
+        {
+          "line": 5017,
+          "status": "PASS",
+          "path": "tests/ui/test_native_saved_audio_cleanup.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_native_saved_audio_cleanup.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "10b9a1e1e2add7a2258c28b6bbd52fe6200fd3fc4cb73a553126c661616f2e61"
+        },
+        {
+          "line": 5018,
+          "status": "PASS",
+          "path": "tests/packaging/test_library_scale_profile.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_library_scale_profile.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ad13719c3f16e8a45e8e0dd7a82c1691ec3d91dff4b16466ed3e29b274012db1"
+        },
+        {
+          "line": 5019,
+          "status": "PASS",
+          "path": "tests/ui/test_transcription_remote.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_transcription_remote.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "24a775eee3cf7390fcbbdeea1213f3b71aba485c46f43ed495c551ca5bc402c9"
+        },
+        {
+          "line": 5020,
+          "status": "PASS",
+          "path": "tests/security/test_update_controller_actions.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_update_controller_actions.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a6fa34c29a90681deddcba274b3339a38f4cc090b10c98a2aa7395b1cdfb2afa"
+        },
+        {
+          "line": 5021,
+          "status": "PASS",
+          "path": "tests/studio/test_clip_preview_loop.py",
+          "passed": 49,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_clip_preview_loop.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e62de2c18d7019c4eaf34d2c1df9c820948b479793798c6369137da44d770dc8"
+        },
+        {
+          "line": 5022,
+          "status": "PASS",
+          "path": "tests/language_qualification/test_evidence_backup.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/language_qualification/test_evidence_backup.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "027892852552f13d3103cd1a99aa39807a440d7f60ee22f7ee1b9c08771fe982"
+        }
+      ],
+      "summary": {
+        "assigned": 123,
+        "whole_pass": 122,
+        "whole_fail": 1,
+        "completed_pytest_pass_cases": 2871,
+        "completed_pytest_fail_cases": 0,
+        "incomplete_wholes": [
+          "tests/search/test_search_paging.py"
+        ]
+      },
+      "artifact": {
+        "id": 15258072958,
+        "name": "carr-required-source-3-a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71-1",
+        "size_in_bytes": 358207,
+        "digest": "sha256:bf8d25195e3372d01e9dd3f2855a01dac04127255d9efc60e7177a2ba52a570c",
+        "workflow_run": {
+          "id": 46128930916,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-full-final-e-20261128-5a9e",
+          "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71"
+        }
+      }
+    },
+    {
+      "job": {
+        "id": 140931167823,
+        "name": "Required whole source partition 2 of 4 / Required integrated source 1 / Windows x64",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-28T09:35:42Z",
+        "completed_at": "2026-11-28T09:56:51Z"
+      },
+      "checkout": {
+        "command_line": 140,
+        "output_line": 141,
+        "observed": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71"
+      },
+      "log": {
+        "sha256": "a19cb929f58d4a788bb1759f1a64315309d79d5b9fe2e0074ac4b4eec27680ce",
+        "bytes": 759379,
+        "normalized_lines": 5840
+      },
+      "whole_results": [
+        {
+          "line": 5598,
+          "status": "FAIL",
+          "path": "tests/studio/test_book_batch.py",
+          "passed": null,
+          "failed": null,
+          "skipped": null,
+          "exit": null,
+          "text": "FAIL: tests/studio/test_book_batch.py: required suite did not complete cleanly; last phase=pytest process; TimeoutExpired: Command '['D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Scripts\\\\python.exe', '-B', '-c', \"\\nimport sys\\nimport socket\\n\\ndef offline_network(*args, **kwargs):\\n    raise OSError('Network access is disabled during offline verification')\\n\\nsocket.socket.connect = offline_network\\nsocket.socket.connect_ex = offline_network\\nsocket.create_connection = offline_network\\nsocket.getaddrinfo = offline_network\\n\\ntry:\\n    import onnxruntime\\nexcept ImportError:\\n    pass\\nelse:\\n    onnxruntime.disable_telemetry_events()\\n\\nimport pytest\\n\\ndef _needs_gil_stack_dump(platform=sys.platform, implementation=sys.implementation.name,\\n                          version=sys.version_info[:2]):\\n    return platform == 'win32' and implementation == 'cpython' and tuple(version) == (3, 11)\\n\\nclass GilTimedStackDump:\\n    # CPython 3.11's native timed dumper walks changing frames without the GIL\\n    # (python/cpython#140815; pytest-dev/pytest#7022). A Python thread calls the\\n    # synchronous, bounded dumper while it owns the GIL instead. Fatal exception\\n    # handling remains pytest's own; the parent's 600/900 s deadline is unchanged.\\n    timeout = 0.0\\n    exit_on_timeout = False\\n\\n    @pytest.hookimpl(tryfirst=True)\\n    def pytest_configure(self, config):\\n        timeout = float(config.getini('faulthandler_timeout') or 0.0)\\n        if timeout <= 0:\\n            return\\n        import math\\n        if not math.isfinite(timeout):\\n            raise ValueError('A timed stack diagnostic needs a finite interval.')\\n        self.timeout = timeout\\n        self.exit_on_timeout …   status = pytest.ExitCode.TESTS_FAILED\\nraise SystemExit(status)\\n\", '-v', '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-n8qemj5v\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-n8qemj5v\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\studio\\\\test_book_batch.py']' timed out after 600 seconds",
+          "full_line_sha256": "137bda183679dd0566ee37a11660365c5417986e0fc2803de797d9efca152010"
+        },
+        {
+          "line": 5599,
+          "status": "PASS",
+          "path": "tests/e2e/test_import_progress.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_import_progress.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "907b3f3a5eab6640b172ba43b89accec98a788d870c184df2e9ce8e4a96bf87b"
+        },
+        {
+          "line": 5600,
+          "status": "PASS",
+          "path": "tests/ui/test_studio_progress_isolation.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_studio_progress_isolation.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d64374ee602b93d79449d99997a9b57707b8aeed7da51dc9d20a5f6b92844bdb"
+        },
+        {
+          "line": 5601,
+          "status": "PASS",
+          "path": "tests/progress/test_progress_media_integration.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/progress/test_progress_media_integration.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6071d3de4924740c163642927df11be08eee55364d61fb0efb00ab177ef48ba5"
+        },
+        {
+          "line": 5602,
+          "status": "PASS",
+          "path": "bootstrap/semantic_compat/test_probe.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: bootstrap/semantic_compat/test_probe.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "4193e54bbfa40714ff72bb3685c1404de51bac606220bb8b66f2fe1bac7da507"
+        },
+        {
+          "line": 5603,
+          "status": "PASS",
+          "path": "tests/ingest/test_batch_scan.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ingest/test_batch_scan.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "8ebedfd7f43ac13ceb67b8f62c38f81047128f069a95b6252bf72992df024fa8"
+        },
+        {
+          "line": 5604,
+          "status": "PASS",
+          "path": "tests/ui/test_ocr_options.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_ocr_options.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c9e67c36d201bdb247a80c4f243af5d9c5f3f8081dcefd3f9735515d0fe46f08"
+        },
+        {
+          "line": 5605,
+          "status": "PASS",
+          "path": "tests/e2e/test_extended_document_workflows.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_extended_document_workflows.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d6e41c2085fbb9f35825f686ddd0da3f65778a6f39906f3e869d21f61c3410e2"
+        },
+        {
+          "line": 5606,
+          "status": "PASS",
+          "path": "tests/extract/test_epub_navigation.py",
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/extract/test_epub_navigation.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "bce69ebe10f8823c645aa9b4ef26b9a8ea74a914719d10f3c1d0d1f7d22754b1"
+        },
+        {
+          "line": 5607,
+          "status": "PASS",
+          "path": "tests/ui/test_ebook_dialog.py",
+          "passed": 38,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_ebook_dialog.py: junit_passed=38, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6ff0d64ca44eef663a00ce65a4e9792de965a2f0f1e5ea900b9c38c3e649e2f8"
+        },
+        {
+          "line": 5608,
+          "status": "PASS",
+          "path": "tests/e2e/test_notebook_research_workflow.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_notebook_research_workflow.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ca9c64f9c5531853911bb463224be8f5e1e3ca57fee32bc0e71f3bc6b7f35fb6"
+        },
+        {
+          "line": 5609,
+          "status": "PASS",
+          "path": "tests/e2e/test_nested_search_clock_budget.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_nested_search_clock_budget.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2f9a372e39aa804d72bc509f65e2351059250b24af3e48173ce094baf1c64239"
+        },
+        {
+          "line": 5610,
+          "status": "PASS",
+          "path": "tests/e2e/test_semantic_fallback_status.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_semantic_fallback_status.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d22c4e505e742fb40b45fba754f342beba21ad2d4c49e6d4d5853198d15a05d7"
+        },
+        {
+          "line": 5611,
+          "status": "PASS",
+          "path": "tests/e2e/test_export_destination.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_export_destination.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1b49d66ac613b5eeb79c41c8f48500354460950304738cf3fa55bc2c080934b8"
+        },
+        {
+          "line": 5612,
+          "status": "PASS",
+          "path": "tests/extract/test_ocr_model_catalog.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/extract/test_ocr_model_catalog.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "62181be1ab156d3c15a4cfcb97ce2898855429e896f83a1e39bb9f32d9380439"
+        },
+        {
+          "line": 5613,
+          "status": "PASS",
+          "path": "tests/reader/test_context.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_context.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "355745edd92dff5af79c0394958f603e198a68feca5ebe41657d4383d1aa3f17"
+        },
+        {
+          "line": 5614,
+          "status": "PASS",
+          "path": "tests/research/test_csl_author_boundaries.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/research/test_csl_author_boundaries.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ef9a5c1c1d2a7426acd3f62105a471e33f9765f4920d067582c24037a0cb0c82"
+        },
+        {
+          "line": 5615,
+          "status": "PASS",
+          "path": "tests/catalog/test_catalog_panel_acceptance.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/catalog/test_catalog_panel_acceptance.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "fa17ab6e48788fef044bde709023b7aff510c216f883ab888ddfb09365791415"
+        },
+        {
+          "line": 5616,
+          "status": "PASS",
+          "path": "tests/acquisition/test_providers.py",
+          "passed": 95,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/acquisition/test_providers.py: junit_passed=95, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "0b0593046fd81f373198953f7c8cdad3878c25c9ee82208e4f5c3771be259926"
+        },
+        {
+          "line": 5617,
+          "status": "PASS",
+          "path": "tests/ui/test_native_acquisition.py",
+          "passed": 65,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_native_acquisition.py: junit_passed=65, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "679138d1669cd93ab3a9f7adc5879f88d77ab0271287e2a30ab4bf7302f257b0"
+        },
+        {
+          "line": 5618,
+          "status": "PASS",
+          "path": "tests/storage/test_v2_recovery.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_v2_recovery.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "57ab15d4ffed576e5b68addf6844ba335d4a82fcd00478a8140a4e0f39e5dfd7"
+        },
+        {
+          "line": 5619,
+          "status": "PASS",
+          "path": "tests/reader/test_file_export.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_file_export.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "4ef8fcd93bb7a6e54696740142588b8b0ab3fb182d2b7c5c2ae2ed37008489c1"
+        },
+        {
+          "line": 5620,
+          "status": "PASS",
+          "path": "tests/reader/test_literature_matrix.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_literature_matrix.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "464c81bc6b6a6a7baf0f4edf8e0c38c3a6c820566689a1faf8f9d2476bfd4822"
+        },
+        {
+          "line": 5621,
+          "status": "PASS",
+          "path": "tests/reader/test_outline_export.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_outline_export.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e48f4d1e18b387355cbe8a3202b4f4422d01a520ba63e1620945a17b73805c94"
+        },
+        {
+          "line": 5622,
+          "status": "PASS",
+          "path": "tests/ui/test_literature_matrix.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_literature_matrix.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "3649b613393d3ad33647adf6a10af20b08a749aa58ee967da10a33cb1dc18969"
+        },
+        {
+          "line": 5623,
+          "status": "PASS",
+          "path": "tests/reader/test_reading_state.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_reading_state.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "b56bb4585c813929c7417ec8942706e4534ff4d70fd7a473db2869a46beec9b0"
+        },
+        {
+          "line": 5624,
+          "status": "PASS",
+          "path": "tests/search/test_advanced_search.py",
+          "passed": 86,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_advanced_search.py: junit_passed=86, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "8cc923c19f7d2b99d102d8d9fec97181af02857184ec1596cacc60248e391dff"
+        },
+        {
+          "line": 5625,
+          "status": "PASS",
+          "path": "tests/ui/test_research_actions.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_research_actions.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c9b183f6c27e799cbf0e040d06e1c794c144196bcb8304473855de98b52bf578"
+        },
+        {
+          "line": 5626,
+          "status": "PASS",
+          "path": "tests/ui/test_desktop_result_modes.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_desktop_result_modes.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "dee75c3d214887eb5fd21e47b1a3f6f706c73509b1ff0dbfd026f7d0b3601011"
+        },
+        {
+          "line": 5627,
+          "status": "PASS",
+          "path": "tests/ui/test_command_registry.py",
+          "passed": 107,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_command_registry.py: junit_passed=107, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "52a51ffae2cabd46cdac699ed19cac93e81312b6e20e22160b1cc2ef7c413250"
+        },
+        {
+          "line": 5628,
+          "status": "PASS",
+          "path": "tests/ui/test_evidence_draft_recovery.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_evidence_draft_recovery.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "3c4622e1bbe39edb0a54945df7ea98bd4883e6f8bae726c26f33435e3126c06c"
+        },
+        {
+          "line": 5629,
+          "status": "PASS",
+          "path": "tests/accessibility/test_pr71_catalog_scope_ux.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/accessibility/test_pr71_catalog_scope_ux.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "9911ba426eae796f37b08d9147da14edac467c8193f421175b685acecb149739"
+        },
+        {
+          "line": 5630,
+          "status": "PASS",
+          "path": "tests/e2e/test_academic_workflows.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_academic_workflows.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ae648b89c7e31666ddcf7bf7324783f7229d8b8af8b01b03ef5e1bf2a4cd1973"
+        },
+        {
+          "line": 5631,
+          "status": "PASS",
+          "path": "tests/ui/test_query_manager_actions.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_query_manager_actions.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "b59f92833f1304c72d9675eb073804807bc31b16ee5b64d85e40ee4eaa7ee893"
+        },
+        {
+          "line": 5632,
+          "status": "PASS",
+          "path": "tests/search/test_federated_epub.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/search/test_federated_epub.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "689254a5a3484e820af8a1265ea6b34ffc49be793f9df6c13ef04c4e6c5acac9"
+        },
+        {
+          "line": 5633,
+          "status": "PASS",
+          "path": "tests/citations/test_finish_pdf_authority.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/citations/test_finish_pdf_authority.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f560f1211c69259d8e4b4702d6ddfea41c59747aeff05c1c3605118915cbb618"
+        },
+        {
+          "line": 5634,
+          "status": "PASS",
+          "path": "tests/packaging/test_ci_check.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_ci_check.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "0db0dd4de8f682345f6e7ef1a3fb2c9a9831d507b89576f86e19b412f4981567"
+        },
+        {
+          "line": 5635,
+          "status": "PASS",
+          "path": "tests/packaging/test_windows_bundle.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_windows_bundle.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ac03836ffc81b094568e239b0b985dbedea68819704447111f7b503c9c690b3a"
+        },
+        {
+          "line": 5636,
+          "status": "PASS",
+          "path": "tests/library_assistant/test_library_workflow_ui.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/library_assistant/test_library_workflow_ui.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "8d4ba095e92095c3baa4edae13dac299867a71c1d8946355546fcb55fc4aa2ac"
+        },
+        {
+          "line": 5637,
+          "status": "PASS",
+          "path": "tests/e2e/test_search_deadline.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_search_deadline.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "76c35f2daeee9f1ddf48677ee05008188238d12cde3c3fb526d411dbe72306b0"
+        },
+        {
+          "line": 5638,
+          "status": "PASS",
+          "path": "tests/packaging/test_delivery_archive.py",
+          "passed": 69,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_delivery_archive.py: junit_passed=69, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "97b4ab3b40c29fb69210788286a6284e84f38522b7fdd073840d6d15e108b5d0"
+        },
+        {
+          "line": 5639,
+          "status": "PASS",
+          "path": "tests/integrations/test_dordiai_speech.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/integrations/test_dordiai_speech.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f7d219474726de735b272b17498ffe5f5b3af184c197d58be599047fe7924a9c"
+        },
+        {
+          "line": 5640,
+          "status": "PASS",
+          "path": "tests/ui/test_studio_progress_results.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_studio_progress_results.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ee92c25d520e5a2383d1bb1de6c91a6c450238d64d1e93029149cb498572bcea"
+        },
+        {
+          "line": 5641,
+          "status": "PASS",
+          "path": "tests/speech/test_native_sapi_protocol.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_native_sapi_protocol.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "500e5ab04e9b9b4c000acb076f74088949cc342e19c128624fab36d7f15ddcb1"
+        },
+        {
+          "line": 5642,
+          "status": "PASS",
+          "path": "tests/speech/test_source.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_source.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1cfcd773a0a22aa7bbcfa4990786ede0aa384ca76019cad1f3154038cb175de8"
+        },
+        {
+          "line": 5643,
+          "status": "PASS",
+          "path": "tests/studio/test_studio_controller.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_studio_controller.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "107b61719f777736b836514fd62460398e4ad6371fdcc0d9dda1023fe5162af7"
+        },
+        {
+          "line": 5644,
+          "status": "PASS",
+          "path": "tests/ui/test_citation_styles_jobs.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_citation_styles_jobs.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a99c0d5b3077de36272c0fa0fbf001d08421edc48f8bd73902338ad98a4a498e"
+        },
+        {
+          "line": 5645,
+          "status": "PASS",
+          "path": "tests/storage/test_state_snapshot_identity.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_state_snapshot_identity.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "29536be10d2d8ed0cfb3a75e1b6ac6b388921d91198f463478590c5e2896b92e"
+        },
+        {
+          "line": 5646,
+          "status": "PASS",
+          "path": "tests/assistant/test_translation_local.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_translation_local.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "528232f69bac34ac2f49dbce2068bec2ca8f57514a652c94acfa93f3e306bc70"
+        },
+        {
+          "line": 5647,
+          "status": "PASS",
+          "path": "tests/test_delivery_contract.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/test_delivery_contract.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "325b3508686187e83ac412132ca473ee30c5dca0bb398203d825556b8e7a9124"
+        },
+        {
+          "line": 5648,
+          "status": "PASS",
+          "path": "tests/storage/test_engine_settings_backup.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_engine_settings_backup.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "57d36a72e75f6becd3e6b8c6bef8832ad024f38c660110dc2433c836ed5c882b"
+        },
+        {
+          "line": 5649,
+          "status": "PASS",
+          "path": "tests/progress/test_progress_feedback.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/progress/test_progress_feedback.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "eb3ee65b82f9586082178ee794873f893ab1c63f6a4551b536135e1b069a7897"
+        },
+        {
+          "line": 5650,
+          "status": "PASS",
+          "path": "tests/language_qualification/test_ui.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/language_qualification/test_ui.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e5a503c5f9ab6676d7d37bbc2b48c0b6227abbe040dbc3617f096bf55ad3c8fa"
+        },
+        {
+          "line": 5651,
+          "status": "PASS",
+          "path": "tests/citations/test_custom_workbench.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/citations/test_custom_workbench.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "65f8c41fcaacec57353634a0d50e9dcbecc4652dc1c1770e85ed5834f5cbbfd6"
+        },
+        {
+          "line": 5652,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_pending_common4.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "384f11b5f15ccef1691d8cfc40d532a6cf43febed14f79353e7488ff7f75ceba"
+        },
+        {
+          "line": 5653,
+          "status": "PASS",
+          "path": "tests/ui/test_export_confirmation.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_export_confirmation.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "27319cff09c06393ea29c14713af6c94744366b37871335b3d1dc4acdbb6a6c1"
+        },
+        {
+          "line": 5654,
+          "status": "PASS",
+          "path": "tests/packaging/test_worker_bytecode.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_worker_bytecode.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "cddef35fbf511d341a42d8f23185fd3cfab86bcf31736bfdc81cdcfba7f051ff"
+        },
+        {
+          "line": 5655,
+          "status": "PASS",
+          "path": "tests/studio/test_clip_cli.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_clip_cli.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2142da9b748198b0eb706f27faa92086aa92466993227cb2fd9fd47e66055191"
+        },
+        {
+          "line": 5656,
+          "status": "PASS",
+          "path": "tests/audio/test_recording_compatibility.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_recording_compatibility.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "eca11eeb7ffe77b114fe7f39c29d594db2140690fc791eae439ba2d7c9ce476c"
+        },
+        {
+          "line": 5657,
+          "status": "PASS",
+          "path": "tests/audio/test_effect_presets.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_effect_presets.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1e7e667966de88e8c48f6b126deb5aabf0ecf3ab862fe6cabbca5e0aa2dbe0d1"
+        },
+        {
+          "line": 5658,
+          "status": "PASS",
+          "path": "tests/audio/test_windows_audio_ownership.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_windows_audio_ownership.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c7e765efdca9246a711954a1e224c10a1244ab23da23122974e6abcd1388b1c2"
+        },
+        {
+          "line": 5659,
+          "status": "PASS",
+          "path": "tests/studio/test_publishing_handlers.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_publishing_handlers.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "2faf9bb4ac521395107f1fbe94b8243c08c341b20afc690203da12be063b34c4"
+        },
+        {
+          "line": 5660,
+          "status": "PASS",
+          "path": "tests/assistant/test_local_planning.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_local_planning.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "06f0859fa6f00e041e4fb465bb55ae5f068a1b794b9a9ec74b29e4934eb0862f"
+        },
+        {
+          "line": 5661,
+          "status": "PASS",
+          "path": "tests/studio/test_book_audio.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_book_audio.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "8d72fc0e276d4dc9fb0739aeeb4f3e0b8bb242a66c9d9664b697688ca7581553"
+        },
+        {
+          "line": 5662,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_studio_draft.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_studio_draft.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "4c9c87ef4f0cf0e4ec44f5496bce85d4a87af2b45ed0333759c48fc35cc97748"
+        },
+        {
+          "line": 5663,
+          "status": "PASS",
+          "path": "tests/storage/test_backup_v4_review.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_backup_v4_review.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e541215d0b044947320b2eed6d4426b6e35ab33eac3b00a1bfe7f7fcecd74913"
+        },
+        {
+          "line": 5664,
+          "status": "PASS",
+          "path": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "53b78323dd26be18b3e21737667f593905d06366ed8998374c59a12d0e0d6031"
+        },
+        {
+          "line": 5665,
+          "status": "PASS",
+          "path": "tests/transcription/test_supplied_worker_bridge.py",
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/transcription/test_supplied_worker_bridge.py: junit_passed=62, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "d9c22d258c444ac95b7a84206a4209af6693bdf9011da2295ce77f1c903514cd"
+        },
+        {
+          "line": 5666,
+          "status": "PASS",
+          "path": "tests/transcription/test_protocol_fixture_windows.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/transcription/test_protocol_fixture_windows.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "55c62ba7b5ee0d50577190b10f7b79a9cf99162570bb41e6a0e718afbe223929"
+        },
+        {
+          "line": 5667,
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_backup.py",
+          "passed": 143,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "c7bd72a88d067232f5c84e91f4b4f290dea970c8aa57d31d5ed6a5eb3aac1843"
+        },
+        {
+          "line": 5668,
+          "status": "PASS",
+          "path": "tests/transcription/test_export_publication.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/transcription/test_export_publication.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "33cabcf88acc936741125db715fa0ecad394ca0e63f821a6e266b67ec0d9fa89"
+        },
+        {
+          "line": 5669,
+          "status": "PASS",
+          "path": "tests/ui/test_profile_project_exports.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_profile_project_exports.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "3fac5871cba12892b61a8542039330a794343f4bae5691153f96015e8efbf7ff"
+        },
+        {
+          "line": 5670,
+          "status": "FAIL",
+          "path": "tests/ui/test_ebook_audio_lifetime.py",
+          "passed": 14,
+          "failed": 14,
+          "skipped": 0,
+          "exit": 1,
+          "text": "FAIL: tests/ui/test_ebook_audio_lifetime.py: junit_passed=14, failed=14, skipped=0, pytest_exit=1",
+          "full_line_sha256": "cba7fc87b5de841f40815f61e569f7272672237a523b50d43596d7ca8a08e319"
+        },
+        {
+          "line": 5671,
+          "status": "PASS",
+          "path": "tests/ui/test_reader_playback.py",
+          "passed": 52,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_reader_playback.py: junit_passed=52, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f474afb56a41a1b2199d20fc135a8473e90bed45be3bc9fc1203496f409afcf3"
+        },
+        {
+          "line": 5672,
+          "status": "PASS",
+          "path": "tests/reader/test_export_reconciliation.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/reader/test_export_reconciliation.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "bcbbf8bbdaa86a21a3eafba6b059b9568b34d549e1d7fa4aa8b41f96e2907e03"
+        },
+        {
+          "line": 5673,
+          "status": "PASS",
+          "path": "tests/ui/test_incremental_backup_dialog.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_incremental_backup_dialog.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "781557b4acca233bb7955068064980b0aa1eb140c52490fa59f9ed600bb03bf2"
+        },
+        {
+          "line": 5674,
+          "status": "PASS",
+          "path": "tests/studio/test_daisy_boundaries.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_daisy_boundaries.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1ee61b927bffc177a7996a860ff1c8ecd90400ae03624dd4f955d6127542b66f"
+        },
+        {
+          "line": 5675,
+          "status": "PASS",
+          "path": "tests/packaging/test_managed_update_native_policy.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_managed_update_native_policy.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e9ce41e109f9351966d7f701dd382936236b1bc1e6e937e2bee8a104b535e0da"
+        },
+        {
+          "line": 5676,
+          "status": "PASS",
+          "path": "tests/security/test_canonical_boundary.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_canonical_boundary.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "71da6e8ca1d062c7a3b7c362634b43bc17ffad929f79f8b22ece54334a20a7ee"
+        },
+        {
+          "line": 5677,
+          "status": "PASS",
+          "path": "tests/security/test_independent_review_boundaries.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_independent_review_boundaries.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "612ebb13d0ac7dd204a443f3881c9651f0772fde036521ec3ce51cf1fdbbb6ca"
+        },
+        {
+          "line": 5678,
+          "status": "PASS",
+          "path": "tests/security/test_publication_integrity.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_publication_integrity.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "673b6a4f8c3a110ce7f910de74ea267dec5e69c7d5248c260e3e0d862fa91278"
+        },
+        {
+          "line": 5679,
+          "status": "PASS",
+          "path": "tests/security/test_windows_vault.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_windows_vault.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "1affc1238b011b928dd662b4a26f4b7ac62676cd36c0115cd17715b4dc1a3315"
+        },
+        {
+          "line": 5680,
+          "status": "PASS",
+          "path": "tests/ui/test_find_replace.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_find_replace.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "795ca2091d0d5e6d94d434307465f897600300231dffaec58f3b41eb27fc8abd"
+        },
+        {
+          "line": 5681,
+          "status": "PASS",
+          "path": "tests/operations/test_resources.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/operations/test_resources.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a0d3dccbbc406f27871314809f5e08b20fe96d7d47235d183f67c96374fc4ba8"
+        },
+        {
+          "line": 5682,
+          "status": "PASS",
+          "path": "tests/ui/test_operations_policy.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_operations_policy.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "cad1fb4be79b391ecc1c7d6eddea6321dd4b8f01c62b407419fbd231a681c797"
+        },
+        {
+          "line": 5683,
+          "status": "PASS",
+          "path": "tests/studio/test_project_effects.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_project_effects.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f58776f19ffa871cae3b2f4b44bdedf22712650a650158297d8601eb14052eeb"
+        },
+        {
+          "line": 5684,
+          "status": "PASS",
+          "path": "tests/speech/test_listening.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_listening.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "9b730fa756ab9e98b0154c07752c1534767de168af0eec13b13122807cffc766"
+        },
+        {
+          "line": 5685,
+          "status": "PASS",
+          "path": "tests/speech/test_wave_output.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_wave_output.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "12e394c094166a5d2d50608c8ccb88eb53705579e4d606be51df25de8153adca"
+        },
+        {
+          "line": 5686,
+          "status": "PASS",
+          "path": "tests/audio/test_conversion_batch.py",
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_conversion_batch.py: junit_passed=42, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a4f1d6d94860f9ef525856ff7866ea1be05b2510d669b7801d41b388810e615d"
+        },
+        {
+          "line": 5687,
+          "status": "PASS",
+          "path": "tests/speech/test_reading_marks.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_reading_marks.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "621364c334b51dc916071acdd7b5334c519ba12d3da2dab60cc557b472bea44c"
+        },
+        {
+          "line": 5688,
+          "status": "PASS",
+          "path": "tests/speech/test_reading_presentation.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_reading_presentation.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "08662571aed82143378d8d067761b44e856503f95558627be8d62d5ac51c02f4"
+        },
+        {
+          "line": 5689,
+          "status": "PASS",
+          "path": "tests/speech/test_voice_preferences.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_voice_preferences.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "44241610be980faa97a47977de57bfbc10a92b50d011e5ddbf43bc567b777c42"
+        },
+        {
+          "line": 5690,
+          "status": "PASS",
+          "path": "tests/storage/test_reader_preferences_state.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_reader_preferences_state.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "bc44bde7afdec67e2ed7be73709c3adaac31d6f916e0178bf017a76651fd0917"
+        },
+        {
+          "line": 5691,
+          "status": "PASS",
+          "path": "tests/audio/test_recording_controls.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_recording_controls.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "66a5ec1b79dc56b58ec64896dc4e0e0379959e1fec2070a120efefa2323501cc"
+        },
+        {
+          "line": 5692,
+          "status": "PASS",
+          "path": "tests/e2e/test_raster_import.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/e2e/test_raster_import.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "03c168deb0efdcc1b9b9e5086c78564d85d86de5c6c5c7d143876b21594456d4"
+        },
+        {
+          "line": 5693,
+          "status": "PASS",
+          "path": "tests/ingest/test_batch_continuation_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ingest/test_batch_continuation_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "84bfa11abd58fdbea460e7bf74d98f7542c24c82010091b66f9dcf37f1bdb6b1"
+        },
+        {
+          "line": 5694,
+          "status": "PASS",
+          "path": "tests/ui/test_desktop_settings.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_desktop_settings.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "07be7ce527cae6d8a1c1185b35080c51fde2625d5e1a1b811aaad72be4b52c98"
+        },
+        {
+          "line": 5695,
+          "status": "PASS",
+          "path": "tests/ui/test_local_schedules.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_local_schedules.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "41c8e1a1739b7221e30cabe42babbc027c731343e16fcac6990755472cef7681"
+        },
+        {
+          "line": 5696,
+          "status": "PASS",
+          "path": "tests/speech/test_spelling_handlers.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/speech/test_spelling_handlers.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f5e122088ea0c8175a4ee21498c170459ed61797229bf8b2e5f528f1e093e9f7"
+        },
+        {
+          "line": 5697,
+          "status": "PASS",
+          "path": "tests/audio/test_envelopes.py",
+          "passed": 64,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_envelopes.py: junit_passed=64, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "9606a22b1b45bddbf8bfdec705ac6cd5c87bff6ff1bd823a38b3230724263919"
+        },
+        {
+          "line": 5698,
+          "status": "PASS",
+          "path": "tests/studio/test_clip_history_dialog.py",
+          "passed": 50,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_clip_history_dialog.py: junit_passed=50, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6dc085aeb4172b7cd13eea2e3c1f1df557da7b817c13178222dbe77afe78f483"
+        },
+        {
+          "line": 5699,
+          "status": "PASS",
+          "path": "tests/assistant/test_translation_partition.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_translation_partition.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "25226de23d2656ae754304841866bad720a766211986422cfb0f0af5c0ece70e"
+        },
+        {
+          "line": 5700,
+          "status": "PASS",
+          "path": "tests/ui/test_word_citations.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_word_citations.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "64f3d5c6a88771b98b1fff3f8d4367bae2e6f8d671bd4a51e901fc673d3c155e"
+        },
+        {
+          "line": 5701,
+          "status": "PASS",
+          "path": "tests/ui/test_translation_epub_layout.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_translation_epub_layout.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "4e461ae248399931e6f604dce4d96150bb499439a05c722bc05b9123303465d4"
+        },
+        {
+          "line": 5702,
+          "status": "PASS",
+          "path": "tests/extract/test_docx_rich.py",
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/extract/test_docx_rich.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "af13916801b28660643d7b2bba5e82f6a1e80cc6277bcd68d71946adc3328628"
+        },
+        {
+          "line": 5703,
+          "status": "PASS",
+          "path": "tests/extract/test_docx_ordered.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/extract/test_docx_ordered.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a680e720d1e83f275816e3e88fd70234c946631af47a9f223f9742b2eef9281a"
+        },
+        {
+          "line": 5704,
+          "status": "PASS",
+          "path": "tests/storage/test_locator_integrity.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_locator_integrity.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "be78ef94c23553e6f2163a2dbcbae3054b5745635c85c03309c347c2e64d6e55"
+        },
+        {
+          "line": 5705,
+          "status": "PASS",
+          "path": "tests/ingest/test_pipeline.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ingest/test_pipeline.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "a42a177dd36888f97e963a9c1c249d4123746059cb4bd1a77e6c34d76c1d2b18"
+        },
+        {
+          "line": 5706,
+          "status": "PASS",
+          "path": "tests/catalog/test_read_views.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/catalog/test_read_views.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "abb77c0b9503f2997c9099d3529d6729ad06b74f49ef516b64b87b02cc8e559f"
+        },
+        {
+          "line": 5707,
+          "status": "PASS",
+          "path": "tests/packaging/test_library_capacity_measurement.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "e80337ac4c3395b6e8e99ade92b2111afde9fa821e1f124ede56772163262030"
+        },
+        {
+          "line": 5708,
+          "status": "PASS",
+          "path": "tests/studio/test_book_effects.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_book_effects.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "ba0e2626aa3c4f8f928829371d418a1e13b3a1f0538d983c7911809a9aa4c1b2"
+        },
+        {
+          "line": 5709,
+          "status": "PASS",
+          "path": "tests/ui/test_book_effects.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_book_effects.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "15994ba0f615df6e663877a0739288d8d7c02ba607de7b5e9752a7af1028077e"
+        },
+        {
+          "line": 5710,
+          "status": "PASS",
+          "path": "tests/conversion/test_calibre_admission.py",
+          "passed": 49,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "591d11fae4f683a7b59cc2d3b1e1f6a1da83b1d6b26ab0381f0f32b1e7731a3b"
+        },
+        {
+          "line": 5711,
+          "status": "PASS",
+          "path": "tests/ui/test_native_backup_capacity_driver.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/ui/test_native_backup_capacity_driver.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "04092bedc01d03be75be53e622e3307a0caed30e7e1c7b4feb47914db325fed5"
+        },
+        {
+          "line": 5712,
+          "status": "PASS",
+          "path": "tests/audio/test_live_metadata_retry.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_live_metadata_retry.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "3b558d284705f9cbbc7a332546d502ad29c029c3d80752be34a4a39e5b6a745b"
+        },
+        {
+          "line": 5713,
+          "status": "PASS",
+          "path": "tests/audio/test_voice_reference_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/audio/test_voice_reference_management.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "5803f0ce0d38b7389b854c8d5a2817c280f4a3cd1d1b64a193ef5d5581c3d95f"
+        },
+        {
+          "line": 5714,
+          "status": "PASS",
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/integrations/test_dordiai_owner_lease.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f11fe2b97ddf8c3d27b50e41f74732bee88ef217c68ce7980a09230670149dad"
+        },
+        {
+          "line": 5715,
+          "status": "PASS",
+          "path": "tests/storage/test_state_backup_portability.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/storage/test_state_backup_portability.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "9dda7f8211f32c21858b7e4bd486e78000ede65187c456808b0aa9bf120b5d61"
+        },
+        {
+          "line": 5716,
+          "status": "PASS",
+          "path": "tests/integrations/test_dordiai_managed_backends.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/integrations/test_dordiai_managed_backends.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7c721c7297d5d581df4b7682fefeb27a787d43a0517753c34f974acb792aeeab"
+        },
+        {
+          "line": 5717,
+          "status": "PASS",
+          "path": "tests/assistant/test_transcription_provider.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/assistant/test_transcription_provider.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "db55365099afb86ba7d73dafc76bf9481eba9f85712b9877e0d1f26572b862eb"
+        },
+        {
+          "line": 5718,
+          "status": "PASS",
+          "path": "tests/security/test_update_runtime.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/security/test_update_runtime.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "f2079f60847e87063150bb976bdc8fb29d452b8a01f2aead4cfe62c0311002d9"
+        },
+        {
+          "line": 5719,
+          "status": "PASS",
+          "path": "tests/catalog/test_text_screen_work.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/catalog/test_text_screen_work.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "7193314679a6f00671b59a73785e644d21d159fb7bbf39708d2f9b8d4bbba85e"
+        },
+        {
+          "line": 5720,
+          "status": "PASS",
+          "path": "tests/studio/test_marker_consumers.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0,
+          "text": "PASS: tests/studio/test_marker_consumers.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0",
+          "full_line_sha256": "6be8925c232bd0b0e8f7edfbd5d43757a05513aa76179d2baf82c398b048c934"
+        }
+      ],
+      "summary": {
+        "assigned": 123,
+        "whole_pass": 121,
+        "whole_fail": 2,
+        "completed_pytest_pass_cases": 2995,
+        "completed_pytest_fail_cases": 14,
+        "incomplete_wholes": [
+          "tests/studio/test_book_batch.py"
+        ]
+      },
+      "artifact": {
+        "id": 15258637104,
+        "name": "carr-required-source-1-a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71-1",
+        "size_in_bytes": 361117,
+        "digest": "sha256:0587cd5ac2c8b2bc130eca4a8ca4fe6e461f542fd4c1c37c0cd96ac95fc8d811",
+        "workflow_run": {
+          "id": 46128930916,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-full-final-e-20261128-5a9e",
+          "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71"
+        }
+      }
+    }
+  ],
+  "findings": {
+    "epub": {
+      "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+      "whole": 28,
+      "passed": 14,
+      "failed": 14,
+      "skipped": 0,
+      "seconds": 2.93,
+      "cause": "All appended cases use _recorded_start_case, whose dialog.progress is an unhashable SimpleNamespace. Actual play_when_quiet deduplicates controllers with dict.fromkeys and raises TypeError before requesting a quiet hold or invoking start. The notification-error case exposes the direct TypeError traceback; the remaining failures are downstream missing-start/deferred-call assertions.",
+      "test_fixture_lines": [
+        317,
+        362
+      ],
+      "actual_shared_helper_line": 314,
+      "ordinary_native_owner": {
+        "path": "carr-library/src/carr_library/ui/progress_panel.py",
+        "blob": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d",
+        "class": "NativeProgressPanel",
+        "identity": "Ordinary class with no equality/hash override; hold_audio, refresh_audio_state and unregister_player are real instance methods."
+      },
+      "proposed_H_fixture": {
+        "blob": "01938c8d8d282886151d0a659f94f46e46ccfacc",
+        "scope": "Replace only the inert progress owner with an ordinary local class; all28 cases,13 test functions and80 assertion/parameterization lines remain exact.",
+        "status": "STATIC_NOT_RUN_PENDING_INDEPENDENT_PEER"
+      },
+      "trace": {
+        "start_line": 3720,
+        "end_line": 3747,
+        "lines": [
+          {
+            "line": 3720,
+            "text": "_ test_recorded_start_keeps_original_error_when_notification_fails_or_repeats _",
+            "truncated": false,
+            "original_characters": 79
+          },
+          {
+            "line": 3721,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3722,
+            "text": "args = ((namespace(hold_audio=<function _recorded_start_case.<locals>.<lambda> at 0x00000144D91D0C20>, refresh_audio_state=<M...yer=<Mock id='1395212456464'>),), <function EbookAudioDialog.play.<locals>.ready.<locals>.start at 0x00000144D91D0E00>)",
+            "truncated": false,
+            "original_characters": 247
+          },
+          {
+            "line": 3723,
+            "text": "kwargs = {'alive': <function EbookAudioDialog.play.<locals>.ready.<locals>.<lambda> at 0x00000144D8BE4720>, 'on_error': <functi...ls>.failed at 0x00000144D8BE4900>, 'schedule': <function _recorded_start_case.<locals>.<lambda> at 0x00000144D91D0900>}",
+            "truncated": false,
+            "original_characters": 249
+          },
+          {
+            "line": 3724,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3725,
+            "text": "    def observe(*args, **kwargs):",
+            "truncated": false,
+            "original_characters": 33
+          },
+          {
+            "line": 3726,
+            "text": "        handlers.append(kwargs['on_error'])",
+            "truncated": false,
+            "original_characters": 43
+          },
+          {
+            "line": 3727,
+            "text": ">       return real_quiet(*args, **kwargs)",
+            "truncated": false,
+            "original_characters": 42
+          },
+          {
+            "line": 3728,
+            "text": "               ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "truncated": false,
+            "original_characters": 42
+          },
+          {
+            "line": 3729,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3730,
+            "text": "tests\\ui\\test_ebook_audio_lifetime.py:448: ",
+            "truncated": false,
+            "original_characters": 43
+          },
+          {
+            "line": 3731,
+            "text": "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+            "truncated": false,
+            "original_characters": 79
+          },
+          {
+            "line": 3732,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3733,
+            "text": "controllers = (namespace(hold_audio=<function _recorded_start_case.<locals>.<lambda> at 0x00000144D91D0C20>, refresh_audio_state=<Mock id='1395212459600'>, unregister_player=<Mock id='1395212456464'>),)",
+            "truncated": false,
+            "original_characters": 202
+          },
+          {
+            "line": 3734,
+            "text": "start = <function EbookAudioDialog.play.<locals>.ready.<locals>.start at 0x00000144D91D0E00>",
+            "truncated": false,
+            "original_characters": 92
+          },
+          {
+            "line": 3735,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3736,
+            "text": "    def play_when_quiet(controllers, start, *, schedule, alive, on_error, _clock=time.monotonic):",
+            "truncated": false,
+            "original_characters": 97
+          },
+          {
+            "line": 3737,
+            "text": "        \"\"\"Poll owned notification quiescence on the GUI loop, never block the UI.",
+            "truncated": false,
+            "original_characters": 82
+          },
+          {
+            "line": 3738,
+            "text": "    ",
+            "truncated": false,
+            "original_characters": 4
+          },
+          {
+            "line": 3739,
+            "text": "        ``schedule(milliseconds, callback)`` is normally wx.CallLater. Content",
+            "truncated": false,
+            "original_characters": 78
+          },
+          {
+            "line": 3740,
+            "text": "        players remain registered with OperationProgress for actual EOF/pause state.",
+            "truncated": false,
+            "original_characters": 84
+          },
+          {
+            "line": 3741,
+            "text": "        A cancelled/failed pending start releases every temporary mute hold.",
+            "truncated": false,
+            "original_characters": 76
+          },
+          {
+            "line": 3742,
+            "text": "        \"\"\"",
+            "truncated": false,
+            "original_characters": 11
+          },
+          {
+            "line": 3743,
+            "text": ">       unique = tuple(dict.fromkeys(controller for controller in controllers if controller is not None))",
+            "truncated": false,
+            "original_characters": 105
+          },
+          {
+            "line": 3744,
+            "text": "                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 3745,
+            "text": "E       TypeError: unhashable type: 'types.SimpleNamespace'",
+            "truncated": false,
+            "original_characters": 59
+          },
+          {
+            "line": 3746,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3747,
+            "text": "src\\carr_library\\speech\\progress_speech.py:314: TypeError",
+            "truncated": false,
+            "original_characters": 57
+          }
+        ]
+      },
+      "first_assertion": {
+        "start_line": 3277,
+        "end_line": 3306,
+        "lines": [
+          {
+            "line": 3277,
+            "text": "================================== FAILURES ===================================",
+            "truncated": false,
+            "original_characters": 79
+          },
+          {
+            "line": 3278,
+            "text": "_ test_recorded_start_failure_survives_own_generation_cleanup[False-admission] _",
+            "truncated": false,
+            "original_characters": 80
+          },
+          {
+            "line": 3279,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3280,
+            "text": "host = <test_ebook_audio_lifetime.Host object at 0x00000144D8FF6010>",
+            "truncated": false,
+            "original_characters": 68
+          },
+          {
+            "line": 3281,
+            "text": "tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-v5_6jblw/pytest/test_recorded_start_failure_su0')",
+            "truncated": false,
+            "original_characters": 121
+          },
+          {
+            "line": 3282,
+            "text": "failure_stage = 'admission', deferred = False",
+            "truncated": false,
+            "original_characters": 45
+          },
+          {
+            "line": 3283,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3284,
+            "text": "    @pytest.mark.parametrize('failure_stage', ['admission', 'device'])",
+            "truncated": false,
+            "original_characters": 70
+          },
+          {
+            "line": 3285,
+            "text": "    @pytest.mark.parametrize('deferred', [False, True])",
+            "truncated": false,
+            "original_characters": 55
+          },
+          {
+            "line": 3286,
+            "text": "    def test_recorded_start_failure_survives_own_generation_cleanup(host, tmp_path, failure_stage, deferred):",
+            "truncated": false,
+            "original_characters": 109
+          },
+          {
+            "line": 3287,
+            "text": "        case = _recorded_start_case(host, tmp_path, failure_stage=failure_stage, deferred=deferred)",
+            "truncated": false,
+            "original_characters": 99
+          },
+          {
+            "line": 3288,
+            "text": "        dialog, transport = case.dialog, case.transport",
+            "truncated": false,
+            "original_characters": 55
+          },
+          {
+            "line": 3289,
+            "text": "        try:",
+            "truncated": false,
+            "original_characters": 12
+          },
+          {
+            "line": 3290,
+            "text": "            dialog.play()",
+            "truncated": false,
+            "original_characters": 25
+          },
+          {
+            "line": 3291,
+            "text": "            requested = transport.ticket",
+            "truncated": false,
+            "original_characters": 40
+          },
+          {
+            "line": 3292,
+            "text": "            host.pump()",
+            "truncated": false,
+            "original_characters": 23
+          },
+          {
+            "line": 3293,
+            "text": "            if deferred:",
+            "truncated": false,
+            "original_characters": 24
+          },
+          {
+            "line": 3294,
+            "text": "                assert case.prepared.path.is_file() and not case.hold.closed",
+            "truncated": false,
+            "original_characters": 76
+          },
+          {
+            "line": 3295,
+            "text": "                assert dialog._last_error is None and not dialog.busy and not host.working",
+            "truncated": false,
+            "original_characters": 90
+          },
+          {
+            "line": 3296,
+            "text": "                assert transport.ticket == requested and not transport.active",
+            "truncated": false,
+            "original_characters": 77
+          },
+          {
+            "line": 3297,
+            "text": "                delay, callback = case.scheduled.pop()",
+            "truncated": false,
+            "original_characters": 54
+          },
+          {
+            "line": 3298,
+            "text": "                assert delay == 25",
+            "truncated": false,
+            "original_characters": 34
+          },
+          {
+            "line": 3299,
+            "text": "                case.hold.ready = True",
+            "truncated": false,
+            "original_characters": 38
+          },
+          {
+            "line": 3300,
+            "text": "                callback()",
+            "truncated": false,
+            "original_characters": 26
+          },
+          {
+            "line": 3301,
+            "text": ">           assert dialog._last_error is case.error",
+            "truncated": false,
+            "original_characters": 51
+          },
+          {
+            "line": 3302,
+            "text": "E           AssertionError: assert None is RuntimeError('Controlled exact recorded-audio start failure.')",
+            "truncated": false,
+            "original_characters": 105
+          },
+          {
+            "line": 3303,
+            "text": "E            +  where None = <carr_library.ui.ebook_audio_dialog.EbookAudioDialog object at 0x00000144D92C6490>._last_error",
+            "truncated": false,
+            "original_characters": 123
+          },
+          {
+            "line": 3304,
+            "text": "E            +  and   RuntimeError('Controlled exact recorded-audio start failure.') = namespace(dialog=<carr_library.ui.ebook_audio_dialog.EbookAudioDialog object at 0x00000144D92C6490>, prepared=<test_ebook_audio_lifetime.Owned object at 0x00000144D926BB50>, error=RuntimeError('Controlled exact recorded-audio start failure.'), player=<test_ebook_audio_lifetime._recorded_start_case.<locals>.Player object at 0x00000144D926B690>, transport=<carr_library.ui.ebook_audio_dialog.OverlayPlayback object at 0x00000144D926BBD0>, session=namespace(prepare=<function _recorded_start_case.<locals>.prepare at 0x00000144D92B3D80>, start_check=<function _recorded_start_case.<locals>.admission at 0x00000144D92B3EC0>, guard=<function _recorded_start_case.<locals>.<lambda> at 0x00000144D92B31A0>, close=<Mock id='1395212597648'>, chapter=namespace(cues=(<object object at 0x00000144CC1C7730>, <object object at 0x00000144CC1C77A0>))), hold=<test_ebook_audio_lifetime._recorded_start_case.<locals>.Hold object at 0x00000144D926BE90>, scheduled=[], device_calls=[], state=namespace(before_failure=<function _recorded_start_case.<locals>.<lambda> at 0x00000144D92B39C0>)).error",
+            "truncated": false,
+            "original_characters": 1166
+          },
+          {
+            "line": 3305,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 3306,
+            "text": "tests\\ui\\test_ebook_audio_lifetime.py:382: AssertionError",
+            "truncated": false,
+            "original_characters": 57
+          }
+        ]
+      },
+      "failed_cases": [
+        {
+          "line": 3857,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_failure_survives_own_generation_cleanup[False-admission] - AssertionError: assert None is RuntimeError('Controlled exact recorded-audio start failure.')"
+        },
+        {
+          "line": 3860,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_failure_survives_own_generation_cleanup[False-device] - AssertionError: assert None is RuntimeError('Controlled exact recorded-audio start failure.')"
+        },
+        {
+          "line": 3863,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_failure_survives_own_generation_cleanup[True-admission] - AssertionError: assert (False)"
+        },
+        {
+          "line": 3868,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_failure_survives_own_generation_cleanup[True-device] - AssertionError: assert (False)"
+        },
+        {
+          "line": 3873,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[stop] - assert ([])"
+        },
+        {
+          "line": 3874,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[selection] - assert ([])"
+        },
+        {
+          "line": 3875,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[host-closing] - assert ([])"
+        },
+        {
+          "line": 3876,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[library-replaced] - assert ([])"
+        },
+        {
+          "line": 3877,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[dialog-closed] - assert ([])"
+        },
+        {
+          "line": 3878,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[transport-replaced] - assert ([])"
+        },
+        {
+          "line": 3879,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[session-replaced] - assert ([])"
+        },
+        {
+          "line": 3880,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_error_does_not_present_to_a_revoked_request[transport-closed] - assert ([])"
+        },
+        {
+          "line": 3881,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_start_keeps_original_error_when_notification_fails_or_repeats - RuntimeError: Controlled status-view failure."
+        },
+        {
+          "line": 3882,
+          "text": "FAILED tests/ui/test_ebook_audio_lifetime.py::test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm - AssertionError: assert (not False and False)"
+        }
+      ]
+    },
+    "paging": {
+      "path": "carr-library/tests/search/test_search_paging.py",
+      "expected_whole": 27,
+      "result": "Whole process exceeded original600-second limit; no completed pytest/JUnit verdict for the whole.",
+      "stack": {
+        "start_line": 1161,
+        "end_line": 1198,
+        "lines": [
+          {
+            "line": 1161,
+            "text": "Timed stack diagnostic (GIL-owned Python thread):",
+            "truncated": false,
+            "original_characters": 49
+          },
+          {
+            "line": 1162,
+            "text": "Current thread 0x000006d4 (most recent call first):",
+            "truncated": false,
+            "original_characters": 51
+          },
+          {
+            "line": 1163,
+            "text": "  File \"<string>\", line 68 in diagnostic",
+            "truncated": false,
+            "original_characters": 40
+          },
+          {
+            "line": 1164,
+            "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\threading.py\", line 982 in run",
+            "truncated": false,
+            "original_characters": 87
+          },
+          {
+            "line": 1165,
+            "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\threading.py\", line 1045 in _bootstrap_inner",
+            "truncated": false,
+            "original_characters": 101
+          },
+          {
+            "line": 1166,
+            "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\threading.py\", line 1002 in _bootstrap",
+            "truncated": false,
+            "original_characters": 95
+          },
+          {
+            "line": 1167,
+            "text": "",
+            "truncated": false,
+            "original_characters": 0
+          },
+          {
+            "line": 1168,
+            "text": "Thread 0x00001f70 (most recent call first):",
+            "truncated": false,
+            "original_characters": 43
+          },
+          {
+            "line": 1169,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\storage\\revisions.py\", line 263 in transaction",
+            "truncated": false,
+            "original_characters": 123
+          },
+          {
+            "line": 1170,
+            "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\contextlib.py\", line 144 in __exit__",
+            "truncated": false,
+            "original_characters": 93
+          },
+          {
+            "line": 1171,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py\", line 127 in publish_revision",
+            "truncated": false,
+            "original_characters": 122
+          },
+          {
+            "line": 1172,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py\", line 159 in publish_checked_revision",
+            "truncated": false,
+            "original_characters": 130
+          },
+          {
+            "line": 1173,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ingest\\pipeline.py\", line 277 in _run",
+            "truncated": false,
+            "original_characters": 114
+          },
+          {
+            "line": 1174,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ingest\\pipeline.py\", line 207 in run",
+            "truncated": false,
+            "original_characters": 113
+          },
+          {
+            "line": 1175,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py\", line 762 in _import_file",
+            "truncated": false,
+            "original_characters": 118
+          },
+          {
+            "line": 1176,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py\", line 568 in import_file",
+            "truncated": false,
+            "original_characters": 117
+          },
+          {
+            "line": 1177,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py\", line 845 in add_text",
+            "truncated": false,
+            "original_characters": 114
+          },
+          {
+            "line": 1178,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\search\\test_search_paging.py\", line 16 in catalog",
+            "truncated": false,
+            "original_characters": 115
+          },
+          {
+            "line": 1179,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\fixtures.py\", line 915 in call_fixture_func",
+            "truncated": false,
+            "original_characters": 108
+          },
+          {
+            "line": 1180,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\fixtures.py\", line 1202 in pytest_fixture_setup",
+            "truncated": false,
+            "original_characters": 112
+          },
+          {
+            "line": 1181,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\pluggy\\_execution.py\", line 147 in _multicall",
+            "truncated": false,
+            "original_characters": 102
+          },
+          {
+            "line": 1182,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\pluggy\\_manager.py\", line 183 in _hookexec",
+            "truncated": false,
+            "original_characters": 99
+          },
+          {
+            "line": 1183,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\pluggy\\_caller.py\", line 197 in __call__",
+            "truncated": false,
+            "original_characters": 97
+          },
+          {
+            "line": 1184,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\fixtures.py\", line 1110 in execute",
+            "truncated": false,
+            "original_characters": 99
+          },
+          {
+            "line": 1185,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\fixtures.py\", line 627 in _get_active_fixturedef",
+            "truncated": false,
+            "original_characters": 113
+          },
+          {
+            "line": 1186,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\fixtures.py\", line 539 in getfixturevalue",
+            "truncated": false,
+            "original_characters": 106
+          },
+          {
+            "line": 1187,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\fixtures.py\", line 707 in _fillfixtures",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 1188,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\python.py\", line 1723 in setup",
+            "truncated": false,
+            "original_characters": 95
+          },
+          {
+            "line": 1189,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 523 in setup",
+            "truncated": false,
+            "original_characters": 94
+          },
+          {
+            "line": 1190,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 165 in pytest_runtest_setup",
+            "truncated": false,
+            "original_characters": 109
+          },
+          {
+            "line": 1191,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\pluggy\\_execution.py\", line 147 in _multicall",
+            "truncated": false,
+            "original_characters": 102
+          },
+          {
+            "line": 1192,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\pluggy\\_manager.py\", line 183 in _hookexec",
+            "truncated": false,
+            "original_characters": 99
+          },
+          {
+            "line": 1193,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\pluggy\\_caller.py\", line 197 in __call__",
+            "truncated": false,
+            "original_characters": 97
+          },
+          {
+            "line": 1194,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 245 in <lambda>",
+            "truncated": false,
+            "original_characters": 97
+          },
+          {
+            "line": 1195,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 353 in from_call",
+            "truncated": false,
+            "original_characters": 98
+          },
+          {
+            "line": 1196,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 244 in call_and_report",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 1197,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 131 in runtestprotocol",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 1198,
+            "text": "  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\_pytest\\runner.py\", line 118 in pytest_runtest_protocol",
+            "truncated": false,
+            "original_characters": 112
+          }
+        ]
+      },
+      "last_visible_progress": {
+        "start_line": 2670,
+        "end_line": 2693,
+        "lines": [
+          {
+            "line": 2670,
+            "text": "tests/storage/test_v3_state_backup.py::test_corrupt_state_never_publishes_usable_restore[corrupt] PASSED [  9%]",
+            "truncated": false,
+            "original_characters": 111
+          },
+          {
+            "line": 2671,
+            "text": "tests/storage/test_v3_state_backup.py::test_corrupt_state_never_publishes_usable_restore[missing] PASSED [ 25%]",
+            "truncated": false,
+            "original_characters": 111
+          },
+          {
+            "line": 2672,
+            "text": "tests/search/test_search_paging.py::test_literal_many_matches_on_one_page_keep_result_continuation_after_presentation_dedup PASSED [ 29%]",
+            "truncated": false,
+            "original_characters": 137
+          },
+          {
+            "line": 2673,
+            "text": "tests/search/test_search_paging.py::test_source_cursor_is_bound_to_exact_requested_scope[workspace] PASSED [ 11%]",
+            "truncated": false,
+            "original_characters": 113
+          },
+          {
+            "line": 2674,
+            "text": "tests/storage/test_v3_state_backup.py::test_corrupt_state_never_publishes_usable_restore[unlisted] PASSED [ 33%]",
+            "truncated": false,
+            "original_characters": 112
+          },
+          {
+            "line": 2675,
+            "text": "tests/search/test_search_paging.py::test_source_cursor_is_bound_to_exact_requested_scope[query] PASSED [ 37%]",
+            "truncated": false,
+            "original_characters": 109
+          },
+          {
+            "line": 2676,
+            "text": "tests/search/test_search_paging.py::test_source_cursor_is_bound_to_exact_requested_scope[mode] PASSED [  4%]",
+            "truncated": false,
+            "original_characters": 108
+          },
+          {
+            "line": 2677,
+            "text": "tests/studio/test_clip_restoration.py::test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True] PASSED [ 40%]",
+            "truncated": false,
+            "original_characters": 138
+          },
+          {
+            "line": 2678,
+            "text": "tests/search/test_search_paging.py::test_source_cursor_is_bound_to_exact_requested_scope[filter] PASSED [ 44%]",
+            "truncated": false,
+            "original_characters": 110
+          },
+          {
+            "line": 2679,
+            "text": "tests/search/test_search_paging.py::test_source_cursor_is_bound_to_exact_requested_scope[root] PASSED [ 14%]",
+            "truncated": false,
+            "original_characters": 108
+          },
+          {
+            "line": 2680,
+            "text": "Traceback (most recent call last):",
+            "truncated": false,
+            "original_characters": 34
+          },
+          {
+            "line": 2681,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_check.py\", line 308, in run_suite",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 2682,
+            "text": "    returncode = _run_test_process([",
+            "truncated": false,
+            "original_characters": 36
+          },
+          {
+            "line": 2683,
+            "text": "                 ^^^^^^^^^^^^^^^^^^^",
+            "truncated": false,
+            "original_characters": 36
+          },
+          {
+            "line": 2684,
+            "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_check.py\", line 95, in _run_test_process",
+            "truncated": false,
+            "original_characters": 111
+          },
+          {
+            "line": 2685,
+            "text": "    return process.wait(timeout=(SUITE_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds))",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 2686,
+            "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "truncated": false,
+            "original_characters": 104
+          },
+          {
+            "line": 2687,
+            "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\subprocess.py\", line 1264, in wait",
+            "truncated": false,
+            "original_characters": 91
+          },
+          {
+            "line": 2688,
+            "text": "    return self._wait(timeout=timeout)",
+            "truncated": false,
+            "original_characters": 38
+          },
+          {
+            "line": 2689,
+            "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "truncated": false,
+            "original_characters": 38
+          },
+          {
+            "line": 2690,
+            "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\subprocess.py\", line 1593, in _wait",
+            "truncated": false,
+            "original_characters": 92
+          },
+          {
+            "line": 2691,
+            "text": "    raise TimeoutExpired(self.args, timeout)",
+            "truncated": false,
+            "original_characters": 44
+          },
+          {
+            "line": 2692,
+            "text": "subprocess.TimeoutExpired: Command '['D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Scripts\\\\python.exe', '-B', '-c', \"\\nimport sys\\nimport socket\\n\\ndef offline_network(*args, **kwargs):\\n    raise OSError('Network access is disabled during offline verification')\\n\\nsocket.socket.connect = offline_network\\nsocket.socket.connect_ex = offline_network\\nsocket.create_connection = offline_network\\nsocket.getaddrinfo = offline_network\\n\\ntry:\\n    import onnxruntime\\nexcept ImportError:\\n    pass\\nelse:\\n    onnxruntime.disable_telemetry_events()\\n\\nimport pytest\\n\\ndef _needs_gil_stack_dump(platform=sys.platform, implementation=sys.implementation.name,\\n                          version=sys.version_info[:2]):\\n    return platform == 'win32' and implementation == 'cpython' and tuple(version) == (3, 11)\\n\\nclass GilTimedStackDump:\\n    # CPython 3.11's native timed dumper walks changing frames without the GIL\\n    # (python/cpython#140815; pytest-dev/pytest#7022). A Python thread calls the\\n    # synchronous, bounded dumper while it owns the GIL instead. Fatal exception\\n    # handling remains pytest's own; the parent's 600/900 s deadline is unchanged.\\n    timeout = 0.0\\n    exit_on_timeout = False\\n\\n    @pytest.hookimpl(tryfirst=True)\\n    def pytest_configure(self, config):\\n        timeout = float(config.getini('faulthandler_timeout') or 0.0)\\n        if timeout <= 0:\\n            return\\n        import math\\n        if not math.isfinite(timeout):\\n            raise ValueError('A timed stack diagnostic needs a finite interval.')\\n        self.timeout = timeout\\n        self.exit_on_timeout = config.getini('faulthandler_exit_on_timeout')\\n        # Pinned pytest 9.0.2 consults this same ini cache in its protocol hook.\\n        # Only its unsafe timed traversal is suppressed; enable( … , '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-lt0_o6o3\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-lt0_o6o3\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\search\\\\test_search_paging.py']' timed out after 600 seconds",
+            "truncated": true,
+            "original_characters": 4603
+          },
+          {
+            "line": 2693,
+            "text": "tests/storage/test_v3_state_backup.py::test_corrupt_state_never_publishes_usable_restore[missing-state-directory] ============================= test session starts =============================",
+            "truncated": false,
+            "original_characters": 193
+          }
+        ]
+      },
+      "interpretation": "Timed stack shows real501-edition fixture ingestion inside the revision publication transaction. Later visible test names show subsequent progress. Neither a single hung case nor CPU/contention causality is established.",
+      "prior_B": {
+        "head": "26beb805aab1e9e202d134008441927523cdcb94",
+        "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "run": 46122917046,
+        "job": 140911207100,
+        "existing_receipt": "9a3bb34cbf9773f73fe5d4b12f54f27f033cdf5b",
+        "log": {
+          "sha256": "69373c0afb472cf08b0b3e76abb988902ef1f7596d6d60afd0296d671b4fc54f",
+          "bytes": 683783
+        },
+        "strict_pass_line": 4868,
+        "strict_pass": "PASS: tests/search/test_search_paging.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "summary_line": 2893,
+        "summary": "======================= 27 passed in 527.20s (0:08:47) ========================",
+        "seconds": 527.2,
+        "seconds_attribution": "The closed log has exactly two strict27-case wholes. The long27-case summary follows paging's final named case; the other27-case summary is explicitly adjacent to speech/navigation's final cases and is0.42s. The retained per-whole JUnit archive was not independently opened.",
+        "comparison_limit": "The paging test and its named application/federated/paging/literal/ingest/publication-stack modules match B/E/G. The entire product tree is not claimed identical; six other existing product modules changed B-to-E.",
+        "summary_context": {
+          "start_line": 2875,
+          "end_line": 2895,
+          "lines": [
+            {
+              "line": 2875,
+              "text": "tests/search/test_search_paging.py::test_cancellation_during_window_selection_keeps_previous_completed_source_handles PASSED [ 70%]",
+              "truncated": false,
+              "original_characters": 131
+            },
+            {
+              "line": 2876,
+              "text": "tests/audio/test_recording.py::test_listing_rejects_malformed_audio_receipts_without_opening_saved_pcm[change4] PASSED [ 96%]",
+              "truncated": false,
+              "original_characters": 125
+            },
+            {
+              "line": 2877,
+              "text": "tests/search/test_search_paging.py::test_source_cursor_cannot_cross_an_authorized_topic PASSED [ 74%]",
+              "truncated": false,
+              "original_characters": 101
+            },
+            {
+              "line": 2878,
+              "text": "tests/audio/test_recording.py::test_actual_capture_backup_delete_original_root_restore_and_verify PASSED [ 27%]",
+              "truncated": false,
+              "original_characters": 111
+            },
+            {
+              "line": 2879,
+              "text": "tests/studio/test_publishing.py::test_observer_failure_cannot_replace_verified_epub_success[Verifying source artifact-RuntimeError] PASSED [ 29%]",
+              "truncated": false,
+              "original_characters": 145
+            },
+            {
+              "line": 2880,
+              "text": "tests/studio/test_publishing.py::test_observer_failure_cannot_replace_verified_epub_success[EPUB saved and its exact bytes verified-RuntimeError] PASSED [ 77%]",
+              "truncated": false,
+              "original_characters": 159
+            },
+            {
+              "line": 2881,
+              "text": "tests/audio/test_recording.py::test_capture_admission_is_exclusive_and_released_after_failure PASSED [ 80%]",
+              "truncated": false,
+              "original_characters": 107
+            },
+            {
+              "line": 2882,
+              "text": "tests/audio/test_recording.py::test_recording_receipt_validation_is_pure_and_rejects_incomplete_limits PASSED [ 83%]",
+              "truncated": false,
+              "original_characters": 116
+            },
+            {
+              "line": 2883,
+              "text": "tests/audio/test_recording.py::test_unverified_original_listing_is_read_only_and_never_probes_audio PASSED [ 87%]",
+              "truncated": false,
+              "original_characters": 113
+            },
+            {
+              "line": 2884,
+              "text": "tests/audio/test_recording.py::test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks PASSED [ 31%]",
+              "truncated": false,
+              "original_characters": 123
+            },
+            {
+              "line": 2885,
+              "text": "tests/studio/test_publishing.py::test_observer_failure_cannot_replace_verified_epub_success[EPUB saved and its exact bytes verified-AudioCancelled] PASSED [ 90%]",
+              "truncated": false,
+              "original_characters": 161
+            },
+            {
+              "line": 2886,
+              "text": "tests/audio/test_recording.py::test_pcm_validation_cancellation_uses_the_shared_bounded_wave_reader PASSED [ 33%]",
+              "truncated": false,
+              "original_characters": 113
+            },
+            {
+              "line": 2887,
+              "text": "tests/studio/test_publishing.py::test_explicit_cancel_still_stops_after_a_failed_observer PASSED [ 93%]",
+              "truncated": false,
+              "original_characters": 103
+            },
+            {
+              "line": 2888,
+              "text": "tests/audio/test_recording.py::test_failed_admission_release_is_retried_only_by_explicit_capture[False] PASSED [ 35%]",
+              "truncated": false,
+              "original_characters": 117
+            },
+            {
+              "line": 2889,
+              "text": "tests/studio/test_publishing.py::test_existing_verified_job_mp3_is_reused_byte_for_byte PASSED [100%]PASSED [ 96%]",
+              "truncated": false,
+              "original_characters": 114
+            },
+            {
+              "line": 2890,
+              "text": "tests/audio/test_recording.py::test_failed_admission_release_is_retried_only_by_explicit_capture[True] ",
+              "truncated": false,
+              "original_characters": 103
+            },
+            {
+              "line": 2891,
+              "text": "",
+              "truncated": false,
+              "original_characters": 0
+            },
+            {
+              "line": 2892,
+              "text": "- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-417vmtht\\junit.xml -",
+              "truncated": false,
+              "original_characters": 87
+            },
+            {
+              "line": 2893,
+              "text": "======================= 27 passed in 527.20s (0:08:47) ========================",
+              "truncated": false,
+              "original_characters": 79
+            },
+            {
+              "line": 2894,
+              "text": "============================= test session starts =============================",
+              "truncated": false,
+              "original_characters": 79
+            },
+            {
+              "line": 2895,
+              "text": "platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0 -- D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe",
+              "truncated": false,
+              "original_characters": 112
+            }
+          ]
+        }
+      }
+    },
+    "book": {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "expected_whole": 29,
+      "result": "Original600-second whole process timeout in E pooled source execution, already evidenced separately. No new case failure or new count assertion is inferred.",
+      "later_G_scheduling": "G isolates this unchanged whole before its pool; running G result is independent."
+    }
+  },
+  "source_comparison": [
+    {
+      "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+      "B": "e2794f558501eea37dcb482d46f9419d68e9cb22",
+      "E": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+      "G": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+      "E_G_equal": true,
+      "B_E_equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_audio_dialog.py",
+      "B": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5",
+      "E": "1bbfb74a7a286f933056696ea7ff769d75436061",
+      "G": "1bbfb74a7a286f933056696ea7ff769d75436061",
+      "E_G_equal": true,
+      "B_E_equal": false
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "B": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "E": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "G": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "B": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d",
+      "E": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d",
+      "G": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/tests/search/test_search_paging.py",
+      "B": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+      "E": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+      "G": "809e9433d5a1f1f098c0e21518cbce540e230dcc",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "B": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "E": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "G": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "B": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "E": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "G": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "B": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615",
+      "E": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615",
+      "G": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "B": "ebc80347d09b35fc8f9d11858e38b2b424920ad8",
+      "E": "ebc80347d09b35fc8f9d11858e38b2b424920ad8",
+      "G": "ebc80347d09b35fc8f9d11858e38b2b424920ad8",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "B": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "E": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "G": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "B": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+      "E": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+      "G": "656ac8f3943aa4bb59b7756f7982d7985179e3b2",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "B": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+      "E": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+      "G": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+      "E_G_equal": true,
+      "B_E_equal": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "B": "860b5e112e803527add77983733b0f1833b465e5",
+      "E": "860b5e112e803527add77983733b0f1833b465e5",
+      "G": "860b5e112e803527add77983733b0f1833b465e5",
+      "E_G_equal": true,
+      "B_E_equal": true
+    }
+  ],
+  "limits": [
+    "Both observed E failures and timeouts remain failures. No G PASS is inferred from old B results.",
+    "No product source, budget, selector or assertion was changed by this receipt.",
+    "The proposed EPUB correction is a test-fixture type fix; actual runtime/device causality is outside this observation.",
+    "Actual logs were fetched only after both E jobs and the comparative B job closed.",
+    "Artifact API identities are retained; no archive was extracted or executed."
+  ]
+}

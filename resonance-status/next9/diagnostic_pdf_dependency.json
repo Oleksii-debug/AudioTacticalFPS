@@ -1,0 +1,66 @@
+{
+  "schema": "carr-ci-diagnostic-fix/1",
+  "status": "DRAFT_NOT_RUN",
+  "name": "Restore the existing test-only ReportLab fixture dependency in both diagnostic jobs",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "files": [
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "3ee29faae1a19e9ca4f124b7aca27020dfba1c0b",
+      "sha": "6bdaf8c2beb467739dcf9c63684dfb7c061ccdc4",
+      "readback": "EXACT",
+      "chars": 19553
+    }
+  ],
+  "evidence": {
+    "source_commit": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+    "run": 46051069136,
+    "ubuntu_job": 140682214196,
+    "windows_job": 140682214261,
+    "observed_error": "ModuleNotFoundError: No module named 'reportlab'",
+    "ubuntu_affected_cases": 19,
+    "windows_affected_cases": 18,
+    "ubuntu_book_case": "tests/studio/test_book_audio.py::test_physical_page_split_uses_actual_pdf_pages_and_refuses_txt_segments",
+    "scope": "Fixture import fails before the requested PDF replay/Book production boundary; actual Windows intake16 already passed on the old head."
+  },
+  "dependency": {
+    "version": "reportlab==4.4.9",
+    "policy": "Reuse exactly the integrated main workflow's existing binary-only test fixture acquisition. This addition is version-pinned, not a new hash-locked closure.",
+    "existing_lock_checked": {
+      "path": "packaging/requirements-pdf-smoke.lock",
+      "sha": "53685172b2ea62d619a6c669fb65fb30615c6568",
+      "contains": "pypdf==7.1.1 only; it does not provide ReportLab."
+    },
+    "hashed_core_installs": "Byte-preserved; still --require-hashes",
+    "production_locks": "UNCHANGED",
+    "distribution_dependencies": "UNCHANGED",
+    "import_probe": "Both jobs import reportlab.pdfgen.canvas.Canvas under -I -B and require installed metadata version4.4.9; failures stop before tests.",
+    "retained_reports": [
+      "ci-next9-results/pdf-fixture-runtime.json",
+      "ci-next9-intake/pdf-fixture-runtime.json"
+    ]
+  },
+  "preserved": {
+    "ubuntu_whole_suites": 41,
+    "ubuntu_expected_cases": 1079,
+    "windows_whole_suites": 5,
+    "windows_expected_cases": 59,
+    "all_test_sources": true,
+    "all_test_assertions": true,
+    "all_product_sources": true,
+    "all_existing_hash_required_install_commands": true,
+    "all_suite_verdicts_and_budgets": true,
+    "parser_job": true,
+    "no_ref_mutation": true
+  },
+  "authorization": "Root explicitly authorized the existing-main exact test-only binary acquisition plus import/version probes after confirming the PDF lock does not contain ReportLab.",
+  "validation": {
+    "source_diff": "NARROW_REVIEWABLE",
+    "readback": "EXACT",
+    "yaml_parse": "NOT_RUN",
+    "powershell_parse": "NOT_RUN",
+    "corrected_source_execution": "NOT_RUN",
+    "corrected_windows_execution": "NOT_RUN"
+  },
+  "diff": "--- a/.github/workflows/carr-next9-final-source.yml\n+++ b/.github/workflows/carr-next9-final-source.yml\n@@ -50,7 +50,10 @@\n           sudo apt-get update\n           sudo apt-get install --yes --no-install-recommends ffmpeg flite\n           python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock\n+          # Reuse the integrated main workflow's exact test-only PDF fixture pin.\n+          python -B -m pip install --only-binary=:all: reportlab==4.4.9\n           python -B -m pip check\n+          python -I -B -c \"import json; from importlib.metadata import version; from reportlab.pdfgen.canvas import Canvas; assert version('reportlab') == '4.4.9'; print(json.dumps({'status':'PASS','reportlab_version':version('reportlab'),'canvas_import':Canvas.__module__+'.'+Canvas.__name__}))\" | tee ci-next9-results/pdf-fixture-runtime.json\n           python -I -B - <<'PY' | tee ci-next9-results/runtime.json\n           from hashlib import sha256\n           import json, os, platform, shutil, subprocess, sys\n@@ -281,8 +284,13 @@\n           if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'The requested source commit changed.' }\n           & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock\n           if ($LASTEXITCODE -ne 0) { throw 'Pinned dependency installation failed.' }\n+          # Reuse the integrated main workflow's exact test-only PDF fixture pin.\n+          & python -B -m pip install --only-binary=:all: reportlab==4.4.9\n+          if ($LASTEXITCODE -ne 0) { throw 'The PDF fixture dependency installation failed.' }\n           & python -B -m pip check\n           if ($LASTEXITCODE -ne 0) { throw 'Pinned dependencies are inconsistent.' }\n+          & python -I -B -c \"import json; from importlib.metadata import version; from reportlab.pdfgen.canvas import Canvas; assert version('reportlab') == '4.4.9'; print(json.dumps({'status':'PASS','reportlab_version':version('reportlab'),'canvas_import':Canvas.__module__+'.'+Canvas.__name__}))\" | Tee-Object 'ci-next9-intake/pdf-fixture-runtime.json'\n+          if ($LASTEXITCODE -ne 0) { throw 'The PDF fixture import or exact version probe failed.' }\n       - name: Run every actual Windows intake and replay case\n         timeout-minutes: 14\n         run: |\n"
+}

@@ -30,6 +30,8 @@ def make(progress, executor, wx, report, service):
     dialog = SimpleNamespace(working=False)
     cancel = threading.Event()
     controls = lambda: None
+    scope_current = lambda: alive
+    stopping = lambda: cancel.is_set() or not scope_current()
     def close():
         nonlocal alive
         alive = False

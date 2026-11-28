@@ -291,7 +291,7 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
 
     review = Control('complete: 3/3. All selected operations completed.\n'
                      'Resume uses the original reviewed scope.')
-    buttons = {name: Control() for name in ('preview', 'run', 'jobs', 'pause')}
+    buttons = {name: Control() for name in ('preview', 'run', 'jobs', 'templates', 'pause')}
     callbacks, entered, release = Queue(), Event(), Event()
 
     def resume(*args, **kwargs):
@@ -307,7 +307,7 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
                 if isinstance(node, ast.FunctionDef) and node.name in ('report', 'run')]
     assert len(handlers) == 2
     factory = ast.parse('def make_run(identity):\n'
-                        '    busy, job_id, plan, alive = None, identity, None, True\n').body[0]
+                        '    busy, job_id, plan, alive = False, identity, None, True\n').body[0]
     factory.body.extend(handlers)
     factory.body.append(ast.Return(value=ast.Name(id='run', ctx=ast.Load())))
 
@@ -333,8 +333,8 @@ def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_
 
         namespace = {
             'executor': SimpleNamespace(submit=submit), 'service': SimpleNamespace(resume=resume),
+            'frame': SimpleNamespace(library=app), 'library_root': app.root, 'folder_buttons': (),
             'cancel': Event(), 'review': review, 'buttons': buttons, 'json': json,
-            'frame': SimpleNamespace(library=app), 'library_root': app.root, 'folder_buttons': [],
             'wx': SimpleNamespace(CallAfter=lambda function, *args: callbacks.put((function, args))),
             **{name: Control() for name in
                ('scope_choice', 'instruction', 'input_folder', 'output_folder', 'full_backup', 'planning_source')},

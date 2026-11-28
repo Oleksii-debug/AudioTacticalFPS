@@ -1,0 +1,256 @@
+{
+  "schema": "carr-fixed-capacity-inspector-component/1",
+  "created_utc": "2026-11-28 09:00:13 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+  "successor_git_blob": "f551f2906d4df2689825ad41d7915ad1fd641f82",
+  "successor_utf8": {
+    "sha256": "dd0cf15a163a55ff289720e2d919d3aabb598b0b992f782830a143d849a1cfe3",
+    "bytes": 26023
+  },
+  "source_evidence": {
+    "head": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "run_id": 46121242674,
+    "profiles": [
+      {
+        "geometry": "1000x20",
+        "receipt_git_blob": "9dad0cc262c969d2f4b0b4350848326fde24b86d",
+        "job_id": 140909164680,
+        "status": "PASS",
+        "artifact": {
+          "id": 15253578936,
+          "name": "retained-capacity-large-source-v1-1000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+          "bytes": 27325,
+          "digest": "sha256:68354746247499efb61e4fe8cf775e7323aa40fc805c7334399791573c09aa28",
+          "created_at": "2026-11-28T07:44:28Z",
+          "expired": false
+        },
+        "phase_rows": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "restart",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "operations",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "backup",
+            "reason": null,
+            "status": "PASS"
+          }
+        ],
+        "retained_member_count": 17
+      },
+      {
+        "geometry": "10000x20",
+        "receipt_git_blob": "1afc4e4c8e362e5811989dc005c6e217adbcc47d",
+        "job_id": 140909164614,
+        "status": "PASS",
+        "artifact": {
+          "id": 15254900810,
+          "name": "retained-capacity-large-source-v1-10000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+          "bytes": 27300,
+          "digest": "sha256:dfd8033551fb7652f565070425bd5a1835790feb186f8d62a9f6d557419e7f88",
+          "created_at": "2026-11-28T07:52:26Z",
+          "expired": false
+        },
+        "phase_rows": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "restart",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "operations",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "backup",
+            "reason": null,
+            "status": "PASS"
+          }
+        ],
+        "retained_member_count": 17
+      },
+      {
+        "geometry": "50000x20",
+        "receipt_git_blob": "6bac2e22e8cf11bc901263274aafc7a0a6117b7b",
+        "job_id": 140909164761,
+        "status": "PASS",
+        "artifact": {
+          "id": 15255574442,
+          "name": "retained-capacity-large-source-v1-50000x20-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+          "bytes": 27397,
+          "digest": "sha256:5ce16f967f05cfdee3a43f33f608c6efd52cad2656dc1fa5a39051d68b47c22a",
+          "created_at": "2026-11-28T08:36:29Z",
+          "expired": false
+        },
+        "phase_rows": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "restart",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "operations",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "backup",
+            "reason": null,
+            "status": "PASS"
+          }
+        ],
+        "retained_member_count": 17
+      },
+      {
+        "geometry": "50000x40",
+        "receipt_git_blob": "86a8a14841ecfe4128c644f05171d5198c8e9f60",
+        "job_id": 140909164644,
+        "status": "PARTIAL",
+        "artifact": {
+          "id": 15256606056,
+          "name": "retained-capacity-large-source-v1-50000x40-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+          "bytes": 13479,
+          "digest": "sha256:7aa34a6b9891908fc8bec7488bb2428a604e7135be4701d45026d2079a96488f",
+          "created_at": "2026-11-28T08:50:55Z",
+          "expired": false
+        },
+        "phase_rows": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": "BudgetExceeded",
+            "status": "PARTIAL"
+          }
+        ],
+        "retained_member_count": 8
+      }
+    ]
+  },
+  "scope": "Read-only extraction of bounded numeric/JSON evidence from four exact already-closed A3 artifacts. This does not execute application code, rerun a benchmark or qualify incomplete measurements.",
+  "inverse_operations": [
+    {
+      "before": "name: Inspect exact 5b2 four-profile corpus evidence",
+      "after": "name: Inspect exact A3 four-profile corpus evidence"
+    },
+    {
+      "before": "branches: ['carr/ci-c3-capacity-evidence-5b2-*']",
+      "after": "branches: ['carr/ci-c3-capacity-evidence-a3-*']"
+    },
+    {
+      "before": "Verify four exact completed 5b2 corpus reports and print measured outcomes",
+      "after": "Verify four exact completed A3 corpus reports and print measured outcomes"
+    },
+    {
+      "before": "RUN = 46110633668",
+      "after": "RUN = 46121242674"
+    },
+    {
+      "before": "HEAD = '5b2c5a9237152d261ff541c9a2fd1fec8e75a114'",
+      "after": "HEAD = '7bfdbe2ce454bfa83bb2309ee897aaf131d3411f'"
+    },
+    {
+      "before": "TREE = 'e3813aefc765dde1f747fdfa8bf95a119b7f3686'",
+      "after": "TREE = '900774226367870b3bf1c2afd34b5e3fcc1e16ea'"
+    },
+    {
+      "operation": "Replace only the fixed ARTIFACTS JSON declaration",
+      "before": {
+        "sha256": "cdab2ff44a2f741f150a43fe72e87c883426ed1d0aa06b3570db38a27c96a142",
+        "bytes": 8886
+      },
+      "after": {
+        "sha256": "79572ebf81bda675eaf89bec36828df25e9e3ed9576185e6439e7554b1606cb7",
+        "bytes": 8886
+      },
+      "authorities": [
+        "9dad0cc262c969d2f4b0b4350848326fde24b86d",
+        "1afc4e4c8e362e5811989dc005c6e217adbcc47d",
+        "6bac2e22e8cf11bc901263274aafc7a0a6117b7b",
+        "86a8a14841ecfe4128c644f05171d5198c8e9f60"
+      ]
+    },
+    {
+      "before": "Four exact 5b2 reports:1000x20,10000x20 and50000x20 all phases PASS;50000x40 build PASS and measure PARTIAL, later phases NOT_RUN; no other-head transfer",
+      "after": "Four exact A3 reports: 1000x20, 10000x20 and 50000x20 all phases PASS; 50000x40 build PASS and measure PARTIAL, later phases NOT_RUN; no other-head transfer"
+    }
+  ],
+  "exact_reverse_reconstruction": true,
+  "unchanged": [
+    "All operational Python inspection functions and exception handling; only RUN, HEAD, TREE and fixed ARTIFACTS declarations change.",
+    "Ubuntu 24.04, pinned setup-python action and Python3.11, six-minute job budget, no checkout or product execution.",
+    "Token sent only to GitHub API; redirect handling preserves a header-free external storage request.",
+    "Fixed archive bytes/digests, closed ZIP member names and per-member bytes/digests, bounded strict JSON and numeric output.",
+    "Phase prefixes and explicit later NOT_RUN for PARTIAL; no fallback to another source/run/environment."
+  ],
+  "validation": {
+    "github_blob_readback_exact": true,
+    "all_four_closed_receipt_source_and_run_match": true,
+    "all_59_report_member_records_copied_exactly": true,
+    "python_parser_run": "NOT_RUN",
+    "workflow_runtime": "NOT_RUN",
+    "measurement_values_extracted": "NOT_RUN"
+  },
+  "qualification_limits": [
+    "The 1k × 20, 10k × 20 and 50k × 20 artifacts report all five phases PASS.",
+    "The 50k × 40 artifact reports build PASS and measure BudgetExceeded PARTIAL; remaining phases were not run.",
+    "Actual elapsed/counter/latency values await this inspector. No capacity or speed claim transfers from a successful inspector."
+  ],
+  "independent_peer": {
+    "agent": "/root/progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "record_git_blob": "86231d190c3ca7b66fa7be2bb416ee715c3ab468",
+    "scope": "Eight-line exact inverse; independently checked actual API artifact metadata and all four closed member maps and phase statuses. No execution/metric transfer."
+  },
+  "tree_preimage_git_blob": null,
+  "historical_operational_preimage_git_blob": "21774e1c6fa3c871299727949bf9fc868b4fb3e7",
+  "publication_base": {
+    "commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+    "path_absent": true,
+    "mode": "new path; inverse comparison uses the historical operational baseline only"
+  },
+  "supersedes_component_metadata": "288e4745e07491d1e951f63a62a31dbcd007ea89"
+}

@@ -1,0 +1,348 @@
+{
+  "schema": "carr-source-composition/3",
+  "label": "F immutable intermediate benchmark and Windows fixture closure",
+  "status": "SOURCE_INTEGRATED_INTERMEDIATE_NOT_RUN",
+  "created_utc": "2026-11-28 09:24:02 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "parent_tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "changes": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "before": "05bf43b062f160f973f1521d31a259a69d5f3224",
+      "sha": "7b6afc1463cb078e6aa47c37b9feeee356796844",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+      "before": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+      "sha": "906487bd1970ad69b466945461da73bd50cfa941",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_documents.py",
+      "before": "fc0d6148287026dbf6cb2640e5e4b0926a2d0ef8",
+      "sha": "ed45b92ed96f43ed6fc0a8af14c13e2ff46cbfa2",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/speech/test_voice_preferences.py",
+      "before": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+      "sha": "a5037b0d64dfc1e1c97f939bc1edffa7d6f846af",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "74c63a71377ac84bdf14a05dc0168326517a3248",
+      "sha": "ea386e787ccfeea325a4c88c22b4232b4fcb01d9",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "f02e5adbbc8bce17332caa7773a998e21160f5db",
+      "sha": "9773b0a937c98401865b8e06464998d02d7c302f",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "before": "95baf847e7a7d87da1faa66403cb855e06b5b8f7",
+      "sha": "2d9d8e88aaad47f23947f7b877a51e4777016e7f",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/REQUESTED_READER_WORKFLOWS.md",
+      "before": "ef5851da5aef09d17197b1a2c86f1f4ff8786223",
+      "sha": "4f3d7cead9415259ba1ae0efcdb5efc31b047eb6",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "a8b28e278352d23d8f156bd3153d01551d7ed2a7",
+      "sha": "2301fa86b3829ca854fea5d4b5f64711528f979b",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/ci_v3_feature_case_contracts.json",
+      "before": "d92016b4a2c924c7f0148c19292bf17a58367f90",
+      "sha": "b8f6c288b53cb14a6a5339d28d7e50843f15a438",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "38190898b7c38a1d81bec2f8d6d4005174a6c779",
+      "sha": "93eb4eab03bdb37ae09373ce1adee74632300167",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "a249e767159702bf4dc88434290d60efb1ba03dd",
+      "sha": "fbb5941c2c8fb73861f0ea28469c33717080059c",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "385e0434bf9b1e7762d091dd0fc9784b6f5fd4b0",
+      "sha": "96665bb20740c6f56fea8f8614fbee94882d39ea",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "2d83808c3a49eef7991b46502f4eec579b08e808",
+      "sha": "cebd24c6219e5d4d653bd3b54ad8cf85f3e92365",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "before": "7043f8392cf5ef3bd0bc5e95ca960dc5fdf91949",
+      "sha": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "before": "62aa65d4bab7bf95b15255a4b65276503da88fe2",
+      "sha": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "b84d83988db80f3706db9d2c4800b9a666bb321b",
+      "sha": "bbcb5500262598eb3935d36aac7c18561ea51151",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-next9-headless.yml",
+      "before": "3976b13e3d2ce888386fd9d915599d5a3d847a56",
+      "sha": "77371ce11bf8174bb7fe873f684a4d6f10045525",
+      "mode": "100644"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next70/benchmark_component.json",
+      "sha": "16eb37856c9ccf034526399773da142bad930fe6",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/benchmark_peer.json",
+      "sha": "ae3d5fd87a3c5951f2df419657362e9e3e6235b9",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/utf8_component.json",
+      "sha": "0f4abd4db28d3145cbc62c731441ae5587b9a9c1",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/utf8_peer.json",
+      "sha": "f6f2e4fc087dba723c9861afcf2227b6d9e9eed4",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/focused_component.json",
+      "sha": "a0372e256fc674a452955d7e5fc2dc0ed1de5309",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/focused_peer.json",
+      "sha": "76ec822e6ab365e1d02d8523a57c80a219ee0b26",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/gate_peer.json",
+      "sha": "ea18de5c2ba08067e0becea2b021a2265356a026",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/docs_component.json",
+      "sha": "d5ab3bb6fd70e26ac606dd3282894facc4be93fc",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/docs_peer.json",
+      "sha": "bece5a9a2c7b0351b80b2afe8cba3c242b13230a",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/headless_peer.json",
+      "sha": "8b5013ab0334343f74ddda770067ecc8e65c7d12",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/integration.json",
+      "sha": "90fbcb888f0b1403d4324e72cc8ea9d710291fa5",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/a3_metrics.json",
+      "sha": "dc7bf412220eebf67809c458a24c068bbfa419fe",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/e_syntax_actual.json",
+      "sha": "5343742c22d0df65b34bda25ae1dd4f5bc4367cb",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/next70/e_language_failure_actual.json",
+      "sha": "9295e76b00785f830810661d6de4c0f80df17331",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "independent_root_audit": {
+    "live_files": 2010,
+    "live_changes": 18,
+    "operations": 35,
+    "hunks": 39,
+    "pins": 946,
+    "gates": 62,
+    "full_map_digest": {
+      "bytes": 202968,
+      "sha256": "cf6e28ebad3dbfe65c7a2ac46fb69e3139ca1caf8010d33fbf5d9bd8d87025dc"
+    },
+    "all_preimages_verified": true,
+    "full_inverses": true,
+    "stale_changed_hashes": 0,
+    "bad_pins": 0,
+    "missing_pins": 0
+  },
+  "component_manifest": "90fbcb888f0b1403d4324e72cc8ea9d710291fa5",
+  "contracts": {
+    "benchmark": {
+      "old_cases": 24,
+      "cases": 30,
+      "old_whole_functions": 14,
+      "whole_functions": 17,
+      "full_function_inventory": [
+        "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+        "test_actual_retained_byte_corruption_refuses_reopened_measurement",
+        "test_actual_hardlink_to_retained_input_is_not_an_accepted_corpus",
+        "test_budget_rejects_same_path_directory_replacement_before_action",
+        "test_real_elapsed_deadline_and_measured_disk_refuse_more_work",
+        "test_invalid_budget_never_creates_a_library",
+        "test_explicit_cancel_before_import_leaves_no_library",
+        "test_original_output_is_never_overwritten",
+        "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+        "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+        "test_wrong_expected_application_refuses_before_any_output",
+        "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+        "test_percentiles_are_measured_nearest_rank_and_empty_is_not_zero_latency",
+        "test_configuration_replacement_after_precheck_cannot_change_measured_work",
+        "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks",
+        "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement",
+        "test_plain_keeps_original_coercion_for_non_native_inputs"
+      ],
+      "gate_required_before": {
+        "count": 24,
+        "functions": [
+          "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+          "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+          "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+          "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+          "test_configuration_replacement_after_precheck_cannot_change_measured_work"
+        ]
+      },
+      "gate_required_after": {
+        "count": 30,
+        "functions": [
+          "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+          "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+          "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+          "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+          "test_configuration_replacement_after_precheck_cannot_change_measured_work",
+          "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks",
+          "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement",
+          "test_plain_keeps_original_coercion_for_non_native_inputs"
+        ]
+      }
+    },
+    "capacity": {
+      "whole_suites": 14,
+      "old_cases": 315,
+      "cases": 321,
+      "pins": 33
+    },
+    "profile": {
+      "whole_suites": 6,
+      "old_cases": 170,
+      "cases": 176,
+      "pins": 38
+    },
+    "v3_feature_data": {
+      "schema": "carr-v3-feature-case-contracts/1",
+      "suites": 129,
+      "old_cases": 3032,
+      "cases": 3038,
+      "old_required_functions": 1429,
+      "required_functions": 1432,
+      "bytes": 107137,
+      "blob": "b8f6c288b53cb14a6a5339d28d7e50843f15a438"
+    },
+    "diagnostic": {
+      "whole_suites": 4,
+      "cases": 112,
+      "functions": 66,
+      "pins": 60,
+      "origins": 42,
+      "companions": 5,
+      "change": "Only two test pins; E already contains the exact Book 29 correction and current backup source pins."
+    },
+    "all_existing_whole_selectors_and_order_preserved": true,
+    "new_whole_selectors": [],
+    "new_companions": [],
+    "new_product_origins": []
+  },
+  "unchanged_source_inventory": {
+    "source": 493,
+    "shards": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "fastSource": 185,
+    "installedSelectors": 342,
+    "installedWholes": 339,
+    "v3Source": 223,
+    "v3Installed": 202,
+    "newCases": 109,
+    "newWholeSuites": [
+      "tests/language_qualification/test_evidence.py",
+      "tests/language_qualification/test_evidence_backup.py",
+      "tests/language_qualification/test_evidence_ui.py"
+    ]
+  },
+  "known_remaining_followup": {
+    "destination": "G final runnable composition",
+    "required": [
+      "Correct two E language fixture process sentinels without replacing or capturing subprocess.Popen type.",
+      "Update three older focused workflow whole-case counts; root candidate d5920dee179cb890b5e4f4312e5762c7111916c4.",
+      "Review evidence-bound source scheduling against actual Book/ASR/voice-package durations without changing600/900-second child bounds."
+    ],
+    "full_capacity_or_duplicate_main_run_on_F": "NOT_LAUNCHED; compose G first, then run one coherent next candidate."
+  },
+  "actual_prior_head_evidence": {
+    "A3_corpus": "All five phases at1k×20,10k×20,50k×20 PASS;2M full traversal reached1,202,800 before3600.303092 seconds. Remaining2M phases NOT_RUN. Detailed actual records retained.",
+    "E_syntax": "1142Python files31packages compiled,207native PowerShell bodies zero failures, actual493 whole-selector inventory PASS. Runtime acceptance remains independent.",
+    "E_language": "Both main and V3 actual95PASS52FAIL, installed/nativeNOT_RUN. A test replaces subprocess.Popen with a function, breaking Windows asyncio class definition; the repair is explicitly G and is not claimed in F."
+  },
+  "limits": [
+    "F has no actual runtime, performance or aggregate acceptance PASS.",
+    "All changed non-benchmark tests retain their exact original counts and assertions; original benchmark24 cases remain and six substantive cases are added.",
+    "The full2M corpus, all3600-second phases and original source/installed/native requirements remain.",
+    "No product module changes, private runtime/model assets, physical-device/NVDA qualification, merge, release or distribution are included."
+  ]
+}

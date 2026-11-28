@@ -1,0 +1,171 @@
+{
+  "schema": "carr-source-adoption/1",
+  "base_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "status": "DRAFT_NOT_RUN",
+  "scope": "Source-bound retained DOCX body/simple-table translation through existing paragraph jobs",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "before": null,
+      "after": "a3c7ae541f69095af1e928afc46735f2ac2f21c8"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "before": null,
+      "after": "edc348d04fb01ec8038e309e305492c51c46e7f5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "before": null,
+      "after": "fe0ddc1b3de52cebb034d0dd24b90ab5dd8fe220"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_documents.py",
+      "before": "ac3966d318fe0217d7e8e0468f5298d278d1b57e",
+      "after": "3c333e7a45fc8395fca1018fecde2051e6095e5a"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+      "before": "98ae774c024291d03067943ea026387efac9b5ef",
+      "after": "7d01aa55c2af91eb5530778849955fb19896306a"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "before": null,
+      "after": "6e61354bf81a650436318b6bb52d28c87f7b241c"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_layout.py",
+      "before": null,
+      "after": "9cef53f91a7caa02ddc9da860e10d03396902e8c"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout_cli.py",
+      "before": null,
+      "after": "18a1550e4c90951fe703564f87901cbcee4f5fcc"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "before": null,
+      "after": "765df364c5c020a433e9939ad9fa217f646a7cab"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "before": null,
+      "after": "22f976adfda6ec3decae85fb597aa6fc6eb34f71"
+    }
+  ],
+  "authority": {
+    "source": "Existing unchanged extract_docx, retained AssetSnapshot, ReadingDesk and read_source_range",
+    "translation": "Existing review_documents/prepare_documents/run_documents, TranslationService ledger/source/profile/approval guards",
+    "publication": "Existing research.export_file335fd4 no-clobber approved destination; no callback after successful return",
+    "process": "Fixed -I -B child with exact imported origin and request snapshot hash, existing ResourceBroker/run_process Windows Job/CleanupOwner",
+    "backup": "No new private state namespace. Existing source-bound paragraph jobs/originals and canonical full-backup restore remain authoritative",
+    "ui": "Existing DocumentTranslationController/host executor and ProgressHub. Optional accept_committed defaultsFalse; only trusted DOCX export opts in after lateCancel with current view identity still mandatory"
+  },
+  "limits": {
+    "archive_bytes": 67108864,
+    "source_characters": 2000000,
+    "nonempty_paragraphs": 64,
+    "format_profile": "carr-docx-body-layout/1",
+    "mixed_runs": "First textual run formatting only. No translated per-word emphasis reconstruction.",
+    "supported_links": "Only a single whole-paragraph hyperlink with its original relationship.",
+    "unsupported": "Canonical rejected constructs unchanged; notes, fields, drawings, track changes, hidden text, merged/nested tables, mixed hyperlink paragraphs, signed/macros/ActiveX packages. EPUB not in this slice."
+  },
+  "tests": {
+    "status": "NOT_RUN; static count only, no parser/collection/runtime claim",
+    "whole_modules": [
+      {
+        "path": "tests/assistant/test_translation_layout.py",
+        "expected_cases": 33
+      },
+      {
+        "path": "tests/ui/test_translation_layout.py",
+        "expected_cases": 22
+      },
+      {
+        "path": "tests/assistant/test_translation_layout_cli.py",
+        "expected_cases": 5
+      }
+    ],
+    "retained_required_modules": [
+      "tests/assistant/test_translation.py",
+      "tests/assistant/test_translation_local.py",
+      "tests/assistant/test_translation_documents.py",
+      "tests/ui/test_translation_documents.py",
+      "tests/assistant/test_translation_advanced_union.py",
+      "tests/assistant/test_translation_advanced_source.py"
+    ],
+    "fixture_dependencies": [
+      "tests/assistant/test_translation_local.py",
+      "tests/assistant/test_translation_layout.py",
+      "tests/ui/test_translation_documents.py"
+    ],
+    "protocol": "Existing synthetic transport only; actual owned format processes and CLI children bind imported origins. No live provider/service."
+  },
+  "native": {
+    "path": "scripts/windows_translation_layout_smoke.py",
+    "arguments": [
+      "--source-root",
+      "<checkout>/carr-library/src"
+    ],
+    "platform": "Windows installed wheel",
+    "timeout_seconds": 180,
+    "expected_source_origins": 16,
+    "essential_checks": [
+      "native Windows wx",
+      "actual canonical DOCX import",
+      "actual shared desktop executor",
+      "actual unchanged host worker",
+      "actual shared ProgressHub",
+      "actual retained catalog scope",
+      "existing document keyboard command retained",
+      "formatted workstation is a native modal",
+      "limitations visible before approval",
+      "source selection is readonly",
+      "format inspection sends no source text",
+      "review binds mapping and source with no quotation authority",
+      "default-No decision saves no job and makes no request",
+      "preparation makes no provider call",
+      "exact three reviewed paragraph requests",
+      "late Stop retains actual committed completion",
+      "completed export needs no active profile",
+      "exact committed DOCX receipt",
+      "all unselected DOCX parts preserved exactly",
+      "actual paragraph and simple-table translation",
+      "original source bytes remain unchanged",
+      "completed export retains readable native status focus",
+      "existing DOCX export never overwritten",
+      "real installed formatting children completed",
+      "format resource leases quiescent",
+      "existing document workstation route preserved",
+      "host shutdown retains no failed cleanup owner"
+    ],
+    "required_fields": {
+      "status": "PASS",
+      "native_keyboard": "PASS",
+      "format_children": "PASS",
+      "source_bound_docx": "PASS",
+      "package_preservation": "PASS",
+      "completed_offline_export": "PASS",
+      "late_stop_completion": "PASS"
+    },
+    "manual_or_external_not_run": [
+      "Word layout",
+      "real translation service/model",
+      "translation quality",
+      "NVDA"
+    ],
+    "audio_prerequisite": false
+  },
+  "root_integration": {
+    "refs_changed": false,
+    "workflow_edits": false,
+    "guide_hook": "Add docs/FORMATTED_TRANSLATION.md to the existing delivery guide inventory. No package-list change: both new modules are in existing packages.",
+    "ui_route": "Existing document workstation has one new Translate DOCX with layout button; no new desktop registry ID."
+  },
+  "peer_review": {
+    "canonical": "Requested bounded core/worker review; pending",
+    "self": "Narrow mapping digest added to worker reply and checked before export; actual forged-layout negative authored. All readbacks exact."
+  }
+}

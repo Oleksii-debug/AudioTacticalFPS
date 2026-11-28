@@ -1,0 +1,27 @@
+{
+  "schema": "resonance-shared-passive-state-composition/1",
+  "base": "46d83c6639e56c0c98b511909b29473dd413306f",
+  "book": "2ae3337b1306940fb3a10904f7bf16ac10384b13",
+  "reader": "4ab76414a557cbe4bed0c4fc255f02eacbb1e87a",
+  "recording": "886b6e9b0c53e18e66477bce4a645d8f4bccd2a2",
+  "status": "DRAFT_NOT_RUN",
+  "policy": "Book exact19 hunks first; Reader exact8 nonoverlapping hunks; Recording exact receipt hook. Overlapping state validators composed additively at same three source/copied-target checkpoints, no removal of prior namespaces or validators.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "a2e97d9fe0683dda95682480f625b5b11ad05abd"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "c906a2f1582a99ac47488966656e72a4cd171fc0"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "2726e65eef04c46febc48a7db1e859eed00e9876"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "sha": "2f6c68cb0e68d02db4f7cf8d737e61f95ad918de"
+    }
+  ]
+}

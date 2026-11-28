@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "kind": "configured-updater-corrected-native-baseline-A2",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "parent": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+  "parent_tree": "b7f4615c1e2c56d0d5d399d4216eb0c8c441bc5c",
+  "peer_manifest": "8a4c0a2bf11153c2aae1bc4571b62b2784c56864",
+  "source_changes": [
+    {
+      "path": "carr-library/src/carr_library/security/update_host.py",
+      "preimage": "b00aa7e06bfc1f68080b64bc8d85174866f16f5b",
+      "blob": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "preimage": "726ecf2e5aa158073a422bec79fbef85e088588f",
+      "blob": "cdb76726200bf12518501b9efa03b5b865cf48e7"
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "238b4bd2eccb9de8af38d934efb4392c9b982896",
+      "blob": "53514286ca6ae129f315bd83070f486ef8ec7e57"
+    },
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "preimage": "8e8ec80e2df9b6f609f5780362198e9e91864403",
+      "blob": "7a4901339a2be0b03f7897e2728fe53e8055d18e"
+    },
+    {
+      "path": "carr-library/scripts/ci_update_https_contracts.py",
+      "preimage": null,
+      "blob": "8e7c117ae4c8a2fabba46ef8c99eae09f25f40de"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "preimage": "bf8cddfab1b624017b6277ab7b0dfbedf53186b1",
+      "blob": "9c80ca9d610512978e5a7175a3f73e6022780565"
+    },
+    {
+      "path": "resonance-status/next53/configured_update_restart_tls.json",
+      "preimage": null,
+      "blob": "8a4c0a2bf11153c2aae1bc4571b62b2784c56864"
+    }
+  ],
+  "composition": {
+    "broker_preimage": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "broker_current": "f09561333d33ae68480260668ec05b617cd72213",
+    "ordinary_helper_broker_only_inverse": true,
+    "tls_helper_broker_only_inverse": true,
+    "workflow_only_helper_repin": true,
+    "all_current_source_pins_verified": {
+      "ordinary": 53,
+      "tls": 29
+    }
+  },
+  "contracts": {
+    "ordinary_source": 77,
+    "ordinary_installed": 77,
+    "tls_source": 15,
+    "tls_installed": 15,
+    "native_update": "REQUIRED_NOT_RUN",
+    "previous_A1_73_each_os": "46103093828"
+  },
+  "preserved": [
+    "real installation lease",
+    "exact installed interpreter inventory",
+    "same current library and configuration",
+    "no production publisher selected",
+    "normal Close and explicit commit ownership",
+    "unchanged native launcher"
+  ],
+  "execution": "This composition and added restart/TLS cases have not yet executed. Historical ordinary A1 and native transaction results do not establish A2 native handoff."
+}

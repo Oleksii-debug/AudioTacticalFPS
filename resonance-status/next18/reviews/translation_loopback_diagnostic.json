@@ -1,0 +1,53 @@
+{
+  "schema": "carr.reviewed-additive-source/1",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "base_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "requires_union": "a3cc9ee6c96ced8c4ebbafbd7e86a63cd2fe7d72",
+  "files": [
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "preimage": "194df6f0589c077fac26fc38751d79068c7570ea",
+      "sha": "6859d406a595e806b78de12969ad681757e34f71"
+    }
+  ],
+  "diagnostic_factory": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+  "audit": "c9c0d631dccb842d333d5e86e8c9521ca59f67ad",
+  "concrete_route": "Windows-only source/installed translation7 and providers28 explicitly pass faulthandler_timeout=120 to direct pytest.main. This is the one additional active Windows timed caller found in the bounded exact-tree audit.",
+  "change": "Reuse the same reviewed source-bound factory before pytest and exact post-test source/identity checks afterward; add its plugins after the existing Strict policy.",
+  "preserved": {
+    "source_translation_cases": 7,
+    "installed_translation_cases": 7,
+    "source_provider_cases": 28,
+    "installed_provider_cases": 28,
+    "translation_origins": 13,
+    "provider_origins": 16,
+    "timer_seconds": 120,
+    "cli_dispatch": true,
+    "pytest_arguments": true,
+    "strict_collection_counter": true,
+    "junit_counter_bijection": true,
+    "no_xfail_xpass_skip": true,
+    "firewall_policy": true,
+    "temporary_cleanup": true,
+    "workflow_deadlines": true
+  },
+  "unchanged_transferable": {
+    "path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+    "sha": "1a2dc53026622f639f2de08caac869ff067b1217",
+    "reason": "Exact route enables no timed diagnostic; default is0.0, so no speculative change was made."
+  },
+  "validation": {
+    "exact_preimage_reconstruction": true,
+    "source_readback": "exact",
+    "audit_readback": "exact",
+    "peer": {
+      "reviewer": "locate_project",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    "existing_factory_real_child_regressions": "The three actual isolated direct-pytest tests in78a59 are already mandatory in a3cc9ee; this additive patch introduces no new test count or timer implementation.",
+    "runtime": "NOT_RUN"
+  },
+  "refs_changed": false
+}

@@ -6,7 +6,8 @@ from pathlib import Path
 import threading
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes
+from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 
 
 def create_assistant_dialog(frame, *, wx_module=None):
@@ -82,7 +83,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
     for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+                             ('jobs', 'Saved &jobs'), ('templates', '&Templates...'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
@@ -124,7 +125,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                     # cancellation and the same proposal identity checks.
                     cancel.clear()
                     busy = 'voices'
-                    for key in ('preview', 'run', 'jobs'):
+                    for key in ('preview', 'run', 'jobs', 'templates'):
                         buttons[key].Disable()
                     buttons['pause'].SetLabel('Cancel voice &discovery')
                     buttons['pause'].Enable()
@@ -147,6 +148,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                             busy = None
                             buttons['preview'].Enable()
                             buttons['jobs'].Enable()
+                            buttons['templates'].Enable()
                             buttons['pause'].Disable()
                             buttons['pause'].SetLabel('&Pause')
                             try:
@@ -216,7 +218,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             profile = profiles[selected - 1]
             cancel.clear()
             busy = 'proposal'
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'run', 'jobs', 'templates'):
                 buttons[key].Disable()
             buttons['pause'].SetLabel('Cancel &proposal')
             buttons['pause'].Enable()
@@ -228,6 +230,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             busy = None
             buttons['preview'].Enable()
             buttons['jobs'].Enable()
+            buttons['templates'].Enable()
             buttons['pause'].Disable()
             buttons['pause'].SetLabel('&Pause')
             report(str(exc))
@@ -242,6 +245,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 busy = None
                 buttons['preview'].Enable()
                 buttons['jobs'].Enable()
+                buttons['templates'].Enable()
                 buttons['pause'].Disable()
                 buttons['pause'].SetLabel('&Pause')
                 if (cancel.is_set() or selected_revision != revision
@@ -278,7 +282,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             identity = job_id
             busy = 'run'
             cancel.clear()
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'run', 'jobs', 'templates'):
                 buttons[key].Disable()
             buttons['pause'].Enable()
             for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
@@ -297,7 +301,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 if not alive:
                     return
                 busy = None
-                for key in ('preview', 'run', 'jobs'):
+                for key in ('preview', 'run', 'jobs', 'templates'):
                     buttons[key].Enable()
                 buttons['pause'].Disable()
                 for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
@@ -328,6 +332,42 @@ def create_assistant_dialog(frame, *, wx_module=None):
         finally:
             choice.Destroy()
 
+    def templates(event=None):
+        if busy:
+            return
+        selected_inputs, selected_revision = input_identity(), revision
+        selected_library = frame.library
+        def current():
+            # Called on the existing worker as well as the UI thread.
+            return (alive and not getattr(frame, '_closing', False)
+                    and frame.library is selected_library and selected_library is service.app
+                    and selected_library.root == library_root and revision == selected_revision)
+        try:
+            if not current():
+                raise ValueError('The assistant library changed. Reopen it before selecting a template.')
+            from .assistant_templates import create_templates_dialog
+            reviewed = plan if plan is not None and approved_inputs == selected_inputs else None
+            picker = create_templates_dialog(dialog, service, executor=executor,
+                is_current=current, current_plan=reviewed, current_job_id=job_id, wx_module=wx)
+            try:
+                picker.ShowModal()
+                draft = picker.template_result
+            finally:
+                picker.template_handlers['close']()
+                picker.Destroy()
+            if not current() or selected_inputs != input_identity():
+                return
+            if draft is not None:
+                invalidate()
+                planning_source.SetSelection(0)
+                instruction.ChangeValue(draft)
+                report('Loaded an unapproved workflow draft. Choose current library and folders, '
+                       'then Preview the complete plan before Run.')
+                instruction.SetFocus()
+        except Exception as exc:
+            if current():
+                report(exc)
+
     def close(event=None):
         nonlocal alive
         if not alive:
@@ -348,7 +388,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'templates': templates, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -360,14 +400,17 @@ def create_assistant_dialog(frame, *, wx_module=None):
         full_backup=full_backup, instruction=instruction, planning_source=planning_source,
         review=review, buttons=buttons)
     dialog.assistant_handlers = dict(preview=preview, run=run, invalidate=invalidate,
-                                    close=close, cancel=cancel.set)
+                                    close=close, cancel=cancel.set, templates=templates)
     dialog.assistant_service = service
     return dialog
 
 
-def show_assistant(frame):
+def show_assistant(frame, *, templates=False):
     dialog = create_assistant_dialog(frame)
     try:
+        if templates:
+            import wx
+            wx.CallAfter(dialog.assistant_handlers['templates'])
         dialog.ShowModal()
     finally:
         dialog.assistant_handlers['close']()
@@ -377,7 +420,8 @@ def show_assistant(frame):
 def show_provider_settings(frame):
     import wx
     from ..assistant import ProfileStore, ProviderProfile, WindowsCredentialVault
-    from ..assistant.profiles import ADAPTERS, google_oauth_token, save_google_token
+    from ..assistant.profiles import ADAPTERS, save_google_token
+    from ..assistant.google_oauth import credential_summary
     store = ProfileStore(frame.library.root / 'state' / 'providers')
     vault = WindowsCredentialVault()
     dialog = wx.Dialog(frame, title='AI and API connections — optional', size=(760, 650),
@@ -419,7 +463,7 @@ def show_provider_settings(frame):
         endpoint = field('Official endpoint or explicitly chosen loopback service', current.endpoint if current else 'http://127.0.0.1:8080/v1')
         model = field('Model ID', current.model if current else 'local-model')
         voice = field('Voice ID; blank for language models', current.voice or '' if current else '')
-        capability = field('Capabilities: llm.chat, speech.synthesize, music.compose, sfx.generate, translation.text, translation.languages',
+        capability = field('Capabilities: llm.chat, speech.synthesize, speech.transcribe, music.compose, sfx.generate, translation.text, translation.languages',
                            ','.join(current.capabilities) if current else 'llm.chat')
         secret = field('New credential; API key for Basic v2, OAuth access token for Advanced v3; blank keeps it', password=True)
         token_expiry = field('Advanced v3 token expiry with UTC offset; for example 2026-11-27T15:30:00Z')
@@ -440,10 +484,19 @@ def show_provider_settings(frame):
                 capability.ChangeValue('translation.text,translation.languages')
                 voice.ChangeValue('')
                 local.SetValue(False)
+            elif adapter.GetStringSelection() == 'libretranslate-local':
+                endpoint.ChangeValue('http://127.0.0.1:5000')
+                model.ChangeValue('operator-declared-local-models')
+                capability.ChangeValue('translation.text,translation.languages')
+                voice.ChangeValue('')
+                local.SetValue(True)
+                secret.ChangeValue('')
             token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
+            secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
             event.Skip()
         adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
         token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
+        secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
         box.Add(local, 0, wx.ALL, 4)
         box.Add(enabled, 0, wx.ALL, 4)
         box.Add(form.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 5)
@@ -452,9 +505,13 @@ def show_provider_settings(frame):
             if form.ShowModal() != wx.ID_OK:
                 return
             identity = current.id if current else uuid4().hex
+            selected_adapter = adapter.GetStringSelection()
+            if selected_adapter == 'libretranslate-local' and secret.GetValue():
+                raise ValueError('The selected local translator cannot receive or save a credential.')
+            retained_credential = (current.credential_ref if current and selected_adapter != 'libretranslate-local' else None)
             profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
                 model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
+                retained_credential, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
             authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
             if authority_changed:
                 profile = replace(profile, credential_ref=None, enabled=False)
@@ -510,19 +567,33 @@ def show_provider_settings(frame):
             if profile.credential_ref:
                 record = vault.get(profile.id, profile.credential_ref)
                 if profile.adapter == 'google-translation-v3':
-                    from datetime import datetime, timezone
-                    _, expiry = google_oauth_token(record, profile.endpoint)
-                    expiry_notice = ' OAuth expiry: ' + datetime.fromtimestamp(expiry, timezone.utc).isoformat() + '. No automatic refresh.'
+                    expiry_notice = ' ' + credential_summary(record, profile.endpoint)
                 del record
             status.ChangeValue('Local profile and credential configuration is valid. API connectivity, pricing and access were not tested.' + expiry_notice)
         except Exception as exc:
             status.ChangeValue(str(exc))
         status.SetFocus()
 
+    def renew_google(event=None):
+        index = listing.GetSelection()
+        if not 0 <= index < len(rows):
+            return
+        try:
+            from .google_oauth import show_google_refresh
+            saved = show_google_refresh(dialog, frame, store, vault, rows[index])
+            if saved is not None:
+                refresh()
+                status.ChangeValue('Automatic Google renewal configured in Windows Credential Manager. '
+                    'No provider was contacted; later jobs still require their existing approval and budget.')
+        except Exception as exc:
+            status.ChangeValue(str(exc))
+        status.SetFocus()
+
     def exchange(event, *, importing=False):
+        library = frame.library
         picker = wx.FileDialog(dialog, 'Import non-secret profiles' if importing else 'Export non-secret profiles',
             defaultFile='provider-profiles.json', wildcard='JSON (*.json)|*.json',
-            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else (wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT))
+            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else wx.FD_SAVE)
         try:
             if picker.ShowModal() != wx.ID_OK:
                 return
@@ -534,7 +605,15 @@ def show_provider_settings(frame):
                 refresh()
                 status.ChangeValue('Profiles imported disabled. Reconnect each account to its credential.')
             else:
-                atomic_bytes(path, store.export_json().encode('utf-8'), replace=path.exists())
+                if store.directory != (library.root / 'state' / 'providers').resolve():
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                approval = confirm_export_destination(dialog, path, private_root=library.root,
+                                                       title='Replace provider profiles')
+                if approval is None:
+                    return
+                if frame.library is not library:
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                write_export(path, store.export_json(), private_root=library.root, approval=approval)
                 status.ChangeValue('Exported non-secret profiles. No API keys or vault references are included.')
         except Exception as exc:
             status.ChangeValue(str(exc))
@@ -548,6 +627,10 @@ def show_provider_settings(frame):
         button.Bind(wx.EVT_BUTTON, handler)
         row.Add(button, 0, wx.ALL, 3)
     layout.Add(row)
+    renewal = wx.Button(dialog, label='Configure Google automatic token &renewal...')
+    renewal.SetName('Configure Google automatic token renewal')
+    renewal.Bind(wx.EVT_BUTTON, renew_google)
+    layout.Add(renewal, 0, wx.ALL, 5)
     layout.Add(dialog.CreateButtonSizer(wx.CLOSE), 0, wx.ALL, 5)
     dialog.SetEscapeId(wx.ID_CLOSE)
     dialog.Bind(wx.EVT_BUTTON, lambda event: dialog.EndModal(wx.ID_CLOSE), id=wx.ID_CLOSE)
@@ -566,6 +649,7 @@ def install_assistant_actions(frame):
     menu = wx.Menu()
     for identity, title, shortcut, handler in [
             ('assistant.local', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
+            ('assistant.templates', 'Saved workflow templates...', '', lambda e: show_assistant(frame, templates=True)),
             ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)

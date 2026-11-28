@@ -1,0 +1,44 @@
+{
+  "schema": "carr-recorded-epub-timeout-visibility/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "paths": [
+    {
+      "path": "carr-library/scripts/windows_epub_reading_smoke.py",
+      "preimage": "9f528b70d07b6c3021d42f21ad95e67c39647972",
+      "blob": "86407c2199e99b3a24338098e552477dd961f4d0"
+    }
+  ],
+  "actual_basis": {
+    "run_id": 46097288580,
+    "job_id": 140831855765,
+    "head": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+    "evidence": "d8e20a5c1467c19cdbd332069768d7f3948c4a5d",
+    "phase": "recorded-epub",
+    "failure": "After actual Play key down/up, state2 times out; old log has no underlying player/status diagnostic."
+  },
+  "change": "Only failure-deadline observation is added before the unchanged TimeoutError: bounded current status4096, last_error2048, player state128, current host/reader/overlay busy flags, transport activity and held native keys. Observation exceptions are caught so the original timeout remains authoritative.",
+  "preserved": {
+    "literal_check_sites": 25,
+    "all_original_check_literals": true,
+    "all_original_playback_and_ownership_logic": true,
+    "scenario_seconds": 120,
+    "cleanup_watchdog_seconds": 180,
+    "no_product_changes": true,
+    "no_gate_count_changes": true,
+    "no_ref_mutations": true
+  },
+  "inverse": {
+    "before": "                if monotonic() >= deadline:\n                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))\n",
+    "after": "                if monotonic() >= deadline:\n                    try:\n                        print('DIAGNOSTIC: recorded EPUB timeout ' + json.dumps({\n                            'stage': stage,\n                            'host_working': bool(frame.working),\n                            'reader_busy': bool(reader.busy),\n                            'overlay_busy': None if overlay is None else bool(overlay.busy),\n                            'player_state': None if overlay is None else str(overlay.player.state)[:128],\n                            'transport_active': None if overlay is None or overlay.transport is None\n                                else bool(overlay.transport.active),\n                            'status': None if overlay is None else overlay.status.GetValue()[:4096],\n                            'last_error': None if overlay is None or overlay._last_error is None\n                                else (type(overlay._last_error).__name__ + ': ' + str(overlay._last_error))[:2048],\n                            'key_pending': bool(key_pending),\n                            'pressed': sorted(pressed),\n                        }, ensure_ascii=True, sort_keys=True), flush=True)\n                    except Exception as observation_error:\n                        print('DIAGNOSTIC: recorded EPUB timeout observation unavailable: '\n                              + type(observation_error).__name__, flush=True)\n                    raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))\n"
+  },
+  "verification": {
+    "exact_readback": "PASS",
+    "original_source_reconstruction": "PASS",
+    "progress_peer": "ACCEPTED_STATIC_NOT_RUN",
+    "native_runtime": "NOT_RUN",
+    "causal_attribution": "UNKNOWN until actual status is observed",
+    "physical_output": "Required; no waiver",
+    "source_tests": "No new acceptance logic or mirrored test added for failure-only diagnostics."
+  }
+}

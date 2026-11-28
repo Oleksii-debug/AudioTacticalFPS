@@ -1,0 +1,57 @@
+{
+  "schema": "resonance-capacity-source-installed-and-native-evidence/1",
+  "source_commit": "2f0c1f51261e8f037b53d3f394dad3f0d0c15242",
+  "source_tree": "42e5a97757a71d547dc13006b90218f13b660f38",
+  "run_id": 46068132683,
+  "status": "SOURCE_INSTALLED_PASS_NATIVE_FAIL",
+  "linux": {
+    "job": 140738313889,
+    "source_passed": 178,
+    "installed_passed": 178,
+    "failed": 0,
+    "skipped": 0,
+    "actual_summary": {
+      "all_children_reaped": true,
+      "inputs_unchanged": true,
+      "installed_passed": 178,
+      "source_commit": "2f0c1f51261e8f037b53d3f394dad3f0d0c15242",
+      "source_passed": 178,
+      "source_tree": "42e5a97757a71d547dc13006b90218f13b660f38",
+      "status": "PASS"
+    },
+    "artifact": {
+      "id": 15231489217,
+      "bytes": 44502,
+      "sha256": "9a9cd2fe0c2e09e81f323fedae476289db0aff355843335a313b663a9af5dcd9"
+    }
+  },
+  "windows": {
+    "job": 140738314254,
+    "source_passed": 178,
+    "installed_passed": 178,
+    "failed": 0,
+    "skipped": 0,
+    "native": {
+      "status": "FAIL",
+      "required_checks": 44,
+      "required_origins": 12,
+      "actual_completed_checks": 14,
+      "complete_behavior_qualification": "NOT_ESTABLISHED",
+      "failure": "Controlled own native question was not found within5 seconds; MessageBox remained active and 180-second cleanup-inclusive watchdog exited the process.",
+      "frames": [
+        "windows_backup_capacity_smoke.py:198 inject TimeoutError",
+        "windows_backup_capacity_smoke.py:214 inner_opened wx.MessageBox",
+        "windows_backup_capacity_smoke.py:596 watchdog"
+      ],
+      "cause": "UNKNOWN: current owned_question drops either a missing title HWND or a missing direct IDNO child; exact owned-window inventory is required before choosing a correction."
+    },
+    "artifact": {
+      "id": 15232571998,
+      "bytes": 48982,
+      "sha256": "63ab201b535af8c03d5c2859ccb7ecf1d919b23a77b5022aece579033e6df6ac"
+    }
+  },
+  "inference": "The exact previously failing complete capacity CLI and new real hot-rollback case now pass in both source and installed runs on both platforms. Native window qualification remains failed and is not inferred from these contracts.",
+  "publication": "Public synthetic bounded text/JSON evidence only; no audio, binaries, models or private inputs.",
+  "no_result_transfer": true
+}

@@ -60,3 +60,36 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
     check_cancelled(cancelled)
     return NarrationSource(''.join(pieces), desk.title, desk.workspace, desk.edition,
                            desk.revision, tuple(positions), tuple(warnings), desk.identity.asset_sha256)
+
+
+def attest_saved_narration_copy(library, document, workspace, *, topic=None,
+                                guard=lambda: None, cancelled=lambda: False):
+    """Resolve a portable copy against an explicitly authorized current scope.
+
+    The anchor is inert input, never a grant to open its claimed workspace.
+    Capture-time verification is historical; this check does not authorize a
+    quotation or change any part of the saved reading copy.
+    """
+    from ..reader.reading_desk import ReadingDesk
+
+    check_cancelled(cancelled)
+    guard()
+    anchor = document.source_anchor
+    if library is None or anchor is None or workspace != anchor['workspace']:
+        raise ValueError('Open the saved narration source in its authorized library workspace.')
+    desk = ReadingDesk(library, workspace, anchor['edition'], topic=topic,
+                       revision=anchor['revision'], cancelled=cancelled)
+    positions = anchor['positions']
+    fresh = read_source_range(desk, positions[0]['ordinal'], positions[-1]['ordinal'],
+                              guard=guard, cancelled=cancelled).reading_document()
+    actual = fresh.source_anchor
+    if (fresh.source_text != document.source_text
+            or any(actual[key] != anchor[key] for key in anchor if key != 'positions')
+            or len(actual['positions']) != len(positions)):
+        raise ValueError('The saved narration source changed.')
+    for expected, found in zip(positions, actual['positions']):
+        if any(found[key] != expected[key] for key in expected
+               if key != 'text_verified_at_capture'):
+            raise ValueError('The saved narration source position changed.')
+    guard()
+    check_cancelled(cancelled)

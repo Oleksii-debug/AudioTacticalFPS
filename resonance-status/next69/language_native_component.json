@@ -1,0 +1,135 @@
+{
+  "schema": "carr-reviewed-component-v1",
+  "component": "Native passive language evidence Windows keyboard, worker, store and backup workflow",
+  "base": {
+    "head": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+    "source_component": "dd961c9cd7d78d6946d30b1cc5e704959747a25e"
+  },
+  "paths": [
+    {
+      "path": "carr-library/scripts/windows_language_evidence_smoke.py",
+      "before": null,
+      "after": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+      "bytes_ascii": true,
+      "characters": 54442
+    }
+  ],
+  "native_contract_blob": "ea20c8ebc68963b518567e2e54fb814a1cc4492a",
+  "native": {
+    "required_unique_checks": 75,
+    "module_origins": 14,
+    "required_default_no_occurrences": 3,
+    "watchdog_seconds": 300,
+    "external_seconds": 330,
+    "argv": [
+      "--installed",
+      "--report",
+      "PATH.json"
+    ],
+    "source_mode": "omit --installed",
+    "genuine_controls": [
+      "registered existing voice.languages menu and actual wx modal",
+      "native Ctrl+Tab, choice, text, checkbox and button keyboard events",
+      "owned nested TaskDialog Yes and initial No using actual descendant HWNDs",
+      "actual current EvidenceStore token/digest and exact review history",
+      "existing DesktopFrame shared worker for file/report and full/state backup routes",
+      "actual full-library manifest SHA validation and restored passive/dormant status",
+      "existing library-folder action, current-scope reload and explicit restored re-review",
+      "actual external Destroy events plus native HWND absence before original loop exit",
+      "actual original executor drain and zero remaining resource leases"
+    ],
+    "fixtures": [
+      "Exact fixed source729443 generates synthetic observations.",
+      "Only explicit file/directory picker return paths are supplied.",
+      "Dialog class capture and job observer forward all actual operations, results and errors.",
+      "No player, review persistence, backup implementation, worker, consent question or review control is substituted."
+    ]
+  },
+  "source_bindings": {
+    "ui": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+    "ui_tests": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+    "evidence_core": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "fixture": "72944369f7304650e8742f97372d41415e3e35da",
+    "current_frame": "85c0991f744bd521ca247a0e15da93aa585ea30d"
+  },
+  "inventory": {
+    "new_ordinary_wholes": 0,
+    "existing_ordinary_case_or_function_changes": 0,
+    "core_component_new_wholes": 3,
+    "core_component_new_cases": 109,
+    "focused_source_wholes": 5,
+    "focused_source_cases": 147,
+    "focused_installed_wholes": 5,
+    "focused_installed_cases": 147,
+    "native_source_test_companion_requirement": "The fixed tests/language_qualification/evidence_fixture.py must be present and independently pinned; native self-checks its Git blob before import and exact bytes afterward."
+  },
+  "review_history": {
+    "first_draft": "893ac08fd0112e3e790d97210dc66c06b38e7c7d",
+    "final_native": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "exact_delta": [
+      {
+        "old_line": 719,
+        "new_line": 719,
+        "removed": [],
+        "added": [
+          "            host_executor = frame.executor",
+          "            host_handle, host_id = remember_window(frame, 'host')"
+        ]
+      },
+      {
+        "old_line": 721,
+        "new_line": 723,
+        "removed": [
+          "            host_executor = frame.executor",
+          "            host_handle, host_id = remember_window(frame, 'host')"
+        ],
+        "added": []
+      },
+      {
+        "old_line": 785,
+        "new_line": 785,
+        "removed": [],
+        "added": [
+          "                select_observation(second)"
+        ]
+      },
+      {
+        "old_line": 793,
+        "new_line": 794,
+        "removed": [],
+        "added": [
+          "                select_observation(second)"
+        ]
+      }
+    ],
+    "changes": [
+      "Capture the real host executor/HWND/ID immediately after construction before Show or SetTopWindow can fail.",
+      "Reselect the exact second observation after each native refresh before reject and revoke."
+    ],
+    "wx_lifetime_peer": "12ea016d9a6ce0187c58d021e519e8f9b259ef25",
+    "evidence_backup_peer": "297c4858fc053fad7850de39fd7206a276377d08"
+  },
+  "inverse": "The native path is new and removal reconstructs the prior tree. The reviewed draft successor reverses by moving the two exact host-capture lines back after Show/SetTopWindow and removing the two explicit second-observation reselection lines; all other bytes match893ac.",
+  "validation_plan": [
+    "Run existing Python source syntax validation against the final composed source.",
+    "Execute all five strict147 source suites and all five strict147 isolated installed suites using unchanged whole600 boundaries.",
+    "Build/install and verify exact wheel/source before native --installed; execute the real Windows script within its300s owned-cleanup watchdog and330s parent.",
+    "Require75unique labels, default-No exactly3,14 exact current origins, all declared report fields, empty errors and exit0; recheck source/installed/fixture identities afterward."
+  ],
+  "status": {
+    "source_peer": "ACCEPTED_STATIC_NOT_RUN",
+    "python_parser": "NOT_RUN",
+    "pytest": "NOT_RUN",
+    "native_windows": "NOT_RUN",
+    "language_quality": "NOT_RUN",
+    "authenticated_reviewer_identity": "NOT_RUN",
+    "physical_devices": "NOT_RUN",
+    "acoustic_inference": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "native_file_pickers": "NOT_RUN"
+  },
+  "no_refs_changed": true,
+  "metadata_predecessor": "bca985a0810d03752d032230cfe344e0de75577c",
+  "metadata_correction": "The native script is entirely ASCII; source bytes, contract, peers and all counts are unchanged."
+}

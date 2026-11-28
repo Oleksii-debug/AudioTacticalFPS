@@ -1,0 +1,78 @@
+{
+  "schema": "resonance-book-native-taskdialog-correction/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "base_tree": "5e6fc0103905093513421653b3fc388e0c87684c",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "paths": [
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+      "sha": "fe9bf5de5be698116107f89fd2ea1c872853bcb3"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "f13660682c7174720821e684a5af7e936f79656a",
+      "sha": "21a905ce7877c947a016cbc71dd154d5bc418ffe",
+      "delta": "Only the native script source pin"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "3141764b3c0ea1b8c76c4a3d0396c1e12022340d",
+      "sha": "e8463a2a39b2b088fd2a06ab9bf8212b11c60afb",
+      "delta": "Only the helper source pin"
+    }
+  ],
+  "actual_cause": {
+    "classification": "Native test control discovery; no application behavior change",
+    "inventory_run": 46071950490,
+    "inventory_job": 140750744213,
+    "inventory_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071950490/job/140750744213",
+    "inventory_head": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+    "artifact": {
+      "id": 15234330040,
+      "bytes": 2010,
+      "sha256": "820973340426c401ab44cba5881323af642b50bced4d06ea102f1a6560f70673"
+    },
+    "findings": "Actual wx4.2.4/wxWidgets3.2.8 CPython3.11.9 native TaskDialog has nested Button '&Yes' and '&No' with control ID0. Direct GetDlgItem(6/7/5103/5104) returns zero. Inventory alone does not prove focus or answer behavior.",
+    "evidence_owner": "Root retrieved actual inventory; this change is reviewed against that concrete result."
+  },
+  "implementation": [
+    "Existing exact title, current process, known live owner chain and expected direct parent checks remain.",
+    "Inline HWND-typed EnumChildWindows enumerates at most128 descendants; requires same process, visible/enabled exact Button and explicit Yes/&Yes or No/&No caption; ambiguous matches refuse.",
+    "Default-No proof compares the actual focused HWND without setting focus to No.",
+    "Normal refusal activates the already observed default No using real Space down/up; explicit Yes still uses actual focus and Space down/up.",
+    "Owned failure cleanup activates the verified question then queues BM_CLICK to the actual No button. Queue admission alone is not success; existing wx.NO and surviving modal-parent assertions prove the result.",
+    "No EndDialog, guessed command ID, model/backend or application changes."
+  ],
+  "inline_pattern": "02d845a0a047712dae8348582a04de76a0771beb",
+  "primary_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/controls/bm-click",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumchildwindows"
+  ],
+  "unchanged_contracts": {
+    "source_whole_modules": 6,
+    "source_cases": 98,
+    "isolated_installed_cases": 98,
+    "required_native_checks": 77,
+    "installed_native_origins": 18,
+    "all_original_literal_check_sites": 54,
+    "all_original_literal_check_sites_preserved": true,
+    "watchdog_seconds": 300,
+    "parent_native_deadline_seconds": 330,
+    "old_native_report_fields_preserved": true,
+    "old_product_files_preserved": true,
+    "source_child_seconds": 600,
+    "source_aggregate_seconds": 2000
+  },
+  "review": {
+    "progress_completion": "ACCEPTED_STATIC_NOT_RUN for exact fe9bf5de over f7a042; primary API contract independently checked",
+    "root": "Actual inventory and adaptation scope authorized; final exact source handoff for review"
+  },
+  "validation": {
+    "source_compile": "NOT_RUN",
+    "new_native": "NOT_RUN; actual rerun required",
+    "current_ddd_book": "Source/installed/native compound step still running; no result transfer"
+  },
+  "refs_changed": false
+}

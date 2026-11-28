@@ -1,0 +1,141 @@
+{
+  "schema": "resonance-owner-candidate-archive-assembly/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "baseline_source": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "gate_preimage": "7e587dc231014110b37ce4f14662fcf7c6339dc8",
+  "authorization": "Root explicitly authorized unchanged create_delivery on the existing fresh no-audio sibling after owner_candidate_inputs success; complete binary public distribution is withheld.",
+  "files": [
+    {
+      "label": "script",
+      "path": "carr-library/scripts/assemble_owner_candidate_archives.py",
+      "preimage": null,
+      "sha": "630b0e4ca1fecaf998dcea5e8b5fe1c2accb50c5",
+      "characters": 20704,
+      "reviewed_preimage": "8475db2ef8ecd1067e20ba08d04d6a462dbefbb1"
+    },
+    {
+      "label": "tests",
+      "path": "carr-library/tests/packaging/test_owner_candidate_archives.py",
+      "preimage": null,
+      "sha": "27ec046c8e536299bbe2a0c42a18b8a29e7c15c1",
+      "characters": 13115,
+      "reviewed_preimage": "8196a876ec06b520b174eac704b775e24c9a8fce"
+    },
+    {
+      "label": "retainer",
+      "path": "carr-library/scripts/retain_owner_candidate_inputs.py",
+      "preimage": "81601971fcdf7aa92336899bb98a0754fc760285",
+      "sha": "939d948e506bf851c8a284aad30f7f6e5057ee88",
+      "characters": 10838
+    },
+    {
+      "label": "main",
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "6b6882f510fa8db15bfbfe4e44b1839dbdc803f7",
+      "sha": "7bf829f6ecced363473a3392bd9090f1e6fc6100",
+      "characters": 401156,
+      "note": "Cumulative Book/capacity, owner assembly, accepted portable legacy201 and ASR fixture2. Coherent file map below is authoritative."
+    }
+  ],
+  "unchanged_implementations": {
+    "carr-library/packaging/create_delivery.py": "b9041dd6a09156458d4991a7a8635954f516d21f",
+    "carr-library/packaging/install_windows.py": "e4c30a7600c7afdb6771d9ae58b1d16558df0eba"
+  },
+  "invocation": [
+    "<CARR_CI_TRANSFER_BUNDLE>/.venv/Scripts/python.exe",
+    "-I",
+    "-B",
+    "-X",
+    "utf8",
+    "scripts/assemble_owner_candidate_archives.py",
+    "--bundle",
+    "<CARR_CI_TRANSFER_BUNDLE>",
+    "--inputs",
+    "<RUNNER_TEMP>/carr-owner-candidate-inputs",
+    "--output",
+    "<RUNNER_TEMP>/carr-owner-candidate-archives",
+    "--evidence",
+    "<checkout>/carr-library/ci-results/owner-candidate-assembly",
+    "--source-commit",
+    "<event HEAD>",
+    "--source-tree",
+    "<HEAD tree>",
+    "--full-outcome",
+    "failure"
+  ],
+  "predicate": "!cancelled() && steps.owner_candidate_inputs.outcome == 'success' && steps.complete_bundle.outcome == 'failure'",
+  "boundaries": {
+    "full_failed_verdict_preserved": true,
+    "private_parent_required": false,
+    "private_parent_accessed": false,
+    "no_audio_runtime": true,
+    "no_node": true,
+    "complete_binary_archives_uploaded": false,
+    "release": "NOT_APPROVED",
+    "status": "OWNER_CANDIDATE_UNQUALIFIED",
+    "binary_handoff": "NOT_PERFORMED",
+    "ephemeral_binary_output": "RUNNER_TEMP only, not a public artifact path",
+    "public_evidence": [
+      "delivery-verification.json",
+      "owner-candidate-assembly.json"
+    ],
+    "package_native_and_wheel_proof": "Accepted same-run input receipt is linked again to unchanged original seal, application/native hashes and all56 original wheel records; actual archive union is verified again after creation.",
+    "rights": "Every sealed notice/license stays in the exact application archive; exact OCR corresponding-source TAR remains in the required source companion.",
+    "old_transferability_size_limit": "Unchanged create_delivery MAX_TOTAL=2 GiB-1; no bypass.",
+    "execution": "NOT_RUN"
+  },
+  "validation": {
+    "new_whole_source": "carr-library/tests/packaging/test_owner_candidate_archives.py",
+    "static_expected_cases": 22,
+    "functions": [
+      "test_actual_two_archive_assembly_keeps_public_evidence_binary_free_and_unqualified",
+      "test_unaccepted_or_changed_inputs_refuse_before_archive_creation",
+      "test_second_actual_archive_verification_rejects_late_modified_output",
+      "test_changed_original_seal_after_archive_commit_never_publishes_acceptance",
+      "test_public_evidence_cannot_be_nested_in_complete_archive_output",
+      "test_missing_application_source_cannot_be_resealed_as_null_acceptance",
+      "test_noncanonical_required_digest_refuses_before_archive_creation",
+      "test_application_wheel_must_be_a_plain_basename_before_archive_creation"
+    ],
+    "source_only_reason": "CI packaging script, not an installed application module. Existing whole delivery archive/contracts suites remain required.",
+    "fixture_companion": "carr-library/tests/packaging/test_delivery_archive.py",
+    "actual_checks": "Real synthetic bundle/archive writer, trusted installer verifier, second archive validation, initial refusal, late archive mutation, changed original seal and closed public receipts.",
+    "parser": "NOT_RUN",
+    "unit_tests": "NOT_RUN",
+    "actual_archives": "NOT_RUN"
+  },
+  "audit": {
+    "paths_removed": [],
+    "test_names_removed": [],
+    "main_bytes": 399751,
+    "archive_upload_added": false,
+    "ci_only_source_cases": 12,
+    "retainer_explanatory_string_only": true,
+    "complete_delivery_implementation_unchanged": true
+  },
+  "review": {
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "agent": "/root/locate_project",
+    "scope": "All assembly/rights/seal/current-run/public-evidence boundaries accepted after required-member/digest/basename successor. No runtime claim."
+  },
+  "refs_changed": false,
+  "supersedes": "09f8017982c5df9e6c15f3ea8913d11dd572a838",
+  "required_binding_correction": {
+    "helper": "630b0e4ca1fecaf998dcea5e8b5fe1c2accb50c5",
+    "test": "27ec046c8e536299bbe2a0c42a18b8a29e7c15c1",
+    "old_cases": 12,
+    "new_cases": 22,
+    "all_old_test_bytes_preserved": true,
+    "required_member_presence": true,
+    "canonical_sha256_before_equality": true,
+    "plain_application_wheel_basename": true,
+    "actual_resealed_missing_source_negative": true
+  },
+  "gate_followup": {
+    "main": "7bf829f6ecced363473a3392bd9090f1e6fc6100",
+    "preimage": "0411b8dc7a7428388ea333318563e280bed8c57e",
+    "source_count_only": "owner12->22; ASR2 independently additive",
+    "v3": "9c592fbc2a7c936838614e5ea11253f918f23d56"
+  }
+}

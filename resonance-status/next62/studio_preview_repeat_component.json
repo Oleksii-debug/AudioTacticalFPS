@@ -1,0 +1,121 @@
+{
+  "schema": "carr.reviewed-change-manifest/1",
+  "recorded_utc": "2026-11-28T05:37:59.183Z",
+  "component": "Studio current-preview A-B loop controls",
+  "base_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "preimage": "d926e06b20694c0e586a102bd0ec25747faea444",
+      "blob": "1bfce8b205dabfa31c94173ed2c9c40d80275c5c"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_preview_loop.py",
+      "preimage": null,
+      "blob": "fc5e0b65d7bb08164fa9b3e47df6d8851dfe6074"
+    }
+  ],
+  "suite": {
+    "path": "tests/studio/test_clip_preview_loop.py",
+    "whole_cases": 27,
+    "test_functions": 12,
+    "functions": {
+      "test_explicit_repeat_reuses_exact_preview_and_real_player_state": 1,
+      "test_repeat_waits_for_real_quiet_hold_and_coalesces_timer_notifications": 1,
+      "test_stale_repeat_releases_quiet_hold_without_restarting_owned_preview": 5,
+      "test_modal_repeat_review_cannot_follow_replaced_library": 3,
+      "test_invalid_repeat_boundaries_do_not_change_playback_or_acquire_quiet_hold": 6,
+      "test_clear_repeat_on_stopped_preview_does_not_start_audio": 1,
+      "test_changed_pcm_is_refused_before_real_player_repeat_and_native_owner_closes": 1,
+      "test_unconfirmed_native_close_retains_preview_until_real_release": 1,
+      "test_timer_failure_never_bypasses_owned_native_stop_or_deletes_live_preview": 2,
+      "test_cancelled_repeat_review_keeps_current_playback_and_saved_project": 3,
+      "test_current_preview_generation_binds_saved_asset_without_automatic_repeat": 2,
+      "test_explicit_repeat_play_handles_eof_during_range_review_without_rerender": 1
+    },
+    "companions": [],
+    "existing_suites_unchanged": true,
+    "required_origins": [
+      "carr_library.ui.studio_clips",
+      "carr_library.speech.player",
+      "carr_library.speech.progress_speech",
+      "carr_library.studio.project",
+      "carr_library.studio.clips"
+    ]
+  },
+  "interfaces": {
+    "wave_player": "6f758c6073e239f771a7b8627713aca8bff51d7f",
+    "reader_controls": "a96a5b2662cf41b5ae04f017264a59e02f4c6f6a",
+    "quiet_admission": "40fc50742fb2c50a1bfb2920e25af692017c0aaf"
+  },
+  "changes": [
+    "One explicit keyboard-addressable Preview repeat action: Play A-B range or turn repeat off.",
+    "Exact rendered path/player/immutable selected project/scene/clip plus playback generation are rechecked before every deferred action.",
+    "Dialog-owned100ms timer only polls; at most one repeat goes through the existing finite quiet/progress hold.",
+    "Play A-B uses existing set_ab_loop and play_current, including natural EOF during modal range selection; stopped Clear remains silent.",
+    "Stop invalidates generation/binding/pending repeat before timer and native release; unconfirmed timer/native cleanup retains the preview and blocks Close.",
+    "No additional renderer, executor, project schema or persisted loop setting; all prior controls/functions preserved."
+  ],
+  "limits": {
+    "whole_test_deadline_seconds": 600,
+    "quiet_timeout_seconds": 3,
+    "minimum_ab_seconds": 0.05,
+    "timer_ms": 100,
+    "physical_audio": "NOT_RUN",
+    "native_ui": "PENDING_ADDITIVE_PROBE",
+    "playback_quality": "NOT_RUN"
+  },
+  "fixture_boundary": "Real PCM files, production ClipDialog methods from actual source or installed package, actual WavePlayer state/identity/poll/repeat, and actual play_when_quiet. Only wx delivery, final MCI calls and render-result fixture are controlled.",
+  "peer": {
+    "agent": "/root/progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "source": "1bfce8b205dabfa31c94173ed2c9c40d80275c5c",
+    "tests": "fc5e0b65d7bb08164fa9b3e47df6d8851dfe6074",
+    "closed_finding": "Explicit Play handles EOF during the A/B modal review."
+  },
+  "inverse": {
+    "exact_preimage_reconstructed": true,
+    "ordered_exact_replacements": [
+      {
+        "old": "        self.previews = []\n",
+        "new": "        self.previews = []\n        self._preview_binding = None\n        self._preview_repeat_timer = None\n        self._preview_repeat_pending = None\n"
+      },
+      {
+        "old": "             ('duration', 'Set scene &duration', self.duration), ('preview', '&Preview saved clip', self.preview)),",
+        "new": "             ('duration', 'Set scene &duration', self.duration), ('preview', '&Preview saved clip', self.preview),\n             ('preview_repeat', 'Preview repeat...', self.preview_repeat)),"
+      },
+      {
+        "old": "                          or (name != 'cancel' and available))\n",
+        "new": "                          or (name != 'cancel' and available))\n        self.buttons['preview_repeat'].Enable(available and self._preview_binding is not None)\n"
+      },
+      {
+        "old": "                        self.player.play(path)\n",
+        "new": "                        self.player.play(path)\n                        self._preview_binding = (self.player, self.player.path, project, scene.id, cue.id)\n                        self._enable()\n"
+      },
+      {
+        "old": "    def stop(self, event=None):\n",
+        "new": "    def _preview_current(self, binding, generation):\n        if (binding is None or self.destroyed or self._cancelled() or self.pending\n                or self.frame.working or generation != self.playback_generation\n                or getattr(self, '_preview_binding', None) is not binding\n                or self.player is not binding[0] or self.player.path != binding[1]\n                or self.project is not binding[2]):\n            return False\n        try:\n            return self._scene().id == binding[3] and self._clip().id == binding[4]\n        except (ValueError, RuntimeError):\n            return False\n\n    def _stop_preview_repeat_timer(self):\n        self._preview_repeat_pending = None\n        timer = getattr(self, '_preview_repeat_timer', None)\n        if timer is not None:\n            timer.Stop()\n\n    def _start_preview_repeat_timer(self):\n        if getattr(self, '_preview_repeat_timer', None) is None:\n            self._preview_repeat_timer = wx.Timer(self)\n            self.Bind(wx.EVT_TIMER, self._poll_preview_repeat, self._preview_repeat_timer)\n        if not self._preview_repeat_timer.Start(100):\n            raise RuntimeError('The clip preview timer could not start. Repeat remains off.')\n\n    def _preview_repeat_failed(self, error, generation):\n        if generation != self.playback_generation:\n            return\n        quiet = self.stop()\n        if not self.closed and self._scope_current():\n            self.message('Preview repeat stopped: ' + str(error)\n                         + ('' if quiet else ' Playback cleanup is still pending. Retry Stop playback.'))\n\n    def _admit_preview_repeat(self, binding, generation, action):\n        from ..speech.progress_speech import play_when_quiet\n        self._preview_repeat_pending = generation\n\n        def current():\n            return self._preview_current(binding, generation)\n\n        def perform():\n            try:\n                if current():\n                    action()\n            finally:\n                if self._preview_repeat_pending == generation:\n                    self._preview_repeat_pending = None\n\n        try:\n            play_when_quiet((getattr(self.frame, 'progress_panel', None),), perform,\n                schedule=wx.CallLater, alive=current,\n                on_error=lambda error: self._preview_repeat_failed(error, generation))\n        except Exception as error:\n            self._preview_repeat_failed(error, generation)\n\n    def _poll_preview_repeat(self, event=None):\n        if self.closed or self.destroyed:\n            return\n        binding = getattr(self, '_preview_binding', None)\n        generation = self.playback_generation\n        try:\n            if not self._preview_current(binding, generation):\n                self.stop()\n                return\n            outcome = self.player.poll()\n            if outcome == 'repeat-pending' and self._preview_repeat_pending is None:\n                self._admit_preview_repeat(binding, generation, self.player.repeat_if_ready)\n            elif outcome == 'sleep':\n                self.stop()\n            elif self.player.ab_loop is None and self._preview_repeat_pending is None:\n                self._stop_preview_repeat_timer()\n        except Exception as error:\n            self._preview_repeat_failed(error, generation)\n\n    def _apply_preview_repeat(self, binding, generation, first=None, last=None):\n        if not self._preview_current(binding, generation):\n            return False\n        clear = first is None and last is None\n        if not clear:\n            if (any(type(value) not in (float, int) for value in (first, last))\n                    or not 0 <= first < last <= self.player.duration_seconds\n                    or last - first + 1e-9 < .05):\n                raise ValueError('Choose A and B inside this preview, at least 0.05 seconds apart.')\n            first, last = float(first), float(last)\n        # Supersede a pending repeat before a modal or quiet callback can start it.\n        self.playback_generation += 1\n        generation = self.playback_generation\n\n        def apply():\n            if clear:\n                self.player.clear_ab_loop()\n                self._stop_preview_repeat_timer()\n                self.message('Preview repeat is off. The saved project is unchanged.')\n            else:\n                self.player.set_ab_loop(first, last)\n                self.message(f'Preview repeats from {first:g} to {last:g} seconds. '\n                             'Stop playback ends the repeat. The saved project is unchanged.')\n\n        try:\n            self._start_preview_repeat_timer()\n            self._admit_preview_repeat(binding, generation, apply)\n        except Exception as error:\n            self._preview_repeat_failed(error, generation)\n            return False\n        return True\n\n    def preview_repeat(self, event=None):\n        binding = getattr(self, '_preview_binding', None)\n        generation = self.playback_generation\n        if not self._preview_current(binding, generation):\n            if not self.closed and self._scope_current():\n                self.message('Preview the selected saved clip before choosing A–B repeat.')\n            return False\n        try:\n            chooser = wx.SingleChoiceDialog(self,\n                'Repeat uses only the current rendered preview. It never changes the saved clip.',\n                'Clip preview repeat', ('Set A–B repeat...', 'Turn preview repeat off'))\n            try:\n                if chooser.ShowModal() != wx.ID_OK:\n                    return False\n                choice = chooser.GetSelection()\n            finally:\n                chooser.Destroy()\n            if not self._preview_current(binding, generation):\n                return False\n            if choice == 1:\n                return self._apply_preview_repeat(binding, generation)\n            if choice != 0:\n                return False\n            first, last = self.player.ab_loop or (0, self.player.duration_seconds)\n            values = []\n            for name, initial in (('A', first), ('B', last)):\n                chooser = wx.TextEntryDialog(self,\n                    f'{name} in seconds within this preview (0 to {self.player.duration_seconds:g}). '\n                    'A and B must be at least 0.05 seconds apart.',\n                    'Preview repeat ' + name, value=format(initial, '.12g'))\n                try:\n                    if chooser.ShowModal() != wx.ID_OK:\n                        return False\n                    value = chooser.GetValue()\n                finally:\n                    chooser.Destroy()\n                if not self._preview_current(binding, generation):\n                    return False\n                values.append(float(value))\n            return self._apply_preview_repeat(binding, generation, *values)\n        except (ValueError, OSError, RuntimeError) as error:\n            if not self.closed and self._scope_current():\n                self.message(error)\n            return False\n\n    def stop(self, event=None):\n"
+      },
+      {
+        "old": "        self.playback_generation += 1\n        if self.player is None:\n            return True\n",
+        "new": "        self.playback_generation += 1\n        self._preview_binding = None\n        repeat_stopped = True\n        try:\n            self._stop_preview_repeat_timer()\n        except Exception as error:\n            repeat_stopped = False\n            self.message('The preview timer could not confirm Stop: ' + str(error))\n        if self.player is None:\n            return repeat_stopped\n"
+      },
+      {
+        "old": "        return quiet\n\n    def cancel(self, event=None):\n",
+        "new": "        return quiet and repeat_stopped\n\n    def cancel(self, event=None):\n"
+      },
+      {
+        "old": "                self.player.set_ab_loop(first, last)\n",
+        "new": "                self.player.set_ab_loop(first, last)\n                # This explicit Play action also handles EOF during the range dialogs.\n                self.player.play_current()\n"
+      },
+      {
+        "old": "'Clip preview repeat', ('Set A–B repeat...', 'Turn preview repeat off'))",
+        "new": "'Clip preview repeat', ('Play A–B repeat...', 'Turn preview repeat off'))"
+      }
+    ],
+    "disjoint_from_root_crossfade_markers": "No _time_entry, timeline, copy/history method changes."
+  },
+  "primary_api_reference": "https://docs.wxpython.org/wx.Timer.html",
+  "runtime_claim": "No tests/parser/native execution performed in this authoring environment. All27 source+installed cases and separate native/device qualification remain required."
+}

@@ -1,0 +1,387 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "1b4437926de76a091becfbc706b246fe6d54d777",
+  "source_manifest": "a51937907c4e1ff4ca58b1ec2d4ccdf9f1c27a55",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "sha": "f09561333d33ae68480260668ec05b617cd72213"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_settings.py",
+      "before": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+      "sha": "64e745302ea2bffb84dc0d713be9d1e0f70eff1e"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "before": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c",
+      "sha": "df687d0d557fbc57af8c44ab029b7dd080084721"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_scope_checks.py",
+      "before": null,
+      "sha": "1397674e847d3128ac7a38f2463103ad0b3c06de"
+    }
+  ],
+  "gate_changes": [
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "8d42d77bb2de07d561e40ba6e4d9040cf2af4ddd",
+      "sha": "fe97e02dfd665ed153def02096fe53c5318c2364",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "before": "a4e69ba67036f2e41fb628f677cf5d15b249ae4f",
+      "sha": "8e8ec80e2df9b6f609f5780362198e9e91864403",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_managed_backend_contracts.py",
+      "before": "1442905f45334a2dc129132d955b19341def20f0",
+      "sha": "2eb9cef013609b8b26339bf4c4d7f2843d53f5d5",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        },
+        {
+          "before": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+          "after": "64e745302ea2bffb84dc0d713be9d1e0f70eff1e",
+          "count": 1
+        },
+        {
+          "before": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c",
+          "after": "df687d0d557fbc57af8c44ab029b7dd080084721",
+          "count": 1
+        },
+        {
+          "before": "Four whole modules: new OmniVoice/OpenVoice40+6 and unchanged legacy40+10.",
+          "after": "Five whole modules: OmniVoice/OpenVoice40+6, unchanged legacy40+10,\nand fresh current-scope42 regressions.",
+          "count": 1
+        },
+        {
+          "before": "    \"tests/integrations/test_dordiai_speech.py\": 10\n}",
+          "after": "    \"tests/integrations/test_dordiai_speech.py\": 10,\n    \"tests/audio/test_voice_scope_checks.py\": 42\n}",
+          "count": 1
+        },
+        {
+          "before": "{\n    \"src/carr_library/audio/voice_manifest.py\": \"2b5cc075286d2892d1262cddb15bcb84a737d007\",\n    \"src/carr_library/audio/voice_transport.py\": \"f4a9f626688cd26e91f5ed0ea2c1813c9a68897e\",\n    \"src/carr_library/audio/voice_settings.py\": \"64e745302ea2bffb84dc0d713be9d1e0f70eff1e\",\n    \"src/carr_library/runtime_settings.py\": \"00df790d393f9d54f87d0dcf891e6506916437a1\",\n    \"src/carr_library/audio/voice_packages.py\": \"824275dcace7617ce65123d469537593877d51d3\",\n    \"src/carr_library/audio/package_publication.py\": \"702cb573482265bb7e63d9483ecf2178649a63a4\",\n    \"src/carr_library/audio/voice_lifecycle.py\": \"0508ffba185e99171d0d2e230a9adb06db05bbae\",\n    \"src/carr_library/audio/voice_reference.py\": \"8d3265dcc37662046a3bebcf2abacf317c818553\",\n    \"src/carr_library/audio/voice_restore.py\": \"44844682df24a5d3934830e5ae0d3d78d09a9a6a\",\n    \"src/carr_library/state_backup.py\": \"7027e3f07f967403d6e523aa23c8233176a43222\",\n    \"src/carr_library/library_backup.py\": \"30ed3b152fc1cd26b338200b270e73f2e193a3f9\",\n    \"src/carr_library/ui/voice_packages.py\": \"bb32612b95eaee36bd6d7517dc3369c5a2e4d6da\",\n    \"src/carr_library/ui/voice_reference.py\": \"53578efe02f434c72ebd3b3acae95eb729671659\",\n    \"src/carr_library/ui/engine_settings.py\": \"e2ca712b9df71d7808b0fdb620978772c1f4dd65\",\n    \"src/carr_library/integrations/_dordiai_authority.py\": \"df687d0d557fbc57af8c44ab029b7dd080084721\",\n    \"src/carr_library/integrations/dordiai_voices.py\": \"b402a6cb86ee150dc67d5654a3495289269f10aa\",\n    \"src/carr_library/integrations/dordiai_speech.py\": \"85c9248923b6332da9ea30d7b0dc644f90dc77ba\",\n    \"src/carr_library/audio/voice_ownership.py\": \"2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d\",\n    \"src/carr_library/audio/models.py\": \"35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6\",\n    \"src/carr_library/audio/dsp.py\": \"f7833b5f600e3a822a3fa2f2068661c922576230\",\n    \"src/carr_library/audio/cleanup.py\": \"77d69f8406db93dc0ff6110b9597ad805bd92dc5\",\n    \"src/carr_library/audio/process.py\": \"480272d0224770f6b0ec9c8efc8e70d9aab42b0b\",\n    \"src/carr_library/operations/broker.py\": \"f09561333d33ae68480260668ec05b617cd72213\",\n    \"src/carr_library/operations/_locks.py\": \"ae161b8483f84b2a4aa2f153b4b11b08f76b9693\",\n    \"src/carr_library/durable_state.py\": \"d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb\",\n    \"src/carr_library/file_publication.py\": \"2ce3bdaa2c489cfeff301907e29ca6b552a2f90f\",\n    \"src/carr_library/research/export_file.py\": \"335fd4d03ed4e612d628ec2f93b615feba49e97d\",\n    \"src/carr_library/studio/publishing.py\": \"e369f0d40cbc818d9374e1d4f84bc3e28e09ad63\",\n    \"src/carr_library/sync/crypto.py\": \"681a08530212f8cb18f600cfaf9314cc36a787e9\",\n    \"src/carr_library/speech/__init__.py\": \"f3a90829d0e3780e4fd88512f200e64a947c83a8\",\n    \"src/carr_library/application.py\": \"82af31743ca5cc6557477f6492c08b912751f4a4\",\n    \"src/carr_library/native_runtime.py\": \"50ca93914325753f7d9cb91f1bc4f48fc9ae230f\",\n    \"bootstrap/__init__.py\": \"6981b7faa1cca8d29f37fe85751c110c693dae55\",\n    \"src/carr_library/audio/windows_job.py\": \"27aeb47c39660ac74335d791e22e58b44058db3b\",\n    \"src/carr_library/ui/desktop_app.py\": \"85c0991f744bd521ca247a0e15da93aa585ea30d\",\n    \"src/carr_library/ui/worker_lifetime.py\": \"ed62603159bc095724c3b240d4754f989141a2c9\",\n    \"src/carr_library/ui/recording_dialog.py\": \"d2447529f7f5ac6ee07de2e06c9da7189ee3c067\",\n    \"tests/audio/test_voice_package_management.py\": \"65ab95aa77c62224f7a42d7e9453f013cbb77ec5\",\n    \"tests/audio/test_voice_management_state.py\": \"a3f4372f0454d18e6a249b5a4248bea019aaae80\",\n    \"tests/audio/test_voice_reference_management.py\": \"48da3169be41c3524ebd5af86e7af686450013a2\",\n    \"tests/audio/test_voice_protected_management.py\": \"81350202f697d579e1822284c17f0252e2b294db\",\n    \"tests/audio/test_voice_publication_lifetime.py\": \"1f71856039c5d3e94312714f020021110f1e9b84\",\n    \"tests/audio/test_voice_ownership.py\": \"078cdf3a83f84c390f6a242b59d4a19b9b9d52c9\",\n    \"tests/integrations/test_dordiai_owner_lease.py\": \"282bc60cf1d94ce29a32602a6ead0440def271e8\",\n    \"tests/integrations/test_dordiai_managed_authority.py\": \"7e1522e102826b75eea702d5ddc44eec2afe86f5\",\n    \"tests/ui/test_voice_packages.py\": \"b179baf1923d9fa96597eba0bf985ab270ec1116\",\n    \"tests/ui/test_voice_reference.py\": \"ed1c77898b3ff72bc3246c8a8537ca3b5961e945\",\n    \"tests/ui/test_engine_settings_lifetime.py\": \"fd4674f62ec4a8696e08618b7f30fa72a7127537\",\n    \"tests/integrations/test_dordiai_voices.py\": \"e46257220ef1af5c129669aa9037dafa788077af\",\n    \"tests/integrations/test_dordiai_speech.py\": \"1b8191f2a59c9eea4da662423c1b8bd4cd03fb19\",\n    \"tests/integrations/test_dordiai_host_lifecycle.py\": \"54eea6081c72b32b8295addae25f12d399bd5d9e\",\n    \"tests/integrations/test_dordiai_settings.py\": \"3f4a49f3ef04d72cd4ad05d7ca4fe170925359a8\",\n    \"tests/integrations/test_dordiai_probe_cancellation.py\": \"96ec861256678a75010ca3ec9b1620d13876d866\",\n    \"tests/integrations/test_dordiai_convergence.py\": \"e18e02267f7a3d3a7fdaed909abff8b1c8e78e92\",\n    \"tests/audio/test_bundled_runtime_settings.py\": \"1e48791b33ae256ff5ede4ac7c24dd64afb78beb\",\n    \"tests/storage/test_v3_state_backup.py\": \"feb3ab5bc89db85614d1bb947e6f6a34e5578e64\",\n    \"tests/storage/test_library_backup.py\": \"d14b278b356bb47fe66e822125a257807f2cd895\",\n    \"tests/storage/test_state_backup_portability.py\": \"27a9bf1ee349b48c557bd6f38f11f7ed15a99930\",\n    \"tests/audio/voice_management_fixtures.py\": \"ef5be0ea225a4222146edfb05ff03f9037dd0eb5\",\n    \"tests/integrations/__init__.py\": \"1ca9f3fafe08709103c64426a7c5311eb3f28455\",\n    \"scripts/ci_check.py\": \"6ad3055cfcd7c6a1b1af8544ae462c5d51adb473\",\n    \"packaging/source_wheel.py\": \"478de248451d59a44b35784eb808fb2974f0af67\",\n    \"packaging/windows-audio.lock.json\": \"2bc706ffc6208f5596a10abee61d3da33f20e6c6\",\n    \"scripts/windows_voice_management_smoke.py\": \"7f1f806035ab334713a2b9c13c21bbca59bb09f0\",\n    \"scripts/ci_owner_voice_api_smoke.py\": \"e22c226ef24cf48957d04c32f25cb472e48c764e\",\n    \"scripts/ci_voice_management_owner_smoke.py\": \"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef\",\n    \"src/carr_library/catalog/intake.py\": \"5a55fa8b1326a43ea2b6a4773f4072886e436031\",\n    \"tests/integrations/test_dordiai_reference_backends.py\": \"de40ac027c6706886d248edaea14dec7bea36608\",\n    \"tests/integrations/test_dordiai_managed_backends.py\": \"1f03119d76dbf72b839c004aacc70baea0bb8657\",\n    \"src/carr_library/integrations/_dordiai_probe.py\": \"44fd0e0a169dc15c759a2d8a020341168b33defc\"\n}",
+          "after": "{\n    \"src/carr_library/audio/voice_manifest.py\": \"2b5cc075286d2892d1262cddb15bcb84a737d007\",\n    \"src/carr_library/audio/voice_transport.py\": \"f4a9f626688cd26e91f5ed0ea2c1813c9a68897e\",\n    \"src/carr_library/audio/voice_settings.py\": \"64e745302ea2bffb84dc0d713be9d1e0f70eff1e\",\n    \"src/carr_library/runtime_settings.py\": \"00df790d393f9d54f87d0dcf891e6506916437a1\",\n    \"src/carr_library/audio/voice_packages.py\": \"824275dcace7617ce65123d469537593877d51d3\",\n    \"src/carr_library/audio/package_publication.py\": \"702cb573482265bb7e63d9483ecf2178649a63a4\",\n    \"src/carr_library/audio/voice_lifecycle.py\": \"0508ffba185e99171d0d2e230a9adb06db05bbae\",\n    \"src/carr_library/audio/voice_reference.py\": \"8d3265dcc37662046a3bebcf2abacf317c818553\",\n    \"src/carr_library/audio/voice_restore.py\": \"44844682df24a5d3934830e5ae0d3d78d09a9a6a\",\n    \"src/carr_library/state_backup.py\": \"7027e3f07f967403d6e523aa23c8233176a43222\",\n    \"src/carr_library/library_backup.py\": \"30ed3b152fc1cd26b338200b270e73f2e193a3f9\",\n    \"src/carr_library/ui/voice_packages.py\": \"bb32612b95eaee36bd6d7517dc3369c5a2e4d6da\",\n    \"src/carr_library/ui/voice_reference.py\": \"53578efe02f434c72ebd3b3acae95eb729671659\",\n    \"src/carr_library/ui/engine_settings.py\": \"e2ca712b9df71d7808b0fdb620978772c1f4dd65\",\n    \"src/carr_library/integrations/_dordiai_authority.py\": \"df687d0d557fbc57af8c44ab029b7dd080084721\",\n    \"src/carr_library/integrations/dordiai_voices.py\": \"b402a6cb86ee150dc67d5654a3495289269f10aa\",\n    \"src/carr_library/integrations/dordiai_speech.py\": \"85c9248923b6332da9ea30d7b0dc644f90dc77ba\",\n    \"src/carr_library/audio/voice_ownership.py\": \"2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d\",\n    \"src/carr_library/audio/models.py\": \"35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6\",\n    \"src/carr_library/audio/dsp.py\": \"f7833b5f600e3a822a3fa2f2068661c922576230\",\n    \"src/carr_library/audio/cleanup.py\": \"77d69f8406db93dc0ff6110b9597ad805bd92dc5\",\n    \"src/carr_library/audio/process.py\": \"480272d0224770f6b0ec9c8efc8e70d9aab42b0b\",\n    \"src/carr_library/operations/broker.py\": \"f09561333d33ae68480260668ec05b617cd72213\",\n    \"src/carr_library/operations/_locks.py\": \"ae161b8483f84b2a4aa2f153b4b11b08f76b9693\",\n    \"src/carr_library/durable_state.py\": \"d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb\",\n    \"src/carr_library/file_publication.py\": \"2ce3bdaa2c489cfeff301907e29ca6b552a2f90f\",\n    \"src/carr_library/research/export_file.py\": \"335fd4d03ed4e612d628ec2f93b615feba49e97d\",\n    \"src/carr_library/studio/publishing.py\": \"e369f0d40cbc818d9374e1d4f84bc3e28e09ad63\",\n    \"src/carr_library/sync/crypto.py\": \"681a08530212f8cb18f600cfaf9314cc36a787e9\",\n    \"src/carr_library/speech/__init__.py\": \"f3a90829d0e3780e4fd88512f200e64a947c83a8\",\n    \"src/carr_library/application.py\": \"82af31743ca5cc6557477f6492c08b912751f4a4\",\n    \"src/carr_library/native_runtime.py\": \"50ca93914325753f7d9cb91f1bc4f48fc9ae230f\",\n    \"bootstrap/__init__.py\": \"6981b7faa1cca8d29f37fe85751c110c693dae55\",\n    \"src/carr_library/audio/windows_job.py\": \"27aeb47c39660ac74335d791e22e58b44058db3b\",\n    \"src/carr_library/ui/desktop_app.py\": \"85c0991f744bd521ca247a0e15da93aa585ea30d\",\n    \"src/carr_library/ui/worker_lifetime.py\": \"ed62603159bc095724c3b240d4754f989141a2c9\",\n    \"src/carr_library/ui/recording_dialog.py\": \"d2447529f7f5ac6ee07de2e06c9da7189ee3c067\",\n    \"tests/audio/test_voice_package_management.py\": \"65ab95aa77c62224f7a42d7e9453f013cbb77ec5\",\n    \"tests/audio/test_voice_management_state.py\": \"a3f4372f0454d18e6a249b5a4248bea019aaae80\",\n    \"tests/audio/test_voice_reference_management.py\": \"48da3169be41c3524ebd5af86e7af686450013a2\",\n    \"tests/audio/test_voice_protected_management.py\": \"81350202f697d579e1822284c17f0252e2b294db\",\n    \"tests/audio/test_voice_publication_lifetime.py\": \"1f71856039c5d3e94312714f020021110f1e9b84\",\n    \"tests/audio/test_voice_ownership.py\": \"078cdf3a83f84c390f6a242b59d4a19b9b9d52c9\",\n    \"tests/integrations/test_dordiai_owner_lease.py\": \"282bc60cf1d94ce29a32602a6ead0440def271e8\",\n    \"tests/integrations/test_dordiai_managed_authority.py\": \"7e1522e102826b75eea702d5ddc44eec2afe86f5\",\n    \"tests/ui/test_voice_packages.py\": \"b179baf1923d9fa96597eba0bf985ab270ec1116\",\n    \"tests/ui/test_voice_reference.py\": \"ed1c77898b3ff72bc3246c8a8537ca3b5961e945\",\n    \"tests/ui/test_engine_settings_lifetime.py\": \"fd4674f62ec4a8696e08618b7f30fa72a7127537\",\n    \"tests/integrations/test_dordiai_voices.py\": \"e46257220ef1af5c129669aa9037dafa788077af\",\n    \"tests/integrations/test_dordiai_speech.py\": \"1b8191f2a59c9eea4da662423c1b8bd4cd03fb19\",\n    \"tests/integrations/test_dordiai_host_lifecycle.py\": \"54eea6081c72b32b8295addae25f12d399bd5d9e\",\n    \"tests/integrations/test_dordiai_settings.py\": \"3f4a49f3ef04d72cd4ad05d7ca4fe170925359a8\",\n    \"tests/integrations/test_dordiai_probe_cancellation.py\": \"96ec861256678a75010ca3ec9b1620d13876d866\",\n    \"tests/integrations/test_dordiai_convergence.py\": \"e18e02267f7a3d3a7fdaed909abff8b1c8e78e92\",\n    \"tests/audio/test_bundled_runtime_settings.py\": \"1e48791b33ae256ff5ede4ac7c24dd64afb78beb\",\n    \"tests/storage/test_v3_state_backup.py\": \"feb3ab5bc89db85614d1bb947e6f6a34e5578e64\",\n    \"tests/storage/test_library_backup.py\": \"d14b278b356bb47fe66e822125a257807f2cd895\",\n    \"tests/storage/test_state_backup_portability.py\": \"27a9bf1ee349b48c557bd6f38f11f7ed15a99930\",\n    \"tests/audio/voice_management_fixtures.py\": \"ef5be0ea225a4222146edfb05ff03f9037dd0eb5\",\n    \"tests/integrations/__init__.py\": \"1ca9f3fafe08709103c64426a7c5311eb3f28455\",\n    \"scripts/ci_check.py\": \"6ad3055cfcd7c6a1b1af8544ae462c5d51adb473\",\n    \"packaging/source_wheel.py\": \"478de248451d59a44b35784eb808fb2974f0af67\",\n    \"packaging/windows-audio.lock.json\": \"2bc706ffc6208f5596a10abee61d3da33f20e6c6\",\n    \"scripts/windows_voice_management_smoke.py\": \"7f1f806035ab334713a2b9c13c21bbca59bb09f0\",\n    \"scripts/ci_owner_voice_api_smoke.py\": \"e22c226ef24cf48957d04c32f25cb472e48c764e\",\n    \"scripts/ci_voice_management_owner_smoke.py\": \"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef\",\n    \"src/carr_library/catalog/intake.py\": \"5a55fa8b1326a43ea2b6a4773f4072886e436031\",\n    \"tests/integrations/test_dordiai_reference_backends.py\": \"de40ac027c6706886d248edaea14dec7bea36608\",\n    \"tests/integrations/test_dordiai_managed_backends.py\": \"1f03119d76dbf72b839c004aacc70baea0bb8657\",\n    \"src/carr_library/integrations/_dordiai_probe.py\": \"44fd0e0a169dc15c759a2d8a020341168b33defc\"\n    \"tests/audio/test_voice_scope_checks.py\": \"1397674e847d3128ac7a38f2463103ad0b3c06de\",\n}",
+          "count": 1
+        },
+        {
+          "before": "# Four whole suites use two waves with unchanged 600-second child bounds.",
+          "after": "# Five whole suites use two waves with unchanged 600-second child bounds.",
+          "count": 1
+        },
+        {
+          "before": "\"src/carr_library/integrations/_dordiai_probe.py\": \"44fd0e0a169dc15c759a2d8a020341168b33defc\"\n    \"tests/audio/test_voice_scope_checks.py\"",
+          "after": "\"src/carr_library/integrations/_dordiai_probe.py\": \"44fd0e0a169dc15c759a2d8a020341168b33defc\",\n    \"tests/audio/test_voice_scope_checks.py\"",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": "7e622a4218325cc2a30f8d3c24de1eb5a3cd9c49",
+      "sha": "280dcf7357420c0a16baf24ec1b60f8a1e4fca83",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "28bac084c5d24bd919e525a26b86acefc630bb1a",
+      "sha": "02191fd9dd0befae2dd0289d500961e2d534bac4",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "before": "c0f0f2a2abac8fb5d50f63020da136acc0868d1f",
+      "sha": "3297e7da752728d30aef43de20b15fd3fdd505b9",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "09bdd8b36549c916d487b6c9a988d5b7e20272d2",
+      "sha": "ca412b958498884897c53e4623a8144308d5e8e2",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        },
+        {
+          "before": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+          "after": "64e745302ea2bffb84dc0d713be9d1e0f70eff1e",
+          "count": 1
+        },
+        {
+          "before": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c",
+          "after": "df687d0d557fbc57af8c44ab029b7dd080084721",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "before": "6089b52922435c5a48a3e0c83eefe4c3a3200f1a",
+      "sha": "4b4fa5ffd73558df5b6d4a348bbff15241d48c4b",
+      "operations": [
+        {
+          "before": "09bdd8b36549c916d487b6c9a988d5b7e20272d2",
+          "after": "ca412b958498884897c53e4623a8144308d5e8e2",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "before": "9a885ba877364c203c13a29e2180da011d018a9e",
+      "sha": "bf8cddfab1b624017b6277ab7b0dfbedf53186b1",
+      "operations": [
+        {
+          "before": "a4e69ba67036f2e41fb628f677cf5d15b249ae4f",
+          "after": "8e8ec80e2df9b6f609f5780362198e9e91864403",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "before": "b910e2a1a2257b6834a57f715d608aebe1398f59",
+      "sha": "f99b44db5c2e3b5d0eda655f10b2c8fa6e7d99be",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-managed-backends.yml",
+      "before": "aebfb48edd006e883bcc2152356a1673d3d09ad4",
+      "sha": "552e80a204fde81b5920d1447463f2d84d35f080",
+      "operations": [
+        {
+          "before": "Managed backends96 source and96 installed",
+          "after": "Managed backends and current scopes138 source and138 installed",
+          "count": 2
+        },
+        {
+          "before": "timeout-minutes: 120",
+          "after": "timeout-minutes: 135",
+          "count": 2
+        },
+        {
+          "before": "assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 96",
+          "after": "assert len(module.SUITES) == 5 and sum(module.SUITES.values()) == 138",
+          "count": 2
+        },
+        {
+          "before": "assert len(module.PINS) == 70",
+          "after": "assert len(module.PINS) == 71",
+          "count": 2
+        },
+        {
+          "before": "Require96 source and96 isolated installed whole cases",
+          "after": "Require138 source and138 isolated installed whole cases",
+          "count": 2
+        },
+        {
+          "before": "timeout-minutes: 80",
+          "after": "timeout-minutes: 95",
+          "count": 2
+        },
+        {
+          "before": "All96 source and96 isolated installed whole cases are required.",
+          "after": "All138 source and138 isolated installed whole cases are required.",
+          "count": 1
+        },
+        {
+          "before": "range(1,5)",
+          "after": "range(1,6)",
+          "count": 2
+        },
+        {
+          "before": "1442905f45334a2dc129132d955b19341def20f0",
+          "after": "5f98b4c19c89dec691b13c9ff770e75c2221aa55",
+          "count": 2
+        },
+        {
+          "before": "5f98b4c19c89dec691b13c9ff770e75c2221aa55",
+          "after": "2eb9cef013609b8b26339bf4c4d7f2843d53f5d5",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "106db6176c59393b1a6c2cddb91364fd9f079a7d",
+      "sha": "089684bdb4f17e28e1385ceed0a7323d434b5e94",
+      "operations": [
+        {
+          "before": "28bac084c5d24bd919e525a26b86acefc630bb1a",
+          "after": "02191fd9dd0befae2dd0289d500961e2d534bac4",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": "965b80391ea2c11f53f58c214693201659d22d74",
+      "sha": "8a79b6e6742fff6d35b0f76ba416ef201f4986c2",
+      "operations": [
+        {
+          "before": "7e622a4218325cc2a30f8d3c24de1eb5a3cd9c49",
+          "after": "280dcf7357420c0a16baf24ec1b60f8a1e4fca83",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "14afde4d4699a32e39ea1f735e1cc548732ff16e",
+      "sha": "1febbb5788e0bae4f5e3732c8d9d9a8b5e22c3c2",
+      "operations": [
+        {
+          "before": "8d42d77bb2de07d561e40ba6e4d9040cf2af4ddd",
+          "after": "fe97e02dfd665ed153def02096fe53c5318c2364",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "c6fdb9f37292b3e7f063028ae9daa4201647d20b",
+      "sha": "9545da0d89eb6954b2f6401901b4629bc2419ac1",
+      "operations": [
+        {
+          "before": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+          "after": "f09561333d33ae68480260668ec05b617cd72213",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-remote-stt.yml",
+      "before": "4b0c8796c81cc2bbf04c16e775fe50844b3bffe3",
+      "sha": "b9d3d5c7f24d08583833a7ac637cbfe2d8a74570",
+      "operations": [
+        {
+          "before": "c0f0f2a2abac8fb5d50f63020da136acc0868d1f",
+          "after": "3297e7da752728d30aef43de20b15fd3fdd505b9",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "58b45b5ff619f737779fb234fcbea060057d9eec",
+      "sha": "96403d71db449a181532e8833a34f8c2effa5baa",
+      "operations": [
+        {
+          "before": "09bdd8b36549c916d487b6c9a988d5b7e20272d2",
+          "after": "ca412b958498884897c53e4623a8144308d5e8e2",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "before": "58308d61d46fc8be4242eb8b2004bd596587f5ad",
+      "sha": "c1b3c371961f65594d29f9a5b1775a9f623886ee",
+      "operations": [
+        {
+          "before": "09bdd8b36549c916d487b6c9a988d5b7e20272d2",
+          "after": "ca412b958498884897c53e4623a8144308d5e8e2",
+          "count": 1
+        },
+        {
+          "before": "6089b52922435c5a48a3e0c83eefe4c3a3200f1a",
+          "after": "4b4fa5ffd73558df5b6d4a348bbff15241d48c4b",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "focused_backend": {
+    "whole_suites": {
+      "tests/integrations/test_dordiai_reference_backends.py": 40,
+      "tests/integrations/test_dordiai_managed_backends.py": 6,
+      "tests/integrations/test_dordiai_voices.py": 40,
+      "tests/integrations/test_dordiai_speech.py": 10,
+      "tests/audio/test_voice_scope_checks.py": 42
+    },
+    "source": 138,
+    "installed": 138,
+    "pins": 71,
+    "origins": {
+      "linux": 35,
+      "windows": 38
+    },
+    "source_jobs": 3,
+    "source_parent_seconds": 1500,
+    "each_child_seconds": 600,
+    "helper_minutes": 95,
+    "job_minutes": 135,
+    "retained_contract_files": 23
+  },
+  "full_voice": {
+    "whole_suites": 21,
+    "source": 495,
+    "installed": 495,
+    "child_seconds": 600,
+    "helper_minutes": 325,
+    "job_minutes": 360,
+    "actual_owner_and_native": "unchanged separate obligations"
+  },
+  "verification": {
+    "source_preimages": "PASS",
+    "all18gate_inverse": "PASS",
+    "all18original_blob_readbacks": "PASS",
+    "corrected_backend_readbacks": "PASS",
+    "current_matching_file_pins": "PASS",
+    "root_source_review": "accepted fresh maximal paths plus each original dev/ino without cached authority",
+    "independent_source_and42case_peer": "progress_completion ACCEPTED_STATIC_NOT_RUN",
+    "focused_expansion_peer": "canonical_regression ACCEPTED_STATIC_NOT_RUN: exact96-to138 delta, old four wholes/children/origins/timeouts unchanged;71pins and23closed contract outputs;95/135finite outer envelopes."
+  },
+  "qualification": {
+    "speedup": "NOT_MEASURED",
+    "actual_models": "NOT_RUN",
+    "release": "NOT_QUALIFIED"
+  }
+}

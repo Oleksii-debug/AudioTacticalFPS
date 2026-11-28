@@ -1,0 +1,107 @@
+{
+  "schema": "resonance-native-gate-field-failure/1",
+  "source_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "run": 46079552487,
+  "job": 140775089427,
+  "workflow": {
+    "path": ".github/workflows/carr-next15-conversion.yml",
+    "sha": "791430237558ef1ae715f8f61d56789b3253a9a2"
+  },
+  "source": {
+    "path": "carr-library/scripts/selected_conversion_acceptance.py",
+    "sha": "574a297765039cd765c1b352a6a9d8f27ca6b3be"
+  },
+  "actual_failure": {
+    "inline_verifier_line": 101,
+    "assertion": "set(report['old_test_sha256']) == {'tests/conversion/test_conversion.py','tests/conversion/fixtures/ordered_slides.pptx'}",
+    "source_reports": [
+      {
+        "line": 1564,
+        "time": "2026-11-27T23:31:00.9727645Z",
+        "mode": "source",
+        "status": "PASS",
+        "old_whole_conversion_suite": "PASS",
+        "old_cases": 34,
+        "old_test_sha256": {
+          "tests\\conversion\\test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+          "tests\\conversion\\fixtures\\ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+        },
+        "old_junit_sha256": "01ea58d06e2a20394a3d64fbb8f69d70ac41710ba369f046c7d3ba40e75513a6",
+        "old_child_receipt_sha256": "34545cf1ea90e4607024a8a6716881d46c31d425a92727997fddf7b47706c9a4",
+        "child_source_origin_count": 22,
+        "child_before_after_equal": true,
+        "fixture_companion_sha256": "bd444758c96e2a82a69baf186c81d46ac5983fcaa830f937868dd2ac73410615"
+      },
+      {
+        "line": 1754,
+        "time": "2026-11-27T23:32:31.5838075Z",
+        "mode": "installed",
+        "status": "PASS",
+        "old_whole_conversion_suite": "PASS",
+        "old_cases": 34,
+        "old_test_sha256": {
+          "tests\\conversion\\test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+          "tests\\conversion\\fixtures\\ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+        },
+        "old_junit_sha256": "e08229d0d1fb16eed6fcc7c1dbe0ab766a168779299a16e36deb6dab3b34b832",
+        "old_child_receipt_sha256": "4608b87c8474a278ca675a5fc951416ad42a11d098478e19b9b34e097d964f5f",
+        "child_source_origin_count": 22,
+        "child_before_after_equal": true,
+        "fixture_companion_sha256": "bd444758c96e2a82a69baf186c81d46ac5983fcaa830f937868dd2ac73410615"
+      }
+    ],
+    "bounded_log_rows": [
+      {
+        "line": 1558,
+        "time": "2026-11-27T23:31:00.9145708Z",
+        "text": "============================= 34 passed in 13.55s ============================="
+      },
+      {
+        "line": 1566,
+        "time": "2026-11-27T23:31:03.9076390Z",
+        "text": "  File \"<stdin>\", line 101, in <module>"
+      },
+      {
+        "line": 1568,
+        "time": "2026-11-27T23:31:03.9405485Z",
+        "text": "REQUIRED SELECTED CONVERSION FAILED [old-suite-source]: Actual old-suite-source conversion proof failed."
+      },
+      {
+        "line": 1748,
+        "time": "2026-11-27T23:32:31.5150173Z",
+        "text": "============================= 34 passed in 13.53s ============================="
+      },
+      {
+        "line": 1756,
+        "time": "2026-11-27T23:32:34.3078289Z",
+        "text": "  File \"<stdin>\", line 101, in <module>"
+      },
+      {
+        "line": 1758,
+        "time": "2026-11-27T23:32:34.3394508Z",
+        "text": "REQUIRED SELECTED CONVERSION FAILED [old-suite-installed]: Actual old-suite-installed conversion proof failed."
+      }
+    ],
+    "cause": "The report serialized Path-relative keys with str(), yielding Windows backslashes; the exact outer report contract requires stable POSIX-separated relative keys."
+  },
+  "correction": {
+    "sha": "b4c60707e1554df514cd954afa89c0c7dc099713",
+    "changes": [
+      [
+        "str(path.relative_to(args.source_root.parent)): sha256(path.read_bytes()).hexdigest()",
+        "path.relative_to(args.source_root.parent).as_posix(): sha256(path.read_bytes()).hexdigest()"
+      ],
+      [
+        "expected[str(path.relative_to(root))]",
+        "expected[path.relative_to(root).as_posix()]"
+      ]
+    ],
+    "runtime": "NOT_RUN",
+    "new_tests": 0,
+    "whole_old_suite_count": 34,
+    "source_and_installed_still_required": true,
+    "unchanged": "All actual file reads/hashes, staged-byte checks, JUnit Counter, child source/origin receipts, output report fields, native process/lease cleanup and outer strict verifier remain. Only two key-format expressions change."
+  },
+  "scope": "This explains only the old-suite source/installed field failures; actual formats and GUI failures remain independent required failures.",
+  "refs_changed": false
+}

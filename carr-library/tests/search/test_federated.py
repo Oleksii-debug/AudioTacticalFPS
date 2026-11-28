@@ -65,7 +65,7 @@ def test_grouped_explicit_selection_dedup_caps_and_independent_host_refs(researc
     assert reopened.evidence(one, t1) == (saved,)
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
 def test_existing_modes_metadata_filters_and_empty_selected_group(research, mode):
     app, one, two, c1, c2, *_ = research
     controller = FederatedSearch(app)
@@ -280,7 +280,7 @@ def test_real_pdf_preview_cannot_be_copied_or_saved_as_verified(research, tmp_pa
 
 
 @pytest.mark.parametrize('selection', [None, '', 'one', (), [], {}, [None], [True], [''],
-                                      [' '], ['a\x00b'], ['\ud800'], list(map(str, range(21)))])
+                                      [' '], ['a\x00b'], ['\ud800'], [f'library-{number:05d}-' + 'x' * 200 for number in range(4000)]])
 def test_invalid_or_implicit_selection_is_rejected_before_reads(research, selection, monkeypatch):
     app, *_ = research
     controller = FederatedSearch(app)
@@ -295,7 +295,7 @@ def test_invalid_or_implicit_selection_is_rejected_before_reads(research, select
 
 
 @pytest.mark.parametrize('options', [dict(limit_per_library=0), dict(limit_per_library=101),
-    dict(limit_per_library=True), dict(timeout=0), dict(timeout=61), dict(timeout=float('nan')),
+    dict(limit_per_library=True), dict(timeout=0), dict(timeout=86401), dict(timeout=float('nan')),
     dict(timeout=True), dict(cancelled=False), dict(on_status=False), dict(mode='all'),
     dict(result_mode='unbounded'), dict(collections='all'), dict(collections={'foreign': 'collection'}),
     dict(title='')])
@@ -324,7 +324,7 @@ def test_cancelled_search_never_initializes_a_second_database_or_reads(research,
     assert controller.current is previous
 
 
-@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'])
 @pytest.mark.parametrize('query', [None, True, [], '', ' \t\r\n', 'x' * 501,
                                   'history\x00', 'history\x7f', 'history\ud800'])
 def test_malformed_query_rejected_even_for_empty_corpus_before_host_calls(tmp_path, monkeypatch, mode, query):

@@ -252,7 +252,71 @@ def _opc(archive, primary, budget):
         budget.warnings.add('embedded_media_not_read')
 
 
-def _check_odf_visibility(root, budget):
+
+def _inactive_page_decoration(element, budget):
+    """Recognize only the selected XLS derivative's inert page-template subset.
+
+    This never renders or publishes these values.  The complete visibility and
+    active-content scan below still visits every descendant afterwards.
+    """
+    count = 0
+    fields = {TEXT + 'sheet-name', TEXT + 'page-number'}
+
+    def visit(node, depth):
+        nonlocal count
+        budget.check()
+        count += 1
+        if count > 256 or depth > 3:
+            return False
+        if depth == 1:
+            if node.tag != TEXT + 'p' or node.attrib:
+                return False
+            allowed = {TEXT + 'span', *fields}
+        elif node.tag == TEXT + 'span' and depth == 2:
+            if set(node.attrib) - {TEXT + 'style-name'}:
+                return False
+            allowed = fields
+        elif node.tag in fields and depth in (2, 3):
+            return not node.attrib and not len(node)
+        else:
+            return False
+        for child in node:
+            if child.tag not in allowed or not visit(child, depth + 1):
+                return False
+        return True
+
+    return all(visit(child, 1) for child in element)
+
+
+def _check_odf_visibility(root, budget, *, allow_inactive_page_decorations=False):
+    # ODF 1.3 19.475 gives these six master-page elements a display switch.
+    # Ordinary extraction still admits only the prior empty placeholders.
+    # A selected XLS reading derivative can additionally omit the explicitly
+    # inactive bounded page templates; this does not alter body extraction.
+    empty_disabled = set()
+    if root.tag == OFFICE + 'document-styles':
+        names = {STYLE + name for name in ('header', 'header-first', 'header-left',
+            'footer', 'footer-first', 'footer-left')}
+        for masters in root.findall(OFFICE + 'master-styles'):
+            budget.check()
+            for page in masters.findall(STYLE + 'master-page'):
+                budget.check()
+                for element in page:
+                    budget.check()
+                    if (allow_inactive_page_decorations and element.tag in names
+                            and STYLE + 'display' in element.attrib
+                            and element.get(STYLE + 'display') not in ('true', 'false')):
+                        raise ValueError('Ambiguous page-decoration display requires review.')
+                    if (element.tag in names
+                            and element.attrib == {STYLE + 'display': 'false'}
+                            and not (element.text or '').strip()
+                            and not (element.tail or '').strip()):
+                        if not len(element):
+                            empty_disabled.add(element)
+                        elif (allow_inactive_page_decorations
+                              and _inactive_page_decoration(element, budget)):
+                            empty_disabled.add(element)
+                            budget.warnings.add('inactive_page_decorations_not_read')
     blocked = {TEXT + name for name in ('tracked-changes', 'change', 'change-start',
         'change-end', 'hidden-text', 'hidden-paragraph', 'conditional-text',
         'script', 'execute-macro')}
@@ -262,8 +326,21 @@ def _check_odf_visibility(root, budget):
             raise ValueError('Conditional, changed or active document text requires review.')
         if (element.get(TEXT + 'display') in ('none', 'false')
                 or element.get(FO + 'visibility') in ('hidden', 'collapse')
-                or element.get(STYLE + 'display') == 'false'):
-            raise ValueError('Hidden document text requires review.')
+                or element.get(STYLE + 'display') == 'false') and element not in empty_disabled:
+            # Fixed diagnostic vocabulary: never include document text, URLs,
+            # arbitrary XML names, attribute values or filesystem paths.
+            part = {OFFICE + 'document-content': 'content.xml',
+                    OFFICE + 'document-styles': 'styles.xml'}.get(root.tag, 'other')
+            names = {STYLE + name: 'style:' + name for name in (
+                'header', 'header-first', 'header-left', 'footer', 'footer-first',
+                'footer-left', 'text-properties', 'paragraph-properties', 'table-properties')}
+            names.update({TEXT + 'p': 'text:p', TEXT + 'span': 'text:span'})
+            kind = names.get(element.tag, 'other')
+            condition = ('text:display' if element.get(TEXT + 'display') in ('none', 'false')
+                         else 'fo:visibility' if element.get(FO + 'visibility') in ('hidden', 'collapse')
+                         else 'style:display')
+            raise ValueError('Hidden document text requires review. '
+                             f'[part={part}; element={kind}; condition={condition}]')
 
 
 def _odf_text(element, budget):
@@ -301,6 +378,26 @@ def _odf_text(element, budget):
 
 def _odf_blocks(element, budget, locator, path=()):
     budget.check()
+    if element.tag == OFFICE + 'forms':
+        # LibreOffice writes this empty container for ordinary binary Word
+        # imports. Populated controls and event listeners remain unsupported.
+        form = '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}'
+        if (len(element) or (element.text or '').strip()
+                or set(element.attrib) - {form + 'automatic-focus', form + 'apply-design-mode'}
+                or any(value not in ('true', 'false') for value in element.attrib.values())):
+            raise ValueError('Active or populated document forms require review.')
+        return
+    if element.tag == DRAW + 'enhanced-geometry':
+        # Geometry equations describe vector shapes; they are not reading
+        # text. Accept only this documented inert subtree, never arbitrary
+        # descendants that could silently hide an unsupported text object.
+        if ((element.text or '').strip()
+                or any(child.tag not in (DRAW + 'equation', DRAW + 'handle')
+                       or len(child) or (child.text or '').strip()
+                       or (child.tail or '').strip() for child in element)):
+            raise ValueError('Unsupported vector shape content requires review.')
+        budget.warnings.add('vector_geometry_not_read')
+        return
     if element.tag in (TEXT + 'p', TEXT + 'h'):
         budget.add(_odf_text(element, budget), {**locator, 'path': list(path)})
         return
@@ -421,7 +518,7 @@ def _ods(body, budget):
             row_index += repeated_rows
 
 
-def _odf(archive, suffix, budget):
+def _odf(archive, suffix, budget, *, allow_inactive_page_decorations=False):
     manifest = _member(archive, 'META-INF/manifest.xml', budget)
     if manifest.tag != MANIFEST + 'manifest':
         raise ValueError('OpenDocument manifest is invalid.')
@@ -435,7 +532,8 @@ def _odf(archive, suffix, budget):
     _check_odf_visibility(root, budget)
     if 'styles.xml' in archive.namelist():
         styles = _member(archive, 'styles.xml', budget)
-        _check_odf_visibility(styles, budget)
+        _check_odf_visibility(styles, budget,
+            allow_inactive_page_decorations=allow_inactive_page_decorations)
         if any(e.get(TABLE + 'display') == 'false' or
                e.get(TABLE + 'visibility', 'visible') != 'visible'
                for e in styles.iter()):
@@ -753,7 +851,8 @@ def _fb3(archive, budget):
 
 
 def extract_xml_document(data: bytes, suffix: str, *, max_bytes=64 * 1024 * 1024,
-                         max_chars=10_000_000, cancelled=None, deadline=None):
+                         max_chars=10_000_000, cancelled=None, deadline=None,
+                         allow_inactive_page_decorations=False):
     """Extract explicitly unverified logical records from supported subsets.
 
     ``deadline`` is an absolute monotonic time.  Format/XML/security ceilings
@@ -761,10 +860,14 @@ def extract_xml_document(data: bytes, suffix: str, *, max_bytes=64 * 1024 * 1024
     order follows the authored slide list, then the stored shape order.  Sheets
     follow workbook order and literal stored cell values; formula cells and
     explicitly hidden rows/columns/sheets are omitted with fixed warnings.
+    The explicit inactive-page-decoration option is only for a selected XLS
+    reading derivative in ODS form; ordinary import keeps the strict default.
     """
     if (type(data) is not bytes or type(max_bytes) is not int or max_bytes <= 0
             or not 0 < len(data) <= min(max_bytes, 64 * 1024 * 1024)
             or type(max_chars) is not int or not 0 < max_chars <= 10_000_000
+            or type(allow_inactive_page_decorations) is not bool
+            or allow_inactive_page_decorations and suffix != '.ods'
             or not isinstance(suffix, str) or suffix not in SUPPORTED_SUFFIXES
             or cancelled is not None and not callable(cancelled)
             or deadline is not None and (type(deadline) not in (int, float)
@@ -779,7 +882,8 @@ def extract_xml_document(data: bytes, suffix: str, *, max_bytes=64 * 1024 * 1024
         budget.check()
         with ZipFile(BytesIO(data)) as archive:
             if suffix in ('.odt', '.ods', '.odp'):
-                _odf(archive, suffix, budget)
+                _odf(archive, suffix, budget,
+                    allow_inactive_page_decorations=allow_inactive_page_decorations)
             elif suffix == '.pptx':
                 _pptx(archive, budget)
             elif suffix == '.xlsx':

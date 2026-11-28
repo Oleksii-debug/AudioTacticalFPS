@@ -180,12 +180,57 @@ def test_replay_rechecks_active_revision_before_registering(imported, monkeypatc
     assert hit.revision == replacement and hit.quote == 'railway history'
 
 
-def test_cancelled_replay_does_not_add_membership(imported):
-    before = source_state(imported)
+def test_cancelled_replay_does_not_add_membership(imported, monkeypatch):
+    item = imported
+    before = source_state(item)
+    stopped, validated = Event(), []
+    run = Ingest.run
+
+    def run_then_cancel(ingest, *args, **kwargs):
+        result = run(ingest, *args, **kwargs)
+        assert result['state'] == 'complete' and result['id'] == item.initial['id']
+        # Reach the actual sealed-source replay boundary, not the earlier
+        # streamed intake cancellation result. The new membership is still
+        # absent on an independent connection before the registration begins.
+        with closing(sqlite3.connect(item.app.database)) as reader:
+            assert reader.execute('SELECT count(*) FROM sealed WHERE revision=?',
+                                  (item.initial['id'],)).fetchone()[0] == 1
+            assert reader.execute(
+                'SELECT count(*) FROM catalog_membership '
+                'WHERE workspace=? AND collection=? AND edition=?',
+                (item.workspace, item.requested, item.metadata['edition_id'])).fetchone()[0] == 0
+        validated.append(result['id'])
+        stopped.set()
+        return result
+
+    monkeypatch.setattr(Ingest, 'run', run_then_cancel)
     with pytest.raises(InterruptedError, match='cancelled'):
-        replay(imported, cancelled=lambda: True)
-    assert source_state(imported) == before
-    assert imported.app.browse(imported.workspace, collection=imported.requested) == ()
+        replay(item, cancelled=stopped.is_set)
+    assert stopped.is_set() and validated == [item.initial['id']]
+    assert source_state(item) == before
+    assert item.app.browse(item.workspace, collection=item.requested) == ()
+    assert item.source.read_bytes() == item.raw
+    assert item.app.assets.resolve(sha256(item.raw).hexdigest()).read_bytes() == item.raw
+
+
+def test_pre_cancelled_replay_returns_cancelled_without_intake_or_registration_effects(imported, monkeypatch):
+    from carr_library import application
+    item = imported
+    before = source_state(item)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Entry cancellation must stop before writer, retention or ingestion.')
+
+    monkeypatch.setattr(application, 'exclusive_writer', forbidden)
+    monkeypatch.setattr(type(item.app.assets), 'retain_snapshot', forbidden)
+    monkeypatch.setattr(Ingest, 'run', forbidden)
+    result = replay(item, cancelled=lambda: True)
+    assert result['state'] == 'cancelled' and 'cancelled' in result['message'].lower()
+    assert not result.get('publication_recovered') and 'id' not in result
+    assert source_state(item) == before
+    assert item.app.browse(item.workspace, collection=item.requested) == ()
+    assert item.source.read_bytes() == item.raw
+    assert item.app.assets.resolve(sha256(item.raw).hexdigest()).read_bytes() == item.raw
 
 
 @pytest.mark.parametrize('kind', ('txt', 'pdf'))
@@ -245,3 +290,4 @@ def test_fresh_post_commit_cancellation_returns_committed_source(tmp_path, monke
     assert hit.revision == result['id'] and hit.verified is (kind == 'txt')
     assert source.read_bytes() == raw
     assert app.assets.resolve(digest).read_bytes() == raw
+

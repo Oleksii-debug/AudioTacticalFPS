@@ -1,0 +1,429 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "cf6b55b8216fe41ca446cd2df45604be117cff3f",
+  "base_tree": "8916196aa400e15425d08d60c8d3164d8590d28e",
+  "purpose": "Correct observed Windows CHM live directory-open denial and actual Reader Ctrl+S admission; use current LibraryApp integrity boundary; preserve exact source bytes in Windows checkout.",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "after": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "before": "014c47d5297a937a8bf6061420dd009206863669"
+    },
+    {
+      "path": "carr-library/tests/audio/test_live_metadata_retry.py",
+      "after": "8534a05cf4e7c89a49f42fdcbb611f6f141fe969",
+      "before": "9d97fca2633815e61a55c16f51a06484944f6fbc"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "after": "4f3fd0b4edbce854c03b69ffd9c4bdbf45fc5679",
+      "before": "1bebafab9730ded278d0a477892963f18a38749d"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "after": "ec96de70f8f4681b8c89801d5369529d20608924",
+      "before": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd"
+    },
+    {
+      "path": ".github/.gitattributes",
+      "after": "f1f365b6bcad4cd7df40aa444d543bee482dab61",
+      "before": null
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "c52e92e52ad84003a481889def21cc8364e5acf6",
+      "after": "b723dc6b461eda3b74095293f86cbb0644c58145"
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "9b9ebeae4c72117b6cdc66daa1d7a8f1712b86c3",
+      "after": "28bac084c5d24bd919e525a26b86acefc630bb1a"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "1c9c6888e2d129de28fb629cfe4aba131584a68c",
+      "after": "9514979e51b948d15b9ddb8619f49767e7ca82c6"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45",
+      "after": "5145b240d4f54977f969569116e2a6703371b715"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": "3ab4d08e3b9d8269fe0741da1d87be956468a96f",
+      "after": "226bad73e28ce9891f45393715365214c0eb05f6"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "07dd5a736bc9c17041ce5ff07983ab3bb12a2180",
+      "after": "16c1533bc8f733bcc4ffbad32e50f5b45ed5d051"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "bff68448f9f120e02cf70c1ebee11a4958cdf005",
+      "after": "be3cfe47b9af04eb0a2ea8e396f4b71c790edbcd"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "7422d46e6b48a6828101437654d789a7b595eb36",
+      "after": "ecb812d1b9ceadc9bca652abd90cad40698f7bcf"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "c1f6c79db829d90d063e6b17bb26b42debbac532",
+      "after": "e50e6e2c4e8b33ea9d1a23fcc166432709ef48f0"
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "3c2f0cc7277fbce5bab753ff3c3440f994b913ac",
+      "after": "106db6176c59393b1a6c2cddb91364fd9f079a7d"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "3b617ff8c420ca481ffa27e4adad6185481e0196",
+      "after": "b108101ac858d4ba8244c792c104fa9a93a5dd38"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "766fa06847a2d780cc7d8621811813b61ebe4909",
+      "after": "113a9644227bb002daf5848bbb3f200f25ccc104"
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": "d18a77751c024481508b0af0809cbaae79b62506",
+      "after": "3ad9b353c048adf72d5672834387832e993fa122"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "9079d65dc507078ec9557cea2fe74a2282ddf39b",
+      "after": "670d9c9e710ae31e83e82ab5d36045a227bda707"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "8504868a65a1a64c0c670858235700f733020711",
+      "after": "e88c8042020b331896326d27ceed23be46f6a096"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "before": "35395440d240eb4c283590268e7ac40ea94c193f",
+      "after": "2e22c72b339443b3e2f623a2da1e4af2d0766c51"
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "before": "e51f27129883465851cb29214873f35a08e32e4b",
+      "after": "6b3e09af4254b784af9c06418c59bd3ce399330b"
+    }
+  ],
+  "literal_gate_operations": [
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "014c47d5297a937a8bf6061420dd009206863669",
+      "after": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "014c47d5297a937a8bf6061420dd009206863669",
+      "after": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "014c47d5297a937a8bf6061420dd009206863669",
+      "after": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "\"tests/audio/test_live_metadata_retry.py\": 12,",
+      "after": "\"tests/audio/test_live_metadata_retry.py\": 22,",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "9d97fca2633815e61a55c16f51a06484944f6fbc",
+      "after": "8534a05cf4e7c89a49f42fdcbb611f6f141fe969",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "1bebafab9730ded278d0a477892963f18a38749d",
+      "after": "4f3fd0b4edbce854c03b69ffd9c4bdbf45fc5679",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd",
+      "after": "ec96de70f8f4681b8c89801d5369529d20608924",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "014c47d5297a937a8bf6061420dd009206863669",
+      "after": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": "014c47d5297a937a8bf6061420dd009206863669",
+      "after": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "\"tests/audio/test_live_metadata_retry.py\":{\"count\":12,\"functions\":[\"test_live_refusal_requires_a_new_size_observation\",\"test_persistent_live_denial_remains_a_failure_and_reaps_child\",\"test_other_metadata_denials_are_not_retried\",\"test_cancellation_interrupts_metadata_retry\",\"test_existing_time_budget_interrupts_metadata_retry\",\"test_child_exit_during_live_refusal_uses_fresh_final_lstat\",\"test_final_lstat_denial_is_never_retried\",\"test_real_open_file_deletion_is_observed_without_cached_fallback\"]}",
+      "after": "\"tests/audio/test_live_metadata_retry.py\":{\"count\":22,\"functions\":[\"test_live_refusal_requires_a_new_size_observation\",\"test_persistent_live_denial_remains_a_failure_and_reaps_child\",\"test_other_metadata_denials_are_not_retried\",\"test_cancellation_interrupts_metadata_retry\",\"test_existing_time_budget_interrupts_metadata_retry\",\"test_child_exit_during_live_refusal_uses_fresh_final_lstat\",\"test_final_lstat_denial_is_never_retried\",\"test_real_open_file_deletion_is_observed_without_cached_fallback\",\"test_live_directory_open_refusal_requires_fresh_bounded_entries\",\"test_live_directory_open_refusal_preserves_controls_and_never_skips\",\"test_directory_open_after_actual_child_exit_keeps_strict_denial\",\"test_child_exit_during_directory_open_denial_rechecks_new_final_entries\"]}",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "\"tests/audio/test_live_metadata_retry.py\":12",
+      "after": "\"tests/audio/test_live_metadata_retry.py\":22",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "'tests/audio/test_live_metadata_retry.py' = 12",
+      "after": "'tests/audio/test_live_metadata_retry.py' = 22",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "\"tests/audio/test_live_metadata_retry.py\":{\"count\":12,\"functions\":[\"test_live_refusal_requires_a_new_size_observation\",\"test_persistent_live_denial_remains_a_failure_and_reaps_child\",\"test_other_metadata_denials_are_not_retried\",\"test_cancellation_interrupts_metadata_retry\",\"test_existing_time_budget_interrupts_metadata_retry\",\"test_child_exit_during_live_refusal_uses_fresh_final_lstat\",\"test_final_lstat_denial_is_never_retried\",\"test_real_open_file_deletion_is_observed_without_cached_fallback\"]}",
+      "after": "\"tests/audio/test_live_metadata_retry.py\":{\"count\":22,\"functions\":[\"test_live_refusal_requires_a_new_size_observation\",\"test_persistent_live_denial_remains_a_failure_and_reaps_child\",\"test_other_metadata_denials_are_not_retried\",\"test_cancellation_interrupts_metadata_retry\",\"test_existing_time_budget_interrupts_metadata_retry\",\"test_child_exit_during_live_refusal_uses_fresh_final_lstat\",\"test_final_lstat_denial_is_never_retried\",\"test_real_open_file_deletion_is_observed_without_cached_fallback\",\"test_live_directory_open_refusal_requires_fresh_bounded_entries\",\"test_live_directory_open_refusal_preserves_controls_and_never_skips\",\"test_directory_open_after_actual_child_exit_keeps_strict_denial\",\"test_child_exit_during_directory_open_denial_rechecks_new_final_entries\"]}",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "\"tests/audio/test_live_metadata_retry.py\":12",
+      "after": "\"tests/audio/test_live_metadata_retry.py\":22",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "'tests/audio/test_live_metadata_retry.py' = 12",
+      "after": "'tests/audio/test_live_metadata_retry.py' = 22",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "c52e92e52ad84003a481889def21cc8364e5acf6",
+      "after": "b723dc6b461eda3b74095293f86cbb0644c58145",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "9b9ebeae4c72117b6cdc66daa1d7a8f1712b86c3",
+      "after": "439294c6f60f6b378f91f6271db49071a9f6b0e3",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "1c9c6888e2d129de28fb629cfe4aba131584a68c",
+      "after": "9514979e51b948d15b9ddb8619f49767e7ca82c6",
+      "count": 2
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "1bebafab9730ded278d0a477892963f18a38749d",
+      "after": "4f3fd0b4edbce854c03b69ffd9c4bdbf45fc5679",
+      "count": 3
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd",
+      "after": "ec96de70f8f4681b8c89801d5369529d20608924",
+      "count": 3
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "Exact341 portable",
+      "after": "Exact351 portable",
+      "count": 2
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "Require341 source and341 isolated",
+      "after": "Require351 source and351 isolated",
+      "count": 2
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "All341 source and341 isolated",
+      "after": "All351 source and351 isolated",
+      "count": 2
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45",
+      "after": "5145b240d4f54977f969569116e2a6703371b715",
+      "count": 2
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": "3ab4d08e3b9d8269fe0741da1d87be956468a96f",
+      "after": "226bad73e28ce9891f45393715365214c0eb05f6",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "'tests/audio/test_live_metadata_retry.py' = 12",
+      "after": "'tests/audio/test_live_metadata_retry.py' = 22",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "7422d46e6b48a6828101437654d789a7b595eb36",
+      "after": "ecb812d1b9ceadc9bca652abd90cad40698f7bcf",
+      "count": 2
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "7422d46e6b48a6828101437654d789a7b595eb36",
+      "after": "ecb812d1b9ceadc9bca652abd90cad40698f7bcf",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "before": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45",
+      "after": "5145b240d4f54977f969569116e2a6703371b715",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "before": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45",
+      "after": "5145b240d4f54977f969569116e2a6703371b715",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "before": "35395440d240eb4c283590268e7ac40ea94c193f",
+      "after": "2e22c72b339443b3e2f623a2da1e4af2d0766c51",
+      "count": 1
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
+      "after": "557798e324a126ee12bb439c6fea25237eece59d",
+      "count": 1
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "439294c6f60f6b378f91f6271db49071a9f6b0e3",
+      "after": "28bac084c5d24bd919e525a26b86acefc630bb1a",
+      "count": 1
+    }
+  ],
+  "qualification": "STATIC_NOT_RUN. No prior runtime result transferred to this candidate. Existing whole-suite and native checks remain required.",
+  "runtime_requirement": {
+    "converter_whole_suites": [
+      {
+        "path": "tests/conversion/test_selected_conversion.py",
+        "count": 39
+      },
+      {
+        "path": "tests/conversion/test_calibre_admission.py",
+        "count": 49
+      },
+      {
+        "path": "tests/conversion/test_office_admission.py",
+        "count": 24
+      },
+      {
+        "path": "tests/ui/test_document_conversion.py",
+        "count": 20
+      },
+      {
+        "path": "tests/extract/test_document_formats_xml.py",
+        "count": 151
+      },
+      {
+        "path": "tests/audio/test_audio_process.py",
+        "count": 23
+      },
+      {
+        "path": "tests/audio/test_live_metadata_retry.py",
+        "count": 22
+      },
+      {
+        "path": "tests/ui/test_native_conversion_diagnostics.py",
+        "count": 23
+      }
+    ],
+    "source_cases": 351,
+    "isolated_installed_cases": 351,
+    "native_formats": 14,
+    "source_native_gui": true,
+    "installed_native_gui": true,
+    "source_origins": 30
+  },
+  "unchanged": {
+    "integrated_source_whole_suites": 472,
+    "source_partitions": 4,
+    "fast_source_whole_suites": 165,
+    "v3_source_whole_suites": 202,
+    "v3_installed_whole_suites": 181,
+    "installed_whole_suites": 321,
+    "voice_source_cases": 495,
+    "voice_installed_cases": 495,
+    "default_suite_seconds": 600
+  },
+  "reviews": [
+    {
+      "component": "audio/process.py and live metadata retry tests",
+      "reviewer": "canonical_regression",
+      "outcome": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Windows live WinError5 scandir acquisition only, ten bounded waits, single acquired iterator, original twelve cases retained and ten new actual-child cases, strict final controls"
+    },
+    {
+      "component": "native conversion GUI",
+      "reviewer": "locate_project",
+      "outcome": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Actual Reload voices availability, real Ctrl+S, dual explicit Save acknowledgements; owned unexpected Unsaved question fails; Cancel only during unwind"
+    },
+    {
+      "component": "LibraryApp verification",
+      "reviewer": "root",
+      "outcome": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Constructor performs full storage integrity check under current lease; no absent LibraryApp.check API"
+    },
+    {
+      "component": ".github attributes",
+      "reviewers": [
+        "root",
+        "locate_project"
+      ],
+      "outcome": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Two selected workflow paths only; raw source verifier unchanged"
+    }
+  ],
+  "local_review": {
+    "all_gate_edits_invert_exactly_to_preimages": true,
+    "all_created_blobs_read_back_exactly": true,
+    "focused_source_pin_review": [
+      {
+        "helper": "carr-library/scripts/ci_book_measured_contracts.py",
+        "verified_pins": 44
+      },
+      {
+        "helper": "carr-library/scripts/ci_reading_publication_contracts.py",
+        "verified_pins": 33
+      },
+      {
+        "helper": "carr-library/scripts/ci_selected_conversion_contracts.py",
+        "verified_pins": 30
+      },
+      {
+        "helper": "carr-library/scripts/ci_voice_management_contracts.py",
+        "verified_pins": 67
+      },
+      {
+        "helper": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+        "verified_pins": 25
+      }
+    ]
+  },
+  "additional_pin_reconciliation": "Reading publication had retained its pre-converter document_formats pin; now bound to current 557798 without a product change or claim transferred."
+}

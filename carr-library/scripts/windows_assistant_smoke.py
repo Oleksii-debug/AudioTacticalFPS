@@ -19,7 +19,8 @@ import traceback
 SOURCE_FILES = (
     'assistant/__init__.py', 'assistant/models.py', 'assistant/planner.py',
     'assistant/service.py', 'assistant/state.py', 'assistant/backup_receipt.py',
-    'ui/assistant_dialog.py',
+    'ui/assistant_dialog.py', 'assistant/templates.py',
+    'ui/assistant_templates.py', 'durable_state.py',
 )
 EXPECTED_CHECKS = (
     'native preview is non-executing and shows exact operations',
@@ -28,6 +29,10 @@ EXPECTED_CHECKS = (
     'reopened native saved job resumes without duplicate imports',
     'unsupported native instructions execute nothing',
     'original Unicode document bytes remain unchanged',
+    'native workflow save retains typed steps without scope or execution',
+    'native workflow load clears old approval and requires current preview',
+    'native workflow Run separately executes one newly submitted plan',
+    'reopened native workflow settings retain exact revision and source bytes',
 )
 
 
@@ -251,6 +256,154 @@ def exercise_controls(root, wx, *, timeout=60):
         if failures:
             raise RuntimeError('; '.join(failures))
 
+    def run_templates():
+        trace_phase('open-native-workflow-templates')
+        frame = wx.Frame(None, title='Synthetic native workflow-template acceptance')
+        frame.library, frame.active = library, None
+        frame.Show()
+        dialog = assistant_dialog.create_assistant_dialog(frame)
+        controls = dialog.assistant_controls
+        observer = AssistantService(library)
+        existing_jobs = {row.id for row in observer.jobs()}
+        saved, errors = {}, []
+        state = {'phase': 'preview', 'closing': False}
+        started = monotonic()
+
+        def manager():
+            return next((window for window in wx.GetTopLevelWindows()
+                         if isinstance(window, wx.Dialog)
+                         and window.GetTitle() == 'Saved workflow templates'), None)
+
+        def schedule():
+            wx.CallLater(25, poll)
+
+        def close_all():
+            if state['closing']:
+                return
+            state['closing'] = True
+            for window in tuple(wx.GetTopLevelWindows()):
+                if isinstance(window, wx.TextEntryDialog) and window.IsModal():
+                    window.EndModal(wx.ID_CANCEL)
+            current = manager()
+            if current is not None:
+                current.template_handlers['close']()
+            dialog.assistant_handlers['close']()
+
+        def poll():
+            if state['closing']:
+                return
+            try:
+                if monotonic() - started > timeout:
+                    current = manager()
+                    detail = current.template_controls['status'].GetValue() if current else controls['review'].GetValue()
+                    raise RuntimeError('Native workflow controls exceeded their deadline: ' + detail[:2000])
+                phase = state['phase']
+                if phase == 'preview':
+                    controls['instruction'].SetValue('List libraries')
+                    click(controls['buttons']['preview'])
+                    assert controls['buttons']['run'].IsEnabled()
+                    assert {row.id for row in observer.jobs()} == existing_jobs
+                    state['phase'] = 'manager-open'
+                    schedule()  # The native button enters a nested modal loop.
+                    click(controls['buttons']['templates'])
+                    return
+                if phase == 'manager-open':
+                    current = manager()
+                    if current is not None and current.template_controls['buttons']['refresh'].IsEnabled():
+                        native = current.template_controls
+                        assert native['rows'].GetName().startswith('Saved workflow templates')
+                        assert native['rows'].GetCount() == 0
+                        state['phase'] = 'name-entry'
+                        schedule()
+                        click(native['buttons']['save'])
+                        return
+                elif phase == 'name-entry':
+                    entry = next((window for window in wx.GetTopLevelWindows()
+                                  if isinstance(window, wx.TextEntryDialog)
+                                  and window.GetTitle() == 'Save workflow template'), None)
+                    if entry is not None:
+                        entry.SetValue('Native workflow — retained settings')
+                        state['phase'] = 'saved'
+                        click(entry.FindWindow(wx.ID_OK))
+                elif phase == 'saved':
+                    current = manager()
+                    if (current is not None
+                            and current.template_controls['buttons']['refresh'].IsEnabled()
+                            and current.template_controls['rows'].GetCount() == 1):
+                        values = observer.workflow_templates().list()
+                        assert len(values) == 1
+                        value = values[0]
+                        assert value.name == 'Native workflow — retained settings'
+                        assert 'scope' not in value.to_dict()['draft']
+                        assert {row.id for row in observer.jobs()} == existing_jobs
+                        saved.update(id=value.id, fingerprint=value.fingerprint)
+                        checks.append(EXPECTED_CHECKS[6])
+                        current.template_controls['rows'].SetSelection(0)
+                        state['phase'] = 'loaded'
+                        click(current.template_controls['buttons']['load'])
+                elif phase == 'loaded':
+                    if (manager() is None and controls['review'].GetValue().startswith(
+                            'Loaded an unapproved workflow draft.')):
+                        draft = json.loads(controls['instruction'].GetValue())
+                        assert draft['steps'] == [{'tool': 'library.list', 'arguments': {}}]
+                        assert 'scope' not in draft
+                        assert not controls['buttons']['run'].IsEnabled()
+                        assert controls['planning_source'].GetSelection() == 0
+                        assert {row.id for row in observer.jobs()} == existing_jobs
+                        checks.append(EXPECTED_CHECKS[7])
+                        click(controls['buttons']['preview'])
+                        assert controls['buttons']['run'].IsEnabled()
+                        assert {row.id for row in observer.jobs()} == existing_jobs
+                        state['phase'] = 'ran'
+                        click(controls['buttons']['run'])
+                elif phase == 'ran':
+                    if (controls['buttons']['run'].IsEnabled()
+                            and controls['review'].GetValue().startswith('complete:')):
+                        jobs = tuple(row for row in observer.jobs() if row.id not in existing_jobs)
+                        assert len(jobs) == 1 and jobs[0].status == 'complete'
+                        assert jobs[0].completed == jobs[0].total == 1
+                        checks.append(EXPECTED_CHECKS[8])
+                        state['phase'] = 'reopened'
+                        schedule()
+                        click(controls['buttons']['templates'])
+                        return
+                elif phase == 'reopened':
+                    current = manager()
+                    if (current is not None
+                            and current.template_controls['buttons']['refresh'].IsEnabled()):
+                        assert current.template_controls['rows'].GetCount() == 1
+                        value = observer.workflow_templates().get(saved['id'])
+                        assert value.fingerprint == saved['fingerprint'] and value.revision == 1
+                        assert source.read_bytes() == raw
+                        assert len(observer.jobs()) == len(existing_jobs) + 1
+                        checks.append(EXPECTED_CHECKS[9])
+                        state['phase'] = 'finish'
+                        click(current.template_controls['buttons']['close'])
+                elif phase == 'finish':
+                    if manager() is None:
+                        state['closing'] = True
+                        click(controls['buttons']['close'])
+                        return
+                schedule()
+            except BaseException:
+                errors.append(traceback.format_exc())
+                trace_phase('workflow-controls-failed', error=errors[-1])
+                close_all()
+
+        wx.CallAfter(poll)
+        faulthandler.dump_traceback_later(timeout + 15, exit=True)
+        try:
+            dialog.ShowModal()
+        finally:
+            dialog.assistant_handlers['close']()
+            dialog.Destroy()
+            frame.Destroy()
+            faulthandler.cancel_dump_traceback_later()
+        if errors:
+            raise RuntimeError('; '.join(errors))
+        if state['phase'] != 'finish':
+            raise RuntimeError('The native workflow scenario closed before completing every stage.')
+
     failures = []
     previous_exit = application.GetExitOnFrameDelete()
     previous_top = application.GetTopWindow()
@@ -271,6 +424,7 @@ def exercise_controls(root, wx, *, timeout=60):
                 raise RuntimeError('The native application event loop is not active.')
             run_dialog(False)
             run_dialog(True)
+            run_templates()
         except BaseException:
             failures.append(traceback.format_exc())
             trace_phase('scenario-failed', error=failures[-1])
@@ -293,7 +447,8 @@ def exercise_controls(root, wx, *, timeout=60):
         raise RuntimeError('Native assistant did not complete every required operation.')
     trace_phase('all-required-checks-passed', check_count=len(checks))
     return {'checks': checks, 'check_count': len(checks), 'progress_observations': progress,
-            'saved_job_reopened': True, 'unrelated_workspace_unchanged': True}
+            'saved_job_reopened': True, 'unrelated_workspace_unchanged': True,
+            'workflow_templates_native': True, 'templates_require_new_approval': True}
 
 
 def main():

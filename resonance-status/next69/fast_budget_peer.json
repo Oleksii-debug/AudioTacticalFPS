@@ -1,0 +1,122 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "observed_at": "2026-11-28 09:01:16 UTC",
+  "path": ".github/workflows/carr-windows.yml",
+  "preimage": "e71a09b322d18f0447fae7d1cf64b23805902b39",
+  "successor": "b84d83988db80f3706db9d2c4800b9a666bb321b",
+  "actual_evidence": "1785598f785805a5e4200ba1bfeca5a676bf2567",
+  "read_only_budget_audit": "1e615102638092838332e5f667aa07e25fa49fbc",
+  "proof": {
+    "exact_full_inverse": true,
+    "hunks": 6,
+    "outside_job_prefix": true,
+    "outside_job_suffix": true,
+    "selectors_byte_exact": true,
+    "selected": 185,
+    "unique": 185,
+    "ci_argv_exact": true,
+    "actual_ci_line": "& $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'",
+    "timeout_rows": [
+      {
+        "line": 8,
+        "text": "    timeout-minutes: 135"
+      },
+      {
+        "line": 25,
+        "text": "        timeout-minutes: 3"
+      },
+      {
+        "line": 30,
+        "text": "        timeout-minutes: 5"
+      },
+      {
+        "line": 35,
+        "text": "        timeout-minutes: 20"
+      },
+      {
+        "line": 57,
+        "text": "        timeout-minutes: 100"
+      },
+      {
+        "line": 421,
+        "text": "        timeout-minutes: 2"
+      }
+    ],
+    "final_language_pin_occurrences": 1,
+    "utf8_bytes": 402828
+  },
+  "hunks": [
+    {
+      "old_line": 286,
+      "new_line": 286,
+      "removed": [
+        "    # The measured 98-suite diagnostic took about 22 minutes before this 119-suite union.",
+        "    # Keep every 600-second suite limit; allow bounded setup and verdict headroom.",
+        "    timeout-minutes: 45"
+      ],
+      "added": [
+        "    # B reached 170 child summaries but no strict aggregate before its 45-minute cap.",
+        "    # Fund the complete 185-suite run; individual Book/voice timeouts remain failures.",
+        "    # Step bounds total 130 minutes, leaving 5 minutes for job cleanup.",
+        "    timeout-minutes: 135"
+      ]
+    },
+    {
+      "old_line": 305,
+      "new_line": 306,
+      "removed": [],
+      "added": [
+        "        timeout-minutes: 3"
+      ]
+    },
+    {
+      "old_line": 309,
+      "new_line": 311,
+      "removed": [],
+      "added": [
+        "        timeout-minutes: 5"
+      ]
+    },
+    {
+      "old_line": 313,
+      "new_line": 316,
+      "removed": [],
+      "added": [
+        "        timeout-minutes: 20"
+      ]
+    },
+    {
+      "old_line": 334,
+      "new_line": 338,
+      "removed": [],
+      "added": [
+        "        timeout-minutes: 100"
+      ]
+    },
+    {
+      "old_line": 697,
+      "new_line": 702,
+      "removed": [],
+      "added": [
+        "        timeout-minutes: 2"
+      ]
+    }
+  ],
+  "findings": [
+    "Exactly six declaration/comment hunks are confined to completion-regressions; all other jobs, triggers, permissions, required obligations and complete source bytes reconstruct unchanged.",
+    "Old45-minute job cap becomes135. Explicit checkout3, setup-python5, preparation20, source100 and upload2 total130 minutes plus5-minute job reserve.",
+    "All185 selectors are byte-identical and unique; the exact ci_check --jobs3 argv, offline policies, per-suite verdict handling, complete required count/case assertions and retention run bodies remain unchanged.",
+    "No child deadline changes: ordinary600 seconds and existing reviewed ASR900-second mechanism remain intact. No ASR900 selector/override is added to this lane.",
+    "BookBatch and voice-package actual600-second failures remain strict failures. The larger outer allowance cannot qualify them.",
+    "The actual B runner reported cancellation after its source step ran44m20s inside the declared45-minute job cap, while real children were still producing output. Attribution to the outer cap is a source-and-timing inference; the closed log has no separate explicit job-timeout annotation.",
+    "The100-minute source allowance is an evidence-bound continuation budget, not a guarantee of the theoretical worst case for all185 wholes.",
+    "The final exact de0ffa language-workflow binding, both strict always guards, old native hardware requirements and no-skip/xfail expectations remain unchanged."
+  ],
+  "limits": {
+    "python_yaml_powershell_execution": "NOT_RUN",
+    "actual_new_head_execution": "Required; no prior receipt transfer.",
+    "refs": "NONE changed by reviewer."
+  }
+}

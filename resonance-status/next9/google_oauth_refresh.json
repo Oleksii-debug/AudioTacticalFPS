@@ -1,0 +1,89 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Explicit Google desktop token renewal",
+  "status": "REVIEWED_STATIC_NOT_RUN",
+  "base": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/assistant/google_oauth.py",
+      "preimage": null,
+      "sha": "53bdc46a819c844ab1daf82c67f9ab3aa0371843"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "preimage": "f6590a6518c2cea43333441a631148e6584fd3f8",
+      "sha": "71073001c91791e4053e00a76238a50727d2371c"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "preimage": "b40ba0bd1f37d8a6140ef92fbde16d68283d6ed4",
+      "sha": "5831d975bf2fb29c6aa666888a661380e12188fe"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/google_oauth.py",
+      "preimage": null,
+      "sha": "1a4e156bd758729b14bf818d94afc17a8d6afc86"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "preimage": "1fbf8df440d9a29e7f95f1354cfbf2b97df23fd1",
+      "sha": "bfccc8d15dfb40fda103ca79e21dccf2825d4abd"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_google_oauth.py",
+      "preimage": null,
+      "sha": "08f94018738b5f25dc4eb5721189acebcb489b88"
+    },
+    {
+      "path": "carr-library/tests/ui/test_google_oauth.py",
+      "preimage": null,
+      "sha": "ac59e8efa2960b155fe21e1c04dbc5b9579d6b7b"
+    },
+    {
+      "path": "carr-library/docs/GOOGLE_OAUTH_RENEWAL.md",
+      "preimage": null,
+      "sha": "a69f336481d86eee99dace2ef4378c76a58b6229"
+    },
+    {
+      "path": "carr-library/docs/translation_workstation.md",
+      "preimage": "ce172579cef44df6cdf03a1f5ae60b5250e0510f",
+      "sha": "a2fbd65e2b831074e672311581b8c4b980ab83ca"
+    }
+  ],
+  "tests": {
+    "counts_kind": "Static decorator enumeration, not collection/execution",
+    "whole_modules": {
+      "tests/assistant/test_google_oauth.py": 49,
+      "tests/ui/test_google_oauth.py": 15
+    },
+    "fixture_companions": [],
+    "required_existing": [
+      "tests/assistant/test_providers.py",
+      "tests/assistant/test_translation.py",
+      "tests/assistant/test_translation_v3.py",
+      "tests/assistant/test_translation_advanced_source.py",
+      "tests/assistant/test_translation_advanced_union.py",
+      "tests/ui/test_profile_project_exports.py"
+    ]
+  },
+  "implementation": {
+    "existing_gateway": "All approval/request/ledger checks precede vault and fixed refresh; same shared request cancellation and expiry guard runs after vault/network/cache and before paid request.",
+    "credentials": "Explicit existing Google Desktop grant only; unchanged OS vault2560, no ADC/browser/key discovery, no automatic vault write, no new dependency.",
+    "cache": "Gateway-instance only, maximum16, exact profile/reference/endpoint/credential digest and monotonic expiry margin60. Fresh vault read every request.",
+    "refresh_transport": "Fixed oauth2.googleapis.com:443/token with normal TLS, POST form encoding and known fields only; no redirects or environment proxy; max32768 response, finite same request deadline,10sec socket bound.",
+    "failure": "Refresh failure not_sent; actual translation transmission retains uncertain-charge/no-automatic-retry semantics.",
+    "ui": "Separate explicit setup for selected existing v3 profile, password fields, default-No confirmation, object+directory identity guards at modal/commit; no network on setup/check."
+  },
+  "review": {
+    "canonical": "ACCEPTED_STATIC_NOT_RUN for core53bdc46a, gateway5831d975, profiles71073001, UI1a4e156b; same-path identity correction and meaningful regression accepted. Native smoke separately in progress.",
+    "source_readback": "EXACT every listed file; no Python parse or execution claimed.",
+    "python_parse": "NOT_RUN",
+    "pytest": "NOT_RUN",
+    "native": "Being staged independently",
+    "live_google": "NOT_RUN"
+  },
+  "primary_sources": [
+    "https://developers.google.com/identity/protocols/oauth2/native-app#offline",
+    "https://cloud.google.com/translate/docs/authentication"
+  ]
+}

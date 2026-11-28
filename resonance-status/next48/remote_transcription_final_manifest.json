@@ -1,0 +1,687 @@
+{
+  "schema": "resonance-source-handoff/1",
+  "title": "Optional explicit retained-audio remote transcription over the existing Gateway",
+  "status": "READY_FOR_EXACT_CI_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "ac0c38196c9cad7120c6d8b36a972654d26f3b6a",
+  "base_tree": "e95b042fe1629166003545e11037e665cdd45bd7",
+  "supersedes_draft": "6d4d7beec306263afc4128b24c9531cfc8117507",
+  "preimage_audit": {
+    "all_paths_match_base": true,
+    "new_paths_absent": true,
+    "path_count": 22,
+    "refs_moved": false
+  },
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/assistant/transcription_provider.py",
+      "preimage": null,
+      "sha": "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "preimage": "71073001c91791e4053e00a76238a50727d2371c",
+      "sha": "a3adbe7cc693bc8a3972144007ee15cc85b3b200"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "preimage": "5831d975bf2fb29c6aa666888a661380e12188fe",
+      "sha": "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_remote_values.py",
+      "preimage": null,
+      "sha": "25e09a95bac8f079a9e3f0d4b7016a6aa027c7b2"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_remote.py",
+      "preimage": null,
+      "sha": "bc0c45a8c0edc8dcf8fc7e99476647e3eb8fb8dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/transcription_worker.py",
+      "preimage": null,
+      "sha": "1651009d71e720ddad1793b35f8fad1464af7422"
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription.py",
+      "preimage": "509ed74a22ad27ee4ef1c5ab2b4c8884d0f822b2",
+      "sha": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "preimage": "b5ef583cedcf120b9a0a03369e10b07631a01722",
+      "sha": "98161afe7d432a81e169602f61b8443b639ccea6"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "preimage": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",
+      "sha": "c8596f4cb9792a89d3f76d08347b9ebbc963439e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_remote_dialog.py",
+      "preimage": null,
+      "sha": "625500b8b51d4fbc37891218b5e1b0acbb9a5898"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "preimage": "98ff4267291845d3e4e1abf95ce02ad87ef85da3",
+      "sha": "83425f992811d3560cb53cc191f61dfbe54b8ec5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "preimage": "bfccc8d15dfb40fda103ca79e21dccf2825d4abd",
+      "sha": "ec81cbf478a225c482b3e74cd5bc9e9deadd3d9a"
+    },
+    {
+      "path": "carr-library/tests/transcription/remote_fixture.py",
+      "preimage": null,
+      "sha": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_transcription_provider.py",
+      "preimage": null,
+      "sha": "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_remote_service.py",
+      "preimage": null,
+      "sha": "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000"
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_remote.py",
+      "preimage": null,
+      "sha": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_transcription_loopback.py",
+      "preimage": null,
+      "sha": "6baa4675771066aba1a7ce40a276419eac4606f9"
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "preimage": "6859d406a595e806b78de12969ad681757e34f71",
+      "sha": "360a669baaa8d60b41acc265111d2fa0f68108ee"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_remote_smoke.py",
+      "preimage": null,
+      "sha": "62e7d85daf58c7aeadbc83fa8cc2227e09825103"
+    },
+    {
+      "path": "carr-library/docs/REMOTE_TRANSCRIPTION.md",
+      "preimage": null,
+      "sha": "4b169cd24758337a90bf9881f7dd98542ec8e5ba"
+    },
+    {
+      "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "preimage": null,
+      "sha": "c0f0f2a2abac8fb5d50f63020da136acc0868d1f"
+    },
+    {
+      "path": ".github/workflows/carr-remote-stt.yml",
+      "preimage": null,
+      "sha": "4b0c8796c81cc2bbf04c16e775fe50844b3bffe3"
+    }
+  ],
+  "requirements": {
+    "scope": "V3-11 optional documented STT provider adapter; explicit user-selected retained recording",
+    "provider": "ElevenLabs synchronous POST https://api.elevenlabs.io/v1/speech-to-text?enable_logging=true",
+    "model": "scribe_v2",
+    "capability": "speech.transcribe",
+    "current_contracts": [
+      "ProviderProfile/ProfileStore",
+      "Gateway Authorization and UsageLedger",
+      "current credential vault",
+      "TranscriptionService retained jobs and editor/export",
+      "ResourceBroker and actual run_process/Windows Job",
+      "DesktopFrame shared worker",
+      "typed transcription backup and inactive restore"
+    ],
+    "immutable_review": [
+      "current library directory identity",
+      "workspace",
+      "exact selected file SHA-256/size/suffix",
+      "dedicated current profile fingerprint",
+      "language and local reservation",
+      "one exact request and one-use Authorization"
+    ],
+    "limits": {
+      "input_bytes": 25165824,
+      "response_bytes": 8388608,
+      "words": 10000,
+      "text_characters": 100000,
+      "remote_deadline_seconds": 120
+    },
+    "provider_claims": {
+      "local_budget_reservation": "not a quote or provider-enforced billing cap",
+      "retention": "normal service retention, no enterprise zero-retention claim",
+      "timestamps": "provider word timeline, not independently measured alignment",
+      "paid_calls": "NOT_RUN",
+      "acoustic_quality": "NOT_RUN",
+      "language_coverage": "NOT_RUN",
+      "manual_nvda": "NOT_RUN"
+    },
+    "ownership": [
+      "current loaded package/bootstrap/worker identity-bound -I -B bootstrap, no arbitrary installed-version selection",
+      "private request contains no credential; child resolves current vault",
+      "consent/mode/expiry/cancel/deadline after upload before vault, after vault and before request",
+      "actual usage receipt verified in child, after child response and immediately before immutable results publication",
+      "retained result and committed receipt survive later cleanup/checkpoint error",
+      "initial cancel/root substitution before state lock creates no replacement state",
+      "child resources/temporary files remain owned until process cleanup",
+      "no automatic retry or redirect; sent uncertainty remains in ledger",
+      "restored transfer consent inactive; no remote request from restore or ordinary verification"
+    ],
+    "compatibility": [
+      "local transcription schema 1/default/worker retained",
+      "new remote job schema 2 explicit",
+      "existing editor/export methods reused",
+      "existing full backup formats and passive validation retained",
+      "old translation7 and provider28 loopback routes unchanged",
+      "no security updater or voice-provider edits",
+      "no additional worker queue or executor"
+    ]
+  },
+  "suite_contracts": {
+    "tests/assistant/test_transcription_provider.py": {
+      "git_blob": "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae",
+      "expected_cases": 39,
+      "required_functions": [
+        "test_actual_gateway_uses_exact_multipart_identity_and_existing_usage",
+        "test_local_only_remains_default_and_never_reads_selected_file_or_vault",
+        "test_exact_approval_fails_before_credentials_and_transport",
+        "test_reviewed_file_change_and_cancel_remain_not_sent",
+        "test_untrusted_response_stays_uncertain_and_cannot_retry",
+        "test_dedicated_profile_rejects_other_engine_or_authority",
+        "test_timestamp_and_unrequested_vendor_modes_are_refused",
+        "test_optional_duration_is_explicitly_provider_timeline_not_measured_audio",
+        "test_profile_export_never_carries_an_enabled_key_or_executes_provider",
+        "test_upload_limit_refuses_sparse_oversized_source_before_read",
+        "test_active_remote_consent_rechecked_after_upload_and_vault"
+      ],
+      "function_count": 11,
+      "whole_module": true,
+      "skips_xfail_xpass_allowed": false,
+      "companions": [
+        "tests/transcription/remote_fixture.py"
+      ],
+      "lane": "source_and_isolated_installed"
+    },
+    "tests/transcription/test_remote_service.py": {
+      "git_blob": "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000",
+      "expected_cases": 29,
+      "required_functions": [
+        "test_retained_remote_result_reuses_exact_editor_exports_and_existing_ledger",
+        "test_actual_owned_child_uses_current_gateway_then_closes_before_return",
+        "test_actual_child_total_deadline_retains_source_and_never_publishes_result",
+        "test_cancelled_admission_never_creates_the_next_effect",
+        "test_review_is_bound_to_exact_recording_profile_parameters_and_budget",
+        "test_review_mutation_after_approval_cannot_change_the_captured_transfer",
+        "test_source_receipt_exports_and_exact_usage_tampering_are_refused",
+        "test_immutable_result_commit_survives_failed_checkpoint_and_reconciles_without_network",
+        "test_complete_backup_restores_exact_source_and_inactive_remote_consent",
+        "test_real_same_path_library_replacement_is_refused_before_new_state",
+        "test_unrelated_worker_metadata_cannot_enter_remote_backup_inventory",
+        "test_approved_recording_cannot_be_retargeted_to_another_library_directory",
+        "test_actual_child_rejects_changed_current_entry_before_any_provider_effect",
+        "test_returned_transcript_requires_current_completed_usage_before_publication",
+        "test_malformed_saved_job_is_refused_by_normal_and_passive_readers"
+      ],
+      "function_count": 15,
+      "whole_module": true,
+      "skips_xfail_xpass_allowed": false,
+      "companions": [
+        "tests/transcription/remote_fixture.py"
+      ],
+      "lane": "source_and_isolated_installed"
+    },
+    "tests/ui/test_transcription_remote.py": {
+      "git_blob": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29",
+      "expected_cases": 17,
+      "required_functions": [
+        "test_review_is_local_shows_exact_bytes_destination_and_local_budget",
+        "test_unchecked_consent_refuses_even_after_local_review",
+        "test_explicit_default_no_or_yes_uses_one_existing_worker_and_retained_receipt",
+        "test_current_inputs_cannot_reuse_an_earlier_transfer_review",
+        "test_modal_confirmation_rechecks_current_view_and_selected_recording",
+        "test_queued_close_cancels_before_source_retention_or_remote_admission",
+        "test_busy_close_requests_stop_and_keeps_host_ownership_until_settlement",
+        "test_late_completed_receipt_is_retained_without_touching_a_replaced_view",
+        "test_actual_same_path_library_change_refuses_queued_remote_work_without_canary_writes",
+        "test_host_admission_refusal_never_leaves_a_busy_remote_child",
+        "test_repeated_close_never_repeats_the_modal_finish"
+      ],
+      "function_count": 11,
+      "whole_module": true,
+      "skips_xfail_xpass_allowed": false,
+      "companions": [
+        "tests/transcription/remote_fixture.py"
+      ],
+      "lane": "source_and_isolated_installed"
+    },
+    "tests/assistant/test_transcription_loopback.py": {
+      "git_blob": "6baa4675771066aba1a7ce40a276419eac4606f9",
+      "expected_cases": 6,
+      "required_functions": [
+        "test_actual_stt_loopback_uploads_only_reviewed_bytes_and_returns_bound_usage",
+        "test_actual_stt_local_only_never_reaches_loopback_or_credentials",
+        "test_actual_stt_http_refusal_never_redirects_or_retries",
+        "test_actual_stt_loopback_rejects_unrequested_response_shape_without_resending"
+      ],
+      "function_count": 4,
+      "whole_module": true,
+      "skips_xfail_xpass_allowed": false,
+      "companions": [
+        "tests/transcription/remote_fixture.py"
+      ],
+      "lane": "separate_real_loopback"
+    }
+  },
+  "offline_gate": {
+    "whole_suites": 3,
+    "source_cases": 85,
+    "isolated_installed_cases": 85,
+    "source_jobs": 2,
+    "source_deadline_seconds": 1300,
+    "each_installed_suite_seconds": 600,
+    "no_skips": true,
+    "no_xfail_xpass": true
+  },
+  "loopback_gate": {
+    "whole_suites": 1,
+    "cases_per_mode": 6,
+    "modes": [
+      "source",
+      "installed"
+    ],
+    "timeout_per_mode_seconds": 600,
+    "source_origins": 11,
+    "runner": "carr-library/scripts/translation_loopback_check.py",
+    "git_blob": "360a669baaa8d60b41acc265111d2fa0f68108ee",
+    "suite_option": "transcription",
+    "test": "tests/assistant/test_transcription_loopback.py",
+    "test_blob": "6baa4675771066aba1a7ce40a276419eac4606f9",
+    "companion": "tests/transcription/remote_fixture.py",
+    "companion_blob": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7",
+    "firewall": "existing Windows process-scoped external-address ranges, actual 127.0.0.1 synthetic HTTP only",
+    "paid_provider_call": "NOT_RUN"
+  },
+  "native_gate": {
+    "required_checks": [
+      "owned failure answers native No before closing only the active inner modal",
+      "transfer confirmation defaults to the actual owned No button",
+      "registered transcription keeps its existing local default controls",
+      "remote child borrows exact local parent and original shared executor",
+      "opening remote transcription grants no transfer consent or implicit work",
+      "actual local review binds original bytes and normal retention without a child call",
+      "review alone leaves actual native consent unchecked and Send disabled",
+      "actual native Space grants only the reviewed selected-recording checkbox",
+      "observed default No retains no remote job or usage reservation",
+      "one explicit Yes runs one current Gateway child on the shared host worker",
+      "actual retained transcript has exact source and inactive public provider snapshot",
+      "real usage and retained remote receipt expose provider timestamps without local inference",
+      "completed child settles its actual Windows Job before returning the transcript",
+      "native completion clears review and permission before another transfer",
+      "existing transcription editor displays the verified remote text",
+      "native edit keeps original audio and recognition text unchanged",
+      "busy native Close requests cancellation and retains the current modal until settlement",
+      "cancelled queued review creates no second job or provider attempt",
+      "all explicit picker answers remain bound to the selected original",
+      "actual remote transcription controls use native Windows wx",
+      "existing host registry retains its explicit transcription command",
+      "one existing host menu opens the shared transcription workflow",
+      "actual host Close drains original shared worker and finalizers",
+      "all actual STT Job handles are settled before fallback cleanup",
+      "no STT resource lease survives actual host cleanup",
+      "synthetic STT fixture remains byte-identical through owner cleanup",
+      "actual remote-STT nested failure control completed",
+      "exact installed source: carr_library.application",
+      "exact installed source: carr_library.transcription",
+      "exact installed source: carr_library.assistant.models",
+      "exact installed source: carr_library.assistant.profiles",
+      "exact installed source: carr_library.assistant.providers",
+      "exact installed source: carr_library.assistant.credentials",
+      "exact installed source: carr_library.assistant.transcription_provider",
+      "exact installed source: carr_library.assistant.transcription_worker",
+      "exact installed source: carr_library.integrations.transcription_remote",
+      "exact installed source: carr_library.integrations.transcription_remote_values",
+      "exact installed source: carr_library.integrations.transcription_values",
+      "exact installed source: carr_library.backup_transcription",
+      "exact installed source: carr_library.backup_producers",
+      "exact installed source: carr_library.ui.transcription_dialog",
+      "exact installed source: carr_library.ui.transcription_remote_dialog",
+      "exact installed source: carr_library.ui.desktop_app",
+      "exact installed source: carr_library.ui.worker_lifetime",
+      "exact installed source: carr_library.operations.broker",
+      "exact installed source: carr_library.audio.process",
+      "exact installed source: carr_library.audio.windows_job",
+      "exact installed source: carr_library.audio.voice_transport",
+      "exact installed source: carr_library.native_runtime",
+      "exact installed source: carr_library.durable_state",
+      "unchanged installed source after cleanup: carr_library.application",
+      "unchanged installed source after cleanup: carr_library.transcription",
+      "unchanged installed source after cleanup: carr_library.assistant.models",
+      "unchanged installed source after cleanup: carr_library.assistant.profiles",
+      "unchanged installed source after cleanup: carr_library.assistant.providers",
+      "unchanged installed source after cleanup: carr_library.assistant.credentials",
+      "unchanged installed source after cleanup: carr_library.assistant.transcription_provider",
+      "unchanged installed source after cleanup: carr_library.assistant.transcription_worker",
+      "unchanged installed source after cleanup: carr_library.integrations.transcription_remote",
+      "unchanged installed source after cleanup: carr_library.integrations.transcription_remote_values",
+      "unchanged installed source after cleanup: carr_library.integrations.transcription_values",
+      "unchanged installed source after cleanup: carr_library.backup_transcription",
+      "unchanged installed source after cleanup: carr_library.backup_producers",
+      "unchanged installed source after cleanup: carr_library.ui.transcription_dialog",
+      "unchanged installed source after cleanup: carr_library.ui.transcription_remote_dialog",
+      "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+      "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+      "unchanged installed source after cleanup: carr_library.operations.broker",
+      "unchanged installed source after cleanup: carr_library.audio.process",
+      "unchanged installed source after cleanup: carr_library.audio.windows_job",
+      "unchanged installed source after cleanup: carr_library.audio.voice_transport",
+      "unchanged installed source after cleanup: carr_library.native_runtime",
+      "unchanged installed source after cleanup: carr_library.durable_state"
+    ],
+    "unique_required_checks": 73,
+    "origin_modules": [
+      "carr_library.application",
+      "carr_library.transcription",
+      "carr_library.assistant.models",
+      "carr_library.assistant.profiles",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.credentials",
+      "carr_library.assistant.transcription_provider",
+      "carr_library.assistant.transcription_worker",
+      "carr_library.integrations.transcription_remote",
+      "carr_library.integrations.transcription_remote_values",
+      "carr_library.integrations.transcription_values",
+      "carr_library.backup_transcription",
+      "carr_library.backup_producers",
+      "carr_library.ui.transcription_dialog",
+      "carr_library.ui.transcription_remote_dialog",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.operations.broker",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.voice_transport",
+      "carr_library.native_runtime",
+      "carr_library.durable_state"
+    ],
+    "origin_count": 23,
+    "pass_fields": [
+      "status",
+      "native_keyboard",
+      "explicit_approval",
+      "retained_remote_receipt",
+      "queued_cancel_close",
+      "native_host_cleanup",
+      "native_failure_cleanup"
+    ],
+    "not_run_fields": [
+      "paid_provider_call",
+      "acoustic_quality",
+      "language_coverage",
+      "manual_nvda"
+    ],
+    "multiplicity": {
+      "transfer confirmation defaults to the actual owned No button": 2
+    },
+    "synthetic_transport": true,
+    "picker": "explicit fixture file selection; system picker not automated",
+    "script": "carr-library/scripts/windows_transcription_remote_smoke.py",
+    "git_blob": "62e7d85daf58c7aeadbc83fa8cc2227e09825103",
+    "argv": [
+      "--source-root",
+      "<checkout>/carr-library/src"
+    ],
+    "probe_seconds": 300,
+    "parent_seconds": 330,
+    "fixture": "carr-library/tests/transcription/remote_fixture.py",
+    "fixture_blob": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7",
+    "qualifier": "Actual installed wx keyboard/owner/child/ledger/editor workflow; synthetic selected recording/HTTPS reply/vault remain alive through cleanup. No paid/acoustic/manual qualification."
+  },
+  "installed_companions": {
+    "tests/transcription/remote_fixture.py": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7"
+  },
+  "installed_origins": {
+    "base": [
+      "carr_library.application",
+      "carr_library.transcription",
+      "carr_library.assistant.models",
+      "carr_library.assistant.profiles",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.credentials",
+      "carr_library.assistant.transcription_provider",
+      "carr_library.assistant.transcription_worker",
+      "carr_library.integrations.transcription_remote",
+      "carr_library.integrations.transcription_remote_values",
+      "carr_library.integrations.transcription_values",
+      "carr_library.backup_transcription",
+      "carr_library.backup_producers",
+      "carr_library.ui.transcription_dialog",
+      "carr_library.ui.transcription_remote_dialog",
+      "carr_library.operations.broker",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.voice_transport",
+      "carr_library.native_runtime",
+      "carr_library.durable_state",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.library_backup",
+      "carr_library.backup_sidecars",
+      "carr_library.file_publication",
+      "carr_library.operations._locks",
+      "carr_library.catalog.intake",
+      "carr_library.audio.models",
+      "carr_library.assistant.state",
+      "bootstrap"
+    ],
+    "win": [
+      "carr_library.application",
+      "carr_library.transcription",
+      "carr_library.assistant.models",
+      "carr_library.assistant.profiles",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.credentials",
+      "carr_library.assistant.transcription_provider",
+      "carr_library.assistant.transcription_worker",
+      "carr_library.integrations.transcription_remote",
+      "carr_library.integrations.transcription_remote_values",
+      "carr_library.integrations.transcription_values",
+      "carr_library.backup_transcription",
+      "carr_library.backup_producers",
+      "carr_library.ui.transcription_dialog",
+      "carr_library.ui.transcription_remote_dialog",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.operations.broker",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.voice_transport",
+      "carr_library.native_runtime",
+      "carr_library.durable_state",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.library_backup",
+      "carr_library.backup_sidecars",
+      "carr_library.file_publication",
+      "carr_library.operations._locks",
+      "carr_library.catalog.intake",
+      "carr_library.audio.models",
+      "carr_library.assistant.state",
+      "bootstrap"
+    ]
+  },
+  "focused_workflow": {
+    "path": ".github/workflows/carr-remote-stt.yml",
+    "git_blob": "4b0c8796c81cc2bbf04c16e775fe50844b3bffe3",
+    "branch_pattern": "carr/ci-remote-stt-*",
+    "platforms": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "whole_source_and_installed_required_both": true,
+    "windows_loopback_and_native_required": true,
+    "job_timeout_minutes": 120,
+    "helper_timeout_minutes": 100,
+    "helper_path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+    "helper_blob": "c0f0f2a2abac8fb5d50f63020da136acc0868d1f",
+    "source_pin_count": 47,
+    "source_pins": {
+      "src/carr_library/assistant/transcription_provider.py": "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f",
+      "src/carr_library/assistant/profiles.py": "a3adbe7cc693bc8a3972144007ee15cc85b3b200",
+      "src/carr_library/assistant/providers.py": "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be",
+      "src/carr_library/integrations/transcription_remote_values.py": "25e09a95bac8f079a9e3f0d4b7016a6aa027c7b2",
+      "src/carr_library/integrations/transcription_remote.py": "bc0c45a8c0edc8dcf8fc7e99476647e3eb8fb8dd",
+      "src/carr_library/assistant/transcription_worker.py": "1651009d71e720ddad1793b35f8fad1464af7422",
+      "src/carr_library/transcription.py": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e",
+      "src/carr_library/backup_transcription.py": "98161afe7d432a81e169602f61b8443b639ccea6",
+      "src/carr_library/backup_producers.py": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+      "src/carr_library/ui/transcription_remote_dialog.py": "625500b8b51d4fbc37891218b5e1b0acbb9a5898",
+      "src/carr_library/ui/transcription_dialog.py": "83425f992811d3560cb53cc191f61dfbe54b8ec5",
+      "src/carr_library/ui/assistant_dialog.py": "ec81cbf478a225c482b3e74cd5bc9e9deadd3d9a",
+      "tests/transcription/remote_fixture.py": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7",
+      "tests/assistant/test_transcription_provider.py": "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae",
+      "tests/transcription/test_remote_service.py": "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000",
+      "tests/ui/test_transcription_remote.py": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29",
+      "tests/assistant/test_transcription_loopback.py": "6baa4675771066aba1a7ce40a276419eac4606f9",
+      "scripts/translation_loopback_check.py": "360a669baaa8d60b41acc265111d2fa0f68108ee",
+      "scripts/windows_transcription_remote_smoke.py": "62e7d85daf58c7aeadbc83fa8cc2227e09825103",
+      "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+      "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+      "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+      "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
+      "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
+      "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+      "packaging/linux-sync-core-cp311.lock": "08f945066be748972a10d5b0ce46480fff722959",
+      "src/carr_library/__init__.py": "ee09576cfebe843794b34e7609dd3bb1b86b59a0",
+      "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "src/carr_library/assistant/models.py": "1700d0191b4a27b09d18bb6e231b822cf183bd8a",
+      "src/carr_library/assistant/credentials.py": "12601a8e6ba34b791b524fa14934144f07dfd493",
+      "src/carr_library/integrations/transcription_values.py": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab",
+      "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+      "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+      "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
+      "src/carr_library/audio/voice_transport.py": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",
+      "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
+      "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+      "src/carr_library/file_publication.py": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f",
+      "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+      "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+      "src/carr_library/audio/models.py": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+      "src/carr_library/assistant/state.py": "e8657e7b18075c193b05b71769310b1616c452dd",
+      "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55"
+    },
+    "wheel_proof": "478de248451d59a44b35784eb808fb2974f0af67",
+    "strict_runner": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "source_wheel_payload_before_after": true,
+    "installed_sources_must_be_outside_checkout": true,
+    "native_payload_before_after": true,
+    "dependency_acquisition_before_firewall": true,
+    "artifact_path": "carr-library/ci-remote-stt/",
+    "artifact_content": "closed text/JSON/XML only; no credentials, original recordings, application/runtime archives or models",
+    "artifact_max_file_bytes": 8388608,
+    "artifact_max_total_bytes": 67108864
+  },
+  "full_gate_additions": {
+    "offline_whole_modules": [
+      "tests/assistant/test_transcription_provider.py",
+      "tests/transcription/test_remote_service.py",
+      "tests/ui/test_transcription_remote.py"
+    ],
+    "companion_paths": [
+      "tests/transcription/remote_fixture.py"
+    ],
+    "separate_loopback_suite": "transcription",
+    "native_contract": "native_gate above",
+    "guide_to_add": "REMOTE_TRANSCRIPTION.md",
+    "guide_blob": "4b169cd24758337a90bf9881f7dd98542ec8e5ba",
+    "old_counts_and_required_names_removed": false,
+    "owner": "root"
+  },
+  "official_references": [
+    "https://elevenlabs.io/docs/api-reference/speech-to-text/convert",
+    "https://elevenlabs.io/docs/api-reference/speech-to-text/convert.md",
+    "https://elevenlabs.io/docs/eleven-api/resources/zero-retention-mode"
+  ],
+  "static_reviews": [
+    {
+      "reviewer": "root",
+      "scope": "official provider/profile/Gateway consent/credential/transmission guard",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "blobs": [
+        "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f",
+        "a3adbe7cc693bc8a3972144007ee15cc85b3b200",
+        "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be",
+        "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae"
+      ]
+    },
+    {
+      "reviewer": "root",
+      "scope": "current worker origin bootstrap, child and parent usage receipt, retained publication/backup/type guards",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "blobs": [
+        "bc0c45a8c0edc8dcf8fc7e99476647e3eb8fb8dd",
+        "1651009d71e720ddad1793b35f8fad1464af7422",
+        "25e09a95bac8f079a9e3f0d4b7016a6aa027c7b2",
+        "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e",
+        "98161afe7d432a81e169602f61b8443b639ccea6",
+        "49b5a4b63c16f8ebada412864f7ce66c4474f0b7",
+        "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000"
+      ]
+    },
+    {
+      "reviewer": "progress_completion",
+      "scope": "current UI/action/borrowed worker/native keyboard/owned cleanup and fixture17",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "blobs": [
+        "625500b8b51d4fbc37891218b5e1b0acbb9a5898",
+        "83425f992811d3560cb53cc191f61dfbe54b8ec5",
+        "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29",
+        "62e7d85daf58c7aeadbc83fa8cc2227e09825103",
+        "49b5a4b63c16f8ebada412864f7ce66c4474f0b7"
+      ]
+    },
+    {
+      "reviewer": "canonical_regression",
+      "scope": "six real loopback assertions and additive runner, excludes uninvoked real_child fixture path",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "blobs": [
+        "6baa4675771066aba1a7ce40a276419eac4606f9",
+        "360a669baaa8d60b41acc265111d2fa0f68108ee"
+      ]
+    },
+    {
+      "reviewer": "root",
+      "scope": "focused helper exact47pins, complete85+85, installed origins/payload, required6+6 and73/23",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "blobs": [
+        "c0f0f2a2abac8fb5d50f63020da136acc0868d1f"
+      ]
+    },
+    {
+      "reviewer": "progress_completion",
+      "scope": "focused workflow setup/firewall/argv/closed artifact boundary",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "blobs": [
+        "4b0c8796c81cc2bbf04c16e775fe50844b3bffe3"
+      ]
+    }
+  ],
+  "execution": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "loopback": "NOT_RUN",
+    "native": "NOT_RUN",
+    "workflow_parse": "NOT_RUN",
+    "paid_provider_call": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "language_coverage": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  }
+}

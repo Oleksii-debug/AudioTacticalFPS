@@ -1,0 +1,312 @@
+{
+  "schema": 1,
+  "kind": "full_gate_unicode_cluster_contract_and_actual_parser_correction",
+  "base_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+  "base_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+  "previous_full_gate_manifest": "1b919c490503afa7e2388aea2db1b60e79e342a1",
+  "source_component_manifest": "7c1af6a2597bb9baadca14a943510f77d5c04392",
+  "source_component": {
+    "source_path": "carr-library/src/carr_library/search/literal.py",
+    "source_before": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+    "source_after": "8a3819914681f08dc942b0905ab2bad796971b37",
+    "test_path": "carr-library/tests/search/test_ascii_mapping_work.py",
+    "test_before": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+    "test_after": "5ae468e51b908a8c15169948c5bcee6c9c6944e2",
+    "whole_cases_before": 41,
+    "whole_cases_after": 56,
+    "functions_before": 10,
+    "functions_after": 15,
+    "old_test_bytes": "EXACT_PREFIX",
+    "added_functions": [
+      {
+        "name": "test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks",
+        "cases": 1
+      },
+      {
+        "name": "test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries",
+        "cases": 4
+      },
+      {
+        "name": "test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries",
+        "cases": 4
+      },
+      {
+        "name": "test_unicode_ascii_cluster_iteration_preserves_original_stop_objects",
+        "cases": 2
+      },
+      {
+        "name": "test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup",
+        "cases": 4
+      }
+    ],
+    "complete_whole_contract": {
+      "count": 56,
+      "functions": [
+        "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary",
+        "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds",
+        "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries",
+        "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work",
+        "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners",
+        "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication",
+        "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch",
+        "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy",
+        "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries",
+        "test_actual_sparse_inverse_preserves_cancellation_during_iteration",
+        "test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks",
+        "test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries",
+        "test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries",
+        "test_unicode_ascii_cluster_iteration_preserves_original_stop_objects",
+        "test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup"
+      ]
+    },
+    "new_whole_modules": 0,
+    "new_origins": [],
+    "new_companions": []
+  },
+  "files": [
+    {
+      "key": "fg_main",
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "a4855c1de2fd0073f6a242458feacdc31a84e693",
+      "after": "476f33c89684036b64f28d9024c0768c2d522eb1",
+      "changed": true,
+      "utf8_bytes": 399136
+    },
+    {
+      "key": "fg_v3",
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "8e191caf9b8c4053203b1df8041f1140b32d1565",
+      "after": "e55f3b427cf49da57b4529c95648d5af3a85ecba",
+      "changed": true,
+      "utf8_bytes": 495116
+    },
+    {
+      "key": "fg_source",
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "after": "a7cd67986474b15702c630e62ccca62e96c2e4d6",
+      "changed": true,
+      "utf8_bytes": 49372
+    },
+    {
+      "key": "fg_installed",
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "e1ac6435d5769b987b87a16e19a43a41bf27005d",
+      "after": "23885f42a473cd20516b7956d776751dad997635",
+      "changed": true,
+      "utf8_bytes": 202747
+    },
+    {
+      "key": "fg_reusable",
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "1ab6dbd6063e85b104a0f2998d18ebb1a21a9cf4",
+      "after": "21b7e555900e85a207044c749f1811768467bee7",
+      "changed": true,
+      "utf8_bytes": 11536
+    },
+    {
+      "key": "fg_builder",
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "before": "d2dc46cc56dda98e901f8a183be8253447dcfd7d",
+      "after": "d2dc46cc56dda98e901f8a183be8253447dcfd7d",
+      "changed": false,
+      "utf8_bytes": 27911
+    }
+  ],
+  "exact_replacements": [
+    {
+      "key": "fg_main",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "'tests/search/test_ascii_mapping_work.py' = 41",
+      "after": "'tests/search/test_ascii_mapping_work.py' = 56"
+    },
+    {
+      "key": "fg_v3",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "'tests/search/test_ascii_mapping_work.py' = 41",
+      "after": "'tests/search/test_ascii_mapping_work.py' = 56"
+    },
+    {
+      "key": "fg_source",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "'tests/search/test_ascii_mapping_work.py' = 41",
+      "after": "'tests/search/test_ascii_mapping_work.py' = 56"
+    },
+    {
+      "key": "fg_v3",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":41,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\",\"test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy\",\"test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries\",\"test_actual_sparse_inverse_preserves_cancellation_during_iteration\"]}",
+      "after": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":56,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\",\"test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy\",\"test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries\",\"test_actual_sparse_inverse_preserves_cancellation_during_iteration\",\"test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks\",\"test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries\",\"test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries\",\"test_unicode_ascii_cluster_iteration_preserves_original_stop_objects\",\"test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup\"]}"
+    },
+    {
+      "key": "fg_installed",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":41,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\",\"test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy\",\"test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries\",\"test_actual_sparse_inverse_preserves_cancellation_during_iteration\"]}",
+      "after": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":56,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\",\"test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy\",\"test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries\",\"test_actual_sparse_inverse_preserves_cancellation_during_iteration\",\"test_ascii_clusters_inside_unicode_preserve_all128_characters_and_mixed_marks\",\"test_unicode_cluster_mapping_bounds_full_fold_work_without_changing_raw_boundaries\",\"test_actual_unicode_sqlite_search_modes_equal_independent_cluster_boundaries\",\"test_unicode_ascii_cluster_iteration_preserves_original_stop_objects\",\"test_actual_unicode_page37_retains_fresh_authority_attestation_copy_and_cleanup\"]}"
+    },
+    {
+      "key": "fg_main",
+      "kind": "replace",
+      "occurrences": 2,
+      "before": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "after": "a7cd67986474b15702c630e62ccca62e96c2e4d6"
+    },
+    {
+      "key": "fg_reusable",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "after": "a7cd67986474b15702c630e62ccca62e96c2e4d6"
+    },
+    {
+      "key": "fg_source",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "  'tests/search/test_ascii_mapping_work.py',\n)",
+      "after": "  'tests/search/test_ascii_mapping_work.py'\n)"
+    },
+    {
+      "key": "fg_main",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "            'tests/search/test_ascii_mapping_work.py',\n          )",
+      "after": "            'tests/search/test_ascii_mapping_work.py'\n          )"
+    }
+  ],
+  "inverse_verification": {
+    "result": "PASS_STATIC",
+    "method": "Reverse only the nine recorded exact replacements: three count entries, two exact function specifications, two final array comma deletions and source-helper pin groups2+1. All six complete004 predecessor files reconstruct byte-for-byte.",
+    "files": {
+      "fg_main": true,
+      "fg_v3": true,
+      "fg_source": true,
+      "fg_installed": true,
+      "fg_reusable": true,
+      "fg_builder": true
+    },
+    "feature_maps": {
+      "fg_v3": {
+        "maps": 2,
+        "delta": [
+          {
+            "map": 1,
+            "path": "tests/search/test_ascii_mapping_work.py",
+            "count": 56,
+            "functions": 15
+          }
+        ]
+      },
+      "fg_installed": {
+        "maps": 1,
+        "delta": [
+          {
+            "map": 0,
+            "path": "tests/search/test_ascii_mapping_work.py",
+            "count": 56,
+            "functions": 15
+          }
+        ]
+      }
+    },
+    "ordered_source_selectors": "UNCHANGED",
+    "ordered_fast_selectors": "UNCHANGED",
+    "raw_test_function_names": "EXACT_15"
+  },
+  "unchanged_contracts": {
+    "source_whole": 487,
+    "source_partitions": [
+      122,
+      122,
+      122,
+      121
+    ],
+    "main_fast_whole": 180,
+    "v3_source_whole": 217,
+    "v3_installed_whole": 196,
+    "all_installed_whole": 336,
+    "whole_default_seconds": 600,
+    "reviewed_asr_seconds": 900,
+    "native_workflow_pin": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "source_aggregate_guard": "always()",
+    "final_required_guard": "always()",
+    "gitattributes": "Existing two workflow -text entries unchanged",
+    "source_and_installed_origin_policy": "Current HEAD source bytes and existing before/after inventories unchanged",
+    "required_verdict_policy": "Zero failures, errors, skips or xfails; exact existing membership and case count assertions remain.",
+    "native_and_loopback": "No invocation, required label, verifier field, hardware requirement, firewall, retention, or cleanup change.",
+    "builder_guide_count": 57
+  },
+  "syntax_and_execution_plan": {
+    "state": "NOT_RUN_IN_THIS_REVIEW",
+    "source_syntax_job": "Run the unchanged exact Python3.11 compile/TOML check on the composed HEAD.",
+    "workflow_parser": "From repository root: ./carr-library/scripts/check_workflow_powershell.ps1 -RepositoryRoot . -Output carr-library/ci-syntax-results/workflow-powershell.json",
+    "shard_helper": "The existing source-syntax job checks the exact Git blob and raw file bytes, invokes the native PowerShell parser, then scripts/check_integrated_source_shard.ps1 -InventoryOnly.",
+    "workflow_byte_limit": 500000,
+    "workflow_utf8_bytes": {
+      "main": 399136,
+      "v3": 495116
+    },
+    "source_execution": "All487 whole modules through the unchanged four partitions122/122/122/121, with the ASCII whole requiring56.",
+    "installed_execution": "Existing V3 and complete isolated installed lanes require all15 named ASCII tests and56 exact outcomes, preserving full-wheel/source before-and-after checks.",
+    "actual_predecessor": {
+      "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+      "compiled_python_files": 1128,
+      "explicit_packages": 31,
+      "workflow_bodies": 195,
+      "failed_bodies": 1,
+      "parser_controls": 6,
+      "failed_controls": 0,
+      "size_controls": 4,
+      "standalone_source_helper_parser": "NOT_REACHED_AFTER_WORKFLOW_PARSER_FAILURE"
+    },
+    "corrected_source_helper_gate": {
+      "coverage": "EXISTING_AND_UNCHANGED",
+      "step": "Parse and audit the pinned complete source-shard inventory",
+      "required_before_downstream_jobs": true,
+      "proof": [
+        "Exact current HEAD Git object and raw Git-blob binding",
+        "Native PowerShell Parser.ParseFile; any error throws",
+        "InventoryOnly requires487 selectors and all four exact partition sizes",
+        "After-call helper identity and SHA256 recheck"
+      ],
+      "source_helper_blob": "a7cd67986474b15702c630e62ccca62e96c2e4d6"
+    }
+  },
+  "peer_reviews": [
+    {
+      "reviewer": "Progress",
+      "scope": "Source and new15 test cases in the referenced component",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "Progress",
+      "scope": "Five gate successors; all inverse replacements, both V3 maps, exact actual test names, unchanged native binding/always guards/deadlines",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "Progress",
+      "scope": "Comma/pin amendment476f/a7cd/21b7 and existing source-syntax standalone-helper ParseFile/InventoryOnly dependency boundary",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "disposition": "READY_FOR_ROOT_COMPOSITION",
+  "qualification": {
+    "syntax": "NOT_RUN_ON_CORRECTED_BLOBS; PREDECESSOR_NATIVE_PARSER_FAILED_AS_RECORDED",
+    "runtime": "NOT_RUN",
+    "performance": "NOT_MEASURED",
+    "ref_mutation": "NONE"
+  },
+  "supersedes_gate_manifest": "f443797abd0f0da5a644527c0294035acd9db608",
+  "actual_predecessor_failure_evidence": "29c3a6e6bc39705d7ade9276ea360ba7b279bca6",
+  "parser_correction": {
+    "actual_error": "Missing expression after ',' in completion-regressions body181/column45",
+    "changes": "Only the terminal comma in each of completionSuites and source-helper suites arrays is deleted.",
+    "source_helper_additional_issue": "Same invalid terminal comma was present in the exact source helper; its existing parser step had not been reached.",
+    "new_syntax_tests": "None; actual existing workflow-body and pinned standalone-helper native parser gates remain mandatory.",
+    "standalone_ps1_generalization": "None; this correction preserves the existing exact helper parser rather than introducing a separate parser framework."
+  }
+}

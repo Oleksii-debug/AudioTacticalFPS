@@ -1,0 +1,318 @@
+{
+  "schema": "resonance-focused-preflight-evidence/1",
+  "captured_utc": "2026-11-27 23:58:55 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "run_id": 46081148451,
+  "job_id": 140780169206,
+  "platform": "windows-2022",
+  "job_conclusion": "success",
+  "strict_summary": "2026-11-27T23:56:41.4339685Z Required suites complete: 33; passed=33; failed=0",
+  "whole_suites": 33,
+  "passed": 449,
+  "failed": 0,
+  "skipped": 0,
+  "verdicts": [
+    {
+      "suite": "tests/ingest/test_checked_catalog_commit.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4314087Z PASS: tests/ingest/test_checked_catalog_commit.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_scoped_locator_capacity.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4315407Z PASS: tests/storage/test_scoped_locator_capacity.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/search/test_search_query_work.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4316509Z PASS: tests/search/test_search_query_work.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/search/test_paged_candidate_work.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4317349Z PASS: tests/search/test_paged_candidate_work.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ui/test_native_recording_driver.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4318180Z PASS: tests/ui/test_native_recording_driver.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_broker_scope.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4318977Z PASS: tests/operations/test_broker_scope.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ingest/test_application_atomic_gate.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4320338Z PASS: tests/ingest/test_application_atomic_gate.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ingest/test_pipeline.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4321071Z PASS: tests/ingest/test_pipeline.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ingest/test_initial_publication_completion.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4321898Z PASS: tests/ingest/test_initial_publication_completion.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ingest/test_worker_publication_boundary.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4322770Z PASS: tests/ingest/test_worker_publication_boundary.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/e2e/test_import_worker_publication.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4323688Z PASS: tests/e2e/test_import_worker_publication.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_schema_boundary.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4324447Z PASS: tests/storage/test_schema_boundary.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_revisions.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4325199Z PASS: tests/storage/test_revisions.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_read_boundary.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4326362Z PASS: tests/storage/test_read_boundary.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_locator_integrity.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4327260Z PASS: tests/storage/test_locator_integrity.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/storage/test_printed_label_integrity.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4328196Z PASS: tests/storage/test_printed_label_integrity.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/catalog/test_read_views.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4329102Z PASS: tests/catalog/test_read_views.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/catalog/test_read_views_v2_integration.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4330034Z PASS: tests/catalog/test_read_views_v2_integration.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/search/test_search_paging.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4330958Z PASS: tests/search/test_search_paging.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/search/test_literal_integrity.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4331842Z PASS: tests/search/test_literal_integrity.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/search/test_literal_readonly.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4332626Z PASS: tests/search/test_literal_readonly.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/search/test_literal_v2_composition.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4333263Z PASS: tests/search/test_literal_v2_composition.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/e2e/test_retained_source_search_integrity.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4333829Z PASS: tests/e2e/test_retained_source_search_integrity.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_facade.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4334361Z PASS: tests/operations/test_facade.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_import_admission.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4334842Z PASS: tests/operations/test_import_admission.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_production_admission.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4335386Z PASS: tests/operations/test_production_admission.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_resources.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4336088Z PASS: tests/operations/test_resources.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_transcription_admission.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4336626Z PASS: tests/operations/test_transcription_admission.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_current_union.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4337167Z PASS: tests/operations/test_current_union.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/operations/test_worker_start_cleanup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4337693Z PASS: tests/operations/test_worker_start_cleanup.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ui/test_operations_dialog.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4338230Z PASS: tests/ui/test_operations_dialog.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/ui/test_operations_policy.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4338810Z PASS: tests/ui/test_operations_policy.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0"
+    },
+    {
+      "suite": "tests/e2e/test_operations_cli.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "line": "2026-11-27T23:56:41.4339282Z PASS: tests/e2e/test_operations_cli.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+    }
+  ],
+  "artifact": {
+    "id": 15239115276,
+    "name": "next9-focused-windows-79ef756d08667919d9a7c4367305aca5dfdaf6c9-1",
+    "size_in_bytes": 21265,
+    "digest": "sha256:568260ce859496460a5980dcce8c634c6f63e6f65a54f919d2086044eb643668",
+    "created_at": "2026-11-27T23:56:43Z",
+    "expired": false
+  },
+  "paired_linux": {
+    "job_id": 140780169150,
+    "whole_suites": 34,
+    "passed": 450,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "5e7ed25d11bed61f02171652e49a02712bc73d03",
+    "difference": "The explicit POSIX whole suite contains one case and is Linux-only; the33 shared whole suites match."
+  },
+  "other_current_run_jobs": {
+    "original_ubuntu": {
+      "status": "success",
+      "whole_suites": 41,
+      "passed": 1079,
+      "evidence": "1c4a7d8c8bfd3dca6479b702cc4c81bd9b733c87"
+    },
+    "windows_intake": {
+      "status": "success",
+      "whole_suites": 5,
+      "passed": 59,
+      "evidence": "1c4a7d8c8bfd3dca6479b702cc4c81bd9b733c87"
+    },
+    "parser": {
+      "status": "success",
+      "numeric_count": "Not restated without its separate actual report."
+    }
+  },
+  "conclusion": "The30 new paged-candidate regressions and the retained neighboring suites passed on both actual target platforms. This is source preflight evidence only; no installed/native conversion or large-profile performance result is inferred."
+}

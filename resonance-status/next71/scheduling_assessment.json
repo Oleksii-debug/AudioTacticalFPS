@@ -1,0 +1,151 @@
+{
+  "schema": "carr-source-scheduling-assessment/1",
+  "status": "READ_ONLY_PROPOSAL_NOT_RUN",
+  "base": {
+    "commit": "8c954a11bd62ab158e59593e73bfbed4f9b8bb6c",
+    "tree": "92d0c0c6c2caff7076da950408a8d3f2cc4fbe02",
+    "files": {
+      ".github/workflows/carr-windows.yml": "bbcb5500262598eb3935d36aac7c18561ea51151",
+      ".github/workflows/carr-v3.yml": "cebd24c6219e5d4d653bd3b54ad8cf85f3e92365",
+      "carr-library/scripts/check_integrated_source_shard.ps1": "fbb5941c2c8fb73861f0ea28469c33717080059c",
+      ".github/workflows/carr-integrated-source-shard.yml": "96665bb20740c6f56fea8f8614fbee94882d39ea",
+      "carr-library/scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+    }
+  },
+  "evidence": [
+    {
+      "receipt": "1785598f785805a5e4200ba1bfeca5a676bf2567",
+      "meaning": "B fast Book and voice-package wholes reached their600 limits in jobs3; outer run later cancelled without a complete aggregate."
+    },
+    {
+      "receipt": "f52c39aa3750abf4202d2492ac8e0029273733a7",
+      "meaning": "B shard0 ASR whole reached its reviewed900 limit in jobs3."
+    },
+    {
+      "receipt": "9a3bb34cbf9773f73fe5d4b12f54f27f033cdf5b",
+      "meaning": "B shard3 voice-package whole had an exact strict30PASS row, proving the same whole is not uniformly unfinished across lanes."
+    },
+    {
+      "receipt": "ab2cf108fd1a4eaf47d5502f6b84b9de35ffc9c3",
+      "meaning": "D exact Book29 source/installed completed in398.859/398.344 parent seconds under600; ASR40 source/installed completed in715.641/715.844 under900. D overall still failed for count/UTF8 defects."
+    },
+    {
+      "receipt": "ac2c27cc81c93726d37f219d52ef7fc0c26eb3a7",
+      "meaning": "Old5b2 V3 strict source was already serial and explicitly reached its75-minute outer step limit after203 completed pytest summaries of217. This differs from the main/shard contention hypothesis."
+    }
+  ],
+  "fixed_serial_candidates": [
+    {
+      "path": "tests/research/test_academic_library.py",
+      "reason": "Existing isolated whole retained.",
+      "seconds": 600
+    },
+    {
+      "path": "tests/studio/test_book_batch.py",
+      "cases": 29,
+      "reason": "Measured B pooled timeout versus exact D isolated source/installed completion.",
+      "seconds": 600
+    },
+    {
+      "path": "tests/transcription/test_admission_boundaries.py",
+      "cases": 40,
+      "reason": "Measured B pooled timeout versus exact D source completion in the three-suite83-case group and D installed completion alone.",
+      "seconds": 900
+    },
+    {
+      "path": "tests/audio/test_voice_package_management.py",
+      "cases": 30,
+      "reason": "Measured B fast timeout versus B shard completion and previous standalone focused completion.",
+      "seconds": 600
+    }
+  ],
+  "matrix": {
+    "main_fast": {
+      "selected": 185,
+      "serial": [
+        "tests/studio/test_book_batch.py",
+        "tests/audio/test_voice_package_management.py"
+      ],
+      "parallel_jobs": 3,
+      "parallel_wholes": 183
+    },
+    "shards": [
+      {
+        "shard": 0,
+        "total": 124,
+        "serial": [
+          "tests/research/test_academic_library.py",
+          "tests/transcription/test_admission_boundaries.py"
+        ],
+        "serial_count": 2,
+        "parallel_count": 122
+      },
+      {
+        "shard": 1,
+        "total": 123,
+        "serial": [
+          "tests/studio/test_book_batch.py"
+        ],
+        "serial_count": 1,
+        "parallel_count": 122
+      },
+      {
+        "shard": 2,
+        "total": 123,
+        "serial": [],
+        "serial_count": 0,
+        "parallel_count": 123
+      },
+      {
+        "shard": 3,
+        "total": 123,
+        "serial": [
+          "tests/audio/test_voice_package_management.py"
+        ],
+        "serial_count": 1,
+        "parallel_count": 122
+      }
+    ],
+    "v3_strict": {
+      "selected": 223,
+      "jobs": 1,
+      "source_of_jobs": "ci_check argparse default=1; invocation has no --jobs",
+      "measured_members": [
+        "tests/studio/test_book_batch.py",
+        "tests/audio/test_voice_package_management.py"
+      ],
+      "proposed_change": "NONE"
+    },
+    "v3_broad_pytest": {
+      "selected_directories_include_book_and_voice": true,
+      "asr_directory_selected": false,
+      "jobs": "single pytest process; no xdist or ci_check pool",
+      "proposed_change": "NONE"
+    }
+  },
+  "other_direct_ci_check_calls": {
+    "main": "Bibliography10, fallback2, managedOCR4 and keyboard7 select none of these measured wholes.",
+    "v3": "Academic integration7, import/search17, Dordiai7, progress16, translation7 and planning5 select none of these measured wholes."
+  },
+  "implementation_constraints": [
+    "Root owns edits and refs. This record proposes scheduling only; it publishes no candidate code.",
+    "Retain complete ordered selector arrays, existing shard anchors and exact493 union/124+123+123+123 partition membership.",
+    "Select the finite serial set only when present in the current lane. Run each as the same whole ci_check --jobs1, then every remaining selected whole once in the existing jobs3 pool.",
+    "Pass the existing reviewed --suite-timeout ASR=900 only when that exact ASR whole is selected; every other whole remains600.",
+    "Do not edit ci_check.py, policy/plugin/child bodies, test source, hardware requirements, or any current step/job budget.",
+    "Attempt every planned group after an ordinary nonzero child verdict, retain its original console diagnostics and exit result, and fail the lane if any group fails. Identity/proof/cleanup failures remain fatal.",
+    "Main fast currently requires one actual185 aggregate. Replace only that check with actual group-summary validation plus exact global path/count union. Never synthesize a fake Required suites complete185 PASS line.",
+    "Strictly reject missing, duplicate, unknown, failed, skipped or nonzero whole verdicts. Require each actual group summary exactly once with its own selected size; distinguish repeated singleton summaries by group boundaries or retained offsets.",
+    "Preserve all existing exact per-module case assertions and current shared raw log retention, source-before/after proofs, cleanup, receipts and final required gates.",
+    "V3 strict and broad source remain unchanged by this scheduling proposal. Its explicit75-minute outer failure is separate evidence for root's independent budget assessment."
+  ],
+  "limits": [
+    "Contention is a supported scheduling hypothesis, not a proven product or Windows deadlock cause.",
+    "No same-head PASS or execution speed claim. Corrected language fixtures and their workflow hash are a separate literal closure.",
+    "D source runs Book alone, then ASR plus two short wholes in jobs3. Only its installed ASR whole is explicitly standalone; no claim that all D source wholes were isolated."
+  ],
+  "supersedes": {
+    "git_blob": "28ea3101ccb28ce55ad286c91947f3166c0eb3b9",
+    "reason": "Correct the ASR evidence wording: D source used its83-case three-suite group, while D installed was standalone. Proposed schedule and all boundaries are unchanged."
+  }
+}

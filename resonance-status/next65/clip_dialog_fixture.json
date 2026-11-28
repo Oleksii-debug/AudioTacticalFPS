@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "component": "Actual marker-aware structural refusal fixture correction",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_head": "80b64bac746851830d23e25a38e7a78870760a74",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "refs_modified": false,
+  "files": [
+    {
+      "path": "carr-library/tests/studio/test_clip_dialog.py",
+      "preimage": "22f82b84c019c1c917424612d41699da2c806ba8",
+      "git_blob": "3a5d5b970d68be41fc6424c75aad6000dc3ac9aa"
+    }
+  ],
+  "actual_evidence": {
+    "record": "93ded39d63d0d4ee171d444bbf31392b03796c1e",
+    "run": 46114564728,
+    "job": 140885384969,
+    "suite": "tests/studio/test_clip_dialog.py",
+    "passed": 44,
+    "failed": 1,
+    "skipped": 0,
+    "test": "test_structural_script_edit_cannot_discard_an_attached_clip",
+    "actual_cause": "The actual correct current refusal failed the previous message-only regex; following preservation assertions were not reached."
+  },
+  "current_controller": {
+    "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+    "git_blob": "ce11e96477841cebe30702001a1b5f4d6107178b"
+  },
+  "change": {
+    "before": "    with pytest.raises(ValueError, match='attached audio changed its identity'):\n",
+    "after": "    with pytest.raises(ValueError, match=(\n        r'^A scene with attached audio, effects or named markers changed its identity\\. '\n        r'Move or remove its clips and markers in the scene editor before changing scene structure\\.$')):\n"
+  },
+  "unchanged": {
+    "case_count": 45,
+    "function_count": 32,
+    "functions": [
+      "test_close_during_worker_waits_for_cleanup_and_suppresses_late_controls",
+      "test_close_discards_unplayed_preview_after_worker_returns",
+      "test_audio_cancellation_keeps_dialog_usable_and_has_interruption_type",
+      "test_refused_shared_job_never_leaves_clip_controls_pending",
+      "test_another_operation_does_not_receive_clip_cancellation",
+      "test_save_binds_reviewed_clip_and_settings_before_queue",
+      "test_stop_invalidates_deferred_playback_and_releases_native_file",
+      "test_native_recovery_uses_explicit_new_parent_only_inside_worker",
+      "test_unconfirmed_playback_stop_keeps_dialog_files_and_blocks_new_work",
+      "test_queued_clip_edit_cannot_use_a_replaced_library",
+      "test_late_committed_clip_result_is_not_applied_to_another_library",
+      "test_destroy_cancels_only_its_queued_operation_without_dead_controls",
+      "test_destroy_discards_preview_when_parent_never_delivers_completion",
+      "test_destroy_retains_uncertain_native_playback_owner_and_preview",
+      "test_deferred_clip_playback_rechecks_exact_library",
+      "test_waiting_input_preview_never_constructs_or_stats_old_destination",
+      "test_restore_cancelled_while_queued_never_relocates_or_renders",
+      "test_unchanged_studio_script_preserves_attached_cues_source_and_render_settings",
+      "test_structural_script_edit_cannot_discard_an_attached_clip",
+      "test_studio_controller_cannot_replace_a_newer_clip_revision",
+      "test_studio_queued_operation_checks_exact_library_before_execution",
+      "test_studio_late_result_cannot_update_replacement_library",
+      "test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play",
+      "test_render_saved_project_rejects_stale_revision_before_job_creation",
+      "test_render_saved_project_cancelled_parent_picker_starts_no_work",
+      "test_owned_service_release_waits_for_its_future_without_stopping_host_executor",
+      "test_borrowed_clip_editor_service_is_not_closed_by_dialog",
+      "test_effect_editor_queues_inspection_then_exact_reviewed_save_without_playback",
+      "test_cancelled_effect_review_changes_no_project_and_queues_no_save",
+      "test_effect_work_rejects_recreated_same_path_library_at_each_boundary",
+      "test_project_changed_after_effect_review_is_refused_before_save",
+      "test_role_picker_cancel_does_not_inspect_runtime_or_save"
+    ],
+    "test_body_except_message": true,
+    "product_sources": true,
+    "source_and_installed_deadlines": true,
+    "real_preservation_assertions": [
+      "controller.service.projects.load(altered.id) == altered",
+      "controller.project == altered",
+      "Saved draft text == edited_script"
+    ],
+    "required_companions": "Unchanged"
+  },
+  "inverse": "Replace the sole new three-line pytest.raises expression with its original one-line expression; full file equality was checked.",
+  "peer": {
+    "agent": "/root/canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "record": "40bbe0d0824396eba9959f3fe70bf4332a6421ac"
+  },
+  "validation": "Exact Git blob readback and inverse PASS; no pytest execution or successor-head result transfer.",
+  "recorded_utc": "2026-11-28 07:09:14 UTC"
+}

@@ -1,0 +1,268 @@
+{
+  "schema": "carr-component-handoff/1",
+  "created_utc": "2026-11-28 01:59:18 UTC",
+  "status": "STATIC_NOT_RUN",
+  "base_head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+  "component": "Explicit selected XLS inactive page decorations and exact Reader LF view",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "before": "f2f712af05cdf154bd4633ba818661b926a954a7",
+      "after": "f48fd1e9cface87762dac8226d83176c5cdc6864"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats.py",
+      "before": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
+      "after": "557798e324a126ee12bb439c6fea25237eece59d"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/office.py",
+      "before": "e3d6f71b063b0640dc248304e74e0480a9f56090",
+      "after": "fab629a5d4d14fe847fcc6ff0ebbda0041c0ada2"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "before": "fbf155467e7217eb1870167849241756690d01cb",
+      "after": "879d73e197c4b77f7fed9d536e7fcd2bcd7a4b33"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_admission.py",
+      "before": "b60d2784e25df42d29f486396010393865a2aa1b",
+      "after": "62266cf4ef3fd2acd22b3f5fa8984dcf3a6e8fa0"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "before": "12ad3b13bbd452890961110b5852b05a7ef010aa",
+      "after": "1bebafab9730ded278d0a477892963f18a38749d"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "before": "2c3a928d748e337d48d2a2b9e8345a6105360fa2",
+      "after": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "before": "77bd5b3d02e0f1070b8798c2b944d89cd24c2d70",
+      "after": "fbf50b760bd2f636196845291f51dd2efd1db9b6"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "71d90797e3546442df81c04baf49d7f908897973",
+      "after": "1c9c6888e2d129de28fb629cfe4aba131584a68c"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "67572361557c3f683175b10c84900a2eb990d3c6",
+      "after": "3b617ff8c420ca481ffa27e4adad6185481e0196"
+    },
+    {
+      "path": "carr-library/docs/SELECTED_XLS_READING_COPY.md",
+      "before": null,
+      "after": "7329d4a6da1d4d6f234582915b362ca8d5420666"
+    }
+  ],
+  "actual_predecessor_evidence": {
+    "sha": "b45aa906123bd3a5654cd9175fbf5cfc93886ccf",
+    "head": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59",
+    "run": 46093750313,
+    "scope": "289 source and289 installed each platform PASS; old34 each mode PASS; actual selected XLS and Reader text comparison fail. This evidence does not qualify these successors."
+  },
+  "dependencies": {
+    "reader_component": "69e5a73958e197915d9d29046b556cf4c7d41685",
+    "previous_focused_component": "7ad123144987a7caf2d4d4f087088a478b92e88f",
+    "unchanged_source_runner": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+  },
+  "changed_suites": [
+    {
+      "path": "tests/extract/test_document_formats_xml.py",
+      "sha": "879d73e197c4b77f7fed9d536e7fcd2bcd7a4b33",
+      "old_cases": 114,
+      "cases": 151,
+      "old_test_prefix_byte_identical": true,
+      "functions": [
+        "test_inert_office_converter_containers_preserve_all_surrounding_reading_text",
+        "test_converter_container_support_never_silently_drops_unknown_text_or_controls",
+        "test_real_supported_document_order_source_hash_and_unverified_locators",
+        "test_fb2_preserves_decomposed_unicode_and_includes_authored_note_body",
+        "test_fictionbook_container_text_cannot_be_silently_dropped",
+        "test_fb3_does_not_promote_paper_page_metadata_or_image_alt_to_quote_text",
+        "test_fb3_declared_primary_body_cannot_be_missing_ambiguous_external_or_different",
+        "test_fb3_unknown_or_clipped_content_fails_closed",
+        "test_odf_preserves_cell_repeats_and_logical_coordinates",
+        "test_empty_spreadsheet_repeats_are_not_expanded_to_records",
+        "test_nonempty_repeat_amplification_is_rejected",
+        "test_odf_formula_and_hidden_rows_are_explicit_omissions",
+        "test_odf_matrix_formula_dependents_never_become_literal_source_cells",
+        "test_hidden_odf_column_group_cannot_expose_hidden_cells",
+        "test_odf_foreign_or_raw_body_text_cannot_be_silently_dropped",
+        "test_hidden_odf_group_cannot_shift_following_logical_row_numbers",
+        "test_supported_hidden_rows_still_advance_repeated_row_coordinates",
+        "test_inherited_table_visibility_never_exposes_hidden_cell_text",
+        "test_odf_unsupported_visibility_changes_and_dynamic_fields_require_review",
+        "test_odf_style_hidden_text_is_not_silently_imported",
+        "test_odf_separator_cannot_silently_discard_embedded_source",
+        "test_odf_encryption_and_active_scripts_are_rejected",
+        "test_pptx_hidden_slides_are_omitted_and_stored_slide_order_retained",
+        "test_pptx_field_and_hidden_shape_rejected",
+        "test_pptx_text_value_nested_source_fails_closed",
+        "test_pptx_external_primary_slide_is_not_loaded",
+        "test_xlsx_real_openpyxl_document_and_literal_unicode",
+        "test_xlsx_shared_strings_rich_text_and_formula_cache_omissions",
+        "test_xlsx_ranged_formula_dependents_are_not_mislabeled_as_literal_values",
+        "test_xlsx_text_and_value_elements_cannot_silently_drop_nested_source",
+        "test_xlsx_hidden_rows_columns_omitted_without_large_range_expansion",
+        "test_xlsx_bad_coordinates_order_and_shared_strings_are_rejected",
+        "test_xlsx_custom_hidden_format_does_not_leak_values",
+        "test_unsafe_zip_member_is_rejected_for_every_container",
+        "test_dtd_entity_is_rejected_without_private_payload_in_error",
+        "test_xml_depth_is_bounded_during_parse",
+        "test_invalid_or_exhausted_budgets_are_rejected",
+        "test_invalid_or_unsupported_format_is_a_controlled_failure",
+        "test_cancellation_inside_real_xml_parse_and_retry",
+        "test_deadline_inside_real_parse_uses_shared_absolute_budget",
+        "test_record_limit_and_empty_visible_content_rejected",
+        "test_empty_disabled_odf_master_header_footer_preserves_exact_visible_sheet",
+        "test_disabled_odf_header_exception_never_admits_hidden_or_misplaced_content",
+        "test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_scan",
+        "test_selected_xls_twelve_observed_disabled_templates_preserve_exact_cells_and_warning",
+        "test_selected_xls_option_admits_only_inactive_master_page_decoration_names",
+        "test_selected_xls_inactive_template_option_keeps_closed_structure_and_placement",
+        "test_selected_xls_omission_keeps_global_active_hidden_and_inherited_visibility_checks",
+        "test_selected_xls_inactive_template_has_an_independent_finite_node_bound",
+        "test_selected_xls_template_admission_and_following_global_scan_remain_cancellable",
+        "test_selected_xls_option_is_strictly_typed_and_never_enables_another_format"
+      ],
+      "new_functions": [
+        "test_selected_xls_twelve_observed_disabled_templates_preserve_exact_cells_and_warning",
+        "test_selected_xls_option_admits_only_inactive_master_page_decoration_names",
+        "test_selected_xls_inactive_template_option_keeps_closed_structure_and_placement",
+        "test_selected_xls_omission_keeps_global_active_hidden_and_inherited_visibility_checks",
+        "test_selected_xls_inactive_template_has_an_independent_finite_node_bound",
+        "test_selected_xls_template_admission_and_following_global_scan_remain_cancellable",
+        "test_selected_xls_option_is_strictly_typed_and_never_enables_another_format"
+      ]
+    },
+    {
+      "path": "tests/conversion/test_office_admission.py",
+      "sha": "62266cf4ef3fd2acd22b3f5fa8984dcf3a6e8fa0",
+      "old_cases": 19,
+      "cases": 24,
+      "old_test_prefix_byte_identical": true,
+      "functions": [
+        "test_selected_inventory_checks_fixed_installed_filter_without_executing",
+        "test_snapshot_rechecks_earlier_component_after_last_hash",
+        "test_worker_admission_refuses_changed_or_incomplete_inventory",
+        "test_fixed_adapter_rejects_false_format_before_runtime_admission",
+        "test_expired_deadline_never_spawns_a_native_process",
+        "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration",
+        "test_staging_budget_and_lookup_failures_cannot_report_complete",
+        "test_profile_is_per_operation_and_disables_active_content_and_external_updates",
+        "test_fixed_xls_route_alone_selects_inactive_page_omission_with_real_intermediate_parser"
+      ],
+      "new_functions": [
+        "test_fixed_xls_route_alone_selects_inactive_page_omission_with_real_intermediate_parser"
+      ]
+    },
+    {
+      "path": "tests/ui/test_native_conversion_diagnostics.py",
+      "sha": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+      "old_cases": 13,
+      "cases": 23,
+      "functions": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks",
+        "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+        "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings",
+        "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+        "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change"
+      ],
+      "new_functions": [
+        "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+        "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change"
+      ],
+      "companions": [
+        "scripts/windows_document_conversion_smoke.py"
+      ],
+      "old_test_bodies": "All13 unchanged; only existing AST helper-name list appended, per independent component69e5."
+    }
+  ],
+  "all_whole_suites": {
+    "tests/conversion/test_selected_conversion.py": 39,
+    "tests/conversion/test_calibre_admission.py": 49,
+    "tests/conversion/test_office_admission.py": 24,
+    "tests/ui/test_document_conversion.py": 20,
+    "tests/extract/test_document_formats_xml.py": 151,
+    "tests/audio/test_audio_process.py": 23,
+    "tests/audio/test_live_metadata_retry.py": 12,
+    "tests/ui/test_native_conversion_diagnostics.py": 23
+  },
+  "source_cases": 341,
+  "installed_cases": 341,
+  "suite_count": 8,
+  "exact_source_pin_count": 30,
+  "installed_origin_count": 20,
+  "added_source_origin": "carr_library.extract.document_formats",
+  "companions": [
+    "scripts/windows_document_conversion_smoke.py",
+    "scripts/selected_conversion_fixture_support.py"
+  ],
+  "behavior": [
+    "Ordinary ODF extraction is unchanged; only the explicit selected XLS adapter passes a strict boolean option to its ODS derivative.",
+    "Only exact styles/master-styles/master-page placement and six sole-display=false roots can omit bounded p/span/sheet-name/page-number descendants.",
+    "Complete active/hidden/inherited visibility checks still traverse all nodes; body/cell text, hashes and locators remain exact.",
+    "Persist the fixed inactive_page_decorations_not_read warning in the existing normal conversion receipt, and require it in the actual XLS qualification.",
+    "Reader native expected view uses only CRLF-to-LF representation while raw verified source, handoff hash and saved source identity remain exact; no product normalization."
+  ],
+  "maintained_budgets": {
+    "source_parent_seconds": 2700,
+    "each_whole_seconds": 600,
+    "gui_conversion_wait_seconds": 50,
+    "gui_cleanup_watchdog_seconds": 180,
+    "native_required_phases": 6,
+    "phase_descriptions": [
+      "source14formats",
+      "installed14formats",
+      "source34old-suite",
+      "installed34old-suite",
+      "source30GUI",
+      "installed30GUI"
+    ]
+  },
+  "native": {
+    "formats": 14,
+    "old_whole_conversion_cases": 34,
+    "gui_required_checks": 30,
+    "gui_origins": 30,
+    "headless_origins": 22,
+    "report_warning": "typed bounded warning array; XLS must include inactive_page_decorations_not_read"
+  },
+  "review": {
+    "source_tests_and_actual_warning": "Progress ACCEPTED_STATIC_NOT_RUN for f48/557/fab +879/622/1beb;37 XML and5 Office added cases counted and actual closed-parser/cancellation/forwarding seams inspected.",
+    "reader": "Progress ACCEPTED_STATIC_NOT_RUN under69e5; raw source identity preserved and only expected native LF view admitted.",
+    "focused_helper_workflow": "Progress ACCEPTED_STATIC_NOT_RUN for1c9/3b617; exact named counts/pins/new dispatcher origin and bounded warning checks, byte-identical INSTALLED_CHILD and existing budgets/retention.",
+    "self": "Exact readbacks; all changed source/test/native pins match the immutable helper; helper/workflow reverse audits reconstruct predecessors using only declared changes."
+  },
+  "documentation": {
+    "path": "docs/SELECTED_XLS_READING_COPY.md",
+    "builder_change": false,
+    "primary": "https://docs.oasis-open.org/office/OpenDocument/v1.3/os/part3-schema/OpenDocument-v1.3-os-part3-schema.html",
+    "sections": [
+      "19.475",
+      "16.10–16.15"
+    ]
+  },
+  "runtime": {
+    "portable_source": "NOT_RUN",
+    "portable_installed": "NOT_RUN",
+    "actual_selected_formats": "NOT_RUN",
+    "actual_GUI": "NOT_RUN",
+    "actual_format_quality": "NOT_RUN",
+    "NVDA": "NOT_RUN"
+  },
+  "refs_changed": false
+}

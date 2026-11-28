@@ -1,0 +1,73 @@
+{
+  "schema": "resonance-selected-conversion-fixture-correction/1",
+  "created_utc": "2026-11-28 00:05:44 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "PEER_REVIEWED_STATIC_NOT_RUN",
+  "base_commit": "db6cce296cc95690bf1036eb9c583df5d7869874",
+  "base_tree": "12df5c487b7c63e631786055ac9b6f950f5557dc",
+  "files": [
+    {
+      "path": "carr-library/tests/audio/test_live_metadata_retry.py",
+      "before": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+      "after": "9d97fca2633815e61a55c16f51a06484944f6fbc"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "cd41df858e39ef0d8397a531a62780f43533e900",
+      "after": "6906734c565379c8b086f012894de0a7250b6c64"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "28418b5d618cf805c997b4bab467ca52e7758a2a",
+      "after": "264fcc84bcfeac1b15b5ca30f9ea1d1b6ffd9114"
+    }
+  ],
+  "actual_failure_evidence": "bef98c7c518ee2a2788bf7ff5508fec92aa3c4cf",
+  "prior_composition": "7f31907f4f05a5bb6dc46bff93de153e31002ade",
+  "actual_failure": {
+    "run_id": 46085499304,
+    "job_id": 140794009260,
+    "source_passed": 253,
+    "source_failed": 1,
+    "source_skipped": 0,
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "cause": "The actual open-file-deletion fixture required a PermissionError5 that was not observed; it did not record successful live metadata or already-absent outcomes."
+  },
+  "fixture_change": "Only the last native-deletion test changes. It records fresh present0-byte, absent, or access-denied observations. An observed native denial must still be code5; denial is no longer asserted to be inevitable. It adds mandatory final lstat after the real child exits, and retains native CreateFile/DeleteFile, held-handle cleanup, output absence and child reaping. POSIX still requires actual absence.",
+  "preserved": {
+    "production_process": "014c47d5297a937a8bf6061420dd009206863669",
+    "other_retry_cases": 11,
+    "retry_whole_cases": 12,
+    "retry_functions": 8,
+    "source_cases": 254,
+    "installed_cases": 254,
+    "whole_suites": 8,
+    "pins": 29,
+    "origins": 19,
+    "installed_child_byte_identical": true,
+    "source_wave_seconds": 2700,
+    "per_suite_seconds": 600,
+    "portable_minutes": 150,
+    "linux_job_minutes": 180,
+    "windows_job_minutes": 330,
+    "all_six_native_phases_unchanged": true,
+    "format_count_each_mode": 14,
+    "old_whole_native_cases_each_mode": 34,
+    "gui_checks_each_mode": 30,
+    "gui_origins_each_mode": 30,
+    "acquisition_minutes": 35,
+    "native_step_minutes": 100,
+    "firewall_cleanup_and_closed_retention_unchanged": true
+  },
+  "reverse_audit": {
+    "helper": "Replace only the new fixture pin with bae4 reconstructs cd41 byte-for-byte.",
+    "workflow": "Replace exactly two new helper pins with cd41 reconstructs284 byte-for-byte."
+  },
+  "peer_review": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Only the corrected last actual deletion fixture; unchanged preceding11 cases, actual child program, bounds, production and required final lstat. Helper/workflow pin-only reversibility independently checked by author."
+  },
+  "execution": "No new corrected tests, installed or native execution claimed. No ref or run cancellation performed."
+}

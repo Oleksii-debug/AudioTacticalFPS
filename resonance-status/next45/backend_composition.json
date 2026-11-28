@@ -1,0 +1,290 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "2f61c1fa1800fd3f76a68a01acc7addd8de9d99b",
+  "base_tree": "502fea2e0c9a49a204e5ad27089bc4d61cf1538c",
+  "component": "Managed OmniVoice/OpenVoice source plus separate focused 96-case source/installed execution",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "before": "d67becf3f47b9157710f4020caf47fd60b7a3fab",
+      "after": "32f0a3ef9eab794f19a28347fde14b129bb2fd5c"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "before": "9f8e090fb780acba417af3db0b8702615acae2a9",
+      "after": "b402a6cb86ee150dc67d5654a3495289269f10aa"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "before": "a52f940d53905ebde76e6b163c900d1fcbb65268",
+      "after": "44fd0e0a169dc15c759a2d8a020341168b33defc"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_reference_backends.py",
+      "before": null,
+      "after": "de40ac027c6706886d248edaea14dec7bea36608"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_managed_backends.py",
+      "before": null,
+      "after": "1f03119d76dbf72b839c004aacc70baea0bb8657"
+    },
+    {
+      "path": "carr-library/docs/DORDIAI_VOICES_CONTRACT.md",
+      "before": "7f50b8bb60a2e0aa4e0be39da9ae0da4025c151a",
+      "after": "2acb197decf1a0078670d32f6c69b27127d89531"
+    },
+    {
+      "path": "carr-library/docs/VOICE_PACKAGE_MANAGEMENT.md",
+      "before": "247d5dddcaff0bd2ab177077dd39bb9c92b0ebb3",
+      "after": "e1b16e32a165819c46e86e6e7ee757cbc0cc7d0a"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "5145b240d4f54977f969569116e2a6703371b715",
+      "after": "09bdd8b36549c916d487b6c9a988d5b7e20272d2"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "113a9644227bb002daf5848bbb3f200f25ccc104",
+      "after": "58b45b5ff619f737779fb234fcbea060057d9eec"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "before": "2e22c72b339443b3e2f623a2da1e4af2d0766c51",
+      "after": "6089b52922435c5a48a3e0c83eefe4c3a3200f1a"
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "before": "6b3e09af4254b784af9c06418c59bd3ce399330b",
+      "after": "58308d61d46fc8be4242eb8b2004bd596587f5ad"
+    },
+    {
+      "path": "carr-library/scripts/ci_managed_backend_contracts.py",
+      "before": null,
+      "after": "1442905f45334a2dc129132d955b19341def20f0"
+    },
+    {
+      "path": ".github/workflows/carr-managed-backends.yml",
+      "before": null,
+      "after": "aebfb48edd006e883bcc2152356a1673d3d09ad4"
+    }
+  ],
+  "source_manifest": "7bf010e2e36406585ddcfcc03c3778c0922f2659",
+  "focused_contract": {
+    "whole_suites": {
+      "tests/integrations/test_dordiai_reference_backends.py": 40,
+      "tests/integrations/test_dordiai_managed_backends.py": 6,
+      "tests/integrations/test_dordiai_voices.py": 40,
+      "tests/integrations/test_dordiai_speech.py": 10
+    },
+    "source_cases": 96,
+    "installed_cases": 96,
+    "exact_pins": 70,
+    "linux_installed_origins": 35,
+    "windows_installed_origins": 38,
+    "source_parent_seconds": 1500,
+    "whole_child_seconds": 600,
+    "step_minutes": 80,
+    "job_minutes": 120,
+    "retained_contract_outputs": 20,
+    "setup_outputs": 4,
+    "actual_owner": "NOT_RUN",
+    "native_ui": "NOT_RUN",
+    "model_inference": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  },
+  "reuse": "The new helper copies unchanged sources()/git()/child()/INSTALLED_CHILD/audio_inputs and the same wheel build, source proof, isolated installation, whole JUnit and before/after payload verification. Only its own selected four-suite map, pins and main path differ. The existing full495 voice gate loses no suite/native/actual-owner requirement; only its two changed product pins and their outer literal pins move.",
+  "new_workflow_operations": [
+    {
+      "before": "name: Current voice package and reference management contracts",
+      "after": "name: Managed reference synthesis source and installed contracts",
+      "count": 1
+    },
+    {
+      "before": "          $ownerApi = Join-Path $env:RUNNER_TEMP ('carr-voice-owner-api-' + [guid]::NewGuid().ToString('N'))\n          $acquireOwner = @'\n          import importlib.util,json,pathlib,sys\n          source=pathlib.Path('scripts/ci_owner_voice_api_smoke.py').resolve(strict=True)\n          spec=importlib.util.spec_from_file_location('exact_owner_api_acquisition',source)\n          module=importlib.util.module_from_spec(spec)\n          sys.modules[spec.name]=module\n          spec.loader.exec_module(module)\n          _,receipts=module.acquire(pathlib.Path(sys.argv[1]))\n          proof={'schema':'carr-owner-api-acquisition/1','owner_revision':module.REVISION,\n                 'files':receipts,'payload_retained_publicly':False}\n          pathlib.Path('ci-voice-acceptance/owner-api-acquisition.json').write_text(\n              json.dumps(proof,sort_keys=True,indent=2)+'\\n',encoding='utf-8')\n          '@\n          $acquireOwner | & python -I -B -X utf8 - $ownerApi\n          if ($LASTEXITCODE -ne 0) { throw 'Exact owner metadata closure acquisition failed.' }\n          \"CARR_VOICE_OWNER_API_DIR=$ownerApi\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append\n",
+      "after": "",
+      "count": 2
+    },
+    {
+      "before": " --owner-api-directory $env:CARR_VOICE_OWNER_API_DIR",
+      "after": "",
+      "count": 2
+    },
+    {
+      "before": "for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):",
+      "after": "for name in ('INSTALLED_CHILD',):",
+      "count": 2
+    },
+    {
+      "before": "assert len(module.SUITES) == 21 and sum(module.SUITES.values()) == 495",
+      "after": "assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 96",
+      "count": 2
+    },
+    {
+      "before": "assert len(module.PINS) == 67 and module.OWNER_CONTRACT['required_check_count'] == 25",
+      "after": "assert len(module.PINS) == 70",
+      "count": 2
+    },
+    {
+      "before": "          assert len(module.OWNER_CONTRACT['origin_modules']) == 18\n          assert set(module.OWNER_CONTRACT['origin_modules']) <= set(module.MODULES)\n",
+      "after": "",
+      "count": 2
+    },
+    {
+      "before": "Voice495 source,495 installed and actual owner facade on Linux",
+      "after": "Managed backends96 source and96 installed on Linux",
+      "count": 1
+    },
+    {
+      "before": "Voice495 source,495 installed, actual owner facade and native83 controls",
+      "after": "Managed backends96 source and96 installed on Windows",
+      "count": 1
+    },
+    {
+      "before": "Require495 source,495 isolated installed and both actual owner facade phases",
+      "after": "Require96 source and96 isolated installed whole cases",
+      "count": 1
+    },
+    {
+      "before": "Require495 source,495 isolated installed, real owner facade and native83 controls",
+      "after": "Require96 source and96 isolated installed whole cases",
+      "count": 1
+    },
+    {
+      "before": "All source, isolated installed and actual owner facade obligations are required.",
+      "after": "All96 source and96 isolated installed whole cases are required.",
+      "count": 1
+    },
+    {
+      "before": "Required voice management source, installed or native acceptance failed.",
+      "after": "Required managed backend source or installed acceptance failed.",
+      "count": 1
+    },
+    {
+      "before": "Verify source and acquire the existing hashed tests and exact owner API",
+      "after": "Verify exact backend source and acquire existing hashed test inputs",
+      "count": 1
+    },
+    {
+      "before": "Individual whole-suite and owner-operation deadlines remain unchanged.",
+      "after": "Individual whole-suite deadlines remain unchanged.",
+      "count": 2
+    },
+    {
+      "before": "Reserve 35 minutes for acquisition, setup and retained cleanup evidence.",
+      "after": "Reserve 40 minutes for acquisition, setup and retained cleanup evidence.",
+      "count": 2
+    },
+    {
+      "before": "timeout-minutes: 360",
+      "after": "timeout-minutes: 120",
+      "count": 2
+    },
+    {
+      "before": "timeout-minutes: 325",
+      "after": "timeout-minutes: 80",
+      "count": 2
+    },
+    {
+      "before": "'audio-preparation.txt','audio-manifest.json','owner-api-acquisition.json','firewall.json','firewall-cleanup.json'",
+      "after": "'audio-preparation.txt','audio-manifest.json','firewall.json','firewall-cleanup.json'",
+      "count": 2
+    },
+    {
+      "before": "contract = set([\"identity-before.json\",\"source-contracts.txt\",\"source-summary.json\",\"wheel-build.txt\",\"source-wheel-proof.json\",\"wheel-install.txt\",\"installed-pip-check.txt\",\"native-origins-before.json\",\"native-origins-before.txt\",\"native-origins-after.json\",\"native-origins-after.txt\",\"native-voice-management.json\",\"native-voice-management.txt\",\"owner-source.json\",\"owner-source.txt\",\"owner-installed.json\",\"owner-installed.txt\",\"owner-summary.json\",\"owner-origins-before.json\",\"owner-origins-before.txt\",\"owner-origins-after.json\",\"owner-origins-after.txt\",\"native-summary.json\",\"contracts-summary.json\"])",
+      "after": "contract = set([\"identity-before.json\",\"source-contracts.txt\",\"source-summary.json\",\"wheel-build.txt\",\"source-wheel-proof.json\",\"wheel-install.txt\",\"installed-pip-check.txt\",\"contracts-summary.json\"])",
+      "count": 2
+    },
+    {
+      "before": "range(1,22)",
+      "after": "range(1,5)",
+      "count": 2
+    },
+    {
+      "before": "5145b240d4f54977f969569116e2a6703371b715",
+      "after": "1442905f45334a2dc129132d955b19341def20f0",
+      "count": 2
+    },
+    {
+      "before": ",\"scripts/ci_owner_voice_api_smoke.py\":\"e22c226ef24cf48957d04c32f25cb472e48c764e\",\"scripts/ci_voice_management_owner_smoke.py\":\"14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef\"",
+      "after": "",
+      "count": 2
+    },
+    {
+      "before": "ci_voice_management_contracts.py",
+      "after": "ci_managed_backend_contracts.py",
+      "count": 6
+    },
+    {
+      "before": "voice_management_ci_preflight",
+      "after": "managed_backend_ci_preflight",
+      "count": 2
+    },
+    {
+      "before": "voice-management",
+      "after": "managed-backends",
+      "count": 10
+    },
+    {
+      "before": "ci-voice-acceptance",
+      "after": "ci-managed-backend-acceptance",
+      "count": 12
+    },
+    {
+      "before": "CARR_VOICE_AUDIO_DIR",
+      "after": "CARR_BACKEND_AUDIO_DIR",
+      "count": 6
+    }
+  ],
+  "new_helper_main_operations": [
+    {
+      "before": "    parser.add_argument('--owner-api-directory', required=True, type=Path)\n",
+      "after": "",
+      "count": 1
+    },
+    {
+      "before": "    owner_directory = args.owner_api_directory.absolute()\n    owner_before = owner_inputs(owner_directory)\n",
+      "after": "",
+      "count": 1
+    },
+    {
+      "before": "        inputs=before, audio_runtime=audio_before, owner_api=owner_before,\n",
+      "after": "        inputs=before, audio_runtime=audio_before,\n",
+      "count": 1
+    },
+    {
+      "before": "    # Twenty-one whole suites use seven waves with original 600 s limits;\n    # 4500 s includes finite child cleanup and report handling.\n",
+      "after": "    # Four whole suites use two waves with unchanged 600-second child bounds.\n    # The 1500-second parent allowance includes owned cleanup and report handling.\n",
+      "count": 1
+    },
+    {
+      "before": "source_log, cwd=ROOT, ci=ci, timeout=4500)",
+      "after": "source_log, cwd=ROOT, ci=ci, timeout=1500)",
+      "count": 1
+    },
+    {
+      "before": "        owner = owner_contract(work=work, wheel=wheel, contract=contract, evidence=evidence,\n            directory=owner_directory, owner_before=owner_before, inputs=before, ci=ci)\n        native = native_contract(work=work, wheel=wheel, contract=contract,\n            evidence=evidence, audio=selected_audio, ci=ci)\n",
+      "after": "",
+      "count": 1
+    },
+    {
+      "before": "    require(owner['status'] == 'PASS' and set(owner['phases']) == {'source', 'installed'},\n            'Both current-manager real-owner phases must pass all 25 exact checks.')\n    require(owner_inputs(owner_directory) == owner_before, 'Acquired owner source changed during all contracts.')\n",
+      "after": "",
+      "count": 1
+    },
+    {
+      "before": "        expected_failures=False, native=native, actual_owner=owner,\n        qualification='Exact whole voice-management/provider source and installed contracts, plus current-manager real-owner API in both modes; actual native management is required on Windows. Private inference, acoustics, recording, NVDA and release remain separate.')",
+      "after": "        expected_failures=False, selected_whole_suites=SUITES, native='NOT_RUN', actual_owner='NOT_RUN',\n        qualification='Exact whole managed reference protocol40+6 and unchanged legacy40+10 source and isolated installed contracts. Synthetic actual children establish host protocol and cleanup only; native UI, actual model inference, acoustics, recording, NVDA and release remain separate.')",
+      "count": 1
+    },
+    {
+      "before": "prefix='carr-voice-management-'",
+      "after": "prefix='carr-managed-backends-'",
+      "count": 1
+    }
+  ],
+  "full_gate_admission": "New modules are verified by this focused branch first; complete main/V3/installed inventory admission remains required in the later coherent integration before the full PR is advanced.",
+  "qualification": "STATIC_NOT_RUN; no previous execution transferred. No private model/runtime/reference audio, copied vendor engine, real provider secret, or binary artifact is included."
+}

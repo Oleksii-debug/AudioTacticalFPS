@@ -1,0 +1,265 @@
+{
+  "schema": "resonance-c3-completed-source-and-runtime-evidence/1",
+  "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "observed_at_utc": "2026-11-27T21:09:02Z",
+  "status": "SCOPED_COMPLETED_GATES_NOT_FULL_QUALIFICATION",
+  "source_preflight": {
+    "run_id": 46065558265,
+    "status": "PASS",
+    "case_executions": 1977,
+    "whole_suite_executions": 111,
+    "unique_case_count": "NOT_CLAIMED",
+    "jobs": [
+      {
+        "job_id": 140729891073,
+        "platform": "Windows",
+        "scope": "actual file-sharing and import cancellation source contracts",
+        "whole_suites": 5,
+        "passed": 59,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "job_id": 140729891454,
+        "platform": "Windows",
+        "scope": "checked publication, indexed search and owned-resource source contracts",
+        "status": "PASS",
+        "whole_suites": 32,
+        "expected_cases": 419,
+        "source_before_after": true,
+        "runtime_before_after": true,
+        "failed_or_missing_exact_verdicts": []
+      },
+      {
+        "job_id": 140729891465,
+        "platform": "Linux",
+        "scope": "checked publication, indexed search and owned-resource source contracts",
+        "status": "PASS",
+        "whole_suites": 33,
+        "expected_cases": 420,
+        "source_before_after": true,
+        "runtime_before_after": true,
+        "failed_or_missing_exact_verdicts": []
+      },
+      {
+        "job_id": 140729891747,
+        "platform": "Linux",
+        "scope": "rich documents, clipboard and measured regression source contracts",
+        "whole_suites": 41,
+        "passed": 1079,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "job_id": 140729891504,
+        "scope": "YAML, PowerShell and workflow-size parser",
+        "actual": {
+          "status": "PASS",
+          "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+          "parsed_bodies": 124,
+          "failed_bodies": 0,
+          "controls": 6,
+          "control_failures": 0,
+          "workflow_size_limit_bytes": 500000,
+          "workflow_size_controls": 4,
+          "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/ci-next9-parser/workflow-powershell.json",
+          "runtime_qualification": "NOT_RUN"
+        }
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 15231185385,
+        "name": "next9-windows-intake-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 2842,
+        "sha256": "037445200ba34722bc46cd1b9acf700c1b39078400247b34e72fdfbe39f5935e"
+      },
+      {
+        "id": 15231110538,
+        "name": "next9-focused-linux-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 20185,
+        "sha256": "9bb78d4e88a2169bc9730d17446dbd25b0a951e2e3ec624768d04674a5d06f08"
+      },
+      {
+        "id": 15230573219,
+        "name": "next9-final-workflow-parser-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 12721,
+        "sha256": "d620902cc84cfe94766ed6a61073097bd83d8f62cf429624f88dc2dcad8aa8fe"
+      },
+      {
+        "id": 15230543277,
+        "name": "next9-final-source-contracts-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 74541,
+        "sha256": "82841a329f4a29644957d1916e0543c7cd017b06163132682378aec9f1961f93"
+      },
+      {
+        "id": 15230499567,
+        "name": "next9-focused-windows-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 20396,
+        "sha256": "a18dacd5168ed90df7b4ae0e1d2fdccd1f61d5e3d23452b7384b46a31e92f49e"
+      }
+    ]
+  },
+  "composed_windows": {
+    "run_id": 46065556350,
+    "job_id": 140729967431,
+    "status": "PASS",
+    "scope": "Reader, import, search, Book and recording source regression workflow",
+    "origin": "ci_check.py child environment selects source; isolated installed coverage is not inferred",
+    "artifacts": [
+      {
+        "id": 15232165570,
+        "name": "carr-next8-source-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 51955,
+        "sha256": "2b62a1815564f22d19c096a22e7a43d2c9ea4b8597b5a2232b772c08c575562d"
+      }
+    ]
+  },
+  "bibliography": {
+    "run_id": 46065563705,
+    "job_id": 140729908064,
+    "status": "PASS",
+    "source": {
+      "whole_suites": 27,
+      "passed": 1156,
+      "failed": 0,
+      "skipped": 0,
+      "origin": "ci_check.py selects ROOT/src even when launched by a virtual-environment Python"
+    },
+    "installed_native": {
+      "status": "PASS",
+      "checks": 69,
+      "installed_module_count": 5,
+      "native_keyboard": "PASS",
+      "native_clipboard": "PASS",
+      "native_custom_style": "PASS",
+      "native_file_pickers": "NOT_RUN",
+      "manual_keyboard": "NOT_RUN",
+      "installer": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "artifacts": [
+      {
+        "id": 15231450358,
+        "name": "bibliography-windows-b524b3ac3453864903ec415ce7a5f048da09d700",
+        "bytes": 27647,
+        "sha256": "c1e17fdb915133eb04eac6dab7db77a8841935c428cf893890f7aacf2c633d36"
+      }
+    ]
+  },
+  "asr_linux": {
+    "run_id": 46065563716,
+    "job_id": 140729990386,
+    "status": "PASS",
+    "source_cases": 512,
+    "installed": {
+      "status": "PASS",
+      "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+      "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+      "passed": 512,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "expected_failures": false,
+      "suite_counts": {
+        "tests/transcription/test_supplied_worker_bridge.py": 62,
+        "tests/transcription/test_v5_worker_profile.py": 41,
+        "tests/transcription/test_runtime_interpreter.py": 3,
+        "tests/operations/test_transcription_admission.py": 10,
+        "tests/assistant/test_supplied_transcription.py": 32,
+        "tests/ui/test_progress_job_review.py": 48,
+        "tests/transcription/test_protocol_fixture.py": 9,
+        "tests/transcription/test_service.py": 28,
+        "tests/transcription/test_admission_boundaries.py": 40,
+        "tests/transcription/test_runtime_admission.py": 13,
+        "tests/transcription/test_restore.py": 1,
+        "tests/storage/test_transcription_backup.py": 143,
+        "tests/ui/test_transcription_dialog.py": 40,
+        "tests/e2e/test_transcription_cli.py": 4,
+        "tests/transcription/test_unified_authority.py": 24,
+        "tests/transcription/test_export_publication.py": 14
+      },
+      "required_suite_counts": {
+        "tests/transcription/test_service.py": 28,
+        "tests/transcription/test_admission_boundaries.py": 40,
+        "tests/transcription/test_protocol_fixture.py": 9,
+        "tests/storage/test_transcription_backup.py": 143
+      },
+      "origins": {
+        "carr_library.integrations.transcription_values": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_values.py",
+          "sha256": "8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93"
+        },
+        "carr_library.integrations.transcription_runtime": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_runtime.py",
+          "sha256": "6ed7c95f6b25a3e76a7a14e08f8564850e43ef6091799a38a2a2ba35e0b0bb6e"
+        },
+        "carr_library.integrations.transcription_scope": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_scope.py",
+          "sha256": "d4b262c8f5eb0d9bdf611a3ff01685ef7ad5c6acf9ee13fc7e67b7796ddf697e"
+        },
+        "carr_library.integrations.transcription_backup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_backup.py",
+          "sha256": "597b136dce426c16b176362fcc1bf1a74096d19386635a9bb865d30a6bcb8f71"
+        },
+        "carr_library.integrations.transcription_protocol": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_protocol.py",
+          "sha256": "42fb1c28bff2dee7df143160b3ffa3d88736a818b3b8868720a29b97d6e6d102"
+        },
+        "carr_library.transcription": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/transcription.py",
+          "sha256": "bacb08d3999bb7268e66209c927a4e950ce2a988cd0086b8f742624a89cd63a5"
+        },
+        "carr_library.backup_transcription": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_transcription.py",
+          "sha256": "ab5ebb982524404c902f1e798050569340bb13400d3f8949810a41ebcc925578"
+        },
+        "carr_library.state_backup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/state_backup.py",
+          "sha256": "85d23df41fa9ef1526202204ee2602437b7ef0bc29e89c3da48521ffa9f3c868"
+        },
+        "carr_library.backup_sidecars": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+          "sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+        },
+        "carr_library.library_backup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py",
+          "sha256": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7"
+        },
+        "carr_library.ui.transcription_runtime_dialog": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/transcription_runtime_dialog.py",
+          "sha256": "85039cd064e6a16b420cbdbeb276eb3d6a8c4897f0d2f4156cadb563516f9cbc"
+        },
+        "carr_library.ui.transcription_dialog": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ui/transcription_dialog.py",
+          "sha256": "9a88ac9bb96891330e88e91c6da4c866637d821fffcd86dd09faad1dc996e848"
+        },
+        "carr_library.transcription_cli": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/transcription_cli.py",
+          "sha256": "3bf641fb564ba667ccbad9c6bb55acdbe46f1403e5dda8b2879514fbca7858c2"
+        },
+        "carr_library.integrations.transcription_exports": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/integrations/transcription_exports.py",
+          "sha256": "771769b569b421e9dce377e48714f1303eb5705e477250c7edd1aeb2c6fc28f8"
+        }
+      },
+      "acoustic_inference": "NOT_RUN",
+      "manual_NVDA": "NOT_RUN"
+    },
+    "artifacts": [
+      {
+        "id": 15230469695,
+        "name": "carr-asr-ubuntu-24.04-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 31296,
+        "sha256": "3522cfa325325f12197433ae9bf18b13455e534bfb7e1c5b0344375b32ef248a"
+      }
+    ]
+  },
+  "limits": [
+    "No execution result is transferred to later Book, converter or capacity observer source blobs.",
+    "This checkpoint does not establish full main/V3 success; current independent native/installed jobs continue, including two recorded failed steps.",
+    "Acoustic inference, real NVDA and production signing are not inferred from protocol or UI checks.",
+    "All inputs and retained artifacts are public synthetic CI evidence; no user document, model, audio binary or private runtime is included."
+  ]
+}

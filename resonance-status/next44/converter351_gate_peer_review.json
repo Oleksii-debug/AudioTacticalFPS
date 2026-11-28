@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "candidate_commit": "9fca8982a16af3c33fc675fde2c1839cfd3592a5",
+  "candidate_tree": "488ce9d51647758d8543e53b53599a21df90936d",
+  "manifest": "cf8b19883abfcd42d2326a73310f048c9c81ea7a",
+  "reviewer": "progress_completion",
+  "outcome": "ACCEPTED_STATIC_NOT_RUN",
+  "independent_review": {
+    "before_after_gate_blobs": 17,
+    "named_literal_operations": 33,
+    "all_operations_match_exact_occurrence_counts": true,
+    "all_successors_reconstructed_exactly": true,
+    "new_live_retry_functions": 12,
+    "new_live_retry_cases": 22,
+    "converter_whole_modules": 8,
+    "converter_cases": 351
+  },
+  "unchanged_inventories": [
+    472,
+    165,
+    202,
+    181,
+    321
+  ],
+  "qualification": "No parser or runtime result inferred; existing child/native/seal bodies remain byte-identical outside declared pins/counts."
+}

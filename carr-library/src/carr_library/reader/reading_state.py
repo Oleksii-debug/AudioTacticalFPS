@@ -3,9 +3,8 @@
 Locations bind the source, exact revision and page bytes. A reader must resolve
 them against the authorized library before showing a page. This module neither
 approves extracted text nor changes the research database. It stores a bounded
-JSON sidecar using the same cooperative writer lock as the library. Explicit
-workspace exports provide portable reading-state backups. Full-library backups
-can snapshot the validated sidecar under the same library writer lock.
+JSON sidecar using the same cooperative writer lock as the library. Full library
+backups retain this state; explicit workspace exports support selective transfer.
 """
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -257,6 +256,14 @@ class ReadingState:
             return {}, {}, None
         positions, bookmarks, _ = _decode_bytes(raw)
         return positions, bookmarks, identity
+
+    def _read_validated(self):
+        """Compatibility snapshot for the full-library v5 backup producer."""
+        raw, identity = self._snapshot()
+        if raw is None:
+            return None, {}, {}, None
+        positions, bookmarks, _ = _decode_bytes(raw)
+        return raw, positions, bookmarks, identity
 
     def _publish(self, positions, bookmarks, previous, *, cancelled=lambda: False):
         _check_cancelled(cancelled)

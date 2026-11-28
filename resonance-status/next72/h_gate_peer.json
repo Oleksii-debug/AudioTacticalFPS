@@ -1,0 +1,169 @@
+{
+  "schema": "carr-h-intake-six-gate-peer/1",
+  "created_utc": "2026-11-28 10:04:38 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "/root/progress_completion",
+  "base": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a"
+  },
+  "scope": "Exact gate count/function/pin delta and complete inverse, separate from the worker source correctness and runtime verdict.",
+  "source_dependencies": {
+    "worker": {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "preimage": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "blob": "532cd6d0e0bdbeb55675eeb813aa1e39239df022"
+    },
+    "test": {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "preimage": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5",
+      "blob": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+      "whole_count": 7,
+      "functions": 6,
+      "new_function": "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+    },
+    "source_test_peer": "2d29f2fac705cc1553e32c7d76f970ca77593777"
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "6032567fb09dd4e235caca7a3480d27845fcf889",
+      "blob": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+      "full_inverse_exact": true,
+      "details": [
+        {
+          "from": "'tests/ingest/test_large_source_intake.py' = 7",
+          "to": "'tests/ingest/test_large_source_intake.py' = 6",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "93eb4eab03bdb37ae09373ce1adee74632300167",
+      "blob": "3b4981beac7d036d183eff16efd6f3adb26ae458",
+      "full_inverse_exact": true,
+      "details": [
+        {
+          "from": "\"tests/ingest/test_large_source_intake.py\":{\"count\":7,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\",\"test_interrupted_publication_read_releases_lock_with_retained_traceback\"]}",
+          "to": "\"tests/ingest/test_large_source_intake.py\":{\"count\":6,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\"]}",
+          "occurrences": 1
+        },
+        {
+          "from": "\"tests/ingest/test_large_source_intake.py\":7",
+          "to": "\"tests/ingest/test_large_source_intake.py\":6",
+          "occurrences": 1
+        },
+        {
+          "maps_total": 1,
+          "target_map_keys": 153,
+          "actual_test_functions": [
+            "test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker",
+            "test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review",
+            "test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear",
+            "test_large_source_completed_before_real_child_cancel_is_recovered_without_republication",
+            "test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication",
+            "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+          ],
+          "actual_count": 7
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "2530ad683289a6d9d16f5282fc470cf819e791b2",
+      "blob": "5740472c341920ac29d3d1716796662bc51a289a",
+      "full_inverse_exact": true,
+      "details": [
+        {
+          "from": "\"tests/ingest/test_large_source_intake.py\":{\"count\":7,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\",\"test_interrupted_publication_read_releases_lock_with_retained_traceback\"]}",
+          "to": "\"tests/ingest/test_large_source_intake.py\":{\"count\":6,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\"]}",
+          "occurrences": 1
+        },
+        {
+          "from": "'tests/ingest/test_large_source_intake.py' = 7",
+          "to": "'tests/ingest/test_large_source_intake.py' = 6",
+          "occurrences": 1
+        },
+        {
+          "maps_total": 1,
+          "target_map_keys": 20,
+          "actual_test_functions": [
+            "test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker",
+            "test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review",
+            "test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear",
+            "test_large_source_completed_before_real_child_cancel_is_recovered_without_republication",
+            "test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication",
+            "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+          ],
+          "actual_count": 7
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+      "blob": "d95bdbf17c5df824c003c98bcd353e9e6b645f50",
+      "full_inverse_exact": true,
+      "details": [
+        {
+          "from": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+          "to": "6032567fb09dd4e235caca7a3480d27845fcf889",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "7d32d1153af6f612c82b319e608fc8e10bc128de",
+      "blob": "4b534feab260da01fd558fa8a64511de386d3c16",
+      "full_inverse_exact": true,
+      "details": [
+        {
+          "from": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+          "to": "6032567fb09dd4e235caca7a3480d27845fcf889",
+          "occurrences": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "2d9d8e88aaad47f23947f7b877a51e4777016e7f",
+      "blob": "7a7ee04513ffb6e3522c6312e89864729c4eaf04",
+      "full_inverse_exact": true,
+      "details": [
+        {
+          "from": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+          "to": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+          "occurrences": 1
+        }
+      ]
+    }
+  ],
+  "verified_contract": {
+    "v3_early_keys": 20,
+    "installed_inline_keys": 153,
+    "source_anchor_unchanged": 2,
+    "source_whole_count": 493,
+    "whole_delta": 0,
+    "case_delta": 1,
+    "function_delta": 1,
+    "unchanged_late_v3_data_blob": "b8f6c288b53cb14a6a5339d28d7e50843f15a438",
+    "native_companion_changes": 0,
+    "origin_changes": 0,
+    "budget_changes": 0
+  },
+  "findings": [
+    "All six complete preimages reconstruct exactly after reversing only their named count, exact function append and pinned-hash changes.",
+    "The V3 change is in the early actual20-entry map and matching early six-to-seven count. Its separate late129-entry held-data contract remains byte-identical.",
+    "The installed153-entry map and separate live completed-feature count both require7; all six function names equal the actual proposed test file.",
+    "The source493 ordered inventory, existing serial/parallel grouping, partition anchor2 and all600/900 child/outer limits remain unchanged.",
+    "The main/reusable cascade contains exactly two plus one source-helper hashes; the corpus workflow changes only its old-worker hash.",
+    "The62-gate scan found no other old worker raw pin. No companion, module-origin, selector, native or product source is altered by these gate successors."
+  ],
+  "limits": [
+    "No PowerShell/Python parser or runtime execution was performed by this peer.",
+    "The current G head and all running G refs remain unchanged.",
+    "Source/test semantic correctness is owned by the referenced independent peer."
+  ]
+}

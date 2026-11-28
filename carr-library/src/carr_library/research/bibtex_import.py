@@ -162,26 +162,37 @@ class _Expressions:
     def __init__(self, definitions):
         self.definitions = definitions
         self.cache = {}
+        self.depths = {}
         self.total = 0
 
     def symbol(self, key, stack):
         key = key.lower()
+        if key not in self.definitions:
+            if key in _MONTHS:
+                # Built-in months are constant values, like braced literals;
+                # only explicit @string definitions add a dependency level.
+                return _MONTHS[key], frozenset()
+            raise ValueError(f'Undefined BibTeX string: {key}. Quote literal text in braces.')
         if key in stack or len(stack) >= MAX_MACRO_DEPTH:
             raise ValueError('Cyclic or excessively nested BibTeX string definition.')
         if key in self.cache:
+            if len(stack) + self.depths[key] > MAX_MACRO_DEPTH:
+                raise ValueError('Cyclic or excessively nested BibTeX string definition.')
             return self.cache[key]
-        if key not in self.definitions:
-            if key in _MONTHS:
-                return _MONTHS[key], frozenset()
-            raise ValueError(f'Undefined BibTeX string: {key}. Quote literal text in braces.')
         expression = self.definitions[key].value.rstrip()
         # BibTeX permits one optional trailing comma in @string blocks; the
         # upstream structural parser retains that comma in String.value.
         if expression.endswith(','):
             expression = expression[:-1]
         value, used = self.resolve(expression, (*stack, key))
+        # A cached expansion still carries its full dependency depth. Otherwise
+        # defining parents first lets arbitrarily long chains appear shallow.
+        depth = 1 + max((self.depths[name] for name in used), default=0)
+        if len(stack) + depth > MAX_MACRO_DEPTH:
+            raise ValueError('Cyclic or excessively nested BibTeX string definition.')
         result = value, used | {key}
         self.cache[key] = result
+        self.depths[key] = depth
         return result
 
     def resolve(self, expression, stack=()):
@@ -245,7 +256,7 @@ def _decode(value, field, warnings, decoder, *, multiline=False):
     return result.strip() if multiline else ' '.join(result.split())
 
 
-def _authors(value, warnings, decoder, split_names, split_parts):
+def _authors(value, warnings, decoder, split_names, split_parts, *, literal_names=False):
     if not value.strip():
         return ()
     names = split_names(value)
@@ -261,7 +272,9 @@ def _authors(value, warnings, decoder, split_names, split_parts):
             content, end = _literal(name, 0)
             corporate = end == len(name)
         if corporate:
-            display = '{' + _decode(content, 'corporate author', warnings, decoder) + '}'
+            display = _decode(content, 'corporate author', warnings, decoder)
+            if not literal_names:
+                display = '{' + display + '}'
         else:
             parts = split_parts(name, strict=True)
             if ',' in name:
@@ -273,11 +286,15 @@ def _authors(value, warnings, decoder, split_names, split_parts):
                 family, given, suffix = (_decode(part, 'author', warnings, decoder) for part in (
                     ' '.join(parts.von + parts.last), ' '.join(parts.first), ' '.join(parts.jr)))
                 if not family or not given:
-                    display = '{' + _decode(name, 'author', warnings, decoder) + '}'
+                    display = _decode(name, 'author', warnings, decoder)
+                    if not literal_names:
+                        display = '{' + display + '}'
                     warnings.append('Incomplete comma-separated person name is retained literally; '
                                     'family, given name and suffix were not reassigned. Review the original entry.')
                 elif any(',' in part for part in (family, given, suffix)):
-                    display = '{' + _decode(name, 'author', warnings, decoder) + '}'
+                    display = _decode(name, 'author', warnings, decoder)
+                    if not literal_names:
+                        display = '{' + display + '}'
                     warnings.append('Protected punctuation in a person name is kept as a literal name '
                                     'to avoid guessing given names or suffixes.')
                 else:
@@ -286,11 +303,13 @@ def _authors(value, warnings, decoder, split_names, split_parts):
                     display = ', '.join((family, given, suffix) if suffix else (family, given))
             else:
                 display = _decode(name, 'author', warnings, decoder)
-        if not display or display == '{}':
+        if not display or (not literal_names and display == '{}'):
             raise ValueError('An imported BibTeX author is empty.')
         result.append(display)
     warnings.append('Author names remain display text. Explicit comma names use Family, Given, '
-                    'Suffix; outer braces mark a literal corporate or protected name. Review name formatting.')
+                    + ('Suffix; corporate and protected names remain literal text. Review name formatting.'
+                       if literal_names else
+                       'Suffix; outer braces mark a literal corporate or protected name. Review name formatting.'))
     if any(name.lower() == 'others' for name in names):
         warnings.append('The BibTeX author marker others is retained literally; review abbreviated authorship.')
     return tuple(result)
@@ -337,20 +356,27 @@ def _keywords(value, warnings, decoder):
 
 def _inherit_records(records):
     completed = {}
+    depths = {}
 
     def inherited(key, stack=()):
         if key in stack or len(stack) >= MAX_CROSSREF_DEPTH:
             raise ValueError('Cyclic or excessively nested BibTeX cross-reference.')
         if key in completed:
+            if len(stack) + depths[key] > MAX_CROSSREF_DEPTH:
+                raise ValueError('Cyclic or excessively nested BibTeX cross-reference.')
             return completed[key]
         entry, own, used, warnings = records[key]
         fields = dict(own)
         parent_key = fields.get('crossref', '').strip()
+        depth = 1
         if parent_key:
             if parent_key not in records:
                 raise ValueError(f'BibTeX cross-reference {parent_key} is missing from this file.')
             parent, _, _, _ = records[parent_key]
             parent_fields = inherited(parent_key, (*stack, key))
+            depth += depths[parent_key]
+            if len(stack) + depth > MAX_CROSSREF_DEPTH:
+                raise ValueError('Cyclic or excessively nested BibTeX cross-reference.')
             copied = []
             for field in sorted(_INHERIT):
                 if field not in fields and field in parent_fields:
@@ -364,6 +390,7 @@ def _inherit_records(records):
                             + (', '.join(copied) if copied else 'no supported missing fields')
                             + '. Child title, authors, identifiers and page extent are not inferred.')
         completed[key] = fields
+        depths[key] = depth
         return fields
 
     for key in records:
@@ -371,7 +398,7 @@ def _inherit_records(records):
     return completed
 
 
-def parse_bibtex(text):
+def parse_bibtex(text, *, literal_names=False):
     """Parse one complete bounded metadata batch, or fail without partial rows.
 
     Braces/quotes, numeric fields, case-insensitive strings, concatenation and
@@ -379,7 +406,11 @@ def parse_bibtex(text):
     fields, never child titles/authors/page extents. Preambles are inert and
     ignored with a warning. TeX text accents use pylatexenc; unknown commands
     remain literal. Original entry/macro text is preserved in research notes.
+    ``literal_names=True`` omits only parser-generated name markers for a caller
+    that stores every author literally; decoded literal braces remain intact.
     """
+    if type(literal_names) is not bool:
+        raise ValueError('The BibTeX literal-name policy must be boolean.')
     _preflight(text)
     parser, model, split_names, split_parts, decoder_type, context = _upstream()
     token = _quiet_logs.set(True)
@@ -487,7 +518,8 @@ def parse_bibtex(text):
             warnings.append('Citation key and original BibTeX are retained in research notes, not used as '
                             'the application reference ID. Exports omitting notes omit this provenance.')
             values = dict(title=value('title'), authors=_authors(fields.get('author', ''),
-                warnings, decoder, split_names, split_parts), item_type=_TYPES.get(kind, 'other'),
+                warnings, decoder, split_names, split_parts, literal_names=literal_names),
+                item_type=_TYPES.get(kind, 'other'),
                 year=year, container_title=containers[0] if containers else '',
                 publisher=value('publisher'), volume=value('volume'), issue=issue,
                 pages=value('pages'), doi=value('doi'), isbn=value('isbn'), url=value('url'),

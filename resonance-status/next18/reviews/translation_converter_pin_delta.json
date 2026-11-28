@@ -1,0 +1,26 @@
+{
+  "schema": "resonance-source-pin-integration-delta/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "requires": [
+    "e23bf4153f3786e5d20959591662534b29e0a21a",
+    "66202b2026cbcb330b9e9a188156b1bc81da192d"
+  ],
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": "fc85cebfc0c534ccdae4ba40a271de2d44e6c08a",
+      "sha": "4f9ef7774a1e8eaab254223181df7d3ddb9d3a26"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "c2a901d7026068b199253de3a492769e27b95177",
+      "sha": "791430237558ef1ae715f8f61d56789b3253a9a2"
+    }
+  ],
+  "changes": "Only the exact translation loopback194df→6859 source pin changes once in the helper and twice in the workflow. The workflow then binds the resulting helper4f9 twice. No executable statement, source/installed/native inventory, runtime/preparer pin, limit, artifact policy or test behavior changes.",
+  "review": {
+    "root": "Exact occurrence-bounded replacements and both blob readbacks match. Final tree pins are checked after applying the translation source and this delta.",
+    "peer": "Pending independent exact pin review before branch publication."
+  },
+  "focused_execution": "Live fe2e converter branch is unchanged; no result transfer."
+}

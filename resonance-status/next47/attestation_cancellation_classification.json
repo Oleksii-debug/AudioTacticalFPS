@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "created_utc": "2026-11-28 03:12:25 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "component": "Preserve cancellation and finite phase deadlines through current source attestors",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/citations/text_attestation.py",
+      "preimage": "ebf00c3594cc448657868ee322af3e663e594d58",
+      "blob_sha": "81f85562d1c12517567e9adc6bcd0b2580f6cac6"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/printed_label_attestation.py",
+      "preimage": "1eb9e06b79a5e0a39354da0d358581a7598512e4",
+      "blob_sha": "4c9a65a79a27ad068452e2eb9cb50df4998a51c9"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "preimage": "ed743778b3454a168aa5b97fe0234e13daa68fa1",
+      "blob_sha": "f0fceb11ca212c02101277f4d67f7ac9c2ee15ad"
+    },
+    {
+      "path": "carr-library/tests/citations/test_attestation_cancellation.py",
+      "preimage": null,
+      "blob_sha": "8e1fe70637ed839a6120c2414e2933bfe16e2858"
+    }
+  ],
+  "actual_evidence": {
+    "source_head": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+    "run_id": 46092769234,
+    "artifact_authority": "67335c63884dcf9b0b12507ad7ec89d704597f54",
+    "inspector_run": 46099926695,
+    "inspector_job": 140839823124,
+    "measure_seconds": 3600.3498,
+    "reason": "ValueError",
+    "diagnostic": "unverified extraction",
+    "verified_results": 691837,
+    "requests": 20755,
+    "source_windows": 6918,
+    "causal_scope": "Static exception hierarchy and real regression paths explain how an original TimeoutError/InterruptedError becomes an attestation refusal. No phase stack was retained, so the exact final runtime instruction is not claimed."
+  },
+  "new_whole": {
+    "path": "tests/citations/test_attestation_cancellation.py",
+    "cases": 15,
+    "functions": [
+      "test_historical_text_asset_deadline_is_preserved_through_both_attestors",
+      "test_real_file_snapshot_segmentation_does_not_turn_cancelled_read_into_unverified_text",
+      "test_actual_pdf_render_deadline_propagates_without_replacing_the_original_failure",
+      "test_printed_label_lookup_cancellation_never_falls_through_to_text_approval",
+      "test_actual_current_copy_cancellation_preserves_error_closes_snapshot_and_keeps_old_selection"
+    ],
+    "per_function_cases": [
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "companions": []
+  },
+  "source_delta": "Four explicit except (InterruptedError, TimeoutError): raise clauses precede unchanged broad refusal catches. All other attestation checks/refusals remain byte-identical.",
+  "preserved": "Existing text/PDF/printed-label source reads, hashes, identity and same-snapshot authority; no cache, throughput change, query/result/page/window change or increased deadline.",
+  "tests": "Actual SQLite historical loader, real FileSnapshot read/closed descriptor, real PDFium rendering and actual current LibraryApp.copy failure/recovery. All three exception classes preserve the original instance.",
+  "peer_review": {
+    "root": "ACCEPTED_STATIC_NOT_RUN source and bounded15-case read",
+    "locate_project": "Fixture/API review requested; no runtime claim."
+  },
+  "execution": "STATIC_NOT_RUN",
+  "refs_moved": false
+}

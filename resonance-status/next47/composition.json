@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "63d25c74e9f72feb951ce2f8d081325176100baa",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/citations/text_attestation.py",
+      "before": "ebf00c3594cc448657868ee322af3e663e594d58",
+      "sha": "81f85562d1c12517567e9adc6bcd0b2580f6cac6"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/printed_label_attestation.py",
+      "before": "1eb9e06b79a5e0a39354da0d358581a7598512e4",
+      "sha": "4c9a65a79a27ad068452e2eb9cb50df4998a51c9"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "before": "ed743778b3454a168aa5b97fe0234e13daa68fa1",
+      "sha": "f0fceb11ca212c02101277f4d67f7ac9c2ee15ad"
+    },
+    {
+      "path": "carr-library/tests/citations/test_attestation_cancellation.py",
+      "before": null,
+      "sha": "8e1fe70637ed839a6120c2414e2933bfe16e2858"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "before": "652833b7e0672cb62db2293f53187fe97fcd8669",
+      "sha": "05bf43b062f160f973f1521d31a259a69d5f3224"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_profile.py",
+      "before": null,
+      "sha": "1d9358be81555a60c6948235725fe3186a4ad4f4"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "before": null,
+      "sha": "8915dffd690ddc63fb76619e9fdc6877c1b77e52"
+    },
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "before": "f8b7c9b36b59a65608f42ed5705c479c9541ef84",
+      "sha": "df13248d149a2017bd1a70d68c4493edca1811f8"
+    },
+    {
+      "path": "carr-library/tests/studio/test_daisy_schema_resolver.py",
+      "before": null,
+      "sha": "4cdb3ee5f1a24bdeaf9b4725a5b0a53e0aed0b59"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "d5260f6f704c162b2b8b6abf0868bcac26e99127",
+      "sha": "bec2f01383f120ba80952e0e962b621a77e64417"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "5697b5a07da1a12e6cb4f076a11aaf35c94eff8a",
+      "sha": "56940633a5318dd5194a07a15f064b63fbe5948a"
+    }
+  ],
+  "static_review": {
+    "profile": "Root accepted exact preimages/pins, unchanged original traversal/build/measure/operations/backup bodies, flag-off omission, actual7 regressions, 35input/21origin/fourwhole71 bounded offline workflow.",
+    "daisy": "Independent Progress review accepted closed exact native/file URI alias map and20 real-lxml cases; current repair execution remains NOT_RUN.",
+    "classification": "Root accepted exact four inserted exception rethrows and15 real source/render/copy regressions; no speed claim."
+  },
+  "full_inventory": "New three whole modules are not yet admitted to the complete PR inventories. This branch triggers only the diagnostic source71 gate. Full PR remains on its prior reviewed head pending coherent integration.",
+  "qualification": {
+    "release": "NOT_QUALIFIED",
+    "full_2m": "NOT_RUN_BY_THIS_DIAGNOSTIC",
+    "native_daisy_repaired": "NOT_RUN"
+  },
+  "source_manifests": {
+    "profile": "5dbe60d271eda2d82d42a77fad29f06e19d35279",
+    "classification": "5c8102d1d3f5727349bba9b250f9e5a951acbc17",
+    "daisy": "082f70581ec7fdd930e7a9cd07686bd842f5cfca"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "schema": "carr-actual-voice-management-linux/1",
+  "source_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "source_tree": "2e523f7fdb5b8ef1447359f79ba384c4cbb001c5",
+  "run_id": 46097299416,
+  "job_id": 140831496048,
+  "conclusion": "SUCCESS",
+  "log_source": "Complete closed GitHub job log; 312035 characters retrieved, no tool truncation.",
+  "source": {
+    "whole_suites": 21,
+    "passed": 495,
+    "failed": 0,
+    "skipped": 0,
+    "verdicts": [
+      "PASS: tests/audio/test_voice_package_management.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_voice_management_state.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_voice_reference_management.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_voice_protected_management.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_voice_publication_lifetime.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_voice_ownership.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_owner_lease.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_managed_authority.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/ui/test_voice_packages.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/ui/test_voice_reference.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/ui/test_engine_settings_lifetime.py: junit_passed=43, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_voices.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_speech.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_host_lifecycle.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_settings.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_probe_cancellation.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/integrations/test_dordiai_convergence.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_bundled_runtime_settings.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/storage/test_v3_state_backup.py: junit_passed=42, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/storage/test_state_backup_portability.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+    ]
+  },
+  "installed": {
+    "whole_suites": 21,
+    "passed": 495,
+    "failed": 0,
+    "skipped": 0,
+    "verification": "Every sequential installed JUnit gate completed; final actual summary below binds the exact source and installed total."
+  },
+  "owner_api": [
+    {
+      "checks": 25,
+      "error": null,
+      "mode": "source",
+      "report_sha256": "d3ee8ebe5f1d7f1cbdf65d4b94c86fec0c91b7d640fd9bf299890500e974567c",
+      "status": "PASS"
+    },
+    {
+      "checks": 25,
+      "error": null,
+      "mode": "installed",
+      "report_sha256": "e1ae7042edb67687cb5687958281df05b49a85facbc55aa6dbd1f8584ab9a501",
+      "status": "PASS"
+    }
+  ],
+  "final_summary": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 495,
+    "source_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+    "source_passed": 495,
+    "source_tree": "2e523f7fdb5b8ef1447359f79ba384c4cbb001c5",
+    "status": "PASS"
+  },
+  "native_windows": "NOT_RUN_ON_LINUX",
+  "windows_job_at_observation": {
+    "job_id": 140831496364,
+    "status": "IN_PROGRESS",
+    "no_result_transfer": true
+  },
+  "artifact": {
+    "id": 15244002754,
+    "name": "voice-management-linux-62b358005048b2d91f92b693314c8897b6a7a0c5-1",
+    "size_in_bytes": 136643,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244002754",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244002754/zip",
+    "expired": false,
+    "created_at": "2026-11-28T02:25:33Z",
+    "expires_at": "2027-02-26T02:17:06Z",
+    "updated_at": "2026-11-28T02:25:33Z",
+    "digest": "sha256:03eebc4284144a302bc9abb0460c745a7ae48b7be0909b5a26845603d6b5347b",
+    "workflow_run": {
+      "id": 46097299416,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-voice-management-final-20261128-5a9e",
+      "head_sha": "62b358005048b2d91f92b693314c8897b6a7a0c5"
+    },
+    "verification": "Artifact API metadata reconciled with actual upload size/digest/ID log; archive bytes not independently downloaded in this analysis."
+  },
+  "timing_limits": {
+    "source_parallel_stdout": "Buffered and interleaved; do not attribute matching-count summaries to individual source suites without separate evidence.",
+    "installed_sequential_seconds": {
+      "package30": 88.25,
+      "reference30": 32.19,
+      "managed_authority18": 81.3
+    },
+    "timing_not_windows_qualification": true
+  },
+  "private_inference": "NOT_RUN",
+  "physical_microphone": "NOT_RUN",
+  "manual_nvda": "NOT_RUN",
+  "release": "NOT_QUALIFIED",
+  "observed_at_utc": "2026-11-28T02:28:27Z"
+}

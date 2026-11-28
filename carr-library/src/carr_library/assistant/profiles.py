@@ -14,9 +14,9 @@ from .models import text, local_path
 from .state import atomic_json, read_json, regular
 
 
-CAPABILITIES = ('llm.chat', 'speech.synthesize', 'music.compose', 'sfx.generate',
+CAPABILITIES = ('llm.chat', 'speech.synthesize', 'speech.transcribe', 'music.compose', 'sfx.generate',
                 'translation.text', 'translation.languages')
-ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2', 'google-translation-v3')
+ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2', 'google-translation-v3', 'libretranslate-local')
 
 
 def google_v3_parent(address):
@@ -74,9 +74,15 @@ def save_google_token(store, vault, profile, token, expires, *, current=None):
     """
     if profile.adapter != 'google-translation-v3':
         raise ValueError('Choose the Advanced v3 adapter before storing an OAuth token.')
+    record = google_oauth_credential(token, expires, profile.endpoint)
+    return _save_google_record(store, vault, profile, record, current=current)
+
+
+def _save_google_record(store, vault, profile, record, *, current=None, guard=lambda: None):
+    """Publish one explicitly reviewed vault credential through the existing store."""
     if current is not None and (current.id != profile.id or store.get(current.id) != current):
         raise ValueError('The selected account changed. Reopen it before explicitly replacing its OAuth credential.')
-    record = google_oauth_credential(token, expires, profile.endpoint)
+    guard()
     if current == profile and current.credential_ref:
         # Atomic CredWrite under the same exact nonsecret profile preserves the
         # approved job's identity. There is no subsequent profile write to fail.
@@ -149,8 +155,11 @@ class ProviderProfile:
         if self.adapter == 'elevenlabs':
             if self.local or target.hostname != 'api.elevenlabs.io' or target.port not in (None, 443) or target.path not in ('', '/v1'):
                 raise ValueError('ElevenLabs credentials may only be sent to its official HTTPS API host.')
-            if any(c not in ('speech.synthesize', 'music.compose', 'sfx.generate') for c in self.capabilities):
+            if any(c not in ('speech.synthesize', 'speech.transcribe', 'music.compose', 'sfx.generate') for c in self.capabilities):
                 raise ValueError('The ElevenLabs adapter does not provide chat completion or translation.')
+            if ('speech.transcribe' in self.capabilities and
+                    (self.capabilities != ('speech.transcribe',) or self.model != 'scribe_v2' or self.voice is not None)):
+                raise ValueError('Remote transcription requires its own ElevenLabs scribe_v2 profile, speech.transcribe only, and no voice ID.')
         if self.adapter == 'google-translation-v2':
             if (self.local or target.hostname != 'translation.googleapis.com'
                     or target.port not in (None, 443) or target.path != '/language/translate/v2'):
@@ -161,6 +170,11 @@ class ProviderProfile:
             google_v3_parent(self.endpoint)
             if self.local or self.model != 'general/nmt' or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities):
                 raise ValueError('Advanced v3 uses an explicit remote NMT model (general/nmt) and an IAM/ADC OAuth token.')
+        if self.adapter == 'libretranslate-local':
+            if (not self.local or target.path not in ('', '/') or self.credential_ref is not None
+                    or self.voice is not None
+                    or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities)):
+                raise ValueError('Local LibreTranslate requires an explicit loopback base URL, no credential, and translation-only capabilities.')
         if self.credential_ref is not None:
             validate_reference(self.credential_ref, self.id)
         if self.voice is not None:

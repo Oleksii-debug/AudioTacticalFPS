@@ -1,0 +1,166 @@
+{
+  "schema": "carr-regression-handoff/1",
+  "status": "STATIC_NOT_RUN",
+  "component": "Actual e763 import/reading-backup fixture signature and entry-cancellation contract",
+  "base_head": "de46e79215a4c2603506704b1784b349d7c475d8",
+  "actual_failure_evidence": "1493b40e184c2a41ebd0608e650ad1716e6864ef",
+  "files": [
+    {
+      "path": "carr-library/tests/ingest/test_batch_scan.py",
+      "before": "3e6077556541e0cf8234fbb909c936c321b7345f",
+      "after": "dea62f80d707457ddf08819c0dad1039e15aa38e",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_batches.py",
+      "before": "24cf16cf627fb345c21c3d3100b6a5cbede2efce",
+      "after": "6ff439ff98dde1e7b212e627376f7c2257ad6a37",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/e2e/test_epub_library.py",
+      "before": "334e28f83e3428a40e532bab70c999a978683062",
+      "after": "433f956ef4cefe5f6d3dfe37882dd60ef568dbdd",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+      "before": "a55da6cebc55d834c358379f52163ec73e0d4e78",
+      "after": "78f02e7994d1474dc1e98beda8afbeb3a70d35e8",
+      "exact_readback": true
+    }
+  ],
+  "suites": [
+    {
+      "path": "tests/ingest/test_batch_scan.py",
+      "cases": 46,
+      "functions": [
+        "test_sorted_folder_plan_uses_existing_intake_without_writing",
+        "test_invalid_scan_policy_is_rejected_before_any_directory_or_file_read",
+        "test_custom_policy_cannot_publish_an_invalid_manifest",
+        "test_exact_duplicates_are_scoped_and_keep_original_paths",
+        "test_overlapping_selection_scans_each_path_once",
+        "test_nonrecursive_skips_nested_folder_without_opening_file",
+        "test_root_symlink_rejected_before_resolve_or_snapshot",
+        "test_symlink_leaf_or_ancestor_cannot_hide_behind_parent_resolution",
+        "test_hardlinks_rejected_without_opening_or_deleting",
+        "test_windows_reparse_root_is_rejected_before_listing",
+        "test_source_changed_after_intake_is_rejected",
+        "test_existing_intake_rejections_are_reported",
+        "test_cancel_before_scan_opens_nothing",
+        "test_cancel_after_first_snapshot_never_opens_next_file",
+        "test_supported_file_bound_stops_before_next_open",
+        "test_directory_listing_is_bounded_before_processing_any_partial_prefix",
+        "test_rejection_rows_are_bounded_and_counted",
+        "test_scan_limit_remains_visible_after_rejection_details_are_capped",
+        "test_empty_selection_and_folder",
+        "test_planned_snapshot_preserves_exact_immutable_bytes",
+        "test_planned_snapshot_rejects_new_hardlink_before_read",
+        "test_planned_snapshot_rejects_parent_link_replacement_before_read",
+        "test_existing_assets_must_be_explicit_sha256_digests",
+        "test_explicit_nested_root"
+      ]
+    },
+    {
+      "path": "tests/e2e/test_import_batches.py",
+      "cases": 20,
+      "functions": [
+        "test_folder_plan_real_txt_import_search_copy_and_scope_safe_duplicates",
+        "test_cancel_before_start_and_between_files_then_reopen_without_reimport",
+        "test_crash_boundaries_keep_stable_request_work_edition_and_single_publication",
+        "test_changed_source_fails_before_retention_and_requires_explicit_retry",
+        "test_expected_manifest_compares_the_same_snapshot_that_is_retained",
+        "test_pending_plan_rechecks_duplicates_after_another_batch_finishes",
+        "test_selection_only_changes_never_prepared_rows",
+        "test_prepared_request_cannot_be_excluded_even_before_processing",
+        "test_unused_identical_alternate_can_be_included_after_primary_is_unavailable",
+        "test_planned_source_link_policy_is_rechecked_before_worker_retention",
+        "test_refresh_reconciles_external_resume_without_overwriting_live_batch",
+        "test_workspace_and_collection_authorization_precedes_source_actions",
+        "test_batch_lock_atomic_failure_and_directory_binding",
+        "test_batch_native_formats_keep_existing_unverified_authority",
+        "test_folder_epub_batch_keeps_planned_bytes_stable_identity_and_unverified_authority"
+      ]
+    },
+    {
+      "path": "tests/e2e/test_epub_library.py",
+      "cases": 8,
+      "functions": [
+        "test_isolated_import_spine_contents_search_and_quotation_boundary",
+        "test_original_copy_complete_backup_and_reopen_keep_navigation",
+        "test_scope_topic_archive_revision_and_cancellation_rechecked",
+        "test_source_drift_blocks_cached_chapter_and_fresh_search",
+        "test_metadata_revision_reopens_same_extraction_and_invalidates_old_reader",
+        "test_replay_registration_rejection_is_atomic",
+        "test_incompatible_book_and_cancelled_import_never_publish",
+        "test_revision_commits_contents_descriptors_with_no_invented_pages"
+      ]
+    },
+    {
+      "path": "tests/storage/test_library_backup_reading_state.py",
+      "cases": 126,
+      "functions": [
+        "test_application_backup_restores_exact_bookmarks_and_resume_for_both_libraries",
+        "test_unverified_physical_pdf_bookmark_keeps_location_and_review_status",
+        "test_historical_and_archived_bindings_are_preserved_without_retargeting",
+        "test_absent_state_is_explicit_and_unrelated_sidecars_are_not_copied",
+        "test_saved_location_must_match_the_exact_copied_database",
+        "test_public_verification_checks_real_backup_without_changing_original_files",
+        "test_public_verification_rejects_corruption_and_unexpected_files_without_mutation",
+        "test_invalid_live_reading_state_cannot_be_silently_omitted_from_backup",
+        "test_incomplete_tampered_or_unexpected_state_never_publishes_restore",
+        "test_reading_manifest_is_an_exact_allowlist",
+        "test_v3_reading_presence_must_be_explicit",
+        "test_linked_reading_file_is_rejected_without_touching_external_target",
+        "test_reading_snapshot_and_database_share_the_existing_writer_guard",
+        "test_publication_uses_captured_bytes_after_source_path_changes",
+        "test_staging_disk_failure_does_not_publish_a_partial_destination",
+        "test_interruption_while_publishing_reading_state_keeps_restore_unopenable",
+        "test_legacy_backup_restores_without_fabricating_reading_state",
+        "test_legacy_manifest_cannot_smuggle_an_unbound_reading_file",
+        "test_exact_v3_reading_shape_remains_read_only_compatible",
+        "test_full_backup_keeps_bookmarks_resume_and_archived_library",
+        "test_historical_position_survives_without_becoming_a_new_revision",
+        "test_sparse_physical_pdf_bookmark_keeps_its_actual_page_and_unverified_state",
+        "test_epub_bookmarks_restore_logical_sections_without_quotation_authority",
+        "test_absent_and_explicit_empty_state_remain_distinct",
+        "test_v5_restores_reading_state_settings_and_resumable_originals_together",
+        "test_distinct_historical_v3_shapes_restore_their_exact_component",
+        "test_legacy_v3_absent_reading_state_remains_absent",
+        "test_v5_missing_declared_component_never_publishes_partial_reading_restore",
+        "test_cancellation_after_valid_reading_snapshot_never_publishes_v5",
+        "test_invalid_source_binding_never_publishes_or_retargets",
+        "test_corrupt_personal_state_cannot_be_omitted_from_backup",
+        "test_restore_rejects_changed_bytes_even_when_state_still_parses",
+        "test_valid_outer_hash_does_not_skip_reading_state_validation",
+        "test_reading_state_manifest_never_selects_an_untrusted_path",
+        "test_sidecar_presence_must_agree_with_versioned_manifest",
+        "test_linked_reading_state_is_not_read_as_a_private_snapshot",
+        "test_database_and_personal_state_share_one_writer_snapshot",
+        "test_reading_state_publication_failure_never_reports_a_complete_library"
+      ]
+    }
+  ],
+  "total_cases_unchanged": 200,
+  "actual_observed_failures": 12,
+  "source_api": {
+    "application": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "batch_scan": "74478a6cd7643b4ba730211234d7fd5bcbd03dc3",
+    "intake": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+    "storage": "417a9920d4c25eacd36cc81f7441ea321c18d632"
+  },
+  "changes": [
+    "Five existing batch-scan snapshot callbacks accept and preserve the current explicit cancelled keyword; all real snapshot wrappers forward the exact callback. The nested-root controlled snapshot asserts the actual uncancelled callback before reading.",
+    "One import-batch planned snapshot wrapper forwards the exact current cancelled callback while keeping the actual post-read source replacement and retained-original assertions.",
+    "EPUB pre-intake cancellation now requires the existing explicit {'state':'cancelled','message':'Source intake cancelled.'} result. Actual original bytes, empty catalog/assets and absence of an ingest journal are asserted. Existing incompatible EPUB rejection and all later cancellation tests are unchanged.",
+    "The existing simultaneous reading/database snapshot callback forwards current cancelled and maximum_bytes options to the real Storage.backup; WriterBusy and same-snapshot bytes assertions remain."
+  ],
+  "production_changes": [],
+  "preserved": [
+    "All prior test functions, decorators and case counts",
+    "Actual source substitution, hashing, immutable retained bytes and root restrictions",
+    "Later extraction/transaction cancellation exceptions and all current source/installed gates",
+    "Existing per-suite/native limits and all real audio qualifications"
+  ],
+  "review": "Independent bounded peer requested; no runtime execution available."
+}

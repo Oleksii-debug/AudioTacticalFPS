@@ -45,3 +45,27 @@ def register(service, runtime, *, trusted=True):
     return service.register_runtime('Synthetic local protocol fixture', runtime.python,
         runtime.worker, runtime.model, owner_trusted=trusted,
         expected_fingerprint=inspected['fingerprint'] if trusted else None)
+
+
+def make_service(root, *, broker=None, budget=None, stop_grace=2.0):
+    """Keep canonical protocol assertions while constructing the real scoped host.
+
+    This is test-only explicit fixture selection, not a production auto-binding
+    path. The returned object is the host's single internal local-file adapter.
+    """
+    import sqlite3
+    from carr_library.application import LibraryApp
+    from carr_library.transcription import TranscriptionService
+    from carr_library.operations import ResourceBroker, ResourceLimits
+    root = Path(root)
+    if root.name != 'transcription' or root.parent.name != 'state':
+        raise ValueError('The canonical test fixture requires an exact library state root.')
+    app = LibraryApp(root.parent.parent)
+    with sqlite3.connect(Path(app.database).as_uri() + '?mode=ro', uri=True) as database:
+        rows = database.execute('SELECT workspace FROM workspace_meta ORDER BY workspace').fetchall()
+    workspace = rows[0][0] if rows else app.create_workspace('Canonical ASR protocol fixture')
+    if broker is None:
+        broker = ResourceBroker.for_app(app.root)
+        broker.configure(ResourceLimits(min_free_disk_bytes=0))
+    host = TranscriptionService(app, workspace, broker=broker, budget=budget, stop_grace=stop_grace)
+    return host._local_protocol()

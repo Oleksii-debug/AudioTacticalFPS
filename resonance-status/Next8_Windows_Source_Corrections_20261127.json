@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "CORRECTIONS_PENDING_EXECUTION",
+  "evidence": {
+    "run_id": 46022851960,
+    "job_id": 140586631041,
+    "source_commit": "8329a4832e811aaf8b28f292c264a02e5d38bfba",
+    "required_suites": 85,
+    "passed_suites": 67,
+    "failed_suites": 18,
+    "artifact_id": 15211654502,
+    "artifact_sha256": "ccfc265dfd2fc41967a3f3ec8bd9594256a3073e9ef52f735ebeced5c886fd68"
+  },
+  "findings": [
+    "Physical-page export caption still assumed PDF despite raster support.",
+    "Windows held descriptor change time now supplements the unchanged full stat identity checks.",
+    "New interruptible intake retains the public cancelled-result contract before any retention or writer.",
+    "Native Search Center fixture creates independent text and choice controls.",
+    "Changed planned bytes are rejected by the actual admitted isolated import before retention/publication; request preparation itself persists only identities."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/research/evidence_export.py",
+      "sha": "f6fab87a2e85f55de70bc74cb148fad852d2cddf",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/tests/ui/test_federated_search.py",
+      "sha": "6a3078c0796863d6612593205dc97b26bc8086dd",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "8987d40771f9758137c991dcd398c5fdcfd9b5fe",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "sha": "66cf246df02472b131133ece8e1859eceec04224",
+      "from": "actual-windows-failure-correction"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_continuation.py",
+      "sha": "adce2719c3de7a852d2df3bffe17624086e633ee",
+      "from": "actual-windows-failure-correction"
+    }
+  ]
+}

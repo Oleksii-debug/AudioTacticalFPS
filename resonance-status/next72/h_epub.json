@@ -1,0 +1,127 @@
+{
+  "schema": "carr-h-epub-progress-owner-fixture/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a"
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+      "preimage": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+      "blob": "01938c8d8d282886151d0a659f94f46e46ccfacc",
+      "readback_exact": true,
+      "sha256": "1a8caa8f3e748c5d74fb860d99c893426f5812806fca0df3e4100c3b9c960d05",
+      "bytes": 20433,
+      "operations": [
+        {
+          "old": "    dialog.progress = SimpleNamespace(hold_audio=lambda: hold, refresh_audio_state=Mock(),\n        unregister_player=Mock())",
+          "replacement": "    class Progress:\n        # The real native progress owner has ordinary identity/hash semantics.\n        def __init__(self):\n            self.refresh_audio_state = Mock()\n            self.unregister_player = Mock()\n        def hold_audio(self):\n            return hold\n    dialog.progress = Progress()"
+        }
+      ],
+      "complete_inverse_exact": true
+    }
+  ],
+  "actual_evidence": {
+    "receipt": "ceee767497dcae0a9a2f94beb198c4769efe9bfc",
+    "head": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+    "run": 46128930916,
+    "job": 140931167823,
+    "whole": 28,
+    "passed": 14,
+    "failed": 14,
+    "seconds": 2.93,
+    "trace_lines": [
+      3720,
+      3747
+    ],
+    "original_error": "TypeError: unhashable type: 'types.SimpleNamespace'",
+    "source_test_equal_E_G": true
+  },
+  "contract": {
+    "reason": "The real quiet helper de-duplicates current controller owners with dict.fromkeys before acquiring their holds. NativeProgressPanel is an ordinary class with object identity/equality/hash semantics. The inert fixture must model that owner contract while still supplying the actual quiet helper and transport.",
+    "scope": "Only the helper owner object changes. The actual borrowed executor, OverlayPlayback, real play_when_quiet, native-device doubles, failure object, quiet hold and all existing tests remain.",
+    "real_native_owner": {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "blob": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d",
+      "class": "NativeProgressPanel",
+      "methods": [
+        "hold_audio",
+        "refresh_audio_state",
+        "unregister_player"
+      ],
+      "no_equality_or_hash_override": true
+    },
+    "shared_quiet": {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "line": 314,
+      "unchanged": true
+    },
+    "product_dialog": {
+      "path": "carr-library/src/carr_library/ui/ebook_audio_dialog.py",
+      "blob": "1bbfb74a7a286f933056696ea7ff769d75436061",
+      "unchanged": true
+    }
+  },
+  "inventory": {
+    "whole_count": 28,
+    "old_cases": 14,
+    "appended_cases": 14,
+    "functions": [
+      "test_queued_recorded_work_rechecks_exact_host_scope_before_execution",
+      "test_close_disposes_late_actual_worker_result_without_host_callback",
+      "test_completed_but_undelivered_result_is_closed_once_on_scope_change",
+      "test_refused_host_submission_never_starts_a_private_executor",
+      "test_successful_preparation_transfers_ownership_only_to_current_view",
+      "test_close_uses_original_disposer_for_borrowed_resume_input",
+      "test_failed_native_close_retains_pcm_and_quiet_until_existing_owner_reaps",
+      "test_normal_close_keeps_window_and_pcm_if_native_silence_is_unconfirmed",
+      "test_recorded_modal_return_rechecks_captured_reader_before_focus",
+      "test_recorded_start_failure_survives_own_generation_cleanup",
+      "test_recorded_start_error_does_not_present_to_a_revoked_request",
+      "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats",
+      "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm"
+    ],
+    "function_count": 13,
+    "assertion_and_parameterization_lines": 80,
+    "all_assertions_parameterizations_test_bodies_unchanged": true,
+    "new_tests": 0,
+    "companions": 0
+  },
+  "gate_mapping": {
+    "literal_changed_test_pins": [],
+    "callers": [
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "blob": "2530ad683289a6d9d16f5282fc470cf819e791b2"
+      },
+      {
+        "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+        "blob": "6032567fb09dd4e235caca7a3480d27845fcf889"
+      },
+      {
+        "path": "carr-library/scripts/check_installed_bundle.py",
+        "blob": "93eb4eab03bdb37ae09373ce1adee74632300167"
+      }
+    ],
+    "source_declared_count": 28,
+    "case_function_count_changes": 0,
+    "gate_file_changes": 0,
+    "product_budget_changes": 0
+  },
+  "limits": [
+    "STATIC_NOT_RUN: the corrected fixture has not executed.",
+    "No physical EPUB playback, device, NVDA, or product error-delivery qualification is claimed.",
+    "The fourteen observed failures remain retained in the immutable E evidence receipt.",
+    "No ref or currently running G source is changed."
+  ],
+  "created_utc": "2026-11-28 10:13:55 UTC",
+  "peer": {
+    "reviewer": "/root",
+    "blob": "8ac73999850b2ca0e28fd13184ab047a7c541bc7",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Complete one-hunk inverse, real native progress owner/hash contract, unchanged all13 test bodies/28 cases/80 assertions and parameterization lines; root also confirmed no changed-test raw pins across the prospective63 gates."
+  },
+  "candidate_predecessor": "80134a02ad1e2ec1668f4bc564b6e6caae566d3b"
+}

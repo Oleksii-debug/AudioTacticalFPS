@@ -1,0 +1,138 @@
+{
+  "schema": "carr-reviewed-component-manifest/1",
+  "component": "recorded-epub-owned-start-error-visibility",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base": {
+    "commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+    "product_preimages": "Unchanged from exact C6042/B26beb, as confirmed by root composition."
+  },
+  "evidence": {
+    "actual_closed_main": "10bb0dc4ffeb94f1316bcee6e84377f6e9da0191",
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "run_id": 46110647047,
+    "job_id": 140873303775,
+    "lines": [
+      8248,
+      8255
+    ],
+    "observation": "Stage2 timeout; host/reader/overlay not busy, player stopped, transport inactive, preparing status unchanged, last_error null.",
+    "cause_boundary": "Actual native device failure is not established. Source tracing proves that OverlayPlayback.start's own failure cleanup advances its generation before shared play_when_quiet checks alive and may therefore suppress on_error."
+  },
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_audio_dialog.py",
+      "before": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5",
+      "after": "1bbfb74a7a286f933056696ea7ff769d75436061",
+      "change": "Only play(): capture request transport/session/selection, preserve and report its actual start error exactly once after its own cleanup, and retain source/view/cancel/close/identity revocation.",
+      "inverse": {
+        "old": "            self._check_scope(); self.transport.stop()\n            ticket = self.transport.ticket\n            self.report('Preparing the exact recorded audio interval…')\n            def ready(prepared):\n                if ticket != self.transport.ticket:\n                    prepared.close(); return\n                self._pending = prepared\n                def start():\n                    self._check_scope()\n                    if self.transport.start(prepared, ticket):\n                        self._pending = None\n                        self._highlight()\n                        self.timer.Start(100)\n                        self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')\n                play_when_quiet((self.progress,), start, schedule=self.wx.CallLater,\n                    alive=lambda: not self.stopping() and ticket == self.transport.ticket,\n                    on_error=self._error)\n",
+        "replacement": "            self._check_scope(); self.transport.stop()\n            transport, session = self.transport, self.session\n            ticket = transport.ticket\n            self.report('Preparing the exact recorded audio interval…')\n            reported = False\n            def failed(error):\n                nonlocal reported\n                if reported:\n                    return\n                reported = True\n                self._last_error = error\n                # A failed start closes its own player and advances generation\n                # once. That cleanup must not hide its error, while a genuine\n                # Stop, selection, replaced source/view or close still revokes it.\n                if (self.stopping() or not self._can_present()\n                        or self.transport is not transport or self.session is not session\n                        or transport.session is not session or transport.closed\n                        or transport.interrupted or transport.index != ticket[0]\n                        or transport.generation not in (ticket[1], ticket[1] + 1)):\n                    return\n                try:\n                    self._error(error)\n                except Exception as presentation_error:\n                    # Keep the original failure even if its native status view\n                    # cannot present it. The diagnostic owns this same object.\n                    self._last_error = error\n                    try:\n                        error.add_note('Recorded EPUB error presentation failed: '\n                            + type(presentation_error).__name__ + ': ' + str(presentation_error)[:2048])\n                    except Exception:\n                        pass\n            def ready(prepared):\n                if self.transport is not transport or self.session is not session or ticket != transport.ticket:\n                    prepared.close(); return\n                self._pending = prepared\n                def start():\n                    self._check_scope()\n                    try:\n                        started = transport.start(prepared, ticket)\n                    except Exception as error:\n                        failed(error)\n                        raise\n                    if started:\n                        self._pending = None\n                        self._highlight()\n                        self.timer.Start(100)\n                        self.report('Playing authored recorded segment. Pause, Stop and segment navigation are available.')\n                play_when_quiet((self.progress,), start, schedule=self.wx.CallLater,\n                    alive=lambda: not self.stopping() and self.transport is transport\n                        and self.session is session and ticket == transport.ticket,\n                    on_error=failed)\n",
+        "verified_byte_exact": true
+      }
+    },
+    {
+      "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+      "before": "e2794f558501eea37dcb482d46f9419d68e9cb22",
+      "after": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+      "change": "Old14-case/9-function prefix byte-identical; appended14 cases across4 functions with real borrowed worker, actual OverlayPlayback and unchanged shared quiet helper.",
+      "inverse": "Remove exact appended suffix; old11907-character prefix remains byte-identical."
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "ce8b9935b18dc95c94919332fb8b38b451156f5e",
+      "after": "af1fbc37e37d875d03d1c7eac2ec05e29e888ca4",
+      "change": "Exactly one ebook_audio_dialog source pin; existing3whole/69case and all native contracts unchanged.",
+      "inverse": "Replace successor source hash with15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5; exact predecessor reconstructs."
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "70c013c7543d9b29ace0f243bddbfd1b590ba548",
+      "after": "f21146358d08de0d0dae0f3445bc714845bf6a95",
+      "change": "Exactly one helper pin.",
+      "inverse": "Replace af1fbc37e37d875d03d1c7eac2ec05e29e888ca4 withce8b9935b18dc95c94919332fb8b38b451156f5e; exact predecessor reconstructs."
+    }
+  ],
+  "regression_inventory": {
+    "path": "tests/ui/test_ebook_audio_lifetime.py",
+    "old_cases": 14,
+    "cases": 28,
+    "old_functions": 9,
+    "functions": [
+      "test_queued_recorded_work_rechecks_exact_host_scope_before_execution",
+      "test_close_disposes_late_actual_worker_result_without_host_callback",
+      "test_completed_but_undelivered_result_is_closed_once_on_scope_change",
+      "test_refused_host_submission_never_starts_a_private_executor",
+      "test_successful_preparation_transfers_ownership_only_to_current_view",
+      "test_close_uses_original_disposer_for_borrowed_resume_input",
+      "test_failed_native_close_retains_pcm_and_quiet_until_existing_owner_reaps",
+      "test_normal_close_keeps_window_and_pcm_if_native_silence_is_unconfirmed",
+      "test_recorded_modal_return_rechecks_captured_reader_before_focus",
+      "test_recorded_start_failure_survives_own_generation_cleanup",
+      "test_recorded_start_error_does_not_present_to_a_revoked_request",
+      "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats",
+      "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm"
+    ],
+    "function_cases": {
+      "test_queued_recorded_work_rechecks_exact_host_scope_before_execution": 3,
+      "test_close_disposes_late_actual_worker_result_without_host_callback": 1,
+      "test_completed_but_undelivered_result_is_closed_once_on_scope_change": 1,
+      "test_refused_host_submission_never_starts_a_private_executor": 1,
+      "test_successful_preparation_transfers_ownership_only_to_current_view": 1,
+      "test_close_uses_original_disposer_for_borrowed_resume_input": 1,
+      "test_failed_native_close_retains_pcm_and_quiet_until_existing_owner_reaps": 1,
+      "test_normal_close_keeps_window_and_pcm_if_native_silence_is_unconfirmed": 1,
+      "test_recorded_modal_return_rechecks_captured_reader_before_focus": 4,
+      "test_recorded_start_failure_survives_own_generation_cleanup": 4,
+      "test_recorded_start_error_does_not_present_to_a_revoked_request": 8,
+      "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats": 1,
+      "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm": 1
+    },
+    "added_functions": [
+      "test_recorded_start_failure_survives_own_generation_cleanup",
+      "test_recorded_start_error_does_not_present_to_a_revoked_request",
+      "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats",
+      "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm"
+    ],
+    "new_whole_modules": 0,
+    "new_companions": [],
+    "new_module_origins": []
+  },
+  "requirements": {
+    "shared_play_when_quiet_git_blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+    "shared_helper_changed": false,
+    "player_git_blob": "6f758c6073e239f771a7b8627713aca8bff51d7f",
+    "player_changed": false,
+    "overlay_start_stop_cleanup_changed": false,
+    "generation_rewind": false,
+    "error_identity": "The exact original exception stays in _last_error, even when native presentation fails. Secondary notification detail is bounded to2048 characters and attached as a note; duplicate callback is ignored.",
+    "current_request": "Same captured transport/session and selected index, current original host/library, not cancelling/closed/interrupted. Only current generation or one own-cleanup increment is admitted for error presentation.",
+    "new_native_assertions": 0,
+    "native_script_changed": false,
+    "native_deadlines_changed": false
+  },
+  "peers": [
+    {
+      "agent": "progress_completion",
+      "record": "3cbd59d3dd935647f216b129f77217538f5413c7",
+      "scope": "source and28-case lifetime regression"
+    },
+    {
+      "agent": "progress_completion",
+      "record": "882cbd82c95ac98f86985e89a577ae8149ac6694",
+      "scope": "two focused pin-only inverses"
+    }
+  ],
+  "validation": {
+    "exact_blob_readbacks": true,
+    "source_inverse": true,
+    "old_test_prefix": true,
+    "focused_pin_inverses": true,
+    "portable_test_execution": "NOT_RUN",
+    "native_execution": "NOT_RUN",
+    "physical_audio": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_RUN",
+    "gate_followup": "Root owns full main/V3/source/installed mapping14→28 and four appended names. Existing reading3/69 focused lane receives only a pin refresh and does not qualify the new28-case suite.",
+    "publication": "No refs changed by this component."
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "schema": "resonance-current-profile-launch/1",
+  "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "source_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+  "previous_branch_head": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "published_utc": "2026-11-27T23:46:51Z",
+  "preflight": {
+    "job": 140780169150,
+    "run": 46081148451,
+    "result": "PASS",
+    "whole_modules": 34,
+    "cases": 450,
+    "failures": 0,
+    "skips": 0,
+    "evidence_blob": "5e7ed25d11bed61f02171652e49a02712bc73d03",
+    "platform": "ubuntu-24.04"
+  },
+  "source": {
+    "application": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "literal": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88",
+    "harness": "652833b7e0672cb62db2293f53187fe97fcd8669",
+    "workflow": "b9a05871fa6dc6b9e951799da8201b8660b9410a",
+    "capacity_helper": "f367299bdfc55c6af6a409c020b437fd1bd1c416"
+  },
+  "profiles": [
+    [
+      1000,
+      20
+    ],
+    [
+      10000,
+      20
+    ],
+    [
+      50000,
+      20
+    ],
+    [
+      50000,
+      40
+    ]
+  ],
+  "unchanged_contract": {
+    "result_page_size": 37,
+    "source_window_size": 100,
+    "phase_timeout_seconds": 3600,
+    "complete_backup": true,
+    "backup_capacity_profile": "large-source-v1",
+    "required_origin_count": 21
+  },
+  "gate": "Existing workflow requires its exact-head Ubuntu184 source +184 installed capacity contracts before running each Ubuntu profile. Windows184+184/native and Windows449 source remain separate required qualification.",
+  "status": "LAUNCHED_NOT_MEASURED",
+  "boundaries": [
+    "No previous profile result transferred to this source.",
+    "No increased phase time, page size, source window, resource allowance or changed workload.",
+    "No PR supersession, canonical update or release.",
+    "No current performance or2M completion claim."
+  ],
+  "runs": [
+    {
+      "id": 46084373979,
+      "name": "CARR retained capacity contracts and measured profiles",
+      "status": "queued"
+    }
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "schema": "resonance-integration-source-and-validation-candidate/2",
+  "status": "REVIEWED_SOURCE_CURRENT_UNION_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "candidate_purpose": "Integrate explicit complete-backup capacity, all preserved source/installed/native gates, executable workflow size correction, and actual Windows failure diagnostics.",
+  "parent_commit": "97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d",
+  "parent_tree": "fe1dee4760f86a8af4d7e84452f68c228d1e2922",
+  "additional_canonical_parent": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_reconciliation": {
+    "base": "a44fac04072389caa40e0d6e799b13797712f797",
+    "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "candidateParent": "97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d",
+    "comparison": {
+      "ahead": 7,
+      "behind": 86,
+      "files": [
+        {
+          "path": "carr-library/src/carr_library/ui/save_all.py",
+          "sha": "c109f48ccb561b25fc9f348dacc4688f734f2e6b"
+        },
+        {
+          "path": "carr-library/tests/ui/test_save_all.py",
+          "sha": "849fcdf2b0ad71d63be4a08ea1b044554f988881"
+        }
+      ]
+    },
+    "allCanonicalChangedPathsRetainedExactly": true,
+    "integrationParentAncestor": true,
+    "authorization": "Working integration reconciliation only; canonical ref unchanged; no merge/release approval claim."
+  },
+  "source_transitions": [
+    {
+      "path": "carr-library/src/carr_library/backup_capacity.py",
+      "base": null,
+      "sha": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7",
+      "old": null
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "base": "63a9179eff3816a81523c5fadeeea750ddfbcdc4",
+      "sha": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+      "old": "63a9179eff3816a81523c5fadeeea750ddfbcdc4"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "base": "edf34a6000cb47e7230b8fbcb726f21745b2f187",
+      "sha": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+      "old": "edf34a6000cb47e7230b8fbcb726f21745b2f187"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "base": "b0b56a25310375d41cfc1bbbc20ca76d7a854cb1",
+      "sha": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7",
+      "old": "b0b56a25310375d41cfc1bbbc20ca76d7a854cb1"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "base": "7156285a9254bcec66088cb2b53928180c40a171",
+      "sha": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+      "old": "7156285a9254bcec66088cb2b53928180c40a171"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "base": "67aa7dc2ad70cd4929f64dd6ad275e627726117f",
+      "sha": "4544453f62a96993a2f05ed1522a563649289715",
+      "old": "67aa7dc2ad70cd4929f64dd6ad275e627726117f"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "base": "714540bcab93aae319788fbeb57848ea34a8c203",
+      "sha": "99b3c98d5f60cfa6ba1074d74c32acc14250fd16",
+      "old": "714540bcab93aae319788fbeb57848ea34a8c203"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_capacity.py",
+      "base": null,
+      "sha": "66555889648ec8b76ac11e7ffe5bd54ece6c29e9",
+      "old": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "base": "2da122b36792579a442e976548ec72db1b868ab6",
+      "sha": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+      "old": "2da122b36792579a442e976548ec72db1b868ab6"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity.py",
+      "base": null,
+      "sha": "895aec39b689aea7101da23db0801413dac324ef",
+      "old": null
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_capacity_cli.py",
+      "base": null,
+      "sha": "741a005ca9f351579b9d51b464a88dda9afb52b7",
+      "old": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_backup_capacity.py",
+      "base": null,
+      "sha": "26f03b8f46f6425460bb248f94bd3f1347787dc6",
+      "old": null
+    },
+    {
+      "path": "carr-library/tests/storage/test_crash_backup.py",
+      "base": "95557ea102f80b281727530b560a3c09bb21e8a5",
+      "sha": "5e84ede7eee0b7406c687b5a6020b0fcd535ec2c",
+      "old": "95557ea102f80b281727530b560a3c09bb21e8a5"
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "base": null,
+      "sha": "dffdce9ac49fcb54cd2393f410f0844ad9c52130",
+      "old": null
+    },
+    {
+      "path": "carr-library/docs/backup_capacity.md",
+      "base": null,
+      "sha": "9181173df5bbcf320b23c9dfd6fb787a62fca051",
+      "old": null
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "base": "add4ce001affacc7dd5c8fc47dfcbd67f640cef7",
+      "sha": "3e2f3d8a4c9a92fa203d25861d1664710db78eb2",
+      "old": "add4ce001affacc7dd5c8fc47dfcbd67f640cef7"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "base": "12ba3a4fc20da6ecdd3ff57ef4c7fc844a774021",
+      "sha": "653ad7fe298561a52565601a89a0237d141b8379",
+      "old": "12ba3a4fc20da6ecdd3ff57ef4c7fc844a774021"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "base": "2bfe5585ad12b0a366ac54a076c538b344c94714",
+      "sha": "5a80f0c5e615113c57912fcfa4a7d03e3e9813d6",
+      "old": "2bfe5585ad12b0a366ac54a076c538b344c94714"
+    },
+    {
+      "path": "carr-library/scripts/check_workflow_powershell.ps1",
+      "base": "63e0ff18828031f89b726175ea74f8c8310247fa",
+      "sha": "1a1bb5a38abf65a855f12f387957f2f754bf0ddf",
+      "old": "63e0ff18828031f89b726175ea74f8c8310247fa"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "base": null,
+      "sha": "35ef4e960ab04074ad6ea8c56a9dbd2cf2d565dd",
+      "old": null
+    },
+    {
+      "path": "carr-library/scripts/retain_owner_candidate_inputs.py",
+      "base": null,
+      "sha": "81601971fcdf7aa92336899bb98a0754fc760285",
+      "old": null
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "base": "ee805f665bd1722f0464860ac662af6981567666",
+      "sha": "ec198e50daffd3d3687048e15882c3744c3c54c4",
+      "old": "ee805f665bd1722f0464860ac662af6981567666"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_capacity_measurement.py",
+      "base": "422374a17ec1eb1eed78527cf86125ae0efa8858",
+      "sha": "91f6d60f6aa345c85a8b935a72de1cbfe1083e93",
+      "old": "422374a17ec1eb1eed78527cf86125ae0efa8858"
+    },
+    {
+      "path": "carr-library/docs/LIBRARY_SCALE_BENCHMARK.md",
+      "base": "0866fc0c1eed4fc929a704e6d7cc486615ce4e52",
+      "sha": "eb209e39de242485220e683e028c353e76c32af9",
+      "old": "0866fc0c1eed4fc929a704e6d7cc486615ce4e52"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+      "base": "0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17",
+      "sha": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+      "old": "0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "base": "95961c7795dd057e5b1ba4bd3c7deaa9dd9c5b02",
+      "sha": "795d1eda51fc87de9427b88555eaf0690f551c9b",
+      "old": "95961c7795dd057e5b1ba4bd3c7deaa9dd9c5b02"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_capacity_measurement.py",
+      "base": "91f6d60f6aa345c85a8b935a72de1cbfe1083e93",
+      "old": "91f6d60f6aa345c85a8b935a72de1cbfe1083e93",
+      "sha": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7",
+      "reason": "Actual Windows failure-only diagnostic; every assertion and24cases unchanged."
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "base": "223d8103219b56f740e2b7cba4d1e965b2554b16",
+      "sha": "c0c95987d85d6c93d8444f279d50b7438aff14ca",
+      "old": "223d8103219b56f740e2b7cba4d1e965b2554b16"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "base": "2bb337b543e771559288b13709c575d8741fcd74",
+      "sha": "aab43491615288c2929449297d2d9acbf14b4378",
+      "old": "2bb337b543e771559288b13709c575d8741fcd74"
+    }
+  ],
+  "durable_reports": [
+    {
+      "path": "resonance-status/next10/complete_backup_capacity_source.json",
+      "sha": "dc68c360ac846b3594c0092ecbda503938dee8d0"
+    },
+    {
+      "path": "resonance-status/next10/complete_backup_capacity_shared_hooks.json",
+      "sha": "23f8d64fea39bf55e6e72f2cddbdf22ae2e74b36"
+    },
+    {
+      "path": "resonance-status/next10/explicit_large_backup_measurement.json",
+      "sha": "6f16872e421c75ba1aa4c5ed22b3432a954a905d"
+    },
+    {
+      "path": "resonance-status/next10/final_source_installed_native_gates.json",
+      "sha": "d311d5485ca54e6ed5474b0c66b10373d2fb75e1"
+    },
+    {
+      "path": "resonance-status/next10/actual_source_9f0418.json",
+      "sha": "694891db60bbe1dcaffeec25a143c2b61a96a9e1"
+    },
+    {
+      "path": "resonance-status/next10/actual_capacity_contracts_97e386.json",
+      "sha": "3cce8ad53bf323553e16dc10c7dd7935b463778e"
+    },
+    {
+      "path": "resonance-status/next10/native_backup_independent_context.json",
+      "sha": "90d3407d1f848d6dfc773f4b5d9655ee63c72f7a"
+    },
+    {
+      "path": "resonance-status/next10/independent_capacity_contracts_and_profiles.json",
+      "sha": "fc6a75c253be601c19bb12d1e3aac02076026165"
+    }
+  ],
+  "independent_review": {
+    "core_backup": "Root/Canonical/Locate accepted reviewed core and exact shared hooks; text-only UI successor retained all behavior.",
+    "full_gates": {
+      "status": "STATIC_NOT_RUN",
+      "accepted": true,
+      "main": "3e2f3d8a4c9a92fa203d25861d1664710db78eb2",
+      "v3": "653ad7fe298561a52565601a89a0237d141b8379",
+      "helper": "35ef4e960ab04074ad6ea8c56a9dbd2cf2d565dd",
+      "guide": "5a80f0c5e615113c57912fcfa4a7d03e3e9813d6",
+      "notes": "Exact bounded delta to accepted extracted workflows; preserved selectors/assertions; capacity24 and backup28+3+17/crash5; native44/12 five PASS four NOT_RUN + picker qualifier; guide one additive item."
+    },
+    "capacity_helper_and_profiles": {
+      "status": "STATIC_NOT_RUN",
+      "accepted": true,
+      "helper": "c0c95987d85d6c93d8444f279d50b7438aff14ca",
+      "workflow": "aab43491615288c2929449297d2d9acbf14b4378",
+      "caseExecutionsPerPlatform": 354,
+      "nativeWindowsSeparate": true,
+      "allFourLargeBackupProfiles": true
+    },
+    "native_backup": {
+      "status": "STATIC_NOT_RUN",
+      "accepted": true,
+      "sha": "3cd70b1da3438a74a505a151152d9575295b282d",
+      "installedOrigins": 12,
+      "requiredChecks": 44,
+      "requiredPassFields": 5,
+      "requiredNotRunFields": 4,
+      "actualRuntimePending": true
+    },
+    "capacity_failure_diagnostic": {
+      "status": "STATIC_NOT_RUN",
+      "accepted": true,
+      "sha": "5f2ab090a0baaad61d326c128dc6da453b1c4fc7",
+      "sameCases": 24,
+      "sameArgumentsAndAssertions": true
+    },
+    "source_diagnostic": "Exactly two source identities refreshed in each Linux/Windows focused pin map; all five jobs, whole suite lists and strict counts retained.",
+    "workflow_size": "Main387768bytes and V3405124bytes; complete extracted helpers retain old runtime controls; parser enforces conservative500000-byte UTF8 limit plus four boundary controls."
+  },
+  "actual_previous_evidence": {
+    "source_9f0418": {
+      "manifest": "694891db60bbe1dcaffeec25a143c2b61a96a9e1",
+      "run": 46060042867,
+      "status": "ALL_FIVE_SOURCE_JOBS_PASS",
+      "linux_case_executions": 1499,
+      "windows_case_executions": 478,
+      "total_case_executions": 1977,
+      "failed": 0,
+      "skipped": 0,
+      "qualification": "Actual previous source union only; separate oversized main workflow did not execute."
+    },
+    "capacity_97e386": {
+      "manifest": "3cce8ad53bf323553e16dc10c7dd7935b463778e",
+      "run": 46060395601,
+      "linux": {
+        "source_passed": 42,
+        "installed_passed": 42
+      },
+      "windows": {
+        "source_passed": 40,
+        "source_failed": 2,
+        "installed": "NOT_RUN"
+      },
+      "all_four_corpora": "NOT_RUN"
+    }
+  },
+  "required_new_execution": {
+    "source_preflight": "Same1977 actual case executions and all workflow parser/size controls.",
+    "independent_capacity": "177 whole-source and177 isolated-installed cases on each of Linux andWindows, with unchanged strict child policy and600-second suite limits.",
+    "native_backup": "Windows installed12origins/44checks, fivePASS outcomes, fourNOT_RUN limitations and exact picker qualifier.",
+    "profiles": [
+      {
+        "books": 1000,
+        "segments_per_book": 20,
+        "complete_backup": true,
+        "capacity_profile": "large-source-v1",
+        "status": "NOT_RUN"
+      },
+      {
+        "books": 10000,
+        "segments_per_book": 20,
+        "complete_backup": true,
+        "capacity_profile": "large-source-v1",
+        "status": "NOT_RUN"
+      },
+      {
+        "books": 50000,
+        "segments_per_book": 20,
+        "complete_backup": true,
+        "capacity_profile": "large-source-v1",
+        "status": "NOT_RUN"
+      },
+      {
+        "books": 50000,
+        "segments_per_book": 40,
+        "complete_backup": true,
+        "capacity_profile": "large-source-v1",
+        "status": "NOT_RUN"
+      }
+    ],
+    "full_integration": "All existing PR173 source/installed/native and platform workflows must execute against the actual new candidate.",
+    "no_prior_pass_transfer": true
+  },
+  "preserved_boundaries": {
+    "backup_wire": "Existing common4/pending1 plus historical1–5 readers unchanged. Large allowance caller-selected only; manifest cannot escalate authority.",
+    "integrity": "Source MIME limits, typed records, schemas, original hashes, cancellation, no-clobber publication and fresh restore destination remain required.",
+    "worker_and_scope": "Existing host worker, directory identity, default-No restore and owned cleanup remain in use.",
+    "reports": "Public evidence contains bounded text/JSON/XML only; no corpus database, engine/model/audio binary, credentials or user-provided private archive.",
+    "canonical_and_release": "Canonical ref unchanged. Working integration only; no release or merge acceptance claim.",
+    "external_automations": "Unchanged."
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "schema": "carr-current-voice-repair-composition/1",
+  "status": "STATIC_NOT_RUN",
+  "base_head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/package_publication.py",
+      "before": "87cb411c5bd2348cd9ce87bc427d3c84f79a3914",
+      "after": "702cb573482265bb7e63d9483ecf2178649a63a4"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_lifecycle.py",
+      "before": "4327a8b32bc32e7e9624602d8a626035486caa48",
+      "after": "0508ffba185e99171d0d2e230a9adb06db05bbae"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_reference.py",
+      "before": "c4ca7841d86fe2e45f84a0c5136b6ab82455f03a",
+      "after": "8d3265dcc37662046a3bebcf2abacf317c818553"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_publication_lifetime.py",
+      "before": "6febbed72cb5e134bf94f40859c84526a8c2862f",
+      "after": "1f71856039c5d3e94312714f020021110f1e9b84"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "before": "ed4abebffe6baab4a6c17ba30f8f0ea28e2dcb83",
+      "after": "d67becf3f47b9157710f4020caf47fd60b7a3fab"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_owner_lease.py",
+      "before": "a1ec1bbb76e22a9e966a480324107475f0b88c41",
+      "after": "282bc60cf1d94ce29a32602a6ead0440def271e8"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_host_lifecycle.py",
+      "before": "52f3cce2330add9be0b7b81f575cdd6ee659e9af",
+      "after": "54eea6081c72b32b8295addae25f12d399bd5d9e"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "f0db457f3663b385498e7251552e13547ebfc955",
+      "after": "4831ad3665997c3faa573cd132b1a8e3ee220381"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "452a9e12993c20c808e1bf68eb32954fc268779d",
+      "after": "70fef77fe33be586bfd79e76f6ae0a22fd590944"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "7aa53346bdf525229187050302ce8a817fc49c46",
+      "after": "d5260f6f704c162b2b8b6abf0868bcac26e99127"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "9f78d1bb9ae3a2db1f0691c849a97342b5de5da0",
+      "after": "c52e92e52ad84003a481889def21cc8364e5acf6"
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": "47ca6950d785552b6cbd1754e899a4bb7e69469f",
+      "after": "9b9ebeae4c72117b6cdc66daa1d7a8f1712b86c3"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "before": "f0901304cffb1ed0406235f81dfa39eabb6b8386",
+      "after": "ac813e21c651a2dc3b2f156c3ddd6a9d435730c3"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "4ece19add65d92e6f04c63ac1066b11549dd5fcf",
+      "after": "5697b5a07da1a12e6cb4f076a11aaf35c94eff8a"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "2bd226a077d2a6cbf659d4d5a07f0de3162bede3",
+      "after": "c1f6c79db829d90d063e6b17bb26b42debbac532"
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": "91f6cf17450253d0946d6a58ee936856dd69658f",
+      "after": "3c2f0cc7277fbce5bab753ff3c3440f994b913ac"
+    }
+  ],
+  "suites": {
+    "tests/audio/test_voice_package_management.py": 30,
+    "tests/audio/test_voice_management_state.py": 25,
+    "tests/audio/test_voice_reference_management.py": 30,
+    "tests/audio/test_voice_protected_management.py": 15,
+    "tests/audio/test_voice_publication_lifetime.py": 15,
+    "tests/audio/test_voice_ownership.py": 30,
+    "tests/integrations/test_dordiai_owner_lease.py": 28,
+    "tests/integrations/test_dordiai_managed_authority.py": 18,
+    "tests/ui/test_voice_packages.py": 46,
+    "tests/ui/test_voice_reference.py": 32,
+    "tests/ui/test_engine_settings_lifetime.py": 43,
+    "tests/integrations/test_dordiai_voices.py": 40,
+    "tests/integrations/test_dordiai_speech.py": 10,
+    "tests/integrations/test_dordiai_host_lifecycle.py": 13,
+    "tests/integrations/test_dordiai_settings.py": 17,
+    "tests/integrations/test_dordiai_probe_cancellation.py": 7,
+    "tests/integrations/test_dordiai_convergence.py": 10,
+    "tests/audio/test_bundled_runtime_settings.py": 8,
+    "tests/storage/test_v3_state_backup.py": 42,
+    "tests/storage/test_library_backup.py": 9,
+    "tests/storage/test_state_backup_portability.py": 27
+  },
+  "source_whole": 21,
+  "source_cases": 495,
+  "installed_whole": 21,
+  "installed_cases": 495,
+  "exact_input_files": 67,
+  "linux_origins": 35,
+  "windows_origins": 38,
+  "actual_owner": {
+    "per_mode": 25,
+    "modes": [
+      "source",
+      "installed"
+    ],
+    "origin_count": 18,
+    "script": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+    "unchanged": true
+  },
+  "native": {
+    "unique_checks": 83,
+    "origins": 22,
+    "default_No_multiplicity": 2,
+    "script": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
+    "unchanged": true
+  },
+  "budgets_and_closed_retention": "Byte-identical to next36; no scope, skip or timeout relaxation.",
+  "components": {
+    "publication": "f84596be41e194e75803c02e3728c5338f303e54",
+    "provider": "4ae0111ba8b6ba1358c7d2f4a54e4768a465b910",
+    "host_fixture": "1c7bb765dd1a04eca1bd64b9474057aa9d7909e1"
+  },
+  "review": {
+    "product": "Independent Progress accepted publication and provider repairs; Canonical accepted the host fixture.",
+    "helper": "Canonical accepted exact seven input pins and two case counts; root exact inverse.",
+    "workflow": "Canonical ACCEPTED_STATIC_NOT_RUN for corrected70fef: exactly two helper SHA repairs over unpublished afa6, with exact inverse to452 using only named count assertions/labels and actual helper pins. The corrupted draft was never published."
+  },
+  "preceding_failure": "2d9feb58f6f4347b9f20219fe305b1c3b0c2da99",
+  "execution": "NOT_RUN",
+  "release": "NOT_RUN",
+  "focused_source_pin_reconciliation": "6bafa1934123780d0db17956b7b128a602d6518a"
+}

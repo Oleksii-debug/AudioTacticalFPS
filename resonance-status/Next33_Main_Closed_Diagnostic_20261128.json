@@ -1,0 +1,261 @@
+{
+  "schema": "carr-main-closed-diagnostic/1",
+  "source_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "source_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "run_id": 46079552451,
+  "job_id": 140782052561,
+  "conclusion": "failure",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46079552451/job/140782052561",
+  "owner_inputs": {
+    "step": 43,
+    "status": "FAIL",
+    "passed": 346,
+    "failed": 6,
+    "whole_cases": 352,
+    "elapsed_seconds": 321.35,
+    "cause": "Six Unicode TXT metadata fixture cases supplied nonexistent selected.txt; the current application legitimately stats TXT input before large-source routing.",
+    "failed_cases": [
+      {
+        "line": 8553,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[0-list-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-2\\\\test_bounded_unicode_sequences0\\\\selected.txt'"
+      },
+      {
+        "line": 8554,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[0-tuple-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-2\\\\test_bounded_unicode_sequences2\\\\selected.txt'"
+      },
+      {
+        "line": 8555,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[2-list-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-2\\\\test_bounded_unicode_sequences4\\\\selected.txt'"
+      },
+      {
+        "line": 8556,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[2-tuple-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-2\\\\test_bounded_unicode_sequences6\\\\selected.txt'"
+      },
+      {
+        "line": 8557,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[100-list-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-2\\\\test_bounded_unicode_sequences8\\\\selected.txt'"
+      },
+      {
+        "line": 8558,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[100-tuple-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-2\\\\test_bounded_unicode_sequences10\\\\selected.txt'"
+      }
+    ],
+    "assembly": "SKIPPED after actual owner-input qualification failure",
+    "permission_or_private_source_blocker": false
+  },
+  "integrated_source": {
+    "step": 48,
+    "status": "TIMEOUT",
+    "step_minutes": 45,
+    "completed_all_suites": false,
+    "failed_cases_observed": [
+      {
+        "line": 10412,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_nonrecursive_skips_nested_folder_without_opening_file - TypeError: test_nonrecursive_skips_nested_folder_without_opening_file.<locals>.capture() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10413,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_source_changed_after_intake_is_rejected[replace] - TypeError: test_source_changed_after_intake_is_rejected.<locals>.changed() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10414,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_source_changed_after_intake_is_rejected[hardlink] - TypeError: test_source_changed_after_intake_is_rejected.<locals>.changed() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10415,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_cancel_after_first_snapshot_never_opens_next_file - TypeError: test_cancel_after_first_snapshot_never_opens_next_file.<locals>.capture() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10416,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_supported_file_bound_stops_before_next_open - TypeError: test_supported_file_bound_stops_before_next_open.<locals>.capture() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10417,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_explicit_nested_root[False-64] - TypeError: test_explicit_nested_root.<locals>.snapshot() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10418,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_explicit_nested_root[True-1] - TypeError: test_explicit_nested_root.<locals>.snapshot() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10419,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_explicit_nested_root[True-2] - TypeError: test_explicit_nested_root.<locals>.snapshot() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 10420,
+        "text": "FAILED tests/ingest/test_batch_scan.py::test_explicit_nested_root[True-64] - TypeError: test_explicit_nested_root.<locals>.snapshot() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 11000,
+        "text": "FAILED tests/e2e/test_import_batches.py::test_expected_manifest_compares_the_same_snapshot_that_is_retained - TypeError: test_expected_manifest_compares_the_same_snapshot_that_is_retained.<locals>.read_then_change() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 11221,
+        "text": "FAILED tests/e2e/test_epub_library.py::test_incompatible_book_and_cancelled_import_never_publish - Failed: DID NOT RAISE <class 'InterruptedError'>"
+      },
+      {
+        "line": 13634,
+        "text": "FAILED tests/ui/test_desktop_query_jobs.py::test_empty_semantic_fallback_is_readable_after_background_completion - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 13635,
+        "text": "FAILED tests/ui/test_desktop_query_jobs.py::test_collection_refresh_distinguishes_all_books_and_preserves_selected_id - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_navigation'"
+      },
+      {
+        "line": 13636,
+        "text": "FAILED tests/ui/test_desktop_query_jobs.py::test_status_notes_belong_only_to_their_search_and_ignore_stale_completion - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 13847,
+        "text": "FAILED tests/storage/test_library_backup_reading_state.py::test_database_and_personal_state_share_one_writer_snapshot - TypeError: test_database_and_personal_state_share_one_writer_snapshot.<locals>.competing() got an unexpected keyword argument 'cancelled'"
+      },
+      {
+        "line": 13915,
+        "text": "FAILED tests/ui/test_notebook_search_actions.py::test_multi_page_quotes_citations_and_research_note_remain_separate - AssertionError: assert 'PDF page 2' in 'Synthetic author, Source title, Physical page 2 (printed page unverified)'"
+      },
+      {
+        "line": 13918,
+        "text": "FAILED tests/ui/test_notebook_search_actions.py::test_copy_freshly_verifies_composite_identity_and_never_copies_note - AssertionError: assert ('PDF page 2' in 'Source part 1\\nSource citation: Synthetic author, Source title, Physical page 2 (printed page unverified)\\nExact quotation:\\nFirst exact page.\\n\\nSource part 2\\nSource citation: Synthetic author, Source title, Physical page 3 (printed page unverified)\\nExact quotation:\\nSecond exact')"
+      },
+      {
+        "line": 15121,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_control_dispatches_presentation_to_real_application[0] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15122,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_control_dispatches_presentation_to_real_application[1] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15123,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_changed_options_clear_selection_and_discard_pending_search - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15124,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_advanced_control_dispatches_to_real_scoped_search - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15125,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_query_builder_cancel_preserves_current_results - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15126,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_query_builder_use_selects_advanced_and_invalidates_pending_results - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15127,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_query_builder_cannot_overwrite_changed_form[options] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_navigation'"
+      },
+      {
+        "line": 15128,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[folder-before_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15129,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[folder-after_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15130,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[topic-before_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15131,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[topic-after_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15132,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[data_path-before_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15133,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[data_path-after_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15134,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[cancel-before_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 15135,
+        "text": "FAILED tests/ui/test_desktop_result_modes.py::test_main_search_cannot_publish_after_scope_or_cancel_changes[cancel-after_worker] - AttributeError: 'DesktopSearchPanel' object has no attribute 'search_timeout'"
+      },
+      {
+        "line": 16858,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[0-list-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-98w7a7_u\\\\pytest\\\\test_bounded_unicode_sequences0\\\\selected.txt'"
+      },
+      {
+        "line": 16859,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[0-tuple-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-98w7a7_u\\\\pytest\\\\test_bounded_unicode_sequences2\\\\selected.txt'"
+      },
+      {
+        "line": 16860,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[2-list-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-98w7a7_u\\\\pytest\\\\test_bounded_unicode_sequences4\\\\selected.txt'"
+      },
+      {
+        "line": 16861,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[2-tuple-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-98w7a7_u\\\\pytest\\\\test_bounded_unicode_sequences6\\\\selected.txt'"
+      },
+      {
+        "line": 16862,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[100-list-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-98w7a7_u\\\\pytest\\\\test_bounded_unicode_sequences8\\\\selected.txt'"
+      },
+      {
+        "line": 16863,
+        "text": "FAILED tests/ingest/test_import_metadata_shape.py::test_bounded_unicode_sequences_preserve_order_on_both_routes[100-tuple-txt] - FileNotFoundError: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-98w7a7_u\\\\pytest\\\\test_bounded_unicode_sequences10\\\\selected.txt'"
+      },
+      {
+        "line": 17323,
+        "text": "FAILED tests/ui/test_studio_keyboard_registration.py::test_studio_queues_named_commands_before_final_keyboard_install - AssertionError: assert ['voice.reade...convert', ...] == ['voice.reade...convert', ...]"
+      },
+      {
+        "line": 23784,
+        "text": "FAILED tests/studio/test_project_effects.py::test_book_plan_legacy_role_wire_stays_stable_and_effects_need_separate_review - AssertionError: Regex pattern did not match."
+      }
+    ],
+    "tail": "Actual integrated source gate timed out after45 minutes while parallel BookBatch, large-source and search-paging suites were still running. Interleaved child traces do not identify a sole product cause."
+  },
+  "artifacts": [
+    {
+      "id": 15240104593,
+      "name": "carr-windows-da2c8143ed7acd0432bbbef7551740b5ee379f1d-1",
+      "size_in_bytes": 3464920,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240104593",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240104593/zip",
+      "expired": false,
+      "created_at": "2026-11-28T00:55:58Z",
+      "expires_at": "2026-12-05T00:55:56Z",
+      "updated_at": "2026-11-28T00:55:58Z",
+      "digest": "sha256:ddbdb63e1ea8d852a3d914c0cb22151ba7bd96423d87e296641c9ecab7e7ed64",
+      "workflow_run": {
+        "id": 46079552451,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "e7636ca3f9e6b7474145f6e1799bd19a135a3250"
+      }
+    },
+    {
+      "id": 15239201929,
+      "name": "carr-phase-diagnostics-da2c8143ed7acd0432bbbef7551740b5ee379f1d-1",
+      "size_in_bytes": 179450,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15239201929",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15239201929/zip",
+      "expired": false,
+      "created_at": "2026-11-28T00:10:47Z",
+      "expires_at": "2026-12-01T00:10:46Z",
+      "updated_at": "2026-11-28T00:10:47Z",
+      "digest": "sha256:e79359b315b68739e63e8384b2d579523c1f2e23d237e2a320e82f2057b11505",
+      "workflow_run": {
+        "id": 46079552451,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+        "head_sha": "e7636ca3f9e6b7474145f6e1799bd19a135a3250"
+      }
+    }
+  ],
+  "boundaries": [
+    "Actual source is e763; later targeted fixes and passed candidates remain separate.",
+    "This diagnostic lists observed failures, not a complete JUnit verdict after the source timeout.",
+    "Required native audio endpoint/recording/playback qualifications remain failed on the hosted environment; no output was enumerated.",
+    "No tests removed or deadlines extended by this evidence."
+  ]
+}

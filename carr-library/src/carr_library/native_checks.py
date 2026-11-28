@@ -50,22 +50,28 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
+    optional_flags = ('bundled_native_runtime', 'bundled_audio', 'bundled_audio_runtime',
+                      'bundled_citation_runtime', 'bundled_launcher', 'bundled_trusted_client')
+    identities = {'source_commit': 40, 'source_tree': 40,
+                  'parent_source_commit': 40, 'parent_manifest_sha256': 64}
+    optional = {*optional_flags, *identities, 'use_scope'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'source_tree',
-                                          'bundled_native_runtime', 'bundled_audio_runtime'}
+            or value.keys() - required - optional
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    for field in ('bundled_native_runtime', 'bundled_audio_runtime'):
-        if field in value and type(value[field]) is not bool:
-            raise ValueError('The ' + field + ' installation flag must be a boolean.')
-    for field in ('source_commit', 'source_tree'):
-        if field in value and (not isinstance(value[field], str)
-                or not re.fullmatch('[0-9a-f]{40}', value[field])):
-            raise ValueError('Invalid installation ' + field + '.')
+    for name in optional_flags:
+        if name in value and type(value[name]) is not bool:
+            raise ValueError('The ' + name + ' installation flag must be a boolean.')
+    for name, length in identities.items():
+        if (name in value and (not isinstance(value[name], str)
+                or not re.fullmatch('[0-9a-f]{' + str(length) + '}', value[name]))):
+            raise ValueError('Invalid installation source identity: ' + name)
+    if 'use_scope' in value and value['use_scope'] != 'private-personal-installation':
+        raise ValueError('Unsupported installation use scope.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):

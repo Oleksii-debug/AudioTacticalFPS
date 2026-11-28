@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_PARTIAL_FAILURE",
+  "created_utc": "2026-11-28 01:21:13 UTC",
+  "head": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+  "tree": "5a8592921f44839f9b219ddab038a9a2c0e1de05",
+  "run_id": 46091141100,
+  "jobs": {
+    "linux": {
+      "id": 140812053439,
+      "conclusion": "success",
+      "whole_source_verdicts": [
+        "2026-11-28T01:03:54.7732958Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7733456Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7734043Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7734515Z PASS: tests/ui/test_document_conversion.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7734997Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=114, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7735454Z PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7735900Z PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:03:54.7736378Z PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 276,
+        "source_commit": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+        "source_passed": 276,
+        "source_tree": "5a8592921f44839f9b219ddab038a9a2c0e1de05",
+        "status": "PASS"
+      }
+    },
+    "windows": {
+      "id": 140812053136,
+      "conclusion": "failure",
+      "whole_source_verdicts": [
+        "2026-11-28T01:04:36.7601857Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7602539Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7603189Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7604044Z PASS: tests/ui/test_document_conversion.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7604713Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=114, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7605329Z PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7605923Z PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T01:04:36.7606565Z PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 276,
+        "source_commit": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+        "source_passed": 276,
+        "source_tree": "5a8592921f44839f9b219ddab038a9a2c0e1de05",
+        "status": "PASS"
+      }
+    }
+  },
+  "headless": [
+    {
+      "phase": "formats",
+      "mode": "source",
+      "status": "FAIL",
+      "source_origin_count": 22,
+      "old_cases": null,
+      "old_junit_sha256": null,
+      "old_child_receipt_sha256": null,
+      "actual_owned_jobs": 13,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]",
+      "versions": {
+        "calibre": "ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>",
+        "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+        "pandoc": "pandoc 3.14\r\nFeatures: +server +lua\r\nScripting engine: Lua 5.4\r\nUser data directory: C:\\Users\\runneradmin\\AppData\\Roaming\\pandoc\r\nCopyright (C) 2006-2025 John MacFarlane. Web:  https://pandoc.org\r\nThis is free software; see the source for copying conditions. There is no\r\nwarranty, not even for merchantability or fitness for a particular purpose."
+      },
+      "actual_loopback_denial": null
+    },
+    {
+      "phase": "old-suite",
+      "mode": "source",
+      "status": "PASS",
+      "source_origin_count": 22,
+      "old_cases": 34,
+      "old_junit_sha256": "ff1ba390c8bc41e6aa6cc8e85856868ed03918caf8ca04d864cdc992074ab580",
+      "old_child_receipt_sha256": "2ac116869f3ce9b8ffc22699655eb05a4ddfdc6f915319866e3daf09964d7e4e",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": null,
+      "error": null,
+      "actual_loopback_denial": "PASS"
+    },
+    {
+      "phase": "formats",
+      "mode": "installed",
+      "status": "FAIL",
+      "source_origin_count": 22,
+      "old_cases": null,
+      "old_junit_sha256": null,
+      "old_child_receipt_sha256": null,
+      "actual_owned_jobs": 13,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]",
+      "versions": {
+        "calibre": "ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>",
+        "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+        "pandoc": "pandoc 3.14\r\nFeatures: +server +lua\r\nScripting engine: Lua 5.4\r\nUser data directory: C:\\Users\\runneradmin\\AppData\\Roaming\\pandoc\r\nCopyright (C) 2006-2025 John MacFarlane. Web:  https://pandoc.org\r\nThis is free software; see the source for copying conditions. There is no\r\nwarranty, not even for merchantability or fitness for a particular purpose."
+      },
+      "actual_loopback_denial": null
+    },
+    {
+      "phase": "old-suite",
+      "mode": "installed",
+      "status": "PASS",
+      "source_origin_count": 22,
+      "old_cases": 34,
+      "old_junit_sha256": "38d0edb9810b3ba8037f6c2f54d216d84515564a58296b89cee384154b9b4c8e",
+      "old_child_receipt_sha256": "b676362f6f6ad0ff49546fb72a527878826f5a6caadb42091c00fab3bc45cfbd",
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": null,
+      "error": null,
+      "actual_loopback_denial": "PASS"
+    }
+  ],
+  "gui": {
+    "source": "FAIL",
+    "installed": "FAIL",
+    "failure": "real existing reader receives the exact verified UTF-8 copy",
+    "observations": [
+      "Actual RTF native Pandoc conversion returned and committed original/text/fidelity triplet in both modes.",
+      "Explicit Read verified copy was admitted by the actual host worker in both modes.",
+      "The reader equality assertion failed; current trace does not expose text/title values.",
+      "Host, actual reader finalizers, native Job/child, resource/staging and origin cleanup checks all completed PASS."
+    ],
+    "cause": "UNDETERMINED; no text-normalization or product fix inferred"
+  },
+  "actual_format_progress": [
+    "2026-11-28T01:07:17.5241714Z PASS actual selected format .doc",
+    "2026-11-28T01:07:33.0281645Z PASS actual selected format .ppt",
+    "2026-11-28T01:09:04.1070139Z PASS actual selected format .doc",
+    "2026-11-28T01:09:24.3265367Z PASS actual selected format .ppt"
+  ],
+  "failures": [
+    "2026-11-28T01:07:48.7415106Z REQUIRED SELECTED CONVERSION FAILED [formats-source]: Actual formats-source conversion proof failed.",
+    "2026-11-28T01:09:39.7823318Z REQUIRED SELECTED CONVERSION FAILED [formats-installed]: Actual formats-installed conversion proof failed.",
+    "2026-11-28T01:10:19.8069575Z REQUIRED SELECTED CONVERSION FAILED [gui-source]: Actual gui-source control proof failed.",
+    "2026-11-28T01:10:36.2550967Z REQUIRED SELECTED CONVERSION FAILED [gui-installed]: Actual gui-installed control proof failed."
+  ],
+  "artifacts": [
+    {
+      "id": 15242015867,
+      "name": "selected-conversion-windows-2022-29757494b2c95e643a9e148e3150e06ba6bfcd65-1",
+      "bytes": 103475,
+      "digest": "sha256:a4f9f03386b6cfe61a2b721983dea8cc7cf9d03e73351e488c1cddfe7a611b9f",
+      "source_commit": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+      "expired": false
+    },
+    {
+      "id": 15240849685,
+      "name": "selected-conversion-ubuntu-24.04-29757494b2c95e643a9e148e3150e06ba6bfcd65-1",
+      "bytes": 48826,
+      "digest": "sha256:68e7e345dd7485be1845e701bae5e863ebd7fe88846c3455c6ac37f29d27c6e8",
+      "source_commit": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+      "expired": false
+    }
+  ],
+  "trace": [
+    "2026-11-28T01:07:17.5241714Z PASS actual selected format .doc\r",
+    "2026-11-28T01:07:33.0281645Z PASS actual selected format .ppt\r",
+    "2026-11-28T01:07:48.6265499Z Traceback (most recent call last):\r",
+    "2026-11-28T01:07:48.6271443Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 267, in main\r",
+    "2026-11-28T01:07:48.6275961Z     (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)\r",
+    "2026-11-28T01:07:48.6281035Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 57, in formats\r",
+    "2026-11-28T01:07:48.6285383Z     result = service.extract(source, 'reading.txt')\r",
+    "2026-11-28T01:07:48.6289991Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r",
+    "2026-11-28T01:07:48.6295010Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\service.py\", line 236, in extract\r",
+    "2026-11-28T01:07:48.6303528Z     return extract_selected(self, source, output, cancelled=cancelled)\r",
+    "2026-11-28T01:07:48.6307890Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r",
+    "2026-11-28T01:07:48.6312811Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\selected.py\", line 262, in extract_selected\r",
+    "2026-11-28T01:07:48.6317058Z     run_process(command, cwd=work, env=environment, cancelled=admitted,\r",
+    "2026-11-28T01:07:48.6321752Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\audio\\process.py\", line 290, in run_process\r",
+    "2026-11-28T01:07:48.6326495Z     raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')\r",
+    "2026-11-28T01:07:48.6331436Z carr_library.audio.models.AudioError: Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]\r",
+    "2026-11-28T01:10:05.1842122Z PASS: all selected source or installed module identities are exact\r",
+    "2026-11-28T01:10:05.1842907Z PASS: real native Windows controls\r",
+    "2026-11-28T01:10:06.1104139Z PASS: existing host worker and workspace own the conversion path\r",
+    "2026-11-28T01:10:06.1105677Z PASS: conversion reuses its actual registered command identifier\r",
+    "2026-11-28T01:10:06.2763691Z PASS: native failure answers owned No before closing only the active inner modal\r",
+    "2026-11-28T01:10:06.2864978Z PASS: cancelling the source picker admits no conversion or output\r",
+    "2026-11-28T01:10:06.2912116Z PASS: cancelling the selected runtime picker admits no conversion or output\r",
+    "2026-11-28T01:10:06.3673042Z DIAG: actual native conversion {\"event\": \"host-admission-returned\", \"title\": \"Convert documents for reading\", \"admitted\": true}\r",
+    "2026-11-28T01:10:06.3684163Z DIAG: actual native conversion {\"event\": \"explicit-conversion-dispatched\", \"pickers\": [\"Choose documents to convert for reading\", \"Choose the installed Pandoc executable for RTF\", \"destination\"], \"state\": {\"working\": true, \"status\": \"Convert documents for reading\\u2026\", \"extract\": {\"started\": 0, \"returned\": 0, \"error\": null}, \"worker_admissions\": [{\"title\": \"Convert documents for reading\", \"admitted\": true, \"done\": false, \"error\": null}], \"completed_conversions\": 0, \"native_children\": 0}}\r",
+    "2026-11-28T01:10:06.3687229Z DIAG: actual native conversion {\"event\": \"extract-entered\"}\r",
+    "2026-11-28T01:10:19.0959443Z DIAG: actual native conversion {\"event\": \"extract-returned\", \"completed\": 1}\r",
+    "2026-11-28T01:10:19.1743746Z PASS: actual existing menu converts RTF with the selected native Pandoc\r",
+    "2026-11-28T01:10:19.1930616Z PASS: native conversion commits exact original reading text and fidelity report\r",
+    "2026-11-28T01:10:19.1932122Z PASS: result names the external original and report without catalog authority\r",
+    "2026-11-28T01:10:19.1946480Z PASS: conversion alone neither imports nor automatically starts reading\r",
+    "2026-11-28T01:10:19.3103575Z DIAG: actual native conversion {\"event\": \"host-admission-returned\", \"title\": \"Read verified copy\", \"admitted\": true}\r",
+    "2026-11-28T01:10:19.4845122Z FAIL: native conversion callback\r",
+    "2026-11-28T01:10:19.4850588Z Traceback (most recent call last):\r",
+    "2026-11-28T01:10:19.4852409Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 345, in invoke\r",
+    "2026-11-28T01:10:19.4868250Z     callback()\r",
+    "2026-11-28T01:10:19.4878030Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 451, in visit\r",
+    "2026-11-28T01:10:19.4880766Z     check('real existing reader receives the exact verified UTF-8 copy',\r",
+    "2026-11-28T01:10:19.4905872Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 93, in check\r",
+    "2026-11-28T01:10:19.4907788Z     raise AssertionError(name)\r",
+    "2026-11-28T01:10:19.4912574Z AssertionError: real existing reader receives the exact verified UTF-8 copy\r",
+    "2026-11-28T01:10:19.5150523Z \r",
+    "2026-11-28T01:10:19.5537909Z PASS: native host Close drains the shared worker and retained finalizers\r",
+    "2026-11-28T01:10:19.5540370Z PASS: actual reader finalizers release their existing worker owners\r",
+    "2026-11-28T01:10:19.5541268Z PASS: actual converter private Job and child are closed before any fallback\r",
+    "2026-11-28T01:10:19.6503021Z PASS: current conversion resource leases and staging are empty after cleanup\r",
+    "2026-11-28T01:10:19.6549579Z PASS: all source or installed origins remain unchanged after actual cleanup\r",
+    "2026-11-28T01:10:19.6598846Z Traceback (most recent call last):\r"
+  ],
+  "claims": {
+    "unique_portable_cases": 276,
+    "source_and_installed_executions_on_two_platforms": 1104,
+    "actual_old_conversion_whole_cases_each_mode": 34,
+    "all14formats": "NOT_PASS",
+    "native_GUI30_each_mode": "NOT_PASS",
+    "native_fidelity_acoustic_NVDA": "NOT_RUN"
+  }
+}

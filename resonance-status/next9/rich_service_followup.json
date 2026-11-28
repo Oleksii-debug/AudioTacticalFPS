@@ -1,0 +1,37 @@
+{
+  "schema": "resonance-next9-rich-service-regression-followup/1",
+  "status": "SOURCE_CHECKPOINT_NOT_RUN",
+  "source_evidence": {
+    "head": "0425541302b637c0fbdc6e950bcf87cd1cd8f6d1",
+    "run": 46051069136,
+    "job": 140682214196,
+    "whole_cases": 17,
+    "passed": 15,
+    "failed": 2
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/assistant/test_translation_rich_docx.py",
+      "preimage": "0f59e27cf30a76636c61293a0e957a9be60d5918",
+      "sha": "3f0f9c64d496f9ca423b169e6871e67816c51e1a",
+      "readback": "EXACT"
+    }
+  ],
+  "changes": [
+    "Require owned_windows_job to equal the actual os.name == nt; retain isolated-child origin checks on every platform.",
+    "Observe an actual completed formatting child before attempting a real directory swap. If Windows denies the rename with exact winerror5/32, require that same refusal and fully released original leases.",
+    "For a successful directory replacement require explicit ResourceStateError with original selected-library identity refusal in its exception chain; require replacement marker bytes and no new coordination directories.",
+    "Finally preserve the entire replacement directory in another fixture-owned path and restore the original; never delete foreign replacement bytes or mask the actual error with rmdir."
+  ],
+  "production_dependency": "Reviewed broker directory-identity and descriptor-only cleanup correction; not yet available at checkpoint.",
+  "tests": {
+    "whole_module_cases": 17,
+    "old_cases_removed": 0,
+    "source_runtime": "NOT_RUN",
+    "windows_runtime": "NOT_RUN"
+  },
+  "limits": [
+    "The changed root-substitution case intentionally exposes the actual broker stale-scope cleanup defect until its paired production fix is composed.",
+    "No provider call, canonical rich-source formatter, approval, or export behavior changed."
+  ]
+}

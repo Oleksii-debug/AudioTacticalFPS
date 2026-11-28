@@ -1,5 +1,5 @@
 """Versioned, editable performances kept separate from immutable source quotations."""
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields, replace
 from hashlib import sha256
 import math
 from pathlib import Path
@@ -7,6 +7,10 @@ import re
 from uuid import uuid4
 
 from ..durable_state import atomic_json, encode, local_path, read_json, state_lock
+from .managed_inputs import managed_input_sha256
+from ..audio.models import Effect
+from ..audio.effect_presets import checked_chain, read_effect
+from ..audio.envelopes import validate_envelope_scope
 
 
 def _text(value, label, maximum=1_000_000, empty=False):
@@ -28,6 +32,34 @@ def _id(value):
     return value
 
 
+def _timeline_effects(values, sample_rate=192000):
+    result = checked_chain(values, sample_rate)
+    if any(effect.enabled and effect.kind == 'tempo' for effect in result):
+        raise ValueError('Timeline effect chains preserve duration. Apply tempo with Convert before assembling clips.')
+    return result
+
+
+def _serialized(value):
+    if isinstance(value, Effect):
+        return value.to_dict()
+    if isinstance(value, tuple):
+        return tuple(_serialized(item) for item in value)
+    if hasattr(value, '__dataclass_fields__'):
+        return {item.name: _serialized(getattr(value, item.name)) for item in fields(value)}
+    return value
+
+
+def _effect_fields(value):
+    if not isinstance(value, dict):
+        raise ValueError('A saved performance item must be a JSON object.')
+    result = dict(value)
+    if 'effects' in result:
+        if not isinstance(result['effects'], (tuple, list)) or len(result['effects']) > 32:
+            raise ValueError('Saved effects must be an ordered list of at most 32 items.')
+        result['effects'] = tuple(read_effect(item) for item in result['effects'])
+    return result
+
+
 @dataclass(frozen=True)
 class Role:
     id: str
@@ -38,6 +70,7 @@ class Role:
     gain_db: float = -3
     rate: int = 0
     volume: int = 100
+    effects: tuple[Effect, ...] = ()
 
     def __post_init__(self):
         _id(self.id)
@@ -50,6 +83,17 @@ class Role:
             raise ValueError('Speech rate must be an integer between -10 and 10.')
         if type(self.volume) is not int or not 0 <= self.volume <= 100:
             raise ValueError('Voice volume must be an integer between 0 and 100.')
+        object.__setattr__(self, 'effects', _timeline_effects(self.effects))
+
+    def to_dict(self):
+        value = _serialized(self)
+        if not self.effects:
+            value.pop('effects')  # Preserve existing book-plan role identities.
+        return value
+
+    @classmethod
+    def from_dict(cls, value):
+        return cls(**_effect_fields(value))
 
 
 @dataclass(frozen=True)
@@ -95,6 +139,12 @@ class Cue:
     gain_db: float = -6
     pan: float = 0
     role: str = 'sfx'
+    trim_start: float = 0
+    duration: float | None = None
+    fade_in: float = 0
+    fade_out: float = 0
+    title: str = ''
+    effects: tuple[Effect, ...] = ()
 
     def __post_init__(self):
         _id(self.id)
@@ -102,8 +152,17 @@ class Cue:
         _number(self.start, 'Cue start', 0, 31_536_000)
         _number(self.gain_db, 'Cue gain', -60, 12)
         _number(self.pan, 'Cue pan', -1, 1)
-        if self.role not in ('sfx', 'ambience', 'music'):
+        if self.role not in ('sfx', 'ambience', 'music', 'microphone'):
             raise ValueError('Invalid cue track role.')
+        _number(self.trim_start, 'Clip source start', 0, 31_536_000)
+        if self.duration is not None:
+            _number(self.duration, 'Clip duration', .000001, 31_536_000)
+        _number(self.fade_in, 'Clip fade in', 0, 31_536_000)
+        _number(self.fade_out, 'Clip fade out', 0, 31_536_000)
+        _text(self.title, 'clip title', 512, True)
+        if self.duration is not None and max(self.fade_in, self.fade_out) > self.duration:
+            raise ValueError('A clip fade exceeds its selected duration.')
+        object.__setattr__(self, 'effects', _timeline_effects(self.effects))
 
 
 @dataclass(frozen=True)
@@ -114,6 +173,7 @@ class Scene:
     music: Music | None = None
     cues: tuple[Cue, ...] = ()
     minimum_duration: float = 0
+    effects: tuple[Effect, ...] = ()
 
     def __post_init__(self):
         _id(self.id)
@@ -129,6 +189,41 @@ class Scene:
         if not self.lines and not self.cues and not self.music and self.minimum_duration <= 0:
             raise ValueError('A scene needs text, a local cue, music, or an explicit silence duration.')
         _number(self.minimum_duration, 'Scene duration', 0, 31_536_000)
+        object.__setattr__(self, 'effects', _timeline_effects(self.effects))
+
+
+MAX_PROJECT_MARKERS = 1024
+MAX_MARKER_LABEL = 256
+_BOOK_PLAN_SOURCE_PREFIX = 'carr-book-audio:'
+
+
+@dataclass(frozen=True)
+class Marker:
+    """A named scene-relative navigation point; it does not add audio or time."""
+    id: str
+    scene_id: str
+    position: float
+    label: str
+
+    def __post_init__(self):
+        _id(self.id)
+        _id(self.scene_id)
+        _number(self.position, 'Marker position', 0, 31_536_000)
+        _text(self.label, 'marker label', MAX_MARKER_LABEL)
+
+    def to_dict(self):
+        return _serialized(self)
+
+    @classmethod
+    def from_dict(cls, value):
+        if type(value) is not dict or set(value) != {'id', 'scene_id', 'position', 'label'}:
+            raise ValueError('Invalid saved marker fields.')
+        return cls(**value)
+
+
+def _book_plan_bound(project):
+    return any(line.source_ref.startswith(_BOOK_PLAN_SOURCE_PREFIX)
+               for scene in project.scenes for line in scene.lines)
 
 
 @dataclass(frozen=True)
@@ -142,12 +237,14 @@ class Project:
     sample_rate: int = 24000
     revision: int = 1
     schema: int = 1
+    effects: tuple[Effect, ...] = ()
+    markers: tuple[Marker, ...] = ()
 
     def __post_init__(self):
         _id(self.id)
         _text(self.title, 'project title', 512)
         _text(self.original_script, 'original script', 16_000_000, True)
-        if self.schema != 1 or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+        if self.schema not in (1, 2, 3, 4) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
             raise ValueError('Unsupported project schema or revision.')
         if self.mode not in ('faithful', 'authored'):
             raise ValueError('Choose faithful narration or explicitly authored production.')
@@ -162,26 +259,96 @@ class Project:
             raise ValueError('Duplicate role or scene ID.')
         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
             raise ValueError('A line uses an unknown role.')
+        if (not isinstance(self.markers, tuple)
+                or len(self.markers) > MAX_PROJECT_MARKERS
+                or not all(isinstance(marker, Marker) for marker in self.markers)):
+            raise ValueError('Project markers must be a bounded typed tuple.')
+        if self.schema < 4 and self.markers:
+            raise ValueError('Saved markers require project schema 4.')
+        if self.schema == 4 and _book_plan_bound(self):
+            raise ValueError('Book-plan projects retain their immutable planned content. '
+                             'Use a separate authored project for markers.')
+        if len({marker.id for marker in self.markers}) != len(self.markers):
+            raise ValueError('Duplicate project marker ID.')
+        scene_ids = {scene.id for scene in self.scenes}
+        for marker in self.markers:
+            if marker.scene_id not in scene_ids:
+                raise ValueError('A marker refers to an unknown scene.')
+            frame = round(marker.position * self.sample_rate)
+            if marker.position != frame / self.sample_rate:
+                raise ValueError('Marker positions must align exactly with the project sample rate.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+            raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+        if self.schema in (2, 3, 4):
+            for scene in self.scenes:
+                if len({cue.id for cue in scene.cues}) != len(scene.cues):
+                    raise ValueError('Duplicate scene clip ID.')
+                for cue in scene.cues:
+                    managed_input_sha256(cue.path)
+        object.__setattr__(self, 'effects', _timeline_effects(self.effects, self.sample_rate))
+        chains = (self.effects, *(role.effects for role in self.roles),
+                  *(scene.effects for scene in self.scenes),
+                  *(cue.effects for scene in self.scenes for cue in scene.cues))
+        if self.schema < 3 and any(chains):
+            raise ValueError('Saved track, scene and master effects require project schema 3.')
+        for chain in chains:
+            _timeline_effects(chain, self.sample_rate)
+        validate_envelope_scope(self.effects, routing='stereo')
+        for role in self.roles:
+            validate_envelope_scope(role.effects, routing='pan', pan=role.pan)
+        for scene in self.scenes:
+            validate_envelope_scope(scene.effects, routing='stereo')
+            for cue in scene.cues:
+                validate_envelope_scope(cue.effects, routing='pan', pan=cue.pan)
 
     @property
     def fingerprint(self):
         return sha256(encode(self.to_dict())).hexdigest()
 
     def to_dict(self):
-        return asdict(self)
+        value = _serialized(self)
+        if self.schema < 4:
+            value.pop('markers')
+        if self.schema < 3:
+            # Exact old wire shapes preserve saved fingerprints and accepted jobs.
+            value.pop('effects')
+            for role in value['roles']:
+                role.pop('effects')
+            for scene in value['scenes']:
+                scene.pop('effects')
+                for cue in scene['cues']:
+                    cue.pop('effects')
+        if self.schema == 1:
+            # Keep every pre-editor project/job fingerprint stable. Schema 2
+            # explicitly carries the new optional clip selection and fade data.
+            for scene in value['scenes']:
+                for cue in scene['cues']:
+                    for name in ('trim_start', 'duration', 'fade_in', 'fade_out', 'title'):
+                        cue.pop(name)
+        return value
 
     @classmethod
     def from_dict(cls, value):
         if not isinstance(value, dict):
             raise ValueError('A project must be a JSON object.')
         try:
-            value = dict(value)
-            value['roles'] = tuple(Role(**x) for x in value['roles'])
+            value = _effect_fields(value)
+            if value.get('schema') == 4:
+                markers = value.get('markers')
+                if (type(markers) not in (list, tuple)
+                        or len(markers) > MAX_PROJECT_MARKERS):
+                    raise ValueError('Schema 4 requires a bounded saved marker list.')
+                value['markers'] = tuple(Marker.from_dict(item) for item in markers)
+            elif 'markers' in value:
+                raise ValueError('Legacy project records must not contain marker fields.')
+            value['roles'] = tuple(Role.from_dict(x) for x in value['roles'])
             scenes = []
             for source in value['scenes']:
-                scene = dict(source)
+                scene = _effect_fields(source)
                 scene['lines'] = tuple(Line(**x) for x in scene['lines'])
-                scene['cues'] = tuple(Cue(**x) for x in scene.get('cues', ()))
+                scene['cues'] = tuple(Cue(**_effect_fields(x)) for x in scene.get('cues', ()))
                 if scene.get('music') is not None:
                     scene['music'] = Music(**scene['music'])
                 scenes.append(Scene(**scene))
@@ -189,6 +356,57 @@ class Project:
             return cls(**value)
         except (TypeError, KeyError) as exc:
             raise ValueError('Invalid or unknown project field.') from exc
+
+
+EFFECT_STEMS_NOTICE = ('Track effects are included. Scene and master effects '
+                       'apply only to their mixed buses.')
+
+
+def project_effects(project):
+    """Pure persisted processing metadata, with no runtime or path inspection."""
+    return {
+        'master': [effect.to_dict() for effect in project.effects],
+        'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},
+        'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes},
+        'clips': {scene.id: {cue.id: [effect.to_dict() for effect in cue.effects]
+                  for cue in scene.cues} for scene in project.scenes},
+        'stems': EFFECT_STEMS_NOTICE,
+    }
+
+
+def validate_effect_manifest(value, sample_rate):
+    """Validate copied timeline metadata without opening any recorded source."""
+    if (type(value) is not dict or set(value) != {'master', 'roles', 'scenes', 'clips', 'stems'}
+            or value['stems'] != EFFECT_STEMS_NOTICE):
+        raise ValueError('Invalid Studio effect metadata.')
+    def chain(items):
+        if type(items) is not list or len(items) > 32:
+            raise ValueError('Invalid bounded timeline effect chain.')
+        _timeline_effects(tuple(read_effect(item) for item in items), sample_rate)
+    def mapping(items):
+        if type(items) is not dict or len(items) > 100000:
+            raise ValueError('Invalid bounded timeline effect mapping.')
+        for identity in items:
+            _id(identity)
+        return items
+    chain(value['master'])
+    for name in ('roles', 'scenes'):
+        for effects in mapping(value[name]).values():
+            chain(effects)
+    if set(mapping(value['clips'])) != set(value['scenes']):
+        raise ValueError('Clip effect scenes differ from the scene processing inventory.')
+    for clips in value['clips'].values():
+        for effects in mapping(clips).values():
+            chain(effects)
+
+
+def validate_project_effects(project, result):
+    """Bind copied processing declarations to this exact typed saved project."""
+    if project.schema in (3, 4):
+        if encode(result.get('effects')) != encode(project_effects(project)):
+            raise ValueError('Timeline effects differ from the saved Studio project.')
+    elif 'effects' in result:
+        raise ValueError('A legacy Studio result must not gain schema3 processing metadata.')
 
 
 def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful', project_id=None):
@@ -276,15 +494,21 @@ class ProjectStore:
     def directory(self, project_id):
         return self.root / _id(project_id)
 
-    def save(self, project, *, expected_revision=None):
+    def save(self, project, *, expected_revision=None, expected_fingerprint=None):
         if not isinstance(project, Project):
             raise ValueError('A typed audio project is required.')
+        if expected_fingerprint is not None and (not isinstance(expected_fingerprint, str)
+                or re.fullmatch(r'[0-9a-f]{64}', expected_fingerprint) is None):
+            raise ValueError('Invalid expected project fingerprint.')
         directory = self.directory(project.id)
         with state_lock(directory):
             path = directory / 'project.json'
             previous = Project.from_dict(read_json(path)) if path.exists() else None
             if expected_revision is not None and (previous is None or previous.revision != expected_revision):
                 raise ValueError('Project changed since it was opened. Reload before saving.')
+            if expected_fingerprint is not None and (previous is None
+                    or previous.fingerprint != expected_fingerprint):
+                raise ValueError('Project content changed since it was opened. Reload before saving.')
             if previous:
                 if project.to_dict() == previous.to_dict():
                     return project
@@ -297,6 +521,61 @@ class ProjectStore:
                     atomic_json(historical, previous.to_dict())
             atomic_json(path, project.to_dict(), replace=previous is not None)
         return project
+
+    @staticmethod
+    def _marker_admission(current, cancelled):
+        if not callable(cancelled):
+            raise ValueError('Marker cancellation must be callable.')
+        if cancelled():
+            raise InterruptedError('Marker edit cancelled.')
+        if not isinstance(current, Project):
+            raise ValueError('Choose a current typed project before editing markers.')
+        if _book_plan_bound(current):
+            raise ValueError('Book-plan projects retain their immutable planned content. '
+                             'Use a separate authored project for markers.')
+
+    def _save_marker_edit(self, current, markers, cancelled):
+        unchanged = encode(tuple(marker.to_dict() for marker in markers)) == encode(
+            tuple(marker.to_dict() for marker in current.markers))
+        updated = current if unchanged else replace(
+            current, markers=markers, schema=4, revision=current.revision + 1)
+        expected_fingerprint = current.fingerprint
+        if cancelled():
+            raise InterruptedError('Marker edit cancelled.')
+        # save owns the existing CAS, immutable history and publication boundary.
+        # A late cancellation cannot turn its committed return into a refusal.
+        return self.save(updated, expected_revision=current.revision,
+                         expected_fingerprint=expected_fingerprint)
+
+    def add_marker(self, current, *, scene_id, position, label, marker_id=None,
+                   cancelled=lambda: False):
+        self._marker_admission(current, cancelled)
+        if len(current.markers) >= MAX_PROJECT_MARKERS:
+            raise ValueError('A project may retain at most 1024 markers.')
+        marker = Marker(uuid4().hex if marker_id is None else marker_id,
+                        scene_id, position, label)
+        if any(item.id == marker.id for item in current.markers):
+            raise ValueError('Duplicate project marker ID.')
+        return self._save_marker_edit(current, current.markers + (marker,), cancelled)
+
+    def update_marker(self, current, marker_id, *, position, label,
+                      cancelled=lambda: False):
+        self._marker_admission(current, cancelled)
+        _id(marker_id)
+        previous = next((item for item in current.markers if item.id == marker_id), None)
+        if previous is None:
+            raise ValueError('Choose an existing project marker.')
+        marker = Marker(previous.id, previous.scene_id, position, label)
+        updated = tuple(marker if item.id == marker_id else item for item in current.markers)
+        return self._save_marker_edit(current, updated, cancelled)
+
+    def remove_marker(self, current, marker_id, *, cancelled=lambda: False):
+        self._marker_admission(current, cancelled)
+        _id(marker_id)
+        if not any(item.id == marker_id for item in current.markers):
+            raise ValueError('Choose an existing project marker.')
+        return self._save_marker_edit(
+            current, tuple(item for item in current.markers if item.id != marker_id), cancelled)
 
     def load(self, project_id):
         return Project.from_dict(read_json(self.directory(project_id) / 'project.json'))

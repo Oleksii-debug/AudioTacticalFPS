@@ -1,0 +1,78 @@
+{
+  "schema": "resonance-selected-conversion-linux209-actual/1",
+  "status": "ACTUAL_PASS",
+  "scope": "Five whole portable suites, source and isolated installed; actual selected Windows format/native GUI qualification is separate.",
+  "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+  "run": 46079552487,
+  "job": 140775089620,
+  "job_result": "SUCCESS",
+  "strict_summary": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 209,
+    "source_commit": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "source_passed": 209,
+    "source_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+    "status": "PASS"
+  },
+  "suites": [
+    {
+      "path": "tests/conversion/test_selected_conversion.py",
+      "count": 29
+    },
+    {
+      "path": "tests/conversion/test_calibre_admission.py",
+      "count": 49
+    },
+    {
+      "path": "tests/conversion/test_office_admission.py",
+      "count": 19
+    },
+    {
+      "path": "tests/ui/test_document_conversion.py",
+      "count": 17
+    },
+    {
+      "path": "tests/extract/test_document_formats_xml.py",
+      "count": 95
+    }
+  ],
+  "verdict_lines": [
+    "2026-11-27T23:00:13.8050968Z ============================== 49 passed in 0.72s ==============================",
+    "2026-11-27T23:00:13.8067534Z ============================== 19 passed in 0.27s ==============================",
+    "2026-11-27T23:00:13.8088161Z ============================== 17 passed in 0.67s ==============================",
+    "2026-11-27T23:00:13.8159081Z ============================== 95 passed in 0.30s ==============================",
+    "2026-11-27T23:00:13.8168350Z ============================== 29 passed in 5.23s ==============================",
+    "2026-11-27T23:00:22.8284964Z ============================== 29 passed in 5.03s ==============================",
+    "2026-11-27T23:00:23.9460576Z ============================== 49 passed in 0.73s ==============================",
+    "2026-11-27T23:00:24.5603233Z ============================== 19 passed in 0.20s ==============================",
+    "2026-11-27T23:00:25.4263174Z ============================== 17 passed in 0.47s ==============================",
+    "2026-11-27T23:00:26.1477754Z ============================== 95 passed in 0.27s =============================="
+  ],
+  "artifact": {
+    "id": 15236331955,
+    "name": "selected-conversion-ubuntu-24.04-e7636ca3f9e6b7474145f6e1799bd19a135a3250-1",
+    "size_in_bytes": 35863,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15236331955",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15236331955/zip",
+    "expired": false,
+    "created_at": "2026-11-27T23:00:28Z",
+    "expires_at": "2027-02-25T22:55:52Z",
+    "updated_at": "2026-11-27T23:00:28Z",
+    "digest": "sha256:ea5608306e54dc46fdedfa6a3b5e7d8660cb2ffb8516bcab0b2127d83dd4033d",
+    "workflow_run": {
+      "id": 46079552487,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+      "head_sha": "e7636ca3f9e6b7474145f6e1799bd19a135a3250"
+    }
+  },
+  "source_manifest": "31ef41c298f29b561de15421a6788ecc9e13d7b9",
+  "coherent_final_pins": "1765b4bea9a198eda0a1c75b799857c80360317b",
+  "limitations": [
+    "The actual C API/application runtime acquisition and14 native conversions/whole34/GUI30 execute only in the distinct Windows phases; they are not qualified by this portable PASS.",
+    "No result transfer to the separate focusedfe2e run or the future paged-candidate optimization."
+  ]
+}

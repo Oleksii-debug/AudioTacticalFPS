@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "5ff2e11537d8e29180f8b86cab0f51c5d80248ca",
+  "actual": {
+    "commit": "df8c68870f58596616ee50167f536697f261498e",
+    "run": 46101970632,
+    "job": 140846204868,
+    "source_passed": 13,
+    "installed_passed": 13,
+    "native": "FAIL:90secondwatchdog",
+    "last_observed": "controlled worker callback with exact original exception, host working false",
+    "actual_stack": [
+      "wx.core.CallAfter",
+      "windows_audio_player_smoke.unwind:108",
+      "wx.core pending-event lambda",
+      "reader_playback.show_reader_playback:588"
+    ]
+  },
+  "correction": "EndModal is requested once per recorded window/handle/loop. At most one retained nonzero25ms timer continues cleanup after the current pending-event batch can return; every ownership predicate, actual Close/drain, deadline and playback assertion remains unchanged.",
+  "changes": [
+    {
+      "path": "carr-library/scripts/windows_audio_player_smoke.py",
+      "before": "a8cdfc88f4e0cce65d8683e738bad4f6821f2304",
+      "sha": "88c41833b0fc30f1f46b6bb8312f1f26de03cddc"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_saved_audio_cleanup.py",
+      "before": "95b059d406086fb52f847fee51247b506220466e",
+      "sha": "206b5f026ff2d185e62c64b324f354ec30ced0dd"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": "2f8ede5db9594460d8c0ae34317867f45d4671e8",
+      "sha": "7e622a4218325cc2a30f8d3c24de1eb5a3cd9c49"
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": "d7480b1ae118b111b6de257114c61ba46ae1e722",
+      "sha": "965b80391ea2c11f53f58c214693201659d22d74"
+    }
+  ],
+  "peer": {
+    "reviewer": "progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "exact native unwind delta and same existing13/fivefunction test inventory, deferred modal exit, repeated observations, parent resumption and HWND reuse"
+  },
+  "qualification": {
+    "native_repaired": "NOT_RUN",
+    "default_playback": "NOT_RUN",
+    "physical_device": "NOT_RUN",
+    "audible_listening": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  }
+}

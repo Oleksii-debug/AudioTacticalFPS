@@ -62,7 +62,7 @@ def test_logical_and_unknown_label(store):
             load(ident,Locator('physical_page',1))
         unknown = Locator('physical_page',8)
         load = historical_loader(store.db,'A',lambda i,l,h: (i,l,h)==(OLD,unknown,digest('other')))
-        assert load(OLD,unknown)[1].display() == 'PDF page 8 (printed page unverified)'
+        assert load(OLD,unknown)[1].display() == 'Physical page 8 (printed page unverified)'
 
 
 def test_unsealed(store):

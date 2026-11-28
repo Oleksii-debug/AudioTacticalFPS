@@ -8,7 +8,7 @@ from pathlib import Path
 
 import wx
 
-from ..research.export_file import write_export, export_completion
+from ..research.export_file import write_export
 from .export_destination import confirm_export_destination
 
 
@@ -251,7 +251,8 @@ class LibraryToolsDialog(wx.Dialog):
                 button.SetFocus()
                 return False
             path = Path(dialog.GetPath())
-            approval = confirm_export_destination(self, path, private_root=self.private_root, wx_module=wx)
+            approval = confirm_export_destination(self, path, private_root=self.private_root,
+                                                   title=f'Replace {name}')
             if approval is None:
                 self.status.SetValue('Export cancelled. No file was written.')
                 button.SetFocus()
@@ -278,13 +279,16 @@ class LibraryToolsDialog(wx.Dialog):
                                                      format=format, cancelled=cancelled)
             if cancelled():
                 raise TimeoutError('Export cancelled; the destination was not changed.')
-            return write_export(path, value, private_root=self.private_root,
-                                cancelled=cancelled, approval=approval)
+            receipt = write_export(path, value, private_root=self.private_root, cancelled=cancelled,
+                         approval=approval)
+            return receipt
 
         def exported(receipt):
             detail = ('Verified quotations and research notes are in separate columns.' if kind == 'review-matrix'
                       else 'This file contains source metadata; it does not include saved quotations or notes.')
-            self._message(export_completion(f'{name} exported to {receipt.path}.\n{detail}', receipt))
+            warning = getattr(receipt, 'cleanup_warning', None)
+            self._message(f'{name} exported to {path}.\n{detail}'
+                + ('\n' + warning if isinstance(warning, str) and warning else ''))
 
         return self._start(f'Exporting {name}', collection, publish, exported)
 

@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "kind": "actual_linux_flite_whole_suite_receipt",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run_id": 46108324940,
+  "job_id": 140866045616,
+  "job_conclusion": "success",
+  "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+  "source_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+  "final_receipt": {
+    "status": "PASS",
+    "source_commit": "004494613f855bbd003616e2afe86b980dae2d48",
+    "source_tree": "b766ae69043eab5aa4a35a80ce546ad679d2e624",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      "test_actual_chunked_synthesis_and_budget",
+      "test_actual_local_pcm_speech_and_three_distinct_voices",
+      "test_actual_volume_reduction_and_source_invariance",
+      "test_cancel_synthesis_leaves_no_partial_audio",
+      "test_no_overwrite_existing_audio",
+      "test_unsupported_native_controls_do_not_silently_apply"
+    ],
+    "suite_log_sha256": "2cce3a3322faffd6771c8062e1c17159f72d59fbc2fd4c5202fad2abd630364c",
+    "capability_report_sha256": "6232c1416a2461d76dce14e839210b9c14f11dd9935840a91a1261f64e66c501",
+    "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+  },
+  "closed_log_receipt_line": 963,
+  "closed_log_receipt_time": "2026-11-28T04:49:48.1751948",
+  "artifact": {
+    "id": 15249175746,
+    "name": "carr-flite-46108324940-1",
+    "size_in_bytes": 16869,
+    "digest": "sha256:e42044a0cecd2b4feaa5f018b80c49870f5bcb96f4e3988d05c16756e7a94ef2",
+    "run_id": 46108324940,
+    "source_head": "004494613f855bbd003616e2afe86b980dae2d48"
+  },
+  "verdict": "PASS_FOR_THIS_LINUX_FLITE_WHOLE_SUITE",
+  "limits": {
+    "main_487": "PENDING_AT_OBSERVATION",
+    "v3_native_studio": "IN_PROGRESS_AT_OBSERVATION",
+    "physical_playback": "NOT_QUALIFIED_BY_THIS_RECEIPT",
+    "manual_nvda": "NOT_QUALIFIED_BY_THIS_RECEIPT"
+  }
+}

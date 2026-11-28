@@ -5,15 +5,16 @@ from .keyboard_settings import (
 
 
 class ReaderKeyboardAdapter:
-    def __init__(self, reader, manager=None):
+    def __init__(self, reader, manager=None, *, context='reader', private_root=None, available=None):
         import wx
         self.reader = reader
+        self.context, self._available = context, available
         self.manager = manager or KeyboardManager()
         if self.manager.store is None:
-            self.manager.private_root = reader.controller.desk.library.root
+            self.manager.private_root = private_root if private_root is not None else reader.controller.desk.library.root
         self._ids = {}
         self._disposed = False
-        for command in self.manager.registry.commands('reader'):
+        for command in self.manager.registry.commands(self.context):
             identifier = wx.NewIdRef()
             self._ids[command.command_id] = identifier
             reader.dialog.Bind(wx.EVT_MENU,
@@ -23,7 +24,11 @@ class ReaderKeyboardAdapter:
         self.refresh()
 
     def available(self, command_id):
-        if self._disposed or self.reader.closed or self.reader.busy:
+        if self._disposed or self.reader.closed:
+            return False
+        if self._available is not None:
+            return bool(self._available(command_id))
+        if self.reader.busy:
             return False
         pair = self.reader.command_buttons.get(command_id)
         if pair is None:
@@ -44,7 +49,7 @@ class ReaderKeyboardAdapter:
             return
         import wx
         entries = []
-        for command in self.manager.registry.commands('reader'):
+        for command in self.manager.registry.commands(self.context):
             shortcut = self.manager.shortcut(command.command_id)
             if shortcut:
                 entries.append(accelerator_tuple(shortcut, self._ids[command.command_id]))
@@ -65,18 +70,18 @@ class ReaderKeyboardAdapter:
     def guide(self):
         return '\n'.join(
             f'{self.shortcut(command.command_id) or "Not assigned"}: {command.label}.'
-            for command in self.manager.registry.commands('reader'))
+            for command in self.manager.registry.commands(self.context))
 
     def commands(self, event=None):
         if self.reader.closed or self.reader.busy:
             return
-        return show_command_launcher(self.reader.dialog, self.manager, context='reader',
+        return show_command_launcher(self.reader.dialog, self.manager, context=self.context,
                                      invoke=self.invoke, available=self.available)
 
     def settings(self, event=None):
         if self.reader.closed or self.reader.busy:
             return
-        return show_keyboard_settings(self.reader.dialog, self.manager, context='reader')
+        return show_keyboard_settings(self.reader.dialog, self.manager, context=self.context)
 
     def close(self):
         if self._disposed:

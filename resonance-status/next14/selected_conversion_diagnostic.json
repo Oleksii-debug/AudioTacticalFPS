@@ -1,0 +1,123 @@
+{
+  "schema": "resonance-selected-converter-diagnostic/1",
+  "status": "STATIC_NOT_RUN",
+  "base": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": null,
+      "sha": "7dd79e1b8b390bb14479f9be7d2e7c3792fd4333"
+    },
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "preimage": null,
+      "sha": "bfe7c95d27e57859aa458a18caaa5d47dba5a7fb"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": null,
+      "sha": "600b33370927bd77c193aab8ea1bbc4f0abf3de7"
+    }
+  ],
+  "source_prerequisite": "Final 24-file source/native/docs manifest supplied separately; all source and installed GUI phases are included after the four headless phases.",
+  "branch": "carr/ci-next15-conversion-*",
+  "required_platforms": [
+    "ubuntu-24.04",
+    "windows-2022"
+  ],
+  "portable": {
+    "whole_suites": [
+      {
+        "path": "tests/conversion/test_selected_conversion.py",
+        "count": 26
+      },
+      {
+        "path": "tests/conversion/test_calibre_admission.py",
+        "count": 44
+      },
+      {
+        "path": "tests/conversion/test_office_admission.py",
+        "count": 19
+      },
+      {
+        "path": "tests/ui/test_document_conversion.py",
+        "count": 17
+      },
+      {
+        "path": "tests/extract/test_document_formats_xml.py",
+        "count": 95
+      }
+    ],
+    "source": 201,
+    "installed": 201,
+    "origins": 19,
+    "installed_child": "Byte-identical current capacity52964 INSTALLED_CHILD and ci_check8a23.PYTEST_CHILD",
+    "whole_seconds": 600,
+    "source_aggregate_seconds": 2000
+  },
+  "actual_windows": {
+    "phases": [
+      "formats-source",
+      "old-suite-source",
+      "formats-installed",
+      "old-suite-installed",
+      "gui-source",
+      "gui-installed"
+    ],
+    "formats_per_mode": 14,
+    "old_whole_per_mode": 34,
+    "native_origins": 22,
+    "outer_process_seconds": 1200,
+    "old_suite_seconds": 600,
+    "gui": {
+      "required": true,
+      "per_mode_checks": 30,
+      "origins": 30,
+      "seconds": 180,
+      "probe_sha": "5527d7a7ff2b830e926af8666ff4679e1a5374a3",
+      "typed_pass": 7,
+      "not_run": 4,
+      "controlled_picker": "explicit fixture selections; system file/folder picker not automated"
+    },
+    "native_contract": "c7cbad14ba624e2e3d7954db81b628dc3fa00c1e",
+    "phase_failure_policy": "All six required, independently attempted while prerequisites are available; no suppressed failure or source/installed transfer."
+  },
+  "budgets": {
+    "linux_job_minutes": 135,
+    "windows_job_minutes": 285,
+    "dependencies_minutes": 15,
+    "portable_step_minutes": 105,
+    "acquisition_minutes": 35,
+    "native_step_minutes": 100,
+    "cleanup_minutes": 5,
+    "retention_minutes": 5
+  },
+  "runtime_lock": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
+  "runtime_inputs": "Only3 pinned public archives +4 public fixture/notices, in identity-checked RUNNER_TEMP; no app/runtime/converted inputs in evidence.",
+  "acquisition_primaries": [
+    "https://learn.microsoft.com/windows-server/administration/windows-commands/msiexec",
+    "https://learn.microsoft.com/en-us/windows/win32/msi/targetdir"
+  ],
+  "privacy_and_authority": "Synthetic/generated inputs and explicitly public CHM/DjVu only; no private model, voice, engine, account or original user document.",
+  "retention": "Closed bounded JSON/text/JUnit, exact commit/tree/byte identities; no binary inputs or release qualification.",
+  "independent_review": {
+    "agent": "progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "source": "600b3337 successor over accepted029740; helpers7dd79e1b/bfe7c95d unchanged, acceptance574a2977/supportff9cb600/GUI5527d7a7",
+    "scope": "Exact report/check/origin/CLI contracts, bounded acquisition and active firewall lifetime, six-phase aggregate, source/PR-head proof, retained reports and finite envelopes; no parser/runtime claim."
+  },
+  "no_changes": [
+    "current main integration ref",
+    "all running CI refs/jobs",
+    "application runtime acquisition",
+    "600/900 common whole-suite policy",
+    "headless1200/GUI180/old whole600 process guards"
+  ],
+  "supersedes": "ee43c1481ae5b07ca2e616f5ea43e60e79f376eb",
+  "trigger": {
+    "pull_request": "Paths include carr-library/** and this workflow; exact PR head checkout and source proof.",
+    "diagnostic_push": "Optional carr/ci-next15-conversion-* branch only.",
+    "selected_head": "github.event.pull_request.head.sha || github.sha",
+    "publication": "Update integration PR only for first coherent run; a duplicate diagnostic push is unnecessary."
+  }
+}

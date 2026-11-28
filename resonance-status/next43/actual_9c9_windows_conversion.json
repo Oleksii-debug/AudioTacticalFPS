@@ -1,0 +1,616 @@
+{
+  "schema": 1,
+  "created_utc": "2026-11-28 02:27:45 UTC",
+  "status": "ACTUAL_PARTIAL_NATIVE_FAILURE",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run_id": 46095932690,
+  "job_id": 140827138808,
+  "head": "9c9fb4df953fc5aa406a06086e75cfddc677089c",
+  "tree": "69c8a3d2c64c884ec9a49a72ff43bedc2c376061",
+  "platform": "windows-2022",
+  "job_conclusion": "failure",
+  "decoded_log_characters": 392646,
+  "artifact": {
+    "id": 15243767669,
+    "size_bytes": 107757,
+    "sha256": "a41dac8ca005ecb23cca12f80df7fd70cb739719672b34ed5273c8a9a6d6b9dc"
+  },
+  "portable": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 341,
+    "source_commit": "9c9fb4df953fc5aa406a06086e75cfddc677089c",
+    "source_passed": 341,
+    "source_tree": "69c8a3d2c64c884ec9a49a72ff43bedc2c376061",
+    "status": "PASS"
+  },
+  "source_formats": {
+    "individual_actual_pass_count": 14,
+    "log": [
+      {
+        "line": 1713,
+        "text": "PASS actual selected format .doc"
+      },
+      {
+        "line": 1714,
+        "text": "PASS actual selected format .ppt"
+      },
+      {
+        "line": 1715,
+        "text": "PASS actual selected format .xls"
+      },
+      {
+        "line": 1716,
+        "text": "PASS actual selected format .wpd"
+      },
+      {
+        "line": 1717,
+        "text": "PASS actual selected format .pdb"
+      },
+      {
+        "line": 1718,
+        "text": "PASS actual selected format .prc"
+      },
+      {
+        "line": 1719,
+        "text": "PASS actual selected format .mobi"
+      },
+      {
+        "line": 1720,
+        "text": "PASS actual selected format .azw"
+      },
+      {
+        "line": 1721,
+        "text": "PASS actual selected format .azw3"
+      },
+      {
+        "line": 1722,
+        "text": "PASS actual selected format .lit"
+      },
+      {
+        "line": 1723,
+        "text": "PASS actual selected format .tcr"
+      },
+      {
+        "line": 1724,
+        "text": "PASS actual selected format .chm"
+      },
+      {
+        "line": 1725,
+        "text": "PASS actual selected format .djvu"
+      },
+      {
+        "line": 1726,
+        "text": "PASS actual selected format .rtf"
+      }
+    ],
+    "receipt": {
+      "status": "FAIL",
+      "phase": "formats",
+      "mode": "source",
+      "error_type": "AttributeError",
+      "error": "'LibraryApp' object has no attribute 'check'",
+      "source_origin_count": 22,
+      "actual_owned_jobs": 25,
+      "all_owned_jobs_closed": "PASS",
+      "actual_native_descendant_cancel": "PASS",
+      "required_format_count": null,
+      "format_receipt_published": false
+    },
+    "failure_trace": [
+      {
+        "line": 1727,
+        "text": "Traceback (most recent call last):"
+      },
+      {
+        "line": 1728,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 276, in main"
+      },
+      {
+        "line": 1729,
+        "text": "    (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)"
+      },
+      {
+        "line": 1730,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 138, in formats"
+      },
+      {
+        "line": 1731,
+        "text": "    library.check()"
+      },
+      {
+        "line": 1732,
+        "text": "    ^^^^^^^^^^^^^"
+      },
+      {
+        "line": 1733,
+        "text": "AttributeError: 'LibraryApp' object has no attribute 'check'"
+      }
+    ]
+  },
+  "installed_formats": {
+    "individual_actual_pass_count": 11,
+    "log": [
+      {
+        "line": 1905,
+        "text": "PASS actual selected format .doc"
+      },
+      {
+        "line": 1906,
+        "text": "PASS actual selected format .ppt"
+      },
+      {
+        "line": 1907,
+        "text": "PASS actual selected format .xls"
+      },
+      {
+        "line": 1908,
+        "text": "PASS actual selected format .wpd"
+      },
+      {
+        "line": 1909,
+        "text": "PASS actual selected format .pdb"
+      },
+      {
+        "line": 1910,
+        "text": "PASS actual selected format .prc"
+      },
+      {
+        "line": 1911,
+        "text": "PASS actual selected format .mobi"
+      },
+      {
+        "line": 1912,
+        "text": "PASS actual selected format .azw"
+      },
+      {
+        "line": 1913,
+        "text": "PASS actual selected format .azw3"
+      },
+      {
+        "line": 1914,
+        "text": "PASS actual selected format .lit"
+      },
+      {
+        "line": 1915,
+        "text": "PASS actual selected format .tcr"
+      }
+    ],
+    "failed_format": ".chm",
+    "not_reached": [
+      ".djvu",
+      ".rtf"
+    ],
+    "receipt": {
+      "status": "FAIL",
+      "phase": "formats",
+      "mode": "installed",
+      "error_type": "PermissionError",
+      "error": "[WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-g2q5nv1h\\\\reading-12\\\\.pending-conversion-2lq11u88\\\\work\\\\calibre-private\\\\temporary\\\\calibre-2qksimhs\\\\_rpvaveq_chm2oeb'",
+      "source_origin_count": 22,
+      "actual_owned_jobs": 22,
+      "all_owned_jobs_closed": "PASS",
+      "actual_native_descendant_cancel": "NOT_REACHED",
+      "required_format_count": null,
+      "format_receipt_published": false
+    },
+    "failure_trace": [
+      {
+        "line": 1916,
+        "text": "Traceback (most recent call last):"
+      },
+      {
+        "line": 1917,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 276, in main"
+      },
+      {
+        "line": 1918,
+        "text": "    (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)"
+      },
+      {
+        "line": 1919,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 62, in formats"
+      },
+      {
+        "line": 1920,
+        "text": "    result = service.extract(source, 'reading.txt')"
+      },
+      {
+        "line": 1921,
+        "text": "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 1922,
+        "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py\", line 236, in extract"
+      },
+      {
+        "line": 1923,
+        "text": "    return extract_selected(self, source, output, cancelled=cancelled)"
+      },
+      {
+        "line": 1924,
+        "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 1925,
+        "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\selected.py\", line 262, in extract_selected"
+      },
+      {
+        "line": 1926,
+        "text": "    run_process(command, cwd=work, env=environment, cancelled=admitted,"
+      },
+      {
+        "line": 1927,
+        "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 277, in run_process"
+      },
+      {
+        "line": 1928,
+        "text": "    check()"
+      },
+      {
+        "line": 1929,
+        "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 253, in check"
+      },
+      {
+        "line": 1930,
+        "text": "    with os.scandir(path) as entries:"
+      },
+      {
+        "line": 1931,
+        "text": "         ^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 1932,
+        "text": "PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-g2q5nv1h\\\\reading-12\\\\.pending-conversion-2lq11u88\\\\work\\\\calibre-private\\\\temporary\\\\calibre-2qksimhs\\\\_rpvaveq_chm2oeb'"
+      }
+    ]
+  },
+  "old_suite": {
+    "source": {
+      "status": "PASS",
+      "phase": "old-suite",
+      "mode": "source",
+      "error_type": null,
+      "error": null,
+      "source_origin_count": 22,
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "actual_native_descendant_cancel": "NOT_REACHED",
+      "required_format_count": null,
+      "format_receipt_published": false
+    },
+    "installed": {
+      "status": "PASS",
+      "phase": "old-suite",
+      "mode": "installed",
+      "error_type": null,
+      "error": null,
+      "source_origin_count": 22,
+      "actual_owned_jobs": 1,
+      "all_owned_jobs_closed": "PASS",
+      "actual_native_descendant_cancel": "NOT_REACHED",
+      "required_format_count": null,
+      "format_receipt_published": false
+    },
+    "required_cases": 34,
+    "outer_verdicts": [
+      {
+        "mode": "source",
+        "native_gui": "NOT_RUN",
+        "origins": 22,
+        "phase": "old-suite",
+        "report_sha256": "fb954dcd7911bec58dd98450a3fc0c6db027bd3cabb19410903ec23686d3c4c7",
+        "required_formats": null,
+        "required_native_controls": null,
+        "runtime_quality": "NOT_RUN",
+        "status": "PASS",
+        "whole_cases": 34
+      },
+      {
+        "mode": "installed",
+        "native_gui": "NOT_RUN",
+        "origins": 22,
+        "phase": "old-suite",
+        "report_sha256": "06bfdea3e117d5b5767037ed6d7fe8dd0b9ce028443c2e4cc3469a0029ca7aa0",
+        "required_formats": null,
+        "required_native_controls": null,
+        "runtime_quality": "NOT_RUN",
+        "status": "PASS",
+        "whole_cases": 34
+      }
+    ]
+  },
+  "gui": {
+    "source": {
+      "status": "FAIL",
+      "handoff_and_error": [
+        {
+          "line": 2115,
+          "text": "PASS: actual existing menu converts RTF with the selected native Pandoc"
+        },
+        {
+          "line": 2116,
+          "text": "PASS: native conversion commits exact original reading text and fidelity report"
+        },
+        {
+          "line": 2117,
+          "text": "PASS: result names the external original and report without catalog authority"
+        },
+        {
+          "line": 2118,
+          "text": "PASS: conversion alone neither imports nor automatically starts reading"
+        },
+        {
+          "line": 2119,
+          "text": "DIAG: actual native conversion {\"event\": \"host-admission-returned\", \"title\": \"Read verified copy\", \"admitted\": true}"
+        },
+        {
+          "line": 2120,
+          "text": "DIAG: actual native conversion {\"event\": \"reader-handoff-entered\", \"parent_is_host\": true, \"text\": {\"characters\": 97, \"utf8_sha256\": \"664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368\", \"cr\": 3, \"lf\": 3, \"crlf\": 3, \"leading_codepoints\": [83, 121, 110, 116, 104, 101, 116, 105, 99, 32, 115, 101, 108, 101, 99, 116], \"trailing_codepoints\": [111, 110, 100, 32, 112, 97, 114, 97, 103, 114, 97, 112, 104, 46, 13, 10]}}"
+        },
+        {
+          "line": 2121,
+          "text": "PASS: real existing reader receives the exact verified UTF-8 copy"
+        },
+        {
+          "line": 2122,
+          "text": "PASS: verified copy remains unbound and gives no native quotation authority"
+        },
+        {
+          "line": 2123,
+          "text": "PASS: real reader Save preserves the verified copy and its original"
+        },
+        {
+          "line": 2124,
+          "text": "FAIL: native conversion callback"
+        },
+        {
+          "line": 2125,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 2126,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 346, in invoke"
+        },
+        {
+          "line": 2127,
+          "text": "    callback()"
+        },
+        {
+          "line": 2128,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 434, in visit"
+        },
+        {
+          "line": 2129,
+          "text": "    raise TimeoutError('The real source reader did not complete its verified-copy handoff.')"
+        },
+        {
+          "line": 2130,
+          "text": "TimeoutError: The real source reader did not complete its verified-copy handoff."
+        },
+        {
+          "line": 2131,
+          "text": ""
+        },
+        {
+          "line": 2132,
+          "text": "FAIL: selected conversion native controls or cleanup exceeded 180 seconds."
+        }
+      ],
+      "owned_main_thread_watchdog": [
+        {
+          "line": 2151,
+          "text": "Thread 0x00000608 (most recent call first):"
+        },
+        {
+          "line": 2152,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_dialog.py\", line 1269 in confirm_current_close"
+        },
+        {
+          "line": 2153,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_dialog.py\", line 1290 in closing"
+        },
+        {
+          "line": 2154,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_dialog.py\", line 1457 in show_speech_reader"
+        },
+        {
+          "line": 2155,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 595 in observed_reader"
+        },
+        {
+          "line": 2156,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\document_conversion.py\", line 278 in done"
+        },
+        {
+          "line": 2157,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py\", line 941 in apply"
+        },
+        {
+          "line": 2158,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\wx\\core.py\", line 3425 in <lambda>"
+        },
+        {
+          "line": 2159,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 273 in pump"
+        },
+        {
+          "line": 2160,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 496 in visit_reader"
+        },
+        {
+          "line": 2161,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 775 in run_steps"
+        },
+        {
+          "line": 2162,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\wx\\core.py\", line 3425 in <lambda>"
+        },
+        {
+          "line": 2163,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\wx\\core.py\", line 2254 in MainLoop"
+        },
+        {
+          "line": 2164,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 837 in main"
+        },
+        {
+          "line": 2165,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 939 in <module>"
+        }
+      ]
+    },
+    "installed": {
+      "status": "FAIL",
+      "handoff_and_error": [
+        {
+          "line": 2181,
+          "text": "PASS: actual existing menu converts RTF with the selected native Pandoc"
+        },
+        {
+          "line": 2182,
+          "text": "PASS: native conversion commits exact original reading text and fidelity report"
+        },
+        {
+          "line": 2183,
+          "text": "PASS: result names the external original and report without catalog authority"
+        },
+        {
+          "line": 2184,
+          "text": "PASS: conversion alone neither imports nor automatically starts reading"
+        },
+        {
+          "line": 2185,
+          "text": "DIAG: actual native conversion {\"event\": \"host-admission-returned\", \"title\": \"Read verified copy\", \"admitted\": true}"
+        },
+        {
+          "line": 2186,
+          "text": "DIAG: actual native conversion {\"event\": \"reader-handoff-entered\", \"parent_is_host\": true, \"text\": {\"characters\": 97, \"utf8_sha256\": \"664a47d3fe8be8dafcac7ff9d3a0ec0887e6b3f2a68c8624830cb8094716c368\", \"cr\": 3, \"lf\": 3, \"crlf\": 3, \"leading_codepoints\": [83, 121, 110, 116, 104, 101, 116, 105, 99, 32, 115, 101, 108, 101, 99, 116], \"trailing_codepoints\": [111, 110, 100, 32, 112, 97, 114, 97, 103, 114, 97, 112, 104, 46, 13, 10]}}"
+        },
+        {
+          "line": 2187,
+          "text": "PASS: real existing reader receives the exact verified UTF-8 copy"
+        },
+        {
+          "line": 2188,
+          "text": "PASS: verified copy remains unbound and gives no native quotation authority"
+        },
+        {
+          "line": 2189,
+          "text": "PASS: real reader Save preserves the verified copy and its original"
+        },
+        {
+          "line": 2190,
+          "text": "FAIL: native conversion callback"
+        },
+        {
+          "line": 2191,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 2192,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 346, in invoke"
+        },
+        {
+          "line": 2193,
+          "text": "    callback()"
+        },
+        {
+          "line": 2194,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 434, in visit"
+        },
+        {
+          "line": 2195,
+          "text": "    raise TimeoutError('The real source reader did not complete its verified-copy handoff.')"
+        },
+        {
+          "line": 2196,
+          "text": "TimeoutError: The real source reader did not complete its verified-copy handoff."
+        },
+        {
+          "line": 2197,
+          "text": ""
+        },
+        {
+          "line": 2198,
+          "text": "FAIL: selected conversion native controls or cleanup exceeded 180 seconds."
+        }
+      ],
+      "owned_main_thread_watchdog": [
+        {
+          "line": 2217,
+          "text": "Thread 0x00001c8c (most recent call first):"
+        },
+        {
+          "line": 2218,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py\", line 1269 in confirm_current_close"
+        },
+        {
+          "line": 2219,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py\", line 1290 in closing"
+        },
+        {
+          "line": 2220,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py\", line 1457 in show_speech_reader"
+        },
+        {
+          "line": 2221,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 595 in observed_reader"
+        },
+        {
+          "line": 2222,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\document_conversion.py\", line 278 in done"
+        },
+        {
+          "line": 2223,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py\", line 941 in apply"
+        },
+        {
+          "line": 2224,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\wx\\core.py\", line 3425 in <lambda>"
+        },
+        {
+          "line": 2225,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 273 in pump"
+        },
+        {
+          "line": 2226,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 496 in visit_reader"
+        },
+        {
+          "line": 2227,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 775 in run_steps"
+        },
+        {
+          "line": 2228,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\wx\\core.py\", line 3425 in <lambda>"
+        },
+        {
+          "line": 2229,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\wx\\core.py\", line 2254 in MainLoop"
+        },
+        {
+          "line": 2230,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 837 in main"
+        },
+        {
+          "line": 2231,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_document_conversion_smoke.py\", line 939 in <module>"
+        }
+      ]
+    },
+    "exact_native_script": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd",
+    "exact_driver_tests": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+    "required_checks": 30,
+    "required_origins": 30,
+    "driver_whole_cases": 23,
+    "work_timeout_seconds": 50,
+    "work_and_cleanup_watchdog_seconds": 180
+  },
+  "interpretation": [
+    "All portable341 source and341 installed contracts passed on this exact Windows head; Linux counterpart is independently recorded in50ffd70a9eb0b674e5d21e07f3b375663a6c510f.",
+    "Source all14 individual actual native conversion/read/import/no-clobber assertions reached PASS; complete formats phase failed at nonexistent LibraryApp.check before publishing its final formats receipt. No full14 acceptance is claimed.",
+    "Installed first11 individual conversions passed; .chm failed on actual directory os.scandir WinError5. This is distinct from the existing live metadata-query retry seam. No cause of access denial is inferred.",
+    "Both old conversion whole34 reports passed with inside-child origins; both GUI modes passed verified text and real Save, then blocked in actual Reader confirm_current_close until the180s watchdog. GUI cleanup and native30 qualification are not claimed."
+  ]
+}

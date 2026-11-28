@@ -1,0 +1,49 @@
+{
+  "schema": "carr-bounded-static-peer/1",
+  "reviewer": "locate_project",
+  "created_utc": "2026-11-28 07:34:06 UTC",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "manifest": "609af98ad4578b1f00a471c0cd36eefa2036a5b9",
+  "changes": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "831c4b891eaee4ad9a1ec52ec6a9c137bad6012b",
+      "after": "1f0c67ee4ad51735fa3805388317c850f482258a",
+      "inverse_hunks": 4,
+      "utf8_bytes": 401264
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "9a2f5660178641bb8917f1848de021f9d9753a4a",
+      "after": "69dceb131561dbc78077cfb5451c524797db7e15",
+      "inverse_hunks": 3,
+      "utf8_bytes": 498151
+    }
+  ],
+  "findings": [
+    "All seven manifest replacements have exact unique occurrences; both forward composition and reverse reconstruction match complete supplied blobs byte-for-byte.",
+    "Only the new carr/ci-full-final-* push pattern is appended. Existing PR/path filters, ref-based concurrency groups and cancel-in-progress policy are unchanged; the new branch has a separate group from the retained PR branch.",
+    "Each added step ID occurs exactly once and precedes an upload of the exact pre-existing Tee-Object text path. The same pinned upload-artifact action is reused, fixed artifact names include exact head and attempt, missing files are errors, retention is three days and each upload has a three-minute cap.",
+    "GitHub's primary expression/context documentation confirms that cancelled() is an explicit status function and outcome is the pre-continue-on-error result. The new step condition allows a completed failed phase's log to upload without changing its failure, while excluding skipped/cancelled work.",
+    "Both original phase commands, all selectors and strict assertions, every original final artifact, permissions, cleanup and aggregate guards reconstruct unchanged. Original source/installed/native child and phase limits remain unchanged; no failure can qualify through the early upload.",
+    "The main's sole native workflow binding update is exact181d to14517 and matches independently accepted A3 baseline peer619a.",
+    "Both UTF-8 workflow sizes remain below500000 bytes; V3 has1849 bytes of remaining space."
+  ],
+  "official_sources": [
+    "https://docs.github.com/en/actions/reference/workflows-and-actions/expressions#status-check-functions",
+    "https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#steps-context"
+  ],
+  "native_binding_peer": "619a573b0beb095ca0bbadd03a79e1db71acd2dc",
+  "unchanged": {
+    "whole_source_modules": 490,
+    "whole_child_seconds": 600,
+    "source_phase_minutes": 75,
+    "installed_phase_minutes": 120,
+    "v3_job_minutes": 300,
+    "library_probe_minutes": 3
+  },
+  "limits": [
+    "Static byte/source/API review only; no YAML parser, PowerShell, workflow or native execution claimed.",
+    "Current exact-head runtime remains required; no transfer of old results."
+  ]
+}

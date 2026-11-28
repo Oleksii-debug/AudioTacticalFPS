@@ -1,0 +1,2101 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+  "source_tree": "1793a664f1c0fdfc9b956f90ea90b1693a17707f",
+  "source_run": 46092769234,
+  "inspector_commit": "cab1dd6ec917cf7fd21e93b8b6d5bc29b1c04b6b",
+  "inspector_run": 46099926695,
+  "inspector_job": 140839823124,
+  "inspection_status": "PASS",
+  "receipts": [
+    {
+      "kind": "EXACT_ARTIFACT",
+      "value": {
+        "artifact_id": 15242148018,
+        "books": 1000,
+        "harness_sha256": "c3237e8242c30f628315f58829b58c3878beaac8dd9caac1df800c7ceb4894a4",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+        "job_id": 140817741060,
+        "members": [
+          "1000/backup.json",
+          "1000/backup.stderr.txt",
+          "1000/backup.stdout.txt",
+          "1000/build.json",
+          "1000/build.stderr.txt",
+          "1000/build.stdout.txt",
+          "1000/measure.json",
+          "1000/measure.stderr.txt",
+          "1000/measure.stdout.txt",
+          "1000/operations.json",
+          "1000/operations.stderr.txt",
+          "1000/operations.stdout.txt",
+          "1000/restart.json",
+          "1000/restart.stderr.txt",
+          "1000/restart.stdout.txt",
+          "benchmark.txt",
+          "configuration.json",
+          "declared-profile.json",
+          "library-corpus-scale.json",
+          "retention.json",
+          "tested-commit.txt",
+          "tested-tree.txt"
+        ],
+        "report_sha256": "ef5613e9768750e4d3a9059c8308605728540d0c1ec44062ca481357ff388343",
+        "repository": "Oleksii-debug/AudioTacticalFPS",
+        "run_id": 46092769234,
+        "segments_per_book": 20,
+        "source_sha256": {
+          "bootstrap": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930",
+          "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+          "carr_library.backup_capacity": "12d38188e625a0106ac289a5d833d6f4302536f8c9898ad2fe285064a7d81aa5",
+          "carr_library.catalog.membership": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937",
+          "carr_library.catalog.read_views": "2ac472d3e302b6c463fe8ca0246f7fd979bf118ab11351acb1d612328f641f54",
+          "carr_library.catalog.registration": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef",
+          "carr_library.citations.text_attestation": "d93b6671454550e69420cf5f4d30c0de857ba0089398f555c5d0b859df1a2e8c",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.ingest.batches": "624575f70063e4081eccde7d70f2c281ca93cec79b8facaa463e4e5e6a9b8ab8",
+          "carr_library.ingest.pipeline": "7c922ad3d502c2724f7ace32c57b6ca146ec494749dd92b6936925a204931821",
+          "carr_library.ingest.publication": "09bd07902bd9e7e3ff5516dba11fcd15203f5f3b652b4cf9eb300815134b6808",
+          "carr_library.ingest.retained_assets": "825f0c76f66e9492854a81bc80f92d7ee97819d57730c1a7b089e25553565791",
+          "carr_library.ingest.worker": "d7076d7b15755384d8220333eed9317d79873be926ae96e9a8fca9abf4d9dd28",
+          "carr_library.ingest.writer_guard": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c",
+          "carr_library.library_backup": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7",
+          "carr_library.operations.broker": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882",
+          "carr_library.pending_backup": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b",
+          "carr_library.reader.reading_desk": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706",
+          "carr_library.search.literal": "ec844ef5e8e5149f0ee25ac77f2bf10da585bc57e9dcef17efb6c7cd8e795a4e",
+          "carr_library.search.paging": "e8e00968c2806a88370a0aed4dfb05d6fb7529d70bea75334dbd89353a3b6ea1",
+          "carr_library.storage.revisions": "bb17cbafbbca9e0663d4f308a0542bd228361b34737592b375f4e391d56c5698"
+        },
+        "tree_sha": "1793a664f1c0fdfc9b956f90ea90b1693a17707f",
+        "zip_bytes": 26915,
+        "zip_sha256": "2eff95eb8a973fa1b87b984076d909bd7eec7a46d15cb484e624fe52ad4b943b"
+      }
+    },
+    {
+      "kind": "MEASUREMENT_CONTEXT",
+      "value": {
+        "books": 1000,
+        "capacity": {
+          "backup_capacity_profile": "large-source-v1",
+          "complete_backup": true,
+          "construction": "retained-fixture",
+          "public_samples": 12
+        },
+        "case": {
+          "max_disk_bytes": 25769803776,
+          "min_free_bytes": 1073741824,
+          "phase_timeout": 3600,
+          "repeats": 9,
+          "result_page_size": 37,
+          "segment_bytes": 256,
+          "segments_per_book": 20
+        },
+        "claims": {
+          "backup_capacity": "Only an actual PASS backup phase qualifies its reported populated corpus.",
+          "cold_disk_latency": "NOT_MEASURED",
+          "native_gui_nvda": "NOT_RUN",
+          "neural_retrieval_quality": "NOT_MEASURED",
+          "pdf_ocr_audio": "NOT_RUN",
+          "power_loss_recovery": "NOT_RUN",
+          "real_world_document_diversity": "NOT_MEASURED",
+          "release_capacity": "NOT_ESTABLISHED_BY_THIS_HARNESS",
+          "sustained_declared_corpus_import_throughput": "NOT_MEASURED_BY_CAPACITY_SETUP_OR_BOUNDED_SAMPLES"
+        },
+        "environment": {
+          "logical_cpus": 4,
+          "machine": "x86_64",
+          "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+          "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+          "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+          "sqlite": "3.45.1"
+        },
+        "method": {
+          "backup": "Explicit current complete-backup/verify/new-root restore, only within supported product bounds.",
+          "cache_temperature": "Fresh interpreter is not cold disk: OS page cache is retained.",
+          "corpus": "Deterministic retained TXT originals through bounded Catalog/Storage fixture transactions and full integrity audit; not public import throughput.",
+          "disk_budget": "Cooperative measured checkpoint after every 64 imports and at phase boundaries; not a filesystem quota.",
+          "memory": "Whole-process high-water RSS via the unchanged semantic-cache measurement kernel.",
+          "percentiles": "Nearest-rank empirical P50/P95, with actual sample count; no acceptance latency threshold.",
+          "public_operations": "Separate measured public imports, exact retries, refused immutable replacement and checkpoint cancellation/retained-source resume after baseline reads.",
+          "restart": "Build, traversal and restart run in distinct owned interpreter processes.",
+          "scope": "One selected workspace plus a deliberately excluded workspace containing the same query.",
+          "search": "Lexical terms; exact full result/source continuation; ranking remains local to each source window.",
+          "source_checks": "All retained source hashes and catalog identities before/after measurements; quote actions sampled per result page.",
+          "timeout": "Cooperative phase deadline plus a direct-interpreter outer timeout; remaining phases stop on failure."
+        },
+        "mode": "source",
+        "segments_per_book": 20
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39591936,
+        "books": 1000,
+        "bootstrap_seconds": 0.1506709310000076,
+        "construction": "retained-fixture",
+        "corpus_sha256": "5c6f1ca16bc8a22725780d6cbfee4f26aa23b09616afbb5cb7df7f6531334860",
+        "disk": {
+          "bytes": 22997604,
+          "directories": 2,
+          "files": 1005
+        },
+        "elapsed_seconds": 2.1664729640000076,
+        "exit_code": 0,
+        "imports": {
+          "count": 0,
+          "p50_seconds": null,
+          "p95_seconds": null,
+          "status": "NOT_MEASURED_BY_FIXTURE_CONSTRUCTION",
+          "total_seconds": 0
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "build",
+        "pid": 2270,
+        "process_peak_rss_bytes": 42782720,
+        "process_reaped": true,
+        "process_wall_seconds": 2.4174790040000005,
+        "requested_books": 1000,
+        "segments": 20000,
+        "segments_per_book": 20,
+        "setup": {
+          "committed_batches": 4,
+          "full_integrity_seconds": 0.15296793699999967,
+          "maximum_books_per_transaction": 250,
+          "maximum_declared_source_bytes_per_transaction": 16777216,
+          "method": "RetainedAssets, Catalog/register_batch and Storage.stage_revision"
+        },
+        "source_utf8_bytes": 5139000,
+        "startup_seconds": 0.01586506000001009,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39591936,
+        "books": 1000,
+        "bootstrap_seconds": 0.14800668099999825,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.00004885299998136361,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "5c6f1ca16bc8a22725780d6cbfee4f26aa23b09616afbb5cb7df7f6531334860",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 23004024,
+          "directories": 2,
+          "files": 1009
+        },
+        "elapsed_seconds": 34.100148192999995,
+        "exit_code": 0,
+        "final_integrity_seconds": 0.2912938810000014,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.05506892899998661,
+          "minimum_seconds": 0.04836117100001047,
+          "p50_seconds": 0.04870476899998266,
+          "p95_seconds": 0.05506892899998661,
+          "total_seconds": 0.4459828369999741
+        },
+        "full_traversal": {
+          "copied_result_samples": 600,
+          "elapsed_seconds": 32.56423504700001,
+          "exact_no_loss_no_duplicates": true,
+          "latency": {
+            "count": 600,
+            "maximum_seconds": 0.0615559980000171,
+            "minimum_seconds": 0.04700755799999001,
+            "p50_seconds": 0.04908899000000133,
+            "p95_seconds": 0.05884158599999978,
+            "total_seconds": 31.06107298799995
+          },
+          "requests": 600,
+          "results": 20000,
+          "source_windows": 200
+        },
+        "initial_integrity_seconds": 0.29261212999998065,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.018514408000015692,
+          "minimum_seconds": 0.018302920999985872,
+          "p50_seconds": 0.018427277000000686,
+          "p95_seconds": 0.018514408000015692,
+          "total_seconds": 0.1658676710000293
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "measure",
+        "pid": 2271,
+        "process_peak_rss_bytes": 46202880,
+        "process_reaped": true,
+        "process_wall_seconds": 34.31493333899999,
+        "reading": {
+          "indices": [
+            0,
+            66,
+            133,
+            199,
+            266,
+            333,
+            399,
+            466,
+            532,
+            599,
+            666,
+            732,
+            799,
+            865,
+            932,
+            999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.0025852309999834233,
+            "minimum_seconds": 0.0024133719999781533,
+            "p50_seconds": 0.002459441000013385,
+            "p95_seconds": 0.0025852309999834233,
+            "total_seconds": 0.03957009300000891
+          }
+        },
+        "requested_books": 1000,
+        "segments": 20000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 5139000,
+        "startup_seconds": 0.16330276299999014,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39591936,
+        "books": 1000,
+        "bootstrap_seconds": 0.1488208560000146,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.00004703100000824634,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "5c6f1ca16bc8a22725780d6cbfee4f26aa23b09616afbb5cb7df7f6531334860",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 23011020,
+          "directories": 2,
+          "files": 1012
+        },
+        "elapsed_seconds": 1.5247892680000064,
+        "exit_code": 0,
+        "final_integrity_seconds": 0.28938544199999683,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.05020594500001607,
+          "minimum_seconds": 0.04833726600000432,
+          "p50_seconds": 0.04846279599999548,
+          "p95_seconds": 0.05020594500001607,
+          "total_seconds": 0.4378578830000208
+        },
+        "full_traversal": {
+          "reason": "Full traversal belongs to the previous measured process.",
+          "status": "NOT_REPEATED"
+        },
+        "initial_integrity_seconds": 0.29215003300001285,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.018299775999992107,
+          "minimum_seconds": 0.01820258000000763,
+          "p50_seconds": 0.018251894000002267,
+          "p95_seconds": 0.018299775999992107,
+          "total_seconds": 0.1642930250000063
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "restart",
+        "pid": 2283,
+        "process_peak_rss_bytes": 45539328,
+        "process_reaped": true,
+        "process_wall_seconds": 1.7666390330000183,
+        "reading": {
+          "indices": [
+            0,
+            66,
+            133,
+            199,
+            266,
+            333,
+            399,
+            466,
+            532,
+            599,
+            666,
+            732,
+            799,
+            865,
+            932,
+            999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.0026124620000018695,
+            "minimum_seconds": 0.002426151999998183,
+            "p50_seconds": 0.0024468329999933758,
+            "p95_seconds": 0.0026124620000018695,
+            "total_seconds": 0.03942347599999607
+          }
+        },
+        "requested_books": 1000,
+        "segments": 20000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 5139000,
+        "startup_seconds": 0.16501567500000647,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39591936,
+        "books": 1000,
+        "bootstrap_seconds": 0.14905928600001062,
+        "checkpoint_recovery": {
+          "actual_owned_import_worker": true,
+          "cancellation_seconds": 0.011431651000009424,
+          "checkpoint_prefix_preserved": true,
+          "external_original_removed": true,
+          "fresh_application_reopen_seconds": 0.1498342270000137,
+          "immutable_publication_receipt_unchanged": true,
+          "native_reservations_released": true,
+          "observed_checkpoints": 45,
+          "operation_seconds": 0.7395328340000162,
+          "request_id": "1b4bae54c36b4190a60933975173ede3",
+          "resume_seconds": 2.5290871779999975,
+          "route": "LibraryApp.plan_import_batch/run_import_batch/resume_import",
+          "same_job": true,
+          "source": {
+            "asset_sha256": "980102d6ed64131bf532345f088e65e11a7d608470c478eb304bb887d8f512fe",
+            "edition": "97437f997473459ea39435c187a3c282",
+            "exact_source": true,
+            "revision": "80106e53c96ed1fc08764a78af828d1c44fbac0b61cf339bb3cb793bcf3a4c73",
+            "segments": 256
+          },
+          "status": "PASS",
+          "terminal_replay_seconds": 0.0010068200000148408,
+          "worker_peak_memory": "NOT_MEASURED; phase RSS belongs to the supervising measurement process."
+        },
+        "corpus_sha256": "5c6f1ca16bc8a22725780d6cbfee4f26aa23b09616afbb5cb7df7f6531334860",
+        "disk": {
+          "bytes": 44535952,
+          "directories": 11,
+          "files": 1081
+        },
+        "elapsed_seconds": 10.596766384999995,
+        "exact_public_retries": {
+          "count": 12,
+          "maximum_seconds": 0.3004218060000028,
+          "minimum_seconds": 0.2959125209999911,
+          "p50_seconds": 0.2978120579999768,
+          "p95_seconds": 0.3004218060000028,
+          "total_seconds": 3.578183231999958
+        },
+        "exit_code": 0,
+        "immutable_edition_replacement_refusals": {
+          "count": 12,
+          "maximum_seconds": 0.01196265300001187,
+          "minimum_seconds": 0.007042237999996814,
+          "p50_seconds": 0.007360928999986527,
+          "p95_seconds": 0.01196265300001187,
+          "total_seconds": 0.09330175699997767
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "operations",
+        "pid": 2284,
+        "process_peak_rss_bytes": 74784768,
+        "process_reaped": true,
+        "process_wall_seconds": 10.830824928999988,
+        "public_imports": {
+          "count": 12,
+          "maximum_seconds": 0.16043080500000428,
+          "minimum_seconds": 0.1557204160000083,
+          "p50_seconds": 0.1571773010000186,
+          "p95_seconds": 0.16043080500000428,
+          "total_seconds": 1.8912646680000194
+        },
+        "receipts": [
+          {
+            "asset_sha256": "206efb40bb8cef0f7349d04789694e2cd006207ad41387a4c9e721cfed7e695e",
+            "edition": "capacity-sample-0000",
+            "exact_source": true,
+            "revision": "ed4e6dd87ee80a66a3060dbec6d4fbbdf8d94633f13867c71ba3dc7f8aa008c0",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "660f125166663133b06079cff2d52e98af8ee92e9261a204038c571822440369",
+            "edition": "capacity-sample-0001",
+            "exact_source": true,
+            "revision": "21218027cb61f40a137d76353ae8c1ae418212e17c4c20ad5274d6b8a658a343",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "0fc2a10bb717313f232fb41b707dd42813e54a3b9d97530cc4b62b8a6648bc75",
+            "edition": "capacity-sample-0002",
+            "exact_source": true,
+            "revision": "df6bfdc8e9b348038aa06f2f046d3c458c700c391e177a8f4bc1436ffe7ca614",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "fb0717d8fd617ddc2fb1ae61ae14203fe8b4e5254f1072da2719737ba28f4785",
+            "edition": "capacity-sample-0003",
+            "exact_source": true,
+            "revision": "90f3128c87619da87b6f3e8fb5d85478db7edf668dbf3bec2b0e961df2b74cfb",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "816ba23b2b19b01d77272244e21467fa3613144d78a1e7b660232aeb7c1d146d",
+            "edition": "capacity-sample-0004",
+            "exact_source": true,
+            "revision": "c201cc87411cc8a7e6a7c1fdde3a29529e0967d03e450e186f532153072be9d1",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "d4698afa61577a02880efa6fc550409065f05f52fbdb088db672d8bbfb231dae",
+            "edition": "capacity-sample-0005",
+            "exact_source": true,
+            "revision": "f6035aa3768a7dc89b41c7a53389d3d55775b8ac25181a230770ea907afe2e6c",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "98ff79df5e7d2a9553d5a72aa98d70a0a9c7b69fff30ed25e5dec4d72143f580",
+            "edition": "capacity-sample-0006",
+            "exact_source": true,
+            "revision": "42dc9be22511ebae9c14dfb3b2cd9340f603047215244228b356e2a37af7d045",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "4f56c3959ded9f974cea642cb1d15bf848b46f53d2304052ca172d636e1902ac",
+            "edition": "capacity-sample-0007",
+            "exact_source": true,
+            "revision": "8a6137c9b3e248b1186ece934dbe7b2cb964fdd8d642a36e34670e3e58def838",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "d598bd381aa6ba4ad04fbbefe3c590dd49ff43a1cf4c86ff55a57bfef6fd05e7",
+            "edition": "capacity-sample-0008",
+            "exact_source": true,
+            "revision": "8495e4e3cba308ed9b757ab39dd46fca42aa4cfa0c8881e7a8d6ce2d57216b57",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "06d4dea2053a622cf33498060343c88ab378c8b41c0a911fb6afb18983be855a",
+            "edition": "capacity-sample-0009",
+            "exact_source": true,
+            "revision": "13ef8bca3af70aeb939dd21822d151a6d256308e19c5565dfa94249608d78c7e",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "488f43e84dd0d18b2c6228dad1b953cc6e02b3e7a00542e07b4cbc57f101568f",
+            "edition": "capacity-sample-0010",
+            "exact_source": true,
+            "revision": "2f57bc90da2d1c43dcb17027ac49d4e8cc9d9a180cdc52458ec062912bd32a9d",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "3613baa0418e9250066bcaf7c8ac949d5ee3792c8dd7f89b9f70b450d3197a45",
+            "edition": "capacity-sample-0011",
+            "exact_source": true,
+            "revision": "8023c08716f8922510252899ffc62e0872849c68da2027beef72ebfd5be8d777",
+            "segments": 2
+          }
+        ],
+        "requested_books": 1000,
+        "sample_workspace": "f0ca61422b7f456ca97c7b7caeb896f7",
+        "sampled_public_imports": 12,
+        "scope": "Separate sample workspace against the fully populated same database.",
+        "segments": 20000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 5139000,
+        "status": "PASS",
+        "throughput_scope": "Bounded public samples, not sustained construction of the declared corpus."
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "admission": {
+          "allowances": {
+            "asset_count": 100000,
+            "assets": 137438953472,
+            "checkpoints": 2097152,
+            "database": 68719476736,
+            "files": 250000,
+            "jobs": 100000,
+            "journal": 34359738368,
+            "journal_seconds": 3600,
+            "manifest": 67108864,
+            "pending": 68719476736
+          },
+          "capacity_profile": "large-source-v1",
+          "max_assets": 100000,
+          "max_catalog_asset_bytes": 137438953472,
+          "max_database_bytes": 68719476736,
+          "observed_assets": 1014,
+          "observed_catalog_asset_bytes": 9322507,
+          "observed_database_bytes": 26599424,
+          "profile": "Explicit supported complete-backup capacity selected by the caller.",
+          "status": "ADMITTED"
+        },
+        "all_manifest_files_verified": true,
+        "baseline_peak_rss_bytes": 39591936,
+        "books": 1000,
+        "bootstrap_seconds": 0.1491631410000025,
+        "catalog": {
+          "editions": 1014,
+          "ordered_identity_sha256": "cfa8f2eafcd731d131383eea78d5948fe5e0f3ffad05328d05fb2dd29711a4fd"
+        },
+        "corpus_sha256": "5c6f1ca16bc8a22725780d6cbfee4f26aa23b09616afbb5cb7df7f6531334860",
+        "create_seconds": 1.6501201929999922,
+        "disk": {
+          "bytes": 129601794,
+          "directories": 25,
+          "files": 3161
+        },
+        "elapsed_seconds": 5.229589936999986,
+        "exit_code": 0,
+        "manifest_sha256": "91e7fe1a55f763699318d81d2d68d2a6b63b76d275c81ce39e59bb54ea3b3c1b",
+        "old_absolute_root_absent": true,
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "backup",
+        "pid": 2290,
+        "process_peak_rss_bytes": 59674624,
+        "process_reaped": true,
+        "process_wall_seconds": 5.522283802000004,
+        "reading": {
+          "indices": [
+            0,
+            66,
+            133,
+            199,
+            266,
+            333,
+            399,
+            466,
+            532,
+            599,
+            666,
+            732,
+            799,
+            865,
+            932,
+            999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.0027656729999989693,
+            "minimum_seconds": 0.0024198009999736314,
+            "p50_seconds": 0.0024558060000003934,
+            "p95_seconds": 0.0027656729999989693,
+            "total_seconds": 0.03961814199996638
+          }
+        },
+        "requested_books": 1000,
+        "restore_seconds": 1.4036686669999767,
+        "restored_root_differs": true,
+        "retired_baseline_preserved": true,
+        "scope": "Actual complete library backup; not whole-machine migration.",
+        "segments": 20000,
+        "segments_per_book": 20,
+        "source_root_retired": true,
+        "source_utf8_bytes": 5139000,
+        "status": "PASS",
+        "verify_seconds": 0.9325227980000079
+      }
+    },
+    {
+      "kind": "MEASURED_TOTAL",
+      "value": {
+        "actual_status": "PASS",
+        "phases_not_run": [],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 1000,
+        "segments": 20000,
+        "sum_phase_wall_seconds": 54.852160107
+      }
+    },
+    {
+      "kind": "EXACT_ARTIFACT",
+      "value": {
+        "artifact_id": 15242283527,
+        "books": 10000,
+        "harness_sha256": "c3237e8242c30f628315f58829b58c3878beaac8dd9caac1df800c7ceb4894a4",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+        "job_id": 140817741062,
+        "members": [
+          "10000/backup.json",
+          "10000/backup.stderr.txt",
+          "10000/backup.stdout.txt",
+          "10000/build.json",
+          "10000/build.stderr.txt",
+          "10000/build.stdout.txt",
+          "10000/measure.json",
+          "10000/measure.stderr.txt",
+          "10000/measure.stdout.txt",
+          "10000/operations.json",
+          "10000/operations.stderr.txt",
+          "10000/operations.stdout.txt",
+          "10000/restart.json",
+          "10000/restart.stderr.txt",
+          "10000/restart.stdout.txt",
+          "benchmark.txt",
+          "configuration.json",
+          "declared-profile.json",
+          "library-corpus-scale.json",
+          "retention.json",
+          "tested-commit.txt",
+          "tested-tree.txt"
+        ],
+        "report_sha256": "ab94a6be1d44d51ef440e2deba9345c59ca1a3232b3435958a37b0205f46e15b",
+        "repository": "Oleksii-debug/AudioTacticalFPS",
+        "run_id": 46092769234,
+        "segments_per_book": 20,
+        "source_sha256": {
+          "bootstrap": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930",
+          "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+          "carr_library.backup_capacity": "12d38188e625a0106ac289a5d833d6f4302536f8c9898ad2fe285064a7d81aa5",
+          "carr_library.catalog.membership": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937",
+          "carr_library.catalog.read_views": "2ac472d3e302b6c463fe8ca0246f7fd979bf118ab11351acb1d612328f641f54",
+          "carr_library.catalog.registration": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef",
+          "carr_library.citations.text_attestation": "d93b6671454550e69420cf5f4d30c0de857ba0089398f555c5d0b859df1a2e8c",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.ingest.batches": "624575f70063e4081eccde7d70f2c281ca93cec79b8facaa463e4e5e6a9b8ab8",
+          "carr_library.ingest.pipeline": "7c922ad3d502c2724f7ace32c57b6ca146ec494749dd92b6936925a204931821",
+          "carr_library.ingest.publication": "09bd07902bd9e7e3ff5516dba11fcd15203f5f3b652b4cf9eb300815134b6808",
+          "carr_library.ingest.retained_assets": "825f0c76f66e9492854a81bc80f92d7ee97819d57730c1a7b089e25553565791",
+          "carr_library.ingest.worker": "d7076d7b15755384d8220333eed9317d79873be926ae96e9a8fca9abf4d9dd28",
+          "carr_library.ingest.writer_guard": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c",
+          "carr_library.library_backup": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7",
+          "carr_library.operations.broker": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882",
+          "carr_library.pending_backup": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b",
+          "carr_library.reader.reading_desk": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706",
+          "carr_library.search.literal": "ec844ef5e8e5149f0ee25ac77f2bf10da585bc57e9dcef17efb6c7cd8e795a4e",
+          "carr_library.search.paging": "e8e00968c2806a88370a0aed4dfb05d6fb7529d70bea75334dbd89353a3b6ea1",
+          "carr_library.storage.revisions": "bb17cbafbbca9e0663d4f308a0542bd228361b34737592b375f4e391d56c5698"
+        },
+        "tree_sha": "1793a664f1c0fdfc9b956f90ea90b1693a17707f",
+        "zip_bytes": 27019,
+        "zip_sha256": "15d8b14bf585b8734a97498fcbbeb23533206fe5abad529e909399d268acd5b1"
+      }
+    },
+    {
+      "kind": "MEASUREMENT_CONTEXT",
+      "value": {
+        "books": 10000,
+        "capacity": {
+          "backup_capacity_profile": "large-source-v1",
+          "complete_backup": true,
+          "construction": "retained-fixture",
+          "public_samples": 12
+        },
+        "case": {
+          "max_disk_bytes": 25769803776,
+          "min_free_bytes": 1073741824,
+          "phase_timeout": 3600,
+          "repeats": 9,
+          "result_page_size": 37,
+          "segment_bytes": 256,
+          "segments_per_book": 20
+        },
+        "claims": {
+          "backup_capacity": "Only an actual PASS backup phase qualifies its reported populated corpus.",
+          "cold_disk_latency": "NOT_MEASURED",
+          "native_gui_nvda": "NOT_RUN",
+          "neural_retrieval_quality": "NOT_MEASURED",
+          "pdf_ocr_audio": "NOT_RUN",
+          "power_loss_recovery": "NOT_RUN",
+          "real_world_document_diversity": "NOT_MEASURED",
+          "release_capacity": "NOT_ESTABLISHED_BY_THIS_HARNESS",
+          "sustained_declared_corpus_import_throughput": "NOT_MEASURED_BY_CAPACITY_SETUP_OR_BOUNDED_SAMPLES"
+        },
+        "environment": {
+          "logical_cpus": 4,
+          "machine": "x86_64",
+          "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+          "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+          "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+          "sqlite": "3.45.1"
+        },
+        "method": {
+          "backup": "Explicit current complete-backup/verify/new-root restore, only within supported product bounds.",
+          "cache_temperature": "Fresh interpreter is not cold disk: OS page cache is retained.",
+          "corpus": "Deterministic retained TXT originals through bounded Catalog/Storage fixture transactions and full integrity audit; not public import throughput.",
+          "disk_budget": "Cooperative measured checkpoint after every 64 imports and at phase boundaries; not a filesystem quota.",
+          "memory": "Whole-process high-water RSS via the unchanged semantic-cache measurement kernel.",
+          "percentiles": "Nearest-rank empirical P50/P95, with actual sample count; no acceptance latency threshold.",
+          "public_operations": "Separate measured public imports, exact retries, refused immutable replacement and checkpoint cancellation/retained-source resume after baseline reads.",
+          "restart": "Build, traversal and restart run in distinct owned interpreter processes.",
+          "scope": "One selected workspace plus a deliberately excluded workspace containing the same query.",
+          "search": "Lexical terms; exact full result/source continuation; ranking remains local to each source window.",
+          "source_checks": "All retained source hashes and catalog identities before/after measurements; quote actions sampled per result page.",
+          "timeout": "Cooperative phase deadline plus a direct-interpreter outer timeout; remaining phases stop on failure."
+        },
+        "mode": "source",
+        "segments_per_book": 20
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39456768,
+        "books": 10000,
+        "bootstrap_seconds": 0.27047608299999837,
+        "construction": "retained-fixture",
+        "corpus_sha256": "ce1576dcf3ed330bce54cd4e5e93463b35d9248a86ee7613bcd799cb23dfd523",
+        "disk": {
+          "bytes": 227731036,
+          "directories": 2,
+          "files": 10005
+        },
+        "elapsed_seconds": 52.606485084,
+        "exit_code": 0,
+        "imports": {
+          "count": 0,
+          "p50_seconds": null,
+          "p95_seconds": null,
+          "status": "NOT_MEASURED_BY_FIXTURE_CONSTRUCTION",
+          "total_seconds": 0
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "build",
+        "pid": 2396,
+        "process_peak_rss_bytes": 42692608,
+        "process_reaped": true,
+        "process_wall_seconds": 52.978602179,
+        "requested_books": 10000,
+        "segments": 200000,
+        "segments_per_book": 20,
+        "setup": {
+          "committed_batches": 40,
+          "full_integrity_seconds": 2.7815913780000017,
+          "maximum_books_per_transaction": 250,
+          "maximum_declared_source_bytes_per_transaction": 16777216,
+          "method": "RetainedAssets, Catalog/register_batch and Storage.stage_revision"
+        },
+        "source_utf8_bytes": 51390000,
+        "startup_seconds": 0.029121708999994667,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39411712,
+        "books": 10000,
+        "bootstrap_seconds": 0.2648837640000039,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.0001015610000081324,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "ce1576dcf3ed330bce54cd4e5e93463b35d9248a86ee7613bcd799cb23dfd523",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 227737458,
+          "directories": 2,
+          "files": 10009
+        },
+        "elapsed_seconds": 695.013315033,
+        "exit_code": 0,
+        "final_integrity_seconds": 5.484603814000025,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.10717776900000331,
+          "minimum_seconds": 0.10336615500000335,
+          "p50_seconds": 0.10479612299999985,
+          "p95_seconds": 0.10717776900000331,
+          "total_seconds": 0.9459673200000225
+        },
+        "full_traversal": {
+          "copied_result_samples": 6000,
+          "elapsed_seconds": 679.103380537,
+          "exact_no_loss_no_duplicates": true,
+          "latency": {
+            "count": 6000,
+            "maximum_seconds": 0.13528383599998506,
+            "minimum_seconds": 0.0952642190000006,
+            "p50_seconds": 0.10475171899999225,
+            "p95_seconds": 0.12457460899997841,
+            "total_seconds": 650.946997760998
+          },
+          "requests": 6000,
+          "results": 200000,
+          "source_windows": 2000
+        },
+        "initial_integrity_seconds": 5.475651142000004,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.04932219100000168,
+          "minimum_seconds": 0.04864240399999176,
+          "p50_seconds": 0.0488240640000015,
+          "p95_seconds": 0.04932219100000168,
+          "total_seconds": 0.4404138879999948
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "measure",
+        "pid": 2462,
+        "process_peak_rss_bytes": 46129152,
+        "process_reaped": true,
+        "process_wall_seconds": 695.375783726,
+        "reading": {
+          "indices": [
+            0,
+            666,
+            1333,
+            1999,
+            2666,
+            3333,
+            3999,
+            4666,
+            5332,
+            5999,
+            6666,
+            7332,
+            7999,
+            8665,
+            9332,
+            9999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.004912180999994575,
+            "minimum_seconds": 0.0046185700000052066,
+            "p50_seconds": 0.00466132000001096,
+            "p95_seconds": 0.004912180999994575,
+            "total_seconds": 0.07492515599997773
+          }
+        },
+        "requested_books": 10000,
+        "segments": 200000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 51390000,
+        "startup_seconds": 2.743526461000002,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39329792,
+        "books": 10000,
+        "bootstrap_seconds": 0.2652240319999919,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.00009862599995358323,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "ce1576dcf3ed330bce54cd4e5e93463b35d9248a86ee7613bcd799cb23dfd523",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 227744455,
+          "directories": 2,
+          "files": 10012
+        },
+        "elapsed_seconds": 15.794076655000026,
+        "exit_code": 0,
+        "final_integrity_seconds": 5.4522472450000805,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.10731919600004858,
+          "minimum_seconds": 0.10243994900008602,
+          "p50_seconds": 0.1031039959999589,
+          "p95_seconds": 0.10731919600004858,
+          "total_seconds": 0.9328949140000304
+        },
+        "full_traversal": {
+          "reason": "Full traversal belongs to the previous measured process.",
+          "status": "NOT_REPEATED"
+        },
+        "initial_integrity_seconds": 5.4340107660000285,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.049003065000079005,
+          "minimum_seconds": 0.04770833100008076,
+          "p50_seconds": 0.048313448000044446,
+          "p95_seconds": 0.049003065000079005,
+          "total_seconds": 0.43542751400002544
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "restart",
+        "pid": 2593,
+        "process_peak_rss_bytes": 44978176,
+        "process_reaped": true,
+        "process_wall_seconds": 16.155221016999917,
+        "reading": {
+          "indices": [
+            0,
+            666,
+            1333,
+            1999,
+            2666,
+            3333,
+            3999,
+            4666,
+            5332,
+            5999,
+            6666,
+            7332,
+            7999,
+            8665,
+            9332,
+            9999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.004941134000091552,
+            "minimum_seconds": 0.004560278999974798,
+            "p50_seconds": 0.004612546999965161,
+            "p95_seconds": 0.004941134000091552,
+            "total_seconds": 0.07422269100038648
+          }
+        },
+        "requested_books": 10000,
+        "segments": 200000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 51390000,
+        "startup_seconds": 2.7281798730000446,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39440384,
+        "books": 10000,
+        "bootstrap_seconds": 0.2639660789999425,
+        "checkpoint_recovery": {
+          "actual_owned_import_worker": true,
+          "cancellation_seconds": 0.022151913000016066,
+          "checkpoint_prefix_preserved": true,
+          "external_original_removed": true,
+          "fresh_application_reopen_seconds": 2.7701291009999522,
+          "immutable_publication_receipt_unchanged": true,
+          "native_reservations_released": true,
+          "observed_checkpoints": 43,
+          "operation_seconds": 3.7604982770000106,
+          "request_id": "04e00a9a87f842f5b3bf39caee793868",
+          "resume_seconds": 9.532750884000052,
+          "route": "LibraryApp.plan_import_batch/run_import_batch/resume_import",
+          "same_job": true,
+          "source": {
+            "asset_sha256": "980102d6ed64131bf532345f088e65e11a7d608470c478eb304bb887d8f512fe",
+            "edition": "d81fad99da7a419e900a1ff565304a5e",
+            "exact_source": true,
+            "revision": "8a151f6b057bf232422ddfb76a7075c5e642a88e4a435dbae8e2ff492b1b7673",
+            "segments": 256
+          },
+          "status": "PASS",
+          "terminal_replay_seconds": 0.0017917959999067534,
+          "worker_peak_memory": "NOT_MEASURED; phase RSS belongs to the supervising measurement process."
+        },
+        "corpus_sha256": "ce1576dcf3ed330bce54cd4e5e93463b35d9248a86ee7613bcd799cb23dfd523",
+        "disk": {
+          "bytes": 249277601,
+          "directories": 11,
+          "files": 10081
+        },
+        "elapsed_seconds": 133.19804805900003,
+        "exact_public_retries": {
+          "count": 12,
+          "maximum_seconds": 5.527243260999967,
+          "minimum_seconds": 5.44476131600004,
+          "p50_seconds": 5.475869032999981,
+          "p95_seconds": 5.527243260999967,
+          "total_seconds": 65.75823553099974
+        },
+        "exit_code": 0,
+        "immutable_edition_replacement_refusals": {
+          "count": 12,
+          "maximum_seconds": 0.014835966999953598,
+          "minimum_seconds": 0.00992954700006976,
+          "p50_seconds": 0.01031273700004931,
+          "p95_seconds": 0.014835966999953598,
+          "total_seconds": 0.12957540900004005
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "operations",
+        "pid": 2594,
+        "process_peak_rss_bytes": 73789440,
+        "process_reaped": true,
+        "process_wall_seconds": 133.86820248900005,
+        "public_imports": {
+          "count": 12,
+          "maximum_seconds": 2.7808161309999377,
+          "minimum_seconds": 2.736772401000053,
+          "p50_seconds": 2.747051961000011,
+          "p95_seconds": 2.7808161309999377,
+          "total_seconds": 33.04726512100012
+        },
+        "receipts": [
+          {
+            "asset_sha256": "206efb40bb8cef0f7349d04789694e2cd006207ad41387a4c9e721cfed7e695e",
+            "edition": "capacity-sample-0000",
+            "exact_source": true,
+            "revision": "f41b2090c67f35e57b2c501eb133b6efe71e41750d94e891d494a637a79093bc",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "660f125166663133b06079cff2d52e98af8ee92e9261a204038c571822440369",
+            "edition": "capacity-sample-0001",
+            "exact_source": true,
+            "revision": "060099e86339add22e89969e659f6c587a8d13ab6253f6449b040d44664360ff",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "0fc2a10bb717313f232fb41b707dd42813e54a3b9d97530cc4b62b8a6648bc75",
+            "edition": "capacity-sample-0002",
+            "exact_source": true,
+            "revision": "556fea940dcba0e090987fe6b5ad16594cea238081159e76739512f21e43eeba",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "fb0717d8fd617ddc2fb1ae61ae14203fe8b4e5254f1072da2719737ba28f4785",
+            "edition": "capacity-sample-0003",
+            "exact_source": true,
+            "revision": "f17f2e7fb67fd6e5c741e6b2d9fa620cb1b3c37b2eaf9902102df4543937d9f2",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "816ba23b2b19b01d77272244e21467fa3613144d78a1e7b660232aeb7c1d146d",
+            "edition": "capacity-sample-0004",
+            "exact_source": true,
+            "revision": "5d3fb818fd2d5fcee3792ab7d85849073d4ca3c1be9ef3ca969085cca1840d60",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "d4698afa61577a02880efa6fc550409065f05f52fbdb088db672d8bbfb231dae",
+            "edition": "capacity-sample-0005",
+            "exact_source": true,
+            "revision": "176774c8737bbdc24ace12e4cefff91271ecbbe31dd311db2f29967d2c1109b3",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "98ff79df5e7d2a9553d5a72aa98d70a0a9c7b69fff30ed25e5dec4d72143f580",
+            "edition": "capacity-sample-0006",
+            "exact_source": true,
+            "revision": "5f3755671d06bc4eb6eed98f03f45b3d6960d37456763d2ea1c564955045c0be",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "4f56c3959ded9f974cea642cb1d15bf848b46f53d2304052ca172d636e1902ac",
+            "edition": "capacity-sample-0007",
+            "exact_source": true,
+            "revision": "f3c64033396c61ccb40f3905119b61e1485aaeda2602291c38fa5c02a1ab2c45",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "d598bd381aa6ba4ad04fbbefe3c590dd49ff43a1cf4c86ff55a57bfef6fd05e7",
+            "edition": "capacity-sample-0008",
+            "exact_source": true,
+            "revision": "5f839c53a863bb36ac53a3eae9d79d368da685df1fb987639fc54437eb95b49b",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "06d4dea2053a622cf33498060343c88ab378c8b41c0a911fb6afb18983be855a",
+            "edition": "capacity-sample-0009",
+            "exact_source": true,
+            "revision": "0686627846698e6fe142543270bd35f3918ef1ea5c3e8d8b746ac4c59b388387",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "488f43e84dd0d18b2c6228dad1b953cc6e02b3e7a00542e07b4cbc57f101568f",
+            "edition": "capacity-sample-0010",
+            "exact_source": true,
+            "revision": "abf62f0e0f3bd7e70e2eca33772fc59ee48f5a90b46dd7eeb5d05947265e7d32",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "3613baa0418e9250066bcaf7c8ac949d5ee3792c8dd7f89b9f70b450d3197a45",
+            "edition": "capacity-sample-0011",
+            "exact_source": true,
+            "revision": "95241dda18b57d1444d29efcbf760d229cbf2d37a7728ff239dd3569fe8f3590",
+            "segments": 2
+          }
+        ],
+        "requested_books": 10000,
+        "sample_workspace": "e5a4c46ec8484eaa9bc07743a0fd2db8",
+        "sampled_public_imports": 12,
+        "scope": "Separate sample workspace against the fully populated same database.",
+        "segments": 200000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 51390000,
+        "status": "PASS",
+        "throughput_scope": "Bounded public samples, not sustained construction of the declared corpus."
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "admission": {
+          "allowances": {
+            "asset_count": 100000,
+            "assets": 137438953472,
+            "checkpoints": 2097152,
+            "database": 68719476736,
+            "files": 250000,
+            "jobs": 100000,
+            "journal": 34359738368,
+            "journal_seconds": 3600,
+            "manifest": 67108864,
+            "pending": 68719476736
+          },
+          "capacity_profile": "large-source-v1",
+          "max_assets": 100000,
+          "max_catalog_asset_bytes": 137438953472,
+          "max_database_bytes": 68719476736,
+          "observed_assets": 10014,
+          "observed_catalog_asset_bytes": 55573507,
+          "observed_database_bytes": 185090048,
+          "profile": "Explicit supported complete-backup capacity selected by the caller.",
+          "status": "ADMITTED"
+        },
+        "all_manifest_files_verified": true,
+        "baseline_peak_rss_bytes": 39358464,
+        "books": 10000,
+        "bootstrap_seconds": 0.2645823459999974,
+        "catalog": {
+          "editions": 10014,
+          "ordered_identity_sha256": "6a35935b0dc2e7c274f770de8916ab653149b12c4a43dc7ac5b1b57e27ec06d4"
+        },
+        "corpus_sha256": "ce1576dcf3ed330bce54cd4e5e93463b35d9248a86ee7613bcd799cb23dfd523",
+        "create_seconds": 17.250773134000042,
+        "disk": {
+          "bytes": 745608707,
+          "directories": 25,
+          "files": 30161
+        },
+        "elapsed_seconds": 64.36277195599996,
+        "exit_code": 0,
+        "manifest_sha256": "1671942fbd20b00edf73d9c46a20816e3d0b86f93e4493f33513460ab93d4d8a",
+        "old_absolute_root_absent": true,
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "backup",
+        "pid": 2675,
+        "process_peak_rss_bytes": 77758464,
+        "process_reaped": true,
+        "process_wall_seconds": 65.52832006499989,
+        "reading": {
+          "indices": [
+            0,
+            666,
+            1333,
+            1999,
+            2666,
+            3333,
+            3999,
+            4666,
+            5332,
+            5999,
+            6666,
+            7332,
+            7999,
+            8665,
+            9332,
+            9999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.00502671599997484,
+            "minimum_seconds": 0.004572131000031732,
+            "p50_seconds": 0.0046082290000413195,
+            "p95_seconds": 0.00502671599997484,
+            "total_seconds": 0.07469523700012815
+          }
+        },
+        "requested_books": 10000,
+        "restore_seconds": 18.883011047999958,
+        "restored_root_differs": true,
+        "retired_baseline_preserved": true,
+        "scope": "Actual complete library backup; not whole-machine migration.",
+        "segments": 200000,
+        "segments_per_book": 20,
+        "source_root_retired": true,
+        "source_utf8_bytes": 51390000,
+        "status": "PASS",
+        "verify_seconds": 8.580452194999907
+      }
+    },
+    {
+      "kind": "MEASURED_TOTAL",
+      "value": {
+        "actual_status": "PASS",
+        "phases_not_run": [],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 10000,
+        "segments": 200000,
+        "sum_phase_wall_seconds": 963.9061294759998
+      }
+    },
+    {
+      "kind": "EXACT_ARTIFACT",
+      "value": {
+        "artifact_id": 15244590371,
+        "books": 50000,
+        "harness_sha256": "c3237e8242c30f628315f58829b58c3878beaac8dd9caac1df800c7ceb4894a4",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+        "job_id": 140817741095,
+        "members": [
+          "50000/backup.json",
+          "50000/backup.stderr.txt",
+          "50000/backup.stdout.txt",
+          "50000/build.json",
+          "50000/build.stderr.txt",
+          "50000/build.stdout.txt",
+          "50000/measure.json",
+          "50000/measure.stderr.txt",
+          "50000/measure.stdout.txt",
+          "50000/operations.json",
+          "50000/operations.stderr.txt",
+          "50000/operations.stdout.txt",
+          "50000/restart.json",
+          "50000/restart.stderr.txt",
+          "50000/restart.stdout.txt",
+          "benchmark.txt",
+          "configuration.json",
+          "declared-profile.json",
+          "library-corpus-scale.json",
+          "retention.json",
+          "tested-commit.txt",
+          "tested-tree.txt"
+        ],
+        "report_sha256": "533977e80dd548ad0ecd58b8c6605f4ebd2d90c7ae11fbe7f362167a47f8c9a6",
+        "repository": "Oleksii-debug/AudioTacticalFPS",
+        "run_id": 46092769234,
+        "segments_per_book": 20,
+        "source_sha256": {
+          "bootstrap": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930",
+          "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+          "carr_library.backup_capacity": "12d38188e625a0106ac289a5d833d6f4302536f8c9898ad2fe285064a7d81aa5",
+          "carr_library.catalog.membership": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937",
+          "carr_library.catalog.read_views": "2ac472d3e302b6c463fe8ca0246f7fd979bf118ab11351acb1d612328f641f54",
+          "carr_library.catalog.registration": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef",
+          "carr_library.citations.text_attestation": "d93b6671454550e69420cf5f4d30c0de857ba0089398f555c5d0b859df1a2e8c",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.ingest.batches": "624575f70063e4081eccde7d70f2c281ca93cec79b8facaa463e4e5e6a9b8ab8",
+          "carr_library.ingest.pipeline": "7c922ad3d502c2724f7ace32c57b6ca146ec494749dd92b6936925a204931821",
+          "carr_library.ingest.publication": "09bd07902bd9e7e3ff5516dba11fcd15203f5f3b652b4cf9eb300815134b6808",
+          "carr_library.ingest.retained_assets": "825f0c76f66e9492854a81bc80f92d7ee97819d57730c1a7b089e25553565791",
+          "carr_library.ingest.worker": "d7076d7b15755384d8220333eed9317d79873be926ae96e9a8fca9abf4d9dd28",
+          "carr_library.ingest.writer_guard": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c",
+          "carr_library.library_backup": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7",
+          "carr_library.operations.broker": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882",
+          "carr_library.pending_backup": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b",
+          "carr_library.reader.reading_desk": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706",
+          "carr_library.search.literal": "ec844ef5e8e5149f0ee25ac77f2bf10da585bc57e9dcef17efb6c7cd8e795a4e",
+          "carr_library.search.paging": "e8e00968c2806a88370a0aed4dfb05d6fb7529d70bea75334dbd89353a3b6ea1",
+          "carr_library.storage.revisions": "bb17cbafbbca9e0663d4f308a0542bd228361b34737592b375f4e391d56c5698"
+        },
+        "tree_sha": "1793a664f1c0fdfc9b956f90ea90b1693a17707f",
+        "zip_bytes": 27133,
+        "zip_sha256": "767941da1da413586976f46bda5a3b81ccdb7246487b9a9effed58f3ff3b14f1"
+      }
+    },
+    {
+      "kind": "MEASUREMENT_CONTEXT",
+      "value": {
+        "books": 50000,
+        "capacity": {
+          "backup_capacity_profile": "large-source-v1",
+          "complete_backup": true,
+          "construction": "retained-fixture",
+          "public_samples": 12
+        },
+        "case": {
+          "max_disk_bytes": 25769803776,
+          "min_free_bytes": 1073741824,
+          "phase_timeout": 3600,
+          "repeats": 9,
+          "result_page_size": 37,
+          "segment_bytes": 256,
+          "segments_per_book": 20
+        },
+        "claims": {
+          "backup_capacity": "Only an actual PASS backup phase qualifies its reported populated corpus.",
+          "cold_disk_latency": "NOT_MEASURED",
+          "native_gui_nvda": "NOT_RUN",
+          "neural_retrieval_quality": "NOT_MEASURED",
+          "pdf_ocr_audio": "NOT_RUN",
+          "power_loss_recovery": "NOT_RUN",
+          "real_world_document_diversity": "NOT_MEASURED",
+          "release_capacity": "NOT_ESTABLISHED_BY_THIS_HARNESS",
+          "sustained_declared_corpus_import_throughput": "NOT_MEASURED_BY_CAPACITY_SETUP_OR_BOUNDED_SAMPLES"
+        },
+        "environment": {
+          "logical_cpus": 4,
+          "machine": "x86_64",
+          "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+          "platform": "Linux-7.0.0-1018-aws-x86_64-with-glibc2.39",
+          "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+          "sqlite": "3.45.1"
+        },
+        "method": {
+          "backup": "Explicit current complete-backup/verify/new-root restore, only within supported product bounds.",
+          "cache_temperature": "Fresh interpreter is not cold disk: OS page cache is retained.",
+          "corpus": "Deterministic retained TXT originals through bounded Catalog/Storage fixture transactions and full integrity audit; not public import throughput.",
+          "disk_budget": "Cooperative measured checkpoint after every 64 imports and at phase boundaries; not a filesystem quota.",
+          "memory": "Whole-process high-water RSS via the unchanged semantic-cache measurement kernel.",
+          "percentiles": "Nearest-rank empirical P50/P95, with actual sample count; no acceptance latency threshold.",
+          "public_operations": "Separate measured public imports, exact retries, refused immutable replacement and checkpoint cancellation/retained-source resume after baseline reads.",
+          "restart": "Build, traversal and restart run in distinct owned interpreter processes.",
+          "scope": "One selected workspace plus a deliberately excluded workspace containing the same query.",
+          "search": "Lexical terms; exact full result/source continuation; ranking remains local to each source window.",
+          "source_checks": "All retained source hashes and catalog identities before/after measurements; quote actions sampled per result page.",
+          "timeout": "Cooperative phase deadline plus a direct-interpreter outer timeout; remaining phases stop on failure."
+        },
+        "mode": "source",
+        "segments_per_book": 20
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39378944,
+        "books": 50000,
+        "bootstrap_seconds": 0.17399932899999726,
+        "construction": "retained-fixture",
+        "corpus_sha256": "a0de5e0a6d15ea719f06f49dfbeaf9ebf3ca48ab748580862a3b9ba1f3995716",
+        "disk": {
+          "bytes": 1138478876,
+          "directories": 2,
+          "files": 50005
+        },
+        "elapsed_seconds": 339.977603393,
+        "exit_code": 0,
+        "imports": {
+          "count": 0,
+          "p50_seconds": null,
+          "p95_seconds": null,
+          "status": "NOT_MEASURED_BY_FIXTURE_CONSTRUCTION",
+          "total_seconds": 0
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "build",
+        "pid": 2291,
+        "process_peak_rss_bytes": 42418176,
+        "process_reaped": true,
+        "process_wall_seconds": 340.259210539,
+        "requested_books": 50000,
+        "segments": 1000000,
+        "segments_per_book": 20,
+        "setup": {
+          "committed_batches": 200,
+          "full_integrity_seconds": 9.458720804000052,
+          "maximum_books_per_transaction": 250,
+          "maximum_declared_source_bytes_per_transaction": 16777216,
+          "method": "RetainedAssets, Catalog/register_batch and Storage.stage_revision"
+        },
+        "source_utf8_bytes": 256950000,
+        "startup_seconds": 0.02000468699998237,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39378944,
+        "books": 50000,
+        "bootstrap_seconds": 0.17268288399998255,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.00007010800004536577,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "a0de5e0a6d15ea719f06f49dfbeaf9ebf3ca48ab748580862a3b9ba1f3995716",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 1138485301,
+          "directories": 2,
+          "files": 50009
+        },
+        "elapsed_seconds": 2632.451346432,
+        "exit_code": 0,
+        "final_integrity_seconds": 13.929670336000072,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.09155661999994891,
+          "minimum_seconds": 0.08559079200000497,
+          "p50_seconds": 0.08631668999998965,
+          "p95_seconds": 0.09155661999994891,
+          "total_seconds": 0.7811020479999797
+        },
+        "full_traversal": {
+          "copied_result_samples": 30000,
+          "elapsed_seconds": 2592.014440713,
+          "exact_no_loss_no_duplicates": true,
+          "latency": {
+            "count": 30000,
+            "maximum_seconds": 0.10161688200014396,
+            "minimum_seconds": 0.06629283099982786,
+            "p50_seconds": 0.08624318200008929,
+            "p95_seconds": 0.0983765900000435,
+            "total_seconds": 2508.630431527994
+          },
+          "requests": 30000,
+          "results": 1000000,
+          "source_windows": 10000
+        },
+        "initial_integrity_seconds": 13.68048965700001,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.06683852300000126,
+          "minimum_seconds": 0.06581520899999305,
+          "p50_seconds": 0.06634614000000738,
+          "p95_seconds": 0.06683852300000126,
+          "total_seconds": 0.5971761000000129
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "measure",
+        "pid": 2356,
+        "process_peak_rss_bytes": 47755264,
+        "process_reaped": true,
+        "process_wall_seconds": 2632.716806656,
+        "reading": {
+          "indices": [
+            0,
+            3333,
+            6666,
+            9999,
+            13333,
+            16666,
+            19999,
+            23332,
+            26666,
+            29999,
+            33332,
+            36665,
+            39999,
+            43332,
+            46665,
+            49999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.003152022999984183,
+            "minimum_seconds": 0.002947273000017958,
+            "p50_seconds": 0.002984568999977455,
+            "p95_seconds": 0.003152022999984183,
+            "total_seconds": 0.047977773999946294
+          }
+        },
+        "requested_books": 50000,
+        "segments": 1000000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 256950000,
+        "startup_seconds": 9.245357246000026,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39387136,
+        "books": 50000,
+        "bootstrap_seconds": 0.17565690599985828,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.00010387699967395747,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "a0de5e0a6d15ea719f06f49dfbeaf9ebf3ca48ab748580862a3b9ba1f3995716",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 1138492326,
+          "directories": 2,
+          "files": 50012
+        },
+        "elapsed_seconds": 40.77805863699996,
+        "exit_code": 0,
+        "final_integrity_seconds": 14.004281031999653,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.09056018999990556,
+          "minimum_seconds": 0.08756725900002493,
+          "p50_seconds": 0.08877716200004215,
+          "p95_seconds": 0.09056018999990556,
+          "total_seconds": 0.7989472629992633
+        },
+        "full_traversal": {
+          "reason": "Full traversal belongs to the previous measured process.",
+          "status": "NOT_REPEATED"
+        },
+        "initial_integrity_seconds": 13.85677008599987,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.0684124259996679,
+          "minimum_seconds": 0.06740774899981261,
+          "p50_seconds": 0.06774454400010654,
+          "p95_seconds": 0.0684124259996679,
+          "total_seconds": 0.6110291100003451
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "restart",
+        "pid": 2674,
+        "process_peak_rss_bytes": 46702592,
+        "process_reaped": true,
+        "process_wall_seconds": 41.03392176899979,
+        "reading": {
+          "indices": [
+            0,
+            3333,
+            6666,
+            9999,
+            13333,
+            16666,
+            19999,
+            23332,
+            26666,
+            29999,
+            33332,
+            36665,
+            39999,
+            43332,
+            46665,
+            49999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.003313021999929333,
+            "minimum_seconds": 0.0029173339999033487,
+            "p50_seconds": 0.002992577999975765,
+            "p95_seconds": 0.003313021999929333,
+            "total_seconds": 0.04830116600032852
+          }
+        },
+        "requested_books": 50000,
+        "segments": 1000000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 256950000,
+        "startup_seconds": 9.301058079000086,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39419904,
+        "books": 50000,
+        "bootstrap_seconds": 0.1755870199999663,
+        "checkpoint_recovery": {
+          "actual_owned_import_worker": true,
+          "cancellation_seconds": 0.010728009000104066,
+          "checkpoint_prefix_preserved": true,
+          "external_original_removed": true,
+          "fresh_application_reopen_seconds": 9.358740993000083,
+          "immutable_publication_receipt_unchanged": true,
+          "native_reservations_released": true,
+          "observed_checkpoints": 24,
+          "operation_seconds": 9.964139847999832,
+          "request_id": "2ceb059034634599808d770047057c90",
+          "resume_seconds": 21.277570796999953,
+          "route": "LibraryApp.plan_import_batch/run_import_batch/resume_import",
+          "same_job": true,
+          "source": {
+            "asset_sha256": "980102d6ed64131bf532345f088e65e11a7d608470c478eb304bb887d8f512fe",
+            "edition": "20ffd76af2b345e0a729d0b66880b115",
+            "exact_source": true,
+            "revision": "7d1260645d3d09a84379be81873f05d7722e7306aefdd4bb9932f3db4bbe21dd",
+            "segments": 256
+          },
+          "status": "PASS",
+          "terminal_replay_seconds": 0.0012131439998483984,
+          "worker_peak_memory": "NOT_MEASURED; phase RSS belongs to the supervising measurement process."
+        },
+        "corpus_sha256": "a0de5e0a6d15ea719f06f49dfbeaf9ebf3ca48ab748580862a3b9ba1f3995716",
+        "disk": {
+          "bytes": 1160021387,
+          "directories": 11,
+          "files": 50081
+        },
+        "elapsed_seconds": 423.5578258129999,
+        "exact_public_retries": {
+          "count": 12,
+          "maximum_seconds": 18.746279750999747,
+          "minimum_seconds": 18.618930040000123,
+          "p50_seconds": 18.634084541999982,
+          "p95_seconds": 18.746279750999747,
+          "total_seconds": 223.8234200300003
+        },
+        "exit_code": 0,
+        "immutable_edition_replacement_refusals": {
+          "count": 12,
+          "maximum_seconds": 0.007037748999664473,
+          "minimum_seconds": 0.006088531000386865,
+          "p50_seconds": 0.006293295999967086,
+          "p95_seconds": 0.007037748999664473,
+          "total_seconds": 0.07709159199930582
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "operations",
+        "pid": 2678,
+        "process_peak_rss_bytes": 73699328,
+        "process_reaped": true,
+        "process_wall_seconds": 424.5669056730003,
+        "public_imports": {
+          "count": 12,
+          "maximum_seconds": 9.38446632599971,
+          "minimum_seconds": 9.26084864700033,
+          "p50_seconds": 9.339978410000185,
+          "p95_seconds": 9.38446632599971,
+          "total_seconds": 112.02149175399927
+        },
+        "receipts": [
+          {
+            "asset_sha256": "206efb40bb8cef0f7349d04789694e2cd006207ad41387a4c9e721cfed7e695e",
+            "edition": "capacity-sample-0000",
+            "exact_source": true,
+            "revision": "6b0af103323959e2e040c794270ee38a2832b86bba038aaddb6185f70ae4d32d",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "660f125166663133b06079cff2d52e98af8ee92e9261a204038c571822440369",
+            "edition": "capacity-sample-0001",
+            "exact_source": true,
+            "revision": "394c26da5e72e5c2e2f17944aa6f3efa4750bd125633d8810e2650bc2d8b0126",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "0fc2a10bb717313f232fb41b707dd42813e54a3b9d97530cc4b62b8a6648bc75",
+            "edition": "capacity-sample-0002",
+            "exact_source": true,
+            "revision": "d57d3bd41d500ab936f25067eb061da0c52908b228f7e639fc5263fc94b4789d",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "fb0717d8fd617ddc2fb1ae61ae14203fe8b4e5254f1072da2719737ba28f4785",
+            "edition": "capacity-sample-0003",
+            "exact_source": true,
+            "revision": "7676fc1f3e2d91b9f16cc14342b4ce083f71795f25ec490b7b30f7d4d9bd18a5",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "816ba23b2b19b01d77272244e21467fa3613144d78a1e7b660232aeb7c1d146d",
+            "edition": "capacity-sample-0004",
+            "exact_source": true,
+            "revision": "a1570b6dcb959427953185e4144c61012511a4df3dd31786840f230fb0f1d0c1",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "d4698afa61577a02880efa6fc550409065f05f52fbdb088db672d8bbfb231dae",
+            "edition": "capacity-sample-0005",
+            "exact_source": true,
+            "revision": "24f2e0e6703937d4e4e7da04c518307d7ba1191300081adf71c58ad9189b45b1",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "98ff79df5e7d2a9553d5a72aa98d70a0a9c7b69fff30ed25e5dec4d72143f580",
+            "edition": "capacity-sample-0006",
+            "exact_source": true,
+            "revision": "51cacbbe2fcdd6a5ca9b9dd9bf1c7e0a2272dda1bcff16f2e7a1e793d583ff73",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "4f56c3959ded9f974cea642cb1d15bf848b46f53d2304052ca172d636e1902ac",
+            "edition": "capacity-sample-0007",
+            "exact_source": true,
+            "revision": "5988bdd02212d9d65a81ebf5ead62fd4ec5c989ef3d3530cba1c38ff5d816fce",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "d598bd381aa6ba4ad04fbbefe3c590dd49ff43a1cf4c86ff55a57bfef6fd05e7",
+            "edition": "capacity-sample-0008",
+            "exact_source": true,
+            "revision": "7948579a21ddf5cd146ecf9158c1d2c4122d4970ee1ad2692f57ef0ac0144522",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "06d4dea2053a622cf33498060343c88ab378c8b41c0a911fb6afb18983be855a",
+            "edition": "capacity-sample-0009",
+            "exact_source": true,
+            "revision": "a0d60f8fa5dfdbaa98a340dc5f8b99bc6ab8068bf5292b0d7e5fef636e4dcf27",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "488f43e84dd0d18b2c6228dad1b953cc6e02b3e7a00542e07b4cbc57f101568f",
+            "edition": "capacity-sample-0010",
+            "exact_source": true,
+            "revision": "4955ee1c6fb621c8e4d3a1180de1e582c2c03d4a2cd8441d0bf434434419c55b",
+            "segments": 2
+          },
+          {
+            "asset_sha256": "3613baa0418e9250066bcaf7c8ac949d5ee3792c8dd7f89b9f70b450d3197a45",
+            "edition": "capacity-sample-0011",
+            "exact_source": true,
+            "revision": "fbe4931cf5aa28712837b0afbfbeda489c1b06dceb7a1da0ea9e2c75716cf890",
+            "segments": 2
+          }
+        ],
+        "requested_books": 50000,
+        "sample_workspace": "2948bf26ad164d9eb46b50875ac6e091",
+        "sampled_public_imports": 12,
+        "scope": "Separate sample workspace against the fully populated same database.",
+        "segments": 1000000,
+        "segments_per_book": 20,
+        "source_utf8_bytes": 256950000,
+        "status": "PASS",
+        "throughput_scope": "Bounded public samples, not sustained construction of the declared corpus."
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "admission": {
+          "allowances": {
+            "asset_count": 100000,
+            "assets": 137438953472,
+            "checkpoints": 2097152,
+            "database": 68719476736,
+            "files": 250000,
+            "jobs": 100000,
+            "journal": 34359738368,
+            "journal_seconds": 3600,
+            "manifest": 67108864,
+            "pending": 68719476736
+          },
+          "capacity_profile": "large-source-v1",
+          "max_assets": 100000,
+          "max_catalog_asset_bytes": 137438953472,
+          "max_database_bytes": 68719476736,
+          "observed_assets": 50014,
+          "observed_catalog_asset_bytes": 261133507,
+          "observed_database_bytes": 890273792,
+          "profile": "Explicit supported complete-backup capacity selected by the caller.",
+          "status": "ADMITTED"
+        },
+        "all_manifest_files_verified": true,
+        "baseline_peak_rss_bytes": 39378944,
+        "books": 50000,
+        "bootstrap_seconds": 0.17253206299983503,
+        "catalog": {
+          "editions": 50014,
+          "ordered_identity_sha256": "f39b7179a7b156f9a6cfc0bcb4642b8bbcd1874ed22e59d3f59717c5838f4091"
+        },
+        "corpus_sha256": "a0de5e0a6d15ea719f06f49dfbeaf9ebf3ca48ab748580862a3b9ba1f3995716",
+        "create_seconds": 46.88490537200005,
+        "disk": {
+          "bytes": 3485759985,
+          "directories": 25,
+          "files": 150161
+        },
+        "elapsed_seconds": 180.30108904100007,
+        "exit_code": 0,
+        "manifest_sha256": "4a6b9ae4471a82c7a1798c77a4caa01c342b8253ad19032bed5358c3154c25ef",
+        "old_absolute_root_absent": true,
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "backup",
+        "pid": 2705,
+        "process_peak_rss_bytes": 190296064,
+        "process_reaped": true,
+        "process_wall_seconds": 182.965006291,
+        "reading": {
+          "indices": [
+            0,
+            3333,
+            6666,
+            9999,
+            13333,
+            16666,
+            19999,
+            23332,
+            26666,
+            29999,
+            33332,
+            36665,
+            39999,
+            43332,
+            46665,
+            49999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.003507102999719791,
+            "minimum_seconds": 0.0029844910000065283,
+            "p50_seconds": 0.0030492210003103537,
+            "p95_seconds": 0.003507102999719791,
+            "total_seconds": 0.04946459399934611
+          }
+        },
+        "requested_books": 50000,
+        "restore_seconds": 51.40242688199987,
+        "restored_root_differs": true,
+        "retired_baseline_preserved": true,
+        "scope": "Actual complete library backup; not whole-machine migration.",
+        "segments": 1000000,
+        "segments_per_book": 20,
+        "source_root_retired": true,
+        "source_utf8_bytes": 256950000,
+        "status": "PASS",
+        "verify_seconds": 26.346695392999663
+      }
+    },
+    {
+      "kind": "MEASURED_TOTAL",
+      "value": {
+        "actual_status": "PASS",
+        "phases_not_run": [],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 50000,
+        "segments": 1000000,
+        "sum_phase_wall_seconds": 3621.541850928
+      }
+    },
+    {
+      "kind": "EXACT_ARTIFACT",
+      "value": {
+        "artifact_id": 15244431976,
+        "books": 50000,
+        "harness_sha256": "c3237e8242c30f628315f58829b58c3878beaac8dd9caac1df800c7ceb4894a4",
+        "head_sha": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+        "job_id": 140817741038,
+        "members": [
+          "50000/build.json",
+          "50000/build.stderr.txt",
+          "50000/build.stdout.txt",
+          "50000/measure.json",
+          "50000/measure.stderr.txt",
+          "50000/measure.stdout.txt",
+          "benchmark.txt",
+          "configuration.json",
+          "declared-profile.json",
+          "library-corpus-scale.json",
+          "retention.json",
+          "tested-commit.txt",
+          "tested-tree.txt"
+        ],
+        "report_sha256": "aacc8849016c008a410c8da7e28ec1b082ee2787987328a3cca61e30ad9bfdbf",
+        "repository": "Oleksii-debug/AudioTacticalFPS",
+        "run_id": 46092769234,
+        "segments_per_book": 40,
+        "source_sha256": {
+          "bootstrap": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930",
+          "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+          "carr_library.backup_capacity": "12d38188e625a0106ac289a5d833d6f4302536f8c9898ad2fe285064a7d81aa5",
+          "carr_library.catalog.membership": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937",
+          "carr_library.catalog.read_views": "2ac472d3e302b6c463fe8ca0246f7fd979bf118ab11351acb1d612328f641f54",
+          "carr_library.catalog.registration": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef",
+          "carr_library.citations.text_attestation": "d93b6671454550e69420cf5f4d30c0de857ba0089398f555c5d0b859df1a2e8c",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.ingest.batches": "624575f70063e4081eccde7d70f2c281ca93cec79b8facaa463e4e5e6a9b8ab8",
+          "carr_library.ingest.pipeline": "7c922ad3d502c2724f7ace32c57b6ca146ec494749dd92b6936925a204931821",
+          "carr_library.ingest.publication": "09bd07902bd9e7e3ff5516dba11fcd15203f5f3b652b4cf9eb300815134b6808",
+          "carr_library.ingest.retained_assets": "825f0c76f66e9492854a81bc80f92d7ee97819d57730c1a7b089e25553565791",
+          "carr_library.ingest.worker": "d7076d7b15755384d8220333eed9317d79873be926ae96e9a8fca9abf4d9dd28",
+          "carr_library.ingest.writer_guard": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c",
+          "carr_library.library_backup": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7",
+          "carr_library.operations.broker": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882",
+          "carr_library.pending_backup": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b",
+          "carr_library.reader.reading_desk": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706",
+          "carr_library.search.literal": "ec844ef5e8e5149f0ee25ac77f2bf10da585bc57e9dcef17efb6c7cd8e795a4e",
+          "carr_library.search.paging": "e8e00968c2806a88370a0aed4dfb05d6fb7529d70bea75334dbd89353a3b6ea1",
+          "carr_library.storage.revisions": "bb17cbafbbca9e0663d4f308a0542bd228361b34737592b375f4e391d56c5698"
+        },
+        "tree_sha": "1793a664f1c0fdfc9b956f90ea90b1693a17707f",
+        "zip_bytes": 13133,
+        "zip_sha256": "40e0e86ae3698e3f21a5673235383efd08a1a2aaa0a5542abc273a51efadfc97"
+      }
+    },
+    {
+      "kind": "MEASUREMENT_CONTEXT",
+      "value": {
+        "books": 50000,
+        "capacity": {
+          "backup_capacity_profile": "large-source-v1",
+          "complete_backup": true,
+          "construction": "retained-fixture",
+          "public_samples": 12
+        },
+        "case": {
+          "max_disk_bytes": 25769803776,
+          "min_free_bytes": 1073741824,
+          "phase_timeout": 3600,
+          "repeats": 9,
+          "result_page_size": 37,
+          "segment_bytes": 256,
+          "segments_per_book": 40
+        },
+        "claims": {
+          "backup_capacity": "Only an actual PASS backup phase qualifies its reported populated corpus.",
+          "cold_disk_latency": "NOT_MEASURED",
+          "native_gui_nvda": "NOT_RUN",
+          "neural_retrieval_quality": "NOT_MEASURED",
+          "pdf_ocr_audio": "NOT_RUN",
+          "power_loss_recovery": "NOT_RUN",
+          "real_world_document_diversity": "NOT_MEASURED",
+          "release_capacity": "NOT_ESTABLISHED_BY_THIS_HARNESS",
+          "sustained_declared_corpus_import_throughput": "NOT_MEASURED_BY_CAPACITY_SETUP_OR_BOUNDED_SAMPLES"
+        },
+        "environment": {
+          "logical_cpus": 4,
+          "machine": "x86_64",
+          "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+          "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+          "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+          "sqlite": "3.45.1"
+        },
+        "method": {
+          "backup": "Explicit current complete-backup/verify/new-root restore, only within supported product bounds.",
+          "cache_temperature": "Fresh interpreter is not cold disk: OS page cache is retained.",
+          "corpus": "Deterministic retained TXT originals through bounded Catalog/Storage fixture transactions and full integrity audit; not public import throughput.",
+          "disk_budget": "Cooperative measured checkpoint after every 64 imports and at phase boundaries; not a filesystem quota.",
+          "memory": "Whole-process high-water RSS via the unchanged semantic-cache measurement kernel.",
+          "percentiles": "Nearest-rank empirical P50/P95, with actual sample count; no acceptance latency threshold.",
+          "public_operations": "Separate measured public imports, exact retries, refused immutable replacement and checkpoint cancellation/retained-source resume after baseline reads.",
+          "restart": "Build, traversal and restart run in distinct owned interpreter processes.",
+          "scope": "One selected workspace plus a deliberately excluded workspace containing the same query.",
+          "search": "Lexical terms; exact full result/source continuation; ranking remains local to each source window.",
+          "source_checks": "All retained source hashes and catalog identities before/after measurements; quote actions sampled per result page.",
+          "timeout": "Cooperative phase deadline plus a direct-interpreter outer timeout; remaining phases stop on failure."
+        },
+        "mode": "source",
+        "segments_per_book": 40
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39501824,
+        "books": 50000,
+        "bootstrap_seconds": 0.2615341959999995,
+        "construction": "retained-fixture",
+        "corpus_sha256": "9f38441ae34f3bb3a3f1eaa47d219ee66dd034517fdb6f3bfff5fb3118ca73b0",
+        "disk": {
+          "bytes": 2202362204,
+          "directories": 2,
+          "files": 50005
+        },
+        "elapsed_seconds": 692.453053993,
+        "exit_code": 0,
+        "imports": {
+          "count": 0,
+          "p50_seconds": null,
+          "p95_seconds": null,
+          "status": "NOT_MEASURED_BY_FIXTURE_CONSTRUCTION",
+          "total_seconds": 0
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "build",
+        "pid": 2504,
+        "process_peak_rss_bytes": 42631168,
+        "process_reaped": true,
+        "process_wall_seconds": 692.836114953,
+        "requested_books": 50000,
+        "segments": 2000000,
+        "segments_per_book": 40,
+        "setup": {
+          "committed_batches": 200,
+          "full_integrity_seconds": 28.16095055400001,
+          "maximum_books_per_transaction": 250,
+          "maximum_declared_source_bytes_per_transaction": 16777216,
+          "method": "RetainedAssets, Catalog/register_batch and Storage.stage_revision"
+        },
+        "source_utf8_bytes": 513950000,
+        "startup_seconds": 0.027995810999996706,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "value": {
+        "baseline_peak_rss_bytes": 39501824,
+        "bootstrap_seconds": 0.2634920330000341,
+        "diagnostic": "unverified extraction",
+        "exit_code": 1,
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "measure",
+        "pid": 2674,
+        "process_peak_rss_bytes": 47984640,
+        "process_reaped": true,
+        "process_wall_seconds": 3600.3498012830005,
+        "progress": {
+          "completed_latency_samples": 9,
+          "completed_requests": 20755,
+          "completed_source_windows": 6918,
+          "copied_result_samples": 20755,
+          "operation": "full-result-traversal",
+          "phase": "measure",
+          "verified_results": 691837
+        },
+        "reason": "ValueError",
+        "requested_books": 50000,
+        "segments_per_book": 40,
+        "status": "FAIL"
+      }
+    },
+    {
+      "kind": "FAILED_PHASE_OUTPUT",
+      "value": {
+        "books": 50000,
+        "bounded_tail": "",
+        "bytes": 0,
+        "name": "50000/measure.stdout.txt",
+        "segments_per_book": 40,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kind": "FAILED_PHASE_OUTPUT",
+      "value": {
+        "books": 50000,
+        "bounded_tail": "",
+        "bytes": 0,
+        "name": "50000/measure.stderr.txt",
+        "segments_per_book": 40,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kind": "MEASURED_TOTAL",
+      "value": {
+        "actual_status": "FAIL",
+        "phases_not_run": [
+          "restart",
+          "operations",
+          "backup"
+        ],
+        "qualification": "Exact retained-fixture source measurement only; no sustained ordinary-import, unrelated platform, general capacity or release claim.",
+        "requested_books": 50000,
+        "segments": 2000000,
+        "sum_phase_wall_seconds": 4293.185916236001
+      }
+    },
+    {
+      "kind": "INSPECTION",
+      "value": {
+        "inspected_artifacts": [
+          15242148018,
+          15242283527,
+          15244590371,
+          15244431976
+        ],
+        "meaning": "Exact artifacts verified and observed outcomes printed; this is not corpus qualification.",
+        "profile_scope": "All four exact completed reports; no job cancellation or mutation",
+        "status": "PASS"
+      }
+    }
+  ],
+  "qualification": "Four exact immutable public synthetic artifacts verified by their API run/head/name/size/SHA256 and each retained member. Three smaller declared profiles PASS; 50000x40 measure FAIL with ValueError(unverified extraction) at3600.3498s and691837 observed results. Remaining phases NOT_RUN. Different runners and profiler overhead prevent invented throughput comparisons or broad capacity qualification."
+}

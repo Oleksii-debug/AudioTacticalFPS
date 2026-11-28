@@ -1,0 +1,42 @@
+{
+  "schema": "carr-selected-conversion-linux-evidence/1",
+  "status": "ACTUAL_PASS",
+  "source_commit": "9c9fb4df953fc5aa406a06086e75cfddc677089c",
+  "source_tree": "69c8a3d2c64c884ec9a49a72ff43bedc2c376061",
+  "run_id": 46095932690,
+  "job_id": 140827138509,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095932690",
+  "source_contract": {
+    "whole_suites": 8,
+    "passed": 341,
+    "failed": 0,
+    "skipped": 0,
+    "strict_verdicts": [
+      "PASS: tests/conversion/test_selected_conversion.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/conversion/test_office_admission.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/ui/test_document_conversion.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/extract/test_document_formats_xml.py: junit_passed=151, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+      "PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0"
+    ]
+  },
+  "installed_contract": {
+    "whole_suites": 8,
+    "passed": 341,
+    "failed": 0,
+    "skipped": 0,
+    "source_wheel_and_isolated_origins": "PASS",
+    "exact_summary_line": "2026-11-28T02:02:04.6254997Z {\"all_children_reaped\": true, \"inputs_unchanged\": true, \"installed_passed\": 341, \"source_commit\": \"9c9fb4df953fc5aa406a06086e75cfddc677089c\", \"source_passed\": 341, \"source_tree\": \"69c8a3d2c64c884ec9a49a72ff43bedc2c376061\", \"status\": \"PASS\"}"
+  },
+  "artifact": {
+    "id": 15242624687,
+    "name": "selected-conversion-ubuntu-24.04-9c9fb4df953fc5aa406a06086e75cfddc677089c-1",
+    "bytes": 52356,
+    "sha256": "7f7fe77e1d54463d86e08dfded21b60545e2ea45167c8170eb1ec4f4767b8e14",
+    "head": "9c9fb4df953fc5aa406a06086e75cfddc677089c"
+  },
+  "qualification": "Only this exact Linux source and isolated-installed contract is qualified. Actual Windows selected format14, old34 and GUI30 phases remain independently required; no runtime-format, physical output, NVDA or release qualification is inferred.",
+  "windows_native": "RUNNING_AT_2026-11-28_02:09:19_UTC"
+}

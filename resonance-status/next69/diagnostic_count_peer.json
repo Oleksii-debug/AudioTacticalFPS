@@ -1,0 +1,38 @@
+{
+  "schema": "carr-bounded-peer-v1",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "scope": "Count-only installed-failure diagnostic successor",
+  "helper": {
+    "before": "fa8948e3c83108679a57bb3e6d3cbd4dd618f41e",
+    "after": "90d3c69c768d00c704cd4f6197c5d5d46a07870e",
+    "inverse_exact": true,
+    "changed_lines": 2
+  },
+  "workflow": {
+    "before": "01238de36b1f54ea5c693f42dcd46e496f2666af",
+    "after": "6b6312fd62bf2b93c796f599958b0c21ebb1e600",
+    "inverse_exact": true,
+    "changed_lines": 4
+  },
+  "contract": {
+    "whole_modules": 4,
+    "functions": 66,
+    "book_cases": 29,
+    "total_cases": 112,
+    "other_three_cases": 83,
+    "source_pins": 60,
+    "origins": 42,
+    "companions": 5
+  },
+  "observations": [
+    "Helper changes only the Book expected count30→29 and fixed total113→112.",
+    "Workflow changes only corresponding human labels, exact total predicate and one reviewed helper blob pin.",
+    "All selectors, function inventories, original600/900 boundaries, isolated Book-first order, source/installed children and failure collection are byte-identical.",
+    "The correction binds the unchanged source count documented by d141e829f906280495e420b0bd1264b51b943235; existing full-gate Book count is already29."
+  ],
+  "limitations": [
+    "No parser or execution claim; the live D run is unchanged.",
+    "No assertion, selected test, source guard, timeout or failure result was removed."
+  ]
+}

@@ -1,0 +1,205 @@
+{
+  "schema": 1,
+  "kind": "actual_additional_linux_required_subjobs",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "prior_keyboard_and_trusted_linux_evidence": "3168ff42feb0a29e189ea27be6cac96ce5d611b4",
+  "portable_linux": {
+    "run_id": 46110647047,
+    "job_id": 140873303831,
+    "job_conclusion": "success",
+    "source_whole_count": 8,
+    "source_cases": 272,
+    "source_verdicts": [
+      {
+        "line": 833,
+        "text": "PASS: tests/sync/test_archive.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 834,
+        "text": "PASS: tests/sync/test_crypto.py: junit_passed=59, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 835,
+        "text": "PASS: tests/sync/test_service.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 836,
+        "text": "PASS: tests/sync/test_complete_state.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 837,
+        "text": "PASS: tests/sync/test_cli.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 838,
+        "text": "PASS: tests/sync/test_vault.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 839,
+        "text": "PASS: tests/sync/test_service_commit_boundaries.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+      },
+      {
+        "line": 840,
+        "text": "PASS: tests/ui/test_portable_sync.py: junit_passed=103, failed=0, skipped=0, pytest_exit=0"
+      }
+    ],
+    "installed": {
+      "line": 884,
+      "time": "2026-11-28T05:11:12.9508863",
+      "value": {
+        "status": "PASS",
+        "installed_module": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/service.py",
+        "tests": 272,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "test_cli": 5,
+          "test_complete_state": 2,
+          "test_service_commit_boundaries": 13,
+          "test_vault": 46,
+          "test_portable_sync": 103,
+          "test_service": 18,
+          "test_archive": 26,
+          "test_crypto": 59
+        },
+        "source_origins": {
+          "carr_library.sync.archive": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/archive.py",
+            "source_sha256": "c61ec3488a48029c4236f8c478dc518d71c5b69f1dbb62e90f5c1d708b12ec4d"
+          },
+          "carr_library.sync.crypto": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/crypto.py",
+            "source_sha256": "5096319ea0d41e1e78052434641e51be093d700be7c3600afc5793970c1ff805"
+          },
+          "carr_library.sync.service": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/service.py",
+            "source_sha256": "d23a2e87ea6a0c1f53605929e331c28aa1a311b59b4283c9ebc2727ecf614734"
+          },
+          "carr_library.sync.vault": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/vault.py",
+            "source_sha256": "9984a6b9641b212dbbb5739fcba2622b977784511f57c1f2a13aa0e9f056aa22"
+          },
+          "carr_library.sync.cli": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/cli.py",
+            "source_sha256": "aab55ca7490c150c80427adc3c993d133dc153b11ff808972ddf86b1c0783240"
+          },
+          "carr_library.ui.portable_sync": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/ui/portable_sync.py",
+            "source_sha256": "e70d507f9abe57f61d8801dbdc4fda390a30720713880ef038366c60c33ef47a"
+          },
+          "carr_library.file_publication": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/file_publication.py",
+            "source_sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+          },
+          "carr_library.library_backup": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/library_backup.py",
+            "source_sha256": "d012d328d95fac01ffb67cba2956a644409bbaa7d0395f17bdd1c35fd1029b51"
+          },
+          "carr_library.pending_backup": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/pending_backup.py",
+            "source_sha256": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b"
+          },
+          "carr_library.backup_sidecars": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+            "source_sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+          },
+          "carr_library.backup_producers": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/backup_producers.py",
+            "source_sha256": "a1ba2c7574f57e00abe0f2191fc280b9ff4d82d9f7adbad8141aa1dc22f07910"
+          },
+          "carr_library.state_backup": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/state_backup.py",
+            "source_sha256": "e36c31aed14b883ff7c50934623a658007b6b78a8f7958d3fb0b09ab5dc2a8c8"
+          }
+        },
+        "nvda": "NOT_RUN"
+      }
+    },
+    "posix_fork": {
+      "source_verdict": {
+        "line": 984,
+        "text": "PASS: tests/operations/test_resources_posix.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+      },
+      "installed": {
+        "line": 996,
+        "time": "2026-11-28T05:11:13.8475057",
+        "value": {
+          "status": "PASS",
+          "actual_posix_fork": true,
+          "cases": 1,
+          "failed": 0,
+          "skipped": 0,
+          "installed_modules": {
+            "carr_library.operations.models": {
+              "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/models.py",
+              "sha256": "52c7385b3cfa243a86767cdd28498bc7c2d7141480133419f75b20482f88c9ee"
+            },
+            "carr_library.operations._locks": {
+              "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/_locks.py",
+              "sha256": "cfed74a38aaec5e5fbbc707d30df2a1b20bc982750526c6371898d7d877151dc"
+            },
+            "carr_library.operations.broker": {
+              "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/broker.py",
+              "sha256": "05cf0aa8672b2a98686aea51e5de7e52326c0dd61ade02418f6cefdc24be5022"
+            }
+          },
+          "qualification": "Actual fork ownership; no Windows skip substitutes for this required Linux case"
+        }
+      }
+    },
+    "artifact": {
+      "id": 15249184475,
+      "name": "carr-sync-ubuntu-24.04-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+      "size_in_bytes": 17577,
+      "digest": "sha256:809627857556ced84dfed7a52c9ea2b8f9a7a39e65dfbe120303e7d8342417f7",
+      "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    }
+  },
+  "v3_flite": {
+    "run_id": 46110647068,
+    "job_id": 140873213110,
+    "job_conclusion": "success",
+    "final": {
+      "line": 963,
+      "time": "2026-11-28T05:11:49.8459073",
+      "value": {
+        "status": "PASS",
+        "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+        "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "cases": [
+          "test_actual_chunked_synthesis_and_budget",
+          "test_actual_local_pcm_speech_and_three_distinct_voices",
+          "test_actual_volume_reduction_and_source_invariance",
+          "test_cancel_synthesis_leaves_no_partial_audio",
+          "test_no_overwrite_existing_audio",
+          "test_unsupported_native_controls_do_not_silently_apply"
+        ],
+        "suite_log_sha256": "969c835dff739e01895476ebe68f05075c8c2ba0a69239fe31f09b2c88e39ba9",
+        "capability_report_sha256": "eb920a7880d2bcaaf49522cb8788341d90f5871e7ac1d1ca309298e127ef7df5",
+        "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+      }
+    },
+    "artifact": {
+      "id": 15249786631,
+      "name": "carr-flite-46110647068-1",
+      "size_in_bytes": 16863,
+      "digest": "sha256:d9964c87c7434cedf844e3d9fc52bd184cf9ce69113170efbe7481d2f8ff9094",
+      "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    }
+  },
+  "qualification": {
+    "named_linux_jobs": "PASS",
+    "full_portable_sync_matrix": "PENDING_WINDOWS",
+    "full_trusted_client_matrix": "PENDING_WINDOWS",
+    "full_main": "PENDING",
+    "full_v3": "PENDING",
+    "source487": "PENDING",
+    "physical_playback": "NO_QUALIFICATION_FROM_THIS_RECORD",
+    "manual_nvda": "NOT_RUN"
+  },
+  "counting": "Each source/installed/fork execution is stated separately; no unique-project total or result transfer is implied."
+}

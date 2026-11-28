@@ -1,0 +1,63 @@
+{
+  "schema": "carr-search-followup-static-audit/1",
+  "status": "READ_ONLY_STATIC_NOT_PROFILED",
+  "source_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "sources": {
+    "app": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "paging": "ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6",
+    "read_views": "d2e2045738ace3ca99ac5decefc3d8ba3a955297",
+    "literal": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88"
+  },
+  "findings": [
+    {
+      "path": "src/carr_library/search/paging.py",
+      "lines": "115-121,143-193",
+      "finding": "Each fresh select_window rebuilds up to500 EditionViews, turns them into edition->work map, and eagerly requests one more full EditionView. Only IDs/work pairs and last edition ID are used. The full ordered allowed map remains part of window identity."
+    },
+    {
+      "path": "src/carr_library/catalog/read_views.py",
+      "lines": "40-94",
+      "finding": "browse_editions uses an authorized current transaction/workspace/foreign-key/collection boundary, a fixed indexed keyset CTE with exact literal filters, then LEFT JOINs every selected work's authors, orders those rows, groups metadata, and creates complete EditionView records. select_window does not consume asset/title/language/edition/volume/authors after filtering."
+    },
+    {
+      "path": "src/carr_library/application.py",
+      "lines": "984-1030,1087-1135",
+      "finding": "Candidate-only reuse changes none of this. Full37-hit result calls still execute a second fresh search. Each search redoes select_window and passes all up-to500 allowed edition IDs, plus up-to100 actual page IDs, into literal search."
+    }
+  ],
+  "count_derivation": {
+    "actual_baseline": "Verified C3 50k*20 baseline:1000000results,10000sourcewindows,30000public page37 calls; traversal3508.494986251s.",
+    "static_inference": "For the measured full100-hit synthetic windows, calls37/37/26 yield two lookaheads, hence five fresh searches/select_window calls per window (about50000). A500-identity view per call implies about25million EditionView constructions before metadata/author join fanout. This is derived control-flow work, not a profiler count or attribution of the3508s.",
+    "two_million": "With otherwise identical100-hit windows, the complete2M traversal would roughly double those catalog calls before considering its40-segment source-attestation costs. No timing or completion prediction is made."
+  },
+  "narrow_candidates": [
+    {
+      "priority": 1,
+      "proposal": "Private minimal identity projection for select_window only.",
+      "preserve": "Keep current _snapshot, workspace/foreign-key checks, active-collection validation, exact after/edition predicates, all title/author/language/edition filters, catalog_work join, BINARY order and limits. Return ordered(id,work) pairs from the same selected CTE; remove only unused outer author join/grouping/EditionView materialization. Public browse_editions stays unchanged. Recompute in every fresh snapshot.",
+      "required_proof": "Real SQLite old/new ordered-pair and SourceWindow wire/digest equivalence across Unicode/filter/author fanout/empty scopes; concurrent collection/revision mutations and cancellation keep existing refusal. Measure actual SQL plan/VM and elapsed work, not inferred speed."
+    },
+    {
+      "priority": 2,
+      "proposal": "Defer the one-row next-catalog lookup until more_pages is false.",
+      "preserve": "Currently more_pages wins the following-cursor branch, so next_catalog is unused for most within-catalog100-page continuations. Keep lookup within the SAME fresh authorized transaction and retain the check() after page selection. Preserve final/empty-window cursor behavior and complete allowed-map identity.",
+      "required_proof": "Actual end-of500-edition, exact100-page, trailing empty editions, stale active revision and cancellation cases; same serialized current/next cursor and digest. No lookahead search removed."
+    },
+    {
+      "priority": 3,
+      "proposal": "Investigate whether500 edition bindings materially cost more than page-ID range work before changing them.",
+      "preserve": "The fresh500-edition authorization map must remain in window identity; narrowing only the literal query's edition list to current rows could be considered separately, with page/active/catalog equality proving exact SQL scope. No cached authorization or omitted digest/attestation.",
+      "required_proof": "Actual EXPLAIN QUERY PLAN and VM counters for the current501+<=100 parameter shape against a proposed equivalent shape; strict malformed/foreign/current-snapshot negatives. Defer if bindings are a small fraction of measured cost."
+    }
+  ],
+  "profiling_needed": [
+    "First require the actual new30 regression cases and existing focused suites. Keep page37, phase3600 and all guards.",
+    "Use the new bounded harness progress operation/request/result/source-window counters and512-character BudgetExceeded diagnostic to identify the actual stopped operation.",
+    "If2M is stillPARTIAL, retain bounded numeric timings/counts for select_window, browse_editions, literal candidate preparation, result materialization and strict_text_attestor/retained-source parsing. Record calls and cumulative/self time, not payloads.",
+    "A separate explicitly labelled profiling variant may use cProfile in memory and emit only a closed function table as JSON/text; any observer overhead must be disclosed. Do not replace SQLite cancellation/progress handlers with a profiler.",
+    "Capture actual query plans/VM counts in the existing isolated SQLite regression fixture, while full corpus timings continue through supported LibraryApp APIs.",
+    "Retain full fresh lookahead/hidden-result materialization/source reauthentication. Do not extend3600, substitute page100, use cross-call authority caches or infer full2M qualification from source-only tests."
+  ],
+  "source_changes": "NONE",
+  "actual_performance_claim": "NONE"
+}

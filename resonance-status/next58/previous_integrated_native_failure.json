@@ -1,0 +1,350 @@
+{
+  "schema": "carr-actual-closed-main-native-failures/1",
+  "recorded_at": "2026-11-28 04:13:10 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "source_tree": "2e523f7fdb5b8ef1447359f79ba384c4cbb001c5",
+  "main": {
+    "run_id": 46097288580,
+    "integrated_job_id": 140831855765,
+    "status": "completed",
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "id": 140831464504,
+        "name": "Exact source / Python 3.11 syntax and package metadata",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855765,
+        "name": "Windows x64 / CPython 3.11 / integrated desktop",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "id": 140831855781,
+        "name": "Required current composition / Windows source regressions",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855783,
+        "name": "Windows x64 / native commands and draft recovery",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855839,
+        "name": "Required portable encrypted backup / Windows CPython 3.11 / strict encrypted transfer",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855842,
+        "name": "Required portable encrypted backup / Ubuntu CPython 3.11 / strict encrypted transfer",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855875,
+        "name": "Required Linux Flite speech / Ubuntu 24.04 / six actual Flite speech cases",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855884,
+        "name": "Required whole source partition 1 of 4 / Required integrated source 0 / Windows x64",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "id": 140831855923,
+        "name": "Required signed client and maintenance boundaries / Ubuntu CPython 3.11 / strict signed client",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855938,
+        "name": "Required signed client and maintenance boundaries / Windows CPython 3.11 / strict signed client",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855942,
+        "name": "Required whole source partition 4 of 4 / Required integrated source 3 / Windows x64",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "id": 140831855963,
+        "name": "Required native managed update / Windows x64 / real standard setup A-to-B and rollback",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "id": 140831855965,
+        "name": "Required whole source partition 2 of 4 / Required integrated source 1 / Windows x64",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "id": 140831855975,
+        "name": "Required whole source partition 3 of 4 / Required integrated source 2 / Windows x64",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "id": 140836439903,
+        "name": "Required complete source inventory / 472 whole suites",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 15245390491,
+        "name": "carr-windows-d685a36008b2fac9a3a4ef194b69021520d48f4c-1",
+        "size_in_bytes": 3550922,
+        "digest": "sha256:ce770441afd2bbce2e3cbfa7936ca546b90f25137b415e650d1ce040af91bc07",
+        "run_id": 46097288580,
+        "head_sha": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+        "expired": false
+      },
+      {
+        "id": 15245305783,
+        "name": "carr-phase-diagnostics-d685a36008b2fac9a3a4ef194b69021520d48f4c-1",
+        "size_in_bytes": 188776,
+        "digest": "sha256:9230f40dbd6c49340b83c7d5f2df3da3d45007dde45c39d6baedc916cd899c77",
+        "run_id": 46097288580,
+        "head_sha": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+        "expired": false
+      },
+      {
+        "id": 15245265810,
+        "name": "owner-candidate-inputs-62b358005048b2d91f92b693314c8897b6a7a0c5-1",
+        "size_in_bytes": 7503787,
+        "digest": "sha256:59014201292bb02414a85f03280260709b6528f7b9387b5b41bf2d2cf696dbd6",
+        "run_id": 46097288580,
+        "head_sha": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+        "expired": false
+      },
+      {
+        "id": 15244683206,
+        "name": "managed-update-62b358005048b2d91f92b693314c8897b6a7a0c5-1",
+        "size_in_bytes": 89282,
+        "digest": "sha256:24b2ec4d3601ed711735814d4cffdf9154478961b8f520bcc76f8a72636d70f9",
+        "run_id": 46097288580,
+        "head_sha": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+        "expired": false
+      }
+    ],
+    "closed_log_characters": 1286587,
+    "closed_log_lines": 9129
+  },
+  "v3": {
+    "run_id": 46097288504,
+    "jobs": [
+      {
+        "id": 140831490799,
+        "name": "native-studio",
+        "status": "in_progress",
+        "conclusion": null
+      },
+      {
+        "id": 140831490999,
+        "name": "Required Linux Flite speech / Ubuntu 24.04 / six actual Flite speech cases",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "native_verdict": "NOT_COMPLETE_AT_READ",
+    "live_log_fetched": false,
+    "qualification": "Status observation only; no live or unfinished result inferred."
+  },
+  "observations": [
+    {
+      "phase": "reader-player",
+      "kind": "observed missing physical output",
+      "actual": "wave_output_device_count=0; devices=[]; mapper queries return code2; explicit output admission raises RuntimeError.",
+      "lines": [
+        6330,
+        6344
+      ],
+      "excerpt": [
+        "2026-11-28T02:29:22.0065722Z PASS: installed reader output module: carr_library.speech.player",
+        "2026-11-28T02:29:22.0068526Z PASS: installed reader output module: carr_library.speech.playback_devices",
+        "2026-11-28T02:29:22.0069532Z PASS: installed reader output module: carr_library.speech.listening",
+        "2026-11-28T02:29:22.0070332Z PASS: installed reader output module: carr_library.audio.dsp",
+        "2026-11-28T02:29:22.0073743Z PASS: installed reader output module: carr_library.ui.reader_playback",
+        "2026-11-28T02:29:22.0555076Z {\"device_inventory_truncated\": false, \"devices\": [], \"mapper_queries\": [{\"bits_per_sample\": 16, \"channels\": 1, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 24000}, {\"bits_per_sample\": 16, \"channels\": 2, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 24000}, {\"bits_per_sample\": 16, \"channels\": 1, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 44100}, {\"bits_per_sample\": 16, \"channels\": 2, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 44100}, {\"bits_per_sample\": 16, \"channels\": 1, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 48000}, {\"bits_per_sample\": 16, \"channels\": 2, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 48000}], \"observation\": \"NO_OUTPUT_DEVICE_ENUMERATED_OR_QUERY_ERROR\", \"playback_evidence\": \"NOT_RUN\", \"query_only\": true, \"schema\": \"carr-windows-audio-diagnostics/1\", \"services\": {\"AudioEndpointBuilder\": {\"service_exit_code\": 0, \"state\": \"RUNNING\", \"state_code\": 4, \"win32_exit_code\": 0}, \"Audiosrv\": {\"service_exit_code\": 0, \"state\": \"RUNNING\", \"state_code\": 4, \"win32_exit_code\": 0}}, \"stage\": \"before-output-device-admission\", \"wave_output_device_count\": 0}",
+        "2026-11-28T02:29:22.0563547Z PASS: actual Windows output inventory stays within its bound",
+        "2026-11-28T02:29:22.0650377Z Traceback (most recent call last):",
+        "2026-11-28T02:29:22.0883675Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 500, in <module>",
+        "2026-11-28T02:29:22.0898304Z     raise SystemExit(main())",
+        "2026-11-28T02:29:22.0901573Z                      ^^^^^^",
+        "2026-11-28T02:29:22.0905220Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 386, in main",
+        "2026-11-28T02:29:22.0908235Z     raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')",
+        "2026-11-28T02:29:22.0911395Z RuntimeError: Actual output-device qualification requires an identifiable Windows output.",
+        "2026-11-28T02:29:22.1230341Z REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed."
+      ],
+      "disposition": "Required playback remains FAIL; no device installation, listening or NVDA qualification inferred."
+    },
+    {
+      "phase": "recording",
+      "kind": "observed missing monitoring output",
+      "actual": "ACTUAL_MONITORING_OUTPUTS:0; phase103 refuses; actual recording host Close/drain passes.",
+      "lines": [
+        6446,
+        6466
+      ],
+      "excerpt": [
+        "2026-11-28T02:31:09.7697530Z PASS: closing preserves exactly the verified original",
+        "2026-11-28T02:31:09.7872380Z PASS: second recording modal starts after first HWND and callbacks retire",
+        "2026-11-28T02:31:09.8509227Z NATIVE_RECORDING_MODAL: 100:2818668",
+        "2026-11-28T02:31:09.8510627Z PASS: new dialog starts with dry monitoring disabled",
+        "2026-11-28T02:31:09.8812266Z PASS: native focus reaches Refresh microphones",
+        "2026-11-28T02:31:09.8813915Z PASS: native key dispatch: Refresh microphones",
+        "2026-11-28T02:31:10.0386743Z PASS: native focus reaches Microphone device (explicit selection required)",
+        "2026-11-28T02:31:10.0388110Z PASS: native key dispatch: Microphone device (explicit selection required)",
+        "2026-11-28T02:31:10.1009293Z PASS: native focus reaches Refresh monitoring outputs",
+        "2026-11-28T02:31:10.1010793Z PASS: native key dispatch: Refresh monitoring outputs",
+        "2026-11-28T02:31:10.1196647Z ACTUAL_MONITORING_OUTPUTS: 0",
+        "2026-11-28T02:31:10.1443456Z FAIL: native recording phase 103",
+        "2026-11-28T02:31:10.1447333Z Traceback (most recent call last):",
+        "2026-11-28T02:31:10.1453155Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 43, in invoke",
+        "2026-11-28T02:31:10.1456150Z     callback()",
+        "2026-11-28T02:31:10.1459238Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 372, in drive",
+        "2026-11-28T02:31:10.1531182Z     drive_monitor()",
+        "2026-11-28T02:31:10.1638581Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 486, in drive_monitor",
+        "2026-11-28T02:31:10.1647004Z     raise RuntimeError('Actual Windows monitoring output is required; no output was enumerated. '",
+        "2026-11-28T02:31:10.1650177Z RuntimeError: Actual Windows monitoring output is required; no output was enumerated. Native monitoring remains unqualified. Choose a monitoring output explicitly. Use headphones to avoid microphone feedback; no output was opened.",
+        "2026-11-28T02:31:10.1652217Z "
+      ],
+      "disposition": "Required monitoring remains FAIL. Earlier cancellation/synthetic capture controls are not physical recording or listening proof."
+    },
+    {
+      "phase": "saved-audio-queue",
+      "kind": "native watchdog, already targeted by later cleanup changes",
+      "actual": "After one stable native command PASS, probe exceeds90seconds.",
+      "lines": [
+        8164,
+        8168
+      ],
+      "excerpt": [
+        "2026-11-28T02:34:20.0181131Z PASS: exact installed player module: carr_library.operations.broker",
+        "2026-11-28T02:34:20.0188242Z PASS: exact installed player module: carr_library.backup_playback_queue",
+        "2026-11-28T02:34:20.4137759Z PASS: one stable native command without a conflicting default shortcut",
+        "2026-11-28T02:35:49.4647103Z FAIL: native saved queue and owned-output probe exceeded 90 seconds.",
+        "2026-11-28T02:35:49.4987364Z REQUIRED NATIVE BLOCK FAILED [saved-audio-queue]: Actual installed native saved-audio-queue failed."
+      ],
+      "later_source": "63d31bdd624bdac5340d1e1173155b3974b846ff",
+      "later_tests": "5eeba4884c846a6ca21a85a649ea2cd7830d7429",
+      "disposition": "Later failure-path/Destroy observer changes require their own runtime; no result transfer."
+    },
+    {
+      "phase": "recorded-epub",
+      "kind": "actual timeout with insufficient underlying failure visibility",
+      "actual": "Real retained EPUB/source-highlight/progress controls pass; actual Play down/up occurs, stage2 never reaches playing before120seconds.",
+      "lines": [
+        8183,
+        8200
+      ],
+      "excerpt": [
+        "2026-11-28T02:35:55.1746326Z PASS: existing Reading Desk presents the exact source",
+        "2026-11-28T02:35:55.1754166Z PASS: owned native focus: EPUB synchronized recorded audio...",
+        "2026-11-28T02:35:55.1754872Z PASS: native key down: EPUB synchronized recorded audio...",
+        "2026-11-28T02:35:55.2151829Z PASS: native key release: EPUB synchronized recorded audio...",
+        "2026-11-28T02:35:56.1054138Z PASS: recorded preparation borrows the current host worker",
+        "2026-11-28T02:35:56.1055533Z PASS: opening recorded audio does not start playback",
+        "2026-11-28T02:35:56.1056394Z PASS: native source highlight is an exact Unicode fragment",
+        "2026-11-28T02:35:56.1057141Z PASS: existing progress observes the owned transport",
+        "2026-11-28T02:35:56.1064072Z PASS: owned native focus: Play from selected segment",
+        "2026-11-28T02:35:56.1064690Z PASS: native key down: Play from selected segment",
+        "2026-11-28T02:35:56.1528912Z PASS: native key release: Play from selected segment",
+        "2026-11-28T02:37:50.2739350Z FAIL: native recorded EPUB callback",
+        "2026-11-28T02:37:50.2741018Z Traceback (most recent call last):",
+        "2026-11-28T02:37:50.2752364Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 133, in invoke",
+        "2026-11-28T02:37:50.2753065Z     callback()",
+        "2026-11-28T02:37:50.2753646Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 256, in drive",
+        "2026-11-28T02:37:50.2755152Z     raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))",
+        "2026-11-28T02:37:50.2755931Z TimeoutError: Native recorded-EPUB acceptance exceeded its deadline at stage 2"
+      ],
+      "current_source": "9f528b70d07b6c3021d42f21ad95e67c39647972",
+      "current_source_equal_at": [
+        "62b358005048b2d91f92b693314c8897b6a7a0c5",
+        "321e0a39d08433901f037a66560cf01b1d44f2a7"
+      ],
+      "disposition": "No product or missing-output cause is established for this phase. Bounded failure-only state diagnostic prepared separately; playback requirements unchanged."
+    },
+    {
+      "phase": "DAISY",
+      "kind": "exact code-level schema URI refusal already repaired later",
+      "actual": "file:/D:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent is refused by old resolver; uncaught phase error aborts remainder of complete_bundle.",
+      "lines": [
+        8466,
+        8480
+      ],
+      "excerpt": [
+        "2026-11-28T02:38:29.4011701Z   File \"src/lxml/parser.pxi\", line 1195, in lxml.etree._BaseParser._parseDoc",
+        "2026-11-28T02:38:29.4016164Z   File \"src/lxml/parser.pxi\", line 647, in lxml.etree._ParserContext._handleParseResultDoc",
+        "2026-11-28T02:38:29.4019850Z   File \"src/lxml/parser.pxi\", line 761, in lxml.etree._handleParseResult",
+        "2026-11-28T02:38:29.4023685Z   File \"src/lxml/etree.pyx\", line 452, in lxml.etree._ExceptionContext._raise_if_stored",
+        "2026-11-28T02:38:29.4027628Z   File \"src/lxml/parser.pxi\", line 465, in lxml.etree._local_resolver",
+        "2026-11-28T02:38:29.4031914Z   File \"src/lxml/docloader.pxi\", line 150, in lxml.etree._ResolverRegistry.resolve",
+        "2026-11-28T02:38:29.4036300Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\daisy_schema_acceptance.py\", line 38, in resolve",
+        "2026-11-28T02:38:29.4040075Z     raise ValueError('The schema validator refused an unapproved resource: ' + url)",
+        "2026-11-28T02:38:29.4044853Z ValueError: The schema validator refused an unapproved resource: file:/D:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent",
+        "2026-11-28T02:38:31.4108021Z Exception: D:\\a\\_temp\\f1178a84-bf41-41f1-aaaa-1b31354186ec.ps1:1035",
+        "2026-11-28T02:38:31.4109048Z Line |",
+        "2026-11-28T02:38:31.4110122Z 1035 |  … DE -ne 0) { throw 'Installed DAISY DTD validation or invalid-XHTML co …",
+        "2026-11-28T02:38:31.4111216Z      |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "2026-11-28T02:38:31.4112434Z      | Installed DAISY DTD validation or invalid-XHTML control failed.",
+        "2026-11-28T02:38:31.4409009Z ##[error]Process completed with exit code 1."
+      ],
+      "later_source": "df13248d149a2017bd1a70d68c4493edca1811f8",
+      "disposition": "Use independent later DAISY20 source/runtime evidence; this old main remains failed and later native blocks are not inferred."
+    },
+    {
+      "phase": "four required source partitions",
+      "kind": "pre-suite source-byte proof refusal",
+      "actual": "All four job conclusions FAIL. Independently fetched partition0 raises before tests for .github/workflows/carr-integrated-source-shard.yml raw Git mismatch.",
+      "representative_job_id": 140831855884,
+      "representative_excerpt": [
+        "2026-11-28T02:29:25.7554478Z Traceback (most recent call last):",
+        "2026-11-28T02:29:25.7559782Z   File \"<string>\", line 68, in <module>",
+        "2026-11-28T02:29:25.7560223Z ValueError: Checked-out source bytes differ from the selected Git object: .github/workflows/carr-integrated-source-shard.yml",
+        "2026-11-28T02:29:25.8626711Z Exception: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\check_integrated_source_shard.ps1:858",
+        "2026-11-28T02:29:25.8628541Z Line |",
+        "2026-11-28T02:29:25.8628931Z  858 |  … CODE -ne 0) { throw 'The required before-test source proof failed.' }",
+        "2026-11-28T02:29:25.8629348Z      |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "2026-11-28T02:29:25.8629754Z      | The required before-test source proof failed.",
+        "2026-11-28T02:29:25.9061206Z ##[error]Process completed with exit code 1."
+      ],
+      "earlier_all_four_diagnosis": "567a43657051e4caeff1a2cf2c188aa02b09bd23",
+      "later_attributes": ".github/.gitattributes f1f365b6bcad4cd7df40aa444d543bee482dab61",
+      "disposition": "No whole-suite source PASS is inferred from this run."
+    },
+    {
+      "phase": "owner candidate",
+      "kind": "actual qualified assembly boundary only",
+      "actual": "OWNER_CANDIDATE_INPUTS_READY then archive_assembly PASS and independent_two_archive_verification PASS, status OWNER_CANDIDATE_UNQUALIFIED.",
+      "lines": [
+        8779,
+        8779,
+        8944,
+        8945
+      ],
+      "excerpt": [
+        "2026-11-28T02:45:04.1577625Z {\"application_wheel_sha256\": \"ba84824ee34bc833f29382e53714b5c9a1c40ee7815c1ee7b879c520f7e9c2bf\", \"assembled_owner_bundle\": false, \"complete_bundle_outcome\": \"failure\", \"full_qualification\": \"NOT_ESTABLISHED\", \"launcher_sha256\": \"58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7\", \"no_audio_bundle_manifest_sha256\": \"8e4a1376d07412348a89f19ed9073f76bd9683a5c84ce7eb41a244c141945a93\", \"retained_optional_count\": 5, \"source_commit\": \"62b358005048b2d91f92b693314c8897b6a7a0c5\", \"source_tree\": \"2e523f7fdb5b8ef1447359f79ba384c4cbb001c5\", \"status\": \"OWNER_CANDIDATE_INPUTS_READY\"}",
+        "2026-11-28T02:46:05.2425419Z {\"archive_assembly\": \"PASS\", \"assembled_owner_bundle\": true, \"complete_binary_archive_uploaded\": false, \"complete_bundle_outcome\": \"failure\", \"full_qualification\": \"NOT_ESTABLISHED\", \"independent_two_archive_verification\": \"PASS\", \"source_commit\": \"62b358005048b2d91f92b693314c8897b6a7a0c5\", \"source_tree\": \"2e523f7fdb5b8ef1447359f79ba384c4cbb001c5\", \"status\": \"OWNER_CANDIDATE_UNQUALIFIED\"}",
+        "2026-11-28T02:46:05.2645468Z OWNER_CANDIDATE_UNQUALIFIED: both archives verified in ephemeral runner temp; complete binary archives are not uploaded."
+      ],
+      "disposition": "Both complete archives were only ephemeral runner outputs; complete_binary_archive_uploaded=false; full_qualification NOT_ESTABLISHED."
+    }
+  ],
+  "overall": "FAIL",
+  "no_new_product_failure_established_beyond_list": true,
+  "no_hardware_or_manual_waiver": true,
+  "no_refs_moved": true
+}

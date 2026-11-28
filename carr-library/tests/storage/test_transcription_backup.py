@@ -11,9 +11,20 @@ from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import create_backup, restore_backup
 from carr_library.operations import ResourceBroker, ResourceLimits
-from carr_library.transcription import TranscriptionService
 from carr_library import backup_sidecars, backup_transcription
-from carr_library.transcription.models import fingerprint
+from carr_library.integrations import transcription_backup as canonical_backup
+from carr_library.integrations.transcription_values import fingerprint
+
+
+
+# Canonical protocol tests exercise the real workspace-scoped host's adapter.
+from importlib.util import spec_from_file_location as _fixture_spec, module_from_spec as _fixture_module
+from pathlib import Path as _FixturePath
+_fixture_path = _FixturePath(__file__).parents[1] / 'transcription' / 'fixture_runtime.py'
+_fixture = _fixture_spec('scoped_transcription_test_factory', _fixture_path)
+_fixture_builder = _fixture_module(_fixture)
+_fixture.loader.exec_module(_fixture_builder)
+TranscriptionService = _fixture_builder.make_service
 
 
 @pytest.fixture
@@ -52,6 +63,10 @@ def test_complete_backup_preserves_pending_sources_after_original_is_lost_and_re
     assert restored.list_runtimes()[0]['trusted'] is False
     retained = restored.jobs_root / job['id'] / reviewed['sources'][0]['retained_path']
     assert retained.read_bytes() == raw
+    assert reviewed['execution_review_required'] is True
+    with pytest.raises(PermissionError, match='explicitly bind'):
+        restored.run(job['id'])
+    restored.bind_workspace(job['id'], reviewed=True, worker_stopped=True)
     rejected = restored.run(job['id'])
     assert rejected['status'] == 'failed' and rejected['done'] == 0
     assert not list((restored.jobs_root / job['id']).rglob('job_status.json'))
@@ -199,7 +214,7 @@ def test_input_streaming_has_separate_budget_and_honors_whole_backup_limit(prepa
     create_backup(app, tmp_path / 'successful')
     with pytest.raises(ValueError):
         create_backup(app, tmp_path / 'bounded', max_bytes=512 * 1024)
-    monkeypatch.setattr(backup_transcription, 'MAX_INPUT_BYTES', audio.stat().st_size - 1)
+    monkeypatch.setattr(canonical_backup, 'MAX_INPUT_BYTES', audio.stat().st_size - 1)
     with pytest.raises(ValueError):
         create_backup(app, tmp_path / 'excessive-input')
     assert not (tmp_path / 'bounded').exists()
@@ -241,9 +256,9 @@ def test_cancellation_during_final_asr_restore_review_prevents_publication(prepa
     checksum = create_backup(app, backup)
     original = backup_transcription.validate_collection
     cancelled = False
-    def finish_review(entries, records):
+    def finish_review(root, entries, records, **kwargs):
         nonlocal cancelled
-        original(entries, records)
+        original(root, entries, records, **kwargs)
         if any(record.get('schema') == 'resonance-transcription-job/1' and record.get('restored')
                for record in records.values()):
             cancelled = True

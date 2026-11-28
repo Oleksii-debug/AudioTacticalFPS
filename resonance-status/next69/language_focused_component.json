@@ -1,0 +1,313 @@
+{
+  "schema": "carr-language-evidence-focused-gate/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 08:48:47 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "tree": "e54789eebce9bd393a956e7d63c58b7b36601595"
+  },
+  "source_component": "dd961c9cd7d78d6946d30b1cc5e704959747a25e",
+  "source_inventory": "92d9c3aefd1f378f97b376bc20f6edc2e038beb3",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_language_evidence_cases.json",
+      "preimage": null,
+      "git_blob": "6797df44d708230f38ba999760bbfd3cb8581e40",
+      "utf8": {
+        "sha256": "f2154ddd124cf596e1688fe709198b98366fa00e2bf14603b3ab464c458d02c9",
+        "bytes": 11850
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+      "preimage": null,
+      "git_blob": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+      "utf8": {
+        "sha256": "3f271eeab25887c582cbb9c7e2a129aee5ca095255e0f3e04ba891b2262cbaa7",
+        "bytes": 31101
+      },
+      "readback_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-language-evidence.yml",
+      "preimage": null,
+      "git_blob": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+      "utf8": {
+        "sha256": "93f28bd9328cb32941f9fb5d1111ebd689ccdcfcbe8dd96751603a16d4d5e1e8",
+        "bytes": 12090
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/scripts/windows_language_evidence_smoke.py",
+      "preimage": null,
+      "git_blob": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+      "utf8": {
+        "sha256": "fe10aa89fb3401b9bdb31fa03d81cc172e5cc39ef351895b58c864c615b8bc40",
+        "bytes": 54442
+      },
+      "readback_exact": true,
+      "owner": "locate_project",
+      "component": "9a3c0fe0cc0568b93c4aefc3419fcb059e155666"
+    }
+  ],
+  "ordinary": {
+    "whole_suites": {
+      "tests/language_qualification/test_catalog.py": 31,
+      "tests/language_qualification/test_ui.py": 7,
+      "tests/language_qualification/test_evidence.py": 54,
+      "tests/language_qualification/test_evidence_backup.py": 27,
+      "tests/language_qualification/test_evidence_ui.py": 28
+    },
+    "source_cases": 147,
+    "isolated_installed_cases": 147,
+    "new_cases": 109,
+    "new_function_count": 32,
+    "new_wholes": 3,
+    "existing_catalog_and_ui_cases": 38,
+    "per_whole_seconds": 600,
+    "source_jobs": 3,
+    "source_parent_seconds": 1500,
+    "strict_junit": "Every whole module exact passing-case count, zero failures/skips/xfails; all five required."
+  },
+  "source_pins": {
+    "src/carr_library/language_qualification/__init__.py": "9a6572a3c1a7e46d859d6cb8242c65880b02f285",
+    "src/carr_library/language_qualification/catalog.py": "236a61ecb765b544ca4e0005fb94e6b462256996",
+    "src/carr_library/language_qualification/evidence.py": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "src/carr_library/language_qualification/backup.py": "45f11351d946bd10587d2842dca80c3e4eb7a39a",
+    "src/carr_library/ui/language_matrix.py": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+    "src/carr_library/backup_sidecars.py": "4052234a20b12d26d825463363e2126585f73211",
+    "src/carr_library/state_backup.py": "65c75e75f82c78ba3153da01d687669b276428e3",
+    "src/carr_library/library_backup.py": "0ccbba5db4c41e78143f0ef11aef51bd3df55339",
+    "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
+    "src/carr_library/storage/revisions.py": "417a9920d4c25eacd36cc81f7441ea321c18d632",
+    "src/carr_library/storage/schema_identity.py": "2c72c6132969cb1076035a47ee87c4573ebd93be",
+    "src/carr_library/data_paths.py": "4eaa42c376d501f9d0f8f71e27d6a82724a00600",
+    "src/carr_library/ingest/writer_guard.py": "2445a40f97cdb45bd590e64da415a18fae31ce54",
+    "src/carr_library/ingest/bundle.py": "d664107cebe9704c568220a6752c159e95c70f60",
+    "src/carr_library/ingest/restore.py": "7c752b0203eb3d85bf3dfdeb2dea9a8c76013f37",
+    "src/carr_library/ingest/catalog_asset_copy.py": "23f32ae91afbf154689c7f56a385f1c062f32f81",
+    "src/carr_library/ingest/retained_assets.py": "acbaabd4b5661daadc83dfec6cda9394deb35ce3",
+    "src/carr_library/backup_capacity.py": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7",
+    "src/carr_library/pending_backup.py": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7",
+    "src/carr_library/reader/reading_state.py": "c9b1fe207bfc26d4caa939ebc4d1199a1172837c",
+    "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+    "src/carr_library/ui/worker_cleanup.py": "2f071d9d2762ef15f5f8ee3da2fcf25de165b15a",
+    "src/carr_library/speech/progress_speech.py": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+    "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
+    "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+    "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
+    "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+    "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
+    "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
+    "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
+    "src/carr_library/speech/__init__.py": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+    "src/carr_library/ui/command_registry.py": "2fe71b6b3b7c46cef384d6fddb56997b30564e08",
+    "tests/language_qualification/test_catalog.py": "eeee7e7b0bb1fad0aa7f9baa2209a3fddb9b1642",
+    "tests/language_qualification/test_ui.py": "2e263b45440ed8ada0e443998885f69c48f3820c",
+    "tests/language_qualification/test_evidence.py": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+    "tests/language_qualification/test_evidence_backup.py": "a40f8b1964fa0a2ccc66e06e46134701484adb38",
+    "tests/language_qualification/test_evidence_ui.py": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+    "tests/language_qualification/evidence_fixture.py": "72944369f7304650e8742f97372d41415e3e35da",
+    "src/carr_library/language_qualification/data/LANGUAGE_COVERAGE_DEV2_UK.md": "8081b24c7c33eff578e7896052d4221cfff8c684",
+    "src/carr_library/language_qualification/data/SELECTED_LANGUAGES_UK.md": "caea8c5a8a5698971d75a565cba9a5a9c00b411f",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "scripts/windows_language_evidence_smoke.py": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "scripts/ci_language_evidence_cases.json": "6797df44d708230f38ba999760bbfd3cb8581e40"
+  },
+  "source_pin_count": 48,
+  "actual_origin_modules": [
+    "carr_library.language_qualification",
+    "carr_library.language_qualification.catalog",
+    "carr_library.language_qualification.evidence",
+    "carr_library.language_qualification.backup",
+    "carr_library.ui.language_matrix",
+    "carr_library.backup_sidecars",
+    "carr_library.state_backup",
+    "carr_library.library_backup",
+    "carr_library.durable_state",
+    "carr_library.operations._locks",
+    "carr_library.application",
+    "carr_library.catalog.intake",
+    "carr_library.storage.revisions",
+    "carr_library.storage.schema_identity",
+    "carr_library.data_paths",
+    "carr_library.ingest.writer_guard",
+    "carr_library.ingest.bundle",
+    "carr_library.ingest.restore",
+    "carr_library.ingest.catalog_asset_copy",
+    "carr_library.ingest.retained_assets",
+    "carr_library.backup_capacity",
+    "carr_library.pending_backup",
+    "carr_library.reader.reading_state",
+    "carr_library.ui.desktop_app",
+    "carr_library.ui.worker_lifetime",
+    "carr_library.ui.worker_cleanup",
+    "carr_library.speech.progress_speech",
+    "carr_library.native_runtime",
+    "bootstrap",
+    "carr_library.audio.cleanup",
+    "carr_library.audio.process",
+    "carr_library.audio.windows_job",
+    "carr_library.operations.broker",
+    "carr_library.runtime_settings",
+    "carr_library.speech",
+    "carr_library.ui.command_registry"
+  ],
+  "actual_origin_count": 36,
+  "source_origin_paths": {
+    "carr_library.language_qualification": "src/carr_library/language_qualification/__init__.py",
+    "carr_library.language_qualification.catalog": "src/carr_library/language_qualification/catalog.py",
+    "carr_library.language_qualification.evidence": "src/carr_library/language_qualification/evidence.py",
+    "carr_library.language_qualification.backup": "src/carr_library/language_qualification/backup.py",
+    "carr_library.ui.language_matrix": "src/carr_library/ui/language_matrix.py",
+    "carr_library.backup_sidecars": "src/carr_library/backup_sidecars.py",
+    "carr_library.state_backup": "src/carr_library/state_backup.py",
+    "carr_library.library_backup": "src/carr_library/library_backup.py",
+    "carr_library.durable_state": "src/carr_library/durable_state.py",
+    "carr_library.operations._locks": "src/carr_library/operations/_locks.py",
+    "carr_library.application": "src/carr_library/application.py",
+    "carr_library.catalog.intake": "src/carr_library/catalog/intake.py",
+    "carr_library.storage.revisions": "src/carr_library/storage/revisions.py",
+    "carr_library.storage.schema_identity": "src/carr_library/storage/schema_identity.py",
+    "carr_library.data_paths": "src/carr_library/data_paths.py",
+    "carr_library.ingest.writer_guard": "src/carr_library/ingest/writer_guard.py",
+    "carr_library.ingest.bundle": "src/carr_library/ingest/bundle.py",
+    "carr_library.ingest.restore": "src/carr_library/ingest/restore.py",
+    "carr_library.ingest.catalog_asset_copy": "src/carr_library/ingest/catalog_asset_copy.py",
+    "carr_library.ingest.retained_assets": "src/carr_library/ingest/retained_assets.py",
+    "carr_library.backup_capacity": "src/carr_library/backup_capacity.py",
+    "carr_library.pending_backup": "src/carr_library/pending_backup.py",
+    "carr_library.reader.reading_state": "src/carr_library/reader/reading_state.py",
+    "carr_library.ui.desktop_app": "src/carr_library/ui/desktop_app.py",
+    "carr_library.ui.worker_lifetime": "src/carr_library/ui/worker_lifetime.py",
+    "carr_library.ui.worker_cleanup": "src/carr_library/ui/worker_cleanup.py",
+    "carr_library.speech.progress_speech": "src/carr_library/speech/progress_speech.py",
+    "carr_library.native_runtime": "src/carr_library/native_runtime.py",
+    "bootstrap": "bootstrap/__init__.py",
+    "carr_library.audio.cleanup": "src/carr_library/audio/cleanup.py",
+    "carr_library.audio.process": "src/carr_library/audio/process.py",
+    "carr_library.audio.windows_job": "src/carr_library/audio/windows_job.py",
+    "carr_library.operations.broker": "src/carr_library/operations/broker.py",
+    "carr_library.runtime_settings": "src/carr_library/runtime_settings.py",
+    "carr_library.speech": "src/carr_library/speech/__init__.py",
+    "carr_library.ui.command_registry": "src/carr_library/ui/command_registry.py"
+  },
+  "companions": [
+    {
+      "path": "tests/language_qualification/evidence_fixture.py",
+      "git_blob": "72944369f7304650e8742f97372d41415e3e35da",
+      "required_for": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "policy": "Copy exact current bytes into every isolated test staging root; hash before and after execution."
+    }
+  ],
+  "shared_data": {
+    "path": "carr-library/scripts/ci_language_evidence_cases.json",
+    "git_blob": "6797df44d708230f38ba999760bbfd3cb8581e40",
+    "exact_ascii_bytes": 11850,
+    "schema": "carr-language-evidence-contracts/1",
+    "root_keys": [
+      "schema",
+      "suites",
+      "native",
+      "native_script_git_blob"
+    ],
+    "suites": "Exactly the three new whole-module count/function contracts; old31+7 are only in the helper.",
+    "native_contract_git_blob": "ea20c8ebc68963b518567e2e54fb814a1cc4492a"
+  },
+  "native": {
+    "source": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "required_unique_checks": 75,
+    "required_origins": 14,
+    "required_fields": 16,
+    "default_no_occurrences": 3,
+    "watchdog_seconds": 300,
+    "parent_seconds": 330,
+    "argv": [
+      "--installed",
+      "--report",
+      "PATH.json"
+    ],
+    "isolated_wheel_snapshot": "Before and after native execution using byte-identical ORIGIN_CHILD.",
+    "qualification": "Synthetic observations and recorded reviewer assertions only; real language quality, authenticated identity, acoustic inference, physical devices, native file pickers, NVDA and all135 languages remain NOT_RUN."
+  },
+  "inherited_machinery": {
+    "studio_seed_helper": "f6d1fa87319f86f777333aa66576254d5ec4fa2d",
+    "five_whole_source_seed": "02c4e13f573e1d7572d4d7fd1cac509948bdea83",
+    "workflow_seed": "b46ec4190f61e902c8576b1e1a32c2668a719fb5",
+    "byte_identical": [
+      "require",
+      "load",
+      "write",
+      "sources",
+      "git",
+      "child",
+      "INSTALLED_CHILD",
+      "ORIGIN_CHILD"
+    ],
+    "source_ci": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "source_wheel": "478de248451d59a44b35784eb808fb2974f0af67",
+    "no_source_injection": "All installed tests and native-origin snapshots execute isolated outside checkout with complete wheel payload checks before/after."
+  },
+  "workflow": {
+    "reusable": true,
+    "branch_pattern": "carr/ci-language-evidence-*",
+    "path_filter": null,
+    "platform": "windows-2022",
+    "helper_minutes": 100,
+    "job_minutes": 135,
+    "acquisition": "Only four existing hashed Python/test locks before exact-interpreter outbound block; no audio/model acquisition.",
+    "firewall": "Exact four Python executable paths, all profile states and rule filters checked; owned rules removed and prior profiles restored in finally.",
+    "retention": {
+      "contract_files": 30,
+      "top_level_files": 2,
+      "per_file_bytes": 8388608,
+      "total_bytes": 67108864,
+      "formats": [
+        "JSON",
+        "text",
+        "JUnit XML"
+      ],
+      "days": 7,
+      "private_work_payloads_retained": false
+    },
+    "concurrency": "Workflow/run/head-specific, cancel-in-progress false."
+  },
+  "budget": {
+    "source": 1500,
+    "installed": 3000,
+    "wheel_build": 300,
+    "wheel_install": 180,
+    "pip_check": 60,
+    "origin_snapshots": 120,
+    "native": 330,
+    "declared_child_seconds": 5490,
+    "helper_seconds": 6000,
+    "helper_reserve_seconds": 510,
+    "total_step_minutes": 133,
+    "job_minutes": 135
+  },
+  "peers": {
+    "helper": "0719f2f6cb21b9149ea20976e5911c1f9fdbd7eb",
+    "workflow": "bb229dde49005e7ea691234f37474335472b09cd",
+    "data": "d748860f1c6a64cfb5c7a2fd9d6941d9d07e1145",
+    "native_ui_lifetime": "12ea016d9a6ce0187c58d021e519e8f9b259ef25",
+    "native_evidence_backup": "297c4858fc053fad7850de39fd7206a276377d08"
+  },
+  "limits": [
+    "No Python, YAML, PowerShell parser or runtime execution in this handoff; all new execution is required before qualification.",
+    "No full main/V3/source/installed gate paths or refs were edited by this component. Root owns final composition and required caller hashes.",
+    "The gate tests the software path with synthetic passive records, not actual language qualification or authenticated human review."
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "schema": "resonance-c-library-admission-composition/1",
+  "status": "ACCEPTED_STATIC_RUNTIME_PENDING",
+  "base_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "base_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "changes": [
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "preimage": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+      "git_blob": "2bc30526bfb15076f168a2706bb79cc6b5744f66"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+      "git_blob": "8ffc5598f8ed0bcbf570b3bd676f86a14f30c16c"
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "4965fd48b26b87e75ba14b9e470780943edab649",
+      "git_blob": "b50202409935cd0a8ca6816313fb641b5f4e600b"
+    },
+    {
+      "path": "resonance-status/next67/actual_b_source_syntax.json",
+      "preimage": null,
+      "git_blob": "c0a2031a438cd8921e8ce80a1b5363045df8449d"
+    },
+    {
+      "path": "resonance-status/next67/actual_b_keyboard_recovery.json",
+      "preimage": null,
+      "git_blob": "ab9fa029578454c69c289f06b056afa7a1b4fa07"
+    },
+    {
+      "path": "resonance-status/next67/actual_b_trusted_linux.json",
+      "preimage": null,
+      "git_blob": "6fdd5189669cb5f2f8f0e32db23f922c83df9639"
+    },
+    {
+      "path": "resonance-status/next67/actual_b_portable_linux.json",
+      "preimage": null,
+      "git_blob": "73ad3ab42dff7ca55ddf13991b95cc33d7319314"
+    },
+    {
+      "path": "resonance-status/next67/b_composition_peer.json",
+      "preimage": null,
+      "git_blob": "30fa56419d79b57639eb9b573ada3792a0095a6a"
+    },
+    {
+      "path": "resonance-status/next67/library_idle_component.json",
+      "preimage": null,
+      "git_blob": "b76c5c9e36355414b8c02337b635e4ae3cff8b0a"
+    },
+    {
+      "path": "resonance-status/next67/actual_b_library_failure.json",
+      "preimage": null,
+      "git_blob": "d6e1e945592a8afc365fa1f3f80ccb8fb3d2cdab"
+    },
+    {
+      "path": "resonance-status/next67/library_idle_peer.json",
+      "preimage": null,
+      "git_blob": "2cbeb465b771694dd6f77b7d20de1bbb59eba8af"
+    },
+    {
+      "path": "resonance-status/next67/actual_a3_capacity_windows.json",
+      "preimage": null,
+      "git_blob": "695014518d913915bdefb71e1492b94a02e51470"
+    }
+  ],
+  "source_component": "b76c5c9e36355414b8c02337b635e4ae3cff8b0a",
+  "peer": "2cbeb465b771694dd6f77b7d20de1bbb59eba8af",
+  "actual_failure": "d6e1e945592a8afc365fa1f3f80ccb8fb3d2cdab",
+  "actual_cause": "The real host still reported working=true and busy=true; the public menu correctly refused opening. No constructor exception occurred.",
+  "correction": "Both initial and resumed native menu admission wait for the actual host idle predicate through the existing bounded wait_for and unchanged deadline.",
+  "unchanged": {
+    "production_modules": true,
+    "all_490_source_wholes": true,
+    "native_six_checks": true,
+    "installed_nine_origins": true,
+    "watchdogs_seconds": [
+      40,
+      60,
+      180
+    ],
+    "pin_count": 823
+  },
+  "execution": "Focused C installed native execution remains NOT_RUN; included B/A3 receipts bind only their own source."
+}

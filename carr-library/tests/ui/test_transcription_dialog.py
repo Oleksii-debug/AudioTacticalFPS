@@ -91,7 +91,7 @@ class Service:
         self.calls.append(('register', name, paths, options))
         return deepcopy(self.runtimes[0])
 
-    def read_transcript(self, identity, source, *, edited=False):
+    def read_transcript(self, identity, source, *, edited=False, cancel=None):
         self.calls.append(('read', identity, source, edited))
         if edited and source not in self.edits:
             raise FileNotFoundError('No saved edit.')
@@ -99,7 +99,7 @@ class Service:
                 'source_id': source, 'edited': edited,
                 'provenance': {'job_id': identity, 'source_id': source, 'derivative': True}}
 
-    def save_edit(self, identity, source, text):
+    def save_edit(self, identity, source, text, *, cancelled=lambda: False):
         self.calls.append(('save', identity, source, text))
         self.edits[source] = text
         return {'text': text, 'edited': True, 'provenance': {'source_id': source, 'derivative': True}}
@@ -110,6 +110,11 @@ class Service:
 
     def rebind_runtime(self, identity, profile):
         self.calls.append(('rebind', identity, profile))
+        return deepcopy(self.job)
+
+    def bind_canonical_job(self, identity, **options):
+        self.calls.append(('bind', identity, options))
+        self.job['execution_review_required'] = False
         return deepcopy(self.job)
 
     def acknowledge_interruption(self, identity, **options):
@@ -123,7 +128,7 @@ def view(tmp_path):
     service, operations = Service(), []
     root = tmp_path / 'library'
     root.mkdir()
-    frame = SimpleNamespace(library=SimpleNamespace(root=root), working=False, _closing=False,
+    frame = SimpleNamespace(library=SimpleNamespace(root=root), active=('workspace-one', 'Fixture'), working=False, _closing=False,
                             cancel_event=Event(), progress_hub=ProgressHub())
     def run_job(title, operation, done, failed):
         frame.working = True
@@ -154,6 +159,7 @@ def view(tmp_path):
     result.new_controls, result.read_buttons = [result.language, result.title], [Control()]
     result.confirm_discard = Mock(return_value=True)
     result.confirm_rebind = Mock(return_value=True)
+    result.confirm_bind_workspace = Mock(return_value=True)
     result.confirm_worker_stopped = Mock(return_value=True)
     result.finish_close = Mock()
     result.configure(frame, TranscriptionController(root, service=service))
@@ -222,7 +228,7 @@ def test_frame_cancellation_during_preparation_never_starts_inference(view):
     view.start()
     view.frame.cancel_event.set()
     assert isinstance(finish(view), InterruptedError)
-    assert [row[0] for row in view.fake_service.calls] == ['create']
+    assert view.fake_service.calls == []
     assert view.current_job is None and not view.pending
     assert 'stopped before completion' in view.status.value
 
@@ -317,10 +323,10 @@ def test_old_callbacks_and_root_changes_cannot_publish_results(view, tmp_path):
     view.start()
     old.done(saved_job('failed'))
     assert view.pending and view.current_job is None
+    before = view.status.value
     view.frame.library = SimpleNamespace(root=tmp_path / 'another-library')
-    finish(view)
-    assert view.current_job is None
-    assert 'library folder changed' in view.status.value
+    assert isinstance(finish(view), InterruptedError)
+    assert view.current_job is None and view.status.value == before
     assert [row[0] for row in view.fake_service.calls].count('create') == 1
 
 
@@ -329,9 +335,11 @@ def test_closed_window_ignores_late_progress_and_completion(view):
     job = view.operations[-1]
     view.closed = True
     original = view.status.value
-    value = job.operation()
-    job.done(value)
+    with pytest.raises(InterruptedError):
+        job.operation()
+    job.done(saved_job('complete', 2))
     view.flush_progress()
+    assert view.fake_service.calls == []
     assert view.current_job is None and view.status.value == original
 
 
@@ -501,13 +509,16 @@ def test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives(vi
     from carr_library.operations import ResourceBroker
     fixture = runpy.run_path(str(Path(__file__).parents[1] / 'transcription' / 'fixture_runtime.py'))
     runtime = fixture['make_runtime'](tmp_path / 'synthetic-runtime')
-    service = TranscriptionService(view.library.root / 'state' / 'transcription',
-                                   broker=ResourceBroker.for_app(view.library.root))
+    adapter = fixture['make_service'](view.library.root / 'state' / 'transcription')
+    service = adapter.host
+    view.frame.library = view.library = service.app
+    view.frame.active = (service.workspace, 'Actual service fixture')
     profile = fixture['register'](service, runtime)
     source = tmp_path / 'synthetic-input.wav'
     original = b'Synthetic protocol bytes; this fixture performs no audio recognition.'
     source.write_bytes(original)
     view.controller = TranscriptionController(view.library.root, service=service)
+    view.controller.attach(view.frame)
     view.profiles = [profile]
     view.sources = (source,)
     view.formats['srt'].SetValue(True)
@@ -532,3 +543,105 @@ def test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives(vi
     assert {row['format'] for row in receipt['files']} == {'txt', 'srt', 'json'}
     assert any(row['edited'] for row in receipt['files'])
     assert all(Path(row['path']).is_file() for row in receipt['files'])
+
+
+@pytest.mark.parametrize('change', ['same-path-library', 'workspace', 'closing', 'destroy'])
+def test_queued_runtime_action_rechecks_current_library_workspace_and_lifetime(view, change):
+    view.start()
+    queued = view.operations[-1]
+    before = view.status.value
+    if change == 'same-path-library':
+        view.frame.library = SimpleNamespace(root=view.library.root)
+    elif change == 'workspace':
+        view.frame.active = ('other-workspace', 'Other')
+    elif change == 'closing':
+        view.frame._closing = True
+    else:
+        view.destroyed()
+    with pytest.raises(InterruptedError):
+        queued.operation()
+    queued.done(saved_job('complete', 2))
+    queued.failed(RuntimeError('Late synthetic result'))
+    view.flush_progress()
+    assert view.fake_service.calls == []
+    assert view.current_job is None and view.status.value == before
+
+
+def test_binding_is_explicit_and_does_not_run_or_trust_runtime(view):
+    job = saved_job('interrupted')
+    job.update(restored=True, execution_review_required=True, recovery_review_required=True)
+    view.fake_service.job = deepcopy(job)
+    view.publish_job(job)
+    view.confirm_bind_workspace.return_value = False
+    view.bind_workspace()
+    assert not view.operations and not view.fake_service.calls
+    view.confirm_bind_workspace.return_value = True
+    view.bind_workspace()
+    result = finish(view)
+    assert result['execution_review_required'] is False
+    [(kind, identity, options)] = view.fake_service.calls
+    assert (kind, identity) == ('bind', 'job-one')
+    assert options['reviewed'] is True and callable(options['cancel'])
+    assert view.current_job['status'] == 'interrupted'
+    assert view.fake_service.runtimes[0]['trusted'] is True  # untouched existing metadata
+
+
+def test_library_switch_inside_confirmation_cannot_queue_rebind(view):
+    view.publish_job(saved_job('interrupted'))
+    def switch(*args):
+        view.frame.library = SimpleNamespace(root=view.library.root)
+        return True
+    view.confirm_rebind.side_effect = switch
+    before = view.status.value
+    view.rebind_runtime()
+    assert not view.operations and not view.fake_service.calls
+    assert view.status.value == before
+
+
+def test_late_transcript_read_never_updates_or_focuses_replaced_library(view):
+    view.publish_job(saved_job('complete', 2))
+    view.load_transcript()
+    queued = view.operations[-1]
+    result = queued.operation()
+    before = (view.editor.value, view.status.value, view.provenance.value)
+    view.frame.library = SimpleNamespace(root=view.library.root)
+    queued.done(result)
+    assert view.document is None and not view.editor.focused
+    assert (view.editor.value, view.status.value, view.provenance.value) == before
+
+
+
+@pytest.mark.parametrize('publication', ['published', 'partial', 'uncertain'])
+def test_export_failure_displays_actual_publication_receipt_without_changing_job(view, tmp_path, publication):
+    from carr_library.integrations.transcription_exports import TranscriptionExportedError
+    job = saved_job('complete', 2)
+    view.publish_job(job)
+    destination = tmp_path / ('reported-' + publication)
+    receipt = {'schema': 'resonance-transcription-publication/1', 'status': publication,
+               'directory': str(destination), 'job_id': job['id'], 'files': ['retained.txt']}
+    error = TranscriptionExportedError(receipt)
+    view.fake_service.export = Mock(side_effect=error)
+    view.export_to(destination)
+    assert finish(view) is error
+    assert publication in view.status.value and str(destination) in view.status.value
+    assert 'retained.txt' in view.status.value and view.status.focused
+    assert view.current_job['status'] == 'complete'
+    assert 'Refresh saved jobs' not in view.status.value
+    view.fake_service.export.assert_called_once()
+
+
+def test_late_publication_receipt_never_updates_replaced_library(view, tmp_path):
+    from carr_library.integrations.transcription_exports import TranscriptionExportedError
+    view.publish_job(saved_job('complete', 2))
+    error = TranscriptionExportedError({'status': 'partial', 'directory': str(tmp_path / 'retained'),
+                                       'files': ['already-published.txt']})
+    view.fake_service.export = Mock(side_effect=error)
+    view.export_to(tmp_path / 'chosen-export')
+    queued = view.operations[-1]
+    with pytest.raises(TranscriptionExportedError):
+        queued.operation()
+    before = view.status.value
+    view.status.focused = False
+    view.frame.library = SimpleNamespace(root=view.library.root)
+    queued.failed(error)
+    assert view.status.value == before and not view.status.focused

@@ -184,7 +184,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS, BibTeX or CSL JSON files through a preview. Select the records to keep;
+Import BibTeX, RIS or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -205,6 +205,9 @@ convert a publication's page range into a verified quotation pinpoint.
 See [citation styles and BibTeX import](V3_BIBLIOGRAPHY.md) for the keyboard and
 headless workflows, supported metadata and current acceptance evidence.
 Entering a DOI or URL alone does not send a network request or download an attachment.
+BibTeX import resolves bounded macros and cross-references before the preview;
+unsupported or malformed records remain visible for review. DOI metadata
+lookup requires explicit approval for the network request.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -243,10 +246,31 @@ Format 4 additionally preserves its supported application settings, reading
 copies, audio projects, assistant job state and pending-import journals under
 explicit typed sidecar rules. Restored work is not started automatically;
 process-specific worker attempt hints are discarded before an explicit resume.
-Audio exported outside the library data directory needs its own copy. Model
+Retained recording originals, portable project input bytes, saved transcription
+state and publication receipts use explicit producer validation. Restored Studio
+jobs require a fresh output selection before rendering. Audio exported outside
+the library data directory needs its own copy. Model
 installations outside that directory and Windows Credential Manager secrets
 are not transferred as ordinary application state. Historical backup formats
 remain readable only with the data that their own manifests declared.
+
+## Local audio and video transcription
+
+Choose **Library, Transcription: local audio and video...** and configure a supported supplied
+worker profile, its Python interpreter and already installed local models.
+Choose **Додати записи** for individual media files or **Додати папку з
+підпапками** for one folder including nested folders. Intake reports retained
+media and excluded sidecars, preserves relative names and rejects unsafe paths
+or exceeded limits before publishing a job.
+
+Use **Запустити / продовжити** to run a saved job. Stop retains reusable progress
+without accepting unverified output as complete. Verified transcript text can be
+edited and exported through separate derivatives; original recordings and first
+results remain available. See [transcription](TRANSCRIPTION.md) for protocol
+compatibility, output formats and the distinction between controlled tests and
+actual neural inference. This section describes the retained Transcription
+workspace. The separately configured assistant V4.3 compatibility tool keeps
+source media and exported transcripts outside that retained backup contract.
 
 ## Review the source catalog
 
@@ -426,7 +450,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev2-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.

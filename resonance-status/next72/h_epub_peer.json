@@ -1,0 +1,68 @@
+{
+  "schema": "carr-independent-epub-controller-fixture-review/1",
+  "reviewer": "root",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base": {
+    "head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a"
+  },
+  "file": {
+    "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+    "preimage": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+    "blob": "01938c8d8d282886151d0a659f94f46e46ccfacc",
+    "readback_exact": true,
+    "full_inverse": true,
+    "inverse": [
+      {
+        "old": "    dialog.progress = SimpleNamespace(hold_audio=lambda: hold, refresh_audio_state=Mock(),\n        unregister_player=Mock())\n",
+        "replacement": "    class Progress:\n        # The real native progress owner has ordinary identity/hash semantics.\n        def __init__(self):\n            self.refresh_audio_state = Mock()\n            self.unregister_player = Mock()\n        def hold_audio(self):\n            return hold\n    dialog.progress = Progress()\n"
+      }
+    ]
+  },
+  "actual_failure_receipt": "ceee767497dcae0a9a2f94beb198c4769efe9bfc",
+  "observed_cause": "The actual shared play_when_quiet deduplicates progress owners via dict.fromkeys; the helper's SimpleNamespace was unhashable, so appended cases failed before intended hold/start/error callbacks.",
+  "source_authority": [
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "contract": "play_when_quiet builds unique owners via dict.fromkeys and calls hold_audio."
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "blob": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d",
+      "contract": "NativeProgressPanel is an ordinary identity owner, with no __eq__ or __hash__ override."
+    }
+  ],
+  "verification": {
+    "cases": 28,
+    "functions": 13,
+    "unchanged_test_names": [
+      "test_queued_recorded_work_rechecks_exact_host_scope_before_execution",
+      "test_close_disposes_late_actual_worker_result_without_host_callback",
+      "test_completed_but_undelivered_result_is_closed_once_on_scope_change",
+      "test_refused_host_submission_never_starts_a_private_executor",
+      "test_successful_preparation_transfers_ownership_only_to_current_view",
+      "test_close_uses_original_disposer_for_borrowed_resume_input",
+      "test_failed_native_close_retains_pcm_and_quiet_until_existing_owner_reaps",
+      "test_normal_close_keeps_window_and_pcm_if_native_silence_is_unconfirmed",
+      "test_recorded_modal_return_rechecks_captured_reader_before_focus",
+      "test_recorded_start_failure_survives_own_generation_cleanup",
+      "test_recorded_start_error_does_not_present_to_a_revoked_request",
+      "test_recorded_start_keeps_original_error_when_notification_fails_or_repeats",
+      "test_recorded_quiet_timeout_preserves_the_same_owned_failure_and_releases_pcm"
+    ],
+    "unchanged_assertion_parametrization_lines": 80,
+    "all_test_body_bytes_unchanged": true,
+    "changed_scope": "Only _recorded_start_case's three-method progress-owner construction",
+    "hold_identity_preserved": true,
+    "identity_equality_and_hash_consistent": true,
+    "all_product_bytes_unchanged": true,
+    "raw_test_pin_callers": [],
+    "scanned_gate_files": 63
+  },
+  "limits": [
+    "This accepted source review is not an actual passing execution.",
+    "All28 source/installed cases and actual native failure handling retain their existing required gates.",
+    "No exception handler, timeout, callback or outcome assertion was removed."
+  ]
+}

@@ -2,6 +2,7 @@
 import json
 import importlib.util
 from contextlib import contextmanager
+from dataclasses import replace
 import os
 from pathlib import Path
 import threading
@@ -12,12 +13,13 @@ import pytest
 from carr_library.audio.models import AudioBudget
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.research.export_file import ExportReceipt
-from carr_library.transcription import TranscriptionService, expand_sources
-from carr_library.transcription import service as module
+from carr_library.transcription import expand_sources
+from carr_library.integrations import transcription_protocol as module
 _spec = importlib.util.spec_from_file_location('transcription_service_fixture_builder', Path(__file__).with_name('fixture_runtime.py'))
 _builder = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_builder)
 make_runtime, register = _builder.make_runtime, _builder.register
+TranscriptionService = _builder.make_service
 
 
 @pytest.fixture
@@ -207,6 +209,9 @@ def test_export_failure_preserves_recognition_and_retry_needs_no_second_inferenc
 
 def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, monkeypatch):
     service, runtime, profile, audio = setup
+    # Verify identity/reuse through real run + resume, not a five-second SLA.
+    # Checkpoint admission hashes the real reviewed Python support inventory.
+    monkeypatch.setattr(service, 'budget', replace(service.budget, timeout=30))
     created = job(setup, settings={'output_srt': True})
     original = module.atomic_bytes
     def failing(path, payload, **kw):
@@ -215,7 +220,8 @@ def test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint(setup, mo
         return original(path, payload, **kw)
     monkeypatch.setattr(module, 'atomic_bytes', failing)
     failed = service.run(created['id'])
-    assert failed['status'] == 'failed' and not failed['results']
+    assert failed['status'] == 'failed' and not failed['results'], failed
+    assert 'Synthetic export failure after recognition.' in failed['error']
     assert starts(runtime) == 1
     # A support-file change need not change the worker's reported launcher or
     # installed-distribution identity, as with a Windows base-runtime update.
@@ -279,7 +285,8 @@ def test_retained_input_change_blocks_processing_without_touching_original(setup
 def test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust(setup):
     service, runtime, profile, audio = setup
     created = job(setup)
-    result = service.run(created['id'])
+    result = service.run(created['id'], timeout=30)
+    assert result['status'] == 'complete', result
     source = result['sources'][0]['id']
     original = service.read_transcript(created['id'], source)
     edited = service.save_edit(created['id'], source, 'Відредагована похідна копія.')
@@ -348,7 +355,8 @@ def test_unclean_runner_requires_explicit_review_before_resume(setup):
     assert service.get_job(created['id'])['status'] == 'interrupted'
     assert starts(runtime) == 0
     service.acknowledge_interruption(created['id'], worker_stopped=True)
-    assert service.resume(created['id'])['status'] == 'complete'
+    resumed = service.resume(created['id'])
+    assert resumed['status'] == 'complete', resumed
 
 
 def test_folder_selection_is_bounded_explicit_and_link_safe(tmp_path):
@@ -367,17 +375,20 @@ def test_folder_selection_is_bounded_explicit_and_link_safe(tmp_path):
             expand_sources([folder])
 
 
-def test_changed_dependency_after_resource_wait_is_rechecked_before_launch(setup):
+def test_changed_dependency_after_resource_wait_is_rechecked_before_launch(setup, monkeypatch):
     service, runtime, profile, audio = setup
     from carr_library.operations import ResourceBroker
     broker = ResourceBroker.for_app(service.library_root)
-    class ChangingAfterAdmission:
-        @contextmanager
-        def reserve(self, request, **kwargs):
-            with broker.reserve(request, **kwargs) as lease:
-                runtime.dependencies['av'].write_text('# changed while this job waited\n')
-                yield lease
-    service.broker = ChangingAfterAdmission()
+    reserve = broker.reserve
+    @contextmanager
+    def changed_after_admission(request, **kwargs):
+        with reserve(request, **kwargs) as lease:
+            runtime.dependencies['av'].write_text('# changed while this job waited\n')
+            yield lease
+    # Preserve the host's actual broker identity/policy gate while injecting
+    # the same mutation at the real acquired-lease boundary.
+    monkeypatch.setattr(broker, 'reserve', changed_after_admission)
+    service.host._broker = broker
     result = service.run(job(setup)['id'])
     assert result['status'] == 'failed'
     assert starts(runtime) == 0

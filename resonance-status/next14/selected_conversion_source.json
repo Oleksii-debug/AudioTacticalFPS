@@ -1,0 +1,193 @@
+{
+  "schema": "resonance-selected-format-complete-source/1",
+  "base": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/conversion/_selected_files.py",
+      "preimage": null,
+      "sha": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/calibre.py",
+      "preimage": null,
+      "sha": "c2626810e0d0131062cbd7c609be7bc8cbc308ed"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/office.py",
+      "preimage": null,
+      "sha": "c5c524215128900f389790917a308e6e149f0fd6"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_adapters.py",
+      "preimage": null,
+      "sha": "55e8b10b731827ade1c1c3af7790a928c84af11b"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_worker.py",
+      "preimage": null,
+      "sha": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected.py",
+      "preimage": null,
+      "sha": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/models.py",
+      "preimage": "8b1a6611082e157f8b864ee004310ad89b473e60",
+      "sha": "fc087b6acd2284b08f5384c986a9c1233a5fda5c"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/worker.py",
+      "preimage": "db0ef1a4e617f2001e2f78e0d073bb1b15f1baf1",
+      "sha": "722d3c7b61717890dc242d8113d0617714d53a67"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "preimage": "63c754ef00bb1cd5e0dd56077078e5e1408d623c",
+      "sha": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "preimage": "3e6a2feb8ac385ff4cb7ec0ecbbb4e86a71b52ed",
+      "sha": "83a48872bd07a0e4611ee68b1a59155fe4468239"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_selected_conversion.py",
+      "preimage": null,
+      "sha": "8030a214a238d6bad568fc2ded2c61021baaca42"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_calibre_admission.py",
+      "preimage": null,
+      "sha": "5383663ad30f71ea2782c991826afe16d3f92017"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_admission.py",
+      "preimage": null,
+      "sha": "b60d2784e25df42d29f486396010393865a2aa1b"
+    },
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "preimage": null,
+      "sha": "a92b5e20180462812634dda50266a61df8b9d4e3"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_conversion.py",
+      "preimage": "e8cae855b1d64bc85fe06b945f840976f07c67a3",
+      "sha": "db3884363c51654c7d16ef2c5d2e82d0e714b411"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "preimage": "2b198b0c24414d483c054f2f21c9dd5ebb81b649",
+      "sha": "a09bc00a438e14ee631978498884961e8e396f00"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "preimage": "667cf97b6dcacc293b7b5145d2cf0a4142e32213",
+      "sha": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_fixture_support.py",
+      "preimage": null,
+      "sha": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "preimage": null,
+      "sha": "574a297765039cd765c1b352a6a9d8f27ca6b3be"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "preimage": null,
+      "sha": "5527d7a7ff2b830e926af8666ff4679e1a5374a3"
+    },
+    {
+      "path": "carr-library/packaging/windows-document-converters.lock.json",
+      "preimage": null,
+      "sha": "c5822c7ff56d5139da911ea153a8fdcd626d70dd"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_CONVERSION.md",
+      "preimage": null,
+      "sha": "edf0dcc530a76555e27fce19e418a3b7be2298d6"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_FORMATS_V3.md",
+      "preimage": "b47293e2926e433ce98dd7998cf5fb7bbd72ab65",
+      "sha": "db3b6e0e543621008f6309764bbccf71c2d95177"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_CONVERSION_NATIVE.md",
+      "preimage": null,
+      "sha": "1650c828cef463e734b0714b96c8e14c4c83992e"
+    }
+  ],
+  "portable_new_suites": [
+    {
+      "path": "tests/conversion/test_selected_conversion.py",
+      "static_expected": 26
+    },
+    {
+      "path": "tests/conversion/test_calibre_admission.py",
+      "static_expected": 44
+    },
+    {
+      "path": "tests/conversion/test_office_admission.py",
+      "static_expected": 19
+    },
+    {
+      "path": "tests/ui/test_document_conversion.py",
+      "static_expected": 17
+    }
+  ],
+  "preserve": [
+    "all existing conversion cases; RTF fixture selects actual Pandoc explicitly",
+    "all old ODF cases; +7 actual-package cases"
+  ],
+  "native": "Actual native execution NOT_RUN. The coherent standalone durable PR workflow invokes portable201 source+installed on both platforms, Windows actual14 formats+whole34 in each mode, then GUI30 checks/30 origins in each mode. All six native phases are required while retaining exact active firewall/program ownership.",
+  "no_changes": [
+    "SUPPORTED_SUFFIXES",
+    "LibraryApp",
+    "ingest worker/recovery",
+    "catalog/backup schema",
+    "speech reader/executor"
+  ],
+  "notes": [
+    "External selected reading folder is one existing atomic directory publication, retaining original+UTF8+inert report.",
+    "No runtime download/discovery for newly selected legacy routes; Calibre/LibreOffice use the current owned Windows Job only.",
+    "Read is unbound manual text; Import retains only TXT through current LibraryApp; native original/report stay in the external folder.",
+    "The existing HTML/Pandoc conversion test uses an actual loopback HTTP fixture when Pandoc is present; do not run that case under all-socket-denied policy and claim actual native execution.",
+    "All24 source/native/docs files exact-readback, no local executor/compile/runtime claim.",
+    "Actual root diagnostic established nested Button IDs0; final5527 uses exact02d845 pattern and preserves all30 native checks and30origins. Inventory is not native product acceptance.",
+    "This successor preserves all23 other exact source/test/runtime/native/document blobs from2292; only DOCUMENT_CONVERSION_NATIVE.md explains the now-coherent six-phase durable PR route and final finite envelopes."
+  ],
+  "parent_review_context": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "portable_contract": "1f9590baaf0c03742c21be0e3f49dde3ab084f27",
+  "native_contract": "c7cbad14ba624e2e3d7954db81b628dc3fa00c1e",
+  "independent_reviews": [
+    {
+      "reviewer": "progress_completion",
+      "scope": "selected-file/core lease/fixed args + owned worker/Job/commit + native headless real-child origin/loopback suite",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "locate_project",
+      "scope": "Actual GUI host/control/reader/worker finalizers plus final5527 TaskDialog discovery/key/owned-cleanup delta",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "root",
+      "scope": "ODF exact admission + UI/library capture + repeated bundle identity guard",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "progress_completion",
+      "scope": "Final600b PR-head workflow, GUI30/30 after all four headless phases, strict typed reports, finite budgets and six-phase aggregate",
+      "status": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "diagnostic_manifest": "ffeab41e27a7770bd7a77c62393c5922f786ab41",
+  "supersedes": "2292ed26768a41665fc23985a0b7fc28cb6d4cc4"
+}

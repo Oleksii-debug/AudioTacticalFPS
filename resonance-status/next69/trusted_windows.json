@@ -1,0 +1,536 @@
+{
+  "schema": "carr-actual-required-lane/1",
+  "status": "PASS",
+  "lane": "trusted_windows",
+  "observed_at_utc": "2026-11-28T08:27:42Z",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job_id": 140911207133,
+  "job": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:54:04Z",
+    "completed_at": "2026-11-28T07:57:27Z"
+  },
+  "claims": {
+    "source_wholes": 19,
+    "source_cases": 388,
+    "installed_wholes": 18,
+    "installed_cases": 354,
+    "installed_origins": 12,
+    "native_distinct_checks": 10
+  },
+  "strict_whole_rows": [
+    {
+      "line": 1056,
+      "path": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1057,
+      "path": "tests/packaging/test_managed_update_native_policy.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1058,
+      "path": "tests/packaging/test_native_launcher_bundle.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1059,
+      "path": "tests/packaging/test_standard_installer.py",
+      "passed": 102,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1060,
+      "path": "tests/security/test_anchor_locking.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1061,
+      "path": "tests/security/test_canonical_boundary.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1062,
+      "path": "tests/security/test_controller.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1063,
+      "path": "tests/security/test_entitlements.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1064,
+      "path": "tests/security/test_idle_renewal.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1065,
+      "path": "tests/security/test_independent_review_boundaries.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1066,
+      "path": "tests/security/test_installation.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1067,
+      "path": "tests/security/test_managed_installation.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1068,
+      "path": "tests/security/test_managed_registration.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1069,
+      "path": "tests/security/test_publication_integrity.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1070,
+      "path": "tests/security/test_refresh.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1071,
+      "path": "tests/security/test_updates.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1072,
+      "path": "tests/ui/test_trust_status_handlers.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1073,
+      "path": "tests/packaging/test_installed_trusted_client_probe.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "line": 1074,
+      "path": "tests/security/test_windows_vault.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_json_reports": [
+    {
+      "line": 394,
+      "data": {
+        "installed_pins": {
+          "bibtexparser": "2.1.0",
+          "cffi": "2.1.1",
+          "colorama": "0.4.6",
+          "comtypes": "1.5.0",
+          "cryptography": "50.0.2",
+          "defusedxml": "0.7.1",
+          "filelock": "3.29.0",
+          "iniconfig": "2.3.1",
+          "lxml": "6.1.3",
+          "numpy": "2.4.6",
+          "packaging": "26.4",
+          "pillow": "13.0.0",
+          "platformdirs": "4.10.0",
+          "pluggy": "1.7.0",
+          "pycparser": "3.12",
+          "pygments": "2.21.0",
+          "pylatexenc": "2.11",
+          "pypdf": "7.1.1",
+          "pypdfium2": "5.13.0",
+          "pytest": "9.0.2",
+          "python-docx": "1.2.0",
+          "quickjs-ng": "0.18.0.2",
+          "securesystemslib": "1.6.0",
+          "setuptools": "84.2.1",
+          "tuf": "7.0.1",
+          "typing-extensions": "4.16.0",
+          "urllib3": "2.8.0",
+          "wheel": "0.48.0",
+          "wxpython": "4.2.4"
+        },
+        "locks": {
+          "packaging/trusted-client.lock": "51117188b2dbce9dac63c45ffdf0e913b19778eb8e44f1dcfb6a2a723d5ff856",
+          "packaging/windows-cp311.lock": "a080f413266ed8942deb0dedd82304721cb39ea7b9eddd96d2cba542086d7f4a",
+          "packaging/windows-sync-test-cp311.lock": "ea8bab4a5fc3b7e579f75244439ddc1a38872070a46867f9f18719bec7af69fc"
+        },
+        "platform": "Windows-10-10.0.20348-SP0",
+        "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "status": "PASS",
+        "wheels": [
+          {
+            "bytes": 50128,
+            "name": "bibtexparser-2.1.0-py3-none-any.whl",
+            "sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+          },
+          {
+            "bytes": 185096,
+            "name": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+            "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0"
+          },
+          {
+            "bytes": 25335,
+            "name": "colorama-0.4.6-py2.py3-none-any.whl",
+            "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
+          },
+          {
+            "bytes": 325563,
+            "name": "comtypes-1.5.0-py3-none-any.whl",
+            "sha256": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+          },
+          {
+            "bytes": 3824692,
+            "name": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+            "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
+          },
+          {
+            "bytes": 25604,
+            "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+            "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+          },
+          {
+            "bytes": 39812,
+            "name": "filelock-3.29.0-py3-none-any.whl",
+            "sha256": "96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"
+          },
+          {
+            "bytes": 7552,
+            "name": "iniconfig-2.3.1-py3-none-any.whl",
+            "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7"
+          },
+          {
+            "bytes": 4032700,
+            "name": "lxml-6.1.3-cp311-cp311-win_amd64.whl",
+            "sha256": "7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559"
+          },
+          {
+            "bytes": 12608406,
+            "name": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+            "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+          },
+          {
+            "bytes": 140049,
+            "name": "packaging-26.4-py3-none-any.whl",
+            "sha256": "81383611a09c1bc0b08b76e0fd5829d7c6824c65b27a6aee339da133f4233ea2"
+          },
+          {
+            "bytes": 7278471,
+            "name": "pillow-13.0.0-cp311-cp311-win_amd64.whl",
+            "sha256": "d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3"
+          },
+          {
+            "bytes": 22743,
+            "name": "platformdirs-4.10.0-py3-none-any.whl",
+            "sha256": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a"
+          },
+          {
+            "bytes": 27082,
+            "name": "pluggy-1.7.0-py3-none-any.whl",
+            "sha256": "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec"
+          },
+          {
+            "bytes": 62600,
+            "name": "pycparser-3.12-py3-none-any.whl",
+            "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+          },
+          {
+            "bytes": 1250147,
+            "name": "pygments-2.21.0-py3-none-any.whl",
+            "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9"
+          },
+          {
+            "bytes": 137533,
+            "name": "pylatexenc-2.11-py2.py3-none-any.whl",
+            "sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+          },
+          {
+            "bytes": 421026,
+            "name": "pypdf-7.1.1-py3-none-any.whl",
+            "sha256": "04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1"
+          },
+          {
+            "bytes": 3885553,
+            "name": "pypdfium2-5.13.0-py3-none-win_amd64.whl",
+            "sha256": "47dcca2a8d507b5fd24f94c3c9d48fb379430f097bc20f01beff6c963ffbcedb"
+          },
+          {
+            "bytes": 374801,
+            "name": "pytest-9.0.2-py3-none-any.whl",
+            "sha256": "711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b"
+          },
+          {
+            "bytes": 252987,
+            "name": "python_docx-1.2.0-py3-none-any.whl",
+            "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+          },
+          {
+            "bytes": 401365,
+            "name": "quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl",
+            "sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+          },
+          {
+            "bytes": 874777,
+            "name": "securesystemslib-1.6.0-py3-none-any.whl",
+            "sha256": "1c1aa00f058f4851f038d409c8ca4a727db854a91f07ec3a0fa047bb93e43e0e"
+          },
+          {
+            "bytes": 876263,
+            "name": "setuptools-84.2.1-py3-none-any.whl",
+            "sha256": "ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2"
+          },
+          {
+            "bytes": 56253,
+            "name": "tuf-7.0.1-py3-none-any.whl",
+            "sha256": "d30434bda6e079ab303fb30d1b3006d939a10ca34783b1573d61cd9b802fa45c"
+          },
+          {
+            "bytes": 45571,
+            "name": "typing_extensions-4.16.0-py3-none-any.whl",
+            "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+          },
+          {
+            "bytes": 135717,
+            "name": "urllib3-2.8.0-py3-none-any.whl",
+            "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"
+          },
+          {
+            "bytes": 33320,
+            "name": "wheel-0.48.0-py3-none-any.whl",
+            "sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab"
+          },
+          {
+            "bytes": 16538730,
+            "name": "wxpython-4.2.4-cp311-cp311-win_amd64.whl",
+            "sha256": "f48fe7b9f22c7733a06b5901559b5b7e4835fa852cbef0f620ffd0a0030aaf73"
+          }
+        ]
+      }
+    },
+    {
+      "line": 441,
+      "data": {
+        "payload_files": 485,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 414,
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "status": "PASS",
+        "wheel_sha256": "d0cac579ded5e32ed56262facfdf3bb92fe99fd79d34b96248f3a1019eacb9d1"
+      }
+    },
+    {
+      "line": 1113,
+      "data": {
+        "status": "PASS",
+        "cases": 354,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "tests/packaging/test_managed_launch_boundary.py": 8,
+          "tests/packaging/test_managed_update_native_policy.py": 7,
+          "tests/packaging/test_native_launcher_bundle.py": 19,
+          "tests/packaging/test_standard_installer.py": 102,
+          "tests/security/test_anchor_locking.py": 1,
+          "tests/security/test_canonical_boundary.py": 27,
+          "tests/security/test_controller.py": 10,
+          "tests/security/test_entitlements.py": 30,
+          "tests/security/test_idle_renewal.py": 4,
+          "tests/security/test_independent_review_boundaries.py": 5,
+          "tests/security/test_installation.py": 39,
+          "tests/security/test_managed_installation.py": 34,
+          "tests/security/test_managed_registration.py": 10,
+          "tests/security/test_publication_integrity.py": 18,
+          "tests/security/test_refresh.py": 5,
+          "tests/security/test_updates.py": 23,
+          "tests/ui/test_trust_status_handlers.py": 11,
+          "tests/security/test_windows_vault.py": 1
+        },
+        "installed_origins": {
+          "carr_library.security.anchors": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\anchors.py",
+            "sha256": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.boundary": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\boundary.py",
+            "sha256": "60fe38d06826ed0822d565742e2c6ce744c85dbb6ebd3b2277d6990f72a579ec",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.controller": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\controller.py",
+            "sha256": "3c1cc0b9c8f8fdb82b9a924b77d53004e6a96938057d177c1168973cf08e02af",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.entitlements": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\entitlements.py",
+            "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.installation": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+            "sha256": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.managed_installation": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\managed_installation.py",
+            "sha256": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.refresh": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\refresh.py",
+            "sha256": "e85d72183279fc0a48b5979e091cd82761d14d9500a3b351eb3c2c80e469712b",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.updates": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\updates.py",
+            "sha256": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.windows_registration": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\windows_registration.py",
+            "sha256": "fb1b15d9fb031e4260e66205bd79109901bdd830f91477f129f89f29f3bba1c5",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.installation_lease": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+            "sha256": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.managed_installation": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\managed_installation.py",
+            "sha256": "1582a4f24401e98345210d08b013b1a9a50f87e9f694597cc498f3db1a761e93",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.ui.trust_status": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+            "sha256": "2716f33a0e05d5d7c810d1d86c47d000d580a14b1cd5e3cf9046fcb0d54ba082",
+            "qualification": "imported-installed-runtime"
+          }
+        },
+        "packaging_evidence": "Reviewed source helpers; separate actual native setup gates are required",
+        "production_issuer": "UNCONFIGURED",
+        "manual_nvda": "NOT_RUN"
+      }
+    },
+    {
+      "line": 1199,
+      "data": {
+        "status": "PASS",
+        "checks": [
+          "Actual desktop Help exposes the signed client status",
+          "Signed status uses the existing configurable keyboard registry",
+          "Repeated module installation does not duplicate the Help command",
+          "Native Help event reaches the status action",
+          "Default status is a named native read-only multiline control",
+          "Private default shows perpetual operation and no fake authority actions",
+          "Terms and profile are readable before accepting",
+          "Import requires explicit native checkbox acceptance",
+          "Native acceptance event enables import",
+          "Reviewed signed grant is durably verified"
+        ],
+        "nvda": "NOT_RUN",
+        "production_authority": "NOT_CONFIGURED",
+        "production_installer_upgrade": "NOT_RUN",
+        "ui_module": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py"
+      }
+    },
+    {
+      "line": 1200,
+      "data": {
+        "status": "PASS",
+        "checks": [
+          "Actual desktop Help exposes the signed client status",
+          "Signed status uses the existing configurable keyboard registry",
+          "Repeated module installation does not duplicate the Help command",
+          "Native Help event reaches the status action",
+          "Default status is a named native read-only multiline control",
+          "Private default shows perpetual operation and no fake authority actions",
+          "Terms and profile are readable before accepting",
+          "Import requires explicit native checkbox acceptance",
+          "Native acceptance event enables import",
+          "Reviewed signed grant is durably verified"
+        ],
+        "nvda": "NOT_RUN",
+        "production_authority": "NOT_CONFIGURED",
+        "production_installer_upgrade": "NOT_RUN",
+        "ui_module": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py"
+      }
+    }
+  ],
+  "artifact": {
+    "id": 15254751654,
+    "name": "trusted-client-windows-2022-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 61713,
+    "digest": "sha256:047786068c229d9707627c89d261b29209a91c0ae44ca3b1fcfd12e2859efe9d"
+  },
+  "log": {
+    "bytes": 159474,
+    "sha256": "e689fef6d961ab6516b27f1cbb7d171a54c182912385c06fd2dd6155ca494574",
+    "line_count": 1258
+  },
+  "qualification": "Actual signed-client import/status with a synthetic reviewed authority. Production issuer is not configured, actual production installer rollout and manual NVDA are not qualified.",
+  "aggregate_boundary": "This is one required lane at exact B; full-source, integrated installed, V3, physical audio, manual accessibility and later compositions remain separate."
+}

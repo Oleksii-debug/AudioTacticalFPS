@@ -1,0 +1,139 @@
+{
+  "schema": "carr-bounded-static-peer/1",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "path": ".github/workflows/carr-publication-cursor.yml",
+  "candidate": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+  "preimage_comparison": "78914171b42d0b1b09b404d7511166aed4da003e",
+  "operational_predecessor": "0b26458b4c850f88715cb6dc6b26852e3e9c1d6c",
+  "source_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "source_component": "067db10ada9fa04feafd2203c45f09336aba6501",
+  "source_peer": "2d29f2fac705cc1553e32c7d76f970ca77593777",
+  "checks": [
+    "Six exact follow-up hunks reconstruct 789141 byte-for-byte; fetch-depth0 independently retains the immutable G preimage on descendants.",
+    "Eleven pinned source/test/policy/dependency inputs independently equal exact G plus only accepted worker532 and test6f5.",
+    "Each OS copies the complete ordinary source inventory twice and substitutes only the exact old worker blob in the preimage copy. Child asserts the actual imported worker origin/blob.",
+    "One exact test uses unchanged canonical PYTEST_CHILD. Preimage must exit1 with exactly one JUnit failure, SQLite database-is-locked text, and the actual pytest failing-line marker at writer.commit(); postimage must exit0 with exactly one PASS. Error/skip and another testcase refuse.",
+    "pytest cache and basetemp are outside each source copy. Full inventory after each case must equal that copy's admitted inventory; original checkout and git diff are checked after both.",
+    "Each actual child retains180s plus existing owned process-tree cleanup. Test step stays8min. Job45 funds declared3+5+20+8+2+3=41min with4min reserve; no product/ordinary600 deadline change.",
+    "Closed allowlist admits only seven bounded synthetic text/XML/JSON reports,8MiB each/16MiB total; upload requires retention validation.",
+    "Push trigger is only dedicated carr/ci-publication-cursor-* plus explicit workflow_dispatch; no PR/reusable caller or ref mutation."
+  ],
+  "pins": [
+    {
+      "path": "src/carr_library/ingest/worker.py",
+      "sha": "532cd6d0e0bdbeb55675eeb813aa1e39239df022"
+    },
+    {
+      "path": "src/carr_library/ingest/publication.py",
+      "sha": "a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5"
+    },
+    {
+      "path": "tests/ingest/test_large_source_intake.py",
+      "sha": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38"
+    },
+    {
+      "path": "tests/ingest/large_source_fixtures.py",
+      "sha": "7d59170c1d372d9b1bbdfa672dfd2d80021a26df"
+    },
+    {
+      "path": "scripts/ci_check.py",
+      "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha": "0e691bab81b90bf9b1543b454014c47b987f11ce"
+    },
+    {
+      "path": "packaging/windows-cp311.lock",
+      "sha": "8dad99c0ea80470b7253873aee78e08857affec6"
+    },
+    {
+      "path": "packaging/windows-sync-cp311.lock",
+      "sha": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3"
+    },
+    {
+      "path": "packaging/trusted-client.lock",
+      "sha": "6c4b48ac09572dc259d62d0d801057ab47c04583"
+    },
+    {
+      "path": "packaging/windows-sync-test-cp311.lock",
+      "sha": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a"
+    },
+    {
+      "path": "packaging/linux-sync-core-cp311.lock",
+      "sha": "08f945066be748972a10d5b0ce46480fff722959"
+    }
+  ],
+  "inverse_operations": [
+    {
+      "oldLine": 15,
+      "newLine": 15,
+      "before": [
+        "    timeout-minutes: 35"
+      ],
+      "after": [
+        "    timeout-minutes: 45"
+      ]
+    },
+    {
+      "oldLine": 100,
+      "newLine": 100,
+      "before": [
+        "          import json, os, pathlib, runpy, shutil, stat, subprocess, sys, tempfile"
+      ],
+      "after": [
+        "          import json, os, pathlib, re, runpy, shutil, stat, subprocess, sys, tempfile"
+      ]
+    },
+    {
+      "oldLine": 152,
+      "newLine": 152,
+      "before": [],
+      "after": [
+        "                      '-o', 'cache_dir='+temporary+'-cache',"
+      ]
+    },
+    {
+      "oldLine": 194,
+      "newLine": 195,
+      "before": [
+        "                      assert 'writer.commit()' in failure_text, failure_text"
+      ],
+      "after": [
+        "                      assert re.search(r'(?m)^>\\s+writer\\.commit\\(\\)\\s*$', failure_text), failure_text"
+      ]
+    },
+    {
+      "oldLine": 199,
+      "newLine": 200,
+      "before": [],
+      "after": [
+        "                  assert inventory(clone) == wanted, mode+' source copy changed during its case.'"
+      ]
+    },
+    {
+      "oldLine": 201,
+      "newLine": 203,
+      "before": [
+        "                                  'skipped': 0, 'log_sha256': sha256(log.read_bytes()).hexdigest(),"
+      ],
+      "after": [
+        "                                  'skipped': 0, 'source_copy_unchanged': True,",
+        "                                  'log_sha256': sha256(log.read_bytes()).hexdigest(),"
+      ]
+    }
+  ],
+  "qualification": {
+    "parsing_or_execution": "NOT_RUN",
+    "causal_preimage_failure": "PENDING_ACTUAL",
+    "corrected_case_pass": "PENDING_ACTUAL",
+    "complete_seven_case_whole": "NOT_RUN",
+    "isolated_installed": "NOT_RUN"
+  },
+  "limitations": [
+    "This is a bounded static workflow review; it does not establish runtime reproduction or performance.",
+    "The source-supported SQLite statement-lifetime explanation remains subject to the actual oldFAIL/newPASS gate."
+  ]
+}

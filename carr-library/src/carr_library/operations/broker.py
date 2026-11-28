@@ -42,6 +42,34 @@ def _read(path):
         raise ResourceStateError('Resource policy or lease is invalid; admission stopped.') from exc
 
 
+def _directory_identity(path):
+    value = regular(local_path(path, exists=True), directory=True)
+    return value.st_dev, value.st_ino
+
+
+def _release_reservation_lock(lock):
+    """Release one unique lease lock and its inert file while _gate is held.
+
+    UUID reservation names are allocated only under the coordinator gate.
+    No cooperating owner or waiter can acquire this identity between release
+    and deletion. The shared admission lock must never use this helper.
+    """
+    if not lock.held:
+        raise ResourceStateError('Only an owned reservation lock can be retired.')
+    try:
+        before = regular(lock.path)
+    finally:
+        # Always close the descriptor, including a changed-path failure.
+        # NativeLock validates ownership; Windows may remove the file here.
+        lock.release()
+    if os.path.lexists(lock.path):
+        after = regular(lock.path)
+        if (before.st_dev, before.st_ino) != (after.st_dev, after.st_ino):
+            raise ResourceStateError('A released reservation lock was replaced; it was not removed.')
+        lock.path.unlink()
+        sync_directory(lock.path.parent)
+
+
 class ResourceLease:
     def __init__(self, broker, record, lock, cancelled, run_timeout):
         self.broker, self.record, self._lock = broker, record, lock
@@ -62,11 +90,38 @@ class ResourceLease:
     def checkpoint(self):
         if self._pid != os.getpid() or self._released or not self._lock.held:
             raise ResourceStateError('This resource reservation is not held by the current process.')
+        self.broker._check_scope()
         self._stopped = self._stopped or bool(self._cancelled())
         if self._stopped:
             raise ResourceCancelled('Operation cancelled; finish native worker cleanup before leaving the reservation.')
+        self.broker._check_scope()
         if self._timeout is not None and time.monotonic() - self._started >= self._timeout:
             raise ResourceTimeout('Operation exceeded its cooperative execution time allowance.')
+
+    def settle_cleanup(self, error):
+        """Keep this native lease until the existing worker owner is quiescent.
+
+        This synchronous boundary runs on an operation worker, never the GUI.
+        It does not kill processes or replace the canonical CleanupOwner.
+        """
+        from ..audio.models import AudioCleanupPending
+        if not isinstance(error, AudioCleanupPending):
+            raise TypeError('An owned pending-cleanup error is required.')
+        if self._pid != os.getpid() or self._released or not self._lock.held:
+            raise ResourceStateError('Pending worker cleanup requires its still-owned reservation.')
+        owner, interrupted = error.cleanup_owner, None
+        while True:
+            try:
+                if owner.quiescent_event.is_set():
+                    break
+                owner.close()
+                if not owner.quiescent_event.is_set():
+                    owner.quiescent_event.wait(.25)
+            except (KeyboardInterrupt, SystemExit) as exc:
+                if interrupted is None:
+                    interrupted = exc
+        if interrupted is not None:
+            raise interrupted
 
     def release(self):
         if self._released:
@@ -81,42 +136,90 @@ class ResourceLease:
                         value = _read(path)
                         if value != self.record:
                             raise ResourceStateError('Reservation identity changed before release.')
+                        self.broker._check_scope()
                         path.unlink()
                         sync_directory(path.parent)
                     # Other callers must not observe a live lock after its
                     # corresponding record has been removed.
-                    self._lock.release()
+                    self.broker._release_lock(self._lock, retire=True)
             except ResourceTimeout:
                 # Closing the native lock is sufficient to release ownership.
                 # The next admission reaps the now-unlocked stale metadata.
                 self.cleanup_pending = True
+            except ResourceStateError:
+                self.cleanup_pending = True
+                raise
         finally:
-            self._lock.release()
-            self._released = True
+            try:
+                self.broker._release_lock(self._lock)
+            except ResourceStateError:
+                self.cleanup_pending = True
+                raise
+            finally:
+                if not self._lock.held:
+                    self._released = True
 
 
 class ResourceBroker:
-    def __init__(self, directory, *, limits=None, policy_path=None):
+    def __init__(self, directory, *, limits=None, policy_path=None, cancelled=lambda: False,
+                 _application_policy=False, require_existing_policy=False):
+        if type(require_existing_policy) is not bool:
+            raise TypeError('The existing resource policy requirement must be boolean.')
         if limits is not None and not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
+        if type(_application_policy) is not bool:
+            raise TypeError('The application policy mode must be explicit.')
         self.root = local_path(directory)
+        self._scope_directories = ()
+        if _application_policy:
+            application_root = self.root.parent.parent
+            self._scope_directories = ((application_root, _directory_identity(application_root)),)
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         local_path(self.root, exists=True)
         self.leases_root = self.root / 'leases'
         self.leases_root.mkdir(mode=0o700, exist_ok=True)
         local_path(self.leases_root, exists=True)
         self.policy_path = local_path(policy_path or self.root / 'resources.json')
+        if _application_policy and self.policy_path != (
+                self.root.parent.parent / 'state' / 'operations' / 'resources.json'):
+            raise ResourceConflict('Application resources require the canonical policy location.')
         binding = self.root / '.policy-location.json'
         if self.policy_path in (binding, self.root / '.admission.lock') or self.policy_path.is_relative_to(self.leases_root):
             raise ValueError('Resource policy must not replace coordinator or live-lease files.')
         self.policy_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with self._gate(time.monotonic() + 5, lambda: False):
-            location = {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)}
-            if not os.path.lexists(binding):
+        scope = dict(self._scope_directories)
+        for selected in (self.root, self.leases_root, self.policy_path.parent):
+            scope[selected] = _directory_identity(selected)
+        self._scope_directories = tuple(scope.items())
+        with self._gate(time.monotonic() + 5, cancelled):
+            location = ({'schema': 'carr-application-resource-policy/1',
+                         'path': 'state/operations/resources.json'} if _application_policy else
+                        {'schema': 'carr-resource-policy-location/1', 'path': str(self.policy_path)})
+            binding_exists = os.path.lexists(binding)
+            previous = _read(binding) if binding_exists else None
+            if not binding_exists:
                 atomic_json(binding, location)
-            elif _read(binding) != location:
-                raise ResourceConflict('This runtime coordinator is already bound to another policy path.')
+            elif previous != location:
+                # Runtime coordination is not part of typed backup. If an owner
+                # copies a complete library directory, the application policy
+                # remains relative to that library; never open the old root.
+                # Migrate only the older exact application-policy shape while
+                # no reservation in THIS coordinator holds a native lock.
+                legacy = (type(previous) is dict
+                          and set(previous) == {'schema', 'path'}
+                          and previous['schema'] == 'carr-resource-policy-location/1'
+                          and isinstance(previous['path'], str))
+                legacy_path = Path(previous['path']) if legacy else None
+                if (not _application_policy or not legacy
+                        or not legacy_path.is_absolute()
+                        or legacy_path.parts[-3:] != ('state', 'operations', 'resources.json')
+                        or self._active()):
+                    raise ResourceConflict('This runtime coordinator is already bound to another policy path.')
+                atomic_json(binding, location, replace=True)
             if not os.path.lexists(self.policy_path):
+                if require_existing_policy:
+                    raise ResourceStateError('The retained resource policy is missing; '
+                                             'automatic defaults are not permitted for restored work.')
                 atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1',
                             'limits': (limits or ResourceLimits()).to_dict()})
             elif limits is not None and self.limits != limits:
@@ -124,15 +227,55 @@ class ResourceBroker:
             self.limits
 
     @classmethod
-    def for_app(cls, root, *, limits=None):
+    def for_app(cls, root, *, limits=None, cancelled=lambda: False, require_existing_policy=False):
         root = local_path(root, exists=True)
         regular(root, directory=True)
         return cls(root / 'runtime' / 'resources', limits=limits,
-                   policy_path=root / 'state' / 'operations' / 'resources.json')
+                   policy_path=root / 'state' / 'operations' / 'resources.json', cancelled=cancelled,
+                   _application_policy=True, require_existing_policy=require_existing_policy)
+
+    def _check_scope(self):
+        # Resolve each maximal captured branch once in this check.  local_path
+        # still rejects linked ancestors; every captured identity stays fresh.
+        for path, _expected in self._scope_directories:
+            if any(other != path and other.is_relative_to(path)
+                   for other, _identity in self._scope_directories):
+                continue
+            try:
+                if local_path(path, exists=True) != path:
+                    raise ValueError('The resource directory path changed.')
+            except (OSError, ValueError) as error:
+                raise ResourceStateError(
+                    'The selected resource directory changed; reopen the selected library before retrying.') from error
+        for path, expected in self._scope_directories:
+            try:
+                value = regular(path, directory=True)
+                current = value.st_dev, value.st_ino
+            except (OSError, ValueError) as error:
+                raise ResourceStateError(
+                    'The selected resource directory changed; reopen the selected library before retrying.') from error
+            if current != expected:
+                raise ResourceStateError(
+                    'The selected resource directory changed; reopen the selected library before retrying.')
+
+    def _release_lock(self, lock, *, retire=False):
+        try:
+            self._check_scope()
+        except ResourceStateError:
+            # The worker is already quiescent at this boundary. Keep metadata
+            # inert in its original directory; never enter a substituted path.
+            lock.close_owned_descriptor()
+            raise
+        if retire:
+            _release_reservation_lock(lock)
+        else:
+            lock.release()
 
     @property
     def limits(self):
+        self._check_scope()
         value = _read(self.policy_path)
+        self._check_scope()
         if (not isinstance(value, dict) or set(value) != {'schema', 'limits'}
                 or value['schema'] != 'carr-resource-policy/1'):
             raise ResourceStateError('Unsupported saved resource policy.')
@@ -143,21 +286,25 @@ class ResourceBroker:
 
     @contextmanager
     def _gate(self, deadline, cancelled):
+        self._check_scope()
         lock = NativeLock(self.root / '.admission.lock')
         attempted = False
         while True:
             if cancelled():
                 raise ResourceCancelled('Resource admission was cancelled before starting heavy work.')
+            self._check_scope()
             if attempted and time.monotonic() >= deadline:
                 raise ResourceTimeout('Timed out waiting for the shared resource coordinator.')
             attempted = True
             if lock.acquire():
                 try:
+                    self._check_scope()
                     if cancelled():
                         raise ResourceCancelled('Resource admission was cancelled before starting heavy work.')
+                    self._check_scope()
                     yield
                 finally:
-                    lock.release()
+                    self._release_lock(lock)
                 return
             if time.monotonic() >= deadline:
                 raise ResourceTimeout('Timed out waiting for the shared resource coordinator.')
@@ -165,16 +312,19 @@ class ResourceBroker:
 
     def _active(self):
         """Called under the coordinator lock; native lock ownership is decisive."""
+        self._check_scope()
         local_path(self.leases_root, exists=True)
         identities = set()
         with os.scandir(self.leases_root) as entries:
             for index, entry in enumerate(entries):
                 if index >= _MAX_RECORDS:
                     raise ResourceStateError('Resource lease inventory exceeds its safety limit.')
+                self._check_scope()
                 path = self.leases_root / entry.name
                 regular(path)
                 if entry.name.startswith('.pending-'):
                     # All publications in this private namespace hold _gate.
+                    self._check_scope()
                     path.unlink()
                     continue
                 if path.suffix not in ('.json', '.lock') or not _IDENTITY.fullmatch(path.stem):
@@ -182,15 +332,17 @@ class ResourceBroker:
                 identities.add(path.stem)
         result = []
         for identity in sorted(identities):
+            self._check_scope()
             path = self.leases_root / (identity + '.json')
             probe = NativeLock(path.with_suffix('.lock'))
             if probe.acquire():
                 try:
+                    self._check_scope()
                     if os.path.lexists(path):
                         regular(path)
                         path.unlink()
                 finally:
-                    probe.release()
+                    self._release_lock(probe, retire=True)
                 continue
             if not os.path.lexists(path):
                 raise ResourceStateError('A live resource lock has no valid reservation record.')
@@ -216,6 +368,7 @@ class ResourceBroker:
             except ValueError as exc:
                 raise ResourceStateError('Invalid live resource reservation request.') from exc
             result.append(value)
+        self._check_scope()
         return result
 
     @staticmethod
@@ -268,11 +421,17 @@ class ResourceBroker:
                 return 'actual free disk reserve'
         return None
 
-    def configure(self, limits, *, timeout=5):
+    def configure(self, limits, *, timeout=5, expected_limits=None, cancelled=lambda: False):
         if not isinstance(limits, ResourceLimits):
             raise TypeError('A typed resource policy is required.')
+        if expected_limits is not None and not isinstance(expected_limits, ResourceLimits):
+            raise TypeError('The reviewed previous resource policy must be typed.')
+        if not callable(cancelled):
+            raise TypeError('Policy admission requires a cancellation callback.')
         deadline = time.monotonic() + _seconds(timeout, 'Policy wait timeout')
-        with self._gate(deadline, lambda: False):
+        with self._gate(deadline, cancelled):
+            if expected_limits is not None and self.limits != expected_limits:
+                raise ResourceConflict('Resource allowances changed. Refresh and review them before saving.')
             active = self._active()
             if len(active) > limits.max_leases or any(self._usage(active)[name] > getattr(limits, name)
                                                      for name in ('cpu_slots', 'memory_bytes', 'disk_bytes')):
@@ -282,6 +441,9 @@ class ResourceBroker:
                     self._fits_policy(ResourceRequest.from_dict(record['request']), limits)
                 except ResourceUnavailable as exc:
                     raise ResourceConflict('New resource limits would invalidate an existing reservation.') from exc
+            if cancelled():
+                raise ResourceCancelled('Saving resource allowances was cancelled before publication.')
+            self._check_scope()
             atomic_json(self.policy_path, {'schema': 'carr-resource-policy/1', 'limits': limits.to_dict()}, replace=True)
         return limits
 
@@ -305,47 +467,55 @@ class ResourceBroker:
             request = replace(request, disk_path=disks[0][0] if offset else None,
                               additional_disks=tuple(disks[offset:]))
         deadline, lease, attempted = time.monotonic() + timeout, None, False
-        while lease is None:
-            if cancelled():
-                raise ResourceCancelled('Resource admission was cancelled while waiting.')
-            if attempted and time.monotonic() >= deadline:
-                raise ResourceTimeout('Timed out waiting for shared resources; heavy work was not started.')
-            attempted = True
-            with self._gate(deadline, cancelled):
-                limits, active = self.limits, self._active()
-                if any(item['operation_id'] == operation_id for item in active):
-                    raise ResourceConflict('This operation already holds a resource reservation.')
-                reason = self._reason(request, volumes, active, limits)
-                if reason is None:
-                    identity = uuid4().hex
-                    record = {'schema': 'carr-resource-lease/1', 'id': identity, 'operation_id': operation_id,
-                              'owner_pid': os.getpid(), 'owner_token': _process_token(), 'created': time.time(),
-                              'request': request.to_dict(), 'disk_volumes': volumes}
-                    lock = NativeLock(self.leases_root / (identity + '.lock'))
-                    if not lock.acquire():
-                        raise ResourceConflict('Reservation identity is already locked.')
-                    try:
-                        if cancelled():
-                            raise ResourceCancelled('Resource admission was cancelled before publication.')
-                        atomic_json(self.leases_root / (identity + '.json'), record)
-                        lease = ResourceLease(self, record, lock, cancelled, run_timeout)
-                    except BaseException:
-                        lock.release()
-                        raise
-            if lease is None:
+        try:
+            while lease is None:
                 if cancelled():
                     raise ResourceCancelled('Resource admission was cancelled while waiting.')
-                if time.monotonic() >= deadline:
-                    raise ResourceTimeout('Timed out waiting for ' + reason + '; heavy work was not started.')
-                time.sleep(min(_POLL_SECONDS, max(0, deadline - time.monotonic())))
-        try:
+                if attempted and time.monotonic() >= deadline:
+                    raise ResourceTimeout('Timed out waiting for shared resources; heavy work was not started.')
+                attempted = True
+                with self._gate(deadline, cancelled):
+                    limits, active = self.limits, self._active()
+                    if any(item['operation_id'] == operation_id for item in active):
+                        raise ResourceConflict('This operation already holds a resource reservation.')
+                    reason = self._reason(request, volumes, active, limits)
+                    if reason is None:
+                        self._check_scope()
+                        identity = uuid4().hex
+                        record = {'schema': 'carr-resource-lease/1', 'id': identity, 'operation_id': operation_id,
+                                  'owner_pid': os.getpid(), 'owner_token': _process_token(), 'created': time.time(),
+                                  'request': request.to_dict(), 'disk_volumes': volumes}
+                        lock = NativeLock(self.leases_root / (identity + '.lock'))
+                        if not lock.acquire():
+                            raise ResourceConflict('Reservation identity is already locked.')
+                        try:
+                            if cancelled():
+                                raise ResourceCancelled('Resource admission was cancelled before publication.')
+                            self._check_scope()
+                            atomic_json(self.leases_root / (identity + '.json'), record)
+                            lease = ResourceLease(self, record, lock, cancelled, run_timeout)
+                        except BaseException:
+                            self._release_lock(lock, retire=True)
+                            raise
+                if lease is None:
+                    if cancelled():
+                        raise ResourceCancelled('Resource admission was cancelled while waiting.')
+                    if time.monotonic() >= deadline:
+                        raise ResourceTimeout('Timed out waiting for ' + reason + '; heavy work was not started.')
+                    time.sleep(min(_POLL_SECONDS, max(0, deadline - time.monotonic())))
             lease.checkpoint()
             yield lease
+        except BaseException as error:
+            from ..audio.models import AudioCleanupPending
+            if lease is not None and isinstance(error, AudioCleanupPending):
+                lease.settle_cleanup(error)
+            raise
         finally:
-            lease.release()
+            if lease is not None:
+                lease.release()
 
-    def snapshot(self, *, timeout=5):
-        with self._gate(time.monotonic() + _seconds(timeout, 'Snapshot timeout'), lambda: False):
+    def snapshot(self, *, timeout=5, cancelled=lambda: False):
+        with self._gate(time.monotonic() + _seconds(timeout, 'Snapshot timeout'), cancelled):
             active, limits = self._active(), self.limits
             return {'schema': 'carr-resource-snapshot/1', 'limits': limits.to_dict(),
                     'usage': self._usage(active), 'leases': active,

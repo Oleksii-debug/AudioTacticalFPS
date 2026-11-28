@@ -1,0 +1,154 @@
+{
+  "schema": "carr-language-native-denial-fixture-peer/1",
+  "created_utc": "2026-11-28 10:10:08 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "path": "carr-library/tests/language_qualification/test_evidence.py",
+  "before": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+  "after": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
+  "whole_cases": 54,
+  "test_functions": 14,
+  "focused_source_cases": 147,
+  "focused_installed_cases": 147,
+  "unchanged_function_names": [
+    "test_passive_import_and_zero_default_never_execute_or_accept_reviews",
+    "test_import_refuses_forged_or_ambiguous_observation_shapes",
+    "test_import_uses_strict_real_json_snapshot_decoder",
+    "test_review_binds_complete_observation_and_explicit_distinct_provenance",
+    "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests",
+    "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope",
+    "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes",
+    "test_real_directory_substitution_is_not_silently_adopted",
+    "test_linked_or_nonregular_evidence_is_refused_without_modification",
+    "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged",
+    "test_final_callback_cannot_replace_state_or_scope_before_actual_publication",
+    "test_visible_late_commit_is_reported_without_repeating_or_erasing_it",
+    "test_review_history_preserves_all_prior_rejections_and_revocations",
+    "test_collection_bounds_refuse_before_unbounded_history_processing"
+  ],
+  "function_and_parametrization_inventory_unchanged": true,
+  "complete_inverse": "BYTE_EXACT",
+  "hunks": [
+    {
+      "old_line": 267,
+      "new_line": 267,
+      "removed": [],
+      "added": [
+        "    snapshot, token = fixture.assess(store, value, token)",
+        "    assert status(snapshot, value) == 'verified' and len(snapshot.reviews) == 1"
+      ]
+    },
+    {
+      "old_line": 268,
+      "new_line": 270,
+      "removed": [],
+      "added": [
+        "    root_info, state_info = root.stat(), store.path.stat()",
+        "    held_root = tmp_path / 'held-root'"
+      ]
+    },
+    {
+      "old_line": 270,
+      "new_line": 274,
+      "removed": [],
+      "added": [
+        "    rename_denied = propagated_denial = None"
+      ]
+    },
+    {
+      "old_line": 279,
+      "new_line": 284,
+      "removed": [
+        "        nonlocal changed"
+      ],
+      "added": [
+        "        nonlocal changed, rename_denied"
+      ]
+    },
+    {
+      "old_line": 285,
+      "new_line": 290,
+      "removed": [
+        "                root.rename(tmp_path / 'held-root')",
+        "                shutil.copytree(tmp_path / 'held-root', root)"
+      ],
+      "added": [
+        "                try:",
+        "                    root.rename(held_root)",
+        "                except PermissionError as error:",
+        "                    # Windows may refuse the actual ancestor rename while the",
+        "                    # real state-lock handle is open. Retain only that exact denial.",
+        "                    if os.name != 'nt' or getattr(error, 'winerror', None) != 5:",
+        "                        raise",
+        "                    rename_denied = error",
+        "                    raise",
+        "                shutil.copytree(held_root, root)"
+      ]
+    },
+    {
+      "old_line": 289,
+      "new_line": 302,
+      "removed": [
+        "    with pytest.raises(ValueError, match='changed'):",
+        "        store._change(operation, token, cancelled)",
+        "    assert changed"
+      ],
+      "added": [
+        "    try:",
+        "        with pytest.raises(ValueError, match='changed'):",
+        "            store._change(operation, token, cancelled)",
+        "    except PermissionError as error:",
+        "        assert mutation == 'root' and error is rename_denied",
+        "        propagated_denial = error",
+        "    assert changed and propagated_denial is rename_denied"
+      ]
+    },
+    {
+      "old_line": 294,
+      "new_line": 311,
+      "removed": [],
+      "added": [
+        "    if rename_denied is not None:",
+        "        assert os.name == 'nt' and rename_denied.winerror == 5",
+        "        assert not held_root.exists()",
+        "        after_root, after_state = root.stat(), store.path.stat()",
+        "        assert (after_root.st_dev, after_root.st_ino) == (root_info.st_dev, root_info.st_ino)",
+        "        fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')",
+        "        assert tuple(getattr(after_state, name) for name in fields) == tuple(",
+        "            getattr(state_info, name) for name in fields)",
+        "        # The failed operation released its genuine lock and committed no candidate.",
+        "        with module.state_lock(store.path.parent, 'language-evidence'):",
+        "            restored, restored_token = store.load()",
+        "        assert (restored, restored_token) == (snapshot, token)",
+        "        assert restored.reviews == snapshot.reviews and status(restored, value) == 'verified'",
+        "        assert tuple(row.capability for row in restored.observations) == ('tts',)",
+        "    elif mutation == 'root':",
+        "        after_root = root.stat()",
+        "        assert (after_root.st_dev, after_root.st_ino) != (root_info.st_dev, root_info.st_ino)",
+        "        assert (held_root / store.path.relative_to(root)).read_bytes() == before",
+        "        with pytest.raises(ValueError, match='changed'):",
+        "            store.load()",
+        "        restored, restored_token = EvidenceStore(root).load()",
+        "        assert (restored, restored_token) == (snapshot, token)",
+        "        assert restored.reviews == snapshot.reviews and status(restored, value) == 'verified'"
+      ]
+    }
+  ],
+  "sources": {
+    "evidence": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "fixture": "72944369f7304650e8742f97372d41415e3e35da"
+  },
+  "findings": [
+    "Only the existing document/root final-callback test changes. It now seeds a real accepted review before the attempted mutation; every other test body and all14 names/parametrization declarations are unchanged.",
+    "The callback still attempts the real root rename while EvidenceStore._change holds the actual state lock. Only a real PermissionError with os.name nt and winerror5 is saved as the platform-denial outcome.",
+    "The outer allowance requires root mutation and identity with the exact captured exception. A PermissionError from any other operation, platform or error code fails; ValueError remains the required successful-substitution result.",
+    "The denial path requires unchanged root dev/ino, state dev/ino/size/mtime/bytes, exact snapshot/token/reviews/scoped status, no held directory, no pending state and no candidate observation.",
+    "Actual state_lock is reacquired after unwind; EvidenceStore.load has no nested lock acquisition, so this checks real release while reading the exact preserved history.",
+    "The successful-rename path still verifies changed root identity, old held bytes, original-store scope refusal and a fresh store's exact original snapshot/token/history.",
+    "No product, filesystem operation, lock implementation, clock, skip, inventory or timeout is substituted."
+  ],
+  "limits": [
+    "Source/fixture/API review only. No parser or runtime result is claimed.",
+    "The actual G147 gate failure remains a failure; this successor does not qualify any language, device or human-review quality."
+  ]
+}

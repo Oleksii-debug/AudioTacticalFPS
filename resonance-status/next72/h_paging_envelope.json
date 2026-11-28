@@ -1,0 +1,424 @@
+{
+  "schema": "carr-reviewed-component/1",
+  "created_utc": "2026-11-28 10:20:11 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "H paging-only source isolation and complete-bundle outer envelope",
+  "base_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "base_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "prerequisite": {
+    "H_intake_gate_component": "ca7a38c6663a993cfc933c63fdc7afe0429d4a73",
+    "source_component": "067db10ada9fa04feafd2203c45f09336aba6501",
+    "source_peer": "2d29f2fac705cc1553e32c7d76f970ca77593777",
+    "gate_peer": "551201f97c9b8318933ae4cb9bde22489b0b091e",
+    "unchanged_intake_cases": 7,
+    "unchanged_intake_functions": 6
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "G_preimage": "6032567fb09dd4e235caca7a3480d27845fcf889",
+      "H_intake_preimage": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+      "after": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+      "readback": "EXACT",
+      "H_complete_inverse": "BYTE_EXACT",
+      "G_complete_inverse": "BYTE_EXACT",
+      "H_hunks": [
+        {
+          "old_line": 979,
+          "new_line": 979,
+          "removed": [
+            "    'tests/audio/test_voice_package_management.py'"
+          ],
+          "added": [
+            "    'tests/audio/test_voice_package_management.py',",
+            "    'tests/search/test_search_paging.py'"
+          ]
+        }
+      ],
+      "G_hunks": [
+        {
+          "old_line": 586,
+          "new_line": 586,
+          "removed": [
+            "  'tests/ingest/test_large_source_intake.py' = 6"
+          ],
+          "added": [
+            "  'tests/ingest/test_large_source_intake.py' = 7"
+          ]
+        },
+        {
+          "old_line": 979,
+          "new_line": 979,
+          "removed": [
+            "    'tests/audio/test_voice_package_management.py'"
+          ],
+          "added": [
+            "    'tests/audio/test_voice_package_management.py',",
+            "    'tests/search/test_search_paging.py'"
+          ]
+        }
+      ],
+      "utf8": {
+        "bytes": 53697,
+        "sha256": "c30746f21fed31211bb0e3faf908812ce63e74e05302fde142b62a0aa5728177"
+      }
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "G_preimage": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+      "H_intake_preimage": "d95bdbf17c5df824c003c98bcd353e9e6b645f50",
+      "after": "f63e17f2c5607ddbfcadde666d0b52ba1a8fcdba",
+      "readback": "EXACT",
+      "H_complete_inverse": "BYTE_EXACT",
+      "G_complete_inverse": "BYTE_EXACT",
+      "H_hunks": [
+        {
+          "old_line": 101,
+          "new_line": 101,
+          "removed": [
+            "          $expectedBlob = 'ac0c5a209d4213fc1efbd0f27bce893b552c473f'"
+          ],
+          "added": [
+            "          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'"
+          ]
+        },
+        {
+          "old_line": 197,
+          "new_line": 197,
+          "removed": [
+            "          $expectedBlob = 'ac0c5a209d4213fc1efbd0f27bce893b552c473f'"
+          ],
+          "added": [
+            "          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'"
+          ]
+        },
+        {
+          "old_line": 770,
+          "new_line": 770,
+          "removed": [
+            "    # Actual V3 installed recovery needed 1198.78 seconds for 72 copied modules.",
+            "    # This union retains 281 installed suites plus required native and lifecycle phases."
+          ],
+          "added": [
+            "    # Retain the helper's 342 selectors (339 whole modules), native phases and seals.",
+            "    # The 210-minute complete step leaves the original 150 minutes for other job work."
+          ]
+        },
+        {
+          "old_line": 773,
+          "new_line": 773,
+          "removed": [
+            "    timeout-minutes: 270"
+          ],
+          "added": [
+            "    timeout-minutes: 360"
+          ]
+        },
+        {
+          "old_line": 1566,
+          "new_line": 1566,
+          "removed": [
+            "        # Retain all 281 installed suites, native phases and final payload seals.",
+            "        # Actual V3 recovery alone needed 1198.78 seconds before final verification.",
+            "        # Individual process/test budgets and native watchdogs remain unchanged.",
+            "        timeout-minutes: 120"
+          ],
+          "added": [
+            "        # Both 5b2 and B reached the 120-minute outer limit before installed pytest finished.",
+            "        # B printed 7143 of 8719 results; retain all selectors, native phases and final seals.",
+            "        # Inner deadlines and strict checks stay fixed; 210 minutes is no completion guarantee.",
+            "        timeout-minutes: 210"
+          ]
+        }
+      ],
+      "G_hunks": [
+        {
+          "old_line": 101,
+          "new_line": 101,
+          "removed": [
+            "          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'"
+          ],
+          "added": [
+            "          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'"
+          ]
+        },
+        {
+          "old_line": 197,
+          "new_line": 197,
+          "removed": [
+            "          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'"
+          ],
+          "added": [
+            "          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'"
+          ]
+        },
+        {
+          "old_line": 770,
+          "new_line": 770,
+          "removed": [
+            "    # Actual V3 installed recovery needed 1198.78 seconds for 72 copied modules.",
+            "    # This union retains 281 installed suites plus required native and lifecycle phases."
+          ],
+          "added": [
+            "    # Retain the helper's 342 selectors (339 whole modules), native phases and seals.",
+            "    # The 210-minute complete step leaves the original 150 minutes for other job work."
+          ]
+        },
+        {
+          "old_line": 773,
+          "new_line": 773,
+          "removed": [
+            "    timeout-minutes: 270"
+          ],
+          "added": [
+            "    timeout-minutes: 360"
+          ]
+        },
+        {
+          "old_line": 1566,
+          "new_line": 1566,
+          "removed": [
+            "        # Retain all 281 installed suites, native phases and final payload seals.",
+            "        # Actual V3 recovery alone needed 1198.78 seconds before final verification.",
+            "        # Individual process/test budgets and native watchdogs remain unchanged.",
+            "        timeout-minutes: 120"
+          ],
+          "added": [
+            "        # Both 5b2 and B reached the 120-minute outer limit before installed pytest finished.",
+            "        # B printed 7143 of 8719 results; retain all selectors, native phases and final seals.",
+            "        # Inner deadlines and strict checks stay fixed; 210 minutes is no completion guarantee.",
+            "        timeout-minutes: 210"
+          ]
+        }
+      ],
+      "utf8": {
+        "bytes": 404596,
+        "sha256": "408fed8044ce067506220d5d84566e497ea22f85859afd8c3ba6fd344c9b375b"
+      }
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "G_preimage": "7d32d1153af6f612c82b319e608fc8e10bc128de",
+      "H_intake_preimage": "4b534feab260da01fd558fa8a64511de386d3c16",
+      "after": "dd3bdcc80cd55745508cdb6d249c34ea9e44ae73",
+      "readback": "EXACT",
+      "H_complete_inverse": "BYTE_EXACT",
+      "G_complete_inverse": "BYTE_EXACT",
+      "H_hunks": [
+        {
+          "old_line": 139,
+          "new_line": 139,
+          "removed": [
+            "          $expectedBlob = 'ac0c5a209d4213fc1efbd0f27bce893b552c473f'"
+          ],
+          "added": [
+            "          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'"
+          ]
+        }
+      ],
+      "G_hunks": [
+        {
+          "old_line": 139,
+          "new_line": 139,
+          "removed": [
+            "          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'"
+          ],
+          "added": [
+            "          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'"
+          ]
+        }
+      ],
+      "utf8": {
+        "bytes": 11536,
+        "sha256": "8e4b99a603219751767e6091c43c4d74273e82eff519b8d8d05cc63c8c49f0f4"
+      }
+    }
+  ],
+  "source_isolation": {
+    "only_new_isolated_selector": "tests/search/test_search_paging.py",
+    "whole_cases": 27,
+    "whole_seconds": 600,
+    "new_module_or_case_or_origin": false,
+    "selector_count": 493,
+    "ordered_selector_sha256": "f0c1bb95bdbefc4caf03a3a23b2cb8c22d42b1d9f80fc12b48f9212b9e31eb78",
+    "selector_array": "BYTE_EXACT",
+    "anchors": {
+      "tests/research/test_academic_library.py": 0,
+      "tests/transcription/test_admission_boundaries.py": 0,
+      "tests/studio/test_book_batch.py": 1,
+      "tests/ingest/test_large_source_intake.py": 2,
+      "tests/search/test_search_paging.py": 3
+    },
+    "anchors_unchanged": true,
+    "groups": [
+      {
+        "index": 0,
+        "selected": 124,
+        "isolated": [
+          "tests/research/test_academic_library.py",
+          "tests/transcription/test_admission_boundaries.py"
+        ],
+        "parallel": 122,
+        "unchanged_membership_sha256": "50a66d686dbe097b56cacdbd1969fc8cf83e2a228b522eb6537334443d6907d8"
+      },
+      {
+        "index": 1,
+        "selected": 123,
+        "isolated": [
+          "tests/studio/test_book_batch.py"
+        ],
+        "parallel": 122,
+        "unchanged_membership_sha256": "45c1e7ed1fb99810f18b04dbcc03e48acc7cd02b8dbea5043774cc6f26c28b6d"
+      },
+      {
+        "index": 2,
+        "selected": 123,
+        "isolated": [],
+        "parallel": 123,
+        "unchanged_membership_sha256": "3abe936ac9aa26b3eaafeeea6d203f043c487781813350fd8e48258a3115615c"
+      },
+      {
+        "index": 3,
+        "selected": 123,
+        "isolated": [
+          "tests/search/test_search_paging.py",
+          "tests/audio/test_voice_package_management.py"
+        ],
+        "parallel": 121,
+        "unchanged_membership_sha256": "e3ad969b33c264eaa8f119b22aef5c6b50a5b2fa867dabbe42b821f7ffbefcdf"
+      }
+    ],
+    "source_step_minutes": 60,
+    "source_job_minutes": 90,
+    "asr_only_allowance_seconds": 900,
+    "mechanism": "The exact existing jobs1 isolated group receives paging before voice in shard3; the unchanged remaining group still runs jobs3 even after an ordinary isolated-group nonzero exit. Actual anchored group summaries and every strict whole row remain required.",
+    "actual_basis": "ceee767497dcae0a9a2f94beb198c4769efe9bfc",
+    "previous_B": {
+      "receipt": "9a3bb34cbf9773f73fe5d4b12f54f27f033cdf5b",
+      "head": "26beb805aab1e9e202d134008441927523cdcb94",
+      "run_id": 46122917046,
+      "job_id": 140911207100,
+      "strict_cases": 27,
+      "reported_pytest_seconds": 527.2,
+      "summary_log_line": 2893,
+      "strict_log_line": 4868
+    },
+    "failed_E": {
+      "whole_seconds": 600,
+      "whole_completion": "NOT_ESTABLISHED",
+      "interpretation": "Real fixture ingestion made progress before the whole deadline. A hung case or contention cause is not established."
+    },
+    "equality_scope": "The named paging/test/application/federated/literal/ingest/revisions sources match B/E/G in the actual receipt. Full product-tree equality is not claimed; H's separately reviewed cursor worker changes are explicit.",
+    "non_changes": [
+      "No paging change to fast, next8, V3 serial, any test or product source.",
+      "No new retry, child deadline increase, copied result or fabricated aggregate."
+    ]
+  },
+  "outer_envelope": {
+    "assessment": "6ccc5bdc963840d07f28b7a7d10b8d7b98e61a2d",
+    "B_actual": "427bb013b89e87af03f3981326f49917b9c0a274",
+    "old5b2_actual": "e96a34b97f94ce0c195222bf78c0365c2ba8eae6",
+    "complete_step_minutes": {
+      "before": 120,
+      "after": 210
+    },
+    "desktop_job_minutes": {
+      "before": 270,
+      "after": 360
+    },
+    "other_job_allowance_minutes": {
+      "before": 150,
+      "after": 150
+    },
+    "unchanged_helper_selectors": 342,
+    "unchanged_helper_whole_modules": 339,
+    "unchanged_explicit_leading_selectors": 14,
+    "old5b2_visible_activity": {
+      "collected": 8439,
+      "marks": 7035,
+      "final_junit": false
+    },
+    "B_visible_activity": {
+      "collected": 8719,
+      "marks": 7143,
+      "passed": 7138,
+      "failed": 5,
+      "final_junit": false
+    },
+    "literal_tail_selectors": {
+      "B": 57,
+      "G": 60
+    },
+    "prior_V3_source_tail": {
+      "modules": 39,
+      "reported_seconds": 1747.53,
+      "installed_prediction": false
+    },
+    "unchanged_post_pytest_watchdogs": {
+      "modules": 10,
+      "seconds": 1920,
+      "all_individual_bounds_unchanged": true
+    },
+    "limits": "The larger outer envelope provides finite headroom for observed unfinished work, later required native phases and seals. It is not a completion guarantee, timing qualification, child-budget change or allowance to waive existing failures."
+  },
+  "pin_cascade": {
+    "source_helper_to_main_occurrences": 2,
+    "source_helper_to_reusable_occurrences": 1,
+    "source_helper_final": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138"
+  },
+  "preserved": {
+    "source493": true,
+    "partition_sizes": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "fast185": true,
+    "V3_serial223": true,
+    "installed342": true,
+    "intake7": true,
+    "all_exact_case_function_checks": true,
+    "zero_failure_skip_xfail_policy": true,
+    "individual_600_900_native_limits": true,
+    "source_wheel_origin_fixture_seals": true,
+    "all_required_aggregates": true,
+    "all_physical_NVDA_qualifiers": true
+  },
+  "separate_H_components": [
+    {
+      "manifest": "fb00bcdf23268240251896141e0471ab68fdce4d",
+      "path": ".github/workflows/carr-next8-source-verification.yml",
+      "after": "5b048c2482c20ef419cc13fb34d95187464fafb3",
+      "scope": "Separate accepted Book1+137 scheduling component; no paging change there."
+    },
+    {
+      "owner": "root",
+      "scope": "Final language workflow binding5fb36eda5c859af0d8a4c304fafb1680feb4e3dc to accepted29bf8a261151818ed9b45695ef5cf356f8fc552d will be applied separately to this final main."
+    },
+    {
+      "owner": "root",
+      "scope": "New publication-cursor workflow and product/test source pair are separately peer-reviewed and composed."
+    }
+  ],
+  "peers": {
+    "paging": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "record": "02f432ef15fa5dcf2594f65703fff756a1c90653",
+      "reviewer": "progress_completion"
+    },
+    "envelope": {
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "record": "9bcffe7be1c389a9aacbce9a5244bd2a136a8b79",
+      "reviewer": "progress_completion"
+    }
+  },
+  "validation": [
+    "All three final files read back exactly; both complete H-preimage and G-preimage inverses independently reconstruct byte-for-byte.",
+    "Existing exact source-syntax parser and sourcePS InventoryOnly must run on the composed successor; no parser execution is claimed here.",
+    "Actual H groups must produce their real per-group summaries and full493 strict union; oldB/E/G results do not qualify H.",
+    "Actual complete-bundle pytest must emit final JUnit and all unchanged postchecks/native/seals must pass before qualification."
+  ],
+  "refs_changed": false,
+  "runtime_status": "NOT_RUN"
+}

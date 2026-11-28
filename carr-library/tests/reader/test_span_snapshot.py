@@ -38,7 +38,7 @@ class SpanSnapshotTests(unittest.TestCase):
     def test_exact_pages_and_labels(self):
         context = self.restore(*self.seal())
         self.assertEqual([p.quote for p in context.pages], ['Київ і\n', 'železnica'])
-        self.assertIn('p. iv (PDF page 1)', context.pages[0].citation)
+        self.assertIn('p. iv (physical page 1)', context.pages[0].citation)
         self.assertIn('printed page unverified', context.pages[1].citation)
         self.assertEqual(context.clipboard('library-a', 0, 'quote', self.load), 'Київ і\n')
 

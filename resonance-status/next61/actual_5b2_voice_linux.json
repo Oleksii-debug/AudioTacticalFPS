@@ -1,0 +1,213 @@
+{
+  "schema": "carr-actual-focused-contract-evidence/1",
+  "recorded_utc": "2026-11-28 05:19:09 UTC",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "status": "PASS",
+  "voice_scheduling_manifest": "61a388850db43f792b4a3f6e4580abe26e6d3d93",
+  "voice_cancellation_fixture_manifest": "a7dd657db823eb21e17709c41e982031534400da",
+  "jobs": [
+    {
+      "name": "voice",
+      "platform": "ubuntu-24.04",
+      "run_id": 46110638804,
+      "job_id": 140873158687,
+      "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110638804/job/140873158687",
+      "job_conclusion": "success",
+      "source_rows": [
+        {
+          "path": "tests/audio/test_voice_package_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_management_state.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_reference_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_protected_management.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_publication_lifetime.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_voice_ownership.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_managed_authority.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_voice_packages.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_voice_reference.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/ui/test_engine_settings_lifetime.py",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_voices.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_speech.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_settings.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/integrations/test_dordiai_convergence.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/audio/test_bundled_runtime_settings.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_v3_state_backup.py",
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "path": "tests/storage/test_state_backup_portability.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "final_receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 495,
+        "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+        "source_passed": 495,
+        "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+        "status": "PASS"
+      },
+      "actual_owner": [
+        {
+          "checks": 25,
+          "error": null,
+          "mode": "source",
+          "report_sha256": "8dba3c7e2117d88c12d727ce8d8b53327c9808edeab894e601adbd53197ed110",
+          "status": "PASS"
+        },
+        {
+          "checks": 25,
+          "error": null,
+          "mode": "installed",
+          "report_sha256": "8e15cf19becf6d99788df77e887f177b919d22985552183a182f0b67a1a5f888",
+          "status": "PASS"
+        }
+      ],
+      "decoded_log_utf8": {
+        "sha256": "dd2eba16f07fd2218088c0fe60da03a8cc98177b74eee2acc491471d26fb99d0",
+        "bytes": 311941
+      },
+      "artifact": {
+        "id": 15249533753,
+        "name": "voice-management-linux-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+        "bytes": 136691,
+        "digest": "sha256:abdfbbbcd054ac88f0bef475113d1e6ab97d8865276fbe4393f297c1ab349995",
+        "expired": false,
+        "created_at": "2026-11-28T05:16:44Z"
+      },
+      "artifact_digest_agrees_with_upload_log": true
+    }
+  ],
+  "limitations": [
+    "This record covers Linux 495 source and 495 isolated-installed cases plus the actual current-manager/real-owner API 25 checks in each mode.",
+    "Windows source scheduling, Windows installed regressions and native83 controls are separate and remained active at this capture.",
+    "Synthetic package-management execution does not qualify model inference, acoustic quality, physical playback or a production voice rollout.",
+    "Source and installed counts are separate executions of the same cases, not additional unique tests."
+  ],
+  "method": "Closed decoded GitHub job logs and artifact API metadata; exact twenty-one whole-source rows, both actual-owner receipts, final input/child receipt and uploaded archive SHA256 compared."
+}

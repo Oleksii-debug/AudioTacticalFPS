@@ -1,0 +1,85 @@
+{
+  "schema": "carr-source-handoff/1",
+  "created_utc": "2026-11-28 00:35:39 UTC",
+  "status": "STATIC_NOT_RUN",
+  "base": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+  "scope": "Owner-compatible existing-file native lock and current CleanupOwner settlement; no new broker, registry, synthesis engine, cleanup thread or automatic lock creation.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/voice_ownership.py",
+      "before": null,
+      "after": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_ownership.py",
+      "before": null,
+      "after": "078cdf3a83f84c390f6a242b59d4a19b9b9d52c9"
+    }
+  ],
+  "suite": {
+    "path": "tests/audio/test_voice_ownership.py",
+    "cases": 30,
+    "functions": [
+      "test_real_owner_and_client_exclude_each_other_without_modifying_lock",
+      "test_real_wait_cancellation_does_not_reclaim_the_other_owner",
+      "test_same_byte_replacement_refuses_saved_ticket_without_touching_competitor",
+      "test_callback_root_swap_is_rechecked_before_any_native_acquisition",
+      "test_replacement_between_check_and_open_closes_only_the_opened_descriptor",
+      "test_invalid_lock_bytes_are_refused_without_rewrite_or_retained_lock",
+      "test_checkpoint_rejects_changed_lock_bytes_while_descriptor_is_still_owned",
+      "test_close_never_resolves_or_removes_a_replaced_named_path",
+      "test_missing_explicit_owner_paths_are_never_created_by_capture",
+      "test_nonregular_owner_lock_is_refused_before_open",
+      "test_identity_is_detached_and_explicit_reference_directory_stays_in_runtime",
+      "test_invalid_admission_budget_fails_before_any_descriptor_open",
+      "test_pending_native_child_keeps_owner_lock_until_real_quiescence",
+      "test_cleanup_settlement_requires_the_actual_current_owner_error",
+      "test_held_lock_digest_never_reopens_the_named_locked_file"
+    ],
+    "companions": []
+  },
+  "origins": [
+    "carr_library.audio.voice_ownership",
+    "carr_library.audio.cleanup",
+    "carr_library.audio.models",
+    "carr_library.durable_state"
+  ],
+  "api": [
+    "capture_voice_ownership(runtime_root, references=None, expected=None, cancelled=...)",
+    "hold_voice_ownership(ticket, timeout=60, cancelled=...)",
+    "settle_voice_cleanup(error)",
+    "ticket.identity",
+    "lease.identity, lease.checkpoint(), lease.held, lease.lock_sha256()"
+  ],
+  "identity_schema": {
+    "schema": "carr-voice-ownership/1",
+    "runtime": {
+      "path": "canonical absolute string",
+      "device": "integer",
+      "inode": "integer"
+    },
+    "references": "same shape",
+    "packages": "same shape",
+    "lock": "same shape"
+  },
+  "contracts": [
+    "Explicit registration establishes the owner's file before selection. Capture never creates directories/files.",
+    "Current default references are runtime/models/voices; optional management references stay inside the same runtime.",
+    "Existing regular single-link file only; no CREATE/TRUNC or named-path release/unlink, fd is noninheritable.",
+    "Exact captured directory ancestors and opened/named file identities rechecked before/after native acquisition and at every checkpoint.",
+    "Existing owner protocol only: Windows msvcrt byte0 or POSIX flock. Admission timeout0..600 is finite and cancellable; no timeout reclaims another owner.",
+    "Held lock bytes must be empty or ASCII0. Manifest lock hash reads only the held descriptor, including Windows where a second handle is denied.",
+    "Current CleanupOwner actual quiescence precedes fd close. KeyboardInterrupt/SystemExit are deferred until that boundary, original pending error otherwise rethrows.",
+    "Path contract is current durable_state local-path/reparse/link guard; no claimed new mapped-network-drive detector.",
+    "Caller must revalidate source/authorization at existing use/publication boundaries. Context close preserves committed outcome and never acts on a replacement named path."
+  ],
+  "peer": {
+    "agent": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "source": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d",
+    "tests": "078cdf3a83f84c390f6a242b59d4a19b9b9d52c9",
+    "cases": 30,
+    "functions": 15
+  },
+  "execution": "NOT_RUN: executor unavailable. Actual Linux and Windows whole30 source/installed qualification required; native real owner API acquisition is separate."
+}

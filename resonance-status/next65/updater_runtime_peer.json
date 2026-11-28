@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "peer": "/root/locate_project",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Exact observed26 pip implementation files; independent source and actual fixture/API review.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/security/update_runtime.py",
+      "preimage": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+      "git_blob": "b511efb6bf5ff6d38d1e6df42854501150b20065"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_runtime.py",
+      "preimage": "e1e424dfcb009adbc8a29fd44492092b090c8c9c",
+      "git_blob": "91bab7040584adfb1a23dcd84d92047d44f1bf0c"
+    }
+  ],
+  "actual_evidence": "519ddaf5c3dafce69de3dce4186e13289ec3aca9",
+  "observed_exact_paths": [
+    "runtime/Lib/site-packages/pip/_internal/models/__init__.py",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/__init__.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/candidate.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/direct_url.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/format_control.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/index.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/installation_report.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/link.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/release_control.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/scheme.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/search_scope.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/selection_prefs.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/target_python.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/candidate.py",
+    "runtime/Lib/site-packages/pip/_internal/models/direct_url.py",
+    "runtime/Lib/site-packages/pip/_internal/models/format_control.py",
+    "runtime/Lib/site-packages/pip/_internal/models/index.py",
+    "runtime/Lib/site-packages/pip/_internal/models/installation_report.py",
+    "runtime/Lib/site-packages/pip/_internal/models/link.py",
+    "runtime/Lib/site-packages/pip/_internal/models/release_control.py",
+    "runtime/Lib/site-packages/pip/_internal/models/scheme.py",
+    "runtime/Lib/site-packages/pip/_internal/models/search_scope.py",
+    "runtime/Lib/site-packages/pip/_internal/models/selection_prefs.py",
+    "runtime/Lib/site-packages/pip/_internal/models/target_python.py",
+    "runtime/Lib/site-packages/pip/_internal/models/wheel.py"
+  ],
+  "validation": {
+    "source_inverse": "PASS",
+    "old18_test_byte_prefix": "PASS",
+    "module_function_counts": {
+      "old": 9,
+      "new": 13
+    },
+    "case_counts": {
+      "old": 18,
+      "added": 22,
+      "new": 40
+    },
+    "new_function_cases": {
+      "test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code": 2,
+      "test_pip_code_exception_preserves_every_private_component_refusal": 11,
+      "test_pip_code_exception_is_closed_to_exact_observed_relative_files": 4,
+      "test_pip_code_exception_cannot_bypass_owner_hash_or_path_identity": 5
+    },
+    "all26_match_actual_log": "PASS"
+  },
+  "api_sources": {
+    "handoff": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570",
+    "managed_test": "6bb9d65a1335c54a9af67b4038c62158b307486f",
+    "maintenance": "76af3bf9a2be2c61b890094ecaa7142cc3d0c8a8"
+  },
+  "preserved": [
+    "Complete independent A manifest, owner and setup SHA/receipt binding",
+    "Original relative-path, case-fold collision and every other private-component refusal",
+    "Existing actual ordinary single-link/no-reparse/source hash checks before destination creation",
+    "Actual current copy/second-source-check/final seal/configuration verification",
+    "No new exception for sibling, other package, CPython312, opt-1 or additional private component",
+    "Old18 cases and actual fixture maintenance.install/set_marker semantics"
+  ],
+  "fixture_boundary": "The existing offline installer remains the explicitly substituted portable fixture; no copied package code, real rollout, READY fix or native A3 execution is qualified.",
+  "recorded_utc": "2026-11-28 06:47:49 UTC",
+  "refs_modified": false
+}

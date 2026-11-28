@@ -1,0 +1,30 @@
+{
+  "schema": "carr-F-reader-language-doc-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/docs/REQUESTED_READER_WORKFLOWS.md",
+      "preimage": "ef5851da5aef09d17197b1a2c86f1f4ff8786223",
+      "blob": "4f3d7cead9415259ba1ae0efcdb5efc31b047eb6",
+      "one_row_inverse_exact": true
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "preimage": "a8b28e278352d23d8f156bd3153d01551d7ed2a7",
+      "blob": "2301fa86b3829ca854fea5d4b5f64711528f979b",
+      "one_row_inverse_exact": true
+    }
+  ],
+  "actual_evidence": "ab2cf108fd1a4eaf47d5502f6b84b9de35ffc9c3",
+  "base_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "verified": [
+    "R13 corrects historical whole to29, quotes the two exact D elapsed seconds under600, and preserves historical/current aggregate failure and unqualified later-head/device boundaries.",
+    "Language row matches accepted E evidence store/UI and both backup dormancy/revocation routes; actual147/native75 and reviewer/quality/NVDA claims remain unqualified.",
+    "All new relative links exist in the exact E tree; the D link resolves to the exact cited receipt."
+  ],
+  "scope": "Documentation-only two row substitutions; no runtime, source, gate or ref changes.",
+  "supersedes": {
+    "record": "ea21df32b38e4637012c289d64df55f10fb930b2",
+    "reason": "Metadata-only peer update for the sole pending-execution phrase replacement. Fresh E job failure must not be described as still awaiting execution; no complete same-head PASS is asserted."
+  }
+}

@@ -1,0 +1,361 @@
+{
+  "schema": "resonance-source-preflight/1",
+  "status": "PUBLISHED_PENDING_ACTUAL_GATES",
+  "name": "Correct measured workstation failures and exercise formatted EPUB",
+  "base_commit": "1fc5fb4cc4bf412568d76c3175a64c89326c1150",
+  "base_tree": "676e3c28dbcf301ded47ef16837e1eacb4ebd967",
+  "source_branch": "carr/ci-next9-word-refresh-20261127-5a9e",
+  "integration_unchanged": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+  "canonical_unchanged": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "measured_predecessor": {
+    "run": 46042518081,
+    "job": 140653551461,
+    "whole_suites": 43,
+    "whole_pass": 35,
+    "whole_fail": 8,
+    "passed": 1336,
+    "failed_or_error": 53,
+    "skipped": 0,
+    "artifact": {
+      "id": 15221073460,
+      "bytes": 99056,
+      "sha256": "f18f3e975ecda141588fddd13cd18567a9d5e3e37c830e336628423d739419dc"
+    },
+    "parser": {
+      "job": 140653551003,
+      "status": "PASS",
+      "powershell_bodies": 110,
+      "controls": 6,
+      "artifact": 15220843383,
+      "sha256": "87c91d7a27289f00a324d27cb5f2eda6475d0c983ae39b45afca284d727a7ae5"
+    }
+  },
+  "manifests": {
+    "dsp_cli": "78901160ae7698b16985e25e3ad78a0e5fecb36e",
+    "asr_positive_fixture": "98622522272b64f96fb647d7e6b1f0413037c118",
+    "hunspell": "84d817ea4f83cb0013291afe6085a54b5d0a0170",
+    "oauth_native": "b99a48a0288a491a9cd4cd836e6ceb01f9e11812",
+    "word_cleanup": "9a20339a545bc44ea0ee65b5a55bc804c714702f",
+    "word_measured_correction": "1e00b474402aeff7a814cff6ca097c01cd80a4eb",
+    "epub": "7e9e39f2099e89e412036bb103b54aecdd03fa91",
+    "staged_full_gates": "fe4c9c6b3eaa4a13cc4f91e5fa10e7e16c39ad42"
+  },
+  "records": [
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "sha": "f7833b5f600e3a822a3fa2f2068661c922576230",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "1162c2058b8852e3717b417503353040703fc442",
+      "group": "measured-dsp-cli"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_cli.py",
+      "sha": "27d0cd1d0ce2a5285c2b4d97127bb3cd0f52e36b",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "febffcb7ac959eb7cfa7e4911ecc566c996b4f51",
+      "group": "measured-dsp-cli"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "sha": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "f1c6525b4e01fbc9cefefd00aa97cb25191fe3b5",
+      "group": "measured-asr-positive-fixtures"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "sha": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "3782ee9348d35d4f732cc5df778d9845f1a102bc",
+      "group": "measured-asr-positive-fixtures"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/spelling.py",
+      "sha": "6a8865cb812d7d36492412757b2753396ae04e57",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "01e2d104e2a88073df43277f95e1c15efd26522d",
+      "group": "measured-hunspell"
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling.py",
+      "sha": "6bde6f86f3298700e51cf91aae675302c3e6e0be",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "c807c9b998e7cda5ab9eace965132dadbc811035",
+      "group": "measured-hunspell"
+    },
+    {
+      "path": "carr-library/scripts/windows_hunspell_smoke.py",
+      "sha": "0499b35d3779694104f96da8d3b763f8e21b6bb4",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "2497c1de4442f132f51573f6019c965d60ec5aa9",
+      "group": "measured-hunspell"
+    },
+    {
+      "path": "carr-library/scripts/windows_google_oauth_smoke.py",
+      "sha": "a149b7efc95c65fc6d752b77b33cafcae22ae61f",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "oauth-native"
+    },
+    {
+      "path": "carr-library/docs/GOOGLE_OAUTH_NATIVE_VALIDATION.md",
+      "sha": "ec7614ece47df93a625b4f428f8a172afdc25dea",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "oauth-native"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+      "sha": "33ef7bd2e5c710631a8cc93838cb8c74f44df169",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "a922321f082dea1f725825371e375dd2cc8d6d61",
+      "group": "word-measured-correction",
+      "previous_overlay": "b5d856f3e29621b797636521e5174f760b34c555"
+    },
+    {
+      "path": "carr-library/docs/WORD_BRIDGE_VALIDATION.md",
+      "sha": "95343838a6489bedbf1df55d16874d5fd8b8099c",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "5a8d1be83580f55ba4f8e9f7261c4b4ddb08e532",
+      "group": "word-measured-correction",
+      "previous_overlay": "0780f13f9e41da8908c0759e5ccc6fdd1923f27a"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout_worker.py",
+      "sha": "273a0fc92ab088d014cb525387a2892c2b5cc520",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout.py",
+      "sha": "1708fe7dcb9cab60301fde8762af7ed6cf976a81",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "sha": "2428f4fa27656eb692f96ebdd2e665c46754c53e",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "8c87aca1b49e3ff22c2ff6d11903b45f1188190a",
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "sha": "37a12fdba6d69ed7bb88961e38ea3a405b8920d5",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "7810e9e4a70e0b09f86e48093dcbe7e1f8f2e3ef",
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_documents.py",
+      "sha": "11c70688e9715cf16cd9026f91beba07eec56d5f",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "3c333e7a45fc8395fca1018fecde2051e6095e5a",
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+      "sha": "36363f86034ec1d4c144506e78855fc81306d93c",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "7d01aa55c2af91eb5530778849955fb19896306a",
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_layout.py",
+      "sha": "40645987906ab1fd6633ae69ea19f66dc01d1da9",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_epub_layout.py",
+      "sha": "ea38ea4913dc4bff8bb4d6dbcb49703aff454017",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_epub_cli.py",
+      "sha": "e38ef4e946c09054f080fb83fc3ea2095d87f517",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+      "sha": "171600d9dd771a377e9170d2149d5e1c94ccc943",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/scripts/translation_layout_fixtures.py",
+      "sha": "06c1b4be2a38243a258868ce760b92babc5bd5d6",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/scripts/translation_epubcheck_acceptance.py",
+      "sha": "f1ac42577e9d99051cc38330a8dad29edc882935",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": null,
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "sha": "f7a2de69fc679a734ffba5f1be5943531143bd74",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "14de811e7ce29ff2441c0eb2028261fbbf9c4798",
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "sha": "e7957fa3785e5e7663403fe0b7189223f84ba7cf",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "d13a37cd5bf1626b602f487ab2b16bda71c01f27",
+      "group": "epub"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "sha": "8caaeee36ca5a4fcfa05968ea701206396c1f8fa",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "2a8f09a620582288a23eef2ae6711f68f471f327",
+      "group": "plaintext-partition-fixture"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "34b134cc8f8575b74a2f6cf8b7e07224f56eade2",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "bc1b701ccd6c2313a99602f1f3f9d4f151017206",
+      "group": "full-gates"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "e8595b9e56b25053f1c0fe10e18000a287bbf80c",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "f0ae5cf0498b4bec3cc9169731c3a883beeab7e0",
+      "group": "full-gates"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "sha": "2bfe5585ad12b0a366ac54a076c538b344c94714",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "9435313333fc7b1c0df4ff1863c840f26a461341",
+      "group": "full-gates"
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "sha": "a6fce2331c62cfaad0beaf7c4c5268e1311620f8",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "d7c0e20d56aa2137bb9c7eb4d74c0ba919e46f6e",
+      "group": "diagnostic"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_records.py",
+      "sha": "55d40c59289e87fa1af78678f6b3fbb823c6ee50",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "8691e78ec4e2f5bc2c963e4c5056c918186ed110",
+      "group": "word-measured-correction"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_worker.py",
+      "sha": "1bf5222e2eddf744cc65503202dad62fda528eb7",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "1bfa3dd64d64e691ab82502d16fc16a0bf47d224",
+      "group": "word-measured-correction"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_records.py",
+      "sha": "a6c30063c3d921c67786eaa911247fd696530b8a",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "eabe21cc425d105283c6e7e93333338552fe05d2",
+      "group": "word-measured-correction"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_bridge.py",
+      "sha": "10abb0b8c14ed34f42a2d606ecdc97ea32ef66bb",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "e671c0e984be3d875a86ffa57b1a1e03feb04a56",
+      "group": "word-measured-correction"
+    },
+    {
+      "path": "carr-library/tests/ui/test_word_citations.py",
+      "sha": "d2b884592ba361f5a43c05f8e2c4f550fe0d7262",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "71ae5ac1fec9aef6a8f5a706a075d001784918e5",
+      "group": "word-measured-correction"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_office_probe.py",
+      "sha": "8eaa7fa0e775784a996bc8497d039347229d72b8",
+      "mode": "100644",
+      "type": "blob",
+      "preimage": "7424f93899cc5693a74feae8c4dd48ffec7a8fa0",
+      "group": "word-measured-correction"
+    }
+  ],
+  "source_gate": {
+    "whole_offline_modules": 49,
+    "ci_check_unchanged": true,
+    "expected_word_cases": 104,
+    "expected_epub_cases": 42,
+    "expected_hunspell_cases": 115,
+    "expected_total_offline_cases": 1521,
+    "status": "NOT_RUN"
+  },
+  "provider_gate": {
+    "whole_suite": "tests/assistant/test_providers.py",
+    "cases": 28,
+    "network": "new Linux network namespace, only lo; no external route",
+    "strict_skip_xfail_xpass": true,
+    "source_hashes_before_after": true,
+    "status": "NOT_RUN"
+  },
+  "parser_gate": {
+    "all_committed_workflow_powershell_bodies": true,
+    "status": "NOT_RUN"
+  },
+  "full_integration_gates": "Not run from this diagnostic branch. Final gate union still needs Word50, EPUB and strict Windows provider-loopback additions.",
+  "qualification": "Actual new-source evidence only when this exact head completes. No installed Windows, real Google, Office, model, language-quality, acoustic, NVDA or final release claim.",
+  "no_previous_pass_transfer": true,
+  "no_private_engine_or_sample_upload": true,
+  "no_chatgpt_automation_change": true
+}

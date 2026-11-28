@@ -5,11 +5,13 @@ import json
 from pathlib import Path
 import threading
 
-from ..durable_state import atomic_json, atomic_bytes, read_json
+from ..durable_state import atomic_json, encode, read_json
+from ..research.export_file import write_binary_export
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
 from ..progress import ProgressError, ProgressState, bind_progress, operation_outcome
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
+from .export_destination import confirm_export_destination
 
 SCRIPT_HELP = '''Write ordinary prose for one narrator, or use named speaking roles:
 Narrator [center]: The team enters the archive.
@@ -47,28 +49,72 @@ class StudioController:
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
         self.autosave(text, title, voice_ids)
-        project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
-        if self.project:
+        previous_project = self.project
+        if previous_project and text == previous_project.original_script:
+            # JSON projects can contain recorded clips, source bindings and
+            # non-default render settings which the prose grammar cannot express.
+            # Saving an unchanged script must preserve that complete performance.
+            project = replace(previous_project, title=title)
+        else:
+            project = parse_script(text, title=title, voice_ids=voice_ids,
+                                   mode=previous_project.mode if previous_project else 'faithful',
+                                   project_id=previous_project.id if previous_project else None)
+        if previous_project and text != previous_project.original_script:
+            marker_scenes = {marker.scene_id for marker in previous_project.markers}
+            if marker_scenes:
+                old_structure = tuple((scene.id, scene.title) for scene in previous_project.scenes)
+                new_structure = tuple((scene.id, scene.title) for scene in project.scenes)
+                if old_structure != new_structure:
+                    raise ValueError('A script with named markers changed its ordered scene structure. '
+                                     'Remove or review its markers before changing scene structure.')
+                title_counts = {}
+                for scene in previous_project.scenes:
+                    title_counts[scene.title] = title_counts.get(scene.title, 0) + 1
+                if any(scene.id in marker_scenes and title_counts[scene.title] > 1
+                       for scene in previous_project.scenes):
+                    raise ValueError('Named markers in scenes with repeated titles cannot be matched '
+                                     'unambiguously after a script edit. Remove those markers and use '
+                                     'distinct scene titles before adding reviewed markers again.')
+            attached = {scene.id: scene for scene in previous_project.scenes
+                        if scene.cues or scene.effects or scene.id in marker_scenes}
+            current = {scene.id: scene for scene in project.scenes}
+            if any(identity not in current or current[identity].title != old.title
+                   for identity, old in attached.items()):
+                raise ValueError('A scene with attached audio, effects or named markers changed its identity. '
+                                 'Move or remove its clips and markers in the scene editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues, effects=attached[scene.id].effects)
+                           if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
+            current_roles = {role.name.casefold() for role in project.roles}
+            if any(role.effects and name not in current_roles for name, role in previous.items()):
+                raise ValueError('A speaking role with saved effects was removed. Clear its effects '
+                                 'in the scene editor before removing that role.')
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
                                   pan=previous[role.name.casefold()].pan,
                                   gain_db=previous[role.name.casefold()].gain_db,
                                   rate=previous[role.name.casefold()].rate,
-                                  volume=previous[role.name.casefold()].volume)
+                                  volume=previous[role.name.casefold()].volume,
+                                  effects=previous[role.name.casefold()].effects)
                           if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, revision=self.project.revision)
-            if project.to_dict() != self.project.to_dict():
-                project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+            project = replace(project, roles=roles, scenes=scenes, effects=previous_project.effects,
+                              sample_rate=previous_project.sample_rate,
+                              schema=previous_project.schema, revision=previous_project.revision,
+                              markers=previous_project.markers)
+        if previous_project and project.to_dict() != previous_project.to_dict():
+            project = replace(project, revision=previous_project.revision + 1)
+        self.service.projects.save(project,
+            expected_revision=previous_project.revision if previous_project else None,
+            expected_fingerprint=previous_project.fingerprint if previous_project else None)
         self.project = project
         return project
 
 
 def show_studio(frame):
     import wx
-    controller = StudioController(frame.library)
+    library = frame.library
+    library_root = Path(library.root)
+    controller = StudioController(library)
     service = controller.service
     dialog = wx.Dialog(frame, title='Audio Studio — script, voices and production', size=(980, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -79,6 +125,13 @@ def show_studio(frame):
     draft_dirty = False
     saved_signature = None
     owned_progress_voices = set()
+
+    def scope_current():
+        return (alive and getattr(frame, 'library', None) is library
+                and Path(library.root) == library_root and not getattr(frame, '_closing', False))
+
+    def stopping():
+        return cancel.is_set() or not scope_current()
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 6)
@@ -124,7 +177,8 @@ def show_studio(frame):
     # Reuse the same native observer and state contract as the main window.
     # Its modal view keeps query/mute controls reachable while Studio is busy.
     from .progress_panel import NativeProgressPanel
-    dialog.library, dialog.host, dialog.layout = frame.library, dialog, layout
+    dialog.library, dialog.host, dialog.layout = library, dialog, layout
+    dialog.status = status
     dialog.report = lambda message: report(message, True)
     dialog.working = False
     parent_progress = getattr(frame, 'progress_panel', None)
@@ -142,7 +196,7 @@ def show_studio(frame):
         progress.hub = parent_progress.hub
     layout.Detach(progress.panel)
     layout.Insert(layout.GetItemCount() - 2, progress.panel, 0, wx.EXPAND | wx.ALL, 6)
-    progress.gauge.SetName('Audio Studio operation progress')
+    progress.set_context_name('Audio Studio operation progress')
     progress.text.SetName('Audio Studio current progress and phase')
     progress.query_button.SetName('Query Audio Studio progress')
 
@@ -154,20 +208,26 @@ def show_studio(frame):
         return ()
 
     def controls():
+        if not alive:
+            return
+        available = not busy and scope_current()
         for name in ('render', 'open', 'roles', 'jobs'):
-            buttons[name].Enable(not busy)
+            buttons[name].Enable(available)
         buttons['pause'].Enable(busy)
-        buttons['preview'].Enable(not busy and current_job is not None)
+        buttons['preview'].Enable(available and current_job is not None)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
-        editor.Enable(not busy)
-        title.Enable(not busy)
-        voice_choice.Enable(not busy)
+        editor.Enable(available)
+        title.Enable(available)
+        voice_choice.Enable(available)
 
     def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
         nonlocal busy
         if busy:
+            return
+        if not scope_current():
+            report('The active library changed or is closing. Reopen Audio Studio from that library.', True)
             return
         busy = True
         dialog.working = True
@@ -187,17 +247,19 @@ def show_studio(frame):
         task = observe(lambda: progress.begin(phase))
 
         def measured(message):
-            if finished.is_set():
+            if finished.is_set() or not scope_current():
                 return
             description = ' '.join(str(message).split())[:512] or phase
-            if task is not None and not cancel.is_set() and task.snapshot().state == ProgressState.RUNNING:
+            if task is not None and not stopping() and task.snapshot().state == ProgressState.RUNNING:
                 observe(lambda: task.update(phase=description))
             def show_phase():
-                if alive and not finished.is_set():
+                if scope_current() and not finished.is_set():
                     report(description)
             observe(lambda: wx.CallAfter(show_phase))
 
         def execute():
+            if stopping():
+                raise InterruptedError('Audio Studio operation cancelled before it could use the selected library.')
             if task is None:
                 return operation(measured) if with_progress else operation()
             with bind_progress(task):
@@ -240,15 +302,25 @@ def show_studio(frame):
                     return
                 outcome = observe(lambda: operation_outcome(result))
                 try:
-                    if alive and outcome in ('succeeded', None):
+                    if scope_current() and outcome in ('succeeded', None):
                         complete(result)
-                    elif alive:
+                    elif scope_current():
                         report(phase + ': ' + outcome + '. Saved work is retained.', True)
+                    elif alive:
+                        report('The active library changed or is closing. Any saved result remains in its original library.', True)
                 except Exception as exc:
                     failed_operation(exc)
                     return
                 finish_progress(outcome or 'unavailable')
-            wx.CallAfter(apply)
+            if alive:
+                try:
+                    wx.CallAfter(apply)
+                except RuntimeError:
+                    finished.set()
+            else:
+                # Closed panels suppress refresh. Finish the shared task without
+                # scheduling callbacks for a destroyed native dialog.
+                apply()
 
         try:
             future = executor.submit(execute)
@@ -302,6 +374,9 @@ def show_studio(frame):
 
     def save(event=None):
         nonlocal draft_dirty, saved_signature
+        if not scope_current():
+            report('The active library changed or is closing. Reopen Audio Studio before saving.', True)
+            return None
         try:
             result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
             draft_dirty = False
@@ -320,7 +395,7 @@ def show_studio(frame):
 
     def autosave(event=None):
         nonlocal draft_dirty
-        if not draft_dirty or busy:
+        if not draft_dirty or busy or not scope_current():
             return
         try:
             controller.autosave(editor.GetValue(), title.GetValue(), selected_voices())
@@ -335,6 +410,8 @@ def show_studio(frame):
         try:
             if chooser.ShowModal() != wx.ID_OK:
                 return
+            if not scope_current():
+                raise ValueError('The active library changed. Reopen Audio Studio before opening a project.')
             path = Path(chooser.GetPath())
             if path.stat().st_size > 16 * 1024**2:
                 raise ValueError('The script exceeds the editable text budget; split it by chapters.')
@@ -355,16 +432,28 @@ def show_studio(frame):
             chooser.Destroy()
 
     def save_as(event=None):
+        library = frame.library
         project = save()
         if project is None:
             return
         chooser = wx.FileDialog(dialog, 'Save audio project as', defaultFile='audio-project.json',
-                                wildcard='Project JSON (*.json)|*.json', style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                                wildcard='Project JSON (*.json)|*.json', style=wx.FD_SAVE)
         try:
             if chooser.ShowModal() == wx.ID_OK:
                 path = Path(chooser.GetPath())
-                atomic_json(path, project.to_dict(), replace=path.exists())
-                report('Project exported. Voice credentials and source library files are not embedded.', True)
+                if controller.draft.resolve() != (library.root / 'state' / 'studio' / 'draft.json').resolve():
+                    raise ValueError('The library changed. Reopen the studio before exporting.')
+                approval = confirm_export_destination(dialog, path, private_root=library.root,
+                                                       title='Replace audio project')
+                if approval is None:
+                    return
+                if frame.library is not library:
+                    raise ValueError('The library changed. Reopen the studio before exporting.')
+                receipt = write_binary_export(path, encode(project.to_dict()), private_root=library.root,
+                                    approval=approval)
+                warning = getattr(receipt, 'cleanup_warning', None)
+                report('Project exported. Voice credentials and source library files are not embedded.'
+                    + ('\n' + warning if isinstance(warning, str) and warning else ''), True)
         except Exception as exc:
             report(str(exc), True)
         finally:
@@ -414,6 +503,8 @@ def show_studio(frame):
                              rate=rate.GetValue(), volume=volume.GetValue())
             updated = replace(project, roles=tuple(edited if i == index else r for i, r in enumerate(project.roles)),
                               revision=project.revision + 1)
+            if not scope_current():
+                raise ValueError('The active library changed. Reopen Audio Studio before saving role edits.')
             service.projects.save(updated, expected_revision=project.revision)
             controller.project = updated
             current_job = None
@@ -425,7 +516,7 @@ def show_studio(frame):
 
     def render(event=None):
         nonlocal current_job
-        if busy:
+        if busy or not scope_current():
             return
         if current_job is None:
             project = save()
@@ -435,6 +526,8 @@ def show_studio(frame):
             try:
                 if chooser.ShowModal() != wx.ID_OK:
                     return
+                if not scope_current():
+                    raise ValueError('The active library changed. Reopen Audio Studio before rendering.')
                 current_job = service.submit(project, Path(chooser.GetPath()),
                     format=formats[format_choice.GetSelection()], stems=stems.GetValue())
             except Exception as exc:
@@ -443,13 +536,38 @@ def show_studio(frame):
             finally:
                 chooser.Destroy()
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+        new_parent = None
+        try:
+            if service.get(identity).get('recovery', {}).get('requires_output_directory') is True:
+                chooser = wx.DirDialog(dialog, 'Choose a new output folder for the restored production job')
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    new_parent = Path(chooser.GetPath())
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
+
+        def render_selected(measured):
+            if stopping():
+                raise InterruptedError('Audio production cancelled before using the selected library.')
+            if new_parent is not None:
+                measured('Preparing a new output folder for the restored production')
+                service.relocate_restored_job(identity, new_parent)
+            if stopping():
+                raise InterruptedError('Audio production cancelled before rendering.')
+            return service.run(identity, cancelled=stopping, progress=measured)
+        run(render_selected,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
         nonlocal current_job
+        if not scope_current():
+            return
         try:
             rows = service.jobs()
             chooser = wx.SingleChoiceDialog(dialog, 'Select a saved job to inspect, resume, or replay.', 'Production jobs',
@@ -462,6 +580,8 @@ def show_studio(frame):
                 chooser.Destroy()
             if not 0 <= index < len(rows):
                 return
+            if not scope_current():
+                raise ValueError('The active library changed. Reopen Audio Studio before selecting a saved job.')
             row = rows[index]
             project = Project.from_dict(row['project'])
             controller.project = service.projects.load(project.id)
@@ -475,9 +595,13 @@ def show_studio(frame):
 
     def preview(event=None):
         try:
-            if current_job is None:
+            if busy or current_job is None or not scope_current():
                 return
-            row = service.get(current_job)
+            identity = current_job
+            row = service.get(identity)
+            if (row.get('recovery', {}).get('requires_output_directory') is True
+                    or row.get('status') == 'waiting-input'):
+                raise ValueError('This restored job needs a new output folder. Choose Render / resume first.')
             source = Path(row['destination']) / 'master.wav'
             if not source.exists():
                 raise ValueError('There is no completed master yet; render or resume the job.')
@@ -488,10 +612,13 @@ def show_studio(frame):
             if parent_progress is not None:
                 parent_progress.register_player(player)
             def playing():
+                if not scope_current() or current_job != identity or busy:
+                    return
                 player.play(source)
                 report('Playing the rendered master. Close this dialog to stop playback.', True)
             play_when_quiet((progress, parent_progress), playing, schedule=wx.CallLater,
-                alive=lambda: alive, on_error=lambda exc: report(f'Playback did not start. {exc}', True))
+                alive=lambda: scope_current() and current_job == identity and not busy,
+                on_error=lambda exc: report(f'Playback did not start. {exc}', True) if scope_current() else None)
         except Exception as exc:
             report(str(exc), True)
 
@@ -499,11 +626,15 @@ def show_studio(frame):
         from .desktop_app import show_text
         show_text(dialog, 'Audio Studio keyboard and script guide', SCRIPT_HELP)
 
-    def close(event=None):
+    def close(event=None, *, destroying=False):
         nonlocal alive
         if not alive:
             return
-        autosave()
+        if destroying:
+            progress.close()
+            alive = False
+        else:
+            autosave()
         cancel.set()
         if current_job is not None and busy:
             service.request_pause(current_job)
@@ -511,7 +642,8 @@ def show_studio(frame):
         if getattr(dialog, '_audio_player', None):
             silence_confirmed = False
             try:
-                dialog._audio_player.close()
+                if dialog._audio_player.close() is False:
+                    raise RuntimeError('The audio device has not confirmed Stop.')
                 silence_confirmed = True
             except (OSError, RuntimeError) as exc:
                 report(f'Playback device reported a close error: {exc}')
@@ -534,7 +666,13 @@ def show_studio(frame):
                 finally:
                     service.close()
         close_after_worker(executor, StudioResources())
-        dialog.EndModal(wx.ID_CLOSE)
+        if not destroying:
+            dialog.EndModal(wx.ID_CLOSE)
+
+    def destroyed(event):
+        if event.GetEventObject() is dialog:
+            close(destroying=True)
+        event.Skip()
 
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
@@ -556,6 +694,7 @@ def show_studio(frame):
         controls()
     voice_choice.Bind(wx.EVT_CHOICE, voice_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, timer)
     timer.Start(4000)
@@ -613,81 +752,25 @@ def show_studio(frame):
 
 
 def show_audio_conversion(frame):
-    """Numeric, keyboard-driven offline DSP and conversion of a selected local file."""
-    import wx
-    from ..audio import AudioRuntime, Effect
-    chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
-    try:
-        if chooser.ShowModal() != wx.ID_OK:
-            return
-        source = Path(chooser.GetPath())
-    finally:
-        chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(700, 550),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    layout = wx.BoxSizer(wx.VERTICAL)
-    def entry(label, value):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 5)
-        control = wx.TextCtrl(dialog, value=value)
-        control.SetName(label)
-        layout.Add(control, 0, wx.EXPAND | wx.ALL, 5)
-        return control
-    start = entry('Start in seconds', '0')
-    duration = entry('Duration in seconds; empty means remainder', '')
-    gain = entry('Gain in decibels, -60 to 12', '0')
-    tempo = entry('Playback speed without pitch change, 0.5 to 2', '1')
-    loudness = entry('Target loudness in LUFS; empty leaves levels unchanged', '-18')
-    effects = wx.CheckBox(dialog, label='Apply speech noise reduction and gentle compression')
-    layout.Add(effects, 0, wx.ALL, 6)
-    layout.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
-    dialog.SetSizer(layout)
-    try:
-        if dialog.ShowModal() != wx.ID_OK:
-            return
-        start_value, duration_value = float(start.GetValue()), float(duration.GetValue()) if duration.GetValue().strip() else None
-        gain_value, tempo_value = float(gain.GetValue()), float(tempo.GetValue())
-        if not -60 <= gain_value <= 12 or not .5 <= tempo_value <= 2:
-            raise ValueError('Gain or speed is outside the displayed range.')
-        chain = [Effect('gain', gain_db=gain_value), Effect('tempo', factor=tempo_value)]
-        if effects.GetValue():
-            chain += [Effect('denoise'), Effect('compressor')]
-        if loudness.GetValue().strip():
-            chain.append(Effect('loudness', target_lufs=float(loudness.GetValue()), peak_db=-1))
-    except Exception as exc:
-        frame.report(str(exc))
-        return
-    finally:
-        dialog.Destroy()
-    chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
-                            wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus)|*.wav;*.flac;*.mp3;*.m4a;*.ogg;*.opus',
-                            style=wx.FD_SAVE)
-    try:
-        if chooser.ShowModal() != wx.ID_OK:
-            return
-        output = Path(chooser.GetPath())
-    finally:
-        chooser.Destroy()
-    def operation():
-        from ..runtime_settings import audio_runtime
-        runtime = audio_runtime(output.parent, state_root=frame.library.root / 'state', input_roots=(source.parent,))
-        result = runtime.convert(source, output, start=start_value, duration=duration_value,
-                                  effects=chain, cancelled=frame.cancel_event.is_set)
-        measurement = runtime.measure(output, cancelled=frame.cancel_event.is_set)
-        return result, measurement
-    frame.run_job('Converting local audio', operation,
-        lambda result: frame.report(f'Saved {output}. Duration {result[0].duration:.2f} seconds. '
-                                    f'Measured loudness {result[1].integrated_lufs} LUFS.'))
+    from .audio_conversion import show_audio_conversion as show
+    return show(frame)
 
 
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
+    from .publishing_dialog import show_publishing
+    from .studio_clips import show_clip_editor
+    from .audio_conversion import show_audio_conversion_batch
     from .command_registry import CommandSpec
     from .keyboard_settings import register_menu_command
     menu = wx.Menu()
     for identity, title, shortcut, handler in [
             ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
+            ('audio.clips', 'Scene audio clips...', '', lambda e: show_clip_editor(frame)),
+            ('audio.publishing', 'Publish synchronized EPUB3 or DAISY...', '', lambda e: show_publishing(frame)),
             ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
+            ('audio.convert_batch', 'Convert an explicit audio batch...', '', lambda e: show_audio_conversion_batch(frame)),
             ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)

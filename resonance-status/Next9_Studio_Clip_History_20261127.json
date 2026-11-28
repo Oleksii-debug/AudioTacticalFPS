@@ -1,0 +1,122 @@
+{
+  "schema": "resonance-studio-clip-history/1",
+  "status": "DRAFT_STATIC_NOT_RUN",
+  "base": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "requires_envelopes": "a2e0ae00e01a5e9e74ec73dc0607223abfd332ae",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/clip_operations.py",
+      "sha": "82676db10f6da0cfa2e04294f7337b82295baa13",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project_history.py",
+      "sha": "55be6fcdc5266a546b60541b2bb72768ade8c800",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "sha": "fb038128ffb1ba636b31a07410fb8729a532d323",
+      "preimage": "756b2a22b2414d9e45b674b1cc2d6dfff20455cc"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "sha": "2e8d4c92b2a0fcf8d115fb87ec0befe7a263384f",
+      "preimage": "440646c6d9073691c7669381dd3f2707cadc79d4"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_operations.py",
+      "sha": "d62aa2301be32b9993c64493280f631da69c9aca",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_history.py",
+      "sha": "80efda7533f7c932f5a2e314d32491b00c702d37",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_history_dialog.py",
+      "sha": "fe17d10893814410e4b905b7e7f00c513df472b2",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "sha": "de123b44e46d0131e068cc1155955bc3ba14f62d",
+      "preimage": "677e3f25f61e69e5e8179f7b588d82349e80e4a3"
+    },
+    {
+      "path": "carr-library/docs/STUDIO_CLIP_HISTORY.md",
+      "sha": "ea8610c2d4ad846c7f726bb5c0c9bfba2d8504d1",
+      "preimage": null
+    }
+  ],
+  "tests": {
+    "whole_modules": {
+      "tests/studio/test_clip_operations.py": 59,
+      "tests/studio/test_project_history.py": 29,
+      "tests/studio/test_clip_history_dialog.py": 22
+    },
+    "total_static": 110,
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "native": {
+    "script_sha": "de123b44e46d0131e068cc1155955bc3ba14f62d",
+    "preserves_prior_effect_checks": 23,
+    "preserves_envelope_checks": 10,
+    "additional_essential_checks": [
+      "native timeline menu is available",
+      "native split retains two exact original selections",
+      "native project undo restores prior complete content",
+      "native project redo returns reviewed split",
+      "native rejoin recovers original timing and effect chains",
+      "native cut preserves scene clock and removes selected interval",
+      "native cut renders silence only inside selected interval",
+      "native history picker targets exact reviewed revision",
+      "native saved project history restores exact prior content",
+      "native history restore creates new revision without replacing outputs"
+    ],
+    "added_origins": [
+      "carr_library.studio.clip_operations",
+      "carr_library.studio.project_history"
+    ],
+    "origins": 15,
+    "post_cleanup_hash_checks": 15,
+    "required_checks": 58,
+    "required_fields": {
+      "actual_clip_editing": "PASS",
+      "project_history_restore": "PASS"
+    },
+    "watchdog_seconds": 180,
+    "actual": "NOT_RUN"
+  },
+  "reuse": {
+    "editor": "ClipEditor",
+    "history": "ProjectStore existing immutable revision files",
+    "worker": "Existing DesktopFrame worker",
+    "source": "Existing content-addressed managed inputs",
+    "broker": "Existing shared operation broker",
+    "renderer": "Existing configured AudioRuntime and ProductionService"
+  },
+  "limits": {
+    "join": "Contiguous selections of the same original only; general scene assembly/export unchanged",
+    "stateful_clip_dsp": "Explicit prior render required before split/cut/join",
+    "fade_boundaries": "No boundary inside existing fade; no silent removal of internal fades",
+    "session_undo": "100 accepted edits in current editor session; durable history pages100 after reopen",
+    "book_plan": "Generic changes refused; existing dedicated review required",
+    "source_geometry": "Verified source frame count at project sample rate; sample-aligned source trim and duration; explicit Convert otherwise. Scene origin is captured once on integer sample grid; inconsistent fractional scene-end rounding is refused."
+  },
+  "validation": {
+    "readback": "EXACT",
+    "parse": "NOT_RUN",
+    "peer_review": "ACCEPTED_STATIC_LOCATE_PROJECT; correction82676/fb038 reviewed; no runtime claim",
+    "no_prior_pass_transfer": true
+  },
+  "peer_correction": {
+    "finding": "Per-piece rounding of half-sample scene starts could add a sample gap; independent resampling is not exact splitting",
+    "change": "Integer captured scene origin plus integer offsets; verified equal-rate sample grid; no implicit DSP/resampling reset",
+    "added_cases": 11,
+    "status": "NOT_RUN"
+  }
+}

@@ -1,0 +1,500 @@
+{
+  "schema": "carr-review-manifest/1",
+  "title": "Configured updater runtime-code admission and exact sealed Windows supervisor launch",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "execution": "NOT_RUN",
+  "base": "72713056f6da48a327ce269dc805a42eb3bd1b52",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/security/update_handoff.py",
+      "preimage": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570",
+      "git_blob": "72ec774f28f195589498d95a76da788dbcc3416c",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_runtime.py",
+      "preimage": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+      "git_blob": "b511efb6bf5ff6d38d1e6df42854501150b20065",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "preimage": "cdb76726200bf12518501b9efa03b5b865cf48e7",
+      "git_blob": "057be5e81624330f63d0519569247e1129444781",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_runtime.py",
+      "preimage": "e1e424dfcb009adbc8a29fd44492092b090c8c9c",
+      "git_blob": "91bab7040584adfb1a23dcd84d92047d44f1bf0c",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "c5e1fbcafd788ac1aa91f3589b97b949378cf705",
+      "git_blob": "c9e5230983eb7fa2ee70324dd687c93d7d51e1b3",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "preimage": "24d4bdb71b25597faffed9e5979c58ef7cc263ff",
+      "git_blob": "59d3642396f88529e17d82f68bb4675382145c9f",
+      "readback_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "preimage": "838ff28ad3baea931b0a99f3071f1d000cb5b42c",
+      "git_blob": "b8424c11ae2c68be238a273b1fcbe6b1a057fe51",
+      "readback_exact": true
+    }
+  ],
+  "actual_evidence": {
+    "configured_child": "eeaa74a626a19a6de3039661101707fdb9abb14c",
+    "install_log": "519ddaf5c3dafce69de3dce4186e13289ec3aca9",
+    "main_ordinary_failures": "655db5541d27d8bbbb6790767ef84f9ad4446dcf",
+    "original_head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "original_run": 46110647047,
+    "configured_job": 140873303994,
+    "ordinary_job": 140873303815,
+    "distinctions": [
+      "The native child recorded five actual UI checks before preparation refused its declared runtime-code path; Apply and restart were not reached.",
+      "The install log records26 exact temporary extraction paths in pip/_internal/models; no destination-filename rows or first rejected entry were inferred.",
+      "The ordinary log recorded13 READY refusals but did not print the observed READY dictionary or returncode; the direct-PID route invariant is independently proved by exact CPython source."
+    ]
+  },
+  "source_changes": {
+    "runtime": {
+      "exact_allowed_paths": [
+        "runtime/Lib/site-packages/pip/_internal/models/__init__.py",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/__init__.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/candidate.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/direct_url.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/format_control.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/index.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/installation_report.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/link.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/release_control.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/scheme.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/search_scope.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/selection_prefs.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/target_python.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-311.pyc",
+        "runtime/Lib/site-packages/pip/_internal/models/candidate.py",
+        "runtime/Lib/site-packages/pip/_internal/models/direct_url.py",
+        "runtime/Lib/site-packages/pip/_internal/models/format_control.py",
+        "runtime/Lib/site-packages/pip/_internal/models/index.py",
+        "runtime/Lib/site-packages/pip/_internal/models/installation_report.py",
+        "runtime/Lib/site-packages/pip/_internal/models/link.py",
+        "runtime/Lib/site-packages/pip/_internal/models/release_control.py",
+        "runtime/Lib/site-packages/pip/_internal/models/scheme.py",
+        "runtime/Lib/site-packages/pip/_internal/models/search_scope.py",
+        "runtime/Lib/site-packages/pip/_internal/models/selection_prefs.py",
+        "runtime/Lib/site-packages/pip/_internal/models/target_python.py",
+        "runtime/Lib/site-packages/pip/_internal/models/wheel.py"
+      ],
+      "retained": "Independent complete A bundle/owner/setup hashes, closed maintenance helper inventory, all remaining private components, relative/case collision rules, ordinary single-link/no-reparse hash reads and pre-destination refusal remain authoritative.",
+      "peer": "locate_project",
+      "peer_evidence": "36438f5b8cd8bf43d3f4915358c087a0597a527f",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    "supervisor": {
+      "method": "Freshly derive the base Python only from the sealed in-runtime pyvenv.cfg; retain cfg, launcher and base digests/identities/ancestors, strip inherited overrides and use CPython's internal venv binding.",
+      "retained": "Exact request/release/PID/live-process READY, normal Close/COMMIT, uncertainty retention and owned precommit abort remain required. A postlaunch binding failure reaches actual owner abort.",
+      "peer": "canonical_regression",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "primary_sources": [
+        {
+          "repository": "python/cpython",
+          "refs": [
+            "v3.11.9",
+            "v3.11.18"
+          ],
+          "path": "PC/launcher.c",
+          "git_blob": "da566a180168c5d80104e68b3595f140c4ba989f"
+        },
+        {
+          "repository": "python/cpython",
+          "ref": "v3.11.9",
+          "path": "PCbuild/venvlauncher.vcxproj",
+          "git_blob": "123e84ec4e3682a7292ebf1ca9f513c331f72944"
+        },
+        {
+          "repository": "python/cpython",
+          "ref": "v3.11.9",
+          "path": "Modules/getpath.py",
+          "git_blob": "74f918cf28e402b7563c538a62c1647cf068cbdf"
+        },
+        {
+          "repository": "python/cpython",
+          "path": "Modules/getpath.c",
+          "git_blob": "61d654065fdca0cf95b9aef787cce09f72da82fd",
+          "refs": [
+            "v3.11.9",
+            "v3.11.18"
+          ]
+        },
+        {
+          "repository": "python/cpython",
+          "ref": "v3.11.18",
+          "path": "Modules/getpath.py",
+          "git_blob": "a7dd7342d4d26854e6ebf6442f2545f6e22242cd",
+          "binding_block_byte_identical_to_reviewed_3119": true
+        }
+      ],
+      "actual_runtime_route_primary_verified": true
+    }
+  },
+  "whole_contracts": {
+    "tests/security/test_update_handoff.py": {
+      "count": 53,
+      "functions": [
+        "test_offline_handoff_reverifies_actual_signed_metadata_and_complete_target",
+        "test_exact_external_runtime_seal_refuses_every_unreviewed_payload_change",
+        "test_same_byte_runtime_root_replacement_never_reuses_owner_configuration",
+        "test_owner_configuration_changes_are_refused_before_launch",
+        "test_real_supervisor_ready_never_means_apply_and_cancel_reaps_it",
+        "test_wrong_supervisor_ready_identity_is_refused_and_actual_child_is_reaped",
+        "test_only_actual_close_boolean_can_commit_the_exact_owned_handoff",
+        "test_visible_commit_survives_postpublication_error_without_terminating_host",
+        "test_uncertain_commit_retains_fixed_host_without_falsely_claiming_activation",
+        "test_external_host_uses_actual_exclusive_lease_and_existing_complete_transaction",
+        "test_external_host_failure_retains_exact_existing_rollback_and_backup",
+        "test_external_host_recovery_finishes_already_committed_b_without_rollback",
+        "test_real_application_child_excludes_host_until_its_own_lease_is_released",
+        "test_runtime_manifest_survives_only_outside_every_managed_payload",
+        "test_restart_uses_only_exact_owned_installed_entrypoint_and_current_library",
+        "test_sealed_venv_launch_binds_current_base_cfg_launcher_and_ignores_ambient_overrides",
+        "test_sealed_venv_launch_refuses_unowned_or_ambiguous_interpreter_authority",
+        "test_sealed_venv_launch_rechecks_each_real_identity_after_review",
+        "test_sealed_venv_launch_cancellation_preserves_original_control_and_starts_no_child",
+        "test_real_temporary_venv_preserves_direct_pid_installed_prefix_and_handoff_ownership",
+        "test_ready_refusal_keeps_exact_identity_and_live_process_diagnostics",
+        "test_changed_launch_binding_after_real_spawn_reaps_only_precommit_owner"
+      ],
+      "git_blob": "057be5e81624330f63d0519569247e1129444781"
+    },
+    "tests/security/test_update_runtime.py": {
+      "count": 40,
+      "functions": [
+        "test_preparation_copies_only_exact_distribution_then_seals_new_offline_host",
+        "test_wrong_independent_a_identity_is_refused_before_copy_or_child",
+        "test_changed_exact_distribution_source_never_starts_offline_installer",
+        "test_changed_fixed_helper_is_refused_before_import_or_copy",
+        "test_explicit_external_destination_cannot_overlap_or_replace_owned_material",
+        "test_cancellation_before_preparation_creates_no_runtime_or_receipts",
+        "test_offline_installer_failure_retains_owned_attempt_and_leaves_a_untouched",
+        "test_real_competing_publication_is_never_overwritten",
+        "test_visible_final_configuration_retains_truth_if_acknowledgment_fails",
+        "test_exact_observed_pip_modules_copy_only_as_owned_pinned_distribution_code",
+        "test_pip_code_exception_preserves_every_private_component_refusal",
+        "test_pip_code_exception_is_closed_to_exact_observed_relative_files",
+        "test_pip_code_exception_cannot_bypass_owner_hash_or_path_identity"
+      ],
+      "git_blob": "91bab7040584adfb1a23dcd84d92047d44f1bf0c"
+    },
+    "tests/security/test_update_ui.py": {
+      "count": 15,
+      "functions": [
+        "test_actual_host_close_and_registered_finalizer_cannot_race_before_commit",
+        "test_native_close_veto_or_missing_closing_state_cancels_only_owned_handoff",
+        "test_late_callback_never_closes_changed_host_or_applies_after_cancel",
+        "test_real_host_shutdown_settles_prepared_helper_without_any_gui_callback",
+        "test_refused_shared_host_submission_creates_no_supervisor",
+        "test_close_between_preparation_and_cleanup_registration_reaps_real_helper",
+        "test_real_shared_progress_reports_received_bytes_without_premature_acceptance",
+        "test_same_byte_library_root_replacement_refuses_new_update_job_before_worker",
+        "test_uncertain_durable_commit_is_retained_through_actual_host_cleanup",
+        "test_consented_idle_check_uses_existing_worker_without_focus_download_or_close",
+        "test_idle_check_cooperatively_stops_for_new_foreground_work_on_same_worker",
+        "test_closed_host_stops_timer_and_drops_late_idle_completion_without_focus"
+      ],
+      "git_blob": "4b7c1e0b0d379654d769da667b11e453cb55a221"
+    },
+    "tests/security/test_update_controller_actions.py": {
+      "count": 14,
+      "functions": [
+        "test_unconfigured_status_never_creates_update_authority_or_contacts_a_site",
+        "test_explicit_current_library_obtains_only_actual_tuf_package_capability",
+        "test_wrong_library_is_refused_before_creating_update_cache",
+        "test_stale_same_byte_directory_scope_refuses_before_client_or_handoff",
+        "test_background_update_setting_requires_typed_explicit_consent",
+        "test_background_consent_is_bound_to_exact_owner_configuration_and_manual_by_default",
+        "test_consent_for_another_configuration_never_enables_idle_network_checks",
+        "test_offline_only_configuration_cannot_enable_background_network",
+        "test_explicit_preparation_changes_only_this_controller_to_verified_apply_service",
+        "test_update_check_outage_preserves_unmanaged_reading_permission_and_no_apply"
+      ],
+      "git_blob": "1daad6582495e049952e9c36404214059453ada1"
+    }
+  },
+  "totals": {
+    "whole_modules": 4,
+    "cases": 122,
+    "functions": 57,
+    "previous_cases": 77,
+    "added_cases": 45
+  },
+  "unchanged_companions": [
+    "tests/security/__init__.py",
+    "tests/security/conftest.py",
+    "tests/security/test_managed_installation.py",
+    "packaging/windows_installer/build_setup.py",
+    "packaging/windows_installer/create_update_target.py",
+    "packaging/windows_installer/maintenance.py",
+    "packaging/windows_installer/setup.iss.in",
+    "packaging/create_delivery.py",
+    "packaging/install_windows.py",
+    "src/carr_library/__main__.py",
+    "src/carr_library/installation_lease.py",
+    "src/carr_library/managed_installation.py",
+    "src/carr_library/audio/windows_job.py",
+    "src/carr_library/audio/cleanup.py",
+    "src/carr_library/audio/models.py",
+    "src/carr_library/audio/process.py"
+  ],
+  "unchanged_source_origins": {
+    "linux": [
+      "carr_library.security._files",
+      "carr_library.security.anchors",
+      "carr_library.security.boundary",
+      "carr_library.security.controller",
+      "carr_library.security.entitlements",
+      "carr_library.security.installation",
+      "carr_library.security.managed_installation",
+      "carr_library.security.refresh",
+      "carr_library.security.updates",
+      "carr_library.security.windows_registration",
+      "carr_library.security.update_http_worker",
+      "carr_library.security.update_transport",
+      "carr_library.security.update_handoff",
+      "carr_library.security.update_host",
+      "carr_library.security.update_runtime",
+      "carr_library.installation_lease",
+      "carr_library.managed_installation",
+      "carr_library.__main__",
+      "carr_library.delivery_contract",
+      "carr_library.application",
+      "carr_library.library_backup",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.audio.models",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.cleanup",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.durable_state",
+      "carr_library.catalog.intake",
+      "bootstrap"
+    ],
+    "windows": [
+      "carr_library.security._files",
+      "carr_library.security.anchors",
+      "carr_library.security.boundary",
+      "carr_library.security.controller",
+      "carr_library.security.entitlements",
+      "carr_library.security.installation",
+      "carr_library.security.managed_installation",
+      "carr_library.security.refresh",
+      "carr_library.security.updates",
+      "carr_library.security.windows_registration",
+      "carr_library.security.update_http_worker",
+      "carr_library.security.update_transport",
+      "carr_library.security.update_handoff",
+      "carr_library.security.update_host",
+      "carr_library.security.update_runtime",
+      "carr_library.installation_lease",
+      "carr_library.managed_installation",
+      "carr_library.__main__",
+      "carr_library.delivery_contract",
+      "carr_library.application",
+      "carr_library.library_backup",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.audio.models",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.cleanup",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.durable_state",
+      "carr_library.catalog.intake",
+      "bootstrap",
+      "carr_library.ui.trust_status"
+    ]
+  },
+  "focused_gate": {
+    "peer": "canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "helper": "59d3642396f88529e17d82f68bb4675382145c9f",
+    "workflow": "b8424c11ae2c68be238a273b1fcbe6b1a057fe51",
+    "source_pins": {
+      "tests/security/test_update_handoff.py": "057be5e81624330f63d0519569247e1129444781",
+      "tests/security/test_update_runtime.py": "91bab7040584adfb1a23dcd84d92047d44f1bf0c",
+      "tests/security/test_update_ui.py": "4b7c1e0b0d379654d769da667b11e453cb55a221",
+      "tests/security/test_update_controller_actions.py": "1daad6582495e049952e9c36404214059453ada1",
+      "tests/security/__init__.py": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "tests/security/conftest.py": "b8e01dcd3d4145e9e9c433fc177fadc0f3304e18",
+      "tests/security/test_managed_installation.py": "6bb9d65a1335c54a9af67b4038c62158b307486f",
+      "packaging/windows_installer/build_setup.py": "3c38afc75e22931090c0585dd5b6901c6c74087c",
+      "packaging/windows_installer/create_update_target.py": "347846c571030fb30ee809562985ab643c644b6b",
+      "packaging/windows_installer/maintenance.py": "76af3bf9a2be2c61b890094ecaa7142cc3d0c8a8",
+      "packaging/windows_installer/setup.iss.in": "18f9544ed3d26763f955f14ed8d984a8e2a2558e",
+      "packaging/create_delivery.py": "b9041dd6a09156458d4991a7a8635954f516d21f",
+      "packaging/install_windows.py": "e4c30a7600c7afdb6771d9ae58b1d16558df0eba",
+      "src/carr_library/__main__.py": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72",
+      "src/carr_library/installation_lease.py": "0114cc74398d3846d64babf8eb8cf3996b46e99d",
+      "src/carr_library/managed_installation.py": "b68013ba422d40dc0daa5c9be68bd5447af2d0bf",
+      "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
+      "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
+      "src/carr_library/audio/models.py": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+      "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "src/carr_library/security/_files.py": "eecd5c75f606741d3457ed8aef57f86556230538",
+      "src/carr_library/security/anchors.py": "2b821c8ec8b6a68a2a969f35b4d09d9d0f3d8b15",
+      "src/carr_library/security/boundary.py": "fcc03e8fd9eb754a1991925ce9711016ec14ea39",
+      "src/carr_library/security/controller.py": "1d550366b08a00aed8b13af4923f47a9c94c5dde",
+      "src/carr_library/security/entitlements.py": "9cd523f81580c04cff85024354a68c4d9967c32a",
+      "src/carr_library/security/installation.py": "35da4203d610a4eaa23dc51af65a430bfa9e4b00",
+      "src/carr_library/security/managed_installation.py": "2c203580e3ff0ea60da9262052e2cf9283632839",
+      "src/carr_library/security/refresh.py": "a3f8ace81f8e0b872e74246474f9adf4ab3fa69b",
+      "src/carr_library/security/updates.py": "d39fc6c7979ee198c8e84041aa4d3594b00c577c",
+      "src/carr_library/security/windows_registration.py": "26c0438eaeb094d67d6f4de2006785d059ffe9c4",
+      "src/carr_library/security/update_http_worker.py": "d998af37e81fb047d1f5802a0162d93dd627f314",
+      "src/carr_library/security/update_transport.py": "73d05451e7f15e4310ea1d2ed18e35355602ad87",
+      "src/carr_library/security/update_handoff.py": "72ec774f28f195589498d95a76da788dbcc3416c",
+      "src/carr_library/security/update_host.py": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff",
+      "src/carr_library/security/update_runtime.py": "b511efb6bf5ff6d38d1e6df42854501150b20065",
+      "src/carr_library/delivery_contract.py": "90163967acd50760bf15e8a98b74e0bd76aa63f2",
+      "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+      "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
+      "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+      "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
+      "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+      "src/carr_library/ui/trust_status.py": "fa58a344dd6d601942876cc5b427315a2cc78aa2",
+      "tests/security/test_update_https.py": "561bd843532445010fad409bc24c71c8ada6b0e1",
+      "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+      "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+      "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+      "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
+      "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+      "packaging/linux-sync-core-cp311.lock": "08f945066be748972a10d5b0ce46480fff722959",
+      "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583"
+    },
+    "pin_count": 53,
+    "exact_pin_readback_base": "72713056f6da48a327ce269dc805a42eb3bd1b52 plus the four accepted source/test overlays",
+    "helper_inverse_replacements": [
+      {
+        "from": "Four whole modules: handoff30, external-host preparation18, actual UI handlers15,",
+        "to": "Four whole modules: handoff53, external-host preparation40, actual UI handlers15,"
+      },
+      {
+        "from": "    \"tests/security/test_update_handoff.py\": 30,",
+        "to": "    \"tests/security/test_update_handoff.py\": 53,"
+      },
+      {
+        "from": "    \"tests/security/test_update_runtime.py\": 18,",
+        "to": "    \"tests/security/test_update_runtime.py\": 40,"
+      },
+      {
+        "from": "    \"tests/security/test_update_handoff.py\": \"cdb76726200bf12518501b9efa03b5b865cf48e7\",",
+        "to": "    \"tests/security/test_update_handoff.py\": \"057be5e81624330f63d0519569247e1129444781\","
+      },
+      {
+        "from": "    \"tests/security/test_update_runtime.py\": \"e1e424dfcb009adbc8a29fd44492092b090c8c9c\",",
+        "to": "    \"tests/security/test_update_runtime.py\": \"91bab7040584adfb1a23dcd84d92047d44f1bf0c\","
+      },
+      {
+        "from": "    \"src/carr_library/security/update_handoff.py\": \"b987d3a67df7fd24eccd1808c6c46fe9d1a58570\",",
+        "to": "    \"src/carr_library/security/update_handoff.py\": \"72ec774f28f195589498d95a76da788dbcc3416c\","
+      },
+      {
+        "from": "    \"src/carr_library/security/update_runtime.py\": \"0f8b16912dcea56cf157f0d5d22a3afd6bef4960\",",
+        "to": "    \"src/carr_library/security/update_runtime.py\": \"b511efb6bf5ff6d38d1e6df42854501150b20065\","
+      }
+    ],
+    "workflow_inverse_replacements": [
+      {
+        "from": "Configured updater77 source and77 installed",
+        "to": "Configured updater122 source and122 installed",
+        "count": 2
+      },
+      {
+        "from": "assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 77",
+        "to": "assert len(module.SUITES) == 4 and sum(module.SUITES.values()) == 122",
+        "count": 2
+      },
+      {
+        "from": "Require77 source and77 isolated installed whole cases",
+        "to": "Require122 source and122 isolated installed whole cases",
+        "count": 2
+      },
+      {
+        "from": "All77 source and77 isolated installed whole cases are required.",
+        "to": "All122 source and122 isolated installed whole cases are required.",
+        "count": 1
+      },
+      {
+        "from": "\"scripts/ci_configured_update_contracts.py\":\"24d4bdb71b25597faffed9e5979c58ef7cc263ff\"",
+        "to": "\"scripts/ci_configured_update_contracts.py\":\"59d3642396f88529e17d82f68bb4675382145c9f\"",
+        "count": 2
+      }
+    ],
+    "preserved": "All child/strict-JUnit/no-skip/source-wheel/isolated-origin/fixture identities, four whole selectors,16 companions,31/32 origins,600 child/1500 source and existing helper/job envelopes remain unchanged.",
+    "tls15": {
+      "helper": "8e7c117ae4c8a2fabba46ef8c99eae09f25f40de",
+      "unchanged": true,
+      "separate_loopback_job": true
+    },
+    "peer_evidence": "124ab327939e95366500202cad2d4b57ef8f5db8",
+    "helper_inverse_exact": true,
+    "workflow_inverse_exact": true
+  },
+  "native_A3": {
+    "actual_native_script": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91",
+    "workflow_preimage": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "required_new_baseline": true,
+    "old_A2": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+    "reason": "A2 carries the old runtime and handoff production bytes; changing B cannot change that installed code.",
+    "template_blob": "a535b7628e24ccd284f582779d95e83e85e3ce7b",
+    "template_path": "resonance-status/Next_V3_18_Configured_A3_Native_Workflow_Template_20261128.yml.in",
+    "placeholders": {
+      "__REVIEWED_IMMUTABLE_A3_COMMIT__": "Must be replaced exactly once with root's published/readback immutable A3 commit before workflow use."
+    },
+    "operations": [
+      {
+        "from": "      CARR_CONFIGURED_SOURCE_A: '8f24cae6dbb657854a07dcb801f77296f3b7e4e3'",
+        "to": "      CARR_CONFIGURED_SOURCE_A: '__REVIEWED_IMMUTABLE_A3_COMMIT__'"
+      },
+      {
+        "from": "baseline_policy='immutable corrected configured updater A2; current native proof required'",
+        "to": "baseline_policy='immutable A3 with closed runtime-code admission and exact supervisor launch; current native proof required'"
+      }
+    ],
+    "subsequent_binding": "The required main aggregate must then pin the final native workflow Git blob with exactly its existing one binding. Root owns that shared path.",
+    "preserved": "All15 UI +10 parent checks/15 origins, actual setup/normal Close/COMMIT/restart, full old-wrapper/registration/backup/lease/Job family proof, firewall, bounded retention and270-minute outer envelope.",
+    "placeholder_template_inverse_exact": true
+  },
+  "inverse_proof": {
+    "source_handoff": true,
+    "tests_handoff": true,
+    "tests_runtime_old_prefix_exact": true,
+    "source_runtime_changes": "Only closed26-path code declaration and its exception in the original private-component predicate.",
+    "no_ref_mutation": true
+  },
+  "qualifications": {
+    "new_source_and_installed": "NOT_RUN",
+    "new_real_venv_tests": "NOT_RUN",
+    "configured_A3_native": "NOT_RUN",
+    "production_publisher_rollout": "NOT_RUN",
+    "private_configuration_or_assets_modified": false
+  },
+  "documentation_review": {
+    "peer": "canonical_regression",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "peer_evidence": "124ab327939e95366500202cad2d4b57ef8f5db8",
+    "git_blob": "c9e5230983eb7fa2ee70324dd687c93d7d51e1b3",
+    "scope": "Five bounded capability/count/baseline hunks; historical full A2 SHA retained; no qualification transfer."
+  },
+  "supersedes_component_checkpoint": "ecbbdefdcf879962c54de2bc45084104ae2e28b2"
+}

@@ -1,0 +1,844 @@
+{
+  "schema": "carr.pytest-acceptance-timer-audit/1",
+  "status": "STATIC_SOURCE_AUDIT_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "base_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "scope": {
+    "scripts_python": 73,
+    "packaging_python": 25,
+    "ui_native_and_probe_python": 34,
+    "workflows": 22,
+    "total_executable_candidate_files": 154,
+    "tree_truncated": false,
+    "configuration_files": 1,
+    "conftest_files": 3
+  },
+  "method": "Read every recorded blob from the exact recursive tree; search direct pytest.main, aliases, embedded child literals, timed faulthandler settings and PYTEST_ADDOPTS; follow the source/installed invocation, configuration and platform routes. No parser or process execution is claimed.",
+  "primary_pytest_source": {
+    "repository": "pytest-dev/pytest",
+    "ref": "9.0.2",
+    "path": "src/_pytest/faulthandler.py",
+    "sha": "080cf583813bf17efb7244e74711db30723af333",
+    "url": "https://github.com/pytest-dev/pytest/blob/9.0.2/src/_pytest/faulthandler.py",
+    "facts": [
+      "addini('faulthandler_timeout') defaults to0.0",
+      "The timed C dump is scheduled only when timeout>0",
+      "Fatal faulthandler activation is distinct from the timed C dump"
+    ]
+  },
+  "configuration": {
+    "path": "carr-library/pyproject.toml",
+    "sha": "0e691bab81b90bf9b1543b454014c47b987f11ce",
+    "faulthandler_timeout": "not configured",
+    "other_pytest_ini_setup_cfg_tox_ini": "none in this exact tree",
+    "conftests": [
+      {
+        "path": "carr-library/tests/security/conftest.py",
+        "sha": "b8e01dcd3d4145e9e9c433fc177fadc0f3304e18",
+        "timed_faulthandler_configuration": false
+      },
+      {
+        "path": "carr-library/tests/transcription/conftest.py",
+        "sha": "4bfaa8631937c0e36f625efe4f569a925175809a",
+        "timed_faulthandler_configuration": false
+      },
+      {
+        "path": "carr-library/tests/voice_acceptance/conftest.py",
+        "sha": "795a206c0b69892821cb874c593e7c375ae744e0",
+        "timed_faulthandler_configuration": false
+      }
+    ]
+  },
+  "routes": [
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "caller": "installed source/translation/backup/import recovery",
+      "timer_seconds": 120,
+      "platform": "Windows CPython3.11",
+      "current": "direct native timed dump",
+      "resolution": "Already corrected by the reviewed source-bound6ad factory in a3cc9ee; no new delta here."
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "caller": "direct installed ASR",
+      "timer_seconds": 120,
+      "platform": "Windows CPython3.11 and Linux",
+      "current": "Windows direct native timed dump",
+      "resolution": "Already corrected by the reviewed source-bound6ad factory in a3cc9ee; Linux factory returns no plugin."
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "preimage": "194df6f0589c077fac26fc38751d79068c7570ea",
+      "caller": "source/installed translation7 and providers28",
+      "timer_seconds": 120,
+      "platform": "Windows only, enforced by main",
+      "current": "additional uncorrected direct native timed dump",
+      "resolution": "This additive successor6859d406a595e806b78de12969ad681757e34f71 adds only the existing source-bound6ad factory to the existing Strict plugin."
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "caller": "PYTEST_CHILD",
+      "timer_seconds": 120,
+      "platform": "Windows and Linux",
+      "current": "Existing canonical GIL-owned timed plugin protects Windows CPython3.11; predicate excludes other platforms",
+      "resolution": "No delta to the child literal or deadline."
+    },
+    {
+      "paths": [
+        "carr-library/scripts/ci_book_measured_contracts.py",
+        "carr-library/scripts/ci_capacity_contracts.py",
+        "carr-library/scripts/ci_selected_conversion_contracts.py"
+      ],
+      "caller": "isolated installed child executes canonical PYTEST_CHILD",
+      "timer_seconds": 120,
+      "current": "Already protected by existing child plugin; final6ad repins preserve child bytes",
+      "resolution": "No extra direct caller or new patch."
+    },
+    {
+      "paths": [
+        "carr-library/scripts/installed_sync_probe.py",
+        "carr-library/scripts/installed_trusted_client_probe.py",
+        ".github/workflows/carr-sync.yml"
+      ],
+      "caller": "same PYTEST_CHILD with existing required-suite/origin wrappers",
+      "timer_seconds": 0,
+      "current": "Empty explicit pytest.ini and scrubbed PYTEST_ADDOPTS; wrapper forwards plugin arguments into same canonical child",
+      "resolution": "Unchanged."
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "caller": "OLD_CHILD real34-case source/installed loopback suite",
+      "timer_seconds": 0,
+      "current": "Explicit -c os.devnull; empty PYTEST_ADDOPTS; no timer option; separate600-second child owner deadline",
+      "resolution": "Unchanged; no timed diagnostic introduced."
+    },
+    {
+      "path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+      "preimage": "1a2dc53026622f639f2de08caac869ff067b1217",
+      "caller": "owner/transferable installed15-whole acceptance",
+      "timer_seconds": 0,
+      "current": "No timer option in arguments; checked-in pyproject supplies none; main route does not set PYTEST_ADDOPTS or timed faulthandler",
+      "resolution": "Byte-identical. Initial suspicion of an active120-second timer was disproved by exact caller/config audit."
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "caller": "main extracted direct pytest",
+      "timer_seconds": 0,
+      "current": "Current main forwards no timed option and checked-in config supplies none",
+      "resolution": "The already reviewed a3cc9ee factory guard is retained; with zero configured timeout it adds no timed diagnostic. No additional change in this audit."
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "caller": "installed publication direct pytest",
+      "timer_seconds": 0,
+      "current": "No timed option in this direct call/config",
+      "resolution": "The already reviewed a3cc9ee factory guard is retained and remains dormant without a configured timer. No additional change in this audit."
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "caller": "actual provider network-namespace loopback",
+      "timer_seconds": 120,
+      "platform": "Ubuntu24.04 only",
+      "current": "Platform is outside the confirmed CPython3.11 Windows timed-dump correction",
+      "resolution": "Unchanged."
+    },
+    {
+      "path": "carr-library/scripts/verify_offline.py",
+      "caller": "plain direct pytest or --ci canonical child route",
+      "platform": "Linux only, enforced by main",
+      "current": "No direct timed option added by this script; --ci uses canonical runner",
+      "resolution": "Unchanged."
+    }
+  ],
+  "extra_windows_active_timer_sites": 1,
+  "changes": {
+    "path": "carr-library/scripts/translation_loopback_check.py",
+    "before": "194df6f0589c077fac26fc38751d79068c7570ea",
+    "after": "6859d406a595e806b78de12969ad681757e34f71",
+    "factory": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "checks": "regular/single-link/non-reparse source, exact Git blob before exec, private non-main namespace, no extra sys.path injection, exact bytes/devino/size/mtime/link/reparse after pytest",
+    "preservation": "All original CLI dispatch, arguments including120s, Strict plugin, Counter, no-XFAIL/skip verdict, source/installed origins, firewall receipt, temporary-directory cleanup and finite workflow bounds are unchanged."
+  },
+  "review": {
+    "reviewer": "locate_project",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact6859 over194 reconstructs prior bytes after removing only loader/plugin/postchecks; source-bound factory guards and original policy preserved."
+  },
+  "inventory": [
+    {
+      "path": ".github/workflows/carr-academic-reconciliation.yml",
+      "sha": "d4fd97c03ff8f7663b2fcd184c1752dc8726915f"
+    },
+    {
+      "path": ".github/workflows/carr-bibliography.yml",
+      "sha": "6d0ee34dfcbc71c8570711e34c81dca65c4eea70"
+    },
+    {
+      "path": ".github/workflows/carr-ci-diagnostics.yml",
+      "sha": "b13c293cf376cbbe56c03d49a98052b22ccdf8fc"
+    },
+    {
+      "path": ".github/workflows/carr-flite.yml",
+      "sha": "2e0191c47c34f8a2e2deb138860d6ee2501a6229"
+    },
+    {
+      "path": ".github/workflows/carr-managed-update.yml",
+      "sha": "1cb0cc8f68a03e695c874ae942744907d9f83372"
+    },
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "sha": "f8263b911e1bf209dd61859653cf84b3fb36534d"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "sha": "7303b9cb868392b26fd4c919beb877aa39936721"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "sha": "e8463a2a39b2b088fd2a06ab9bf8212b11c60afb"
+    },
+    {
+      "path": ".github/workflows/carr-next13-partition.yml",
+      "sha": "038571f82a18114882c58ad3fb6b0fba19346f85"
+    },
+    {
+      "path": ".github/workflows/carr-next14-native-dialog.yml",
+      "sha": "830cea1c5f50f9e13c90b7fde3c7bf8dceef44e7"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "sha": "600b33370927bd77c193aab8ea1bbc4f0abf3de7"
+    },
+    {
+      "path": ".github/workflows/carr-next8-source-verification.yml",
+      "sha": "3a0e4b291acb1627464cfe3474c37715cd09b209"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "sha": "8164d479c14eb109a76aba3d779284917e651676"
+    },
+    {
+      "path": ".github/workflows/carr-next9-edit-docx.yml",
+      "sha": "bce5296f5e70ac6964c8d3346ec30dfe6d503f94"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "sha": "795d1eda51fc87de9427b88555eaf0690f551c9b"
+    },
+    {
+      "path": ".github/workflows/carr-next9-headless.yml",
+      "sha": "3976b13e3d2ce888386fd9d915599d5a3d847a56"
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "sha": "a6fce2331c62cfaad0beaf7c4c5268e1311620f8"
+    },
+    {
+      "path": ".github/workflows/carr-sync.yml",
+      "sha": "b6e588d0d2fe1a3eb051acc9183e2941c5d88c7a"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "sha": "d8aa1b8ba13d2c125ee1f0069bfb81c7874b4ce0"
+    },
+    {
+      "path": ".github/workflows/carr-trusted-client.yml",
+      "sha": "25cd944dc1a9dd9147dbd377a67c22b746d6dca3"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "9c592fbc2a7c936838614e5ea11253f918f23d56"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "7bf829f6ecced363473a3392bd9090f1e6fc6100"
+    },
+    {
+      "path": "carr-library/packaging/acquire_audio_runtime.py",
+      "sha": "9de23d3f79bf179a2b3da4d759d324086e09675b"
+    },
+    {
+      "path": "carr-library/packaging/add_audio_runtime.py",
+      "sha": "90f6acb4101d4adca90b7244043b678e82fe1900"
+    },
+    {
+      "path": "carr-library/packaging/add_native_runtime.py",
+      "sha": "c85b8dd9916df0dadbc458c09786859995ea2252"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "sha": "5a80f0c5e615113c57912fcfa4a7d03e3e9813d6"
+    },
+    {
+      "path": "carr-library/packaging/create_delivery.py",
+      "sha": "b9041dd6a09156458d4991a7a8635954f516d21f"
+    },
+    {
+      "path": "carr-library/packaging/install_windows.py",
+      "sha": "e4c30a7600c7afdb6771d9ae58b1d16558df0eba"
+    },
+    {
+      "path": "carr-library/packaging/model_bundle.py",
+      "sha": "5533046bd42cd10af74cd3ea028553c59ead832d"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/build_launcher.py",
+      "sha": "beb1c95f9ec999be261bda1c38593a4f849525d0"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_installed_windows.py",
+      "sha": "5f34976bad8376469decfc5cfc5a00c5f13eec9e"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_pe.py",
+      "sha": "6dc2708791108b9ebf4656e3f8480945e337d10b"
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_windows.py",
+      "sha": "ce66b743c8614b88ec7f1a77e2423f86fc64474b"
+    },
+    {
+      "path": "carr-library/packaging/offline_pdf_smoke.py",
+      "sha": "58d007760e9ae99deea02ddd59efcb11ac74e8e6"
+    },
+    {
+      "path": "carr-library/packaging/prepare_audio_runtime.py",
+      "sha": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d"
+    },
+    {
+      "path": "carr-library/packaging/prepare_native_runtime.py",
+      "sha": "ecb65fdbadf8ef8528df4532a01afc3c9e970047"
+    },
+    {
+      "path": "carr-library/packaging/prepare_windows_audio.py",
+      "sha": "65b172ac432f28e865200aed2f8e610dda1ac7cf"
+    },
+    {
+      "path": "carr-library/packaging/prepare_windows_ocr.py",
+      "sha": "f663d828e8c17fcfe622bef53d9b1c579b2541b3"
+    },
+    {
+      "path": "carr-library/packaging/refresh_private_bundle.py",
+      "sha": "e00608d820ea6b44efce2b8182314c0c18ec0f8b"
+    },
+    {
+      "path": "carr-library/packaging/runtime_layout.py",
+      "sha": "0310bfcdb5d0ff29daad750887d285962b9a3469"
+    },
+    {
+      "path": "carr-library/packaging/setup_local_audio.py",
+      "sha": "7ebe1d0dd358357799a31ddfaaaae8950e9b5789"
+    },
+    {
+      "path": "carr-library/packaging/source_wheel.py",
+      "sha": "478de248451d59a44b35784eb808fb2974f0af67"
+    },
+    {
+      "path": "carr-library/packaging/uv_sbom_smoke.py",
+      "sha": "8077ada90c40d9cc4246eb3a293990f983c95e88"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/build_setup.py",
+      "sha": "3c38afc75e22931090c0585dd5b6901c6c74087c"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/create_update_target.py",
+      "sha": "347846c571030fb30ee809562985ab643c644b6b"
+    },
+    {
+      "path": "carr-library/packaging/windows_installer/maintenance.py",
+      "sha": "76af3bf9a2be2c61b890094ecaa7142cc3d0c8a8"
+    },
+    {
+      "path": "carr-library/packaging/windows_wheelhouse.py",
+      "sha": "86a8ea2b4a4d533d6e454f4477b7c75665292985"
+    },
+    {
+      "path": "carr-library/scripts/assemble_owner_candidate_archives.py",
+      "sha": "630b0e4ca1fecaf998dcea5e8b5fe1c2accb50c5"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "sha": "74d8f3669444a7ae28df49c0c1f9636578a8cde7"
+    },
+    {
+      "path": "carr-library/scripts/benchmark_semantic_cache.py",
+      "sha": "898b05e37b5a50c018567e35c44ef71f1393535d"
+    },
+    {
+      "path": "carr-library/scripts/build_hunspell_msvc.py",
+      "sha": "42326e61656be7496e4bfb239b4a77c309bad4bb"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "sha": "e241f58f2a69ff9a1c991bbc6523c6aea8dfb6c3"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "sha": "21a905ce7877c947a016cbc71dd154d5bc418ffe"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "sha": "671bfd9a3adccdb7f3bcdf13a59e30c9e9b4d1f1"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "sha": "8a23ef36c2df93928b0aff3edd8b59a53c54684c"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "sha": "7dd79e1b8b390bb14479f9be7d2e7c3792fd4333"
+    },
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "sha": "f8b7c9b36b59a65608f42ed5705c479c9541ef84"
+    },
+    {
+      "path": "carr-library/scripts/epubcheck_acceptance.py",
+      "sha": "ee47050b1e234dca84ea73c15517fe7691f235c3"
+    },
+    {
+      "path": "carr-library/scripts/hunspell_acceptance.py",
+      "sha": "20a824c9086696d8f26564c68c58cb386339f862"
+    },
+    {
+      "path": "carr-library/scripts/installed_sync_probe.py",
+      "sha": "3812c718ba60e8fbbcb9bc2eb9f0aaf1df6e509b"
+    },
+    {
+      "path": "carr-library/scripts/installed_trusted_client_probe.py",
+      "sha": "67cfbdc3fcd1a3a098b7032f5867d0880074a913"
+    },
+    {
+      "path": "carr-library/scripts/ocr_catalog_smoke.py",
+      "sha": "b97a945bf5121c9155e22e5a7371b6f7ffdb17d2"
+    },
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "sha": "bfe7c95d27e57859aa458a18caaa5d47dba5a7fb"
+    },
+    {
+      "path": "carr-library/scripts/retain_owner_candidate_inputs.py",
+      "sha": "939d948e506bf851c8a284aad30f7f6e5057ee88"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "sha": "574a297765039cd765c1b352a6a9d8f27ca6b3be"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_fixture_support.py",
+      "sha": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b"
+    },
+    {
+      "path": "carr-library/scripts/translation_epubcheck_acceptance.py",
+      "sha": "f1ac42577e9d99051cc38330a8dad29edc882935"
+    },
+    {
+      "path": "carr-library/scripts/translation_layout_fixtures.py",
+      "sha": "06c1b4be2a38243a258868ce760b92babc5bd5d6"
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "sha": "194df6f0589c077fac26fc38751d79068c7570ea"
+    },
+    {
+      "path": "carr-library/scripts/translation_rich_docx_fixtures.py",
+      "sha": "2e36000ad9b6f2bdef4d6ae2a99cb4e696cc8d38"
+    },
+    {
+      "path": "carr-library/scripts/verify_offline.py",
+      "sha": "d84f633f904f80edd63650c3b692280487732bf6"
+    },
+    {
+      "path": "carr-library/scripts/verify_supplied_transcription_protocol.py",
+      "sha": "33509bf80758eaebba7f5cbfe6e355f89ea311ba"
+    },
+    {
+      "path": "carr-library/scripts/windows_academic_smoke.py",
+      "sha": "5c15a13059193578a785ab977918a90626d1b5e0"
+    },
+    {
+      "path": "carr-library/scripts/windows_assistant_smoke.py",
+      "sha": "55e28502c1a2782205b98aa8969287b716d71a6b"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_conversion_batch_smoke.py",
+      "sha": "72c4ddd2f1281cab8d6a49ed5911ab05438323e3"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_diagnostics.py",
+      "sha": "d1b9c64a6c822342c09af79954a93db30ccd1385"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_player_smoke.py",
+      "sha": "a388304961bb5d611f83f342d3f1badd8c0ff1b5"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_runtime_smoke.py",
+      "sha": "3fca60c1a36c25e4792e194afac2f1d1ba04a59d"
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "sha": "ac651695779424fcba69696ce05c2d84c807899e"
+    },
+    {
+      "path": "carr-library/scripts/windows_bibliography_interchange_smoke.py",
+      "sha": "37faa148fd12fff2590fd9694c541fc26d21d134"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "sha": "fe9bf5de5be698116107f89fd2ea1c872853bcb3"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_batch_smoke.py",
+      "sha": "cb4a1713fee5cd4993b1d26e1d39f73521279552"
+    },
+    {
+      "path": "carr-library/scripts/windows_braille_smoke.py",
+      "sha": "af152a119c39eae2801bc352acbcc163b5f24767"
+    },
+    {
+      "path": "carr-library/scripts/windows_citation_styles_smoke.py",
+      "sha": "1992a6d6e3d8bb319456e6a18f1231c8e9773be4"
+    },
+    {
+      "path": "carr-library/scripts/windows_clip_editor_smoke.py",
+      "sha": "3870cdea295d7da27264dae77920a88008f7f289"
+    },
+    {
+      "path": "carr-library/scripts/windows_desktop_integration_smoke.py",
+      "sha": "0cb5c0cc2e81d97a7e70d0847725e14123c0df3e"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "sha": "5527d7a7ff2b830e926af8666ff4679e1a5374a3"
+    },
+    {
+      "path": "carr-library/scripts/windows_effect_chain_smoke.py",
+      "sha": "7bec5d040d7ee07bd4c55483aae2ee304ecf396a"
+    },
+    {
+      "path": "carr-library/scripts/windows_epub_reading_smoke.py",
+      "sha": "f3dfe05c04af1682c3037c6d6f2e4cc66c604b09"
+    },
+    {
+      "path": "carr-library/scripts/windows_google_oauth_smoke.py",
+      "sha": "a149b7efc95c65fc6d752b77b33cafcae22ae61f"
+    },
+    {
+      "path": "carr-library/scripts/windows_hunspell_smoke.py",
+      "sha": "0499b35d3779694104f96da8d3b763f8e21b6bb4"
+    },
+    {
+      "path": "carr-library/scripts/windows_import_scan_smoke.py",
+      "sha": "2e854e4dd98690e74b2e8ab30b7048995e5602f5"
+    },
+    {
+      "path": "carr-library/scripts/windows_incremental_backup_smoke.py",
+      "sha": "e93df243d726eefb8e6ea3040a6f6299e5844714"
+    },
+    {
+      "path": "carr-library/scripts/windows_installer_launchers_smoke.py",
+      "sha": "c0b4706a6ad788580aa8f05c7658afb760144188"
+    },
+    {
+      "path": "carr-library/scripts/windows_local_planning_smoke.py",
+      "sha": "1af86d5b9e55a8611346ddf5ce07e11c857260e3"
+    },
+    {
+      "path": "carr-library/scripts/windows_local_schedules_smoke.py",
+      "sha": "7581c232457c226b9f5f551afd7d3c7fcaaf221c"
+    },
+    {
+      "path": "carr-library/scripts/windows_managed_update_smoke.py",
+      "sha": "ff6520d87d3fae899282433aacaae1ab9cff04f6"
+    },
+    {
+      "path": "carr-library/scripts/windows_native_dialog_inventory.py",
+      "sha": "67de0f57908edfc436fda7401f83010d2d2d4a7d"
+    },
+    {
+      "path": "carr-library/scripts/windows_ocr_models_smoke.py",
+      "sha": "32e5b608fc29b88b267bff63b9d7da2d4f1e1921"
+    },
+    {
+      "path": "carr-library/scripts/windows_operations_smoke.py",
+      "sha": "a4f1ff895261ba056203ebe99936835fc9036cfb"
+    },
+    {
+      "path": "carr-library/scripts/windows_progress_smoke.py",
+      "sha": "3efa1cb41c2e3d9b18ebfb03fd8f6198dc434b66"
+    },
+    {
+      "path": "carr-library/scripts/windows_publishing_smoke.py",
+      "sha": "a9af2ef5c52a1a8dda9afbe95eebb6c8cc45de5a"
+    },
+    {
+      "path": "carr-library/scripts/windows_reader_player_smoke.py",
+      "sha": "f6a1804be5e77eb53f5f4c6aac23ff2137706e7c"
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_presentation_smoke.py",
+      "sha": "66c0c971e63bcbbccddeaba30cc467e2f5e4ff0c"
+    },
+    {
+      "path": "carr-library/scripts/windows_reading_tabs_smoke.py",
+      "sha": "905f5a1a0bb18f02d2ef19914412a22af439d4f0"
+    },
+    {
+      "path": "carr-library/scripts/windows_recording_smoke.py",
+      "sha": "27ea1213d42fd3d3826133e54ab7c82c36fc82c3"
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "sha": "8704c0b91a3ed518d1454cf814667f9ef0a149da"
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "sha": "f64a4dcc568614542f704f01b3da08dd26a29ab9"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "sha": "1cff7419157f775f6517ff2242f8da994ee19e8f"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_smoke.py",
+      "sha": "dc471cd38e5f8329378ff82cb931b00e136ccb36"
+    },
+    {
+      "path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+      "sha": "1a2dc53026622f639f2de08caac869ff067b1217"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_documents_smoke.py",
+      "sha": "63d280ebe1b2cece2c89e575f9e4c73ec00ada7c"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+      "sha": "4b26382f7f71449f896ec7f29afd75f2ebd63824"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "sha": "3dff8332d0ee7507c9ee3dfaffac2eabff099796"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_rich_docx_smoke.py",
+      "sha": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "sha": "d065838a3272dbb88cd266f63093494e8b0bcd37"
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_smoke.py",
+      "sha": "5cd11e09c3e49c345277c82dd905655a3f8d7017"
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_preferences_smoke.py",
+      "sha": "69636973b5b387fdeaf62a16540d59f144556e0b"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+      "sha": "33ef7bd2e5c710631a8cc93838cb8c74f44df169"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_office_probe.py",
+      "sha": "8eaa7fa0e775784a996bc8497d039347229d72b8"
+    },
+    {
+      "path": "carr-library/tests/ui/federated_native_smoke.py",
+      "sha": "2c188e9f6fd11d1755cba6b4878551e1751acb8d"
+    },
+    {
+      "path": "carr-library/tests/ui/native_academic_comparison_smoke.py",
+      "sha": "4c1f899d2f61a59e7b3fcd3451e75186da3ff7dd"
+    },
+    {
+      "path": "carr-library/tests/ui/native_academic_smoke.py",
+      "sha": "36a5eedab29b80a8c59ceaa93709c1802ef7288f"
+    },
+    {
+      "path": "carr-library/tests/ui/native_catalog_tools_smoke.py",
+      "sha": "1bb403bcfb355f32f32268b371e9e9c39aa01709"
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "sha": "82f31e5ba0528351a805a62826549d3cdd469a22"
+    },
+    {
+      "path": "carr-library/tests/ui/native_ebook_reader_smoke.py",
+      "sha": "bfd9ac8f900ee6ce939600d689546797d0e6433e"
+    },
+    {
+      "path": "carr-library/tests/ui/native_evidence_drafts_smoke.py",
+      "sha": "a7ef69727a916a29028f6b7ecf0a4355674bbe46"
+    },
+    {
+      "path": "carr-library/tests/ui/native_evidence_pages_smoke.py",
+      "sha": "7dbeee840364d72bb2c80e92461070acc1512fe7"
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "sha": "cd36b78bab9ca11ec3113f2c6f5f4434da7c1078"
+    },
+    {
+      "path": "carr-library/tests/ui/native_keyboard_settings_smoke.py",
+      "sha": "f801ae628d250573b2c230ebce31bb80152867c1"
+    },
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "sha": "0d0441392caf72eed0e0bc5a0735b041de685d30"
+    },
+    {
+      "path": "carr-library/tests/ui/native_notebook_search_smoke.py",
+      "sha": "8a8830046719410492a88813f720a3673dd7bac8"
+    },
+    {
+      "path": "carr-library/tests/ui/native_progress_smoke.py",
+      "sha": "ce813fd48b64b9998f561217adcaa38f8fc874a2"
+    },
+    {
+      "path": "carr-library/tests/ui/native_reader_keymap_smoke.py",
+      "sha": "45bcb63a6bc82767010678ec8033d677131c3b5a"
+    },
+    {
+      "path": "carr-library/tests/ui/native_reading_desk_smoke.py",
+      "sha": "fe11313cf2dd924d53a914767a07ac27eb6c8afc"
+    },
+    {
+      "path": "carr-library/tests/ui/native_trust_status_smoke.py",
+      "sha": "466bf8cb7876ff72784b42ca919695eef43914df"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_advanced_query_builder.py",
+      "sha": "e7325194added5c23a522e053dfac56e5b19e467"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_advanced_search_native.py",
+      "sha": "19cd33b7f4d2ad268cc6647f29cec55f29818210"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_catalog_insights_actions.py",
+      "sha": "3068bba3da8f69ef6e47a335037f3087296dd9aa"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_catalog_insights_native.py",
+      "sha": "c96bfacf9f5d3bf161acb13a204c56daf3c58cfd"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_catalog_panel.py",
+      "sha": "12dac155920eb2749d93dc073032568035142d52"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_ebook_native.py",
+      "sha": "86ee349e64a0693fe63475246ca18bdded01d659"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_evidence_panel.py",
+      "sha": "c43eb3d0ced7617f16b558016cc916cbad5dc3cb"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_native_topic_reordering.py",
+      "sha": "dc23a6925a9e3ed988295750a2eb5784faef06ed"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_page_context_dialog.py",
+      "sha": "c9d983650fa8f5552e7492d9651ef72880c12095"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_paged_search_panel.py",
+      "sha": "adbe94ede217bb51b53644ea51851992293810b0"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_portable_sync_native.py",
+      "sha": "0ca1b2dfdc4fd62fe8b2e5e713d3287ee1728885"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_source_open_native.py",
+      "sha": "5974877ea736d4aa9d8f8ee58d5aef8a26e99028"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_topic_panel.py",
+      "sha": "eb9bd1e29d243d3093bb8d5e52a3b9c10f93fb21"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_verified_clipboard.py",
+      "sha": "3d385d6299b6271f3f1e476885b6f1db3c806f86"
+    },
+    {
+      "path": "carr-library/tests/ui/probe_workspace_shell.py",
+      "sha": "783b69b3d34e4cd5a9d78a816c1407efff14c795"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_acquisition.py",
+      "sha": "b313441fc27daebac2641b6369e3d79f100dddc6"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_reading_presentation_driver.py",
+      "sha": "8b184b29424c4393ec651ce7f3bb076bade35cc2"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_recording_driver.py",
+      "sha": "ead73e8f5b7d50e9ff9e8d850f0b225351054317"
+    }
+  ],
+  "timer_sites": [
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "line": 261,
+      "text": "              '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "line": 118,
+      "text": "              '-o', 'faulthandler_timeout=120', '--import-mode=importlib', '--junitxml=' + str(report), *suites],"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "line": 325,
+      "text": "          status = pytest.main(['-vv', '--tb=short', '-o', 'faulthandler_timeout=120',"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "line": 411,
+      "text": "                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "line": 258,
+      "text": "                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "line": 137,
+      "text": "        timeout = float(config.getini('faulthandler_timeout') or 0.0)"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "line": 148,
+      "text": "        config._inicache['faulthandler_timeout'] = 0.0"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "line": 284,
+      "text": "                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "line": 275,
+      "text": "                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',"
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "line": 200,
+      "text": "            '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',"
+    }
+  ],
+  "limitations": [
+    "This audit describes checked-in invocation/configuration routes; it does not make a claim about arbitrary manually injected external environment options.",
+    "No runtime acceptance or crash reproduction is claimed for this successor.",
+    "The current6e95 job results remain exact-head evidence and do not qualify these new bytes."
+  ],
+  "refs_changed": false
+}

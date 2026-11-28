@@ -75,8 +75,6 @@ def module(monkeypatch):
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
-    # Restore only wx. Rolling back the entire module map removes newly imported
-    # export_file while the dialog retains its old ExportDestination class.
     monkeypatch.setitem(sys.modules, 'wx', wx)
     spec.loader.exec_module(mod)
     return mod
@@ -217,11 +215,29 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert not destination.exists() and library.calls == []
     frame.finish()
     assert library.calls == [expected]
-    assert destination.is_file(), form.status.GetValue()
     assert destination.read_bytes() == library.export_value.encode('utf-8')
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'exported to' in form.status.GetValue() and form.status.focused
     assert form.close_button.enabled and not form.pending
+
+
+def test_completed_export_keeps_cleanup_warning_visible(module, setup, monkeypatch):
+    from dataclasses import replace
+
+    form, frame, library = setup
+    actual_write = module.write_export
+    warning = 'Synthetic private staging cleanup needs attention.'
+
+    def write_with_warning(*args, **kwargs):
+        return replace(actual_write(*args, **kwargs), cleanup_warning=warning)
+
+    monkeypatch.setattr(module, 'write_export', write_with_warning)
+    assert form.export_inventory()
+    frame.finish()
+    assert Path(module.wx.file_path).read_bytes() == library.export_value.encode('utf-8')
+    assert library.original.read_bytes() == b'unchanged original source'
+    assert 'exported to' in form.status.GetValue() and warning in form.status.GetValue()
+    assert form.status.focused and not form.pending
 
 
 def test_cancel_file_dialog_restores_initiating_button_without_job(module, setup):
@@ -281,8 +297,8 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert not form.export_inventory()
-    assert not frame.jobs
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
@@ -411,3 +427,29 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_each_catalog_export_preserves_competing_file_during_render(module, setup, kind, existing):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    if existing: destination.write_bytes(b'Previously approved output')
+    library.hook = lambda: destination.write_bytes(b'Newer independent work')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert destination.read_bytes() == b'Newer independent work'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(destination.parent.glob('.research-export-*'))
+    assert not form.pending
+
+
+def test_catalog_overwrite_decline_restores_button_without_render(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Keep work')
+    module.wx.MessageBox.return_value = module.wx.NO
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
+    assert destination.read_bytes() == b'Keep work'
+    module.wx.MessageBox.assert_called_once()

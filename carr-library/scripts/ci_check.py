@@ -11,11 +11,46 @@ import signal
 import subprocess
 import sys
 import tempfile
+import traceback
 from time import sleep
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE_TIMEOUT_SECONDS = 600
+# One measured, reviewed whole-suite exception; all other suites retain 600 s.
+# This changes only the test-process envelope, never ASR/worker deadlines.
+REVIEWED_SUITE_TIMEOUT_SECONDS = {
+    'tests/transcription/test_admission_boundaries.py': 900,
+}
+
+
+def _reviewed_suite_timeout(suite: str, seconds: int) -> int:
+    if (type(seconds) is not int
+            or REVIEWED_SUITE_TIMEOUT_SECONDS.get(suite) != seconds):
+        raise ValueError('No reviewed timeout allowance matches this exact suite and value.')
+    path = (ROOT / suite).resolve()
+    if not path.is_relative_to(ROOT) or not path.is_file():
+        raise ValueError('A reviewed timeout requires an existing in-tree whole-suite file.')
+    return seconds
+
+
+def _suite_timeout_overrides(values, suites):
+    result = {}
+    for value in values:
+        if value.count('=') != 1:
+            raise ValueError('Use --suite-timeout SUITE=SECONDS.')
+        suite, raw = value.split('=')
+        if suite in result:
+            raise ValueError('A suite timeout may be specified only once.')
+        if suite not in suites:
+            raise ValueError('A suite timeout must name an explicitly selected whole suite.')
+        expected = REVIEWED_SUITE_TIMEOUT_SECONDS.get(suite)
+        # Compare canonical text before int conversion, including huge or
+        # non-decimal input. No caller can request an arbitrary larger budget.
+        if expected is None or raw != str(expected):
+            raise ValueError('Only the exact reviewed suite timeout value is permitted.')
+        result[suite] = _reviewed_suite_timeout(suite, expected)
+    return result
 
 
 def _terminate_process_tree(process: subprocess.Popen) -> None:
@@ -52,12 +87,12 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
         raise OSError('Required-suite process-tree cleanup failed.') from cleanup_error
 
 
-def _run_test_process(command, *, env) -> int:
+def _run_test_process(command, *, env, timeout_seconds=None) -> int:
     isolation = ({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP}
                  if os.name == 'nt' else {'start_new_session': True})
     process = subprocess.Popen(command, cwd=ROOT, env=env, **isolation)
     try:
-        return process.wait(timeout=SUITE_TIMEOUT_SECONDS)
+        return process.wait(timeout=(SUITE_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds))
     except BaseException:
         _terminate_process_tree(process)
         raise
@@ -85,6 +120,77 @@ else:
 
 import pytest
 
+def _needs_gil_stack_dump(platform=sys.platform, implementation=sys.implementation.name,
+                          version=sys.version_info[:2]):
+    return platform == 'win32' and implementation == 'cpython' and tuple(version) == (3, 11)
+
+class GilTimedStackDump:
+    # CPython 3.11's native timed dumper walks changing frames without the GIL
+    # (python/cpython#140815; pytest-dev/pytest#7022). A Python thread calls the
+    # synchronous, bounded dumper while it owns the GIL instead. Fatal exception
+    # handling remains pytest's own; the parent's 600/900 s deadline is unchanged.
+    timeout = 0.0
+    exit_on_timeout = False
+
+    @pytest.hookimpl(tryfirst=True)
+    def pytest_configure(self, config):
+        timeout = float(config.getini('faulthandler_timeout') or 0.0)
+        if timeout <= 0:
+            return
+        import math
+        if not math.isfinite(timeout):
+            raise ValueError('A timed stack diagnostic needs a finite interval.')
+        self.timeout = timeout
+        self.exit_on_timeout = config.getini('faulthandler_exit_on_timeout')
+        # Pinned pytest 9.0.2 consults this same ini cache in its protocol hook.
+        # Only its unsafe timed traversal is suppressed; enable()/fatal handling
+        # and all other configured pytest policies remain untouched.
+        config._inicache['faulthandler_timeout'] = 0.0
+
+    @pytest.hookimpl(wrapper=True, tryfirst=True)
+    def pytest_runtest_protocol(self, item):
+        if self.timeout <= 0:
+            return (yield)
+        import faulthandler
+        import os
+        import threading
+        stopped = threading.Event()
+        interval = self.timeout
+        errors = []
+        fd = os.dup(sys.__stderr__.fileno())
+
+        def diagnostic():
+            try:
+                if not stopped.wait(interval):
+                    os.write(fd, b'Timed stack diagnostic (GIL-owned Python thread):\\n')
+                    # This synchronous CPython entry point does not release the
+                    # GIL while traversing frames; its usual 100-thread/frame
+                    # and 500-character field bounds still apply.
+                    faulthandler.dump_traceback(file=fd, all_threads=True)
+                    if self.exit_on_timeout:
+                        os._exit(1)
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                os.close(fd)
+
+        worker = threading.Thread(target=diagnostic, name='carr-ci-stack-diagnostic',
+                                  daemon=True)
+        try:
+            worker.start()
+        except BaseException:
+            os.close(fd)
+            raise
+        try:
+            return (yield)
+        finally:
+            stopped.set()
+            worker.join(timeout=5)
+            if worker.is_alive():
+                raise RuntimeError('The timed stack diagnostic did not settle.')
+            if errors:
+                raise RuntimeError('The timed stack diagnostic failed.') from errors[0]
+
 class RejectExpectedFailures:
     seen = False
 
@@ -93,13 +199,42 @@ class RejectExpectedFailures:
             self.seen = True
 
 policy = RejectExpectedFailures()
-status = pytest.main(sys.argv[1:], plugins=[policy])
+plugins = [policy]
+if _needs_gil_stack_dump():
+    plugins.append(GilTimedStackDump())
+status = pytest.main(sys.argv[1:], plugins=plugins)
 if policy.seen:
     print('FAIL: pytest reported XFAIL or XPASS', flush=True)
     if status == pytest.ExitCode.OK:
         status = pytest.ExitCode.TESTS_FAILED
 raise SystemExit(status)
 """
+
+
+def pytest_diagnostic_plugins():
+    """Reuse the isolated child's exact timed diagnostic in direct pytest runs.
+
+    Callers retain their own offline/XFAIL/JUnit policies and process deadline.
+    Selecting only these two definitions must not execute PYTEST_CHILD's socket
+    policy, optional telemetry import, or pytest invocation in the calling host.
+    """
+    import ast
+    import pytest
+
+    expected = ((ast.FunctionDef, '_needs_gil_stack_dump'),
+                (ast.ClassDef, 'GilTimedStackDump'))
+    names = {name for _, name in expected}
+    definitions = [node for node in ast.parse(PYTEST_CHILD).body
+                   if isinstance(node, (ast.FunctionDef, ast.ClassDef))
+                   and node.name in names]
+    if tuple((type(node), node.name) for node in definitions) != expected:
+        raise RuntimeError('The canonical timed diagnostic definitions changed.')
+    namespace = {'__name__': 'carr_ci_timed_diagnostics', 'sys': sys, 'pytest': pytest}
+    source = ast.Module(body=definitions, type_ignores=[])
+    exec(compile(source, str(Path(__file__).resolve()), 'exec'), namespace)
+    if namespace['_needs_gil_stack_dump']():
+        return [namespace['GilTimedStackDump']()]
+    return []
 
 
 def _cleanup_report_directory(directory) -> None:
@@ -135,18 +270,29 @@ def _report_directory(suite):
             print(f'FAIL: {suite}: temporary report cleanup failed after '
                   f'{type(original_error).__name__}: {type(exc).__name__}: {exc}; '
                   f'directory={directory.name}', flush=True)
+            traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
 
 
-def run_suite(suite: str) -> bool:
+def run_suite(suite: str, *, report=None, timeout_seconds=None) -> bool:
+    emit = report if report is not None else lambda message: print(message, flush=True)
+    process_options = {}
+    if timeout_seconds is not None:
+        try:
+            process_options['timeout_seconds'] = _reviewed_suite_timeout(suite, timeout_seconds)
+        except (ValueError, OSError) as exc:
+            emit(f'FAIL: {suite}: invalid required-suite timeout: {exc}')
+            return False
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
-        print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
+        emit(f'FAIL: missing or out-of-tree required suite: {suite}')
         return False
     env = dict(os.environ)
     for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
         env.pop(key, None)
     env['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
     env['PYTHONPATH'] = str(ROOT / 'src')
+    # Ordinary test descendants inherit this; the suite interpreter also has -B.
+    env['PYTHONDONTWRITEBYTECODE'] = '1'
     # Native ONNX initialization can precede Python socket mocks or API opt-outs.
     # Apply the documented opt-out before starting any test interpreter.
     env.update(ORT_DISABLE_TELEMETRY='1', HF_HUB_DISABLE_TELEMETRY='1',
@@ -154,30 +300,36 @@ def run_suite(suite: str) -> bool:
     env['HF_HUB_OFFLINE'] = '1'
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
+    phase = 'temporary directory setup'
     try:
         with _report_directory(suite) as tmp:
             report = Path(tmp) / 'junit.xml'
+            phase = 'pytest process'
             returncode = _run_test_process([
-                sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '--junitxml', str(report),
+                sys.executable, '-B', '-c', PYTEST_CHILD, '-v', '-o', 'addopts=',
+                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
+                '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
-            ], env=env)
+            ], env=env, **process_options)
+            phase = 'JUnit report validation'
             cases = list(ET.parse(report).iter('testcase'))
             failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
             skipped = sum(c.find('skipped') is not None for c in cases)
             passed = len(cases) - failed - skipped
             ok = returncode == 0 and passed > 0 and failed == skipped == 0
+            phase = 'temporary directory cleanup'
         # A passing child is not a completed suite until its temporary report
         # and test data have also been cleaned up successfully.
-        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-              f'skipped={skipped}, pytest_exit={returncode}', flush=True)
+        emit(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
+             f'skipped={skipped}, pytest_exit={returncode}')
         return ok
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: {suite}: required suite did not complete cleanly: '
-              f'{type(exc).__name__}: {exc}', flush=True)
+        emit(f'FAIL: {suite}: required suite did not complete cleanly; '
+             f'last phase={phase}; {type(exc).__name__}: {exc}')
+        traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
         return False
 
 
@@ -185,18 +337,42 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
+    parser.add_argument('--suite-timeout', action='append', default=[], metavar='SUITE=SECONDS',
+                        help='Explicit reviewed allowance for a selected whole suite; default: 600 seconds')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
+    try:
+        suite_timeouts = _suite_timeout_overrides(args.suite_timeout, args.suites)
+    except (ValueError, OSError) as exc:
+        parser.error(str(exc))
+
+    def execute(suite):
+        messages = []
+        options = {'report': messages.append}
+        if suite in suite_timeouts:
+            options['timeout_seconds'] = suite_timeouts[suite]
+        ok = run_suite(suite, **options)
+        if len(messages) != 1:
+            return False, f'FAIL: {suite}: missing or ambiguous required-suite verdict'
+        return ok, messages[0]
+
     if args.jobs == 1:
-        results = [run_suite(suite) for suite in args.suites]
+        records = [execute(suite) for suite in args.suites]
     else:
         # Every suite retains its own interpreter, offline policy, deadline and
         # JUnit verdict. Consume every future: one failing suite cannot hide
         # another missing, skipped or unfinished required suite.
         with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
-            results = list(executor.map(run_suite, args.suites))
-    print(f'Required suites complete: {len(results)}; passed={sum(results)}; '
-          f'failed={len(results) - sum(results)}', flush=True)
+            records = list(executor.map(execute, args.suites))
+    # Children inherit the console and can end a progress line without a newline.
+    # Emit machine-consumed verdicts only after all child processes and report
+    # cleanup have ended. A leading newline isolates even an unterminated tail;
+    # every supplied suite still contributes exactly one strict JUnit verdict.
+    results = [ok for ok, _ in records]
+    summary = [message for _, message in records]
+    summary.append(f'Required suites complete: {len(results)}; passed={sum(results)}; '
+                   f'failed={len(results) - sum(results)}')
+    print('\n' + '\n'.join(summary), flush=True)
     return 0 if all(results) else 1
 
 

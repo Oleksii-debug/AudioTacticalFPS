@@ -1,0 +1,61 @@
+{
+  "schema": "carr-v3-actual-diagnostic/1",
+  "head": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+  "run": 46031173530,
+  "job": 140615055914,
+  "workflow_blob": "08e8f65fc634ba230d8656d9140f5e0175dbf031",
+  "conclusion": "CANCELLED_AT_JOB_ENVELOPE",
+  "times": {
+    "start": "2026-11-27T17:24:37Z",
+    "installed_recovery_timeout": "2026-11-27T18:00:48Z",
+    "publication_source_start": "2026-11-27T18:01:44Z",
+    "job_cancelled": "2026-11-27T18:14:43Z"
+  },
+  "artifact": {
+    "id": 15222768799,
+    "bytes": 217304,
+    "sha256": "37469f31de6415f4657a77d149e28916a7cf91dc7ad510b3c4896729f16fb4e5"
+  },
+  "failures": [
+    "FAILED tests/catalog/test_streaming_intake.py::test_source_changed_after_genuine_final_hash_is_rejected - Failed: DID NOT RAISE <class 'carr_library.catalog.intake.IntakeError'>",
+    "FAILED tests/ingest/test_import_replay_identity.py::test_cancelled_replay_does_not_add_membership[txt] - Failed: DID NOT RAISE <class 'InterruptedError'>",
+    "FAILED tests/ingest/test_import_replay_identity.py::test_cancelled_replay_does_not_add_membership[pdf] - Failed: DID NOT RAISE <class 'InterruptedError'>",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_discovery_does_not_activate_progress_and_explicit_choice_uses_current_root - NameError: name 'remembered_voice_id' is not defined",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback[close] - NameError: name 'reader_tools_notice' is not defined",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_failed_close_retains_its_pcm_and_still_destroys_dialog - NameError: name 'reader_tabs' is not defined",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_dialog_is_destroyed_even_when_final_cleanup_raises[worker_shutdown] - NameError: name 'reader_tabs' is not defined",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_dialog_is_destroyed_even_when_final_cleanup_raises[temporary_cleanup] - NameError: name 'reader_tabs' is not defined",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction - NameError: name 'reader_tabs' is not defined",
+    "FAILED tests/ui/test_progress_voice_actions.py::test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup - NameError: name 'reader_tabs' is not defined",
+    "FAILED tests/ui/test_engine_settings_lifetime.py::test_current_explicit_choice_still_persists_through_existing_shared_settings[reset] - AssertionError: assert {'dordiai': N...h': None, ...} == {'dordiai': N...h': None, ...}"
+  ],
+  "installed_recovery": {
+    "passed": 1921,
+    "failed": 10,
+    "pytest_seconds": 1198.78,
+    "outer_minutes": 20,
+    "post_test_verification": "NOT_COMPLETED"
+  },
+  "publication_source": {
+    "completed_suite_summaries": 86,
+    "reported_passed_cases": 2011,
+    "reported_failed_cases": 8,
+    "sum_reported_pytest_seconds": 708.4,
+    "whole_selected": 103,
+    "whole_final_verdict": "NOT_AVAILABLE",
+    "next_suite": "tests/studio/test_book_batch.py"
+  },
+  "envelope": {
+    "job_minutes": 50,
+    "installed_recovery_minutes": 20,
+    "reason": "Exact observed end equals the50-minute job cap. Publication source had only86 completed suite summaries; remaining installed/native/loopback phases did not run."
+  },
+  "source_bindings": {
+    "progress_voice_fixture": "61e8ff1cf190e9fe86ee7f522bf7a23077ac94c7",
+    "engine_settings_fixture": "b000cf4410a0392b00d90a2eee4d97f1114f61c8",
+    "replay_fixture": "fe84d8a406aa85e5fdb12452df8ac8ed2815be3c",
+    "reader_ui": "d4e6f21083b393dd31135626b7bc475cab011c62"
+  },
+  "qualification": "No overall V3 or installed publication/native acceptance; no tested-wheel claim. Reported case counts belong only to the observed exact-head phases."
+}

@@ -79,8 +79,8 @@ def copy(lib, position=0, mode='both', workspace='w', topic='topic', evidence='e
 
 def test_exact_and_unknown_page(library):
     assert copy(library,0,'quote') == library[3][0]
-    assert copy(library,0,'citation') == 'Author A, Title A, vol. 1, edition first, p. iv (PDF page 1)'
-    assert copy(library,1) == library[3][1] + '\n\nCitation: Author A, Title A, vol. 1, edition first, PDF page 2 (printed page unverified)'
+    assert copy(library,0,'citation') == 'Author A, Title A, vol. 1, edition first, p. iv (physical page 1)'
+    assert copy(library,1) == library[3][1] + '\n\nCitation: Author A, Title A, vol. 1, edition first, Physical page 2 (printed page unverified)'
 
 
 @pytest.mark.parametrize('sql', ['UPDATE saved SET allowed=0', 'DELETE FROM saved',

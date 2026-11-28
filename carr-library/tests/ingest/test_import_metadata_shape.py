@@ -82,7 +82,9 @@ def test_bounded_unicode_sequences_preserve_order_on_both_routes(
 
     monkeypatch.setattr(app, '_import_file', inline)
     monkeypatch.setattr(worker, 'run_request', isolated)
-    assert app.import_file(workspace, tmp_path / ('selected.' + suffix),
+    source = tmp_path / ('selected.' + suffix)
+    source.write_bytes(b'Synthetic selected input for metadata routing.\n')
+    assert app.import_file(workspace, source,
                            authors=authors, collections=collections) is expected
     route, selected_workspace, metadata = captured.pop()
     assert captured == []

@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import stat
 import tempfile
-import time
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
@@ -67,16 +66,90 @@ def _unique(pairs):
     return value
 
 
-def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
+def _open_json_file(path):
+    """Open one snapshot with shared delete access on Windows.
+
+    Windows MoveFileExW still cannot replace an open destination. Callers must
+    keep changing worker status closed until that worker has exited.
+    """
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+
+def read_json(path, *, maximum=None):
+    return read_json_snapshot(path, max_bytes=maximum)[0]
+
+
+def read_json_snapshot(path, *, max_bytes=None):
+    """Return one checked JSON snapshot and the digest of its exact bytes."""
+    maximum = max_bytes
+    if maximum is None:
+        maximum = MAX_JSON_BYTES
+    if type(maximum) is not int or not 1 <= maximum <= MAX_JSON_BYTES:
+        raise ValueError('Invalid state JSON byte budget.')
+    # An atomic writer can win between lstat and open. Retry that race only;
+    # linked paths and invalid opened objects still fail before reading bytes.
+    for _ in range(8):
+        path = local_path(path, exists=True)
+        before = regular(path)
+        if before.st_size > maximum:
+            raise ValueError('State exceeds its configured JSON budget.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            # A valid snapshot can already have zero links after replacement;
+            # multiple links or reparse points are never admitted.
+            if (not stat.S_ISREG(opened.st_mode)
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400
+                    or opened.st_nlink > 1):
+                raise ValueError('State must use regular local files, without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck ancestors after opening, before consuming the bound handle.
+            local_path(path, exists=True)
+            if opened.st_size > maximum:
+                raise ValueError('State exceeds its configured JSON budget.')
+            raw = stream.read(maximum + 1)
+            finished = os.fstat(stream.fileno())
+        break
+    else:
+        raise ValueError('State changed repeatedly while opening; retry the operation.')
+    if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
+    # Atomic replacement can unlink the bound snapshot. Its link count or
+    # change time may change; its file identity, size and bytes must stay stable.
+    fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
+    if any(getattr(opened, name) != getattr(finished, name) for name in fields):
+        raise ValueError('State changed while it was being read.')
+    value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    return value, sha256(raw).hexdigest()
 
 
 def sync_directory(path):
@@ -88,25 +161,21 @@ def sync_directory(path):
             os.close(descriptor)
 
 
-def _replace_state(temporary, path):
-    """Allow a short Windows reader to release its non-delete-sharing handle.
-
-    Reading a tiny control/state file can overlap its atomic replacement on
-    Windows. Retain one fully flushed staging file and retry only the Windows
-    sharing/access errors, with a bounded total delay of 0.63 seconds. A real
-    denial or an unrelated filesystem error still fails without truncating the
-    old state. In particular, never fall back to unlinking the destination.
-    """
-    delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
+def _replace_with_retry(source, destination):
+    """Allow a Windows snapshot reader to close; never wait past half a second."""
+    if os.name != 'nt':
+        return os.replace(source, destination)
+    from time import monotonic, sleep
+    deadline = monotonic() + .5
     while True:
         try:
-            os.replace(temporary, path)
-            return
-        except PermissionError as exc:
-            delay = next(delays, None)
-            if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
+            return os.replace(source, destination)
+        except PermissionError as error:
+            remaining = deadline - monotonic()
+            if getattr(error, 'winerror', None) not in (5, 32, 33) or remaining <= 0:
                 raise
-            time.sleep(delay)
+            sleep(min(.01, remaining))
+
 
 
 def atomic_bytes(path, raw, *, replace=False):
@@ -125,14 +194,31 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            _replace_state(temporary, path)
+            _replace_with_retry(temporary, path)
+        elif os.name == 'nt':
+            # Windows rename refuses an existing destination and leaves no
+            # second hard link if the process exits immediately after success.
+            # POSIX rename can overwrite, so it must not use this branch.
+            os.rename(temporary, path)
+            temporary = None
         else:
-            # link is the portable same-filesystem no-replace publication primitive.
-            os.link(temporary, path)
-            temporary.unlink()
+            # The portable create-only fallback is atomic against a competing
+            # destination. Process death between link and unlink can still leave
+            # a residual link; this branch does not claim crash recovery.
+            os.link(temporary, path, follow_symlinks=False)
+            published_stage, temporary = temporary, None
+            try:
+                published_stage.unlink()
+            except OSError:
+                try:
+                    published_stage.unlink(missing_ok=True)
+                except OSError as exc:
+                    raise OSError('File was published, but its temporary link '
+                                  'could not be removed.') from exc
         sync_directory(path.parent)
     finally:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 

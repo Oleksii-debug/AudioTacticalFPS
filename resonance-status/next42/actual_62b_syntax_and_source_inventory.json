@@ -1,0 +1,54 @@
+{
+  "schema": "carr-exact-source-syntax-evidence/1",
+  "recorded_at": "2026-11-28T02:22:07Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "tree": "2e523f7fdb5b8ef1447359f79ba384c4cbb001c5",
+  "run": 46097288580,
+  "job": 140831464504,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46097288580/job/140831464504",
+  "observed_job_conclusion": "success",
+  "compilation": {
+    "status": "PASS",
+    "explicit_packages": 31,
+    "python_files": 1094,
+    "inventory_sha256": "056764142310cc7205e6e499036eda9c62d854839f1857f99f25fbd5981d51b2",
+    "scope": "Compilation and TOML only; no runtime qualification"
+  },
+  "workflow_parser": {
+    "status": "PASS",
+    "parsed_bodies": 166,
+    "failed_bodies": 0,
+    "controls": 6,
+    "control_failures": 0,
+    "workflow_size_limit_bytes": 500000,
+    "workflow_size_controls": 4
+  },
+  "source_shard_inventory": {
+    "status": "PASS",
+    "actual_native_ParseFile": true,
+    "actual_InventoryOnly": true,
+    "exact_unique_selectors": 472,
+    "partitions": [
+      118,
+      118,
+      118,
+      118
+    ],
+    "duplicate_overlapping_case_count_audit": "PASS",
+    "helper_blob": "7422d46e6b48a6828101437654d789a7b595eb36",
+    "note": "This validates source structure and the complete partition inventory. It does not execute the selected whole suites."
+  },
+  "artifact": {
+    "id": 15243856961,
+    "name": "carr-workflow-syntax-62b358005048b2d91f92b693314c8897b6a7a0c5-1",
+    "bytes": 23905,
+    "sha256": "351db6038e642ea613836facd019d11817abfe9e7cd125441e6915bd6a680dbd",
+    "metadata_upload_log_reconciled": true,
+    "archive_contents": "NOT_INSPECTED"
+  },
+  "source_suite_runtime": "PENDING_SEPARATE_REQUIRED_JOBS",
+  "installed_runtime": "NOT_ESTABLISHED_BY_THIS_JOB",
+  "native_runtime": "NOT_ESTABLISHED_BY_THIS_JOB",
+  "release_qualification": "NOT_ESTABLISHED"
+}

@@ -1,0 +1,310 @@
+{
+  "schema": "carr-observed-ci-evidence/1",
+  "status": "ACTUAL_INSPECTOR_SUCCESS_ORIGINAL_CONFIGURED_CYCLE_FAILED",
+  "original": {
+    "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "run": 46110647047,
+    "job": 140873303994,
+    "artifact_id": 15250412975,
+    "archive_bytes": 562650,
+    "archive_sha256": "14eb7707422a203ad8a31cccdb0969f06fd007ea506b2fe513637dbe1eb13316",
+    "previous_child_evidence_git_blob": "eeaa74a626a19a6de3039661101707fdb9abb14c"
+  },
+  "inspector": {
+    "head": "408994957cc8f36ea8192a65c8e237fa56108d86",
+    "run": 46117242171,
+    "job": 140893704804,
+    "workflow_git_blob": "ee50722880a1cf67820f39847dc5631845fa936c",
+    "manifest_git_blob": "ea5ce6b0308e65205bbaaa3d2b298758b5930857",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T06:35:15Z",
+    "completed_at": "2026-11-28T06:35:20Z",
+    "read_only": true,
+    "checkout": false,
+    "extraction": false,
+    "source_execution": false
+  },
+  "actual_projection": {
+    "boundary": "Read-only literal path-component matches in the exact original installer log; no source admission is changed and no update outcome is qualified.",
+    "bytes": 713910,
+    "complete": true,
+    "component_line_counts": {
+      "models": 26
+    },
+    "destination_filename_matches": 0,
+    "encoding": "utf-8-sig",
+    "fixed_private_components": [
+      ".env",
+      ".git",
+      ".venv",
+      "data",
+      "dordiai-voices",
+      "models",
+      "node_modules",
+      "references",
+      "state",
+      "voice-packages",
+      "voices"
+    ],
+    "matching_lines": 26,
+    "path": "native/install-A.log",
+    "selected_lines": [
+      {
+        "destination_filename_line": false,
+        "line": 1136,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.038   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__init__.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1137,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.038   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\__init__.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1138,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.038   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\candidate.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1139,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.038   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\direct_url.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1140,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\format_control.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1141,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\index.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1142,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\installation_report.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1143,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\link.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1144,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\release_control.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1145,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\scheme.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1146,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\search_scope.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1147,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\selection_prefs.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1148,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.069   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\target_python.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1149,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\__pycache__\\wheel.cpython-311.pyc"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1150,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\candidate.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1151,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\direct_url.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1152,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\format_control.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1153,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\index.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1154,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\installation_report.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1155,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\link.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1156,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\release_control.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1157,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\scheme.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1158,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.085   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\search_scope.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1159,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.101   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\selection_prefs.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1160,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.101   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\target_python.py"
+      },
+      {
+        "destination_filename_line": false,
+        "line": 1161,
+        "private_components": [
+          "models"
+        ],
+        "text": "2026-11-28 05:42:26.101   Extracting temporary file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\is-UC5JSC40G9.tmp\\payload\\runtime\\Lib\\site-packages\\pip\\_internal\\models\\wheel.py"
+      }
+    ],
+    "sha256": "2b5daf4ee0b74fec0656cd4b3fdec7932d77da7863b7a3202b8d5fece4a41825",
+    "source_components_git_blob": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+    "total_lines": 4340
+  },
+  "observed_relative_extraction_paths": [
+    "runtime/Lib/site-packages/pip/_internal/models/__init__.py",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/__init__.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/candidate.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/direct_url.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/format_control.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/index.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/installation_report.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/link.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/release_control.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/scheme.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/search_scope.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/selection_prefs.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/target_python.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/__pycache__/wheel.cpython-311.pyc",
+    "runtime/Lib/site-packages/pip/_internal/models/candidate.py",
+    "runtime/Lib/site-packages/pip/_internal/models/direct_url.py",
+    "runtime/Lib/site-packages/pip/_internal/models/format_control.py",
+    "runtime/Lib/site-packages/pip/_internal/models/index.py",
+    "runtime/Lib/site-packages/pip/_internal/models/installation_report.py",
+    "runtime/Lib/site-packages/pip/_internal/models/link.py",
+    "runtime/Lib/site-packages/pip/_internal/models/release_control.py",
+    "runtime/Lib/site-packages/pip/_internal/models/scheme.py",
+    "runtime/Lib/site-packages/pip/_internal/models/search_scope.py",
+    "runtime/Lib/site-packages/pip/_internal/models/selection_prefs.py",
+    "runtime/Lib/site-packages/pip/_internal/models/target_python.py",
+    "runtime/Lib/site-packages/pip/_internal/models/wheel.py"
+  ],
+  "source": {
+    "path": "carr-library/src/carr_library/security/update_runtime.py",
+    "git_blob": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+    "installed_A2": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+    "same_on_current_B": true,
+    "predicate": "any(part.casefold() in _PRIVATE for part in parts)"
+  },
+  "interpretation": {
+    "observed": "All26 literal private-component matches in the complete exact installer log are the pip internal models code package:13 .py modules and13 corresponding CPython311 bytecode files.",
+    "route_finding": "Those exact relative payload paths include the component models and cannot pass the current _source private-component predicate even when independently pinned and owned.",
+    "not_observed": "The log lines are original installer extraction paths, not Dest filename lines; this inspection does not identify which of the26 sorted/iterated entries was the first rejection.",
+    "native_checks_previously_observed": 5,
+    "actual_apply": "NOT_REACHED",
+    "actual_restart": "NOT_REACHED",
+    "next_source_boundary": "A future correction must retain independent A bundle+owner hashes, ordinary single-link/no-reparse checks and all remaining private path refusals; actual A3 qualification is still required."
+  }
+}

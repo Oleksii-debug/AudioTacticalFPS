@@ -21,6 +21,14 @@ class AudioCancelled(AudioError):
     """An operation was cancelled; previous completed outputs are preserved."""
 
 
+class AudioCleanupPending(AudioError):
+    """A child is still owned; retain admission until cleanup_owner is quiescent."""
+
+    def __init__(self, message, *, cleanup_owner):
+        super().__init__(message)
+        self.cleanup_owner = cleanup_owner
+
+
 class AudioUnavailable(AudioError):
     """An optional installed engine or verified capability is unavailable."""
 

@@ -1,0 +1,50 @@
+{
+  "schema": "resonance-current-head-native-monitor/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+  "source_tree": "37b723f6aa4f69381cdabcb793aa461dc5633b0e",
+  "scope": [
+    "carr-windows.yml",
+    "carr-v3.yml"
+  ],
+  "completed": [
+    {
+      "workflow_run": 46063730857,
+      "job_id": 140723916877,
+      "name": "Required Linux Flite speech",
+      "status": "SUCCESS",
+      "actual": {
+        "status": "PASS",
+        "source_commit": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+        "source_tree": "37b723f6aa4f69381cdabcb793aa461dc5633b0e",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "cases": [
+          "test_actual_chunked_synthesis_and_budget",
+          "test_actual_local_pcm_speech_and_three_distinct_voices",
+          "test_actual_volume_reduction_and_source_invariance",
+          "test_cancel_synthesis_leaves_no_partial_audio",
+          "test_no_overwrite_existing_audio",
+          "test_unsupported_native_controls_do_not_silently_apply"
+        ],
+        "suite_log_sha256": "b2ca97d837febd2f7e4a06e29299a80b75969a921be72d9db5c23d5ce6c5aa52",
+        "capability_report_sha256": "e4b7929ec75cc786e752ae329b0f17732a3b7390989dec9ef094803bac264d9c",
+        "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+      },
+      "artifact": {
+        "id": 15230201353,
+        "name": "carr-flite-46063730857-1",
+        "bytes": 16867,
+        "sha256": "71ea981b654244263fc89dc26376f355b1a3d91fbc5391f3611fdf15730a0246"
+      }
+    }
+  ],
+  "pending": {
+    "main_run": 46063730721,
+    "main_syntax_job": 140723916264,
+    "v3_native_job": 140723916769
+  },
+  "qualification": "Actual six-case Linux Flite only. Windows source/installed/native/full bundle, owner inputs, physical sound and NVDA remain unqualified.",
+  "refs_changed": false
+}

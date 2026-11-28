@@ -15,7 +15,24 @@ def batch_summary(batch):
               ('duplicate', 'exact duplicates'), ('rejected', 'not accepted'),
               ('failed', 'failed'), ('quarantined', 'need page review'), ('excluded', 'excluded')]
     detail = ', '.join(f'{counts.get(key, 0)} {label}' for key, label in labels if counts.get(key, 0))
-    return f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    summary = f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    scan = batch.get('scan')
+    if scan is not None:
+        cursor = scan.get('cursor', {})
+        complete = scan.get('complete', cursor.get('complete', False))
+        planned = scan.get('planned', cursor.get('planned'))
+        summary = f'Scan page {scan["page"] + 1}. ' + summary
+        if planned is not None:
+            summary += f' {planned} source rows reviewed across saved pages.'
+        if scan.get('review_required'):
+            summary += ' External scan continuation needs a fresh source selection after restore.'
+        elif not complete:
+            summary += ' More source entries remain. Choose Continue source scan to review the next page.'
+        else:
+            summary += ' The selected source traversal is complete.'
+        if not scan.get('classification_complete', True):
+            summary += ' Some duplicate checks were paused; the catalog is checked before import.'
+    return summary
 
 
 def row_details(row):
@@ -80,12 +97,29 @@ def batch_report(batch):
 
 class ImportCenterActions:
     """Handlers separated from native construction for meaningful event tests."""
+    def _root_bound(self):
+        from pathlib import Path
+        from ..durable_state import regular
+        try:
+            root = Path(self.library.root)
+            info = regular(root, directory=True)
+            current = (root, info.st_dev, info.st_ino)
+        except (OSError, ValueError) as exc:
+            raise ValueError('The library folder changed. Reopen Import Center.') from exc
+        previous = getattr(self, '_root_identity', None)
+        if previous is None:
+            self._root_identity = current
+        elif current != previous:
+            raise ValueError('The library folder changed. Reopen Import Center.')
+
     def _bound(self):
         if (self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library):
             raise ValueError('The library folder changed. Reopen Import Center.')
+        self._root_bound()
         with self.library.read(self.workspace):
             pass
+        self._root_bound()
 
     def report(self, text, *, focus=True):
         self.status.SetValue(text)
@@ -180,8 +214,15 @@ class ImportCenterActions:
         except Exception as exc:
             finish(error=exc)
 
+    def _scan_options(self):
+        from ..ingest.batch_scan import scan_page_limits
+        return scan_page_limits(max_files=int(self.page_files.GetValue()),
+            max_entries=int(self.page_entries.GetValue()), timeout=float(self.page_seconds.GetValue()))
+
     def plan(self, paths):
         self._bound()
+        selected = tuple(paths)
+        limits = self._scan_options()
         index = self.collection.GetSelection()
         if not 0 <= index < len(self.collection_ids):
             raise ValueError('Choose a destination collection and text recognition languages.')
@@ -194,9 +235,30 @@ class ImportCenterActions:
             self.report('Plan saved. ' + batch_summary(batch) +
                         ' Review the files, exclude any you do not want, then choose Start queued files.')
 
-        self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
-            self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self.frame.cancel_event.is_set), done, planning=True)
+        def operation():
+            self._bound()
+            return self.library.plan_import_page(self.workspace, selected, collections=collections,
+                recursive=recursive, config=config, cancelled=self.frame.cancel_event.is_set, **limits)
+        self._job('Checking the next source page and duplicates', operation, done, planning=True)
+
+    def continue_scan(self, event=None):
+        try:
+            self._bound()
+            if self.batch is None or self.batch.get('version') != 2:
+                raise ValueError('Choose a saved scan page, or select source folders for a new paged scan.')
+            batch_id = self.batch['batch_id']
+            limits = self._scan_options()
+            def operation():
+                self._bound()
+                return self.library.continue_import_scan(self.workspace, batch_id,
+                    cancelled=self.frame.cancel_event.is_set, **limits)
+            def done(batch):
+                self.refresh(selected=batch['batch_id'])
+                self.report('Scan page saved. ' + batch_summary(batch)
+                            + ' Review this page before choosing Start queued files.')
+            self._job('Continuing the saved source scan', operation, done, planning=True)
+        except Exception as exc:
+            self.report(str(exc))
 
     def _new_plan_ocr_config(self):
         from ..extract.page_ocr import Config
@@ -322,7 +384,7 @@ class ImportCenterActions:
 
     def save_report(self, event=None):
         import wx
-        from ..research.export_file import write_export, export_completion
+        from ..research.export_file import write_export
         from .export_destination import confirm_export_destination
         try:
             self._bound()
@@ -337,20 +399,22 @@ class ImportCenterActions:
                 dialog.Destroy()
             if path:
                 self._bound()
-                approval = confirm_export_destination(self, path, private_root=self.library.root, wx_module=wx)
+                approval = confirm_export_destination(self, path, private_root=self.library.root,
+                                                       title='Replace import report')
                 if approval is None:
                     return
                 self._bound()
-                receipt = write_export(path, batch_report(batch), private_root=self.library.root,
-                                       approval=approval)
-                self.report(export_completion('Import report saved.', receipt))
+                receipt = write_export(path, batch_report(batch), private_root=self.library.root, approval=approval)
+                warning = getattr(receipt, 'cleanup_warning', None)
+                self.report('Import report saved.'
+                    + ('\n' + warning if isinstance(warning, str) and warning else ''))
         except Exception as exc:
             self.report(str(exc))
 
     def cancel_operation(self, event=None):
         if self.busy:
             self.frame.cancel_event.set()
-            self.report('Stopping the file check. An unfinished scan has not saved a new plan.'
+            self.report('Stopping source review. Saved pages are kept; the checked prefix will be saved after source checks finish.'
                         if getattr(self, 'planning', False) else
                         'Stopping the current operation. Queued files will remain saved.')
 
@@ -372,18 +436,27 @@ def show_import_center(frame, workspace):
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
-            super().__init__(frame, title='Import Center', size=(920, 760),
+            super().__init__(frame, title='Import Center', size=(920, 820),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.frame, self.library, self.workspace = frame, frame.library, workspace
             self.busy = self.closed = False
+            self._bound()
             self.batch, self.summaries = None, ()
             self.custom_ocr_config = None
             self.mutable = []
             layout = wx.BoxSizer(wx.VERTICAL)
-            introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
+            # Keep the document controls reachable on a small display or at
+            # a larger native font size. Status, Cancel and Close stay visible.
+            self.content = wx.ScrolledWindow(self, style=wx.TAB_TRAVERSAL | wx.VSCROLL | wx.HSCROLL)
+            self.content.SetName('Import options and saved batches')
+            self.content.SetMinSize((1, 1))
+            self.content.SetScrollRate(self.FromDIP(16), self.FromDIP(16))
+            content = self.content
+            form = wx.BoxSizer(wx.VERTICAL)
+            introduction = wx.StaticText(content, label='Prepare a file or folder import, review the plan, then start. '
                        'Saved queues can be continued after restarting the program.')
             introduction.Wrap(750)
-            layout.Add(introduction, 0, wx.ALL, 8)
+            form.Add(introduction, 0, wx.ALL, 8)
             options = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
             options.AddGrowableCol(1)
             self.collection_ids = [None]
@@ -391,58 +464,79 @@ def show_import_center(frame, workspace):
             for number, (identity, name) in enumerate(self.library.collections(workspace), 1):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
-            self.collection = wx.Choice(self, choices=collection_labels)
-            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
+            self.collection = wx.Choice(content, choices=collection_labels)
+            self.languages = wx.Choice(content, choices=[label for label, _ in LANGUAGES])
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
                 control.SetSelection(0)
-                options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                options.Add(wx.StaticText(content, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
                 self.mutable.append(control)
-            layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
+            form.Add(options, 0, wx.EXPAND | wx.ALL, 8)
+            self.page_files = wx.SpinCtrl(content, min=1, max=5000, initial=1000)
+            self.page_entries = wx.SpinCtrl(content, min=1, max=20000, initial=20000)
+            self.page_seconds = wx.SpinCtrl(content, min=1, max=600, initial=60)
+            limits = wx.FlexGridSizer(cols=3, hgap=8, vgap=4)
+            controls = [('Files per scan page', self.page_files),
+                        ('Traversal entries per scan page', self.page_entries),
+                        ('Seconds per source scan page', self.page_seconds)]
+            for index, (label, _control) in enumerate(controls):
+                limits.AddGrowableCol(index)
+                limits.Add(wx.StaticText(content, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+            for label, control in controls:
+                control.SetName(label)
+                limits.Add(control, 1, wx.EXPAND)
+                self.mutable.append(control)
+            form.Add(limits, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.ocr_models_button = wx.Button(content, label='Choose installed or managed OCR &models…')
             self.ocr_models_button.SetName('Choose installed or managed OCR models for new plans')
             self.ocr_models_button.Bind(wx.EVT_BUTTON, self.choose_ocr_models)
             self.mutable.append(self.ocr_models_button)
-            layout.Add(self.ocr_models_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-            self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
+            form.Add(self.ocr_models_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.recursive = wx.CheckBox(content, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
-            layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            form.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
+                                   ('Continue source &scan', self.continue_scan),
                                    ('Refresh saved &queues', self.refresh)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(content, label=label)
+                control.SetName(label.replace('&', ''))
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
-            layout.Add(add, 0, wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.batches = wx.ListBox(self, size=(-1, 65))
+            form.Add(add, 0, wx.ALL, 8)
+            form.Add(wx.StaticText(content, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.batches = wx.ListBox(content, size=(-1, 65))
             self.batches.SetName('Saved import batches')
             self.batches.Bind(wx.EVT_LISTBOX, self.select_batch)
             self.mutable.append(self.batches)
-            layout.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.rows = wx.ListBox(self, size=(-1, 100))
+            form.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
+            form.Add(wx.StaticText(content, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.rows = wx.ListBox(content, size=(-1, 100))
             self.rows.SetName('Files and import status')
             self.rows.Bind(wx.EVT_LISTBOX, self.select_row)
-            layout.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
-            self.details = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
+            form.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
+            self.details = wx.TextCtrl(content, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
             self.details.SetName('Selected file details')
-            layout.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+            form.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             actions = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
             actions.AddGrowableCol(0)
             actions.AddGrowableCol(1)
             for label, handler in [('&Start queued files', self.run),
                     ('&Retry failed or reviewed files', lambda event: self.run(event, retry=True)),
                     ('&Exclude or include selected file', self.toggle_row), ('Save re&port...', self.save_report)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(content, label=label)
+                control.SetName(label.replace('&', ''))
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
-            layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            form.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            self.content.SetSizer(form)
+            self.content.FitInside()
+            layout.Add(self.content, 1, wx.EXPAND)
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
             self.status.SetName('Import Center status')
             layout.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
@@ -452,11 +546,22 @@ def show_import_center(frame, workspace):
             self.cancel.Bind(wx.EVT_BUTTON, self.cancel_operation)
             bottom.Add(self.cancel, 0, wx.RIGHT, 8)
             close = wx.Button(self, wx.ID_CANCEL, 'Cl&ose')
+            close.SetName('Close Import Center')
             close.Bind(wx.EVT_BUTTON, self.close)
             bottom.Add(close)
             layout.Add(bottom, 0, wx.ALL, 8)
             self.SetSizer(layout)
-            self.SetMinSize((800, 650))
+            display = wx.Display.GetFromWindow(frame)
+            area = wx.Display(0 if display == wx.NOT_FOUND else display).GetClientArea()
+            margin = self.FromDIP(24)
+            available = (max(1, area.width - margin), max(1, area.height - margin))
+            minimum, preferred = self.FromDIP(wx.Size(600, 360)), self.FromDIP(wx.Size(920, 820))
+            self.SetMinSize((min(minimum.width, available[0]), min(minimum.height, available[1])))
+            width, height = min(preferred.width, available[0]), min(preferred.height, available[1])
+            self.SetSize(area.x + (area.width - width) // 2,
+                         area.y + (area.height - height) // 2, width, height)
+            self.Layout()
+            self.content.FitInside()
             self.Bind(wx.EVT_CLOSE, self.close)
             self.refresh()
             self.batches.SetFocus() if self.summaries else self.collection.SetFocus()

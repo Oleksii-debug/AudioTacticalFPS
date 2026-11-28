@@ -1,0 +1,48 @@
+{
+  "schema": "resonance-source-handoff/1",
+  "title": "Canonical relative path keys for actual old conversion-suite reports",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+  "files": [
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "before": "574a297765039cd765c1b352a6a9d8f27ca6b3be",
+      "sha": "b4c60707e1554df514cd954afa89c0c7dc099713",
+      "changes": [
+        [
+          "str(path.relative_to(args.source_root.parent)): sha256(path.read_bytes()).hexdigest()",
+          "path.relative_to(args.source_root.parent).as_posix(): sha256(path.read_bytes()).hexdigest()"
+        ],
+        [
+          "expected[str(path.relative_to(root))]",
+          "expected[path.relative_to(root).as_posix()]"
+        ]
+      ]
+    }
+  ],
+  "actual_failure_evidence": "a2576dfaaebf7ef34b68c725f13c5c4b89366f88",
+  "existing_required_gate": {
+    "source_and_installed_whole_cases_each": 34,
+    "source_and_installed_module_origins_each": 22,
+    "outer_verifier": "UNCHANGED",
+    "original_junit_counter_and_failure_skip_xfail_policy": "UNCHANGED",
+    "actual_source_and_staged_file_hashes": "UNCHANGED",
+    "runtime_owner_and_cleanup": "UNCHANGED",
+    "child_deadline_seconds": 600
+  },
+  "review": {
+    "reviewer": "locate_project",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "The two key expressions now use identical Path.relative_to(...).as_posix(); every other byte remains unchanged."
+  },
+  "verification": {
+    "exact_two_expression_reconstruction": true,
+    "source_readback_exact": true,
+    "evidence_readback_exact": true,
+    "corrected_execution": "NOT_RUN",
+    "tests_added": 0,
+    "count_changes": 0
+  },
+  "integration_note": "This is a preimage-bound component. canonical_regression owns concurrent independent acceptance-script corrections and must compose these two disjoint old_suite hunks, then refresh every explicit final acceptance/helper/workflow pin. Do not overwrite that concurrent composed successor with this isolated blob.",
+  "refs_changed": false
+}

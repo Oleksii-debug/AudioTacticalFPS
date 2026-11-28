@@ -1,0 +1,59 @@
+{
+  "schema": "carr-voice-create-only-destination-repair/1",
+  "status": "STATIC_NOT_RUN",
+  "base_head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+  "actual_linux_evidence": "2d9feb58f6f4347b9f20219fe305b1c3b0c2da99",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/package_publication.py",
+      "before": "87cb411c5bd2348cd9ce87bc427d3c84f79a3914",
+      "after": "702cb573482265bb7e63d9483ecf2178649a63a4"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_lifecycle.py",
+      "before": "4327a8b32bc32e7e9624602d8a626035486caa48",
+      "after": "0508ffba185e99171d0d2e230a9adb06db05bbae"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_reference.py",
+      "before": "c4ca7841d86fe2e45f84a0c5136b6ab82455f03a",
+      "after": "8d3265dcc37662046a3bebcf2abacf317c818553"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_publication_lifetime.py",
+      "before": "6febbed72cb5e134bf94f40859c84526a8c2862f",
+      "after": "1f71856039c5d3e94312714f020021110f1e9b84"
+    }
+  ],
+  "api": {
+    "shared_source": "carr-library/src/carr_library/research/export_file.py",
+    "shared_blob": "335fd4d03ed4e612d628ec2f93b615feba49e97d",
+    "existing_type": "ExportDestination",
+    "shared_primitives": [
+      "_export_paths",
+      "_destination"
+    ],
+    "new_adapter": "capture_package_destination",
+    "reason": "The overwrite-review public capture hashes existing targets. Create-only package permission must reject a competitor before native handles or contents. Delegate the same existing reject_existing destination path policy; no second destination/publisher framework.",
+    "body": "Two exact metadata captures around the cancellation callback; retain original requested route, parent identity and absent state; current publish_package body unchanged."
+  },
+  "tests": {
+    "path": "tests/audio/test_voice_publication_lifetime.py",
+    "prior_whole": 9,
+    "required_whole": 15,
+    "prior_cases": "Retained with only the wrong capture import/call corrected.",
+    "added_cases": 6,
+    "added_functions": [
+      "test_package_destination_capture_never_opens_an_existing_competitor",
+      "test_package_destination_capture_rechecks_original_route_after_callback",
+      "test_package_destination_preserves_requested_route_through_actual_publication",
+      "test_package_destination_precancellation_performs_no_path_inspection"
+    ],
+    "source_and_installed_required": true
+  },
+  "review": {
+    "root": "Exact current primitive/type/require_absent policy inspected; four preimages verified.",
+    "peer": "Progress ACCEPTED_STATIC_NOT_RUN: exact shared primitive/no-open-before-reject ordering, original path/parent recheck, caller inverses and 9+6 whole cases."
+  },
+  "execution": "NOT_RUN"
+}

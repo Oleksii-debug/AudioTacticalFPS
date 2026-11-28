@@ -1,0 +1,13 @@
+# Next38: exact selected-XLS and native Reader corrections
+
+Parent: 4ccb38169775cf515b0d2a0a0cbcb0683617b4dd.
+
+The actual preceding89ba Windows run retained the exact failing synthetic XLS intermediate structure: twelve explicitly disabled master-page headers/footers, including four bounded nonempty sheet-name/page-number templates. Direct import remains strict. Only the existing selected XLS-to-ODS reading-copy route opts into the closed inactive-template profile. That profile accepts the exact six page-region roots under styles/master-styles/master-page, the sole false display attribute, bounded p/span/sheet-name/page-number structure and closed attributes. It never supplies reading records; all global active, hidden and inherited-table checks still visit every node. The selected derivative carries a persisted inactive_page_decorations_not_read warning with its unchanged original/intermediate identities and review-required records.
+
+The actual Reader observation independently showed a verified97-character CRLF handoff rendered by wx as94 characters with LF. The native probe now compares that exact expected widget representation while retaining the exact raw handoff, copied source and original file hashes. It does not normalize arbitrary whitespace, modify the original or change Reader product code.
+
+All eleven exact source, test, native, documentation and focused-gate paths are in the accompanying peer-accepted manifest. XML whole114 is retained before37 new cases (151); Office whole19 before5 new cases (24); native Reader diagnostic whole13 gains10 cases (23). The selected gate now requires8 whole suites:341 source and341 isolated installed cases per platform,30 exact source pins and20 installed named origins. All six Windows phases remain mandatory: fourteen actual formats, the original34-case selected-native suite and30 native GUI checks in both modes. No timeout, hidden-content condition or actual success requirement was removed.
+
+Independent Progress reviews accepted source, controls, persisted-warning and native-widget contracts. Root checked every predecessor against the assembled4ccb tree, reviewed the closed parser/body seam and reconstructed both gate predecessors exactly by undoing only declared pins, counts, the dispatcher origin and the mandatory warning check. All new execution is pending. The new source guide is included; its planned full-bundle guide registration follows in the coherent full-gate candidate.
+
+The voice495 run remains independently tied to4ccb. Physical sound, acoustic quality, private engine inference, manual NVDA and release are not qualified by this change.

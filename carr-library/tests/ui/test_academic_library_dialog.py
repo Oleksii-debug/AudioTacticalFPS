@@ -176,27 +176,6 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
-@pytest.mark.parametrize('existing', [False, True])
-def test_bibliography_preserves_newer_destination_during_render(
-        controller, tmp_path, monkeypatch, existing):
-    target = tmp_path / 'bibliography.txt'
-    if existing:
-        target.write_bytes(b'Explicitly selected old bibliography.')
-    render = controller.export
-    newer = b'Independent work saved while bibliography renders.'
-
-    def render_and_change(**options):
-        value = render(**options)
-        target.write_bytes(newer)
-        return value
-
-    monkeypatch.setattr(controller, 'export', render_and_change)
-    with pytest.raises(ValueError, match='destination changed'):
-        controller.export_to(target)
-    assert target.read_bytes() == newer
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
     with controller.library.write(controller.workspace) as db:
         service = AcademicLibrary(db, controller.workspace)
@@ -570,23 +549,76 @@ def test_live_academic_completion_reports_done_callback_error(controller, native
     assert 'Visible callback failure' in window.status.value
 
 
-def test_native_export_handler_retains_text_return_and_cleanup_notice(
-        controller, native_handlers, monkeypatch, tmp_path):
-    from carr_library.ui import academic_library_dialog as ui
-    from carr_library.research.export_file import ExportReceipt
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_to_preserves_a_competing_save_during_real_render(
+        controller, tmp_path, monkeypatch, existing):
     controller.create(form_values(draft()))
-    actual_writer = ui.write_export
+    target = tmp_path / 'competing-bibliography.txt'
+    if existing:
+        target.write_bytes(b'Previously approved bibliography')
+    original_export = controller.export
+    competing = b'Newer bibliography saved during rendering'
 
-    def completed_with_notice(*args, **kwargs):
-        receipt = actual_writer(*args, **kwargs)
-        return ExportReceipt(receipt.path, 'Completed; temporary cleanup needs attention.')
+    def render_with_competing_save(**kwargs):
+        content = original_export(**kwargs)
+        target.write_bytes(competing)
+        return content
 
-    monkeypatch.setattr(ui, 'write_export', completed_with_notice)
-    window = native_handlers.make('academic', controller)
+    monkeypatch.setattr(controller, 'export', render_with_competing_save)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == competing
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize(('answer', 'competing'), [('no', False), ('yes', False), ('yes', True)])
+def test_export_handler_binds_actual_controller_publication_to_confirmation(
+        controller, native_handlers, tmp_path, monkeypatch, answer, competing):
+    from carr_library.ui.academic_library_dialog import FORMATS
+
+    controller.create(form_values(draft()))
+    target = tmp_path / 'confirmed-bibliography.txt'
+    original_bytes = b'Existing bibliography selected for replacement'
+    competing_bytes = b'Newer bibliography saved while the question is open'
+    target.write_bytes(original_bytes)
+    ui = native_handlers
+    ui.wx.FD_SAVE, ui.wx.FD_OVERWRITE_PROMPT = 4, 8
+    ui.wx.YES, ui.wx.NO = 10, 11
+    ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 16, 32, 64
+    chooser = Mock()
+    chooser.ShowModal.return_value = ui.wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=chooser)
+    def answer_question(*args):
+        if competing:
+            target.write_bytes(competing_bytes)
+        return ui.wx.YES if answer == 'yes' else ui.wx.NO
+
+    ui.wx.MessageBox = Mock(side_effect=answer_question)
+    window = ui.make('academic', controller)
     window.controller = controller
-    destination = tmp_path / 'references.ris'
-    result = window.export_to(destination, format='ris')
-    assert isinstance(result, str)
-    assert result.encode('utf-8') == destination.read_bytes()
-    assert len(controller.preview(result.encode('utf-8'), 'ris').entries) == 1
-    assert 'Completed; temporary cleanup needs attention.' in window.status.value
+    window._export_options = Mock(return_value=(FORMATS[0], None, False))
+    actual_render = Mock(wraps=controller.export)
+    monkeypatch.setattr(controller, 'export', actual_render)
+    window.on_export()
+
+    assert ui.wx.FileDialog.call_args.kwargs['style'] == ui.wx.FD_SAVE
+    message, caption, style, parent = ui.wx.MessageBox.call_args.args
+    assert parent is window and target.name in message and caption == 'Replace academic bibliography'
+    assert style == ui.wx.YES_NO | ui.wx.NO_DEFAULT | ui.wx.ICON_QUESTION
+    chooser.Destroy.assert_called_once()
+    ui.wx.MessageBox.assert_called_once()
+    if answer == 'no':
+        actual_render.assert_not_called()
+        assert target.read_bytes() == original_bytes
+    elif competing:
+        actual_render.assert_called_once()
+        assert target.read_bytes() == competing_bytes
+        assert window.status.value.startswith('Bibliography not exported:')
+        assert 'Bibliography exported to' not in window.status.value
+        assert 'destination changed' in window.status.value
+    else:
+        actual_render.assert_called_once()
+        assert target.read_text(encoding='utf-8') == controller.export()
+        assert window.status.value == f'Bibliography exported to {target}. Personal notes were not included.'
+    assert not list(tmp_path.glob('.research-export-*'))

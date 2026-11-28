@@ -1,0 +1,33 @@
+{
+  "schema": "carr-bounded-peer-v1",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "path": "carr-library/tests/voice_acceptance/test_dordiai_acceptance.py",
+  "before": "e19d44f86f9d75285d02d786cd293cb5c201bedb",
+  "after": "ab7e9b4c31a9c7403c544adc9af4f69618d6a2f5",
+  "cause_evidence": "f52c39aa3750abf4202d2492ac8e0029273733a7",
+  "read_sources": {
+    "adapter": "b402a6cb86ee150dc67d5654a3495289269f10aa",
+    "authority": "df687d0d557fbc57af8c44ab029b7dd080084721",
+    "fixture": "795a206c0b69892821cb874c593e7c375ae744e0"
+  },
+  "checks": {
+    "single_hunk_inverse_exact": true,
+    "all_39_assert_or_raises_lines_identical_after_indentation": true,
+    "test_functions": 8,
+    "cases": 9,
+    "readiness_seconds": 5,
+    "request_seconds": 1
+  },
+  "observations": [
+    "Actual _start_worker calls authority.runtime_configuration and therefore requires the current thread's active operation scope.",
+    "The added scope is the actual adapter context manager. It wraps prewarm, nonce-bound actor readiness and public recovery stream without replacing any guard.",
+    "Nested public stream and probe operations share the same current-thread authority; no second outer lease or source admission is substituted.",
+    "The exact fixture has no managed package namespace. All cancellation/drop/worker retention/refresh disposal checks before the hunk and final explicit close after it remain byte-identical.",
+    "The public recovery protocol still requires exactly reference,next,next from the new nonce/PID, preserves empty cancelled output and the original exception assertion."
+  ],
+  "limitations": [
+    "No execution or new latency result.",
+    "No product source, deadlines, whole counts or source/installed gate were changed."
+  ]
+}

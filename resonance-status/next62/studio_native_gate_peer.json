@@ -1,0 +1,53 @@
+{
+  "schema": "carr.bounded-static-peer/1",
+  "recorded_utc": "2026-11-28 06:16:43 UTC",
+  "reviewer": "/root/canonical_regression",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "components": [
+    {
+      "path": "carr-library/scripts/check_studio_timeline_native.py",
+      "blob": "6e5bea855c6341c1c052b23bb8e9fbce1703fe2d",
+      "scope": "actual CLI/report schema, fixed source authority, bounded descriptor reads and pre/post identity continuity",
+      "source_contracts": {
+        "data": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+        "native": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+        "audio_lock": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+        "data_bytes": 19559,
+        "required_unique_checks": 92,
+        "origins": 15,
+        "fixed_fields": 13,
+        "captured_files": 36
+      },
+      "findings": [
+        "Every source/installed/audio input uses a fixed reviewed path, finite byte limit, full streamed Git/SHA256 identity, held-descriptor comparisons and unchanged named identity; Windows executable suffix normalization is limited to descriptor comparisons.",
+        "The helper captures its own exact bytes but relies on caller Git-blob binding before execution; focused helper b8d8 supplies that binding before both calls.",
+        "Preflight is exclusive and the caller captures its SHA256 before the real native process; postflight demands that original proof digest and exact complete current snapshot.",
+        "Report reads are bounded to1MiB and accept exactly one native report; required typed fields,92 required successful unique check names, picker multiplicity,15 actual installed paths and selected executable hashes match4d8.",
+        "A second fresh source/installed/audio snapshot after report validation precedes exclusive publication of the original validated report.",
+        "Native exit code0 and the finite process budget remain explicit caller obligations; no family-reaping claim is inferred from this parser."
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-studio-timeline.yml",
+      "blob": "f97c059b72c00d517bf7a0b18bcfc77c1160e4ca",
+      "predecessor_template": "1febbb5788e0bae4f5e3732c8d9d9a8b5e22c3c2",
+      "helper": "b8d8dcc6e1b4ac642b328a0e8c00a450bc9f400b",
+      "scope": "existing setup/lock acquisition, Windows program firewall ownership, fixed CLI and closed retained-file inventory",
+      "findings": [
+        "Exact prior checkout/setup hashes, four dependency locks, FFmpeg preparation and audio lock remain; helper/checker/data are additionally bound before acquisition.",
+        "The focused helper CLI, source seven-suite320 counts and shared data schema match the actual producer.",
+        "All acquisition precedes exact interpreter/base/pythonw/FFmpeg/ffprobe outbound blocking; rule/program readback, original profile capture and finally restoration remain byte-equivalent apart from Studio names/paths.",
+        "Closed evidence permits17 fixed contract outputs,21 installed suite outputs and4 setup outputs; it includes native preproof and both checker logs and excludes binaries, model/audio payloads and temporary corpora.",
+        "Actual native invocation is330 seconds with a300-second probe watchdog, requires exit0, captures35 installed-wheel origins before/after, and checks sealed preflight before accepting the report.",
+        "The115-minute helper and145-minute job caps remain unchanged. Source2000/jobs2 is an inherited fail-closed aggregate cap, not a claim that four worst-case600-second waves fit. No budget expansion is inferred or recommended from this static peer."
+      ]
+    }
+  ],
+  "limits": [
+    "No Python/PowerShell/YAML parsing or execution was performed.",
+    "No source, installed, native, repeat playback, acoustic, physical-device or manual NVDA qualification is claimed.",
+    "This verdict does not replace Progress's independent focused helper source/wheel/whole-suite review or Root's final exact pin audit.",
+    "No repository refs, workflow dispatches, cancellation or external publication were changed."
+  ]
+}

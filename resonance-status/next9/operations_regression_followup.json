@@ -1,0 +1,173 @@
+{
+  "schema": "resonance-focused-operations-regression-handoff/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_base": "1f78fdbd723f489f504245ac7565d194be4e8067",
+  "files": [
+    {
+      "path": "carr-library/tests/operations/test_production_admission.py",
+      "before": "ab092398189a4118c652b14a43d549a42064b172",
+      "hunks": [
+        {
+          "before": "monkeypatch.setattr(durable_state, 'replace_file', after_publication(durable_state.replace_file))",
+          "after": "monkeypatch.setattr(durable_state.os, 'replace', after_publication(durable_state.os.replace))"
+        },
+        {
+          "before": "            assert service.get(job)['status'] == 'queued'\n            writer.start()\n",
+          "after": "            assert service.get(job)['status'] == 'queued'\n            assert not control.exists(), 'The first mutable control publication must also be atomic.'\n            writer.start()\n"
+        },
+        {
+          "before": "            assert service.get(job)['status'] == expected\n            assert durable_state.read_json(control) == {'action': action}\n",
+          "after": "            assert service.get(job)['status'] == expected\n            assert writer.is_alive(), 'The real publication writer must still be held before cleanup.'\n            assert control.stat().st_nlink == 1\n            assert durable_state.read_json(control) == {'action': action}\n"
+        },
+        {
+          "before": "    assert not writer_errors and not worker.is_alive() and not writer.is_alive()\n    assert not broker.snapshot()['leases']\n",
+          "after": "    assert not writer_errors and not worker.is_alive() and not writer.is_alive()\n    # Later requests keep the documented mutable last-write behavior too.\n    service.request_pause(job)\n    assert durable_state.read_json(control) == {'action': 'pause'}\n    service.cancel(job)\n    assert durable_state.read_json(control) == {'action': 'cancel'}\n    assert control.stat().st_nlink == 1 and not list(control.parent.glob('.pending-*'))\n    assert not broker.snapshot()['leases']\n"
+        }
+      ],
+      "sha": "894118912a1cb843e7654c28899a488d94f22f61",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_operations_cli.py",
+      "before": "12aef567dac6bc3732afb9f6ff960b25f4d0a82d",
+      "hunks": [
+        {
+          "before": "    import carr_library\n",
+          "after": "    import carr_library\n    import bootstrap as selected_bootstrap\n"
+        },
+        {
+          "before": "        \"origin=pathlib.Path(sys.argv[1]).resolve(strict=True); \"\n",
+          "after": "        \"helper=pathlib.Path(sys.argv[3]).resolve(strict=True); \"\n        \"helper_spec=importlib.util.spec_from_file_location('bootstrap',helper,submodule_search_locations=[str(helper.parent)]); \"\n        \"helper_module=importlib.util.module_from_spec(helper_spec);sys.modules['bootstrap']=helper_module;helper_spec.loader.exec_module(helper_module); \"\n        \"assert pathlib.Path(helper_module.__file__).resolve()==helper; \"\n        \"origin=pathlib.Path(sys.argv[1]).resolve(strict=True); \"\n"
+        },
+        {
+          "before": "        \"sys.argv=['carr_library',*sys.argv[3:]];runpy.run_module('carr_library',run_name='__main__')\"\n",
+          "after": "        \"sys.argv=['carr_library',*sys.argv[4:]];runpy.run_module('carr_library',run_name='__main__')\"\n"
+        },
+        {
+          "before": "            str(Path(carr_library.__file__).resolve()), str(Path(cli.__file__).resolve()),\n",
+          "after": "            str(Path(carr_library.__file__).resolve()), str(Path(cli.__file__).resolve()),\n            str(Path(selected_bootstrap.__file__).resolve()),\n"
+        }
+      ],
+      "sha": "bd7b717f7bff25b2aa297574c5b3fb8bad9c6720",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/tests/operations/test_resources.py",
+      "before": "c8eef1bbd9785a6993138475ad9a8e82032e7608",
+      "hunks": [
+        {
+          "before": "def test_active_timeout_is_stop_signal_never_forced_reclaim(broker):\n    with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='timed', timeout=0, run_timeout=.01) as lease:\n        time.sleep(.02)\n        assert lease.cancelled()\n",
+          "after": "def test_active_timeout_is_stop_signal_never_forced_reclaim(broker, monkeypatch):\n    import carr_library.operations.broker as module\n    clock = [0.0]\n    # Native policy/lock/file admission can itself exceed 10 ms on Windows.\n    # Advance only the broker's scheduling clock after the real lease is held;\n    # the same 10 ms execution deadline and native exclusion remain in force.\n    monkeypatch.setattr(module, 'time', SimpleNamespace(\n        monotonic=lambda: clock[0], sleep=time.sleep, time=time.time))\n    with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='timed', timeout=0, run_timeout=.01) as lease:\n        assert not lease.cancelled()\n        lease.checkpoint()\n        clock[0] = .02\n        assert lease.cancelled()\n"
+        }
+      ],
+      "sha": "9fe5c3f506f2d8db49ec641e6373a9ec5029b371",
+      "readback": "EXACT"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before": "496f0ff69c6b385672997fadeccd3f07b66daf40",
+      "hunks": [
+        {
+          "before": "    def request_pause(self, job_id):\n        self.get(job_id)\n        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'pause'},\n                    replace=(self.jobs_root / job_id / 'control.json').exists())\n\n    def cancel(self, job_id):\n        self.get(job_id)\n        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'},\n                    replace=(self.jobs_root / job_id / 'control.json').exists())\n",
+          "after": "    def request_pause(self, job_id):\n        self.get(job_id)\n        # Mutable controls use last-write replacement from their first write.\n        # A create-only POSIX link can be visible before its staged link is gone.\n        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'pause'}, replace=True)\n\n    def cancel(self, job_id):\n        self.get(job_id)\n        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'}, replace=True)\n"
+        }
+      ],
+      "sha": "49520794ad86a7e9936e489a457b220f715bbda3",
+      "readback": "EXACT"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "bfbac56257c0075e04b7077f5c377fb881c0e717",
+      "hunks": [
+        {
+          "before": "\"tests/operations/test_production_admission.py\":\"ab092398189a4118c652b14a43d549a42064b172\"",
+          "after": "\"tests/operations/test_production_admission.py\":\"894118912a1cb843e7654c28899a488d94f22f61\"",
+          "occurrences": 2
+        },
+        {
+          "before": "\"tests/e2e/test_operations_cli.py\":\"12aef567dac6bc3732afb9f6ff960b25f4d0a82d\"",
+          "after": "\"tests/e2e/test_operations_cli.py\":\"bd7b717f7bff25b2aa297574c5b3fb8bad9c6720\"",
+          "occurrences": 2
+        },
+        {
+          "before": "\"tests/operations/test_resources.py\":\"c8eef1bbd9785a6993138475ad9a8e82032e7608\"",
+          "after": "\"tests/operations/test_resources.py\":\"9fe5c3f506f2d8db49ec641e6373a9ec5029b371\"",
+          "occurrences": 2
+        },
+        {
+          "before": "\"tests/ingest/test_initial_publication_completion.py\":2",
+          "after": "\"tests/ingest/test_initial_publication_completion.py\":4",
+          "occurrences": 4
+        },
+        {
+          "kind": "exact_additive_pin",
+          "path": "src/carr_library/studio/render.py",
+          "sha": "49520794ad86a7e9936e489a457b220f715bbda3",
+          "occurrences": 2
+        }
+      ],
+      "sha": "e9bc2d3506965124f0ba386a47c86cec622253e4",
+      "readback": "EXACT"
+    }
+  ],
+  "required_validation": {
+    "whole_suites": [
+      {
+        "path": "tests/operations/test_production_admission.py",
+        "expected": 18
+      },
+      {
+        "path": "tests/e2e/test_operations_cli.py",
+        "expected": 5
+      },
+      {
+        "path": "tests/operations/test_resources.py",
+        "expected": 18
+      }
+    ],
+    "counts_unchanged": true,
+    "source_and_installed": true,
+    "platforms": [
+      "Linux",
+      "Windows"
+    ],
+    "source_whole_case_timeouts_unchanged": true,
+    "production_native_guards_unchanged": true,
+    "new_test_cases": 0,
+    "execution": "NOT_RUN"
+  },
+  "diagnostic": {
+    "path": ".github/workflows/carr-next9-final-source.yml",
+    "sha": "e9bc2d3506965124f0ba386a47c86cec622253e4",
+    "before": "bfbac56257c0075e04b7077f5c377fb881c0e717",
+    "original_three_jobs": "BYTE_IDENTICAL",
+    "focused_linux": {
+      "suites": 33,
+      "cases": 420
+    },
+    "focused_windows": {
+      "suites": 32,
+      "cases": 419
+    },
+    "only_changes": "Three exact modified fixture pins, unchanged initial-publication whole-suite expectation2→4 in before/after maps, explicit modified renderer pin in both inventories.",
+    "source_pin_composition": "If another accepted renderer change is composed, update its diagnostic exact pin to the final composed source; do not retain495207 as a false source identity.",
+    "timeouts_deps_case_lists_policy_changes": false
+  },
+  "authority": {
+    "root_approved": "First-write mutable Pause/Cancel controls use the existing last-write replacement contract. Production source changes were explicitly authorized after the genuine static POSIX double-link counterexample was identified. All local path/regular-file/get/scope boundaries remain; no immutable artifact publisher is changed.",
+    "prior_tests_preserved": "Original test functions, parameters, blocking native publication seam, worker/lease/output/source assertions remain. Existing two late-control cases add actual first-publication single-link/held-writer evidence and subsequent pause→cancel writes.",
+    "clock_scope": "Only the broker module scheduling clock is controlled in one fixture. Actual native paths/locks/lease and timeout exceptions remain. Same .01 run allowance and .02 expiry; no production timeout or native reclamation relaxation.",
+    "cli_scope": "Same imported package and bootstrap identities bind the isolated child. -I/-B, existing CLI-source assertion, ASCII environment, UTF-8 JSON and live Unicode lease/path assertions remain."
+  },
+  "actual_evidence_blob": "6ec9eb5257674afc7af23143a89269bcf497d008",
+  "peer_review": [
+    {
+      "reviewer": "root",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact four source/test changes and durable/renderer contract; diagnostic adds only approved pins/counts."
+    }
+  ],
+  "refs_changed": false,
+  "tests_executed_locally": false
+}

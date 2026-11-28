@@ -1,0 +1,104 @@
+{
+  "schema": "carr-publication-cursor-lifetime-correction/1",
+  "status": "REVIEW_PENDING_NOT_RUN",
+  "base_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "base_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "observed_failure": {
+    "source": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+    "run": 46128930916,
+    "job": 140931167670,
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46128930916/job/140931167670",
+    "whole": "tests/ingest/test_large_source_intake.py",
+    "passed": 5,
+    "failed": 1,
+    "seconds": 250.03,
+    "failed_case": "test_large_source_completed_before_real_child_cancel_is_recovered_without_republication[txt]",
+    "error": "sqlite3.OperationalError: database is locked",
+    "location": "LibraryApp(app.root) -> Storage.__init__ -> Storage.transaction -> db.commit()",
+    "full_log": {
+      "bytes": 843111,
+      "sha256": "7b5ac840bf9dc5d4fc2efde50f8be9d995e23cacb26d2d64af610d5929e16fee"
+    },
+    "causal_scope": "The closed log establishes this lock failure. Retained cursor causality is a reviewed source inference pending deterministic preimage/postimage execution."
+  },
+  "reason": "A raised page check retains the named active SQLite cursor in an exception traceback. Connection.close uses sqlite3_close_v2, which defers destruction until prepared statements finalize. The page cursor must close before the outer read connection.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "preimage": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "blob": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+      "utf8": {
+        "bytes": 42310,
+        "sha256": "466d6f3afa688399c93797d34713212d5d105b27061c5133b65f73074a9998eb"
+      },
+      "hunks": [
+        {
+          "old": "    for page in pages:\n        check()\n        completed += 1\n        # Extraction already enforces its format-specific capacity. This\n        # streaming verifier must not impose the PDF page limit on DOCX records.\n        if (page[0] != completed or not isinstance(page[4], str)\n                or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):\n            raise ValueError('Import publication page integrity changed.')\n        digest.update(b'\\n')\n        digest.update(canonical(list(page)).encode('utf-8'))\n",
+          "replacement": "    # A retained failure traceback can keep this cursor alive after the\n    # connection closes. Finalize its statement before leaving the snapshot so\n    # an interrupted recovery never retains a read lock until garbage collection.\n    with closing(pages):\n        for page in pages:\n            check()\n            completed += 1\n            # Extraction already enforces its format-specific capacity. This\n            # streaming verifier must not impose the PDF page limit on DOCX records.\n            if (page[0] != completed or not isinstance(page[4], str)\n                    or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):\n                raise ValueError('Import publication page integrity changed.')\n            digest.update(b'\\n')\n            digest.update(canonical(list(page)).encode('utf-8'))\n",
+          "offset": 8175
+        }
+      ],
+      "full_inverse": true,
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "preimage": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5",
+      "blob": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+      "utf8": {
+        "bytes": 18791,
+        "sha256": "bbc3f8a4158b27e76100bf8ad3f5556d7aaa8dec5ca381045c658fde41080709"
+      },
+      "hunks": [
+        {
+          "old": "",
+          "replacement": "\n\ndef test_interrupted_publication_read_releases_lock_with_retained_traceback(tmp_path):\n    from carr_library.ingest.publication import _read_database\n    from carr_library.pending_backup import MAX_PAYLOAD\n\n    source = tmp_path / 'three-pages.txt'\n    source.write_text('First exact page.\\fSecond exact page.\\fThird exact page.', encoding='utf-8')\n    app = LibraryApp(tmp_path / 'library')\n    workspace = app.create_workspace('Interrupted receipt')\n    result = app.import_file(workspace, source, timeout=60, **metadata())\n    assert result['state'] == 'complete' and result['completed'] == 3, result\n    request = worker.load_request(app.root, result['request_id'])\n    candidate = request['publication_candidate']\n    assert candidate['revision'] == result['id']\n    page_queries = []\n\n    def observe_query(statement):\n        if (statement.startswith('SELECT ordinal,physical,printed,verified,')\n                and 'FROM page WHERE revision=' in statement):\n            page_queries.append(statement)\n\n    def interrupt_pages():\n        if page_queries:\n            raise TimeoutError('Synthetic stop during receipt page iteration.')\n\n    # This small deterministic regression exercises the real read connection,\n    # SQLite cursor and receipt verifier. The existing large-source cases retain\n    # the real one-second reconciliation deadline and actual child termination.\n    with pytest.raises(TimeoutError, match='Synthetic stop during receipt page iteration') as failure:\n        with _read_database(app.database, lambda: False, MAX_PAYLOAD) as db:\n            db.set_trace_callback(observe_query)\n            try:\n                worker._publication_state(db, request, candidate['revision'],\n                                          check=interrupt_pages, max_payload=MAX_PAYLOAD)\n            finally:\n                db.set_trace_callback(None)\n    assert len(page_queries) == 1\n    traceback = failure.value.__traceback__\n    while traceback is not None and traceback.tb_frame.f_code is not worker._publication_state.__code__:\n        traceback = traceback.tb_next\n    assert traceback is not None and 'pages' in traceback.tb_frame.f_locals\n\n    # Keep the exception and verifier frame alive while a separate writer must\n    # commit immediately. No garbage collection, busy retry or timeout increase\n    # may be needed to release the interrupted reader's statement.\n    with closing(sqlite3.connect(app.database, isolation_level=None, timeout=0)) as writer:\n        writer.execute('BEGIN IMMEDIATE')\n        writer.execute('UPDATE workspace_meta SET description=? WHERE workspace=?',\n                       ('Writer committed after interrupted receipt.', workspace))\n        writer.commit()\n    reopened = LibraryApp(app.root)\n    with reopened.read(workspace) as db:\n        assert db.execute('SELECT description FROM workspace_meta WHERE workspace=?',\n                          (workspace,)).fetchone()[0] == 'Writer committed after interrupted receipt.'\n        assert [row[0] for row in db.execute(\n            'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (result['id'],))] == [\n                'First exact page.', 'Second exact page.', 'Third exact page.']\n        receipt, = [tuple(row) for row in db.execute(\n            'SELECT revision,request_id,attempt,sha256 FROM import_publication')]\n        assert receipt == (result['id'], result['request_id'], request['attempt'], candidate['sha256'])\n    assert failure.value.__traceback__ is not None and traceback.tb_frame.f_locals['pages'] is not None\n",
+          "offset": 15246
+        }
+      ],
+      "full_inverse": true,
+      "readback_exact": true
+    }
+  ],
+  "contract": {
+    "original_whole_cases": 6,
+    "current_whole_cases": 7,
+    "appended_function": "test_interrupted_publication_read_releases_lock_with_retained_traceback",
+    "original_file_preserved_exact_prefix": true,
+    "product_query_payload_digest_checks_unchanged": true,
+    "product_time_budgets_unchanged": true,
+    "one_second_actual_reconciliation_unchanged": true,
+    "sqlite_busy_timeout_unchanged": true,
+    "no_garbage_collection_workaround": true,
+    "no_retry": true,
+    "no_wal_mode_change": true
+  },
+  "regression": {
+    "data": "Actual synthetic three-page TXT import",
+    "exception": "Deterministic TimeoutError via existing page check callback after SQLite trace observes actual page SELECT",
+    "held": "Exception traceback and _publication_state frame with pages local retained",
+    "external_effect": "Separate real SQLite connection timeout=0 must commit, followed by a fresh LibraryApp and exact pages plus immutable receipt checks",
+    "scope": "Resource-lifetime regression; existing six large-source actual cases remain unchanged."
+  },
+  "primary_authority": [
+    {
+      "url": "https://sqlite.org/c3ref/close.html",
+      "scope": "Close_v2 defers connection destruction while unfinalized statements exist."
+    },
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Modules/_sqlite/connection.c",
+      "scope": "Exact runtime version connection_close calls sqlite3_close_v2",
+      "retrieved_full_source": {
+        "bytes": 70945,
+        "sha256": "cafbdbdac6b594661c8191e6848c7a021120bcc25dec2d32477736be348b0c75"
+      }
+    }
+  ],
+  "execution": {
+    "preimage_regression": "NOT_RUN",
+    "postimage_regression": "NOT_RUN",
+    "all_seven_whole_cases": "NOT_RUN",
+    "installed": "NOT_RUN"
+  },
+  "gates": "Locate preparing exact count and pin closure; this component does not claim gate integration."
+}

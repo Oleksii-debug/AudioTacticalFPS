@@ -38,6 +38,15 @@ license-files = [
 
 [project.optional-dependencies]
 desktop = ["wxPython==4.2.4"]
+sync = ["cryptography==50.0.2"]
+trusted-client = [
+  "cryptography==50.0.2",
+  "tuf==7.0.1",
+  "securesystemslib==1.6.0",
+  "urllib3==2.8.0",
+  "cffi==2.1.1",
+  "pycparser==3.12",
+]
 semantic = [
   "fastembed==0.9.1",
   "onnxruntime==1.32.0",
@@ -62,6 +71,7 @@ test = [
 [project.scripts]
 research-library = "carr_library.__main__:main"
 research-library-bibliography = "carr_library.bibliography_cli:main"
+research-library-trust = "carr_library.security.__main__:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
 
 [project.gui-scripts]
@@ -74,6 +84,7 @@ Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/ca
 include-package-data = true
 packages = [
   "carr_library",
+  "carr_library.academic_integration",
   "carr_library.acquisition",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
@@ -95,9 +106,10 @@ packages = [
   "carr_library.audio",
   "carr_library.speech",
   "carr_library.studio",
-  "carr_library.assistant",
+  "carr_library.sync",
   "carr_library.operations",
-  "carr_library.transcription",
+  "carr_library.security",
+  "carr_library.assistant",
   "carr_library.conversion",
   "bootstrap",
   "bootstrap.vendor",
@@ -116,6 +128,6 @@ bootstrap = "bootstrap"
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
 
 [tool.pytest.ini_options]
+markers = ["requires_loopback: real HTTP tests requiring an explicit loopback-only networking gate"]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
-markers = ["requires_loopback: exercises a synthetic local HTTP server; requires a separately declared loopback-enabled gate"]

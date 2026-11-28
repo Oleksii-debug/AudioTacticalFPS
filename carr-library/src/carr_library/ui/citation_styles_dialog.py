@@ -69,10 +69,13 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             self.copy_bibliography = wx.Button(self, label='Copy &bibliography')
             self.copy_citations = wx.Button(self, label='Copy citation e&xamples')
             self.export_button = wx.Button(self, label='&Export bibliography')
+            self.word_button = wx.Button(self, label='Already-open &Word...')
+            self.word_button.SetName('Review citations in already-open Word')
+            self.word_button.Bind(wx.EVT_BUTTON, self.on_word)
             self.copy_bibliography.Bind(wx.EVT_BUTTON, lambda event: self.on_copy('bibliography'))
             self.copy_citations.Bind(wx.EVT_BUTTON, lambda event: self.on_copy('citations'))
             self.export_button.Bind(wx.EVT_BUTTON, self.on_export)
-            for button in (self.copy_bibliography, self.copy_citations, self.export_button):
+            for button in (self.copy_bibliography, self.copy_citations, self.export_button, self.word_button):
                 button.Enable(False)
                 actions.Add(button, 0, wx.ALL, 4)
             layout.Add(actions, 0, wx.ALL, 4)
@@ -106,7 +109,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
         def controls(self, *, pending):
             for control in (*self.options, self.generate):
                 control.Enable(not pending)
-            for control in (self.copy_bibliography, self.copy_citations, self.export_button):
+            for control in (self.copy_bibliography, self.copy_citations, self.export_button, self.word_button):
                 control.Enable(not pending and self.preview is not None)
 
         def on_options_changed(self, event=None):
@@ -210,6 +213,49 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.report('Bibliography copied.' if part == 'bibliography' else 'Citation examples copied.')
             except Exception as exc:
                 self.report(f'Text not copied: {exc}')
+
+        def on_word(self, event=None):
+            if self.pending is not None:
+                return
+            dialog = None
+            try:
+                selected = self.preview
+                self.workbench.check(selected)
+                library, workspace = controller.library, controller.workspace
+                chain, node, host = [], self, None
+                while node is not None and all(node is not item for item in chain):
+                    chain.append(node)
+                    if getattr(node, 'library', None) is library:
+                        host = node
+                        break
+                    node = node.GetParent()
+                if host is None:
+                    raise ValueError('Open this workbench from the selected library desktop before using Word.')
+
+                host_scope = host.active
+                if not isinstance(host_scope, tuple) or not host_scope or host_scope[0] != workspace:
+                    raise ValueError('The active desktop workspace differs from this bibliography.')
+
+                def current():
+                    if (not self.alive or self.preview is not selected
+                            or controller.library is not library or controller.workspace != workspace
+                            or host.library is not library or host.active != host_scope or getattr(host, '_closing', False)
+                            or any(getattr(owner, 'alive', True) is False for owner in chain)):
+                        raise ValueError('The library or bibliography review changed; reopen Word review.')
+
+                current()
+                from .word_citations_dialog import create_word_citation_dialog
+                dialog = create_word_citation_dialog(self, self.workbench, selected,
+                    executor=self.executor, guard=current)
+                dialog.ShowModal()
+                current()
+                self.report('Word review closed. The bridge never saves or closes Word; inspect any uncertain change there.')
+            except Exception as exc:
+                if self.alive:
+                    self.report(f'Word review unavailable: {exc}')
+            finally:
+                if dialog is not None:
+                    dialog.Destroy()
 
         def on_export(self, event=None):
             if self.pending is not None:

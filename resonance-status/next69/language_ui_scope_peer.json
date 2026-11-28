@@ -1,0 +1,36 @@
+{
+  "schema": "carr-bounded-peer-v1",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "scope": "Language evidence late outcome delivery and appended real-store UI regressions",
+  "source": {
+    "path": "carr-library/src/carr_library/ui/language_matrix.py",
+    "before": "0ab2481e4bf081bbc398b068390f035f21606d7e",
+    "after": "3c5a50d5117f25b58a5333f4165a661db22f80b0"
+  },
+  "tests": {
+    "path": "carr-library/tests/language_qualification/test_evidence_ui.py",
+    "before": "e4c8d5dcfc1ecf772401301e4c0d90cfc043d168",
+    "after": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+    "old_prefix_exact": true,
+    "cases": 28,
+    "functions": 12,
+    "additions": {
+      "test_late_committed_failure_retains_receipt_without_applying_old_library": 4,
+      "test_current_failure_preserves_original_error_and_only_applies_actual_commit": 2,
+      "test_late_success_retains_exact_result_without_delivering_it_to_changed_library": 1
+    }
+  },
+  "observations": [
+    "The current-library object, original root spelling and actual store ancestor guard now bracket both success and failure delivery.",
+    "EvidenceDeliveryScopeError preserves the exact committed error or completed result without subclassing EvidenceSaveCommittedError; therefore _run_evidence cannot adopt a stale committed snapshot.",
+    "Current-scope errors are forwarded by object identity; the original store commit and saved bytes remain unchanged.",
+    "The actual DesktopFrame.run_job invokes failed on exceptions raised by done, matching the typed late-success path.",
+    "The appended seven cases perform real EvidenceStore writes and then object/root/directory/closing changes; old 21-case bytes are an exact prefix.",
+    "Control names, native probe route, shared executor and existing lifecycle remain unchanged."
+  ],
+  "limitations": [
+    "No Python parser, pytest, native wx or Windows execution was performed.",
+    "Recorded human assessments are not authenticated reviewers or actual language-quality qualification."
+  ]
+}

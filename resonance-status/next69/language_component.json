@@ -1,0 +1,367 @@
+{
+  "schema": "carr-language-evidence-component/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 08:33:52 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "tree": "e54789eebce9bd393a956e7d63c58b7b36601595",
+    "all_preimages_exact": true
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/language_qualification/evidence.py",
+      "preimage": null,
+      "git_blob": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+      "utf8": {
+        "sha256": "7d982fdceb3fe23db4d22f6b79e4c3ec2d9338b4f84ab716c3e1e00a65f61311",
+        "bytes": 26393
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/backup.py",
+      "preimage": null,
+      "git_blob": "45f11351d946bd10587d2842dca80c3e4eb7a39a",
+      "utf8": {
+        "sha256": "c56d2d38cffeaa0f09c912daeba58720c043bd70f150823bba6d74642a7951b2",
+        "bytes": 4546
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "preimage": "bad9aa5c644573ed18fdb83527733dd99a738ade",
+      "git_blob": "236a61ecb765b544ca4e0005fb94e6b462256996",
+      "utf8": {
+        "sha256": "a90ec1f521ed09d5e319aebe82dc3236eeb3fd654d2a4aab70e094e8bcc24b41",
+        "bytes": 25278
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "preimage": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+      "git_blob": "4052234a20b12d26d825463363e2126585f73211",
+      "utf8": {
+        "sha256": "687047efa94a0caa5f9557f6cc47eacb92e7765745d9fcb40973819d81ed88a9",
+        "bytes": 44505
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "preimage": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+      "git_blob": "65c75e75f82c78ba3153da01d687669b276428e3",
+      "utf8": {
+        "sha256": "d4fa70f7cda37b94da6021438711a2d81e64afc440f468193de3cb2b0eb1ad93",
+        "bytes": 27085
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "preimage": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "git_blob": "0ccbba5db4c41e78143f0ef11aef51bd3df55339",
+      "utf8": {
+        "sha256": "d595c7df45cc743c644993613ee8c6edb1c10c5218ea453c32d8a7ff2dbd9ac7",
+        "bytes": 23841
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "preimage": "ba8a105cad8b021bd35625e005ffc01b1e8c578e",
+      "git_blob": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+      "utf8": {
+        "sha256": "f35f1a4382c559c8e888bf8318dc247deccba2416b1148f95fee7b5fe169a648",
+        "bytes": 39945
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/language_qualification/evidence_fixture.py",
+      "preimage": null,
+      "git_blob": "72944369f7304650e8742f97372d41415e3e35da",
+      "utf8": {
+        "sha256": "42f829d79397daafc622f88eddaabdd2c135bf3cb9b0e00333cfb4446204cd7a",
+        "bytes": 2575
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence.py",
+      "preimage": null,
+      "git_blob": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+      "utf8": {
+        "sha256": "5d6cebc648c025ae827fcf6fa0a65a4fad2720240a66e0e85b54a87680345520",
+        "bytes": 15131
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence_backup.py",
+      "preimage": null,
+      "git_blob": "a40f8b1964fa0a2ccc66e06e46134701484adb38",
+      "utf8": {
+        "sha256": "5b6d1ba7c9653b2305f4fd994523815bc25b4090e1be6ba0f472cd313f61d4fc",
+        "bytes": 8538
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence_ui.py",
+      "preimage": null,
+      "git_blob": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+      "utf8": {
+        "sha256": "07f710f37e6c23c173ee62e63d95d2e6522018d2df824d93ecfab1f709446516",
+        "bytes": 20434
+      },
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/docs/language_qualification.md",
+      "preimage": "0762689c5b844dd7498da2ee70b46f72d29e7e51",
+      "git_blob": "2329190cc1096188bbb7f2debb6e762baab51d3d",
+      "utf8": {
+        "sha256": "30e2ffbeb00ebf2f79c44aaea0480c82e20d3d3a92477988141903ac201f4cae",
+        "bytes": 15995
+      },
+      "readback_exact": true
+    }
+  ],
+  "source_inventory_git_blob": "92d9c3aefd1f378f97b376bc20f6edc2e038beb3",
+  "inverse_audit_git_blob": "4b49352e0f723c4d65e8226b532880e5d49f80bd",
+  "suites": {
+    "tests/language_qualification/test_evidence.py": {
+      "git_blob": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+      "cases": 54,
+      "functions": [
+        "test_passive_import_and_zero_default_never_execute_or_accept_reviews",
+        "test_import_refuses_forged_or_ambiguous_observation_shapes",
+        "test_import_uses_strict_real_json_snapshot_decoder",
+        "test_review_binds_complete_observation_and_explicit_distinct_provenance",
+        "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests",
+        "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope",
+        "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes",
+        "test_real_directory_substitution_is_not_silently_adopted",
+        "test_linked_or_nonregular_evidence_is_refused_without_modification",
+        "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged",
+        "test_final_callback_cannot_replace_state_or_scope_before_actual_publication",
+        "test_visible_late_commit_is_reported_without_repeating_or_erasing_it",
+        "test_review_history_preserves_all_prior_rejections_and_revocations",
+        "test_collection_bounds_refuse_before_unbounded_history_processing"
+      ],
+      "function_case_counts": {
+        "test_passive_import_and_zero_default_never_execute_or_accept_reviews": 2,
+        "test_import_refuses_forged_or_ambiguous_observation_shapes": 20,
+        "test_import_uses_strict_real_json_snapshot_decoder": 3,
+        "test_review_binds_complete_observation_and_explicit_distinct_provenance": 4,
+        "test_scoped_assessment_never_upgrades_partial_failed_or_unexecuted_tests": 5,
+        "test_all_twenty_two_capabilities_require_one_exact_selected_context_and_scope": 4,
+        "test_real_token_cas_and_noop_preserve_files_and_detect_same_revision_changes": 1,
+        "test_real_directory_substitution_is_not_silently_adopted": 3,
+        "test_linked_or_nonregular_evidence_is_refused_without_modification": 2,
+        "test_original_cancellation_objects_leave_real_state_and_cleanup_unchanged": 4,
+        "test_final_callback_cannot_replace_state_or_scope_before_actual_publication": 2,
+        "test_visible_late_commit_is_reported_without_repeating_or_erasing_it": 1,
+        "test_review_history_preserves_all_prior_rejections_and_revocations": 1,
+        "test_collection_bounds_refuse_before_unbounded_history_processing": 2
+      },
+      "companions": [
+        "tests/language_qualification/evidence_fixture.py"
+      ]
+    },
+    "tests/language_qualification/test_evidence_backup.py": {
+      "git_blob": "a40f8b1964fa0a2ccc66e06e46134701484adb38",
+      "cases": 27,
+      "functions": [
+        "test_real_backups_preserve_history_but_restored_positive_reviews_are_dormant",
+        "test_resigned_invalid_typed_evidence_cannot_be_restored",
+        "test_unknown_reserved_namespace_cannot_be_omitted_or_copied_opaquely",
+        "test_portable_case_alias_is_rejected_before_looking_for_copied_state",
+        "test_cancelled_dormancy_preparation_preserves_exact_copied_bytes_and_exception",
+        "test_only_exact_writer_temporaries_are_excluded_from_passive_backup"
+      ],
+      "function_case_counts": {
+        "test_real_backups_preserve_history_but_restored_positive_reviews_are_dormant": 2,
+        "test_resigned_invalid_typed_evidence_cannot_be_restored": 16,
+        "test_unknown_reserved_namespace_cannot_be_omitted_or_copied_opaquely": 4,
+        "test_portable_case_alias_is_rejected_before_looking_for_copied_state": 2,
+        "test_cancelled_dormancy_preparation_preserves_exact_copied_bytes_and_exception": 1,
+        "test_only_exact_writer_temporaries_are_excluded_from_passive_backup": 2
+      },
+      "companions": [
+        "tests/language_qualification/evidence_fixture.py"
+      ]
+    },
+    "tests/language_qualification/test_evidence_ui.py": {
+      "git_blob": "00e756cc58ccbf30821b70fee984760c2a1d3756",
+      "cases": 28,
+      "functions": [
+        "test_controller_requires_explicit_configuration_and_retains_exact_review_details",
+        "test_worker_and_result_callbacks_reject_current_library_changes",
+        "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review",
+        "test_report_is_create_only_passive_and_never_roundtrips_as_approval",
+        "test_cancelled_report_preserves_original_exception_and_creates_nothing",
+        "test_report_rechecks_actual_state_after_the_last_callback",
+        "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record",
+        "test_native_callback_never_publishes_unconfirmed_or_stale_review",
+        "test_native_import_requires_explicit_yes_and_stays_passive",
+        "test_late_committed_failure_retains_receipt_without_applying_old_library",
+        "test_current_failure_preserves_original_error_and_only_applies_actual_commit",
+        "test_late_success_retains_exact_result_without_delivering_it_to_changed_library"
+      ],
+      "function_case_counts": {
+        "test_controller_requires_explicit_configuration_and_retains_exact_review_details": 1,
+        "test_worker_and_result_callbacks_reject_current_library_changes": 6,
+        "test_controller_snapshot_cannot_overwrite_a_concurrent_actual_review": 1,
+        "test_report_is_create_only_passive_and_never_roundtrips_as_approval": 1,
+        "test_cancelled_report_preserves_original_exception_and_creates_nothing": 2,
+        "test_report_rechecks_actual_state_after_the_last_callback": 1,
+        "test_actual_native_review_callback_uses_live_fields_and_bound_selected_record": 3,
+        "test_native_callback_never_publishes_unconfirmed_or_stale_review": 4,
+        "test_native_import_requires_explicit_yes_and_stays_passive": 2,
+        "test_late_committed_failure_retains_receipt_without_applying_old_library": 4,
+        "test_current_failure_preserves_original_error_and_only_applies_actual_commit": 2,
+        "test_late_success_retains_exact_result_without_delivering_it_to_changed_library": 1
+      },
+      "companions": [
+        "tests/language_qualification/evidence_fixture.py"
+      ]
+    }
+  },
+  "new_whole_modules": 3,
+  "new_case_count": 109,
+  "new_function_count": 32,
+  "full_source_whole_inventory": {
+    "before": 490,
+    "after": 493
+  },
+  "focused_whole_suites": {
+    "tests/language_qualification/test_catalog.py": 31,
+    "tests/language_qualification/test_ui.py": 7,
+    "tests/language_qualification/test_evidence.py": 54,
+    "tests/language_qualification/test_evidence_backup.py": 27,
+    "tests/language_qualification/test_evidence_ui.py": 28
+  },
+  "focused_case_count": 147,
+  "companions": [
+    {
+      "path": "tests/language_qualification/evidence_fixture.py",
+      "git_blob": "72944369f7304650e8742f97372d41415e3e35da",
+      "required_for": [
+        "tests/language_qualification/test_evidence.py",
+        "tests/language_qualification/test_evidence_backup.py",
+        "tests/language_qualification/test_evidence_ui.py"
+      ],
+      "policy": "Copy exact current bytes into every isolated test staging root; hash before and after execution."
+    }
+  ],
+  "required_changed_and_test_origins": {
+    "carr_library.language_qualification": {
+      "path": "carr-library/src/carr_library/language_qualification/__init__.py",
+      "git_blob": "9a6572a3c1a7e46d859d6cb8242c65880b02f285"
+    },
+    "carr_library.language_qualification.catalog": {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "git_blob": "236a61ecb765b544ca4e0005fb94e6b462256996"
+    },
+    "carr_library.language_qualification.evidence": {
+      "path": "carr-library/src/carr_library/language_qualification/evidence.py",
+      "git_blob": "befc09f3b9ac1724baf37d1d4016bb59b27f956c"
+    },
+    "carr_library.language_qualification.backup": {
+      "path": "carr-library/src/carr_library/language_qualification/backup.py",
+      "git_blob": "45f11351d946bd10587d2842dca80c3e4eb7a39a"
+    },
+    "carr_library.ui.language_matrix": {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "git_blob": "3c5a50d5117f25b58a5333f4165a661db22f80b0"
+    },
+    "carr_library.backup_sidecars": {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "git_blob": "4052234a20b12d26d825463363e2126585f73211"
+    },
+    "carr_library.state_backup": {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "git_blob": "65c75e75f82c78ba3153da01d687669b276428e3"
+    },
+    "carr_library.library_backup": {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "git_blob": "0ccbba5db4c41e78143f0ef11aef51bd3df55339"
+    },
+    "carr_library.durable_state": {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "git_blob": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb"
+    },
+    "carr_library.operations._locks": {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "git_blob": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693"
+    },
+    "carr_library.application": {
+      "path": "carr-library/src/carr_library/application.py",
+      "git_blob": "82af31743ca5cc6557477f6492c08b912751f4a4"
+    },
+    "carr_library.catalog.intake": {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "git_blob": "8518f012491b542a57593af75993907983ddda0d"
+    },
+    "carr_library.storage.revisions": {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "git_blob": "417a9920d4c25eacd36cc81f7441ea321c18d632"
+    },
+    "carr_library.storage.schema_identity": {
+      "path": "carr-library/src/carr_library/storage/schema_identity.py",
+      "git_blob": "2c72c6132969cb1076035a47ee87c4573ebd93be"
+    }
+  },
+  "required_catalog_data": [
+    {
+      "path": "carr-library/src/carr_library/language_qualification/data/LANGUAGE_COVERAGE_DEV2_UK.md",
+      "git_blob": "8081b24c7c33eff578e7896052d4221cfff8c684"
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/data/SELECTED_LANGUAGES_UK.md",
+      "git_blob": "caea8c5a8a5698971d75a565cba9a5a9c00b411f"
+    }
+  ],
+  "peers": {
+    "core_source": "6f18046aed8b1276f8e94a412dfbfca2cf62a8e1",
+    "core_backup_tests": "2d907c8006f126f90c8e058b2b33b142f4ed2b0c",
+    "original_ui": "95c3a82cc260f835177ce2ebf9caaebb2e8025cf",
+    "final_ui_scope": "804a36a8db4e4af54bd1b78568fdaef9448bff94",
+    "documentation": "9c9e4ec360dce0e4e52c5409d6e2d46d4f753d00"
+  },
+  "behavior": [
+    "Reuse the canonical selected-language catalog and all22 capability matrix; no editable parallel catalog.",
+    "Import only exact bounded passive observations. State, reports, review roots and source-controlled status never import approval.",
+    "A separately confirmed recorded assessment binds the complete observation, selected app/environment/engine/pack and explicit recorded provenance. Distinct reviewer/executor strings are consistency checks, not authenticated independence.",
+    "Keep every review and negative outcome; later unreviewed claims do not replace a reviewed choice. All22 count is scoped to one explicitly selected configuration and exact language scope.",
+    "Use existing durable_state byte-token CAS and state lock; recheck current file/scope after the last callback. Late visible commits retain their saved receipt; stale UI delivery retains original outcomes without applying an old-library snapshot.",
+    "Both real backup routes validate typed original staged content and hashes, preserve all history and make historical positive assessments dormant until explicit local rereview.",
+    "The current Voice menu and existing shared frame worker host the native UI. Import defaults No, review acknowledgements start false, export creates passive reports outside the library."
+  ],
+  "limits": {
+    "ordinary_runtime": "NOT_RUN",
+    "native_runtime": "PENDING_SEPARATE_LOCATE_PROBE",
+    "real_language_quality": "NOT_QUALIFIED",
+    "authenticated_reviewers": "NOT_ESTABLISHED",
+    "current_device_qualification": "NOT_INFERRED",
+    "automatic_test_execution": "NONE",
+    "network_or_model_authority": "NONE",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  },
+  "next_gate": {
+    "helper": "carr-library/scripts/ci_language_evidence_contracts.py",
+    "workflow": ".github/workflows/carr-language-evidence.yml",
+    "data": "carr-library/scripts/ci_language_evidence_cases.json",
+    "expected_source_and_installed_each": 147,
+    "per_whole_seconds": 600,
+    "native_watchdog_seconds": 300,
+    "native_parent_seconds": 330,
+    "owner": "canonical_regression; native probe locate_project; root full-gate and ref composition"
+  },
+  "ref_mutations": "NONE"
+}

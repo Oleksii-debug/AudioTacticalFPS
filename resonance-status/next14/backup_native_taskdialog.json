@@ -1,0 +1,65 @@
+{
+  "schema": "resonance-backup-native-taskdialog-correction/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "preimage": "dffdce9ac49fcb54cd2393f410f0844ad9c52130",
+      "sha": "ac651695779424fcba69696ce05c2d84c807899e"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "d65654a8868e1a324575c92746a513b63b059754",
+      "sha": "8164d479c14eb109a76aba3d779284917e651676"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "a44317b48fa8df607fb924dbd2382b4b88281538",
+      "sha": "7303b9cb868392b26fd4c919beb877aa39936721"
+    }
+  ],
+  "actual_cause": {
+    "failed_run": 46068132683,
+    "failed_job": 140738314254,
+    "failed_source": "2f0c1f51261e8f037b53d3f394dad3f0d0c15242",
+    "failure_evidence": "c89dc959c8f9248b366b80dbd04f7357672ebfb4",
+    "inventory_run": 46071950490,
+    "inventory_job": 140750744213,
+    "inventory_source": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+    "observed": "Actual nested Button descendants &Yes and &No have control ID zero. Direct GetDlgItem IDs6/7/5103/5104 all absent."
+  },
+  "correction": {
+    "inline_pattern": "02d845a0a047712dae8348582a04de76a0771beb",
+    "ownership": "Exact question title plus current PID and live known owner chain retained before bounded128 descendant enumeration.",
+    "normal_confirmation": "Actual focused No HWND comparison and real Space press/release; focus is not set to manufacture the default.",
+    "failure_cleanup": "SetActiveWindow of verified owned question then BM_CLICK on its verified native No button. Existing actual wx.NO and surviving outer-modal assertions retained."
+  },
+  "preserved": {
+    "product_code": true,
+    "required_native_checks": 44,
+    "independent_origin_modules": 12,
+    "check_call_sites": 23,
+    "primary_deadline_seconds": 150,
+    "watchdog_seconds": 180,
+    "per_command_seconds": 50,
+    "question_seconds": 5,
+    "source_and_installed_suites": 10,
+    "source_and_installed_cases_each": 178,
+    "no_EndDialog": true,
+    "no_budget_increase": true
+  },
+  "review": {
+    "author": "root",
+    "independent": "locate_project",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "exact_source_readback": true,
+    "workflow_reconstruction": "Each new workflow reconstructs its exact preimage by reversing only the native script SHA."
+  },
+  "runtime": "NOT_RUN for these successor bytes",
+  "primary_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/controls/bm-click",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumchildwindows"
+  ],
+  "refs_changed": false
+}

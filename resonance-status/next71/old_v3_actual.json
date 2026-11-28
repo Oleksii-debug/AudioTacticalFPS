@@ -1,0 +1,1875 @@
+{
+  "schema": "carr-actual-closed-ci/1",
+  "observed_at": "2026-11-28 09:28 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647068,
+  "job_id": 140873212959,
+  "job_conclusion": "failure",
+  "started_at": "2026-11-28T05:11:18Z",
+  "completed_at": "2026-11-28T09:16:48Z",
+  "log": {
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140873212959/logs",
+    "decoded_characters": 2439035,
+    "encoding_for_digest": "UTF-8 of complete tool-decoded log, including BOM and CRLF",
+    "bytes": 2439047,
+    "sha256": "7fe58ba875a408905b4141c9538d03d95a1025729967d07bea4fe596e5eec4e8"
+  },
+  "artifact": {
+    "id": 15257128061,
+    "name": "carr-v3-evidence-46110647068-1",
+    "size_in_bytes": 1101485,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257128061",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257128061/zip",
+    "expired": false,
+    "created_at": "2026-11-28T09:16:44Z",
+    "expires_at": "2026-12-05T09:16:43Z",
+    "updated_at": "2026-11-28T09:16:44Z",
+    "digest": "sha256:814c0a8cd9be803ee624ca9ab1b0523e43e5dd4ae1290cafacc05ec8f2cf20c0",
+    "workflow_run": {
+      "id": 46110647068,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+      "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114"
+    }
+  },
+  "phases": [
+    {
+      "number": 17,
+      "name": "Require publication, recording, portable clip and reader source contracts",
+      "started_at": "2026-11-28T05:52:48Z",
+      "completed_at": "2026-11-28T07:07:55Z",
+      "conclusion": "FAIL_OUTER_TIMEOUT",
+      "explicit_timeout_minutes": 75,
+      "selected_wholes": 217,
+      "observed_completed_pytest_summaries": 203,
+      "observed_passed_cases_in_those_summaries": 4785,
+      "summary_paths_equal_selected_ordered_prefix": true,
+      "final_ci_check_aggregate": "NOT_EMITTED",
+      "strict_whole_source_pass": "NOT_ESTABLISHED",
+      "partial_next_suite": {
+        "path": "tests/integrations/test_dordiai_managed_backends.py",
+        "collected_cases": 6,
+        "observed_passed_activity_rows": 3
+      },
+      "remaining_not_completed": 14,
+      "evidence_lines": [
+        {
+          "line": 12218,
+          "text": "2026-11-28T07:06:18.0891180Z ============================= 38 passed in 0.75s =============================="
+        },
+        {
+          "line": 12247,
+          "text": "2026-11-28T07:06:19.1272094Z ============================= 19 passed in 0.74s =============================="
+        },
+        {
+          "line": 12297,
+          "text": "2026-11-28T07:06:25.7631149Z ============================= 40 passed in 6.34s =============================="
+        },
+        {
+          "line": 12303,
+          "text": "2026-11-28T07:06:26.2946095Z collecting ... collected 6 items"
+        },
+        {
+          "line": 12305,
+          "text": "2026-11-28T07:06:51.0723748Z tests/integrations/test_dordiai_managed_backends.py::test_current_managed_reference_backend_preserves_version_identity_capabilities_registry_pcm_and_lease[omnivoice] PASSED [ 16%]"
+        },
+        {
+          "line": 12306,
+          "text": "2026-11-28T07:07:15.8286796Z tests/integrations/test_dordiai_managed_backends.py::test_current_managed_reference_backend_preserves_version_identity_capabilities_registry_pcm_and_lease[openvoice] PASSED [ 33%]"
+        },
+        {
+          "line": 12307,
+          "text": "2026-11-28T07:07:34.7858087Z tests/integrations/test_dordiai_managed_backends.py::test_current_managed_reference_reply_still_holds_real_lock_and_rechecks_document_before_completion[omnivoice] PASSED [ 50%]"
+        },
+        {
+          "line": 12308,
+          "text": "2026-11-28T07:07:55.6352177Z ##[error]The action 'Require publication, recording, portable clip and reader source contracts' has timed out after 75 minutes."
+        }
+      ],
+      "selected_whole_paths": [
+        "tests/studio/test_publishing.py",
+        "tests/studio/test_publishing_cli.py",
+        "tests/studio/test_publishing_handlers.py",
+        "tests/packaging/test_prepare_windows_audio.py",
+        "tests/audio/test_recording.py",
+        "tests/audio/test_recording_cleanup.py",
+        "tests/audio/test_recording_compatibility.py",
+        "tests/audio/test_recording_export.py",
+        "tests/ui/test_recording_dialog.py",
+        "tests/audio/test_audio_process.py",
+        "tests/audio/test_publication_fsync.py",
+        "tests/audio/test_dsp.py",
+        "tests/audio/test_effect_presets.py",
+        "tests/audio/test_audio_conversion.py",
+        "tests/ui/test_audio_conversion.py",
+        "tests/studio/test_production_cancellation_outcomes.py",
+        "tests/speech/test_runtime.py",
+        "tests/speech/test_python_helper.py",
+        "tests/audio/test_windows_audio_ownership.py",
+        "tests/studio/test_clip_editing.py",
+        "tests/studio/test_clip_restoration.py",
+        "tests/studio/test_clip_dialog.py",
+        "tests/studio/test_clip_cli.py",
+        "tests/storage/test_state_clip_inputs.py",
+        "tests/studio/test_studio_controller.py",
+        "tests/speech/test_reader_usability.py",
+        "tests/speech/test_navigation.py",
+        "tests/speech/test_player_controls.py",
+        "tests/speech/test_player_transport.py",
+        "tests/ui/test_reader_playback.py",
+        "tests/ui/test_reader_playback_actions.py",
+        "tests/packaging/test_audio_runtime.py",
+        "tests/packaging/test_audio_bundle.py",
+        "tests/reader/test_export_reconciliation.py",
+        "tests/speech/test_reading.py",
+        "tests/speech/test_source.py",
+        "tests/speech/test_session.py",
+        "tests/ui/test_keyboard_manager.py",
+        "tests/ui/test_progress_voice_actions.py",
+        "tests/storage/test_incremental_backup.py",
+        "tests/storage/test_incremental_backup_cli.py",
+        "tests/sync/test_vault.py",
+        "tests/ui/test_incremental_backup_dialog.py",
+        "tests/audio/test_audiobook.py",
+        "tests/studio/test_audiobook_publication.py",
+        "tests/studio/test_daisy_publishing.py",
+        "tests/studio/test_daisy_boundaries.py",
+        "tests/studio/test_publishing_boundaries.py",
+        "tests/storage/test_backup_publication_formats.py",
+        "tests/reader/test_ebook_audio.py",
+        "tests/ui/test_ebook_audio_lifetime.py",
+        "tests/studio/test_book_audio.py",
+        "tests/ui/test_book_audio_dialog.py",
+        "tests/ui/test_worker_lifetime.py",
+        "tests/storage/test_backup_book_audio.py",
+        "tests/storage/test_backup_effect_presets.py",
+        "tests/reader/test_braille.py",
+        "tests/ui/test_braille_actions.py",
+        "tests/studio/test_project_effects.py",
+        "tests/storage/test_backup_studio_effects.py",
+        "tests/integrations/test_dordiai_host_lifecycle.py",
+        "tests/ui/test_engine_settings_lifetime.py",
+        "tests/speech/test_listening.py",
+        "tests/speech/test_playback_devices.py",
+        "tests/ui/test_reader_listening_hooks.py",
+        "tests/speech/test_wave_output.py",
+        "tests/speech/test_playlist.py",
+        "tests/speech/test_playlist_recovery.py",
+        "tests/ui/test_audio_playback.py",
+        "tests/audio/test_conversion_batch.py",
+        "tests/ui/test_audio_conversion_batch.py",
+        "tests/studio/test_conversion_batch_cli.py",
+        "tests/speech/test_publication_validation.py",
+        "tests/speech/test_reading_marks.py",
+        "tests/ui/test_reading_tools.py",
+        "tests/speech/test_reading_tabs.py",
+        "tests/ui/test_reader_tabs.py",
+        "tests/speech/test_reading_presentation.py",
+        "tests/speech/test_reading_presentation_handlers.py",
+        "tests/speech/test_reading_presentation_reader_hook.py",
+        "tests/ui/test_native_reading_presentation_driver.py",
+        "tests/speech/test_voice_preferences.py",
+        "tests/storage/test_voice_preferences_backup.py",
+        "tests/ui/test_voice_preferences_dialog.py",
+        "tests/ui/test_reader_view_hooks.py",
+        "tests/storage/test_reader_preferences_state.py",
+        "tests/studio/test_book_batch.py",
+        "tests/studio/test_book_cli.py",
+        "tests/ui/test_book_batch_dialog.py",
+        "tests/storage/test_backup_book_batches.py",
+        "tests/audio/test_recording_controls.py",
+        "tests/audio/test_recording_monitor.py",
+        "tests/storage/test_backup_recording_controls.py",
+        "tests/storage/test_desktop_preferences.py",
+        "tests/ui/test_desktop_integration.py",
+        "tests/ui/test_desktop_settings.py",
+        "tests/ui/test_desktop_host_lifecycle.py",
+        "tests/speech/test_narration_receipt.py",
+        "tests/storage/test_local_schedules.py",
+        "tests/ui/test_local_schedules.py",
+        "tests/storage/test_backup_local_schedules.py",
+        "tests/packaging/test_local_schedules_cli.py",
+        "tests/storage/test_transcription_backup.py",
+        "tests/speech/test_spelling.py",
+        "tests/speech/test_spelling_handlers.py",
+        "tests/speech/test_spelling_reader_hook.py",
+        "tests/packaging/test_hunspell_build.py",
+        "tests/packaging/test_library_scale_benchmark.py",
+        "tests/audio/test_envelopes.py",
+        "tests/studio/test_envelope_workflow.py",
+        "tests/studio/test_clip_operations.py",
+        "tests/studio/test_project_history.py",
+        "tests/studio/test_clip_history_dialog.py",
+        "tests/assistant/test_translation_layout.py",
+        "tests/ui/test_translation_layout.py",
+        "tests/assistant/test_translation_layout_cli.py",
+        "tests/assistant/test_translation_partition.py",
+        "tests/ui/test_save_all.py",
+        "tests/academic_integration/test_word_records.py",
+        "tests/academic_integration/test_word_bridge.py",
+        "tests/academic_integration/test_word_worker.py",
+        "tests/ui/test_word_citations.py",
+        "tests/assistant/test_google_oauth.py",
+        "tests/ui/test_google_oauth.py",
+        "tests/assistant/test_translation_epub_layout.py",
+        "tests/ui/test_translation_epub_layout.py",
+        "tests/assistant/test_translation_epub_cli.py",
+        "tests/studio/test_clip_copy.py",
+        "tests/studio/test_clip_copy_dialog.py",
+        "tests/extract/test_docx_rich.py",
+        "tests/assistant/test_translation_rich_docx.py",
+        "tests/ui/test_translation_rich_docx.py",
+        "tests/assistant/test_translation_rich_docx_cli.py",
+        "tests/extract/test_docx_ordered.py",
+        "tests/extract/test_docx_omitted_content.py",
+        "tests/extract/test_docx_hidden_styles.py",
+        "tests/ingest/test_application_atomic_docx_gate.py",
+        "tests/ui/test_native_recording_driver.py",
+        "tests/storage/test_scoped_locator_capacity.py",
+        "tests/storage/test_locator_integrity.py",
+        "tests/storage/test_printed_label_integrity.py",
+        "tests/ingest/test_checked_catalog_commit.py",
+        "tests/search/test_search_query_work.py",
+        "tests/operations/test_broker_scope.py",
+        "tests/ingest/test_application_atomic_gate.py",
+        "tests/ingest/test_pipeline.py",
+        "tests/ingest/test_initial_publication_completion.py",
+        "tests/ingest/test_worker_publication_boundary.py",
+        "tests/e2e/test_import_worker_publication.py",
+        "tests/storage/test_schema_boundary.py",
+        "tests/storage/test_revisions.py",
+        "tests/storage/test_read_boundary.py",
+        "tests/catalog/test_read_views.py",
+        "tests/catalog/test_read_views_v2_integration.py",
+        "tests/search/test_literal_integrity.py",
+        "tests/search/test_literal_readonly.py",
+        "tests/search/test_literal_v2_composition.py",
+        "tests/e2e/test_retained_source_search_integrity.py",
+        "tests/packaging/test_library_capacity_measurement.py",
+        "tests/storage/test_backup_capacity.py",
+        "tests/storage/test_backup_capacity_cli.py",
+        "tests/ui/test_backup_capacity.py",
+        "tests/storage/test_crash_backup.py",
+        "tests/studio/test_book_effects.py",
+        "tests/studio/test_measured_audio.py",
+        "tests/studio/test_measured_pcm.py",
+        "tests/studio/test_book_measured_cli.py",
+        "tests/ui/test_book_effects.py",
+        "tests/ui/test_book_duration_dialog.py",
+        "tests/conversion/test_selected_conversion.py",
+        "tests/conversion/test_calibre_admission.py",
+        "tests/conversion/test_office_admission.py",
+        "tests/ui/test_document_conversion.py",
+        "tests/extract/test_document_formats_xml.py",
+        "tests/ui/test_native_backup_capacity_driver.py",
+        "tests/ui/test_native_studio_book_choices.py",
+        "tests/ui/test_native_book_publication_driver.py",
+        "tests/search/test_paged_candidate_work.py",
+        "tests/audio/test_live_metadata_retry.py",
+        "tests/ui/test_native_conversion_diagnostics.py",
+        "tests/audio/test_voice_package_management.py",
+        "tests/audio/test_voice_management_state.py",
+        "tests/audio/test_voice_reference_management.py",
+        "tests/audio/test_voice_protected_management.py",
+        "tests/audio/test_voice_publication_lifetime.py",
+        "tests/audio/test_voice_ownership.py",
+        "tests/integrations/test_dordiai_owner_lease.py",
+        "tests/integrations/test_dordiai_managed_authority.py",
+        "tests/ui/test_voice_packages.py",
+        "tests/ui/test_voice_reference.py",
+        "tests/integrations/test_dordiai_voices.py",
+        "tests/integrations/test_dordiai_speech.py",
+        "tests/integrations/test_dordiai_settings.py",
+        "tests/integrations/test_dordiai_probe_cancellation.py",
+        "tests/integrations/test_dordiai_convergence.py",
+        "tests/audio/test_bundled_runtime_settings.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/storage/test_library_backup.py",
+        "tests/storage/test_state_backup_portability.py",
+        "tests/search/test_window_catalog_projection.py",
+        "tests/ui/test_ebook_dialog.py",
+        "tests/ui/test_native_saved_audio_cleanup.py",
+        "tests/integrations/test_dordiai_reference_backends.py",
+        "tests/integrations/test_dordiai_managed_backends.py",
+        "tests/citations/test_attestation_cancellation.py",
+        "tests/packaging/test_library_scale_profile.py",
+        "tests/studio/test_daisy_schema_resolver.py",
+        "tests/assistant/test_transcription_provider.py",
+        "tests/transcription/test_remote_service.py",
+        "tests/ui/test_transcription_remote.py",
+        "tests/security/test_update_handoff.py",
+        "tests/security/test_update_runtime.py",
+        "tests/security/test_update_ui.py",
+        "tests/security/test_update_controller_actions.py",
+        "tests/audio/test_voice_scope_checks.py",
+        "tests/catalog/test_text_screen_work.py",
+        "tests/search/test_ascii_mapping_work.py"
+      ],
+      "completed_pytest_summaries": [
+        {
+          "line": 5496,
+          "path": "tests/studio/test_publishing.py",
+          "summary": "48 passed",
+          "seconds": 18.86,
+          "text": "2026-11-28T05:53:07.5469935Z ============================= 48 passed in 18.86s ============================="
+        },
+        {
+          "line": 5513,
+          "path": "tests/studio/test_publishing_cli.py",
+          "summary": "7 passed",
+          "seconds": 10.67,
+          "text": "2026-11-28T05:53:18.7406172Z ============================= 7 passed in 10.67s =============================="
+        },
+        {
+          "line": 5535,
+          "path": "tests/studio/test_publishing_handlers.py",
+          "summary": "12 passed",
+          "seconds": 5.61,
+          "text": "2026-11-28T05:53:24.6791970Z ============================= 12 passed in 5.61s =============================="
+        },
+        {
+          "line": 5583,
+          "path": "tests/packaging/test_prepare_windows_audio.py",
+          "summary": "38 passed",
+          "seconds": 0.41,
+          "text": "2026-11-28T05:53:25.4481367Z ============================= 38 passed in 0.41s =============================="
+        },
+        {
+          "line": 5624,
+          "path": "tests/audio/test_recording.py",
+          "summary": "31 passed",
+          "seconds": 13.98,
+          "text": "2026-11-28T05:53:39.7117207Z ============================= 31 passed in 13.98s ============================="
+        },
+        {
+          "line": 5647,
+          "path": "tests/audio/test_recording_cleanup.py",
+          "summary": "13 passed",
+          "seconds": 0.58,
+          "text": "2026-11-28T05:53:40.6456553Z ============================= 13 passed in 0.58s =============================="
+        },
+        {
+          "line": 5662,
+          "path": "tests/audio/test_recording_compatibility.py",
+          "summary": "5 passed",
+          "seconds": 0.19,
+          "text": "2026-11-28T05:53:41.1161253Z ============================== 5 passed in 0.19s =============================="
+        },
+        {
+          "line": 5681,
+          "path": "tests/audio/test_recording_export.py",
+          "summary": "9 passed",
+          "seconds": 1.54,
+          "text": "2026-11-28T05:53:42.9503079Z ============================== 9 passed in 1.54s =============================="
+        },
+        {
+          "line": 5719,
+          "path": "tests/ui/test_recording_dialog.py",
+          "summary": "28 passed",
+          "seconds": 1.79,
+          "text": "2026-11-28T05:53:45.0715931Z ============================= 28 passed in 1.79s =============================="
+        },
+        {
+          "line": 5752,
+          "path": "tests/audio/test_audio_process.py",
+          "summary": "23 passed",
+          "seconds": 2.49,
+          "text": "2026-11-28T05:53:47.8762902Z ============================= 23 passed in 2.49s =============================="
+        },
+        {
+          "line": 5766,
+          "path": "tests/audio/test_publication_fsync.py",
+          "summary": "4 passed",
+          "seconds": 0.11,
+          "text": "2026-11-28T05:53:48.2617167Z ============================== 4 passed in 0.11s =============================="
+        },
+        {
+          "line": 5817,
+          "path": "tests/audio/test_dsp.py",
+          "summary": "41 passed",
+          "seconds": 12.73,
+          "text": "2026-11-28T05:54:01.2803867Z ============================= 41 passed in 12.73s ============================="
+        },
+        {
+          "line": 5867,
+          "path": "tests/audio/test_effect_presets.py",
+          "summary": "40 passed",
+          "seconds": 2.04,
+          "text": "2026-11-28T05:54:03.6140791Z ============================= 40 passed in 2.04s =============================="
+        },
+        {
+          "line": 5892,
+          "path": "tests/audio/test_audio_conversion.py",
+          "summary": "15 passed",
+          "seconds": 8.11,
+          "text": "2026-11-28T05:54:12.0380750Z ============================= 15 passed in 8.11s =============================="
+        },
+        {
+          "line": 5924,
+          "path": "tests/ui/test_audio_conversion.py",
+          "summary": "22 passed",
+          "seconds": 0.42,
+          "text": "2026-11-28T05:54:12.7683613Z ============================= 22 passed in 0.42s =============================="
+        },
+        {
+          "line": 5945,
+          "path": "tests/studio/test_production_cancellation_outcomes.py",
+          "summary": "11 passed",
+          "seconds": 12.39,
+          "text": "2026-11-28T05:54:25.4737705Z ============================= 11 passed in 12.39s ============================="
+        },
+        {
+          "line": 5968,
+          "path": "tests/speech/test_runtime.py",
+          "summary": "13 passed",
+          "seconds": 0.89,
+          "text": "2026-11-28T05:54:26.7003856Z ============================= 13 passed in 0.89s =============================="
+        },
+        {
+          "line": 5999,
+          "path": "tests/speech/test_python_helper.py",
+          "summary": "21 passed",
+          "seconds": 4.86,
+          "text": "2026-11-28T05:54:31.8440727Z ============================= 21 passed in 4.86s =============================="
+        },
+        {
+          "line": 6016,
+          "path": "tests/audio/test_windows_audio_ownership.py",
+          "summary": "7 passed",
+          "seconds": 14.84,
+          "text": "2026-11-28T05:54:47.0046142Z ============================= 7 passed in 14.84s =============================="
+        },
+        {
+          "line": 6046,
+          "path": "tests/studio/test_clip_editing.py",
+          "summary": "20 passed",
+          "seconds": 10.16,
+          "text": "2026-11-28T05:54:57.4715554Z ============================= 20 passed in 10.16s ============================="
+        },
+        {
+          "line": 6080,
+          "path": "tests/studio/test_clip_restoration.py",
+          "summary": "24 passed",
+          "seconds": 16.16,
+          "text": "2026-11-28T05:55:13.9538311Z ============================= 24 passed in 16.16s ============================="
+        },
+        {
+          "line": 6135,
+          "path": "tests/studio/test_clip_dialog.py",
+          "summary": "45 passed",
+          "seconds": 1.44,
+          "text": "2026-11-28T05:55:15.7439378Z ============================= 45 passed in 1.44s =============================="
+        },
+        {
+          "line": 6153,
+          "path": "tests/studio/test_clip_cli.py",
+          "summary": "8 passed",
+          "seconds": 19.79,
+          "text": "2026-11-28T05:55:35.8462748Z ============================= 8 passed in 19.79s =============================="
+        },
+        {
+          "line": 6180,
+          "path": "tests/storage/test_state_clip_inputs.py",
+          "summary": "17 passed",
+          "seconds": 1.44,
+          "text": "2026-11-28T05:55:37.6040916Z ============================= 17 passed in 1.44s =============================="
+        },
+        {
+          "line": 6198,
+          "path": "tests/studio/test_studio_controller.py",
+          "summary": "8 passed",
+          "seconds": 0.46,
+          "text": "2026-11-28T05:55:38.3781828Z ============================== 8 passed in 0.46s =============================="
+        },
+        {
+          "line": 6241,
+          "path": "tests/speech/test_reader_usability.py",
+          "summary": "33 passed",
+          "seconds": 8.54,
+          "text": "2026-11-28T05:55:47.2099181Z ============================= 33 passed in 8.54s =============================="
+        },
+        {
+          "line": 6278,
+          "path": "tests/speech/test_navigation.py",
+          "summary": "27 passed",
+          "seconds": 0.35,
+          "text": "2026-11-28T05:55:47.8856183Z ============================= 27 passed in 0.35s =============================="
+        },
+        {
+          "line": 6325,
+          "path": "tests/speech/test_player_controls.py",
+          "summary": "37 passed",
+          "seconds": 0.39,
+          "text": "2026-11-28T05:55:48.5597034Z ============================= 37 passed in 0.39s =============================="
+        },
+        {
+          "line": 6346,
+          "path": "tests/speech/test_player_transport.py",
+          "summary": "11 passed",
+          "seconds": 0.15,
+          "text": "2026-11-28T05:55:49.0020296Z ============================= 11 passed in 0.15s =============================="
+        },
+        {
+          "line": 6408,
+          "path": "tests/ui/test_reader_playback.py",
+          "summary": "52 passed",
+          "seconds": 0.44,
+          "text": "2026-11-28T05:55:49.7110314Z ============================= 52 passed in 0.44s =============================="
+        },
+        {
+          "line": 6442,
+          "path": "tests/ui/test_reader_playback_actions.py",
+          "summary": "24 passed",
+          "seconds": 0.81,
+          "text": "2026-11-28T05:55:50.8050457Z ============================= 24 passed in 0.81s =============================="
+        },
+        {
+          "line": 6484,
+          "path": "tests/packaging/test_audio_runtime.py",
+          "summary": "32 passed",
+          "seconds": 1.1,
+          "text": "2026-11-28T05:55:52.1947049Z ============================= 32 passed in 1.10s =============================="
+        },
+        {
+          "line": 6505,
+          "path": "tests/packaging/test_audio_bundle.py",
+          "summary": "11 passed",
+          "seconds": 0.72,
+          "text": "2026-11-28T05:55:53.2473627Z ============================= 11 passed in 0.72s =============================="
+        },
+        {
+          "line": 6543,
+          "path": "tests/reader/test_export_reconciliation.py",
+          "summary": "28 passed",
+          "seconds": 0.29,
+          "text": "2026-11-28T05:55:53.8394933Z ============================= 28 passed in 0.29s =============================="
+        },
+        {
+          "line": 6615,
+          "path": "tests/speech/test_reading.py",
+          "summary": "62 passed",
+          "seconds": 1.62,
+          "text": "2026-11-28T05:55:55.7304287Z ============================= 62 passed in 1.62s =============================="
+        },
+        {
+          "line": 6662,
+          "path": "tests/speech/test_source.py",
+          "summary": "37 passed",
+          "seconds": 14.6,
+          "text": "2026-11-28T05:56:10.6232447Z ============================= 37 passed in 14.60s ============================="
+        },
+        {
+          "line": 6677,
+          "path": "tests/speech/test_session.py",
+          "summary": "5 passed",
+          "seconds": 1.37,
+          "text": "2026-11-28T05:56:12.3380797Z ============================== 5 passed in 1.37s =============================="
+        },
+        {
+          "line": 6724,
+          "path": "tests/ui/test_keyboard_manager.py",
+          "summary": "37 passed",
+          "seconds": 0.66,
+          "text": "2026-11-28T05:56:13.3055781Z ============================= 37 passed in 0.66s =============================="
+        },
+        {
+          "line": 6756,
+          "path": "tests/ui/test_progress_voice_actions.py",
+          "summary": "22 passed",
+          "seconds": 0.57,
+          "text": "2026-11-28T05:56:14.1875964Z ============================= 22 passed in 0.57s =============================="
+        },
+        {
+          "line": 6804,
+          "path": "tests/storage/test_incremental_backup.py",
+          "summary": "38 passed",
+          "seconds": 37.04,
+          "text": "2026-11-28T05:56:51.5237742Z ============================= 38 passed in 37.04s ============================="
+        },
+        {
+          "line": 6818,
+          "path": "tests/storage/test_incremental_backup_cli.py",
+          "summary": "4 passed",
+          "seconds": 11.05,
+          "text": "2026-11-28T05:57:02.9926348Z ============================= 4 passed in 11.05s =============================="
+        },
+        {
+          "line": 6874,
+          "path": "tests/sync/test_vault.py",
+          "summary": "46 passed",
+          "seconds": 4.43,
+          "text": "2026-11-28T05:57:07.7242509Z ============================= 46 passed in 4.43s =============================="
+        },
+        {
+          "line": 6904,
+          "path": "tests/ui/test_incremental_backup_dialog.py",
+          "summary": "20 passed",
+          "seconds": 6.07,
+          "text": "2026-11-28T05:57:14.1947966Z ============================= 20 passed in 6.07s =============================="
+        },
+        {
+          "line": 6931,
+          "path": "tests/audio/test_audiobook.py",
+          "summary": "17 passed",
+          "seconds": 3.26,
+          "text": "2026-11-28T05:57:17.7743060Z ============================= 17 passed in 3.26s =============================="
+        },
+        {
+          "line": 6942,
+          "path": "tests/studio/test_audiobook_publication.py",
+          "summary": "1 passed",
+          "seconds": 3.88,
+          "text": "2026-11-28T05:57:21.9331243Z ============================== 1 passed in 3.88s =============================="
+        },
+        {
+          "line": 6981,
+          "path": "tests/studio/test_daisy_publishing.py",
+          "summary": "29 passed",
+          "seconds": 13.02,
+          "text": "2026-11-28T05:57:35.2349367Z ============================= 29 passed in 13.02s ============================="
+        },
+        {
+          "line": 7006,
+          "path": "tests/studio/test_daisy_boundaries.py",
+          "summary": "15 passed",
+          "seconds": 9.66,
+          "text": "2026-11-28T05:57:45.2769547Z ============================= 15 passed in 9.66s =============================="
+        },
+        {
+          "line": 7035,
+          "path": "tests/studio/test_publishing_boundaries.py",
+          "summary": "19 passed",
+          "seconds": 9.03,
+          "text": "2026-11-28T05:57:54.6743452Z ============================= 19 passed in 9.03s =============================="
+        },
+        {
+          "line": 7053,
+          "path": "tests/storage/test_backup_publication_formats.py",
+          "summary": "8 passed",
+          "seconds": 9.28,
+          "text": "2026-11-28T05:58:04.3262965Z ============================== 8 passed in 9.28s =============================="
+        },
+        {
+          "line": 7128,
+          "path": "tests/reader/test_ebook_audio.py",
+          "summary": "65 passed",
+          "seconds": 45.68,
+          "text": "2026-11-28T05:58:50.3308866Z ============================= 65 passed in 45.68s ============================="
+        },
+        {
+          "line": 7152,
+          "path": "tests/ui/test_ebook_audio_lifetime.py",
+          "summary": "14 passed",
+          "seconds": 1.08,
+          "text": "2026-11-28T05:58:51.7667491Z ============================= 14 passed in 1.08s =============================="
+        },
+        {
+          "line": 7208,
+          "path": "tests/studio/test_book_audio.py",
+          "summary": "46 passed",
+          "seconds": 184.55,
+          "text": "2026-11-28T06:01:56.6163358Z ======================= 46 passed in 184.55s (0:03:04) ========================"
+        },
+        {
+          "line": 7247,
+          "path": "tests/ui/test_book_audio_dialog.py",
+          "summary": "29 passed",
+          "seconds": 11.01,
+          "text": "2026-11-28T06:02:08.1271786Z ============================= 29 passed in 11.01s ============================="
+        },
+        {
+          "line": 7268,
+          "path": "tests/ui/test_worker_lifetime.py",
+          "summary": "11 passed",
+          "seconds": 0.38,
+          "text": "2026-11-28T06:02:08.8567883Z ============================= 11 passed in 0.38s =============================="
+        },
+        {
+          "line": 7310,
+          "path": "tests/storage/test_backup_book_audio.py",
+          "summary": "32 passed",
+          "seconds": 75.74,
+          "text": "2026-11-28T06:03:24.8617117Z ======================== 32 passed in 75.74s (0:01:15) ========================"
+        },
+        {
+          "line": 7365,
+          "path": "tests/storage/test_backup_effect_presets.py",
+          "summary": "45 passed",
+          "seconds": 15.97,
+          "text": "2026-11-28T06:03:41.3242542Z ============================= 45 passed in 15.97s ============================="
+        },
+        {
+          "line": 7415,
+          "path": "tests/reader/test_braille.py",
+          "summary": "40 passed",
+          "seconds": 7.1,
+          "text": "2026-11-28T06:03:49.0691451Z ============================= 40 passed in 7.10s =============================="
+        },
+        {
+          "line": 7433,
+          "path": "tests/ui/test_braille_actions.py",
+          "summary": "8 passed",
+          "seconds": 2.93,
+          "text": "2026-11-28T06:03:52.3298883Z ============================== 8 passed in 2.93s =============================="
+        },
+        {
+          "line": 7468,
+          "path": "tests/studio/test_project_effects.py",
+          "summary": "25 passed",
+          "seconds": 32.23,
+          "text": "2026-11-28T06:04:24.8625141Z ============================= 25 passed in 32.23s ============================="
+        },
+        {
+          "line": 7499,
+          "path": "tests/storage/test_backup_studio_effects.py",
+          "summary": "21 passed",
+          "seconds": 7.76,
+          "text": "2026-11-28T06:04:33.0192599Z ============================= 21 passed in 7.76s =============================="
+        },
+        {
+          "line": 7522,
+          "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+          "summary": "13 passed",
+          "seconds": 4.2,
+          "text": "2026-11-28T06:04:37.6035583Z ============================= 13 passed in 4.20s =============================="
+        },
+        {
+          "line": 7575,
+          "path": "tests/ui/test_engine_settings_lifetime.py",
+          "summary": "43 passed",
+          "seconds": 3.66,
+          "text": "2026-11-28T06:04:41.5592771Z ============================= 43 passed in 3.66s =============================="
+        },
+        {
+          "line": 7613,
+          "path": "tests/speech/test_listening.py",
+          "summary": "28 passed",
+          "seconds": 12.72,
+          "text": "2026-11-28T06:04:54.6479644Z ============================= 28 passed in 12.72s ============================="
+        },
+        {
+          "line": 7676,
+          "path": "tests/speech/test_playback_devices.py",
+          "summary": "53 passed",
+          "seconds": 0.32,
+          "text": "2026-11-28T06:04:55.3268525Z ============================= 53 passed in 0.32s =============================="
+        },
+        {
+          "line": 7710,
+          "path": "tests/ui/test_reader_listening_hooks.py",
+          "summary": "24 passed",
+          "seconds": 0.89,
+          "text": "2026-11-28T06:04:56.4947624Z ============================= 24 passed in 0.89s =============================="
+        },
+        {
+          "line": 7751,
+          "path": "tests/speech/test_wave_output.py",
+          "summary": "31 passed",
+          "seconds": 0.44,
+          "text": "2026-11-28T06:04:57.2293060Z ============================= 31 passed in 0.44s =============================="
+        },
+        {
+          "line": 7782,
+          "path": "tests/speech/test_playlist.py",
+          "summary": "21 passed",
+          "seconds": 0.5,
+          "text": "2026-11-28T06:04:58.0263303Z ============================= 21 passed in 0.50s =============================="
+        },
+        {
+          "line": 7828,
+          "path": "tests/speech/test_playlist_recovery.py",
+          "summary": "36 passed",
+          "seconds": 11.45,
+          "text": "2026-11-28T06:05:09.7756196Z ============================= 36 passed in 11.45s ============================="
+        },
+        {
+          "line": 7862,
+          "path": "tests/ui/test_audio_playback.py",
+          "summary": "24 passed",
+          "seconds": 3.51,
+          "text": "2026-11-28T06:05:13.6727318Z ============================= 24 passed in 3.51s =============================="
+        },
+        {
+          "line": 7914,
+          "path": "tests/audio/test_conversion_batch.py",
+          "summary": "42 passed",
+          "seconds": 37.14,
+          "text": "2026-11-28T06:05:51.1503757Z ============================= 42 passed in 37.14s ============================="
+        },
+        {
+          "line": 7945,
+          "path": "tests/ui/test_audio_conversion_batch.py",
+          "summary": "21 passed",
+          "seconds": 0.47,
+          "text": "2026-11-28T06:05:52.0080259Z ============================= 21 passed in 0.47s =============================="
+        },
+        {
+          "line": 7959,
+          "path": "tests/studio/test_conversion_batch_cli.py",
+          "summary": "4 passed",
+          "seconds": 9.53,
+          "text": "2026-11-28T06:06:01.8414152Z ============================== 4 passed in 9.53s =============================="
+        },
+        {
+          "line": 7981,
+          "path": "tests/speech/test_publication_validation.py",
+          "summary": "12 passed",
+          "seconds": 2.82,
+          "text": "2026-11-28T06:06:04.9637117Z ============================= 12 passed in 2.82s =============================="
+        },
+        {
+          "line": 8027,
+          "path": "tests/speech/test_reading_marks.py",
+          "summary": "36 passed",
+          "seconds": 1.2,
+          "text": "2026-11-28T06:06:06.4611954Z ============================= 36 passed in 1.20s =============================="
+        },
+        {
+          "line": 8051,
+          "path": "tests/ui/test_reading_tools.py",
+          "summary": "14 passed",
+          "seconds": 0.56,
+          "text": "2026-11-28T06:06:07.3335330Z ============================= 14 passed in 0.56s =============================="
+        },
+        {
+          "line": 8086,
+          "path": "tests/speech/test_reading_tabs.py",
+          "summary": "25 passed",
+          "seconds": 3.79,
+          "text": "2026-11-28T06:06:11.4130116Z ============================= 25 passed in 3.79s =============================="
+        },
+        {
+          "line": 8116,
+          "path": "tests/ui/test_reader_tabs.py",
+          "summary": "20 passed",
+          "seconds": 3.83,
+          "text": "2026-11-28T06:06:15.5624052Z ============================= 20 passed in 3.83s =============================="
+        },
+        {
+          "line": 8158,
+          "path": "tests/speech/test_reading_presentation.py",
+          "summary": "32 passed",
+          "seconds": 0.97,
+          "text": "2026-11-28T06:06:16.8380546Z ============================= 32 passed in 0.97s =============================="
+        },
+        {
+          "line": 8188,
+          "path": "tests/speech/test_reading_presentation_handlers.py",
+          "summary": "20 passed",
+          "seconds": 0.68,
+          "text": "2026-11-28T06:06:17.8314895Z ============================= 20 passed in 0.68s =============================="
+        },
+        {
+          "line": 8207,
+          "path": "tests/speech/test_reading_presentation_reader_hook.py",
+          "summary": "9 passed",
+          "seconds": 0.39,
+          "text": "2026-11-28T06:06:18.5052143Z ============================== 9 passed in 0.39s =============================="
+        },
+        {
+          "line": 8231,
+          "path": "tests/ui/test_native_reading_presentation_driver.py",
+          "summary": "14 passed",
+          "seconds": 0.21,
+          "text": "2026-11-28T06:06:18.9851220Z ============================= 14 passed in 0.21s =============================="
+        },
+        {
+          "line": 8264,
+          "path": "tests/speech/test_voice_preferences.py",
+          "summary": "23 passed",
+          "seconds": 0.47,
+          "text": "2026-11-28T06:06:19.7241873Z ============================= 23 passed in 0.47s =============================="
+        },
+        {
+          "line": 8276,
+          "path": "tests/storage/test_voice_preferences_backup.py",
+          "summary": "2 passed",
+          "seconds": 1.24,
+          "text": "2026-11-28T06:06:21.2584029Z ============================== 2 passed in 1.24s =============================="
+        },
+        {
+          "line": 8298,
+          "path": "tests/ui/test_voice_preferences_dialog.py",
+          "summary": "12 passed",
+          "seconds": 0.49,
+          "text": "2026-11-28T06:06:22.0569842Z ============================= 12 passed in 0.49s =============================="
+        },
+        {
+          "line": 8319,
+          "path": "tests/ui/test_reader_view_hooks.py",
+          "summary": "11 passed",
+          "seconds": 0.44,
+          "text": "2026-11-28T06:06:22.7933160Z ============================= 11 passed in 0.44s =============================="
+        },
+        {
+          "line": 8336,
+          "path": "tests/storage/test_reader_preferences_state.py",
+          "summary": "7 passed",
+          "seconds": 1.51,
+          "text": "2026-11-28T06:06:24.5963825Z ============================== 7 passed in 1.51s =============================="
+        },
+        {
+          "line": 8375,
+          "path": "tests/studio/test_book_batch.py",
+          "summary": "29 passed",
+          "seconds": 483.98,
+          "text": "2026-11-28T06:14:28.8768580Z ======================= 29 passed in 483.98s (0:08:03) ========================"
+        },
+        {
+          "line": 8403,
+          "path": "tests/studio/test_book_cli.py",
+          "summary": "18 passed",
+          "seconds": 92.37,
+          "text": "2026-11-28T06:16:01.7721133Z ======================== 18 passed in 92.37s (0:01:32) ========================"
+        },
+        {
+          "line": 8431,
+          "path": "tests/ui/test_book_batch_dialog.py",
+          "summary": "18 passed",
+          "seconds": 18.67,
+          "text": "2026-11-28T06:16:20.8108677Z ============================= 18 passed in 18.67s ============================="
+        },
+        {
+          "line": 8474,
+          "path": "tests/storage/test_backup_book_batches.py",
+          "summary": "33 passed",
+          "seconds": 50.29,
+          "text": "2026-11-28T06:17:11.4465997Z ============================= 33 passed in 50.29s ============================="
+        },
+        {
+          "line": 8514,
+          "path": "tests/audio/test_recording_controls.py",
+          "summary": "30 passed",
+          "seconds": 12.5,
+          "text": "2026-11-28T06:17:24.4483465Z ============================= 30 passed in 12.50s ============================="
+        },
+        {
+          "line": 8545,
+          "path": "tests/audio/test_recording_monitor.py",
+          "summary": "21 passed",
+          "seconds": 0.19,
+          "text": "2026-11-28T06:17:24.9894650Z ============================= 21 passed in 0.19s =============================="
+        },
+        {
+          "line": 8575,
+          "path": "tests/storage/test_backup_recording_controls.py",
+          "summary": "20 passed",
+          "seconds": 2.8,
+          "text": "2026-11-28T06:17:28.0641501Z ============================= 20 passed in 2.80s =============================="
+        },
+        {
+          "line": 8607,
+          "path": "tests/storage/test_desktop_preferences.py",
+          "summary": "22 passed",
+          "seconds": 0.99,
+          "text": "2026-11-28T06:17:29.3924827Z ============================= 22 passed in 0.99s =============================="
+        },
+        {
+          "line": 8654,
+          "path": "tests/ui/test_desktop_integration.py",
+          "summary": "37 passed",
+          "seconds": 0.53,
+          "text": "2026-11-28T06:17:30.2337311Z ============================= 37 passed in 0.53s =============================="
+        },
+        {
+          "line": 8668,
+          "path": "tests/ui/test_desktop_settings.py",
+          "summary": "4 passed",
+          "seconds": 0.29,
+          "text": "2026-11-28T06:17:30.8207784Z ============================== 4 passed in 0.29s =============================="
+        },
+        {
+          "line": 8682,
+          "path": "tests/ui/test_desktop_host_lifecycle.py",
+          "summary": "4 passed",
+          "seconds": 0.43,
+          "text": "2026-11-28T06:17:31.5294716Z ============================== 4 passed in 0.43s =============================="
+        },
+        {
+          "line": 8771,
+          "path": "tests/speech/test_narration_receipt.py",
+          "summary": "79 passed",
+          "seconds": 0.55,
+          "text": "2026-11-28T06:17:32.3823993Z ============================= 79 passed in 0.55s =============================="
+        },
+        {
+          "line": 8824,
+          "path": "tests/storage/test_local_schedules.py",
+          "summary": "43 passed",
+          "seconds": 45.1,
+          "text": "2026-11-28T06:18:17.7828809Z ============================= 43 passed in 45.10s ============================="
+        },
+        {
+          "line": 8855,
+          "path": "tests/ui/test_local_schedules.py",
+          "summary": "21 passed",
+          "seconds": 2.97,
+          "text": "2026-11-28T06:18:21.1584300Z ============================= 21 passed in 2.97s =============================="
+        },
+        {
+          "line": 8888,
+          "path": "tests/storage/test_backup_local_schedules.py",
+          "summary": "23 passed",
+          "seconds": 8.49,
+          "text": "2026-11-28T06:18:29.9669892Z ============================= 23 passed in 8.49s =============================="
+        },
+        {
+          "line": 8909,
+          "path": "tests/packaging/test_local_schedules_cli.py",
+          "summary": "11 passed",
+          "seconds": 10.71,
+          "text": "2026-11-28T06:18:41.0250172Z ============================= 11 passed in 10.71s ============================="
+        },
+        {
+          "line": 9062,
+          "path": "tests/storage/test_transcription_backup.py",
+          "summary": "143 passed",
+          "seconds": 186.99,
+          "text": "2026-11-28T06:21:48.3238860Z ======================= 143 passed in 186.99s (0:03:06) ======================="
+        },
+        {
+          "line": 9127,
+          "path": "tests/speech/test_spelling.py",
+          "summary": "55 passed",
+          "seconds": 16.94,
+          "text": "2026-11-28T06:22:05.7435070Z ============================= 55 passed in 16.94s ============================="
+        },
+        {
+          "line": 9157,
+          "path": "tests/speech/test_spelling_handlers.py",
+          "summary": "20 passed",
+          "seconds": 3.4,
+          "text": "2026-11-28T06:22:09.4993852Z ============================= 20 passed in 3.40s =============================="
+        },
+        {
+          "line": 9176,
+          "path": "tests/speech/test_spelling_reader_hook.py",
+          "summary": "9 passed",
+          "seconds": 0.5,
+          "text": "2026-11-28T06:22:10.2985153Z ============================== 9 passed in 0.50s =============================="
+        },
+        {
+          "line": 9217,
+          "path": "tests/packaging/test_hunspell_build.py",
+          "summary": "31 passed",
+          "seconds": 1.7,
+          "text": "2026-11-28T06:22:12.2932969Z ============================= 31 passed in 1.70s =============================="
+        },
+        {
+          "line": 9251,
+          "path": "tests/packaging/test_library_scale_benchmark.py",
+          "summary": "24 passed",
+          "seconds": 19.77,
+          "text": "2026-11-28T06:22:32.3878682Z ============================= 24 passed in 19.77s ============================="
+        },
+        {
+          "line": 9325,
+          "path": "tests/audio/test_envelopes.py",
+          "summary": "64 passed",
+          "seconds": 4.49,
+          "text": "2026-11-28T06:22:37.1781953Z ============================= 64 passed in 4.49s =============================="
+        },
+        {
+          "line": 9352,
+          "path": "tests/studio/test_envelope_workflow.py",
+          "summary": "17 passed",
+          "seconds": 4.78,
+          "text": "2026-11-28T06:22:42.2252137Z ============================= 17 passed in 4.78s =============================="
+        },
+        {
+          "line": 9421,
+          "path": "tests/studio/test_clip_operations.py",
+          "summary": "59 passed",
+          "seconds": 0.33,
+          "text": "2026-11-28T06:22:42.8684422Z ============================= 59 passed in 0.33s =============================="
+        },
+        {
+          "line": 9460,
+          "path": "tests/studio/test_project_history.py",
+          "summary": "29 passed",
+          "seconds": 15.39,
+          "text": "2026-11-28T06:22:58.5202271Z ============================= 29 passed in 15.39s ============================="
+        },
+        {
+          "line": 9492,
+          "path": "tests/studio/test_clip_history_dialog.py",
+          "summary": "22 passed",
+          "seconds": 0.6,
+          "text": "2026-11-28T06:22:59.4532193Z ============================= 22 passed in 0.60s =============================="
+        },
+        {
+          "line": 9535,
+          "path": "tests/assistant/test_translation_layout.py",
+          "summary": "33 passed",
+          "seconds": 102.31,
+          "text": "2026-11-28T06:24:42.0558561Z ======================= 33 passed in 102.31s (0:01:42) ========================"
+        },
+        {
+          "line": 9568,
+          "path": "tests/ui/test_translation_layout.py",
+          "summary": "23 passed",
+          "seconds": 38.87,
+          "text": "2026-11-28T06:25:21.3258082Z ============================= 23 passed in 38.87s ============================="
+        },
+        {
+          "line": 9583,
+          "path": "tests/assistant/test_translation_layout_cli.py",
+          "summary": "5 passed",
+          "seconds": 33.03,
+          "text": "2026-11-28T06:25:54.7080490Z ============================= 5 passed in 33.03s =============================="
+        },
+        {
+          "line": 9619,
+          "path": "tests/assistant/test_translation_partition.py",
+          "summary": "26 passed",
+          "seconds": 86.11,
+          "text": "2026-11-28T06:27:21.1409923Z ======================== 26 passed in 86.11s (0:01:26) ========================"
+        },
+        {
+          "line": 9653,
+          "path": "tests/ui/test_save_all.py",
+          "summary": "24 passed",
+          "seconds": 0.15,
+          "text": "2026-11-28T06:27:21.6427156Z ============================= 24 passed in 0.15s =============================="
+        },
+        {
+          "line": 9713,
+          "path": "tests/academic_integration/test_word_records.py",
+          "summary": "50 passed",
+          "seconds": 40.96,
+          "text": "2026-11-28T06:28:02.8650832Z ============================= 50 passed in 40.96s ============================="
+        },
+        {
+          "line": 9743,
+          "path": "tests/academic_integration/test_word_bridge.py",
+          "summary": "20 passed",
+          "seconds": 134.15,
+          "text": "2026-11-28T06:30:17.2989000Z ======================= 20 passed in 134.15s (0:02:14) ========================"
+        },
+        {
+          "line": 9770,
+          "path": "tests/academic_integration/test_word_worker.py",
+          "summary": "17 passed",
+          "seconds": 9.48,
+          "text": "2026-11-28T06:30:27.1028466Z ============================= 17 passed in 9.48s =============================="
+        },
+        {
+          "line": 9797,
+          "path": "tests/ui/test_word_citations.py",
+          "summary": "17 passed",
+          "seconds": 2.09,
+          "text": "2026-11-28T06:30:29.4848657Z ============================= 17 passed in 2.09s =============================="
+        },
+        {
+          "line": 9856,
+          "path": "tests/assistant/test_google_oauth.py",
+          "summary": "49 passed",
+          "seconds": 9.88,
+          "text": "2026-11-28T06:30:39.6673699Z ============================= 49 passed in 9.88s =============================="
+        },
+        {
+          "line": 9881,
+          "path": "tests/ui/test_google_oauth.py",
+          "summary": "15 passed",
+          "seconds": 0.53,
+          "text": "2026-11-28T06:30:40.5171765Z ============================= 15 passed in 0.53s =============================="
+        },
+        {
+          "line": 9922,
+          "path": "tests/assistant/test_translation_epub_layout.py",
+          "summary": "31 passed",
+          "seconds": 47.08,
+          "text": "2026-11-28T06:31:27.8923679Z ============================= 31 passed in 47.08s ============================="
+        },
+        {
+          "line": 9938,
+          "path": "tests/ui/test_translation_epub_layout.py",
+          "summary": "6 passed",
+          "seconds": 9.58,
+          "text": "2026-11-28T06:31:37.8069117Z ============================== 6 passed in 9.58s =============================="
+        },
+        {
+          "line": 9953,
+          "path": "tests/assistant/test_translation_epub_cli.py",
+          "summary": "5 passed",
+          "seconds": 23.85,
+          "text": "2026-11-28T06:32:01.9823435Z ============================= 5 passed in 23.85s =============================="
+        },
+        {
+          "line": 9980,
+          "path": "tests/studio/test_clip_copy.py",
+          "summary": "17 passed",
+          "seconds": 9.07,
+          "text": "2026-11-28T06:32:11.3613657Z ============================= 17 passed in 9.07s =============================="
+        },
+        {
+          "line": 10000,
+          "path": "tests/studio/test_clip_copy_dialog.py",
+          "summary": "10 passed",
+          "seconds": 0.36,
+          "text": "2026-11-28T06:32:12.0327073Z ============================= 10 passed in 0.36s =============================="
+        },
+        {
+          "line": 10065,
+          "path": "tests/extract/test_docx_rich.py",
+          "summary": "55 passed",
+          "seconds": 4.97,
+          "text": "2026-11-28T06:32:17.2921240Z ============================= 55 passed in 4.97s =============================="
+        },
+        {
+          "line": 10092,
+          "path": "tests/assistant/test_translation_rich_docx.py",
+          "summary": "17 passed",
+          "seconds": 56.39,
+          "text": "2026-11-28T06:33:14.0275642Z ============================= 17 passed in 56.39s ============================="
+        },
+        {
+          "line": 10107,
+          "path": "tests/ui/test_translation_rich_docx.py",
+          "summary": "5 passed",
+          "seconds": 22.66,
+          "text": "2026-11-28T06:33:37.0899815Z ============================= 5 passed in 22.66s =============================="
+        },
+        {
+          "line": 10121,
+          "path": "tests/assistant/test_translation_rich_docx_cli.py",
+          "summary": "4 passed",
+          "seconds": 23.91,
+          "text": "2026-11-28T06:34:01.3360744Z ============================= 4 passed in 23.91s =============================="
+        },
+        {
+          "line": 10140,
+          "path": "tests/extract/test_docx_ordered.py",
+          "summary": "9 passed",
+          "seconds": 0.49,
+          "text": "2026-11-28T06:34:02.1758395Z ============================== 9 passed in 0.49s =============================="
+        },
+        {
+          "line": 10170,
+          "path": "tests/extract/test_docx_omitted_content.py",
+          "summary": "20 passed",
+          "seconds": 0.92,
+          "text": "2026-11-28T06:34:03.4018841Z ============================= 20 passed in 0.92s =============================="
+        },
+        {
+          "line": 10193,
+          "path": "tests/extract/test_docx_hidden_styles.py",
+          "summary": "13 passed",
+          "seconds": 0.79,
+          "text": "2026-11-28T06:34:04.5043439Z ============================= 13 passed in 0.79s =============================="
+        },
+        {
+          "line": 10204,
+          "path": "tests/ingest/test_application_atomic_docx_gate.py",
+          "summary": "1 passed",
+          "seconds": 0.7,
+          "text": "2026-11-28T06:34:05.5292962Z ============================== 1 passed in 0.70s =============================="
+        },
+        {
+          "line": 10224,
+          "path": "tests/ui/test_native_recording_driver.py",
+          "summary": "10 passed",
+          "seconds": 0.13,
+          "text": "2026-11-28T06:34:05.9712025Z ============================= 10 passed in 0.13s =============================="
+        },
+        {
+          "line": 10238,
+          "path": "tests/storage/test_scoped_locator_capacity.py",
+          "summary": "4 passed",
+          "seconds": 1.16,
+          "text": "2026-11-28T06:34:07.3915121Z ============================== 4 passed in 1.16s =============================="
+        },
+        {
+          "line": 10256,
+          "path": "tests/storage/test_locator_integrity.py",
+          "summary": "8 passed",
+          "seconds": 0.57,
+          "text": "2026-11-28T06:34:08.2320416Z ============================== 8 passed in 0.57s =============================="
+        },
+        {
+          "line": 10303,
+          "path": "tests/storage/test_printed_label_integrity.py",
+          "summary": "37 passed",
+          "seconds": 2.71,
+          "text": "2026-11-28T06:34:11.2076207Z ============================= 37 passed in 2.71s =============================="
+        },
+        {
+          "line": 10323,
+          "path": "tests/ingest/test_checked_catalog_commit.py",
+          "summary": "10 passed",
+          "seconds": 3.35,
+          "text": "2026-11-28T06:34:14.8412946Z ============================= 10 passed in 3.35s =============================="
+        },
+        {
+          "line": 10350,
+          "path": "tests/search/test_search_query_work.py",
+          "summary": "17 passed",
+          "seconds": 1.92,
+          "text": "2026-11-28T06:34:17.0875674Z ============================= 17 passed in 1.92s =============================="
+        },
+        {
+          "line": 10380,
+          "path": "tests/operations/test_broker_scope.py",
+          "summary": "20 passed",
+          "seconds": 1.85,
+          "text": "2026-11-28T06:34:19.2202175Z ============================= 20 passed in 1.85s =============================="
+        },
+        {
+          "line": 10391,
+          "path": "tests/ingest/test_application_atomic_gate.py",
+          "summary": "1 passed",
+          "seconds": 1.2,
+          "text": "2026-11-28T06:34:20.7365067Z ============================== 1 passed in 1.20s =============================="
+        },
+        {
+          "line": 10410,
+          "path": "tests/ingest/test_pipeline.py",
+          "summary": "9 passed",
+          "seconds": 2.68,
+          "text": "2026-11-28T06:34:23.7373580Z ============================== 9 passed in 2.68s =============================="
+        },
+        {
+          "line": 10424,
+          "path": "tests/ingest/test_initial_publication_completion.py",
+          "summary": "4 passed",
+          "seconds": 1.84,
+          "text": "2026-11-28T06:34:25.9104972Z ============================== 4 passed in 1.84s =============================="
+        },
+        {
+          "line": 10466,
+          "path": "tests/ingest/test_worker_publication_boundary.py",
+          "summary": "32 passed",
+          "seconds": 25.67,
+          "text": "2026-11-28T06:34:51.9248367Z ============================= 32 passed in 25.67s ============================="
+        },
+        {
+          "line": 10512,
+          "path": "tests/e2e/test_import_worker_publication.py",
+          "summary": "36 passed",
+          "seconds": 34.34,
+          "text": "2026-11-28T06:35:26.6495359Z ============================= 36 passed in 34.34s ============================="
+        },
+        {
+          "line": 10531,
+          "path": "tests/storage/test_schema_boundary.py",
+          "summary": "9 passed",
+          "seconds": 0.7,
+          "text": "2026-11-28T06:35:27.7587764Z ============================== 9 passed in 0.70s =============================="
+        },
+        {
+          "line": 10546,
+          "path": "tests/storage/test_revisions.py",
+          "summary": "5 passed",
+          "seconds": 0.4,
+          "text": "2026-11-28T06:35:28.4250884Z ============================== 5 passed in 0.40s =============================="
+        },
+        {
+          "line": 10561,
+          "path": "tests/storage/test_read_boundary.py",
+          "summary": "5 passed",
+          "seconds": 0.44,
+          "text": "2026-11-28T06:35:29.1435525Z ============================== 5 passed in 0.44s =============================="
+        },
+        {
+          "line": 10583,
+          "path": "tests/catalog/test_read_views.py",
+          "summary": "9 passed, 15 subtests passed",
+          "seconds": 1.96,
+          "text": "2026-11-28T06:35:31.3659845Z ==================== 9 passed, 15 subtests passed in 1.96s ===================="
+        },
+        {
+          "line": 10598,
+          "path": "tests/catalog/test_read_views_v2_integration.py",
+          "summary": "5 passed",
+          "seconds": 0.49,
+          "text": "2026-11-28T06:35:32.1212744Z ============================== 5 passed in 0.49s =============================="
+        },
+        {
+          "line": 10614,
+          "path": "tests/search/test_literal_integrity.py",
+          "summary": "6 passed",
+          "seconds": 0.08,
+          "text": "2026-11-28T06:35:32.4636145Z ============================== 6 passed in 0.08s =============================="
+        },
+        {
+          "line": 10630,
+          "path": "tests/search/test_literal_readonly.py",
+          "summary": "6 passed",
+          "seconds": 0.26,
+          "text": "2026-11-28T06:35:32.9841528Z ============================== 6 passed in 0.26s =============================="
+        },
+        {
+          "line": 10646,
+          "path": "tests/search/test_literal_v2_composition.py",
+          "summary": "6 passed",
+          "seconds": 0.45,
+          "text": "2026-11-28T06:35:33.7025706Z ============================== 6 passed in 0.45s =============================="
+        },
+        {
+          "line": 10667,
+          "path": "tests/e2e/test_retained_source_search_integrity.py",
+          "summary": "11 passed",
+          "seconds": 15.46,
+          "text": "2026-11-28T06:35:49.4325589Z ============================= 11 passed in 15.46s ============================="
+        },
+        {
+          "line": 10702,
+          "path": "tests/packaging/test_library_capacity_measurement.py",
+          "summary": "25 passed",
+          "seconds": 41.97,
+          "text": "2026-11-28T06:36:31.7213697Z ============================= 25 passed in 41.97s ============================="
+        },
+        {
+          "line": 10781,
+          "path": "tests/storage/test_backup_capacity.py",
+          "summary": "28 passed",
+          "seconds": 248.69,
+          "text": "2026-11-28T06:40:40.8242793Z ======================= 28 passed in 248.69s (0:04:08) ========================"
+        },
+        {
+          "line": 10794,
+          "path": "tests/storage/test_backup_capacity_cli.py",
+          "summary": "3 passed",
+          "seconds": 2.72,
+          "text": "2026-11-28T06:40:47.6938617Z ============================== 3 passed in 2.72s =============================="
+        },
+        {
+          "line": 10821,
+          "path": "tests/ui/test_backup_capacity.py",
+          "summary": "17 passed",
+          "seconds": 4.27,
+          "text": "2026-11-28T06:40:52.2669892Z ============================= 17 passed in 4.27s =============================="
+        },
+        {
+          "line": 10836,
+          "path": "tests/storage/test_crash_backup.py",
+          "summary": "5 passed",
+          "seconds": 0.62,
+          "text": "2026-11-28T06:40:53.1960116Z ============================== 5 passed in 0.62s =============================="
+        },
+        {
+          "line": 10860,
+          "path": "tests/studio/test_book_effects.py",
+          "summary": "14 passed",
+          "seconds": 46.15,
+          "text": "2026-11-28T06:41:39.6217388Z ============================= 14 passed in 46.15s ============================="
+        },
+        {
+          "line": 10906,
+          "path": "tests/studio/test_measured_audio.py",
+          "summary": "36 passed",
+          "seconds": 303.57,
+          "text": "2026-11-28T06:46:43.5395462Z ======================= 36 passed in 303.57s (0:05:03) ========================"
+        },
+        {
+          "line": 10935,
+          "path": "tests/studio/test_measured_pcm.py",
+          "summary": "19 passed",
+          "seconds": 0.35,
+          "text": "2026-11-28T06:46:44.4262228Z ============================= 19 passed in 0.35s =============================="
+        },
+        {
+          "line": 10954,
+          "path": "tests/studio/test_book_measured_cli.py",
+          "summary": "9 passed",
+          "seconds": 42.68,
+          "text": "2026-11-28T06:47:27.4033654Z ============================= 9 passed in 42.68s =============================="
+        },
+        {
+          "line": 10969,
+          "path": "tests/ui/test_book_effects.py",
+          "summary": "5 passed",
+          "seconds": 3.03,
+          "text": "2026-11-28T06:47:30.7692323Z ============================== 5 passed in 3.03s =============================="
+        },
+        {
+          "line": 10996,
+          "path": "tests/ui/test_book_duration_dialog.py",
+          "summary": "17 passed",
+          "seconds": 141.76,
+          "text": "2026-11-28T06:49:52.8353189Z ======================= 17 passed in 141.76s (0:02:21) ========================"
+        },
+        {
+          "line": 11045,
+          "path": "tests/conversion/test_selected_conversion.py",
+          "summary": "39 passed",
+          "seconds": 14.03,
+          "text": "2026-11-28T06:50:07.2828302Z ============================= 39 passed in 14.03s ============================="
+        },
+        {
+          "line": 11104,
+          "path": "tests/conversion/test_calibre_admission.py",
+          "summary": "49 passed",
+          "seconds": 3.07,
+          "text": "2026-11-28T06:50:10.6990934Z ============================= 49 passed in 3.07s =============================="
+        },
+        {
+          "line": 11138,
+          "path": "tests/conversion/test_office_admission.py",
+          "summary": "24 passed",
+          "seconds": 2.84,
+          "text": "2026-11-28T06:50:13.8628283Z ============================= 24 passed in 2.84s =============================="
+        },
+        {
+          "line": 11168,
+          "path": "tests/ui/test_document_conversion.py",
+          "summary": "20 passed",
+          "seconds": 2.37,
+          "text": "2026-11-28T06:50:16.5359826Z ============================= 20 passed in 2.37s =============================="
+        },
+        {
+          "line": 11329,
+          "path": "tests/extract/test_document_formats_xml.py",
+          "summary": "151 passed",
+          "seconds": 0.67,
+          "text": "2026-11-28T06:50:17.5200428Z ============================= 151 passed in 0.67s ============================="
+        },
+        {
+          "line": 11350,
+          "path": "tests/ui/test_native_backup_capacity_driver.py",
+          "summary": "11 passed",
+          "seconds": 0.21,
+          "text": "2026-11-28T06:50:18.0409650Z ============================= 11 passed in 0.21s =============================="
+        },
+        {
+          "line": 11374,
+          "path": "tests/ui/test_native_studio_book_choices.py",
+          "summary": "14 passed",
+          "seconds": 0.36,
+          "text": "2026-11-28T06:50:18.6622900Z ============================= 14 passed in 0.36s =============================="
+        },
+        {
+          "line": 11392,
+          "path": "tests/ui/test_native_book_publication_driver.py",
+          "summary": "8 passed",
+          "seconds": 0.25,
+          "text": "2026-11-28T06:50:19.1748621Z ============================== 8 passed in 0.25s =============================="
+        },
+        {
+          "line": 11432,
+          "path": "tests/search/test_paged_candidate_work.py",
+          "summary": "30 passed",
+          "seconds": 29.36,
+          "text": "2026-11-28T06:50:48.8029269Z ============================= 30 passed in 29.36s ============================="
+        },
+        {
+          "line": 11464,
+          "path": "tests/audio/test_live_metadata_retry.py",
+          "summary": "22 passed",
+          "seconds": 0.9,
+          "text": "2026-11-28T06:50:49.9929258Z ============================= 22 passed in 0.90s =============================="
+        },
+        {
+          "line": 11504,
+          "path": "tests/ui/test_native_conversion_diagnostics.py",
+          "summary": "30 passed",
+          "seconds": 0.76,
+          "text": "2026-11-28T06:50:51.0204271Z ============================= 30 passed in 0.76s =============================="
+        },
+        {
+          "line": 11544,
+          "path": "tests/audio/test_voice_package_management.py",
+          "summary": "30 passed",
+          "seconds": 297.39,
+          "text": "2026-11-28T06:55:48.6943556Z ======================= 30 passed in 297.39s (0:04:57) ========================"
+        },
+        {
+          "line": 11579,
+          "path": "tests/audio/test_voice_management_state.py",
+          "summary": "25 passed",
+          "seconds": 15.69,
+          "text": "2026-11-28T06:56:04.8058099Z ============================= 25 passed in 15.69s ============================="
+        },
+        {
+          "line": 11619,
+          "path": "tests/audio/test_voice_reference_management.py",
+          "summary": "30 passed",
+          "seconds": 111.49,
+          "text": "2026-11-28T06:57:56.6295158Z ======================= 30 passed in 111.49s (0:01:51) ========================"
+        },
+        {
+          "line": 11644,
+          "path": "tests/audio/test_voice_protected_management.py",
+          "summary": "15 passed",
+          "seconds": 116.98,
+          "text": "2026-11-28T06:59:53.9590261Z ======================= 15 passed in 116.98s (0:01:56) ========================"
+        },
+        {
+          "line": 11669,
+          "path": "tests/audio/test_voice_publication_lifetime.py",
+          "summary": "15 passed",
+          "seconds": 1.29,
+          "text": "2026-11-28T06:59:55.5872075Z ============================= 15 passed in 1.29s =============================="
+        },
+        {
+          "line": 11709,
+          "path": "tests/audio/test_voice_ownership.py",
+          "summary": "30 passed",
+          "seconds": 2.67,
+          "text": "2026-11-28T06:59:58.5501154Z ============================= 30 passed in 2.67s =============================="
+        },
+        {
+          "line": 11747,
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "summary": "28 passed",
+          "seconds": 26.66,
+          "text": "2026-11-28T07:00:25.4994440Z ============================= 28 passed in 26.66s ============================="
+        },
+        {
+          "line": 11775,
+          "path": "tests/integrations/test_dordiai_managed_authority.py",
+          "summary": "18 passed",
+          "seconds": 289.22,
+          "text": "2026-11-28T07:05:15.0564387Z ======================= 18 passed in 289.22s (0:04:49) ========================"
+        },
+        {
+          "line": 11831,
+          "path": "tests/ui/test_voice_packages.py",
+          "summary": "46 passed",
+          "seconds": 2.61,
+          "text": "2026-11-28T07:05:18.0244399Z ============================= 46 passed in 2.61s =============================="
+        },
+        {
+          "line": 11873,
+          "path": "tests/ui/test_voice_reference.py",
+          "summary": "32 passed",
+          "seconds": 0.75,
+          "text": "2026-11-28T07:05:19.1062220Z ============================= 32 passed in 0.75s =============================="
+        },
+        {
+          "line": 11923,
+          "path": "tests/integrations/test_dordiai_voices.py",
+          "summary": "40 passed",
+          "seconds": 9.34,
+          "text": "2026-11-28T07:05:28.7528553Z ============================= 40 passed in 9.34s =============================="
+        },
+        {
+          "line": 11943,
+          "path": "tests/integrations/test_dordiai_speech.py",
+          "summary": "10 passed",
+          "seconds": 4.05,
+          "text": "2026-11-28T07:05:33.1414979Z ============================= 10 passed in 4.05s =============================="
+        },
+        {
+          "line": 11970,
+          "path": "tests/integrations/test_dordiai_settings.py",
+          "summary": "17 passed",
+          "seconds": 3.77,
+          "text": "2026-11-28T07:05:37.2052264Z ============================= 17 passed in 3.77s =============================="
+        },
+        {
+          "line": 11987,
+          "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+          "summary": "7 passed",
+          "seconds": 2.54,
+          "text": "2026-11-28T07:05:40.0432211Z ============================== 7 passed in 2.54s =============================="
+        },
+        {
+          "line": 12007,
+          "path": "tests/integrations/test_dordiai_convergence.py",
+          "summary": "10 passed",
+          "seconds": 5.01,
+          "text": "2026-11-28T07:05:45.3362353Z ============================= 10 passed in 5.01s =============================="
+        },
+        {
+          "line": 12025,
+          "path": "tests/audio/test_bundled_runtime_settings.py",
+          "summary": "8 passed",
+          "seconds": 0.31,
+          "text": "2026-11-28T07:05:45.9273862Z ============================== 8 passed in 0.31s =============================="
+        },
+        {
+          "line": 12077,
+          "path": "tests/storage/test_v3_state_backup.py",
+          "summary": "42 passed",
+          "seconds": 20.06,
+          "text": "2026-11-28T07:06:06.2801641Z ============================= 42 passed in 20.06s ============================="
+        },
+        {
+          "line": 12096,
+          "path": "tests/storage/test_library_backup.py",
+          "summary": "9 passed",
+          "seconds": 7.56,
+          "text": "2026-11-28T07:06:14.2588235Z ============================== 9 passed in 7.56s =============================="
+        },
+        {
+          "line": 12133,
+          "path": "tests/storage/test_state_backup_portability.py",
+          "summary": "27 passed",
+          "seconds": 0.55,
+          "text": "2026-11-28T07:06:15.1251239Z ============================= 27 passed in 0.55s =============================="
+        },
+        {
+          "line": 12170,
+          "path": "tests/search/test_window_catalog_projection.py",
+          "summary": "27 passed",
+          "seconds": 1.64,
+          "text": "2026-11-28T07:06:17.0648845Z ============================= 27 passed in 1.64s =============================="
+        },
+        {
+          "line": 12218,
+          "path": "tests/ui/test_ebook_dialog.py",
+          "summary": "38 passed",
+          "seconds": 0.75,
+          "text": "2026-11-28T07:06:18.0891180Z ============================= 38 passed in 0.75s =============================="
+        },
+        {
+          "line": 12247,
+          "path": "tests/ui/test_native_saved_audio_cleanup.py",
+          "summary": "19 passed",
+          "seconds": 0.74,
+          "text": "2026-11-28T07:06:19.1272094Z ============================= 19 passed in 0.74s =============================="
+        },
+        {
+          "line": 12297,
+          "path": "tests/integrations/test_dordiai_reference_backends.py",
+          "summary": "40 passed",
+          "seconds": 6.34,
+          "text": "2026-11-28T07:06:25.7631149Z ============================= 40 passed in 6.34s =============================="
+        }
+      ]
+    },
+    {
+      "number": 18,
+      "name": "Verify installed publication, recording, clips and EPUB3.3 without egress",
+      "started_at": "2026-11-28T07:07:55Z",
+      "completed_at": "2026-11-28T08:16:37Z",
+      "conclusion": "FAIL",
+      "passed": 4375,
+      "failed": 2,
+      "subtests_passed": 15,
+      "pytest_seconds": 4116.48,
+      "observed_failure": "Both native-spelling DAISY schema fixtures call the old resolver with url=None; refusal string concatenation raises TypeError.",
+      "evidence_lines": [
+        {
+          "line": 14500,
+          "text": "2026-11-28T08:16:35.3062455Z self = <_daisy_closed_schema_resolver.schema_resolver.<locals>.Resolver object at 0x000001EA8C517750>"
+        },
+        {
+          "line": 14501,
+          "text": "2026-11-28T08:16:35.3063322Z url = None, public_id = None"
+        },
+        {
+          "line": 14504,
+          "text": "2026-11-28T08:16:35.3064643Z     def resolve(self, url, public_id, context):"
+        },
+        {
+          "line": 14505,
+          "text": "2026-11-28T08:16:35.3065227Z         path = approved.get(url)"
+        },
+        {
+          "line": 14506,
+          "text": "2026-11-28T08:16:35.3065659Z         if path is None:"
+        },
+        {
+          "line": 14507,
+          "text": "2026-11-28T08:16:35.3066533Z >           raise ValueError('The schema validator refused an unapproved resource: ' + url)"
+        },
+        {
+          "line": 14509,
+          "text": "2026-11-28T08:16:35.3067995Z E           TypeError: can only concatenate str (not \"NoneType\") to str"
+        },
+        {
+          "line": 14511,
+          "text": "2026-11-28T08:16:35.3068620Z scripts\\daisy_schema_acceptance.py:39: TypeError"
+        },
+        {
+          "line": 14513,
+          "text": "2026-11-28T08:16:35.3071217Z FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+        },
+        {
+          "line": 14514,
+          "text": "2026-11-28T08:16:35.3073032Z FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+        },
+        {
+          "line": 14515,
+          "text": "2026-11-28T08:16:35.3074307Z 2 failed, 4375 passed, 15 subtests passed in 4116.48s (1:08:36)"
+        },
+        {
+          "line": 14520,
+          "text": "2026-11-28T08:16:35.5679490Z \u001b[31;1mAssertionError: tests/studio/test_daisy_schema_resolver.py\u001b[0m"
+        },
+        {
+          "line": 14525,
+          "text": "2026-11-28T08:16:37.2944777Z \u001b[31;1m\u001b[0m\u001b[36;1m\u001b[36;1m\u001b[0m\u001b[36;1m\u001b[0m\u001b[36;1m\u001b[31;1m\u001b[31;1m\u001b[36;1m     | \u001b[31;1mInstalled publication source, recovery or export guards failed.\u001b[0m"
+        },
+        {
+          "line": 14526,
+          "text": "2026-11-28T08:16:37.3393637Z ##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "number": 23,
+      "name": "Validate local services, DSP, integrity and provider permission boundaries",
+      "started_at": "2026-11-28T08:21:22Z",
+      "completed_at": "2026-11-28T09:16:42Z",
+      "conclusion": "FAIL",
+      "passed": 3917,
+      "failed": 2,
+      "skipped": 14,
+      "pytest_seconds": 3318.39,
+      "observed_failure": "Same two old native-spelling DAISY schema fixture failures; quiet console summary does not attribute the14 skips.",
+      "evidence_lines": [
+        {
+          "line": 16221,
+          "text": "2026-11-28T09:16:41.7139846Z self = <_daisy_closed_schema_resolver.schema_resolver.<locals>.Resolver object at 0x0000017FB4F28410>"
+        },
+        {
+          "line": 16222,
+          "text": "2026-11-28T09:16:41.7140538Z url = None, public_id = None"
+        },
+        {
+          "line": 16225,
+          "text": "2026-11-28T09:16:41.7141575Z     def resolve(self, url, public_id, context):"
+        },
+        {
+          "line": 16226,
+          "text": "2026-11-28T09:16:41.7142027Z         path = approved.get(url)"
+        },
+        {
+          "line": 16227,
+          "text": "2026-11-28T09:16:41.7142407Z         if path is None:"
+        },
+        {
+          "line": 16228,
+          "text": "2026-11-28T09:16:41.7142940Z >           raise ValueError('The schema validator refused an unapproved resource: ' + url)"
+        },
+        {
+          "line": 16230,
+          "text": "2026-11-28T09:16:41.7144176Z E           TypeError: can only concatenate str (not \"NoneType\") to str"
+        },
+        {
+          "line": 16232,
+          "text": "2026-11-28T09:16:41.7145348Z scripts\\daisy_schema_acceptance.py:39: TypeError"
+        },
+        {
+          "line": 16234,
+          "text": "2026-11-28T09:16:41.7159469Z FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+        },
+        {
+          "line": 16235,
+          "text": "2026-11-28T09:16:41.7162226Z FAILED tests/studio/test_daisy_schema_resolver.py::test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping[native] - TypeError: can only concatenate str (not \"NoneType\") to str"
+        },
+        {
+          "line": 16236,
+          "text": "2026-11-28T09:16:41.7163523Z 2 failed, 3917 passed, 14 skipped in 3318.39s (0:55:18)"
+        },
+        {
+          "line": 16237,
+          "text": "2026-11-28T09:16:42.9811485Z ##[error]Process completed with exit code 1."
+        }
+      ]
+    }
+  ],
+  "attribution": [
+    "Exact old5b2 execution only; no result transfer to E/F/G.",
+    "The DAISY failures match the already corrected later source/fixture route; this observation does not execute that correction.",
+    "The75-minute error is explicit runner evidence, distinct from an individual600-second suite deadline.",
+    "203 sequential pytest summaries are partial progress, not the missing all217 ci_check completion verdict.",
+    "Complete log fetched once and hashed; artifact is the original immutable run artifact."
+  ]
+}

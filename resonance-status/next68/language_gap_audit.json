@@ -1,0 +1,95 @@
+{
+  "schema": "carr.language-qualification-gap-audit/1",
+  "created_utc": "2026-11-28 07:59:30 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "review": "READ_ONLY_SOURCE_AUDIT",
+  "scope": {
+    "product_python_modules": 399,
+    "documentation_files": 106,
+    "read_failures": [],
+    "new_execution": false,
+    "source_changes": false
+  },
+  "sources": [
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "git_blob": "bad9aa5c644573ed18fdb83527733dd99a738ade"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "git_blob": "ba8a105cad8b021bd35625e005ffc01b1e8c578e"
+    },
+    {
+      "path": "carr-library/docs/language_qualification.md",
+      "git_blob": "0762689c5b844dd7498da2ee70b46f72d29e7e51"
+    },
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "git_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    },
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "git_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "git_blob": "34967033f85e82491335d27a9abda5139da66c44"
+    }
+  ],
+  "findings": [
+    {
+      "kind": "OBSERVED_SOURCE",
+      "finding": "DeclaredLanguageBinding accepts candidate/partial only. CapabilityMatrix.summary hardcodes qualified_entries=0; build_capability_matrix accepts only catalog/voices/bindings and has no qualification evidence argument. to_dict is export-only. The native controller always rebuilds with bindings=() and has no durable import/review/store actions."
+    },
+    {
+      "kind": "OBSERVED_INVENTORY",
+      "finding": "No separate durable per-language capability qualification intake/review path was found in all 399 current product modules. Other canonical-tag consumers and declaration/inference markers do not feed accepted qualification evidence into the matrix."
+    },
+    {
+      "kind": "REQUIREMENT_INTERPRETATION",
+      "finding": "Finalization section 1 and V3-15 require evidence-based distinctions and exact app/engine/pack/test/reviewer provenance; the existing permanently empty verified path is missing software glue for recording legitimate completed qualifications. The specification does not demand a separate generic review framework."
+    },
+    {
+      "kind": "EXTERNAL_QUALIFICATION_LIMIT",
+      "finding": "A software path does not prove any of the 135 languages acoustically or accessibly qualified. Real exact-engine/model assets, test outputs and independent linguistic/accessibility review remain separate pending evidence; current zero qualified languages is truthful."
+    }
+  ],
+  "balabolka": {
+    "existing_bounded_outlines": [
+      {
+        "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+        "lines": [
+          9,
+          27,
+          69
+        ],
+        "role": "Fixed requested formats and workflow categories, official references, explicit remaining checklist/runtime verification."
+      },
+      {
+        "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+        "lines": [
+          15
+        ],
+        "role": "Requires a finite supported/limited/pending/unsupported checklist with evidence."
+      },
+      {
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "lines": [
+          103,
+          104,
+          105
+        ],
+        "role": "Still explicitly lists the remaining finite acceptance checklist."
+      }
+    ],
+    "finding": "The existing documents contain a finite requested outline and an explicit outstanding checklist requirement. No completed per-feature status/evidence checklist was found in the 106 current documentation files or product references; no new external parity claim is made."
+  },
+  "authorization_followup": "Root subsequently authorized a narrow implementation inside the existing catalog/matrix, typed state/backup and native UI; design was sent before source blobs.",
+  "limitations": [
+    "Read-only static source/documentation audit, not a fresh CI or runtime execution.",
+    "No inference about hidden/external evidence or actual 135-language quality.",
+    "Existing historical CI receipts were not requalified by this audit."
+  ]
+}

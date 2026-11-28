@@ -1,0 +1,42 @@
+{
+  "schema": "resonance-integration/1",
+  "parent": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+  "parent_tree": "5a8592921f44839f9b219ddab038a9a2c0e1de05",
+  "status": "OWNER_API_GATE_PREPARED_NOT_RUN",
+  "script": "e22c226ef24cf48957d04c32f25cb472e48c764e",
+  "workflow": "600729a372aac81e9929c08e5c07d24e0eca36a6",
+  "owner_revision": "a1c73a5747bc86eb11f0c037120442e0c2593e91",
+  "closure": {
+    "repository": "Oleksii-debug/ChatGPT-Autopilot-ExtensionChatGPT-Autopilot-Extension",
+    "commit": "a1c73a5747bc86eb11f0c037120442e0c2593e91",
+    "directory": "dordiai-voices/source/0.12.2/kx47Runtime",
+    "files": [
+      {
+        "path": "voice_policy.py",
+        "sha": "de305d15a955b92dc1a8bfb719b7f9df501a94d8"
+      },
+      {
+        "path": "voice_packages.py",
+        "sha": "2abe2a50bcf58aea423764ef15acc04538ee2f9b"
+      },
+      {
+        "path": "voice_assets.py",
+        "sha": "6cabd9c44a3979e2b543f2272915fdc83523c87c"
+      }
+    ],
+    "distribution": "Not included in product or public retained reports; separate runner-private direct metadata/API acceptance required.",
+    "sequence": [
+      "Create data-only synthetic source versions with exact document files/roles and explicit provenance/rights.",
+      "create_package(source_dir, document, output); inspect_package(output).",
+      "assets.install_voice_package(output, references, engine_id='holos', resources={}); list_installed_packages(references/'packages'); discover_voices(references, engine_id='holos').",
+      "Create/install distinct version2; assets.activate_voice_version(references, profile, version, engine_id='holos', resources={}); verify exact immutable version1 and changed active version.",
+      "Export current reviewed files using create_package again; inspect/re-hash exact archive data.",
+      "packages.uninstall_package(references/'packages', profile, keep_files=True), assert actual inactive tombstone/no discovery; later explicit install/reactivation remains an independently reviewed action.",
+      "packages.uninstall_package(..., keep_files=False), verify only selected managed files deleted and foreign/legacy canaries unchanged."
+    ],
+    "qualification": "Metadata/data package management only; no actual owner model, speech generation, acoustic identity or quality claim."
+  },
+  "constraints": "Explicit fixed public source acquisition, exact3Gitblob identities, actualstdlib-only metadata API, generated PCM/text only, all source/audio/packagepayloads temporary and retired, bounded JSONreceipts only. Doesnotqualifycurrentmanager/privateengine/acousticquality/NVDA.",
+  "actual_main_closed_diagnostic": "1493b40e184c2a41ebd0608e650ad1716e6864ef",
+  "actual_capacity_metrics": "57c82d60133c51fbd62deb86c8c96153057c4da3"
+}

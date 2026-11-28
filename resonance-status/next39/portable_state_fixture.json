@@ -1,0 +1,71 @@
+{
+  "schema": "carr-portable-state-fixture-handoff/1",
+  "created_utc": "2026-11-28 02:15:27 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "Real Windows alias and invalid-name observations retain required portable state snapshot/restore coverage",
+  "files": [
+    {
+      "path": "carr-library/tests/storage/test_state_backup_portability.py",
+      "before": "b346d9eab3eb98627116228ac5b13c93e3283476",
+      "after": "27a9bf1ee349b48c557bd6f38f11f7ed15a99930",
+      "exact_readback": true
+    }
+  ],
+  "unchanged_product": {
+    "path": "carr-library/src/carr_library/state_backup.py",
+    "git_blob": "7027e3f07f967403d6e523aa23c8233176a43222"
+  },
+  "whole_suite": {
+    "path": "tests/storage/test_state_backup_portability.py",
+    "before_cases": 27,
+    "after_cases": 27,
+    "function_count": 9,
+    "functions": [
+      "test_portable_manifest_rejects_collisions",
+      "test_portable_manifest_allows_distinct_siblings",
+      "test_snapshot_refuses_unrestorable_portable_names",
+      "test_portable_manifest_rejects_non_windows_names",
+      "test_portable_manifest_keeps_ordinary_unicode_names",
+      "test_snapshot_rejects_nonportable_real_source",
+      "test_portable_snapshot_roundtrip_unicode",
+      "test_state_inventory_rejects_unreadable_subtree",
+      "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree"
+    ],
+    "required_companions": [],
+    "new_dependencies": []
+  },
+  "source_changes": [
+    "Only the two native-filename fixture functions change (two case-alias parametrizations and one invalid-name case), plus a small actual-restore mkdir observer and imports.",
+    "Exclusive native creation must expose a real same-file alias or the requested separate spellings. The alias branch requires equal native device/inode identity and exact canonical physical inventory.",
+    "The canonical real files are snapshotted through current snapshot_state and compared by exact manifest and bytes. The requested colliding names, with real byte sizes and hashes, then pass into actual restore_state and must be rejected before any destination mkdir.",
+    "The invalid '?' fixture attempts actual creation. Only an observed Windows EINVAL or WinError123 permits a real ordinary-file snapshot followed by malformed-manifest restore refusal; unexpected failures stay failures.",
+    "The actual POSIX collision and invalid-name snapshot refusals remain. Source and stage bytes remain exact, and seven other test bodies and every parametrization remain unchanged."
+  ],
+  "preserved": {
+    "cases": 27,
+    "test_functions": 9,
+    "platform_skips_removed": 3,
+    "selectors_removed": false,
+    "validator_mocked": false,
+    "enumeration_fabricated": false,
+    "product_changed": false,
+    "budgets_changed": false,
+    "restore_destination_created": false
+  },
+  "evidence_boundary": "The existing exact b346 fixture has explicit platform skips that conflict with the strict whole27 gate. Root reported actual Windows24 passed/3 skipped and Linux27 passed. This successor has not executed and transfers no runtime verdict.",
+  "peer": {
+    "root": "ACCEPTED_STATIC_NOT_RUN",
+    "locate_project": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "gate_changes": {
+    "counts": "unchanged27",
+    "functions": "unchanged9",
+    "focused_source_pins": "Replace b346d9eab3eb98627116228ac5b13c93e3283476 with27a9bf1ee349b48c557bd6f38f11f7ed15a99930 where bound; refresh the owning helper/workflow pins."
+  },
+  "execution": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "windows": "NOT_RUN",
+    "refs_changed": false
+  }
+}

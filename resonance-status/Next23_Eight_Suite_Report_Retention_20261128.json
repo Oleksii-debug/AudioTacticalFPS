@@ -1,0 +1,29 @@
+{
+  "schema": "resonance-eight-suite-report-retention/1",
+  "created_utc": "2026-11-28T00:09:23Z",
+  "status": "PEER_REVIEWED_NOT_RUN",
+  "base_commit": "7beb65f317e8ceddb385048c1c442342f0bf608c",
+  "base_tree": "061b925457a41afa5919bbff7dd64620cbac190e",
+  "files": [
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "264fcc84bcfeac1b15b5ca30f9ea1d1b6ffd9114",
+      "sha": "cc4013e9ecfb76c5454f850eaba2f25285d370b1"
+    }
+  ],
+  "review_manifest": "e7b57e7cd3b76687b58eb0f64d64de2f41a188ac",
+  "finding": "The helper now writes8 isolated-installed suite receipts, but both closed artifact maps still admitted only1..5. Successful execution would produce correctly named6..8 reports that the old map would reject.",
+  "change": "Add only installed6/7/8 XML, TXT and origin report names by correcting both existing ranges to1..8. Keep all exact path/type/root/hash/size/identity/native rules.",
+  "preserved": {
+    "source_and_installed": 254,
+    "whole_suites": 8,
+    "native_phases": 6,
+    "helper": "6906734c565379c8b086f012894de0a7250b6c64",
+    "fixture": "9d97fca2633815e61a55c16f51a06484944f6fbc",
+    "production": "UNCHANGED",
+    "deadlines": "UNCHANGED"
+  },
+  "peer": "Progress accepted exact inverse reconstruction; root independently verified exactly two changed lines and the complete predecessor reconstruction.",
+  "refs": "Only converter-final will advance after exact tree/commit readback. Book/capacitydb6, mainPR e763 and profiles79ef remain unchanged.",
+  "qualification": "No executed254 or native result is claimed for this workflow correction."
+}

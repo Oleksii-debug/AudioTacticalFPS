@@ -1,0 +1,114 @@
+{
+  "schema": "resonance-studio-envelopes/1",
+  "status": "DRAFT_NOT_RUN",
+  "base_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "base_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "sha": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "preimage": "2e07521a9d35965397a09b94799173fc7b9b17f7"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/effects_dialog.py",
+      "sha": "d48b985ccb38b5a48123bc2a2c39afb2b2f452e4",
+      "preimage": "6a9ab34f2963e438e1adbd294bd4c38e3e81caac"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "sha": "440646c6d9073691c7669381dd3f2707cadc79d4",
+      "preimage": "60e10f79b26b6b12906303724b9d69caee985fc3"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/envelopes.py",
+      "sha": "52bbc4b960784ac774c77071ba8682b2be5ca60c",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "sha": "1162c2058b8852e3717b417503353040703fc442",
+      "preimage": "2763b965a8a20f832d08977a31cd2d34b78a051a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_conversion.py",
+      "sha": "0cf4fa76093a02d43cf38652e3837c9569a1630e",
+      "preimage": "ae58cfc1125e93ecffa3c204241be919fb80a31a"
+    },
+    {
+      "path": "carr-library/tests/audio/test_envelopes.py",
+      "sha": "b2172e4df945f3c7ed67c7a1f3af2ed9f0c08d85",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_envelope_workflow.py",
+      "sha": "dd8c77a1334c21bf0df4fd2e115991bf88dd94e8",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "sha": "677e3f25f61e69e5e8179f7b588d82349e80e4a3",
+      "preimage": "d6432e948ee50981c59dde63c5bd7717b6dbfdbc"
+    },
+    {
+      "path": "carr-library/docs/STUDIO_ENVELOPES.md",
+      "sha": "766ad59e7517b973a6233fbed3d72cbb6d801eef",
+      "preimage": null
+    }
+  ],
+  "scope": "Three bounded time-varying typed Effect kinds within existing schema3; no new store, engine, source authority, package or project format.",
+  "compatibility": "Old schema1/2/3 wire and no-effect role fingerprints retained; current presets, cache identity, output receipt and passive backup schema reused.",
+  "source_gates": [
+    {
+      "path": "tests/audio/test_envelopes.py",
+      "expected_static_cases": 64
+    },
+    {
+      "path": "tests/studio/test_envelope_workflow.py",
+      "expected_static_cases": 17
+    }
+  ],
+  "source_count_status": "STATIC_NOT_COLLECTED_NOT_EXECUTED",
+  "existing_regressions": [
+    "tests/audio/test_dsp.py",
+    "tests/audio/test_effect_presets.py",
+    "tests/audio/test_audio_conversion.py",
+    "tests/studio/test_project_effects.py",
+    "tests/storage/test_backup_studio_effects.py",
+    "tests/studio/test_clip_dialog.py"
+  ],
+  "native": {
+    "path": "scripts/windows_studio_effects_smoke.py",
+    "preserved": "All previous native scopes, source/hash, keyboard, PCM, history, CAS, restore/publication and cleanup assertions.",
+    "origin_count": 13,
+    "new_module": "carr_library.audio.envelopes",
+    "post_cleanup_module_hashes": 13,
+    "required_new_checks": [
+      "native bus exposes width and refuses mono pan envelopes",
+      "installed native effect picker offers gain envelope",
+      "native envelope review shows explicit hold points",
+      "native envelope edit is reversible before applying",
+      "native envelope redo restores exact reviewed points",
+      "native envelope points persist in existing schema3 history",
+      "native saved envelope changes actual PCM at reviewed sample intervals",
+      "native envelope retains exact sample geometry",
+      "native envelope receipt binds every saved numeric point",
+      "native envelope reuses completed unchanged scene audio"
+    ],
+    "additional_fields": {
+      "actual_gain_envelope": "PASS",
+      "module_sha256": "exact thirteen loaded application files, also verified after cleanup"
+    },
+    "qualification": "Installed native runtime NOT_RUN; source PCM NOT_RUN; no physical/listening/NVDA/voice-quality claim."
+  },
+  "review": {
+    "reviewer": "locate_project",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "findings": [
+      "Dynamic loudnorm changes working sample rate: prepend selected-rate resampler to every enabled envelope and test actual timing.",
+      "Convert layout scope: enforce actual input and output channel layout; omit spatial curves from generic mixed-input Convert UI."
+    ],
+    "other": "Peer found no further concrete timing/stereo/UI/metadata blocker; not runtime acceptance.",
+    "correction_review": "Locate independently read compiler52bbc/DSP1162/ConvertUI0cf4 and accepted the two narrow corrections; native extension not independently reviewed yet."
+  },
+  "delivery": "No codec, audio output, model, sample or Node added to product/delivery."
+}

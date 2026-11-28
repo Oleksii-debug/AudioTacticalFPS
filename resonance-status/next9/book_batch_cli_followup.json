@@ -1,0 +1,96 @@
+{
+  "schema": "carr-book-regression-fix/1",
+  "status": "STATIC_REVIEW_ONLY_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "failed_head": "dd9f90893ecb21f5f2aef5a3e11e4d6a83d6913c",
+  "run_id": 46036034510,
+  "job_id": 140631564120,
+  "evidence_blob": "e65560872c50299ef92208dcb18539edea059843",
+  "current_source_base": "fabae325a1a197ac6959732254ddf16d3ecef367",
+  "preimages_match_failed_and_current": true,
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_batch.py",
+      "before": "13888a514f26f46f6d66d1e12efa9728032dbbb0",
+      "sha": "1b414a49cb44894a27a4d17d79560cc1ccddd268"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "before": "c0bec70998f06de20023c5fd9cc868bd75eba86a",
+      "sha": "335d74a0a3c139cbc45a192a9eed4ffb652c37e7"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_batch.py",
+      "before": "a9b757cbd67923919e64ba94bbd6c11a502bf4c6",
+      "sha": "860b5e112e803527add77983733b0f1833b465e5"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_cli.py",
+      "before": "58058c00f909f406ab4097874ebe21d0ce28f07d",
+      "sha": "ea88a403fae7126931c13cba7c303811529eabda"
+    }
+  ],
+  "diagnosis": {
+    "cli": {
+      "actual_passed": 11,
+      "actual_failed": 6,
+      "actual_skipped": 0,
+      "budget": "Three failures request64MiB from the unchanged shared32MiB bounded reader. Review publication already uses encode() with that same32MiB bound.",
+      "other": "One safe existing-file refusal has bounded current-exporter wording; two negatives import the obsolete reader.export_file path. Exact byte/mtime preservation is strengthened.",
+      "fix": "Use the existing writer/reader default bound; no shared budget changes. Update only fixture module/message paths and verify actual shared-exporter temporary cleanup."
+    },
+    "batch": {
+      "actual": "Whole27-case suite did not finish within600s; no JUnit or inferred case PASS count.",
+      "stack_timestamps": [
+        "2026-11-27T17:49:56Z",
+        "2026-11-27T17:53:58Z",
+        "2026-11-27T17:56:28Z"
+      ],
+      "observed": "Different actual render phases repeatedly re-open immutable active-control JSON inside each retained-tree cancellation poll.",
+      "fix": "Move active JSON identity validation to existing current_scope/source boundaries. Root identity and live invocation-specific cancellation signal checks remain per poll. Cleanup still validates the active token.",
+      "scope_line": "Apparent scope test FAILED5% is interleaved with CLI1/17; subsequent PASSED25% matches Book7/27. No scope defect is claimed or patched.",
+      "performance": "No post-fix runtime measurement or completion claim."
+    }
+  },
+  "required_validation": {
+    "source_and_installed": [
+      "tests/studio/test_book_batch.py",
+      "tests/studio/test_book_cli.py"
+    ],
+    "static_cases": {
+      "tests/studio/test_book_batch.py": 29,
+      "tests/studio/test_book_cli.py": 18
+    },
+    "existing_cases_retained": {
+      "batch": 27,
+      "cli": 17
+    },
+    "budget_seconds": 600,
+    "dependencies": "Existing core dependencies and real FFmpeg/ffprobe; CLI uses existing native SAPI on Windows or Flite on Linux. No wx requirement for these suites.",
+    "origins": [
+      "carr_library.studio.book_audio",
+      "carr_library.studio.book_batch",
+      "carr_library.studio.book_cli",
+      "carr_library.research.export_file",
+      "carr_library.durable_state"
+    ],
+    "companions": [
+      "tests/studio/test_book_audio.py",
+      "tests/studio/test_book_batch.py"
+    ],
+    "new_tests": [
+      "tests/studio/test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[replace-token]",
+      "tests/studio/test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[remove-active]",
+      "tests/studio/test_book_cli.py::test_review_reader_rejects_bytes_beyond_the_writer_budget_before_parsing"
+    ],
+    "existing_real_render_strengthened": "test_actual_two_book_render_and_reopened_resume_verify_original_outputs measures actual retained-tree accounting read behavior while preserving all prior output/hash/resume checks."
+  },
+  "unchanged": [
+    "No workflow/ref writes",
+    "Whole-suite600s limits",
+    "All source and publication checkpoints",
+    "Production renderer/native owners/broker leases",
+    "No default policy change",
+    "No new engine or worker"
+  ]
+}

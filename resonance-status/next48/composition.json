@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "a66ee8ba7aa3a2e2740f2caf3c6c7b3edaa89499",
+  "feature_manifest": "20711bab4b5a77221f7059b40e7e8f3a0ccf861d",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/assistant/transcription_provider.py",
+      "before": null,
+      "sha": "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "before": "71073001c91791e4053e00a76238a50727d2371c",
+      "sha": "a3adbe7cc693bc8a3972144007ee15cc85b3b200"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "before": "5831d975bf2fb29c6aa666888a661380e12188fe",
+      "sha": "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_remote_values.py",
+      "before": null,
+      "sha": "25e09a95bac8f079a9e3f0d4b7016a6aa027c7b2"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_remote.py",
+      "before": null,
+      "sha": "bc0c45a8c0edc8dcf8fc7e99476647e3eb8fb8dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/transcription_worker.py",
+      "before": null,
+      "sha": "1651009d71e720ddad1793b35f8fad1464af7422"
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription.py",
+      "before": "509ed74a22ad27ee4ef1c5ab2b4c8884d0f822b2",
+      "sha": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "before": "b5ef583cedcf120b9a0a03369e10b07631a01722",
+      "sha": "98161afe7d432a81e169602f61b8443b639ccea6"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "before": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",
+      "sha": "c8596f4cb9792a89d3f76d08347b9ebbc963439e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_remote_dialog.py",
+      "before": null,
+      "sha": "625500b8b51d4fbc37891218b5e1b0acbb9a5898"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "before": "98ff4267291845d3e4e1abf95ce02ad87ef85da3",
+      "sha": "83425f992811d3560cb53cc191f61dfbe54b8ec5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "before": "bfccc8d15dfb40fda103ca79e21dccf2825d4abd",
+      "sha": "ec81cbf478a225c482b3e74cd5bc9e9deadd3d9a"
+    },
+    {
+      "path": "carr-library/tests/transcription/remote_fixture.py",
+      "before": null,
+      "sha": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_transcription_provider.py",
+      "before": null,
+      "sha": "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_remote_service.py",
+      "before": null,
+      "sha": "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000"
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_remote.py",
+      "before": null,
+      "sha": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_transcription_loopback.py",
+      "before": null,
+      "sha": "6baa4675771066aba1a7ce40a276419eac4606f9"
+    },
+    {
+      "path": "carr-library/scripts/translation_loopback_check.py",
+      "before": "6859d406a595e806b78de12969ad681757e34f71",
+      "sha": "360a669baaa8d60b41acc265111d2fa0f68108ee"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_remote_smoke.py",
+      "before": null,
+      "sha": "62e7d85daf58c7aeadbc83fa8cc2227e09825103"
+    },
+    {
+      "path": "carr-library/docs/REMOTE_TRANSCRIPTION.md",
+      "before": null,
+      "sha": "4b169cd24758337a90bf9881f7dd98542ec8e5ba"
+    },
+    {
+      "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "before": null,
+      "sha": "c0f0f2a2abac8fb5d50f63020da136acc0868d1f"
+    },
+    {
+      "path": ".github/workflows/carr-remote-stt.yml",
+      "before": null,
+      "sha": "4b0c8796c81cc2bbf04c16e775fe50844b3bffe3"
+    }
+  ],
+  "dependent_pin_changes": [
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "before": "b723dc6b461eda3b74095293f86cbb0644c58145",
+      "ops": [
+        {
+          "before": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",
+          "after": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+          "source": "carr-library/src/carr_library/backup_producers.py",
+          "count": 1
+        }
+      ],
+      "sha": "8d42d77bb2de07d561e40ba6e4d9040cf2af4ddd"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "0547c2f6bd07d785fe5cab5019f93b3697d21bb6",
+      "ops": [
+        {
+          "before": "6859d406a595e806b78de12969ad681757e34f71",
+          "after": "360a669baaa8d60b41acc265111d2fa0f68108ee",
+          "source": "carr-library/scripts/translation_loopback_check.py",
+          "count": 1
+        }
+      ],
+      "sha": "01c98c0452549c81b7fe218d9be090d157109071"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "51242fe57a5a1f5700749589b6e890854d60c4cf",
+      "ops": [
+        {
+          "before": "6859d406a595e806b78de12969ad681757e34f71",
+          "after": "360a669baaa8d60b41acc265111d2fa0f68108ee",
+          "source": "carr-library/scripts/translation_loopback_check.py",
+          "count": 2
+        },
+        {
+          "source": "carr-library/scripts/ci_selected_conversion_contracts.py",
+          "before": "0547c2f6bd07d785fe5cab5019f93b3697d21bb6",
+          "after": "01c98c0452549c81b7fe218d9be090d157109071",
+          "count": 2
+        }
+      ],
+      "sha": "b73ca62ed8216b8df2b1577a1b6bf5308bb7d221"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "before": "e50e6e2c4e8b33ea9d1a23fcc166432709ef48f0",
+      "ops": [
+        {
+          "source": "carr-library/scripts/ci_book_measured_contracts.py",
+          "before": "b723dc6b461eda3b74095293f86cbb0644c58145",
+          "after": "8d42d77bb2de07d561e40ba6e4d9040cf2af4ddd",
+          "count": 1
+        }
+      ],
+      "sha": "14afde4d4699a32e39ea1f735e1cc548732ff16e"
+    }
+  ],
+  "root_verification": {
+    "all22_preimages": "PASS",
+    "all47_focused_pins": "PASS",
+    "ordinary_wholes": "3 complete modules;85source+85isolatedinstalled",
+    "modules": "30Linux/32Windows unique pinned origins",
+    "native": "73required/23module bytes, default-No twice",
+    "separate_network": "Windows real synthetic loopback6source+6installed; no paid endpoint",
+    "pin_inverse": "all four dependent gate files exactly reconstruct their preimages"
+  },
+  "qualification": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "paid_provider": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "release": "NOT_QUALIFIED"
+  },
+  "full_gate_integration": "Prepared separately by locate_project; this focused candidate does not change the full PR inventories."
+}

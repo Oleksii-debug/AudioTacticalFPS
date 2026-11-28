@@ -1,0 +1,121 @@
+{
+  "schema": "carr.actual-ci-evidence/1",
+  "recorded_utc": "2026-11-28T05:43:03.087Z",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run_id": 46110647047,
+  "job_id": 140873303963,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110647047/job/140873303963",
+  "status": "PASS",
+  "source_suites": {
+    "whole_suites": 5,
+    "passed": 161,
+    "failed": 0,
+    "skipped": 0,
+    "strict_verdicts": [
+      {
+        "line": 682,
+        "status": "PASS",
+        "path": "tests/security/test_managed_installation.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 683,
+        "status": "PASS",
+        "path": "tests/security/test_managed_registration.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 684,
+        "status": "PASS",
+        "path": "tests/packaging/test_standard_installer.py",
+        "passed": 102,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 685,
+        "status": "PASS",
+        "path": "tests/packaging/test_managed_launch_boundary.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "line": 686,
+        "status": "PASS",
+        "path": "tests/packaging/test_managed_update_native_policy.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "actual_native_receipt": {
+    "actual_backup_restore": "PASS",
+    "actual_inno": "PASS",
+    "actual_windows_registration": "PASS",
+    "actual_windows_vault": "PASS",
+    "authenticode": "NOT_CLAIMED",
+    "full_wrapper_rollback": "PASS",
+    "host_package": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+    "live_app_exclusion": "PASS",
+    "nvda": "NOT_RUN",
+    "production_publisher": "NOT_CONFIGURED",
+    "repair": "PASS",
+    "schema": 1,
+    "setup_a_sha256": "6232b787e825c3b3d93ad64a7ce8f8c7a3e9e7fe7e32f5cb7931c8c002b01776",
+    "setup_b_sha256": "94d9068371c299e32955f8fd2d8034bef98a674749a83e19e3aa8bdc7620b4f7",
+    "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+    "source_b": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "status": "PASS",
+    "target_sha256": "82bcf9b29c16e9b2d11be353e41104ded61cb28f53e3b89f98d44c65d5504b8b",
+    "uninstall": "PASS",
+    "update": "PASS",
+    "user_source_preserved": "PASS"
+  },
+  "wheel_proofs": [
+    {
+      "bundle_manifest_sha256": "80b95d8ebd49089d2cd33c35d8b8c6492ad269bb63fac350b31a592a8747ea1c",
+      "payload_files": 365,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev1",
+      "required_runtime_files": 297,
+      "source_commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+      "source_tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+      "wheel_sha256": "86ec7095ade00e5b7a3de59eb9f574a8b92e897c319f4288ba210541d1fcc863"
+    },
+    {
+      "bundle_manifest_sha256": "7f0ee53633907e2f6e1ca388c6954ffd38e644cfcf14c272a4c91a101e178b6c",
+      "payload_files": 485,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 414,
+      "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+      "wheel_sha256": "81bc9d5ebf998085cb2a9038ea155e937edb8db604f7019b0e9705475be6ee99"
+    }
+  ],
+  "artifact": {
+    "id": 15250133065,
+    "name": "managed-update-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "bytes": 89351,
+    "digest": "sha256:dbcd8f8e4660bcc4f1100073367ec6ba1c0a9ebf1aeaaabf04df7c3cc46eb289",
+    "upload_log_identity_agrees": true
+  },
+  "qualification": [
+    "Actual existing managed A-to-B standard setup, complete wrapper rollback, Repair/Uninstall, backup/restore and user-source preservation passed.",
+    "This is the old required managed-update lane; the separate configured-native desktop Apply/checked-restart family remains required and pending.",
+    "Authenticode NOT_CLAIMED; production publisher NOT_CONFIGURED; NVDA NOT_RUN.",
+    "No full main/V3 success, full product distribution or prior-head qualification is inferred."
+  ]
+}

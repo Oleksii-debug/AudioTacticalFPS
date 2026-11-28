@@ -1,0 +1,173 @@
+{
+  "schema": 1,
+  "component": "Focused unchanged installed native library workflow diagnostic",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "refs_modified": false,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": null,
+      "git_blob": "c9d5c070e0590b252d055be7f3acfa73db01eb19"
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": null,
+      "git_blob": "62845cc0eab7fb5485ca4f6bce9279a7fc059207"
+    }
+  ],
+  "actual_basis": {
+    "timing_receipt": "e32a6dbd02b88814d622589c4598bac3700d5d5f",
+    "run": 46110647047,
+    "job": 140873303775,
+    "step": 26,
+    "step_name": "Exercise native reviewed library workflows and checkpoint recovery",
+    "started_at": "2026-11-28T05:41:01Z",
+    "completed_at": "2026-11-28T05:41:03Z",
+    "actual_result": "FAILURE",
+    "original_error_trace": "NOT_AVAILABLE_WHILE_JOB_ACTIVE",
+    "current_native_probe": "0d0441392caf72eed0e0bc5a0735b041de685d30"
+  },
+  "source_pins": {
+    "tests/ui/native_library_workflow_smoke.py": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+    "src/carr_library/library_assistant.py": "f96aa939066c16105c3398e507f43ef1e438d571",
+    "src/carr_library/ui/library_assistant.py": "c8e9e0ca148d929ead1b44f7cef17efbb76f6568",
+    "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+    "packaging/windows-semantic-cp311.lock": "70dbd10a1dd6282027820f82207ccc617cc9a740",
+    "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
+    "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+    "pyproject.toml": "0e691bab81b90bf9b1543b454014c47b987f11ce"
+  },
+  "runtime": {
+    "runner": "windows-2022",
+    "python": "x64 CPython3.11",
+    "isolated_fresh_venv": true,
+    "setup": "Same native/trusted then semantic hashed locks as main; same explicitly versioned reportlab4.4.9/openpyxl3.1.5; existing locked pytest/setuptools/wheel tools.",
+    "production_locked_dependencies": 51,
+    "scope": "No audio or OCR operation is exercised by this exact TXT probe."
+  },
+  "contract": {
+    "native_checks": [
+      "real named native menu dialog and read-only reviewed plan before approval",
+      "native Pause checkpoints the real import before topic or export publication",
+      "fresh native dialog reloads the exact scoped job and reviewed folder permissions",
+      "real resumed worker publishes exactly one topic and export without repeating import",
+      "scoped source results exclude the other library and preserve quotations, handles and notebook",
+      "native status reports stay on the GUI thread while real tool execution uses the worker"
+    ],
+    "installed_modules": [
+      "carr_library.application",
+      "carr_library.library_assistant",
+      "carr_library.ui.library_assistant",
+      "carr_library.ui.desktop_app",
+      "carr_library.native_runtime",
+      "carr_library.ingest.batch_scan",
+      "carr_library.ingest.writer_guard",
+      "carr_library.research.export_file",
+      "bootstrap"
+    ],
+    "native_command": "python -I -B -X utf8 tests/ui/native_library_workflow_smoke.py",
+    "source_wheel": "Current committed payload verified by unchanged packaging/source_wheel.py478de",
+    "whole_installed_payload": "Same verified wheel and all9 loaded origins checked before and after actual probe",
+    "native_report": "Exit0, one original PASS report, exact six names/multiplicity1, platformWindows, nativePASS/NVDA NOT_RUN and exact three reported module digests.",
+    "native_failure": "Original text/JSON preserved; both post-proofs attempted separately; strict finalFAIL. No full integrated qualification.",
+    "old_checks_and_product": "Unmodified"
+  },
+  "bounds": {
+    "native_internal_deadline_seconds": 40,
+    "native_watchdog_seconds": 60,
+    "native_parent_seconds": 180,
+    "wheel_build_seconds": 300,
+    "wheel_install_seconds": 180,
+    "pip_check_seconds": 60,
+    "each_origin_snapshot_seconds": 60,
+    "setup_minutes": 20,
+    "execution_aggregate_minutes": 15,
+    "retention_minutes": 2,
+    "job_minutes": 40,
+    "each_file_bytes": 8388608,
+    "total_public_evidence_bytes": 16777216
+  },
+  "trigger": {
+    "push_branch": "carr/ci-native-library-workflow-*",
+    "workflow_dispatch": true,
+    "concurrency": "Per exact head; cancel-in-progress false"
+  },
+  "evidence": {
+    "closed_top_files": [
+      "installed-packages.json",
+      "full-lock-source-inventory.json",
+      "native-runtime.json",
+      "firewall.json",
+      "firewall-cleanup.json",
+      "diagnostic.txt"
+    ],
+    "closed_contract_files": [
+      "identity-before.json",
+      "identity-after.json",
+      "wheel-build.txt",
+      "source-wheel-proof.json",
+      "wheel-install.txt",
+      "installed-pip-check.txt",
+      "native-origins-before.json",
+      "native-origins-before.txt",
+      "native-origins-after.json",
+      "native-origins-after.txt",
+      "native-library-workflow.txt",
+      "native-library-workflow.json",
+      "diagnostic-summary.json"
+    ],
+    "private_runtime_and_synthetic_library": "RUNNER_TEMP only, excluded from artifacts"
+  },
+  "validation": {
+    "same_probe_git": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+    "helper_reused_functions_present": true,
+    "helper_unchanged_origin_child": true,
+    "workflow_fixed_helper_pin_occurrences": 1,
+    "workflow_source_pins": 13,
+    "helper_pins": 12,
+    "required_native": 6,
+    "installed_origins": 9,
+    "no_audio_or_ocr_preparation": true,
+    "probe_argv_unchanged": true,
+    "no_whole_case_changes": true,
+    "child_limits": [
+      30,
+      600,
+      300,
+      180,
+      60,
+      60,
+      180
+    ],
+    "helper_has_no_pytest_invocation": true,
+    "hereStrings": {
+      "open": 2,
+      "close": 2
+    }
+  },
+  "syntax_gate_plan": [
+    "Workflow preflight compile() validates exact helper and original probe source plus ORIGIN_CHILD before setup.",
+    "Existing integrated YAML/native PowerShell syntax gate can parse this new workflow on the next full head.",
+    "The focused actual Windows run is required; static peer is not execution proof."
+  ],
+  "inverse": "Both files are new; deleting exactly these two paths restores the parent tree.",
+  "peers": {
+    "helper": {
+      "agent": "/root/progress_completion",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "record": "ee86fd9ed85340fd49074c3eff00a4e57d179aa0"
+    },
+    "workflow": {
+      "agent": "/root/canonical_regression",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "record": "24ffaafbf87c4cacd31e71abdcca0b17e003a154"
+    }
+  },
+  "recorded_utc": "2026-11-28 07:09:14 UTC"
+}

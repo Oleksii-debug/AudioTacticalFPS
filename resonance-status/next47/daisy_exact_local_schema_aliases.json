@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "created_utc": "2026-11-28 03:12:05 UTC",
+  "status": "ACTUAL_FAILURE_DIAGNOSIS_AND_STATIC_REPAIR",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "run_id": 46097288580,
+  "job_id": 140831855765,
+  "actual": {
+    "lxml_version": "6.1.3",
+    "reason": "Exact native-path allowlist did not contain libxml2's local file:/D:/ sibling-entity URL.",
+    "log_sha256": "0f0da70af039b3708d20afaa8d1c0e762327a530126406a2aee359be871dc8f9",
+    "excerpt": [
+      "2026-11-28T02:38:29.3949545Z \u001b[31;1m  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\daisy_schema_acceptance.py\", line 223, in <module>\u001b[0m\r",
+      "2026-11-28T02:38:29.3953181Z \u001b[31;1m    raise SystemExit(main())\u001b[0m\r",
+      "2026-11-28T02:38:29.3957231Z \u001b[31;1m                     ^^^^^^\u001b[0m\r",
+      "2026-11-28T02:38:29.3961859Z \u001b[31;1m  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\daisy_schema_acceptance.py\", line 214, in main\u001b[0m\r",
+      "2026-11-28T02:38:29.3965639Z \u001b[31;1m    else acceptance(args.schemas, require_installed=args.require_installed,\u001b[0m\r",
+      "2026-11-28T02:38:29.3969414Z \u001b[31;1m         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\u001b[0m\r",
+      "2026-11-28T02:38:29.3973722Z \u001b[31;1m  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\daisy_schema_acceptance.py\", line 162, in acceptance\u001b[0m\r",
+      "2026-11-28T02:38:29.3977112Z \u001b[31;1m    result = validate(output, schemas)\u001b[0m\r",
+      "2026-11-28T02:38:29.3981008Z \u001b[31;1m             ^^^^^^^^^^^^^^^^^^^^^^^^^\u001b[0m\r",
+      "2026-11-28T02:38:29.3987905Z \u001b[31;1m  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\daisy_schema_acceptance.py\", line 49, in validate\u001b[0m\r",
+      "2026-11-28T02:38:29.3991255Z \u001b[31;1m    etree.fromstring(archive.read(name), parser)\u001b[0m\r",
+      "2026-11-28T02:38:29.3995358Z \u001b[31;1m  File \"src/lxml/etree.pyx\", line 3434, in lxml.etree.fromstring\u001b[0m\r",
+      "2026-11-28T02:38:29.3999531Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 2080, in lxml.etree._parseMemoryDocument\u001b[0m\r",
+      "2026-11-28T02:38:29.4003409Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 1923, in lxml.etree._parseDoc\u001b[0m\r",
+      "2026-11-28T02:38:29.4007274Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 1948, in lxml.etree._parseDoc_bytes\u001b[0m\r",
+      "2026-11-28T02:38:29.4011701Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 1195, in lxml.etree._BaseParser._parseDoc\u001b[0m\r",
+      "2026-11-28T02:38:29.4016164Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 647, in lxml.etree._ParserContext._handleParseResultDoc\u001b[0m\r",
+      "2026-11-28T02:38:29.4019850Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 761, in lxml.etree._handleParseResult\u001b[0m\r",
+      "2026-11-28T02:38:29.4023685Z \u001b[31;1m  File \"src/lxml/etree.pyx\", line 452, in lxml.etree._ExceptionContext._raise_if_stored\u001b[0m\r",
+      "2026-11-28T02:38:29.4027628Z \u001b[31;1m  File \"src/lxml/parser.pxi\", line 465, in lxml.etree._local_resolver\u001b[0m\r",
+      "2026-11-28T02:38:29.4031914Z \u001b[31;1m  File \"src/lxml/docloader.pxi\", line 150, in lxml.etree._ResolverRegistry.resolve\u001b[0m\r",
+      "2026-11-28T02:38:29.4036300Z \u001b[31;1m  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\daisy_schema_acceptance.py\", line 38, in resolve\u001b[0m\r",
+      "2026-11-28T02:38:29.4040075Z \u001b[31;1m    raise ValueError('The schema validator refused an unapproved resource: ' + url)\u001b[0m\r",
+      "2026-11-28T02:38:29.4044853Z \u001b[31;1mValueError: The schema validator refused an unapproved resource: file:/D:/a/_temp/carr-daisy-validation-schemas/xhtml-special.ent\u001b[0m\r",
+      "2026-11-28T02:38:31.4108021Z \u001b[31;1mException: \u001b[0mD:\\a\\_temp\\f1178a84-bf41-41f1-aaaa-1b31354186ec.ps1:1035\u001b[0m\r"
+    ],
+    "qualification": "The existing conformance step failed; no repaired/native or full DAISY interoperability PASS is inferred."
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/daisy_schema_acceptance.py",
+      "preimage": "f8b7c9b36b59a65608f42ed5705c479c9541ef84",
+      "blob_sha": "df13248d149a2017bd1a70d68c4493edca1811f8"
+    },
+    {
+      "path": "carr-library/tests/studio/test_daisy_schema_resolver.py",
+      "preimage": null,
+      "blob_sha": "4cdb3ee5f1a24bdeaf9b4725a5b0a53e0aed0b59"
+    }
+  ],
+  "new_whole": {
+    "path": "tests/studio/test_daisy_schema_resolver.py",
+    "cases": 20,
+    "functions": [
+      "test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings",
+      "test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping",
+      "test_actual_lxml_keeps_separate_exact_smil_alias",
+      "test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization",
+      "test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_entity",
+      "test_windows_short_file_uri_maps_only_the_exact_approved_drive_path"
+    ],
+    "per_function_cases": [
+      4,
+      4,
+      1,
+      8,
+      2,
+      1
+    ],
+    "companions": [
+      "scripts/daisy_schema_acceptance.py"
+    ]
+  },
+  "contract": "Only aliases generated from already pinned approved schema paths are mapped. Incoming URLs are never decoded, normalized or resolved by basename. Canonical file:/// and libxml file:/ spellings map to the same admitted file; no host/network authority is added.",
+  "preserved": "All real schema names/size/SHA checks, before/after bytes, publication audit, no_network=True, resolve_entities=False, huge_tree=False, three native canonical publications and deliberately invalid XHTML control are unchanged.",
+  "dependencies": {
+    "lxml": "Existing hashed platform dependencies; actual Windows source used6.1.3. New tests import real lxml and never skip."
+  },
+  "primary_references": [
+    "https://docs.python.org/3.11/library/pathlib.html#pathlib.PurePath.as_uri",
+    "https://lxml.de/resolvers.html"
+  ],
+  "source_execution": "STATIC_NOT_RUN",
+  "peer_review": {
+    "agent": "progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Closed generated local URI alias map; exact original validator guards and six-function/20-case real lxml fixture/API inventory. No parser or execution claim."
+  },
+  "refs_moved": false
+}

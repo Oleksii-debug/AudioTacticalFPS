@@ -1,0 +1,363 @@
+{
+  "schema": "carr-reviewed-component/1",
+  "created_utc": "2026-11-28 10:05:25 UTC",
+  "component": "H intake cursor regression gate closure and separate composed Book isolation",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "base_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "source_component": {
+    "manifest": "067db10ada9fa04feafd2203c45f09336aba6501",
+    "peer": "2d29f2fac705cc1553e32c7d76f970ca77593777",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "owner": "root",
+    "worker": {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "before": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "after": "532cd6d0e0bdbeb55675eeb813aa1e39239df022"
+    },
+    "tests": {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "before": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5",
+      "after": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+      "old_cases": 6,
+      "new_cases": 7,
+      "old_functions": 5,
+      "new_functions": 6,
+      "old_prefix": "BYTE_EXACT",
+      "new_function": "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+    }
+  },
+  "gate_files": [
+    {
+      "key": "source",
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": "6032567fb09dd4e235caca7a3480d27845fcf889",
+      "after": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+      "inverse": "BYTE_EXACT",
+      "replacements": [
+        [
+          "'tests/ingest/test_large_source_intake.py' = 6",
+          "'tests/ingest/test_large_source_intake.py' = 7",
+          1
+        ]
+      ],
+      "hunk_count": 1,
+      "utf8_before": {
+        "bytes": 53655,
+        "sha256": "18ef2092c7b98e6caef6eda65c24087414ba1a015cda1bb0eb39be9e73c95ab8"
+      },
+      "utf8_after": {
+        "bytes": 53655,
+        "sha256": "df2a655079f3410acfe96e94f6fd8637a779980d8339002fb3c4caf7f2df1cf1"
+      },
+      "readback": "EXACT"
+    },
+    {
+      "key": "installed",
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "93eb4eab03bdb37ae09373ce1adee74632300167",
+      "after": "3b4981beac7d036d183eff16efd6f3adb26ae458",
+      "inverse": "BYTE_EXACT",
+      "replacements": [
+        [
+          "\"tests/ingest/test_large_source_intake.py\":{\"count\":6,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\"]}",
+          "\"tests/ingest/test_large_source_intake.py\":{\"count\":7,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\",\"test_interrupted_publication_read_releases_lock_with_retained_traceback\"]}",
+          1
+        ],
+        [
+          "\"tests/ingest/test_large_source_intake.py\":6",
+          "\"tests/ingest/test_large_source_intake.py\":7",
+          1
+        ]
+      ],
+      "hunk_count": 2,
+      "utf8_before": {
+        "bytes": 205717,
+        "sha256": "322d30b44eeba7bc488d153591c37e9e908bb0e909c6fd26814e88fb7ec797e6"
+      },
+      "utf8_after": {
+        "bytes": 205791,
+        "sha256": "18bb65241798fb37fd7e7ccdca10524d193d7fceac43c321683a542ce6186d95"
+      },
+      "readback": "EXACT"
+    },
+    {
+      "key": "v3",
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "2530ad683289a6d9d16f5282fc470cf819e791b2",
+      "after": "5740472c341920ac29d3d1716796662bc51a289a",
+      "inverse": "BYTE_EXACT",
+      "replacements": [
+        [
+          "'tests/ingest/test_large_source_intake.py' = 6",
+          "'tests/ingest/test_large_source_intake.py' = 7",
+          1
+        ],
+        [
+          "\"tests/ingest/test_large_source_intake.py\":{\"count\":6,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\"]}",
+          "\"tests/ingest/test_large_source_intake.py\":{\"count\":7,\"functions\":[\"test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker\",\"test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review\",\"test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear\",\"test_large_source_completed_before_real_child_cancel_is_recovered_without_republication\",\"test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication\",\"test_interrupted_publication_read_releases_lock_with_retained_traceback\"]}",
+          1
+        ]
+      ],
+      "hunk_count": 2,
+      "utf8_before": {
+        "bytes": 402441,
+        "sha256": "39eb10bcdbd80929f13efc62510b73f0eeb3cc16d9f579985a1f56721510013f"
+      },
+      "utf8_after": {
+        "bytes": 402515,
+        "sha256": "5bf1da0f45083f09cc85646688bbf6c3b64fc61a55743e3237a2ac9625c655dc"
+      },
+      "readback": "EXACT"
+    },
+    {
+      "key": "corpus",
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "before": "2d9d8e88aaad47f23947f7b877a51e4777016e7f",
+      "after": "7a7ee04513ffb6e3522c6312e89864729c4eaf04",
+      "inverse": "BYTE_EXACT",
+      "replacements": [
+        [
+          "8ab4334be7f7728de84839a6a35cfae5a1347830",
+          "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+          1
+        ]
+      ],
+      "hunk_count": 1,
+      "utf8_before": {
+        "bytes": 22003,
+        "sha256": "c21e2af6f0125326316f9af1aa6ad831b253ce330536ce86c937b2420e00acfd"
+      },
+      "utf8_after": {
+        "bytes": 22003,
+        "sha256": "7577f4cfad05a5030b887a2aeecd9dcf24c37a3c61277b00a3d7707179d8df58"
+      },
+      "readback": "EXACT"
+    },
+    {
+      "key": "main",
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+      "after": "d95bdbf17c5df824c003c98bcd353e9e6b645f50",
+      "inverse": "BYTE_EXACT",
+      "replacements": [
+        [
+          "6032567fb09dd4e235caca7a3480d27845fcf889",
+          "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+          2
+        ]
+      ],
+      "hunk_count": 2,
+      "utf8_before": {
+        "bytes": 404556,
+        "sha256": "be21f3a27c651ee51650671e87a0ad8714478ea8660dc9877ade7dc49515d3d3"
+      },
+      "utf8_after": {
+        "bytes": 404556,
+        "sha256": "9d6b6f3e1240c6db304f816c7549ac2fe308d13897478865f0e47dc47d2af36f"
+      },
+      "readback": "EXACT"
+    },
+    {
+      "key": "reusable",
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": "7d32d1153af6f612c82b319e608fc8e10bc128de",
+      "after": "4b534feab260da01fd558fa8a64511de386d3c16",
+      "inverse": "BYTE_EXACT",
+      "replacements": [
+        [
+          "6032567fb09dd4e235caca7a3480d27845fcf889",
+          "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+          1
+        ]
+      ],
+      "hunk_count": 1,
+      "utf8_before": {
+        "bytes": 11536,
+        "sha256": "f0cc0527c3b98ca9ea3b958bb535051e537aec721a937d3e9bbeb06d21c3073a"
+      },
+      "utf8_after": {
+        "bytes": 11536,
+        "sha256": "69be038fea233379b94cd7f34919b9b8b5fcd2967afe45c5e951cde9b9ad48b6"
+      },
+      "readback": "EXACT"
+    }
+  ],
+  "target_contract": {
+    "path": "tests/ingest/test_large_source_intake.py",
+    "count": 7,
+    "functions": [
+      "test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker",
+      "test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review",
+      "test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear",
+      "test_large_source_completed_before_real_child_cancel_is_recovered_without_republication",
+      "test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication",
+      "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+    ],
+    "new_modules": 0,
+    "new_origins": 0,
+    "new_companions": 0,
+    "existing_companion": "tests/ingest/large_source_fixtures.py unchanged"
+  },
+  "parsed_map_proofs": [
+    {
+      "key": "installed",
+      "marker": "reviewed_feature_cases =",
+      "entries": 153,
+      "target": {
+        "count": 7,
+        "functions": [
+          "test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker",
+          "test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review",
+          "test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear",
+          "test_large_source_completed_before_real_child_cancel_is_recovered_without_republication",
+          "test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication",
+          "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+        ]
+      },
+      "unrelated_byte_value_identical": true
+    },
+    {
+      "key": "installed",
+      "marker": "completed_feature_expected =",
+      "entries": 150,
+      "target": 7,
+      "unrelated_byte_value_identical": true
+    },
+    {
+      "key": "v3",
+      "marker": "reviewed_feature_cases =",
+      "entries": 20,
+      "target": {
+        "count": 7,
+        "functions": [
+          "test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker",
+          "test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review",
+          "test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear",
+          "test_large_source_completed_before_real_child_cancel_is_recovered_without_republication",
+          "test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication",
+          "test_interrupted_publication_read_releases_lock_with_retained_traceback"
+        ]
+      },
+      "unrelated_byte_value_identical": true
+    }
+  ],
+  "unchanged_scope": {
+    "source_selectors": 493,
+    "source_shard_counts": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "source_target_partition_anchor": 2,
+    "fast_selectors": 185,
+    "v3_source_selectors": 223,
+    "v3_installed_selectors": 202,
+    "all_installed_selectors": 342,
+    "all_installed_wholes": 339,
+    "source_grouping": "Exact G grouping and group-verdict code unchanged.",
+    "v3_target_location": "The target belongs to the early20 recovery/import map; only its one target spec and importSearchExpected counter change.",
+    "v3_late_json": {
+      "path": "carr-library/scripts/ci_v3_feature_case_contracts.json",
+      "blob": "b8f6c288b53cb14a6a5339d28d7e50843f15a438",
+      "bytes": 107137,
+      "target_present": false,
+      "changed": false
+    },
+    "budgets": "Every whole600/ASR900, native deadline, source step/job envelope and strict postcheck remains unchanged by these six gate files.",
+    "policies": "No source/wheel/origin/fixture admission, runtime acquisition, firewall, parser, required native, branch trigger, aggregate or cleanup code changed."
+  },
+  "impact_scan": {
+    "basis": "Progress cached62 G-gate scan plus independent exact reads of the affected G files and recursive G tree preimages.",
+    "old_worker_literal": "Only carr-corpus-profile.yml contains the old worker8ab4334 literal in the scanned62 gates.",
+    "target_locations": [
+      "sourcePS count6 and unchanged partition anchor2",
+      "installed reviewed_feature_cases target and completed_feature_expected duplicate",
+      "V3 early importSearchExpected counter and early reviewed_feature_cases target",
+      "next8 selector only"
+    ],
+    "source_helper_hash_cascade": {
+      "main_occurrences": 2,
+      "reusable_occurrences": 1
+    },
+    "no_unrelated_gate_changes": true
+  },
+  "separate_composed_book_isolation": {
+    "manifest": "fb00bcdf23268240251896141e0471ab68fdce4d",
+    "peer": "d7254eb9d60a6a615f7228c8763a28c326b4c020",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "file": {
+      "path": ".github/workflows/carr-next8-source-verification.yml",
+      "before": "4f3f8a1f6112cc638d9087378900bf5ad5cf2e07",
+      "after": "5b048c2482c20ef419cc13fb34d95187464fafb3",
+      "inverse": "BYTE_EXACT_SINGLE_BLOCK",
+      "hunks": [
+        {
+          "old_line": 244,
+          "new_line": 244,
+          "removed": [
+            "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'",
+            "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+            "          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'",
+            "          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }"
+          ],
+          "added": [
+            "          # A3 completed the other 137 wholes but Book reached its unchanged 600-second limit.",
+            "          # Keep Book alone before the remaining pool; this tests the contention hypothesis.",
+            "          $completionUnique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)",
+            "          foreach ($suite in $completionSuites) {",
+            "            if (-not $completionUnique.Add($suite)) { throw 'A required composed source suite is duplicated.' }",
+            "          }",
+            "          $bookSuite = 'tests/studio/test_book_batch.py'",
+            "          $remainingSuites = @($completionSuites | Where-Object { $_ -cne $bookSuite })",
+            "          if ($completionSuites.Count -ne 138 -or $completionSuites -cnotcontains $bookSuite -or $remainingSuites.Count -ne 137) { throw 'The complete 138-suite source groups differ from review.' }",
+            "          Write-Output ('Reviewed isolated composed source suite: ' + $bookSuite)",
+            "          $PSNativeCommandUseErrorActionPreference = $false",
+            "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 1 $bookSuite 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'",
+            "          $bookExit = $LASTEXITCODE",
+            "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @remainingSuites 2>&1 | Tee-Object -Append 'ci-next8-source-results/source-regressions.txt'",
+            "          $remainingExit = $LASTEXITCODE",
+            "          if ($bookExit -ne 0 -or $remainingExit -ne 0) { throw 'Required whole composed source suites failed.' }",
+            "          $bookPattern = '^PASS: tests/studio/test_book_batch\\.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0$'",
+            "          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -Pattern $bookPattern).Count -ne 1) { throw 'The complete 29-case Book source contract is missing or duplicated.' }",
+            "          foreach ($groupCount in @(1, $remainingSuites.Count)) {",
+            "            $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'",
+            "            $pattern = '^' + [regex]::Escape($summary) + '$'",
+            "            if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -Pattern $pattern).Count -ne 1) { throw 'A real composed source group lacks its exact complete summary.' }",
+            "          }"
+          ]
+        }
+      ]
+    },
+    "selected_wholes": 138,
+    "isolated_book_cases": 29,
+    "isolated_jobs": 1,
+    "remaining_wholes": 137,
+    "remaining_jobs": 3,
+    "original_ordered_selector_array": "BYTE_EXACT",
+    "whole_seconds": 600,
+    "job_minutes": 45,
+    "no_fabricated_aggregate": true
+  },
+  "gate_peer": {
+    "reviewer": "progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "record": "551201f97c9b8318933ae4cb9bde22489b0b091e"
+  },
+  "root_separate_workflow": "Root owns the new carr-publication-cursor.yml diagnostic and its final independent peer. It is not authored or modified in this component; exact final workflow should be composed separately.",
+  "validation_plan": [
+    "Exact whole-file inverse/readback is complete for all six gate successors; parsed maps preserve every unrelated key/value/function.",
+    "Existing source-syntax must parse current PowerShell run blocks and the exact sourcePS; InventoryOnly must retain493 and all four partition counts.",
+    "Compile the exact installed checker with the existing Python syntax gate; execute the actual required source/installed contracts, requiring the complete7-case intake module.",
+    "Run root's exact old/new cursor diagnostic separately before claiming measured causal closure; all existing full native/hardware obligations remain required.",
+    "Execute the next8 1+137 groups with actual anchored summaries and exact Book29 row; existing G and historical results do not qualify H."
+  ],
+  "causal_limits": [
+    "This is static gate integration. No parser, test, native or same-head runtime PASS is claimed.",
+    "The SQLite source/test peer is separate; observed retained-cursor causality awaits root's real preimage/postimage diagnostic.",
+    "No refs, PR head, live workflow or current G run was modified."
+  ],
+  "complete_line_hunk_checkpoint": "f75d3f3226c53cdd6cca734c0753146c9527fb71",
+  "inverse_method": "For each gate file, reverse every ordered [before,after,occurrences] replacement using exact literal multiplicity; all six full predecessor texts are recovered byte-for-byte. Complete line hunks are additionally retained in the separate checkpoint."
+}

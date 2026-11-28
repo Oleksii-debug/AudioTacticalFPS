@@ -1,0 +1,90 @@
+{
+  "schema": "resonance-bounded-native-diagnostic-followup/1",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "base_commit": "79ef756d08667919d9a7c4367305aca5dfdaf6c9",
+  "base_tree": "4c3d7513de3c98dc8452e8c2a345c7e2b2381a2a",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_reader_player_smoke.py",
+      "preimage": "f6a1804be5e77eb53f5f4c6aac23ff2137706e7c",
+      "sha": "6ea74ad9b55c572a91b0f200f2c8c11e074528b0"
+    },
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "preimage": "e659599241a3d973a160b223b1d108b99feda7c7",
+      "sha": "de90870ad234b0a3e329b9748d05485a231f0bfd"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "791430237558ef1ae715f8f61d56789b3253a9a2",
+      "sha": "01dfc5101843cab075d9fd2faa8c3496d21983c1"
+    },
+    {
+      "path": ".github/workflows/carr-next13-partition.yml",
+      "preimage": "038571f82a18114882c58ad3fb6b0fba19346f85",
+      "sha": "ed41540248769489f5a01ca9c00771162d3b2a88"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next20/reviews/early_audio_diagnostics.json",
+      "sha": "898d71a61cbdbd0584d1669cafbe9c129c77e659"
+    },
+    {
+      "path": "resonance-status/next20/reviews/audio_admission_actual_evidence.json",
+      "sha": "0b002ab0190dddfa02565055116b7bd99363629f"
+    },
+    {
+      "path": "resonance-status/next20/reviews/public_runtime_acquisition_diagnostics.json",
+      "sha": "aafb194c462d8eae6888de7e2386c1da429c80af"
+    },
+    {
+      "path": "resonance-status/next20/reviews/current_partition_helper_pins.json",
+      "sha": "705bd3dbdac3959e33f760661e3931f3361917b2"
+    },
+    {
+      "path": "resonance-status/next20/actual/converter_fe2e_acquisition_limit.json",
+      "sha": "3a22533a1173e3ce67f68d755ae30617b19890ca"
+    },
+    {
+      "path": "resonance-status/next20/actual/e763_syntax_and_flite.json",
+      "sha": "00539a3285e30f477a04b6c7d6872c8bfcee4df9"
+    },
+    {
+      "path": "resonance-status/next20/actual/e763_encrypted_sync.json",
+      "sha": "b1486f335aa7570aba01028d6b9528e88879a0f1"
+    },
+    {
+      "path": "resonance-status/next20/actual/79ef_workflow_parser.json",
+      "sha": "35d1d1cd1ebe1e3989738c051e89c041df337df7"
+    }
+  ],
+  "changes": [
+    "Invoke the existing query-only audio snapshot before stable-output admission inside the unchanged75-second native watchdog. Preserve all original refusal/playback behavior and checks.",
+    "Log one bounded stderr metadata record for each attempted fixed public acquisition input. Preserve every original transfer statement, limits, exact hashes, rename, stdout, receipt and original exception; add no retry/cache/mirror.",
+    "Refresh exactly two current-head partition workflow pins to the already reviewed6ad shared helper, retaining both14-entry dictionaries and26 cases per OS."
+  ],
+  "peer_reviews": {
+    "audio": "Canonical accepted exact one-line additive delta.",
+    "acquisition": "Locate accepted the exact original transfer-body reconstruction and bounded metadata-only stderr behavior.",
+    "partition": "Progress accepted exact two-pin reconstruction, both unchanged14-entry dictionaries and26-case current-head contract."
+  },
+  "root_review": {
+    "input_ids": "All seven pinned acquisition items expose the exact filename/name used by the bounded diagnostic.",
+    "workflow_scan": "All22 workflows were checked for old changed application/literal/harness/ci/reader/preparer hashes. After the reviewed partition refresh, there is no stale tracked dependency in this composed tree.",
+    "authority": "No product, native prerequisite, test count, source authorization, timeout, deployment setting or running ref is changed by this prepared candidate."
+  },
+  "actual_qualification_boundary": {
+    "audio": "Existing6e95 service preparation recorded both services Running before no selectable stable-interface output was observed. That does not establish raw device count0, missing hardware, a service failure or endpoint-readiness cause. The detailed snapshot was previously unreachable at this refusal.",
+    "acquisition": "At fe2e bothOS209 source+209 installed passed; Windows acquisition hit its600s total limit before all native phases. Fixed order suggests the LibreOffice input, but no transferred-byte/final-host evidence was logged; no network/root-cause or native verdict is invented.",
+    "current_e763": "Syntax/146PowerShell controls, Linux Flite6, Linux converter209+209 and encrypted Windows272+272/native synchronization completed in separately scoped evidence. Overall desktop/owner and other remaining gates are not inferred.",
+    "preflight_79ef": "Its actual146-body workflow parser passed. Application/preflight/benchmark outcomes require their own completed run.",
+    "source_transfer": "No recorded success applies automatically to this prepared successor."
+  },
+  "primary_audio_references": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutgetnumdevs",
+    "https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutmessage",
+    "https://learn.microsoft.com/en-us/windows-hardware/drivers/audio/drv-querydeviceinterfacesize"
+  ],
+  "publication": "Prepared for a deliberate later composition. Existing PR e763 and performance79ef, Book115cb and capacity79931 runs remain undisturbed. No canonical merge or release."
+}

@@ -1,0 +1,47 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "created_utc": "2026-11-28 09:02:36 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "canonical_regression",
+  "scope": "Exact concrete Path reuse inside benchmark plain() plus meaningful real filesystem/control regression additions",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "preimage": "05bf43b062f160f973f1521d31a259a69d5f3224",
+      "successor": "7b6afc1463cb078e6aa47c37b9feeee356796844"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+      "preimage": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+      "successor": "906487bd1970ad69b466945461da73bd50cfa941"
+    }
+  ],
+  "findings": [
+    "The source has exactly two localized insertions/replacements: hoist type(Path()), then reuse only an exact native concrete Path before the existing actual lstat and complete unchanged regular/directory/link/reparse predicate. Reversing both hunks reconstructs the complete predecessor.",
+    "Text, os.PathLike, PurePath and Path subclasses still pass through the original Path(path) coercion. The hostile subclass regression proves its stat/lstat overrides are never used as authority, while the actual selected native path is observed through a genuine lstat.",
+    "The complete Budget class and all other harness functions remain byte-identical. Root dev/ino, cancellation, real deadline, disk reserve/check ordering and phase semantics are untouched; no cached stat/result or omitted callback is introduced.",
+    "New file-boundary coverage performs five real lstat calls across changed file size, actual hardlink refusal, actual file-to-directory replacement and accepted directory identity, with zero native-Path reallocation.",
+    "New Budget coverage performs32 actual root lstat observations, then preserves the same cancellation position and fresh changed-root refusal before the cancellation callback. Same-byte replacement data does not preserve the old root identity.",
+    "All old24 cases/14 functions are retained as an exact byte prefix, including real elapsed-deadline/disk and independent-process traversal controls. Added1+1+4 cases in3 functions produce30 cases/17 functions. The single current benchmark script companion remains required."
+  ],
+  "added_functions": {
+    "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks": 1,
+    "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement": 1,
+    "test_plain_keeps_original_coercion_for_non_native_inputs": 4
+  },
+  "proof": {
+    "source_full_reverse_exact": true,
+    "old_test_prefix_exact": true,
+    "whole_cases": 30,
+    "whole_functions": 17,
+    "all_other_functions_exact": true,
+    "budget_class_exact": true,
+    "actual_control_and_filesystem_APIs_reviewed": true
+  },
+  "limits": [
+    "Static source/test/API review only; no local Python/parser/test execution is claimed.",
+    "No actual speed, complete2M traversal, current-device or other-head qualification is inferred.",
+    "The existing3600 phase budget and all source verification/copy/traversal controls remain required in exact-head actual execution."
+  ]
+}

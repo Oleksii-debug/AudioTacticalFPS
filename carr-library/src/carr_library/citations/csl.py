@@ -118,6 +118,7 @@ class RenderedBibliography:
     processor_reported_version: str = PROCESSOR_REPORTED_VERSION
     style_sha256: str = ''
     custom_style: bool = False
+    bibliography_parameters: tuple[tuple[str, object], ...] = ()
 
     @property
     def bibliography(self):
@@ -741,7 +742,9 @@ _BRIDGE = r'''
     var previous = [], output = [];
     payload.citations.forEach(function (items, index) {
         var id = 'citation-' + (index + 1);
-        var noteIndex = payload.noteStyle ? index + 1 : 0;
+        var suppliedIndex = payload.noteIndices ? payload.noteIndices[index] : null;
+        var noteIndex = suppliedIndex === null || suppliedIndex === undefined
+            ? (payload.noteStyle ? index + 1 : 0) : suppliedIndex;
         var result = engine.processCitationCluster({citationID:id, citationItems:items,
             properties:{noteIndex:noteIndex}}, previous, []);
         if (result[0].citation_errors && result[0].citation_errors.length) {
@@ -754,13 +757,18 @@ _BRIDGE = r'''
     if (!bibliography || bibliography[0].bibliography_errors.length) {
         throw new Error('The processor could not format the bibliography.');
     }
+    var parameters = {};
+    ['hangingindent','linespacing','entryspacing','second-field-align'].forEach(function (key) {
+        if (bibliography[0][key] !== undefined) parameters[key] = bibliography[0][key];
+    });
     return JSON.stringify({entries:bibliography[1], entry_ids:bibliography[0].entry_ids,
-        citations:output, warnings:messages, version:CSL.PROCESSOR_VERSION});
+        citations:output, warnings:messages, parameters:parameters, version:CSL.PROCESSOR_VERSION});
 })
 '''
 
 
-def render(records, *, style='apa', citations=None, locale='en-US', output='text', budget=None):
+def render(records, *, style='apa', citations=None, locale='en-US', output='text', budget=None,
+           note_indices=None):
     """Render complete, context-aware citations and a bibliography offline.
 
     ``citations`` is an ordered sequence of clusters; each cluster contains CSL
@@ -789,12 +797,17 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
     budget.validate()
     rows, identities, warnings = _records(records, budget)
     clusters, manual_locator = _clusters(citations, rows, identities, budget)
+    if note_indices is not None and (
+            type(note_indices) not in (list, tuple) or len(note_indices) != len(clusters)
+            or any(value is not None and (type(value) is not int or not 1 <= value <= 1_000_000)
+                   for value in note_indices)):
+        raise ValueError('Explicit note indices must match the citation sequence and be positive integers.')
     if manual_locator:
         warnings.append('Citation locators were supplied manually; formatting does not verify those page or source positions.')
     if style_info.kind == 'note' and any(row.get('page') for row in rows):
         warnings.append('Page ranges in full bibliographic notes describe publication extent, not verified quotation locations.')
     payload = {'records': rows, 'citations': clusters, 'locale': locale,
-        'output': output, 'noteStyle': style_info.kind == 'note',
+        'output': output, 'noteStyle': style_info.kind == 'note', 'noteIndices': note_indices,
         'style': _xml_json(custom.source.decode('utf-8') if custom
                            else _resource('styles/' + style_info.filename)),
         'locales': {name: _xml_json(_resource('styles/locales-' + name + '.xml'))
@@ -848,4 +861,5 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
         tuple(clean(entry).strip() for entry in entries),
         tuple(tuple(group) for group in entry_ids),
         tuple(clean(citation).strip() for citation in rendered_citations),
-        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None)
+        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None,
+        bibliography_parameters=tuple(result.get('parameters', {}).items()))

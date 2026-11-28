@@ -102,17 +102,33 @@ def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
     children = []
 
     def delayed_renderer(command, *args, **kwargs):
-        child = original([sys.executable, '-I', '-c', 'import time; time.sleep(30)'],
-                         *args, **kwargs)
+        # subprocess.run also calls this shared Popen on Windows for taskkill.
+        # Replace only the isolated renderer, so its real process-tree cleanup
+        # remains exercised and is not replaced by a second sleeping child.
+        interpreters = {sys.executable, getattr(sys, '_base_executable', sys.executable)}
+        if not (isinstance(command, (list, tuple)) and command and command[0] in interpreters
+                and '-I' in command and '-B' in command
+                and '-c' in command
+                and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
+            return original(command, *args, **kwargs)
+        delayed = list(command)
+        delayed[delayed.index('-c') + 1] = 'import time; time.sleep(30)'
+        child = original(delayed, *args, **kwargs)
         children.append(child)
         return child
 
     monkeypatch.setattr(worker.subprocess, 'Popen', delayed_renderer)
     started = monotonic()
-    with pytest.raises(InterruptedError, match='cancelled'):
-        app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',
-                            confirmed=True, cancelled=lambda: monotonic() - started > 0.2)
-    assert len(children) == 1 and children[0].poll() is not None
-    assert monotonic() - started < 5
-    assert _reviews(app, workspace) == ()
+    try:
+        with pytest.raises(InterruptedError, match='cancelled'):
+            app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',
+                                confirmed=True, cancelled=lambda: monotonic() - started > 0.2)
+        assert len(children) == 1 and children[0].poll() is not None
+        assert monotonic() - started < 5
+        assert _reviews(app, workspace) == ()
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
 

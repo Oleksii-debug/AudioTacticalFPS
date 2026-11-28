@@ -1,0 +1,125 @@
+{
+  "schema": "carr-actual-required-lane/1",
+  "status": "PASS",
+  "lane": "flite_linux",
+  "observed_at_utc": "2026-11-28T08:27:42Z",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job_id": 140911207106,
+  "job": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:57:29Z",
+    "completed_at": "2026-11-28T07:58:02Z"
+  },
+  "claims": {
+    "whole_suites": 1,
+    "actual_speech_cases": 6,
+    "cases": [
+      "test_actual_chunked_synthesis_and_budget",
+      "test_actual_local_pcm_speech_and_three_distinct_voices",
+      "test_actual_volume_reduction_and_source_invariance",
+      "test_cancel_synthesis_leaves_no_partial_audio",
+      "test_no_overwrite_existing_audio",
+      "test_unsupported_native_controls_do_not_silently_apply"
+    ]
+  },
+  "strict_whole_rows": [
+    {
+      "line": 961,
+      "path": "tests/speech/test_flite_runtime.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "actual_json_reports": [
+    {
+      "line": 890,
+      "data": {
+        "status": "PASS",
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+        "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+        "runtime": "Ubuntu 24.04 packages ffmpeg, libavfilter9 and libflite1",
+        "executable": "/usr/bin/ffmpeg",
+        "binary_sha256": {
+          "/usr/bin/ffmpeg": "ed16af623947494a72e284b6eb8ff225f2da22b38b5d5069c2fd4b4ba3384e41",
+          "/usr/lib/x86_64-linux-gnu/libavfilter.so.9.12.100": "863ec5f6b0d32cbc64a10048e987a2bba79e3852abc73dfcb9a435158fc75f24",
+          "/usr/lib/x86_64-linux-gnu/libflite.so.2.2": "d456d49a5e39689cf2012df85fb8e5c37c7c85f2de9df061fee0450231c348da",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_grapheme_lang.so.2.2": "ecf6d36106cffff3a503ad4c97688070d9cd438bb9d8751f5d5aa8717e327e49",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_grapheme_lex.so.2.2": "50b0f5bf2d09823e1285105a3015d45de322e42e73f00feb2387e0c9d6a45699",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_indic_lang.so.2.2": "1957c3a65fbe2a8adfa8715703c0bd965d1f3c2c6c51a014b33b1bfb746018e6",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_indic_lex.so.2.2": "da4c7b6f8529983ac32b4d71675904871dd1997af441abc3fe0ca9e3d56224f8",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_time_awb.so.2.2": "41576da986d4ff0ef5e9d35e1f45ffe162b8c9ee376efbc71db40c3fb565d8b8",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_us_awb.so.2.2": "507a9d48ef3fc3162e682932e0dd85e415c0a65ee879f1bb7a126101cc3a6155",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_us_kal.so.2.2": "38bfa0eadb0a2e5af6f6947b16b9bf7ed8118d9c6eee308c23e92cba05956761",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_us_kal16.so.2.2": "275478a93c9b3b739a3457c4b75ae2ab643ac4fcd3915e56865ca2168369ec88",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_us_rms.so.2.2": "f78b65b0955caf40131f2228133268b53b0bdc6a5aeada22b29599561c69bbaa",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmu_us_slt.so.2.2": "03ccfdbdd4df4135e0a825f9810fce1fe051cc739c36ccc75a9947a114cdd55f",
+          "/usr/lib/x86_64-linux-gnu/libflite_cmulex.so.2.2": "1be5a03bdad437aa7d4cc35aa2861c34df75a3a10ad855334829a42ce9c93015",
+          "/usr/lib/x86_64-linux-gnu/libflite_usenglish.so.2.2": "eb6047508420953bb913dc289f4da0eab8c19ef2ea20c4a59b01ab263dcf3737"
+        },
+        "build_configuration_sha256": "d2766c84866d2accd75beef6d6c5cf62280e71b2718f3e16e3833f8dba6210c2",
+        "source_sha256": {
+          "src/carr_library/speech/runtime.py": "64280b23a75a5072d01d122c6a128917a56d0a16c1869e0644e1ea80abe547f8",
+          "src/carr_library/speech/_io.py": "a96b8d9d48fca468656823688b277e189c9af41140fef5ed5aaaa2c1437809bb",
+          "tests/speech/test_flite_runtime.py": "53b7a7371372961666fbad56d88d219697c0b7f38d430b752454b165f85794c4",
+          "scripts/ci_check.py": "a04802a5316a24e638ac9c5b2ed37553addd5230832b69c79fadfe77d9ee1b75"
+        },
+        "required_voices": [
+          "flite:awb",
+          "flite:kal16",
+          "flite:rms",
+          "flite:slt"
+        ],
+        "available_voices": [
+          "flite:awb",
+          "flite:kal",
+          "flite:kal16",
+          "flite:rms",
+          "flite:slt"
+        ],
+        "qualification": "Linux Flite only; Windows Flite, acoustic quality and NVDA are not qualified."
+      }
+    },
+    {
+      "line": 963,
+      "data": {
+        "status": "PASS",
+        "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+        "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "cases": [
+          "test_actual_chunked_synthesis_and_budget",
+          "test_actual_local_pcm_speech_and_three_distinct_voices",
+          "test_actual_volume_reduction_and_source_invariance",
+          "test_cancel_synthesis_leaves_no_partial_audio",
+          "test_no_overwrite_existing_audio",
+          "test_unsupported_native_controls_do_not_silently_apply"
+        ],
+        "suite_log_sha256": "9998fcbdb9142698a014384a73191beb052e6aa6dd67c92365c25149d578bf73",
+        "capability_report_sha256": "989282d47e8c16b0b33ffc6481b0a19f1c0d4aad9490c2f5d585947af5508221",
+        "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+      }
+    }
+  ],
+  "artifact": {
+    "id": 15254597233,
+    "name": "carr-flite-46122917046-1",
+    "size_in_bytes": 16870,
+    "digest": "sha256:420f2fdf8662bd3cfa0142525cfe956eae9f3c084f6cd9382e4d82e691160d5e"
+  },
+  "log": {
+    "bytes": 95573,
+    "sha256": "70a164492cdd1757daff44d6b4bff471abc2f7d32f974952474ad9f74e6385f4",
+    "line_count": 1022
+  },
+  "qualification": "Actual Linux Flite PCM synthesis on the recorded host/runtime, including three distinct voices and cancellation. No physical output device/listening test, 135-language quality, private engine or later-head qualification.",
+  "aggregate_boundary": "This is one required lane at exact B; full-source, integrated installed, V3, physical audio, manual accessibility and later compositions remain separate."
+}

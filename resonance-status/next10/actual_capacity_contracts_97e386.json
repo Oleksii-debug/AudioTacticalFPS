@@ -1,0 +1,125 @@
+{
+  "schema": "resonance-actual-capacity-validation/1",
+  "status": "ACTUAL_VALIDATION_FAILURE_CORPORA_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d",
+  "source_tree": "fe1dee4760f86a8af4d7e84452f68c228d1e2922",
+  "run": {
+    "id": 46060395601,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46060395601",
+    "conclusion": "failure"
+  },
+  "linux": {
+    "job_id": 140712967321,
+    "conclusion": "success",
+    "source": [
+      {
+        "whole": "tests/packaging/test_library_scale_benchmark.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0
+      },
+      {
+        "whole": "tests/packaging/test_library_capacity_measurement.py",
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0
+      }
+    ],
+    "source_passed": 42,
+    "installed_passed": 42,
+    "strict_final_report": {
+      "all_children_reaped": true,
+      "inputs_unchanged": true,
+      "installed_passed": 42,
+      "source_commit": "97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d",
+      "source_passed": 42,
+      "source_tree": "fe1dee4760f86a8af4d7e84452f68c228d1e2922",
+      "status": "PASS"
+    },
+    "qualification": "Actual source and isolated installed wheel contract cases on Ubuntu24.04; no corpus capacity claim."
+  },
+  "windows": {
+    "job_id": 140712967667,
+    "conclusion": "failure",
+    "source": [
+      {
+        "whole": "tests/packaging/test_library_scale_benchmark.py",
+        "passed": 23,
+        "failed": 1,
+        "skipped": 0
+      },
+      {
+        "whole": "tests/packaging/test_library_capacity_measurement.py",
+        "passed": 17,
+        "failed": 1,
+        "skipped": 0
+      }
+    ],
+    "source_passed": 40,
+    "source_failed": 2,
+    "installed_status": "NOT_RUN",
+    "failures": [
+      {
+        "case": "test_real_elapsed_deadline_and_measured_disk_refuse_more_work",
+        "observed": "Immediate Budget.check after phase_timeout=1e-12 did not raise BudgetExceeded.",
+        "scope": "Real elapsed-clock fixture assumed adjacent counter reads always differ.",
+        "followup_test_blob": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+        "followup_status": "STATIC_NOT_RUN",
+        "change": "Use actual 0.001-second budget and let 0.02 seconds of real time pass before the same required exception. Disk assertion unchanged."
+      },
+      {
+        "case": "test_actual_capacity_cli_keeps_separate_setup_public_receipts_restart_and_backup",
+        "observed": "Actual five-phase CLI exited1 with completed_case2 statusFAIL; failure assertion retained stdout/stderr but not emitted phase evidence JSON.",
+        "cause": "NOT_YET_ESTABLISHED",
+        "followup": "Inspect source and expose bounded actual phase failure evidence without weakening any required assertion."
+      }
+    ]
+  },
+  "requested_corpora": [
+    {
+      "books": 1000,
+      "segments_per_book": 20,
+      "status": "NOT_RUN",
+      "reason": "Required Windows contract validation failed before dependent measurement jobs could start."
+    },
+    {
+      "books": 10000,
+      "segments_per_book": 20,
+      "status": "NOT_RUN",
+      "reason": "Required Windows contract validation failed before dependent measurement jobs could start."
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 20,
+      "status": "NOT_RUN",
+      "reason": "Required Windows contract validation failed before dependent measurement jobs could start."
+    },
+    {
+      "books": 50000,
+      "segments_per_book": 40,
+      "status": "NOT_RUN",
+      "reason": "Required Windows contract validation failed before dependent measurement jobs could start."
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15227953889,
+      "name": "capacity-contracts-windows-2022-97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d-1",
+      "size_bytes": 3409,
+      "digest": "sha256:fdc430a51d56245e961c0530f2976e2224e6b0f7087443ebaae72c6d242b47f2",
+      "expired": false,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46060395601/artifacts/15227953889"
+    },
+    {
+      "id": 15227838987,
+      "name": "capacity-contracts-ubuntu-24.04-97e386c27e2a1a8ed92ca1de50fa903cdca4ba4d-1",
+      "size_bytes": 14068,
+      "digest": "sha256:fc819ba9d5e866cea283a9d63babaa814828c358a835fdfca4cf757726c36b2d",
+      "expired": false,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46060395601/artifacts/15227838987"
+    }
+  ],
+  "evidence_method": "Actual completed GitHub job logs plus exact run artifact API. Artifact IDs and archive digests reconciled with upload logs. No downloaded ZIP inspection or local execution claimed.",
+  "qualification": "Linux42+42 pass does not transfer to new large-backup source or Windows. No new 1k/10k/50k/2M measured-corpus success exists on this head."
+}

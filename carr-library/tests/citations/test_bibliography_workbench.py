@@ -282,3 +282,23 @@ def test_cli_explicit_overwrite_still_publishes_unchanged_approved_target(
     assert json.loads(captured.out)['result'] == 'SAVED' and not captured.err
     assert row.title in destination.read_text()
     assert controller.get(row.id) == row
+
+
+def test_reopened_library_literal_braces_survive_actual_workbench_formatting(tmp_path):
+    app = LibraryApp(tmp_path / 'literal-library')
+    workspace = app.create_workspace('Literal author boundary')
+    controller = AcademicController(app, workspace)
+    source = '@book{x,title={Retained literal author},author={\\{Research Group\\}},year=2026}'
+    preview = controller.preview(source.encode('utf-8'), 'bibtex')
+    imported = controller.import_selected(preview, (0,))
+    identity, = imported.imported_ids
+    reopened = AcademicController(LibraryApp(app.root), workspace)
+    original = reopened.get(identity)
+    assert original.authors == ('{Research Group}',)
+    workbench = BibliographyWorkbench(reopened)
+    formatted = workbench.preview(identity=identity, name_mode='literal')
+    assert '{Research Group}' in formatted.bibliography
+    assert '{Research Group}' in workbench.copy_text(formatted)
+    html = workbench.export(formatted, tmp_path / 'literal-author.html', format='html')
+    assert '{Research Group}' in html
+    assert reopened.get(identity) == original

@@ -1,0 +1,341 @@
+{
+  "schema": "carr-actual-ci-evidence/1",
+  "recorded_utc": "2026-11-27T23:56:43Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "79931ff2ca200f1669619a731fc26d1d538f4fc3",
+  "tree": "2fabafc36112b07028718d7e16c2d3ffca357ac3",
+  "run": {
+    "id": 46080361160,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46080361160",
+    "branch": "carr/ci-next11-capacity-repair-20261127-5a9e",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "platforms": [
+    {
+      "platform": "ubuntu-24.04",
+      "job_id": 140777668973,
+      "conclusion": "success",
+      "source": {
+        "status": "PASS",
+        "whole_suites": 11,
+        "passed": 184,
+        "failed": 0,
+        "skipped": 0,
+        "verdicts": [
+          {
+            "module": "tests/packaging/test_library_scale_benchmark.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/packaging/test_library_capacity_measurement.py",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_capacity.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_capacity_cli.py",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/ui/test_backup_capacity.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_library_backup.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_crash_backup.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_complete_pending_backup.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_pending_common4.py",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_schema_identity.py",
+            "passed": 36,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "module": "tests/ui/test_native_backup_capacity_driver.py",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          }
+        ]
+      },
+      "installed": {
+        "status": "PASS",
+        "whole_suites": 11,
+        "passed": 184,
+        "failed": 0,
+        "skipped": 0
+      },
+      "actual_helper_summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 184,
+        "source_commit": "79931ff2ca200f1669619a731fc26d1d538f4fc3",
+        "source_passed": 184,
+        "source_tree": "2fabafc36112b07028718d7e16c2d3ffca357ac3",
+        "status": "PASS"
+      }
+    },
+    {
+      "platform": "windows-2022",
+      "job_id": 140777669387,
+      "conclusion": "failure",
+      "source": {
+        "status": "PASS",
+        "whole_suites": 11,
+        "passed": 184,
+        "failed": 0,
+        "skipped": 0,
+        "verdicts": [
+          {
+            "module": "tests/packaging/test_library_scale_benchmark.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/packaging/test_library_capacity_measurement.py",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_capacity.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_capacity_cli.py",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/ui/test_backup_capacity.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_library_backup.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_crash_backup.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_complete_pending_backup.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_pending_common4.py",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/storage/test_backup_schema_identity.py",
+            "passed": 36,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "module": "tests/ui/test_native_backup_capacity_driver.py",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          }
+        ]
+      },
+      "installed": {
+        "status": "PASS",
+        "whole_suites": 11,
+        "passed": 184,
+        "failed": 0,
+        "skipped": 0
+      },
+      "actual_helper_summary": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 184,
+        "source_commit": "79931ff2ca200f1669619a731fc26d1d538f4fc3",
+        "source_passed": 184,
+        "source_tree": "2fabafc36112b07028718d7e16c2d3ffca357ac3",
+        "status": "PASS"
+      },
+      "native": {
+        "status": "FAIL",
+        "required_checks": 44,
+        "required_origins": 12,
+        "origins_before_passed": 12,
+        "origins_after_passed": 12,
+        "host_close_and_owner_cleanup": "PASS",
+        "timed_out": false,
+        "actual_backup_creation": "Ordinary and explicit large backup creation returned real verified manifests; both complete4/pending1 wire checks passed.",
+        "restore": "NOT_RUN: checksum prompt failed before actual restore admission.",
+        "primary_error": "Native checksum does not equal the retained receipt.",
+        "pass_excerpt": [
+          "PASS: exact installed source: carr_library.application",
+          "PASS: exact installed source: carr_library.backup_capacity",
+          "PASS: exact installed source: carr_library.library_backup",
+          "PASS: exact installed source: carr_library.pending_backup",
+          "PASS: exact installed source: carr_library.backup_sidecars",
+          "PASS: exact installed source: carr_library.storage.revisions",
+          "PASS: exact installed source: carr_library.ingest.catalog_asset_copy",
+          "PASS: exact installed source: carr_library.ui.backup_capacity",
+          "PASS: exact installed source: carr_library.ui.desktop_app",
+          "PASS: exact installed source: carr_library.ui.worker_lifetime",
+          "PASS: exact installed source: carr_library.durable_state",
+          "PASS: exact installed source: carr_library.native_runtime",
+          "PASS: real native Windows controls",
+          "PASS: existing host executor owns backup work and finalizers",
+          "PASS: native failure answers owned No before closing only the active inner modal",
+          "PASS: capacity dialog starts with the ordinary allowance",
+          "PASS: native capacity cancellation opens no folder or worker",
+          "PASS: capacity dialog starts with the ordinary allowance",
+          "PASS: actual backup executes on the shared worker",
+          "PASS: native completion retains focused readable result",
+          "PASS: capacity dialog starts with the ordinary allowance",
+          "PASS: actual backup executes on the shared worker",
+          "PASS: native completion retains focused readable result",
+          "PASS: ordinary and large selections reach the real canonical backup",
+          "PASS: backup result explicitly includes validated unfinished imports",
+          "PASS: native backup presents the independently retainable manifest checksum",
+          "PASS: selected allowance preserves complete4 and pending1 wire",
+          "PASS: selected allowance preserves complete4 and pending1 wire",
+          "PASS: capacity dialog starts with the ordinary allowance"
+        ],
+        "failure_excerpt": "FAIL: native backup callback\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 333, in invoke\ncallback()\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 461, in visit\nraise AssertionError('Native checksum does not equal the retained receipt.')\nAssertionError: Native checksum does not equal the retained receipt.\n\nFAIL: native backup callback\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 592, in run_steps\nresult_text = command(restore_item, selected=1,\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 506, in command\npump(lambda: completed, 'Native backup result did not complete.', timeout=55)\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 243, in pump\nraise RuntimeError('\\n'.join(errors))\nRuntimeError: Traceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 333, in invoke\ncallback()\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 461, in visit\nraise AssertionError('Native checksum does not equal the retained receipt.')\nAssertionError: Native checksum does not equal the retained receipt.\n\n\nPASS: native host Close drains the actual executor without retained failure\nPASS: unchanged installed source after cleanup: carr_library.application\nPASS: unchanged installed source after cleanup: carr_library.backup_capacity\nPASS: unchanged installed source after cleanup: carr_library.library_backup\nPASS: unchanged installed source after cleanup: carr_library.pending_backup\nPASS: unchanged installed source after cleanup: carr_library.backup_sidecars\nPASS: unchanged installed source after cleanup: carr_library.storage.revisions\nPASS: unchanged installed source after cleanup: carr_library.ingest.catalog_asset_copy\nPASS: unchanged installed source after cleanup: carr_library.ui.backup_capacity\nPASS: unchanged installed source after cleanup: carr_library.ui.desktop_app\nPASS: unchanged installed source after cleanup: carr_library.ui.worker_lifetime\nPASS: unchanged installed source after cleanup: carr_library.durable_state\nPASS: unchanged installed source after cleanup: carr_library.native_runtime\nTraceback (most recent call last):\nFile \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_backup_capacity_smoke.py\", line 671, in <module>"
+      }
+    }
+  ],
+  "total_case_executions": 736,
+  "total_whole_suite_executions": 44,
+  "artifacts": [
+    {
+      "id": 15238640787,
+      "name": "capacity-profile-contracts-ubuntu-24.04-79931ff2ca200f1669619a731fc26d1d538f4fc3-1",
+      "size_in_bytes": 47817,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238640787",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238640787/zip",
+      "expired": false,
+      "created_at": "2026-11-27T23:41:29Z",
+      "expires_at": "2027-02-25T23:04:16Z",
+      "updated_at": "2026-11-27T23:41:29Z",
+      "digest": "sha256:29b2980987d560f137a513bf25c39647c5dc5436286fe590a2381a79e1af4c55",
+      "workflow_run": {
+        "id": 46080361160,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next11-capacity-repair-20261127-5a9e",
+        "head_sha": "79931ff2ca200f1669619a731fc26d1d538f4fc3"
+      },
+      "metadata_reconciled_with_upload_log": true,
+      "archive_downloaded": false
+    },
+    {
+      "id": 15238433107,
+      "name": "capacity-profile-contracts-windows-2022-79931ff2ca200f1669619a731fc26d1d538f4fc3-1",
+      "size_in_bytes": 52651,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238433107",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15238433107/zip",
+      "expired": false,
+      "created_at": "2026-11-27T23:51:16Z",
+      "expires_at": "2027-02-25T23:04:16Z",
+      "updated_at": "2026-11-27T23:51:16Z",
+      "digest": "sha256:bd115616b21718573732f4a2756430a7b4dd4bf586eb9a8c0b81c9cf68d80c31",
+      "workflow_run": {
+        "id": 46080361160,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next11-capacity-repair-20261127-5a9e",
+        "head_sha": "79931ff2ca200f1669619a731fc26d1d538f4fc3"
+      },
+      "metadata_reconciled_with_upload_log": true,
+      "archive_downloaded": false
+    }
+  ],
+  "diagnosis": {
+    "code_boundary": "The native script checks wxTextEntryDialog.GetValue before OK, while wxWidgets3.2.8 returns cached m_value until TransferDataFromWindow in OnOK.",
+    "primary_sources": [
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/include/wx/generic/textdlgg.h",
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/generic/textdlgg.cpp"
+    ],
+    "actual_live_text_value": "Not printed by the previous probe; the corrected live-control and final actual-restore checksum assertions still require native execution.",
+    "correction_source": "50397caa3170495a562a2220a80d4a00eb36ab9a",
+    "correction_tests": "a1b0af9bc556c1159794d8b0cdbf3399fbc64dd0",
+    "product_change": false,
+    "new_code_runtime": "NOT_RUN"
+  },
+  "qualification": {
+    "overall_pass": false,
+    "native44": false,
+    "windows11": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "bundled_runtime": "NOT_RUN",
+    "capacity_measurements": "Not part of this repair workflow."
+  },
+  "test_count_note": "736 is the sum of source and installed executions across two platforms, not 736 distinct tests."
+}

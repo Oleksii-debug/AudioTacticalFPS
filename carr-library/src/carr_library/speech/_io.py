@@ -114,11 +114,12 @@ def _sync_directory(parent):
 
 
 @contextmanager
-def new_output(destination, *, cancelled=lambda: False):
+def new_output(destination, *, cancelled=lambda: False, before_publish=None):
     """Stage beside the target and publish with an atomic no-clobber link.
 
     No placeholder is ever published. Filesystems lacking hard-link support
     fail explicitly instead of substituting a race-prone overwrite.
+    An optional validator runs on the flushed staging file before the link.
     """
     check_cancelled(cancelled)
     target = local_file(destination, must_exist=False)
@@ -137,6 +138,15 @@ def new_output(destination, *, cancelled=lambda: False):
         with staged.open('r+b') as stream:
             os.fsync(stream.fileno())
         check_cancelled(cancelled)
+        if before_publish is not None:
+            before_publish(staged)
+            check_cancelled(cancelled)
+            # Validation can perform slow retained-source reads. Re-admit both
+            # paths afterward, including the original destination directory.
+            local_file(staged)
+            checked = local_file(target, must_exist=False)
+            if checked != target or (target.parent.stat().st_dev, target.parent.stat().st_ino) != parent_identity:
+                raise ValueError('The output folder changed during rendering.')
         os.link(staged, target)
         # Remove the staging name before readers validate the final inode.
         staged.unlink()

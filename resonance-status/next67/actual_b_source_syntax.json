@@ -1,0 +1,73 @@
+{
+  "schema": "resonance-actual-b-lane/1",
+  "status": "ACTUAL_PASS",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122917046,
+  "job": {
+    "id": 140911108735,
+    "name": "Exact source / Python 3.11 syntax and package metadata",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:48:57Z",
+    "completed_at": "2026-11-28T07:49:21Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911108735"
+  },
+  "lane": "source_syntax",
+  "facts": {
+    "python_files": 1134,
+    "explicit_packages": 31,
+    "powershell_bodies": 201,
+    "powershell_failed": 0,
+    "negative_controls": 6,
+    "workflow_size_controls": 4,
+    "workflow_max_bytes": 500000,
+    "source_wholes": 490,
+    "shards": [
+      123,
+      123,
+      122,
+      122
+    ],
+    "source_inventory_parser_message": "PASS: native source-shard parser, exact 490 selectors, four assignments, and every overlapping case count."
+  },
+  "whole_source_rows": [],
+  "actual_reports": [
+    {
+      "explicit_packages": 31,
+      "inventory_sha256": "2b7355e17b8617cf83c836228a34ff0457373bec2dabd6031c824afed053d74f",
+      "python_files": 1134,
+      "scope": "Compilation and TOML only; no runtime qualification",
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "status": "PASS"
+    },
+    {
+      "status": "PASS",
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "parsed_bodies": 201,
+      "failed_bodies": 0,
+      "controls": 6,
+      "control_failures": 0,
+      "workflow_size_limit_bytes": 500000,
+      "workflow_size_controls": 4,
+      "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-syntax-results/workflow-powershell.json",
+      "runtime_qualification": "NOT_RUN"
+    }
+  ],
+  "decoded_log": {
+    "bytes": 29176,
+    "sha256": "04428148ab931fa7451ee19108facf4015bcea7a42e0068ecdaf4919869d4351"
+  },
+  "artifact": {
+    "id": 15254421477,
+    "name": "carr-workflow-syntax-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "bytes": 27301,
+    "sha256": "5a1b14cd20409c4325a3ae3edfc98a2d7924840bf342dbc99f259bc1dfe86cc6",
+    "upload_digest_matches": true
+  },
+  "qualification": "Only this exact source and described actual lane. Full integrated source, installed, compiled configured update and native acceptance remain separate.",
+  "limitations": [
+    "No transfer to a successor commit.",
+    "Manual NVDA, physical audio, private models and production deployment are not established by this lane."
+  ]
+}

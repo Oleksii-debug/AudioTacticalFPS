@@ -1,0 +1,153 @@
+{
+  "schema": "carr-source-component/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base": "72713056f6da48a327ce269dc805a42eb3bd1b52",
+  "files": [
+    {
+      "path": "carr-library/tests/studio/test_production.py",
+      "preimage": "2036c36cab2fe931d72014ad75eabaf8381bcd6c",
+      "git_blob": "8d55d1f6706124fdf857892b84da5484936bdee7",
+      "cases": 11,
+      "functions": [
+        "test_actual_three_role_music_chapters_stems_and_text_invariance",
+        "test_actual_left_center_right_routing_and_two_second_pause",
+        "test_measured_line_subtitles_and_music_stem_alignment",
+        "test_actual_music_ducking_recovers_during_deliberate_silence",
+        "test_completed_operation_is_idempotent_and_outputs_are_reverified",
+        "test_pause_restart_and_one_corrupt_speech_chunk_repaired",
+        "test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+        "test_completed_output_tampering_is_not_silently_overwritten",
+        "test_corrupt_receipt_is_recoverable_like_corrupt_audio",
+        "test_actual_selected_local_sfx_routing_and_source_audio_invariance",
+        "test_unselected_cue_directory_is_denied_before_publication"
+      ],
+      "new_companions": []
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_hardening.py",
+      "preimage": "79fda93171f594bb0554a6a48096201c1c734d4d",
+      "git_blob": "b9d410614f709750bc0b124185e44cbc19190d34",
+      "cases": 5,
+      "functions": [
+        "test_completed_actual_speech_is_receipted_before_cancellation",
+        "test_speech_publication_flush_uses_writable_descriptor",
+        "test_serviced_windows_powershell_host_allows_only_its_exact_hardlink",
+        "test_system_host_exception_still_rejects_a_canonical_symlink"
+      ],
+      "new_companions": []
+    }
+  ],
+  "evidence_git_blob": "b5101121c154fa2413cc3b3ea3e08291dd064ccf",
+  "counts_unchanged": true,
+  "all_original_test_names_and_decorators_retained": true,
+  "all_original_audio_cache_cancel_receipt_assertions_retained": true,
+  "source_changes": false,
+  "gates_changes": false,
+  "limits": "No new runtime/acoustic/physical playback/NVDA qualification. The closed62b report is prior exact source-selection evidence only.",
+  "inverse": {
+    "production": true,
+    "hardening": true
+  },
+  "operations": {
+    "production": [
+      {
+        "before": "The source scripts and spoken text are purpose-written test fixtures.",
+        "after": "The source scripts and spoken text are purpose-written test fixtures.\nWindows uses actual installed English native SAPI tokens; its three roles may\nshare a real token. Linux retains the exact three distinct Flite voices.",
+        "count": 1
+      },
+      {
+        "before": "import math\n",
+        "after": "import math\nimport os\n",
+        "count": 1
+      },
+      {
+        "before": "from carr_library.speech import FliteProvider, VoiceRegistry\n",
+        "after": "from carr_library.speech import FliteProvider, NativeSapiProvider, VoiceRegistry\n",
+        "count": 1
+      },
+      {
+        "before": "@pytest.fixture(scope='module')\ndef actual_voices():\n    executable = shutil.which('ffmpeg')\n    if not executable or not shutil.which('ffprobe'):\n        pytest.skip('This actual production acceptance requires installed FFmpeg and ffprobe.')\n    registry = VoiceRegistry([FliteProvider(executable)])\n    selected = ('flite:awb', 'flite:rms', 'flite:slt')\n    if not set(selected) <= {voice.id for voice in registry.voices()}:\n        pytest.skip('This actual production acceptance requires three installed Flite voices.')\n    return registry\n",
+        "after": "@pytest.fixture(scope='module')\ndef actual_voices():\n    executable = shutil.which('ffmpeg')\n    if not executable or not shutil.which('ffprobe'):\n        pytest.skip('This actual production acceptance requires installed FFmpeg and ffprobe.')\n    # The pinned Windows FFmpeg Essentials build has no libflite. Use the\n    # existing actual native COM provider explicitly on Windows, never aliases\n    # or a fallback synthetic speech provider. Three roles may share one of\n    # the real installed tokens, exactly as the native Studio acceptance does.\n    provider = NativeSapiProvider() if os.name == 'nt' else FliteProvider(executable)\n    registry = VoiceRegistry([provider])\n    try:\n        if os.name == 'nt':\n            english = tuple(voice for voice in registry.voices()\n                            if voice.language.casefold().split('-')[0] == 'en')\n            assert len({voice.id for voice in english}) >= 2, (\n                'Actual Windows production requires two distinct installed English SAPI tokens.',\n                registry.notices, tuple((voice.id, voice.language) for voice in registry.voices()))\n        else:\n            selected = ('flite:awb', 'flite:rms', 'flite:slt')\n            if not set(selected) <= {voice.id for voice in registry.voices()}:\n                pytest.skip('This actual production acceptance requires three installed Flite voices.')\n        yield registry\n    finally:\n        registry.close()\n\n\n@pytest.fixture(scope='module')\ndef actual_voice_ids(actual_voices):\n    if os.name == 'nt':\n        return tuple(voice.id for voice in actual_voices.voices()\n                     if voice.language.casefold().split('-')[0] == 'en')[:3]\n    return ('flite:awb', 'flite:rms', 'flite:slt')\n",
+        "count": 1
+      },
+      {
+        "before": "def rendered(tmp_path_factory, actual_voices):",
+        "after": "def rendered(tmp_path_factory, actual_voices, actual_voice_ids):",
+        "count": 1
+      },
+      {
+        "before": "voice_ids=('flite:awb', 'flite:rms', 'flite:slt'), mode='authored')",
+        "after": "voice_ids=actual_voice_ids, mode='authored')",
+        "count": 2
+      },
+      {
+        "before": "voice_ids=('flite:slt',)",
+        "after": "voice_ids=actual_voice_ids[-1:]",
+        "count": 5
+      },
+      {
+        "before": "def test_pause_restart_and_one_corrupt_speech_chunk_repaired(tmp_path, actual_voices):",
+        "after": "def test_pause_restart_and_one_corrupt_speech_chunk_repaired(tmp_path, actual_voices, actual_voice_ids):",
+        "count": 1
+      },
+      {
+        "before": "def test_edit_one_scene_reuses_unchanged_speech_and_source_original(tmp_path, actual_voices):",
+        "after": "def test_edit_one_scene_reuses_unchanged_speech_and_source_original(tmp_path, actual_voices, actual_voice_ids):",
+        "count": 1
+      },
+      {
+        "before": "def test_completed_output_tampering_is_not_silently_overwritten(tmp_path, actual_voices):",
+        "after": "def test_completed_output_tampering_is_not_silently_overwritten(tmp_path, actual_voices, actual_voice_ids):",
+        "count": 1
+      },
+      {
+        "before": "def test_corrupt_receipt_is_recoverable_like_corrupt_audio(tmp_path, actual_voices):",
+        "after": "def test_corrupt_receipt_is_recoverable_like_corrupt_audio(tmp_path, actual_voices, actual_voice_ids):",
+        "count": 1
+      },
+      {
+        "before": "def test_actual_selected_local_sfx_routing_and_source_audio_invariance(tmp_path, actual_voices):",
+        "after": "def test_actual_selected_local_sfx_routing_and_source_audio_invariance(tmp_path, actual_voices, actual_voice_ids):",
+        "count": 1
+      },
+      {
+        "before": "def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_voices):",
+        "after": "def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_voices, actual_voice_ids):",
+        "count": 1
+      }
+    ],
+    "hardening": [
+      {
+        "before": "Speech integration uses the actual installed FFmpeg Flite provider. Boundary\nwrappers only arrange cancellation or count calls; they do not synthesize fake\nspeech and do not stand in for native Windows SAPI acceptance.",
+        "after": "Speech integration uses actual native SAPI on Windows and the original installed\nFFmpeg Flite provider on Linux. Boundary wrappers only arrange cancellation or\ncount calls; they do not synthesize fake speech or qualify physical playback.",
+        "count": 1
+      },
+      {
+        "before": "from carr_library.speech.runtime import SapiProvider\n",
+        "after": "from carr_library.speech.runtime import NativeSapiProvider, SapiProvider\n",
+        "count": 1
+      },
+      {
+        "before": "@pytest.fixture\ndef registry():\n    binary = shutil.which('ffmpeg')\n    if not binary or not shutil.which('ffprobe'):\n        pytest.skip('Actual production requires installed FFmpeg and ffprobe.')\n    value = VoiceRegistry([FliteProvider(binary)])\n    if 'flite:slt' not in {voice.id for voice in value.voices()}:\n        pytest.skip('Actual speech requires the installed Flite slt voice.')\n    return value\n",
+        "after": "@pytest.fixture\ndef registry():\n    binary = shutil.which('ffmpeg')\n    if not binary or not shutil.which('ffprobe'):\n        pytest.skip('Actual production requires installed FFmpeg and ffprobe.')\n    provider = NativeSapiProvider() if os.name == 'nt' else FliteProvider(binary)\n    value = VoiceRegistry([provider])\n    try:\n        if os.name == 'nt':\n            english = tuple(voice for voice in value.voices()\n                            if voice.language.casefold().split('-')[0] == 'en')\n            assert len({voice.id for voice in english}) >= 2, (\n                'Actual Windows production requires two distinct installed English SAPI tokens.',\n                value.notices, tuple((voice.id, voice.language) for voice in value.voices()))\n        elif 'flite:slt' not in {voice.id for voice in value.voices()}:\n            pytest.skip('Actual speech requires the installed Flite slt voice.')\n        yield value\n    finally:\n        value.close()\n\n\n@pytest.fixture\ndef actual_voice_id(registry):\n    if os.name == 'nt':\n        return next(voice.id for voice in registry.voices()\n                    if voice.language.casefold().split('-')[0] == 'en')\n    return 'flite:slt'\n",
+        "count": 1
+      },
+      {
+        "before": "def test_completed_actual_speech_is_receipted_before_cancellation(tmp_path, registry):",
+        "after": "def test_completed_actual_speech_is_receipted_before_cancellation(tmp_path, registry, actual_voice_id):",
+        "count": 1
+      },
+      {
+        "before": "voice_ids=('flite:slt',)",
+        "after": "voice_ids=(actual_voice_id,)",
+        "count": 1
+      }
+    ]
+  },
+  "peer": {
+    "agent": "locate_project",
+    "git_blob": "45629be3c0b539ea899462f9a2ea087bffeeaa31",
+    "scope": "Actual NativeSapiProvider/registry/parse_script API, original assertions and exact inverse",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  }
+}

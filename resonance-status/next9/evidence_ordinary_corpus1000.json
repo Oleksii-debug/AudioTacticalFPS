@@ -1,0 +1,328 @@
+{
+  "schema": "carr-corpus-phase-evidence/1",
+  "inspected_at": "2026-11-27",
+  "inspection": {
+    "run": 46049229528,
+    "job": 140676092679,
+    "commit": "39462306b60340990f14edc1d6928b89c288a976",
+    "workflow_blob": "adcf52215fffda59b92ccb2f37c83f09d9d24e68",
+    "status": "SUCCESS"
+  },
+  "reports": [
+    {
+      "kind": "EXACT_ARTIFACT",
+      "data": {
+        "artifact_id": 15223331300,
+        "harness_sha256": "9dd47df6a5fca91c2dd8f16b00eb681aa00d5cdbbafdf4296f987617fb8d216a",
+        "head_sha": "fb39ed3cb1e23ffa3be8bd768c1dd64216f110da",
+        "members": [
+          "1000/build.json",
+          "1000/measure.json",
+          "1000/restart.json",
+          "benchmark.txt",
+          "configuration.json",
+          "library-corpus-scale.json",
+          "tested-commit.txt",
+          "tested-tree.txt"
+        ],
+        "repository": "Oleksii-debug/AudioTacticalFPS",
+        "run_id": 46037427185,
+        "source_job_reference": 140639483912,
+        "source_sha256": {
+          "bootstrap": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930",
+          "carr_library.application": "5a06ea7eedcfb484e9d8eff678930e8cd8481377ce22f23d52b27d2c439800ae",
+          "carr_library.catalog.read_views": "d5d87ffc31f1d44862d7717dc322ef169e53367261e2dbd51ed13d3b17c09687",
+          "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+          "carr_library.reader.reading_desk": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706",
+          "carr_library.search.paging": "c5620c77d45dbe48d93b646b40bf8e46129b43d9b76c833aef7b85a1dfc67055",
+          "carr_library.storage.revisions": "348340397f8a0cfd44759feaa2513950b29e42e7da44c7759dbeb1879c458ea9"
+        },
+        "zip_bytes": 9564,
+        "zip_sha256": "22d16b19a4a29af7d29ac589ac4cff03902e03e7f30be715cf813ef8c9bb2283"
+      }
+    },
+    {
+      "kind": "MEASUREMENT_CONTEXT",
+      "data": {
+        "case": {
+          "max_disk_bytes": 25769803776,
+          "min_free_bytes": 1073741824,
+          "phase_timeout": 3600,
+          "repeats": 9,
+          "result_page_size": 37,
+          "segment_bytes": 2048,
+          "segments_per_book": 20
+        },
+        "claims": {
+          "cold_disk_latency": "NOT_MEASURED",
+          "native_gui_nvda": "NOT_RUN",
+          "neural_retrieval_quality": "NOT_MEASURED",
+          "pdf_ocr_audio": "NOT_RUN",
+          "power_loss_recovery": "NOT_RUN",
+          "real_world_document_diversity": "NOT_MEASURED",
+          "release_capacity": "NOT_ESTABLISHED_BY_THIS_HARNESS"
+        },
+        "environment": {
+          "logical_cpus": 4,
+          "machine": "x86_64",
+          "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+          "platform": "Linux-7.0.0-1018-aws-x86_64-with-glibc2.39",
+          "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+          "sqlite": "3.45.1"
+        },
+        "method": {
+          "cache_temperature": "Fresh interpreter is not cold disk: OS page cache is retained.",
+          "corpus": "Deterministic UTF-8 TXT books imported through LibraryApp.add_text; no direct SQL population.",
+          "disk_budget": "Cooperative measured checkpoint after every 64 imports and at phase boundaries; not a filesystem quota.",
+          "memory": "Whole-process high-water RSS via the unchanged semantic-cache measurement kernel.",
+          "percentiles": "Nearest-rank empirical P50/P95, with actual sample count; no acceptance latency threshold.",
+          "restart": "Build, traversal and restart run in distinct owned interpreter processes.",
+          "scope": "One selected workspace plus a deliberately excluded workspace containing the same query.",
+          "search": "Lexical terms; exact full result/source continuation; ranking remains local to each source window.",
+          "source_checks": "All retained source hashes and catalog identities before/after measurements; quote actions sampled per result page.",
+          "timeout": "Cooperative phase deadline plus a direct-interpreter outer timeout; remaining phases stop on failure."
+        },
+        "mode": "source"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "data": {
+        "baseline_peak_rss_bytes": 30117888,
+        "books": 1000,
+        "bootstrap_seconds": 0.08597856000000093,
+        "corpus_sha256": "d036a51ac6625434e95c8b7856b99ee1a2fcc163fec6605fc0086aed4353195b",
+        "disk": {
+          "bytes": 300354148,
+          "directories": 2,
+          "files": 1005
+        },
+        "elapsed_seconds": 972.4570588570001,
+        "exit_code": 0,
+        "imports": {
+          "count": 1000,
+          "maximum_seconds": 1.9280425670001478,
+          "minimum_seconds": 0.031841453999987834,
+          "p50_seconds": 0.9815066730000126,
+          "p95_seconds": 1.8478352939998786,
+          "total_seconds": 969.6284935330007
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "build",
+        "pid": 2290,
+        "process_peak_rss_bytes": 39706624,
+        "process_reaped": true,
+        "process_wall_seconds": 972.630116816,
+        "segments": 20000,
+        "source_utf8_bytes": 40979000,
+        "startup_seconds": 0.3140743499999985,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "data": {
+        "baseline_peak_rss_bytes": 30117888,
+        "books": 1000,
+        "bootstrap_seconds": 0.0857114929999625,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.00006121499995970225,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "d036a51ac6625434e95c8b7856b99ee1a2fcc163fec6605fc0086aed4353195b",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 300357204,
+          "directories": 2,
+          "files": 1009
+        },
+        "elapsed_seconds": 177.4150325180001,
+        "exit_code": 0,
+        "final_integrity_seconds": 0.35836389400014923,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.24682733300005566,
+          "minimum_seconds": 0.23658199999999852,
+          "p50_seconds": 0.23701885299988135,
+          "p95_seconds": 0.24682733300005566,
+          "total_seconds": 2.143496382999956
+        },
+        "full_traversal": {
+          "copied_result_samples": 600,
+          "elapsed_seconds": 172.10085477100006,
+          "exact_no_loss_no_duplicates": true,
+          "latency": {
+            "count": 600,
+            "maximum_seconds": 0.37052003899998454,
+            "minimum_seconds": 0.23397979700007454,
+            "p50_seconds": 0.24052587699998185,
+            "p95_seconds": 0.36545291399988855,
+            "total_seconds": 168.2543118619958
+          },
+          "requests": 600,
+          "results": 20000,
+          "source_windows": 200
+        },
+        "initial_integrity_seconds": 0.3584267579999505,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.07531914400010464,
+          "minimum_seconds": 0.07444513900009042,
+          "p50_seconds": 0.07494033099987973,
+          "p95_seconds": 0.07531914400010464,
+          "total_seconds": 0.6744253280005523
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "measure",
+        "pid": 2432,
+        "process_peak_rss_bytes": 41672704,
+        "process_reaped": true,
+        "process_wall_seconds": 177.59202950899999,
+        "reading": {
+          "indices": [
+            0,
+            66,
+            133,
+            199,
+            266,
+            333,
+            399,
+            466,
+            532,
+            599,
+            666,
+            732,
+            799,
+            865,
+            932,
+            999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.004473910000115211,
+            "minimum_seconds": 0.004261441999915405,
+            "p50_seconds": 0.004339823000009346,
+            "p95_seconds": 0.004473910000115211,
+            "total_seconds": 0.06977773200060255
+          }
+        },
+        "segments": 20000,
+        "source_utf8_bytes": 40979000,
+        "startup_seconds": 0.9658673419999104,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_PHASE",
+      "data": {
+        "baseline_peak_rss_bytes": 30117888,
+        "books": 1000,
+        "bootstrap_seconds": 0.08491607099995235,
+        "cancellation": {
+          "checkpoint_calls": 3,
+          "cross_scope_cursor_refused": true,
+          "previous_handles_preserved": true,
+          "seconds_to_return": 0.000054181999985303264,
+          "status": "PASS",
+          "subsequent_query_completed": true
+        },
+        "corpus_sha256": "d036a51ac6625434e95c8b7856b99ee1a2fcc163fec6605fc0086aed4353195b",
+        "database_unchanged": true,
+        "disk": {
+          "bytes": 300361069,
+          "directories": 2,
+          "files": 1012
+        },
+        "elapsed_seconds": 5.271366454999907,
+        "exit_code": 0,
+        "final_integrity_seconds": 0.358748807999973,
+        "first_result_page": {
+          "count": 9,
+          "maximum_seconds": 0.24469229500004985,
+          "minimum_seconds": 0.23488829600000827,
+          "p50_seconds": 0.23526347400002123,
+          "p95_seconds": 0.24469229500004985,
+          "total_seconds": 2.1283638370005065
+        },
+        "full_traversal": {
+          "reason": "Full traversal belongs to the previous measured process.",
+          "status": "NOT_REPEATED"
+        },
+        "initial_integrity_seconds": 0.3569983909999337,
+        "late_edition_first_page": {
+          "count": 9,
+          "maximum_seconds": 0.07476777200008655,
+          "minimum_seconds": 0.07379114099990147,
+          "p50_seconds": 0.07441719199982799,
+          "p95_seconds": 0.07476777200008655,
+          "total_seconds": 0.6691105039994909
+        },
+        "peak_rss_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+        "phase": "restart",
+        "pid": 2451,
+        "process_peak_rss_bytes": 41299968,
+        "process_reaped": true,
+        "process_wall_seconds": 5.423132244000044,
+        "reading": {
+          "indices": [
+            0,
+            66,
+            133,
+            199,
+            266,
+            333,
+            399,
+            466,
+            532,
+            599,
+            666,
+            732,
+            799,
+            865,
+            932,
+            999
+          ],
+          "open_and_last_page": {
+            "count": 16,
+            "maximum_seconds": 0.00445997199994963,
+            "minimum_seconds": 0.004208336999909079,
+            "p50_seconds": 0.004281687999991846,
+            "p95_seconds": 0.00445997199994963,
+            "total_seconds": 0.06898105699951884
+          }
+        },
+        "segments": 20000,
+        "source_utf8_bytes": 40979000,
+        "startup_seconds": 0.9505575839998528,
+        "status": "PASS"
+      }
+    },
+    {
+      "kind": "MEASURED_TOTAL",
+      "data": {
+        "larger_sizes": "NOT_INSPECTED_BY_THIS_WORKFLOW",
+        "qualification": "Exact synthetic source measurement; no general capacity or release claim.",
+        "requested_books": 1000,
+        "segments": 20000,
+        "sum_phase_wall_seconds": 1155.645278569
+      }
+    }
+  ],
+  "derived": {
+    "build_wall_fraction_percent": 84.16337909677422,
+    "measure_wall_fraction_percent": 15.367347818779368,
+    "restart_wall_fraction_percent": 0.46927308444640914
+  },
+  "interpretation": {
+    "measured": "Ordinary LibraryApp.add_text build consumed 84.16% of the measured three-process wall; full result traversal consumed 172.100854771 seconds within the measurement process.",
+    "static_only": "The two global validators per import hash all retained pages. This is a proven quadratic work pattern, but the phase reports do not profile its exact share inside imports.",
+    "small_fix_manifest": "f436ba4fff6d879d381aa79a39a0404131ebcb89",
+    "contract_audit": "f1f5d27570537dabd5e3a9159f4d6008a468ed55",
+    "larger_sizes": "NOT_INSPECTED",
+    "general_capacity": "NOT_ESTABLISHED"
+  }
+}

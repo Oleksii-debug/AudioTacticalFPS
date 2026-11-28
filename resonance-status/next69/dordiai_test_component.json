@@ -1,0 +1,57 @@
+{
+  "schema": "carr-reviewed-component/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "title": "Dordiai cancellation recovery fixture uses the current authority operation",
+  "base_head": "26beb805aab1e9e202d134008441927523cdcb94",
+  "actual_failure_receipt": "f52c39aa3750abf4202d2492ac8e0029273733a7",
+  "files": [
+    {
+      "path": "carr-library/tests/voice_acceptance/test_dordiai_acceptance.py",
+      "preimage": "e19d44f86f9d75285d02d786cd293cb5c201bedb",
+      "blob": "ab7e9b4c31a9c7403c544adc9af4f69618d6a2f5"
+    }
+  ],
+  "peer": {
+    "agent": "locate_project",
+    "record": "eeaa60e61c8ae1f23a912fb2ce1560e19aef3c1f",
+    "status": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "reason": "The existing two recovery cases directly called the private _start_worker after the current authority had begun requiring an active same-thread operation. Actual cancellation/drop and first-worker disposal passed, then prewarming failed at runtime_configuration's current operation guard.",
+  "change": "Enclose only the existing private recovery prewarm, launch-bound readiness and nested public recovery stream/assertions in the actual adapter._authority_scope(). The fixture uses the unmanaged no-package namespace; the same-thread nested stream retains the existing authority.",
+  "inventory": {
+    "path": "tests/voice_acceptance/test_dordiai_acceptance.py",
+    "whole_cases": 9,
+    "functions": [
+      "test_exact_pull_protocol_preserves_unicode_and_pcm_without_inference",
+      "test_external_cancel_between_chunks_never_dispatches_next_generation",
+      "test_cancel_drains_loading_and_inflight_chunk_before_drop_ack",
+      "test_bad_drop_ack_disposes_owned_process_before_following_request",
+      "test_discovery_obeys_installed_resources_and_policy_after_explicit_refresh",
+      "test_capabilities_never_turn_transport_success_into_quality_or_timing_claims",
+      "test_deep_json_is_an_immediate_protocol_failure_not_a_dead_reader",
+      "test_request_deadline_also_bounds_a_worker_that_never_reads_stdin"
+    ]
+  },
+  "preserved": {
+    "assertion_and_raises_lines": 39,
+    "exact_one_hunk_inverse": true,
+    "request_timeout_seconds": 1,
+    "recovery_readiness_timeout_seconds": 5,
+    "actual_cancel_drop_disposal_and_explicit_final_close": true,
+    "old_function_names_and_parametrization": true,
+    "product_source_unchanged": true,
+    "no_gate_ref_or_budget_change": true
+  },
+  "reviewed_dependencies": {
+    "adapter": "b402a6cb86ee150dc67d5654a3495289269f10aa",
+    "authority": "df687d0d557fbc57af8c44ab029b7dd080084721",
+    "fixture": "795a206c0b69892821cb874c593e7c375ae744e0"
+  },
+  "limitation": "Not executed. The actual two previously failing recovery cases must rerun; transport fixtures do not qualify models, acoustic quality, physical output or NVDA.",
+  "inverse_operations": [
+    {
+      "old": "    recovered_worker = adapter._start_worker()\n    assert recovered_worker.process.pid != cancelled_worker.process.pid\n    wait_for(lambda: ready_worker_pid(runtime, recovery_nonce) is not None, timeout=5.0)\n    actor_pid = ready_worker_pid(runtime, recovery_nonce)\n    assert actor_pid is not None\n    assert recovered_worker.process.poll() is None and adapter.request_timeout == 1.0\n    assert len(list(adapter.stream_pcm(\"After cancellation.\", \"speaker_a\", \"uk\"))) == 2\n    assert adapter._worker is recovered_worker\n    recovery_requests = [r for r in records(runtime) if r[\"launch_nonce\"] == recovery_nonce]\n    assert {r[\"pid\"] for r in recovery_requests} == {actor_pid}\n    assert [r[\"mode\"] for r in recovery_requests] == [\n        \"reference\", \"next\", \"next\"]\n",
+      "new": "    # Prewarming is part of the same real authority operation as recovery.\n    with adapter._authority_scope():\n        recovered_worker = adapter._start_worker()\n        assert recovered_worker.process.pid != cancelled_worker.process.pid\n        wait_for(lambda: ready_worker_pid(runtime, recovery_nonce) is not None, timeout=5.0)\n        actor_pid = ready_worker_pid(runtime, recovery_nonce)\n        assert actor_pid is not None\n        assert recovered_worker.process.poll() is None and adapter.request_timeout == 1.0\n        assert len(list(adapter.stream_pcm(\"After cancellation.\", \"speaker_a\", \"uk\"))) == 2\n        assert adapter._worker is recovered_worker\n        recovery_requests = [r for r in records(runtime) if r[\"launch_nonce\"] == recovery_nonce]\n        assert {r[\"pid\"] for r in recovery_requests} == {actor_pid}\n        assert [r[\"mode\"] for r in recovery_requests] == [\n            \"reference\", \"next\", \"next\"]\n"
+    }
+  ]
+}

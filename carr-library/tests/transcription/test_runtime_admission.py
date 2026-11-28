@@ -3,8 +3,19 @@ import shutil
 
 import pytest
 
-from carr_library.transcription import TranscriptionService, inspect_runtime
-from carr_library.transcription import service as service_module
+from carr_library.transcription import inspect_runtime
+from carr_library.integrations import transcription_protocol as service_module
+
+
+
+# Canonical protocol tests exercise the real workspace-scoped host's adapter.
+from importlib.util import spec_from_file_location as _fixture_spec, module_from_spec as _fixture_module
+from pathlib import Path as _FixturePath
+_fixture_path = _FixturePath(__file__).with_name('fixture_runtime.py')
+_fixture = _fixture_spec('scoped_transcription_test_factory', _fixture_path)
+_fixture_builder = _fixture_module(_fixture)
+_fixture.loader.exec_module(_fixture_builder)
+TranscriptionService = _fixture_builder.make_service
 
 
 def windows_layout(runtime, *, system_site=False):

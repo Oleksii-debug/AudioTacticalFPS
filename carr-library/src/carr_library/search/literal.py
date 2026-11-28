@@ -5,6 +5,8 @@ NFD/full casefold and whitespace folding are search-only; returned offsets are
 half-open Python code-point offsets into the original immutable page. No raw
 FTS syntax, stemming, cross-page stitching, or generated quotation.
 """
+from .paging import MAX_TIMEOUT_SECONDS
+
 from array import array
 from bisect import bisect_right
 from hashlib import sha256
@@ -18,6 +20,7 @@ MAX_CHARS = 5_000_000
 MAX_QUERY = 500
 _LONG_ASCII = 64 * 1024
 _SPACE_RUN = re.compile(r'\s{2,}')
+_ASCII_NONSPACE_RUN = re.compile(r'[\x00-\x08\x0e-\x1b\x21-\x7f]+')
 
 
 def _fold(text):
@@ -44,6 +47,10 @@ class _AsciiOffsets:
         index = bisect_right(self.cuts, position) - 1
         return position + (self.removed[index] if index >= 0 else 0)
 
+    def items(self):
+        """Iterate source boundaries without materializing per-letter entries."""
+        return ((position, self[position]) for position in range(self.length + 1))
+
 
 def _ascii_mapped(text, check):
     check()
@@ -62,8 +69,7 @@ def _ascii_mapped(text, check):
 
 
 class _CompactOffsets:
-    """Source boundaries in a compact array; -1 is not a cluster boundary."""
-
+    """Dense source boundaries; -1 marks a position inside a folded cluster."""
     def __init__(self, length):
         self.values = array('i', [-1]) * (length + 1)
 
@@ -87,10 +93,10 @@ def _mapped(text, check=lambda: None):
     # TXT books need not contain form-feed page boundaries. Mapping millions of
     # ordinary ASCII letters into two dictionaries exhausted the search deadline
     # and hundreds of megabytes even when the source was within MAX_CHARS.
-    # Long ASCII segments need only sparse whitespace offsets. Long Unicode
+    # ASCII segments of every size need only sparse whitespace offsets. Long Unicode
     # segments keep the same cluster rules in compact integer arrays, avoiding
     # two per-character dictionaries and millions of retained small strings.
-    if len(text) >= _LONG_ASCII and text.isascii():
+    if text.isascii():
         return _ascii_mapped(text, check)
     compact = len(text) >= _LONG_ASCII
     if compact:
@@ -106,6 +112,29 @@ def _mapped(text, check=lambda: None):
         if i >= next_check:
             check()
             next_check = i + 1024
+        # Batch only complete ASCII non-whitespace clusters, within the same
+        # next cancellation checkpoint. A following Unicode mark still owns
+        # its preceding base and must use the original canonical-cluster path.
+        run = _ASCII_NONSPACE_RUN.match(text, i, min(len(text), next_check))
+        if run is not None:
+            end = run.end()
+            if end < len(text) and ud.category(text[end]).startswith('M'):
+                end -= 1
+            if end - i >= 2:
+                width = end - i
+                part = text[i:end].lower()
+                if compact:
+                    if not folded.startswith(part, pos):
+                        raise ValueError('unsupported normalization mapping')
+                    starts.values[pos:pos + width] = array('i', range(i, end))
+                    ends.values[pos + 1:pos + width + 1] = array('i', range(i + 1, end + 1))
+                else:
+                    starts.update(zip(range(pos, pos + width), range(i, end)))
+                    ends.update(zip(range(pos + 1, pos + width + 1), range(i + 1, end + 1)))
+                    parts.append(part)
+                pos += width
+                i = end
+                continue
         j = i + 1
         if text[i].isspace():
             while j < len(text) and text[j].isspace():
@@ -117,7 +146,14 @@ def _mapped(text, check=lambda: None):
                 j += 1
                 if j % 1024 == 0:
                     check()
-        part = _fold(text[i:j])
+        cluster = text[i:j]
+        # The loop has already delimited a whole whitespace run or canonical
+        # cluster. ASCII clusters need only whitespace folding or ASCII case;
+        # a base followed by any Unicode mark keeps the original full fold.
+        if cluster.isascii():
+            part = ' ' if cluster.isspace() else cluster.lower()
+        else:
+            part = _fold(cluster)
         if compact and not folded.startswith(part, pos):
             raise ValueError('unsupported normalization mapping')
         starts[pos] = i
@@ -156,8 +192,100 @@ def _spans(folded, starts, ends, needle, check=lambda: None):
         yield starts[i], ends[j]
 
 
+class _CandidateWork:
+    """Temporary candidate computation shared by one public paged search.
+
+    This object grants no source authority. Every use follows a new complete
+    scoped-row read and SHA check, and requires exact equality of all row
+    fields. The caller still owns each fresh catalog/source transaction and
+    every retained-source/attestation check. Nothing survives the public call.
+    """
+    _MAX_MAP_CHARACTERS = 32 * 1024
+    _MAX_MAP_PAGE_CHARACTERS = 2048
+
+    def __init__(self):
+        self._index = None
+        self._rows = None
+        self._maps = {}
+        self._map_characters = 0
+        self._closed = False
+
+    def __enter__(self):
+        if self._closed:
+            raise ValueError('Literal candidate work is already closed.')
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def _discard(self):
+        if self._index is not None:
+            self._index.close()
+            self._index = None
+        self._rows = None
+        self._maps.clear()
+        self._map_characters = 0
+
+    def close(self):
+        self._closed = True
+        self._discard()
+
+    def _bind(self, rows, stopped, check):
+        from .paging import MAX_SOURCE_PAGES
+        if self._closed:
+            raise ValueError('Literal candidate work is already closed.')
+        check()
+        # Shared work is admitted only for the existing <=100-page source
+        # window. Normalization maps have a separate much smaller ceiling.
+        if (len(rows) > MAX_SOURCE_PAGES
+                or sum(len(row[9]) for row in rows) > MAX_CHARS):
+            raise ValueError('Literal candidate work exceeds its source window.')
+        snapshot = tuple(rows)
+        if self._rows != snapshot:
+            self._discard()
+            index = sqlite3.connect(':memory:')
+            try:
+                index.set_progress_handler(lambda: int(stopped()), 1000)
+                index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
+                for number, row in enumerate(snapshot, 1):
+                    check()
+                    index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)',
+                                  (number, _fold(row[9])))
+                check()
+            except BaseException:
+                index.close()
+                raise
+            self._index, self._rows = index, snapshot
+        # A previous snapshot's deadline/cancellation closure is never reused.
+        self._index.set_progress_handler(lambda: int(stopped()), 1000)
+        check()
+        return self._index
+
+    def _normalization(self, rowid, raw, check):
+        check()
+        if (self._closed or self._rows is None or not 1 <= rowid <= len(self._rows)
+                or self._rows[rowid - 1][9] != raw):
+            raise ValueError('Literal candidate source changed.')
+        if rowid in self._maps:
+            return self._maps[rowid]
+        value = _mapped(raw, check)
+        check()
+        # Large-page maps are deliberately not retained. At most 100 short
+        # maps and 32 Ki source characters live until this one call closes.
+        if (len(raw) <= self._MAX_MAP_PAGE_CHARACTERS
+                and self._map_characters + len(raw) <= self._MAX_MAP_CHARACTERS):
+            self._maps[rowid] = value
+            self._map_characters += len(raw)
+        return value
+
+    def _detach_callback(self):
+        if self._index is not None:
+            self._index.set_progress_handler(None, 0)
+
+
 def search(db, workspace, query, *, mode='phrase', edition_ids=None,
-           limit=50, offset=0, timeout=5.0, cancelled=lambda: False):
+           limit=50, offset=0, timeout=5.0, cancelled=lambda: False, page_ids=None,
+           _candidate_work=None):
     """One active workspace only; edition_ids is the catalog-resolved filter.
 
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
@@ -167,7 +295,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     Other modes have no wildcard/operator syntax. Exact matches share score 1; tie-break is
     edition, segment ordinal, page id, raw offset. Results never cross pages.
     Only active_page rows from PR #21 are accepted; no persistent second index.
-    Scope/offset caps fail explicitly, not silently with incomplete results.
+    Scope caps fail explicitly, not silently with incomplete results. Offset
+    only skips matches in this bounded scope; it never sizes an allocation.
     """
     if not isinstance(workspace, str) or not workspace:
         raise ValueError('explicit workspace required')
@@ -179,8 +308,12 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid query')
     if not (type(limit) is int and type(offset) is int and type(timeout) in (int, float)
             and 1 <= limit <= 100
-            and 0 <= offset <= 10000 and 0 < timeout <= 60):
+            and offset >= 0 and 0 < timeout <= MAX_TIMEOUT_SECONDS):
         raise ValueError('invalid search budget')
+    if (_candidate_work is not None
+            and (not isinstance(_candidate_work, _CandidateWork)
+                 or _candidate_work._closed or page_ids is None)):
+        raise ValueError('Shared literal work requires a bounded source window.')
     q = _fold(query).strip()
     if not q:
         return []
@@ -225,15 +358,20 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             return []
         where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
         params.extend(ids)
+    from .paging import checked_page_ids
+    page_clause, page_parameters = checked_page_ids(page_ids)
+    where += page_clause
+    params.extend(page_parameters)
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
            'verified,raw,digest FROM active_page WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
-    index = sqlite3.connect(':memory:')
+    index = None if _candidate_work is not None else sqlite3.connect(':memory:')
     rows, result = [], []
     size = seen = 0
     try:
-        index.set_progress_handler(lambda: int(stopped()), 1000)
-        index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
+        if index is not None:
+            index.set_progress_handler(lambda: int(stopped()), 1000)
+            index.execute("CREATE VIRTUAL TABLE scoped USING fts5(text, tokenize='trigram case_sensitive 1')")
         for row in db.execute(sql, params):
             check()
             if row[1] != workspace:
@@ -246,8 +384,11 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             if sha256(raw.encode('utf-8')).hexdigest() != row[10]:
                 raise ValueError('raw page digest mismatch')
             rows.append(tuple(row))
-            index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
+            if _candidate_work is None:
+                index.execute('INSERT INTO scoped(rowid,text) VALUES(?,?)', (len(rows), _fold(raw)))
         check()
+        if _candidate_work is not None:
+            index = _candidate_work._bind(rows, stopped, check)
         # Trigram cannot match strings shorter than three code points. Fall back
         # to the scoped row list, then verify all literal needles against raw.
         candidate = next((n for n in needles if len(n) >= 3), None)
@@ -260,7 +401,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         for rowid in hits:
             check()
             page_id, ws, edition, revision, asset, ordinal, physical, printed, verified, raw, digest = rows[rowid-1]
-            folded, starts, ends = _mapped(raw, check)
+            folded, starts, ends = (_candidate_work._normalization(rowid, raw, check)
+                                   if _candidate_work is not None else _mapped(raw, check))
             check()
             if advanced is not None:
                 match = advanced.match(raw, folded, starts, ends, check=check)
@@ -295,7 +437,10 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             raise TimeoutError('literal search cancelled or timed out') from exc
         raise
     finally:
-        index.close()
+        if _candidate_work is not None:
+            _candidate_work._detach_callback()
+        elif index is not None:
+            index.close()
 
 
 def search_file(path, workspace, query, *, timeout=5.0,
@@ -334,7 +479,7 @@ def _search_file(path, workspace, query, timeout, cancelled, options, *,
     """
     from pathlib import Path
 
-    if type(timeout) not in (int, float) or not 0 < timeout <= 60:
+    if type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS:
         raise ValueError('invalid search budget')
     deadline = monotonic() + timeout
     latched = False

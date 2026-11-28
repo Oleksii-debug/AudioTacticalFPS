@@ -1,0 +1,70 @@
+{
+  "schema": "carr-actual-native-library-admission-diagnostic/1",
+  "created_utc": "2026-11-28 07:55:10 UTC",
+  "status": "FAIL",
+  "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+  "source_tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+  "run_id": 46122919266,
+  "job_id": 140911115582,
+  "probe": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+  "actual_opening_observation": {
+    "phase": "new",
+    "working": true,
+    "busy": true,
+    "closing": false,
+    "active": "('5e12e83d98f743b992950a0047ef7e68', '2a5cd232ee29487ab51835faad8b2922')",
+    "status": "Library workflow assistant unavailable: Wait for the current operation or cancel it first.",
+    "constructor_error": null
+  },
+  "actual_reports": [
+    {
+      "status": "FAIL",
+      "errors": [
+        "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_library_workflow_smoke.py\", line 81, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_library_workflow_smoke.py\", line 333, in open_from_menu\n    assert state['view'] is not None and state['view'] is not previous_view, (\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Native menu returned without a fresh actual workflow dialog: {\"phase\": \"new\", \"working\": true, \"busy\": true, \"closing\": false, \"active\": \"('5e12e83d98f743b992950a0047ef7e68', '2a5cd232ee29487ab51835faad8b2922')\", \"status\": \"Library workflow assistant unavailable: Wait for the current operation or cancel it first.\", \"constructor_error\": null}\n"
+      ],
+      "windows_native": "FAIL",
+      "windows_nvda": "NOT_RUN"
+    },
+    {
+      "complete_integrated_qualification": "NOT_RUN",
+      "errors": [
+        "Native verdict: ValueError: Original native probe exited unsuccessfully."
+      ],
+      "native_exit": 1,
+      "required_checks": 6,
+      "source_commit": "26beb805aab1e9e202d134008441927523cdcb94",
+      "status": "FAIL",
+      "windows_nvda": "NOT_RUN"
+    }
+  ],
+  "artifact": {
+    "id": 15254820503,
+    "name": "native-library-workflow-windows-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 13744,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15254820503",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15254820503/zip",
+    "expired": false,
+    "created_at": "2026-11-28T07:49:58Z",
+    "expires_at": "2027-02-26T07:48:56Z",
+    "updated_at": "2026-11-28T07:49:58Z",
+    "digest": "sha256:dbd21001c43c13665079def84d93f9a7c802f5802e44c507aa556165af45fd46",
+    "workflow_run": {
+      "id": 46122919266,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-native-library-workflow-b-20261128-5a9e",
+      "head_sha": "26beb805aab1e9e202d134008441927523cdcb94"
+    }
+  },
+  "decoded_log": {
+    "chars": 74212,
+    "report_line": 562
+  },
+  "finding": "The actual first menu attempt occurred while the real host working and busy flags were both true. The actual UI refused admission with its existing wait/cancel message; no constructor exception occurred.",
+  "qualification": "Original six native workflow checks did not complete. No product busy guard or source authority is relaxed.",
+  "limits": [
+    "No successful native workflow or full gate verdict.",
+    "No transfer to the earlier masked A3/5b2 failure, though the same probe seam is present.",
+    "NVDA remains NOT_RUN."
+  ]
+}

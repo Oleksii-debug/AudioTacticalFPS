@@ -1,0 +1,52 @@
+{
+  "schema": "carr-bounded-peer-v1",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "path": ".github/workflows/carr-language-evidence.yml",
+  "git_blob": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+  "helper": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+  "case_data": "6797df44d708230f38ba999760bbfd3cb8581e40",
+  "native": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+  "scope": [
+    "Setup/dependency ordering",
+    "Exact interpreter firewall and owned cleanup",
+    "Actual helper/native CLI and reports",
+    "Finite parent/child budgets",
+    "Closed retention and qualification"
+  ],
+  "checks": {
+    "source_cases": 147,
+    "installed_cases": 147,
+    "whole_suites": 5,
+    "helper_pins": 48,
+    "helper_origins": 36,
+    "native_unique_required": 75,
+    "native_origins": 14,
+    "default_no_occurrences": 3,
+    "retained_contract_files": 30,
+    "firewall_files": 2,
+    "per_file_bytes": 8388608,
+    "total_bytes": 67108864,
+    "retention_days": 7,
+    "job_minutes": 135,
+    "contract_step_minutes": 100,
+    "source_seconds": 1500,
+    "ordinary_child_seconds": 600,
+    "native_watchdog_seconds": 300,
+    "native_parent_seconds": 330
+  },
+  "observations": [
+    "Checkout and helper/source/data/native Git hashes are verified before fixed existing hash-locked dependencies are acquired. Helper sources() and both embedded children are compiled before execution.",
+    "All four actual selected/base Python and pythonw paths are enumerated, deduplicated, admitted as regular non-reparse executables and blocked outbound only after acquisition; all three firewall profiles and each owned program rule are read back.",
+    "Finally removes only owned rules, restores each prior profile with readback, records cleanup errors and fails if any occur.",
+    "The exact --evidence/--expected-head CLI and 147 total agree with helper b8df8. The helper's actual --installed --report native invocation,75checks/14origins/defaultNo3 and sixteen fixed fields agree with native1a0358 and contract ea20.",
+    "The 100-minute helper step funds unchanged1500source +5x600installed +540build/install/check +120origin +330native, with bounded overhead; explicit maximum workflow step limits total133<135 job minutes.",
+    "The whitelist contains exactly30 possible contract files and2 firewall JSONs plus one directory; JSON/XML/text, ordinary single-link/no-reparse and8MiB/64MiB guards precede upload.",
+    "workflow_call and dedicated branch trigger enable required reuse; run-id concurrency does not cancel active evidence. No audio acquisition or physical/audio/quality claim is introduced."
+  ],
+  "limitations": [
+    "No YAML/PowerShell parser or actual Windows execution was performed.",
+    "Helper source-wheel/fixture/origin algorithm has its independent Progress0719 review; this verdict checks its workflow interface and actual output names.",
+    "Partial failure evidence may be retained, but nonzero child or failed cleanup keeps the job failed; no result transfer."
+  ]
+}

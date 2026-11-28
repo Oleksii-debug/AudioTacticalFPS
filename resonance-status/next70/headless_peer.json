@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "path": ".github/workflows/carr-next9-headless.yml",
+  "preimage": "3976b13e3d2ce888386fd9d915599d5a3d847a56",
+  "successor": "77371ce11bf8174bb7fe873f684a4d6f10045525",
+  "hunks": [
+    {
+      "old_line": 102,
+      "new_line": 102,
+      "removed": [
+        "              'tests/packaging/test_library_scale_benchmark.py': 24,"
+      ],
+      "added": [
+        "              'tests/packaging/test_library_scale_benchmark.py': 30,"
+      ]
+    }
+  ],
+  "exact_complete_inverse": true,
+  "test_blob": "906487bd1970ad69b466945461da73bd50cfa941",
+  "whole_cases": 30,
+  "actual_module_functions": 17,
+  "finding": "Exactly one existing benchmark count declaration changes24 to30; every other byte in the10071-character workflow remains unchanged. All selected phases, argv, geometry, policies, strict assertions and budgets are retained.",
+  "execution": "NOT_RUN; no refs changed."
+}

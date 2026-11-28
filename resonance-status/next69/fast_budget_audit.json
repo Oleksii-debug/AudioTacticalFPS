@@ -1,0 +1,120 @@
+{
+  "schema": "carr-fast-source-outer-envelope-audit/1",
+  "created_utc": "2026-11-28 08:59:40 UTC",
+  "status": "READ_ONLY_PROPOSAL_NOT_IMPLEMENTED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "observed": {
+    "head": "26beb805aab1e9e202d134008441927523cdcb94",
+    "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+    "run": 46122917046,
+    "job": 140911207030,
+    "closed_receipt": "1785598f785805a5e4200ba1bfeca5a676bf2567",
+    "job_started": "2026-11-28T08:00:18Z",
+    "job_completed": "2026-11-28T08:45:30Z",
+    "job_elapsed_seconds": 2712,
+    "job_cap_minutes": 45,
+    "source_step_started": "2026-11-28T08:01:06Z",
+    "source_step_completed": "2026-11-28T08:45:26Z",
+    "source_step_elapsed_seconds": 2660,
+    "decoded_log_utf8": {
+      "sha256": "2546cc7d3daaa7b6644d81b451750ec3661e43f63591cdd99462df431412c1dd",
+      "bytes": 999141
+    },
+    "artifact": {
+      "id": 15256720221,
+      "name": "carr-completion-source-26beb805aab1e9e202d134008441927523cdcb94-1",
+      "size_in_bytes": 100594,
+      "digest": "sha256:95720596214f169d5993d55b2c521276a8f0b7d6bb007f8c7f62bc824f7194b4"
+    },
+    "pytest_summary_rows": 170,
+    "strict_runner_summary": false,
+    "whole_timeouts": [
+      {
+        "path": "tests/studio/test_book_batch.py",
+        "seconds": 600,
+        "timestamp": "2026-11-28T08:13:40.6158113Z"
+      },
+      {
+        "path": "tests/audio/test_voice_package_management.py",
+        "seconds": 600,
+        "timestamp": "2026-11-28T08:41:18.9174270Z"
+      }
+    ],
+    "observed_test_node_modules": 175,
+    "last_admitted_observed": {
+      "path": "tests/security/test_update_runtime.py",
+      "zero_based_selected_index": 174,
+      "first_node_time": "2026-11-28T08:44:26.0261917Z"
+    },
+    "old_tail_without_observed_test_nodes": [
+      "tests/security/test_update_ui.py",
+      "tests/security/test_update_controller_actions.py",
+      "tests/audio/test_voice_scope_checks.py",
+      "tests/catalog/test_text_screen_work.py",
+      "tests/search/test_ascii_mapping_work.py",
+      "tests/studio/test_clip_preview_loop.py",
+      "tests/studio/test_project_markers.py"
+    ],
+    "limitation": "A printed child pytest summary is not the final strict per-suite/cleanup verdict. Interleaved percentages and the absence of a final runner summary do not qualify any completed aggregate."
+  },
+  "exact_current_contract": {
+    "workflow_path": ".github/workflows/carr-windows.yml",
+    "workflow_git_blob": "e71a09b322d18f0447fae7d1cf64b23805902b39",
+    "ci_path": "carr-library/scripts/ci_check.py",
+    "ci_git_blob": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "selected_wholes": 185,
+    "unique_wholes": 185,
+    "old_182_exact_ordered_prefix": true,
+    "canonical_selector_array": {
+      "sha256": "047a98c93fb399e558da688ad555c11e96dbc4c18368b7a5f1c1f6c616dda07d",
+      "bytes": 7878
+    },
+    "added_wholes": [
+      "tests/language_qualification/test_evidence.py",
+      "tests/language_qualification/test_evidence_backup.py",
+      "tests/language_qualification/test_evidence_ui.py"
+    ],
+    "jobs": 3,
+    "ordinary_child_seconds": 600,
+    "reviewed_asr_exception_seconds": 900,
+    "asr_exception_selected_here": false,
+    "suite_timeout_override_passed_here": false,
+    "outer_job_minutes": 45,
+    "stale_comment": "The measured 98-suite diagnostic took about 22 minutes before this 119-suite union."
+  },
+  "source_findings": [
+    "The existing ThreadPoolExecutor runs at most three isolated whole suites. ci_check retains each strict per-suite verdict until all futures and report-directory cleanup finish; only then does it print the exact aggregate.",
+    "The actual source process was cancelled after 44 minutes 20 seconds inside the job's 45-minute envelope, while multiple real children continued reporting cases. No separate explicit GitHub job-timeout annotation is present, so the cap attribution is a source-and-timing inference, not a claim of a printed timeout cause.",
+    "The current 185 selectors retain the exact old 182 ordered prefix. No ASR900 module or timeout override is present in this fast lane; the existing global reviewed ASR allowance remains untouched in all other callers.",
+    "BookBatch and voice-package 600-second failures are genuine whole-suite failures and remain independent of an outer cap correction. Raising an aggregate cap cannot make either failure green."
+  ],
+  "recommended_followup": {
+    "scope": "Only the completion-regressions job's aggregate envelope/comments and explicit action/step envelopes; no runner/test/product or inventory changes.",
+    "source_step_timeout_minutes": 100,
+    "job_timeout_minutes": 135,
+    "setup_bounds_minutes": {
+      "checkout": 3,
+      "python": 5,
+      "locked_preparation": 20,
+      "source_and_strict_verdict": 100,
+      "retention_upload": 2,
+      "post_job_reserve": 5
+    },
+    "arithmetic": "3 + 5 + 20 + 100 + 2 + 5 = 135 minutes.",
+    "preserve": [
+      "All 185 whole paths and their existing exact order.",
+      "ci_check --jobs 3; unchanged600-second child deadline and existing900-second exception mechanism elsewhere.",
+      "All offline child policy, process-tree cleanup, JUnit/no-skip/no-xfail verdicts and exact final count/case assertions.",
+      "No early exit on an individual suite failure before the runner has consumed all futures; existing nonzero overall exit still fails the job.",
+      "Existing retained source log/commit evidence and the required strict success-only job dependency."
+    ],
+    "evidence_bound_continuation": "At the observed progress through ordered index174, the existing three-worker scheduler can have at most three active tasks before the seven old tail tasks. Appending the three new language tasks gives at most13 remaining whole invocations. Conservatively starting all13 from full600-second allowance takes five waves; each includes the existing up-to30-second termination waits. Observed44m20s +5×630s =96m50s, leaving3m10s inside the proposed100-minute source envelope for remaining validation/temporary-directory work. This is a continuation estimate on the observed execution, not a universal185-suite worst-case guarantee.",
+    "why_not_more_concurrency": "The observed voice-package timeout already occurs under three-way contention, while its dedicated alone scheduling previously completed within600. Increasing concurrency has no measured safety or completion benefit here.",
+    "why_not_new_shards": "A single-job aggregate-cap correction is the smallest reviewable follow-up. New shards would add setup and aggregation surfaces and do not resolve the independent Book/voice whole failures."
+  },
+  "limits": [
+    "No code, workflows, refs, dispatches, cancellations or tests were changed by this audit.",
+    "The proposed envelope still fails closed if all185 strict results cannot complete; it does not promise the theoretical worst-case61-plus waves under600/900 limits.",
+    "Actual follow-up execution on its own exact head is required. Prior focused/source results do not transfer."
+  ]
+}

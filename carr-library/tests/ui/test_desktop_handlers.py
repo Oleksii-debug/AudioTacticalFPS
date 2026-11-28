@@ -87,9 +87,14 @@ def panel(classes):
     hit = Hit('a','hit','revision','Title','Author','first','Segment 1','Exact','Citation')
     value.model.replace('a',(hit,))
     value.results = {'hit':hit}
+    value._search_page, value._source_history = None, []
     value._context_epoch = 1
     value.query,value.retrieval,value.result_mode,value.collection = Mock(),Mock(),Mock(),Mock()
     value.query.GetValue.return_value = 'Exact'
+    value.search_timeout = Mock()
+    value.search_timeout.GetValue.return_value = '300'
+    value.search_navigation = {key: Mock() for key in (
+        'result_previous', 'result_next', 'source_previous', 'source_next')}
     value.retrieval.GetSelection.return_value = 0
     value.result_mode.GetSelection.return_value = 0
     value.collection.GetSelection.return_value = 0
@@ -134,13 +139,22 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     new_installers = []
     for module, installer in [('speech_dialog', 'install_speech_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
-                              ('operations_dialog', 'install_operations_actions'),
+                              ('recording_dialog', 'install_recording_actions'),
+                              ('citation_formatting', 'install_citation_actions'),
                               ('studio_dialog', 'install_studio_actions'),
+                              ('audio_playback', 'install_audio_playback'),
+                              ('book_audio_dialog', 'install_book_audio_actions'),
+                              ('incremental_backup_dialog', 'install_incremental_backup'),
+                              ('portable_sync', 'install_portable_sync_actions'),
+                              ('trust_status', 'install_trust_actions'),
+                              ('operations_dialog', 'install_operations_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('save_actions', 'install_save_actions'),
                               ('document_conversion', 'install_conversion_actions'),
                               ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions')]:
+                              ('translation_dialog', 'install_translation_actions'),
+                              ('desktop_integration', 'install_desktop_integration'),
+                              ('local_schedules', 'install_local_schedules')]:
         callback = Mock()
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
@@ -201,6 +215,8 @@ def test_async_result_cannot_repopulate_changed_scope(classes):
     done([SimpleNamespace(workspace='a',ref='stale')])
     assert p.model.hits == ()
     assert p.results == {}
+    for button in p.search_navigation.values():
+        button.Enable.assert_called_once_with(False)
 
 
 def test_refresh_collections_clears_revoked_results_and_keeps_explicit_scope(classes):
@@ -214,6 +230,8 @@ def test_refresh_collections_clears_revoked_results_and_keeps_explicit_scope(cla
     assert p.model.hits == ()
     assert p.results == {}
     assert 'no longer available' in p.status.ChangeValue.call_args.args[0]
+    for button in p.search_navigation.values():
+        button.Enable.assert_called_once_with(False)
 
 
 def test_job_disables_mutable_controls_and_restores_them_on_completion(classes):
@@ -569,7 +587,7 @@ def test_pending_import_review_requires_explicit_approval_of_displayed_page(clas
     display(prepare())
     f.library.pending_review.assert_called_once_with('a','request')
     shown = env['show_text'].call_args.args[2]
-    assert 'Original.pdf' in shown and 'Physical PDF page 2' in shown
+    assert 'Original.pdf' in shown and f'Physical page {page["physical"]}' in shown
     assert page['raw_text'] in shown
     f.library.confirm_import_review.assert_not_called()
     if confirmed and reviewer is not None:

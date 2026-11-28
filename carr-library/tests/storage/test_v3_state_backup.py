@@ -403,3 +403,26 @@ def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_pat
     with pytest.raises(FileNotFoundError, match='disappeared'):
         backup_sidecars._capture(root)
     assert probes == 2
+
+
+def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+    from carr_library import state_backup
+    root, target = tmp_path / 'source', tmp_path / 'snapshot'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'a.json'
+    source.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'other file')
+    # Windows can keep creation-time and last-write metadata stable until an
+    # open writer closes. Model that stat behavior while changing real bytes.
+    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
+    changed = False
+    def mutate_after_copy():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            source.write_bytes(b'new')
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed during backup'):
+        snapshot_state(root, target, cancelled=mutate_after_copy)
+    assert changed and (target / 'a.json').read_bytes() == b'old'

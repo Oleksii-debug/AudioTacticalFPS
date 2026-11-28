@@ -1,0 +1,102 @@
+{
+  "schema": "carr-capacity-c2-checkpoint-fixture-and-console-correction/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "STATIC_REVIEWED_NEW_EXECUTION_NOT_RUN",
+  "base": {
+    "commit": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+    "tree": "37b723f6aa4f69381cdabcb793aa461dc5633b0e",
+    "run": 46063728818,
+    "evidence_blob": "8250059191d3de4573c45c9eb8667ab201fcfcad"
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "preimage": "b7583313b0c30d57fc031832e2fd486803604f00",
+      "blob": "bbed36da78265d635317880b264fd90b59ed4235",
+      "owner": "locate_project",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "c0c95987d85d6c93d8444f279d50b7438aff14ca",
+      "blob": "52964b9bd59f59694642ec13d6d23660b9ea5d69",
+      "readback_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "aab43491615288c2929449297d2d9acbf14b4378",
+      "blob": "3cda0948e0827a1af4323c6faa5445d624fed371",
+      "readback_exact": true
+    }
+  ],
+  "fixture": {
+    "cases": 27,
+    "functions": 8,
+    "cause": "Actual Linux C2 had26 failures because cancellation by calls>=2 now correctly stops at entry before result.completed exists.",
+    "correction": "Observe the actual committed first checkpoint through a separately closed SQLite connection. Retain cancelled/completed1 and additionally require exactly one matching job row/ordinal1/raw text/payload digest, unchanged original text and zero published revisions before record_progress.",
+    "preservation": "Only contextlib.closing import and partial() helper changed; reversing these reconstructs b758 exactly. Every existing test function, parameter and downstream restore/tamper assertion is byte-identical.",
+    "peer": "Canonical independently checked current Ingest656ac checkpoint schema, transaction commit and payload SHA256 contract; accepted STATIC_NOT_RUN."
+  },
+  "orchestrator": {
+    "cause": "Actual Windows C2 child finished but parent print of retained UTF-8 source-contracts.txt failed on cp1252 under python -I, which ignores PYTHONUTF8.",
+    "correction": "Configure only the orchestrator's stdout TextIOWrapper to UTF-8/backslashreplace at main entry. Retained files remain exact UTF-8 bytes.",
+    "preservation": "Every source/installed child argv, environment, test encoding, strict PYTEST_CHILD, installed-child literal, wheel payload/source proof and deadline/cleanup path remains byte-identical. No child/test result is changed or decoded loosely.",
+    "other_change": "One exact common4 test pin b758→bbed.",
+    "peer": "Locate independently accepted52964 parent-display change and two workflow pins STATIC_NOT_RUN."
+  },
+  "workflow": {
+    "scope": "Only two helper Git blob pins changed. Reversing them reconstructs aab434 exactly.",
+    "source_cases_per_platform": 177,
+    "installed_cases_per_platform": 177,
+    "whole_suites": 10,
+    "installed_harness_origins": 20,
+    "envelopes": {
+      "suite_seconds": 600,
+      "source_aggregate_seconds": 3200,
+      "validation_step_minutes": 170,
+      "validation_job_minutes": 195,
+      "native_watchdog_seconds": 180,
+      "native_step_minutes": 5,
+      "corpus_phase_seconds": 3600,
+      "corpus_step_minutes": 304,
+      "corpus_job_minutes": 330
+    },
+    "native": "Original3cd70 Windows block and44checks/12origins unchanged.",
+    "profiles": "All four original explicit large-source-v1 complete-backup profiles remain unchanged, requiring successful Linux177+177 validation. Windows remains a separate required outcome."
+  },
+  "actual_evidence": {
+    "linux_source": {
+      "passed": 151,
+      "failed": 26,
+      "skipped": 0
+    },
+    "windows_source": "Underlying retained source verdicts not yet independently extracted; parent UnicodeEncodeError is observed.",
+    "installed": "NOT_RUN on both platforms",
+    "windows_native": "NOT_RUN",
+    "four_corpus_profiles": "NOT_RUN because Linux validation failed",
+    "artifacts": [
+      {
+        "id": 15230820480,
+        "name": "capacity-profile-contracts-windows-2022-e6e869794ae4437d965ae8f9260d40eccb085b44-1",
+        "bytes": 9681,
+        "sha256": "424764aadf1ec62d3f8c1372a9f586466a0bde47a31125a703dbd3149e617c96",
+        "run": 46063728818,
+        "head": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+        "verification": "GitHub artifact API digest and actual upload-log digest/size match; archive has not been downloaded/rehash-verified here."
+      },
+      {
+        "id": 15229443467,
+        "name": "capacity-profile-contracts-ubuntu-24.04-e6e869794ae4437d965ae8f9260d40eccb085b44-1",
+        "bytes": 8973,
+        "sha256": "5129e5fe53422d37027e51b6cbe02951ba2578985d1478d00d31a54050461f4f",
+        "run": 46063728818,
+        "head": "e6e869794ae4437d965ae8f9260d40eccb085b44",
+        "verification": "GitHub artifact API digest and actual upload-log digest/size match; archive has not been downloaded/rehash-verified here."
+      }
+    ],
+    "qualification": "No actual capacity, backup-scale, installed or native success is claimed from C2."
+  },
+  "new_execution": "NOT_RUN; source/parser/pytest/native/measurements must execute on the successor.",
+  "refs": "No branch/tag/commit reference changed; parent publishes the successor.",
+  "prior_full_capacity_manifest": "fc6a75c253be601c19bb12d1e3aac02076026165"
+}

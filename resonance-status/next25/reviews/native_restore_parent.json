@@ -1,0 +1,85 @@
+{
+  "schema": "carr-reviewable-change/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "db6cce296cc95690bf1036eb9c583df5d7869874",
+  "subject": "Canonical owned temporary root and bounded actual restore-binding diagnostics in native backup proof",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "before": "50397caa3170495a562a2220a80d4a00eb36ab9a",
+      "after": "412bae4ad7ffe7600497ede1add0c9c4a14fbf4b"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "3c24baad724a0ebf354bf3f1121834e03b3a0a32",
+      "after": "841bc48f36b70415d0aedbd67987e0bcd5f2d409"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "0ae1d79faaadd8627f12639de5d40956bd4e9927",
+      "after": "363e9a4e3d99dff012479e8452f8c9036e42a162"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "before": "772fbbecd31f9148711c2b59f67ba97b479d8d4f",
+      "after": "f0901304cffb1ed0406235f81dfa39eabb6b8386"
+    }
+  ],
+  "actual_evidence": "fb50c5b15614a29fe325120e59592cf8cdc4ec21",
+  "actual_result": {
+    "source_per_platform": 189,
+    "installed_per_platform": 189,
+    "platforms": [
+      "linux",
+      "windows"
+    ],
+    "native": "FAIL",
+    "required_pass_names_observed": 39,
+    "required_total": 44
+  },
+  "cause_limit": "The source contract proves that canonical restore resolves its destination parent. Actual logs show Windows short and long temp-path spellings; the compound assertion did not log the failing conjunct, so short-name expansion remains an inference awaiting the corrected native run.",
+  "changes": [
+    "Resolve the already owned TemporaryDirectory root once with strict=True before constructing selected backup/restore paths.",
+    "Keep the exact existing profile/parent/retained-checksum compound assertion, all checks, real default-No keyboard controls, unchanged canonical restore and source/worker cleanup.",
+    "Print one bounded ASCII JSON diagnostic of the actual restore call count, profile, returned/expected parent and retained checksum.",
+    "Refresh only the one native helper pin and two helper plus one native pin in each affected workflow."
+  ],
+  "gate": {
+    "source": 189,
+    "isolated_installed": 189,
+    "whole_suites": 11,
+    "native_required": 44,
+    "native_origins": 12,
+    "driver_cases": 11,
+    "driver_functions": 9,
+    "child_seconds": 600,
+    "native_watchdog_seconds": 180,
+    "native_step_minutes": 5
+  },
+  "unchanged": [
+    "all product files",
+    "all tests and their case counts",
+    "all 23 native check call sites",
+    "all 44 required names",
+    "12 before/after source identities",
+    "profile page size 37 and 3600-second phase limit",
+    "21 capacity origin inventory",
+    "firewall, artifact closure, child ownership and deadlines"
+  ],
+  "checks": {
+    "source_inverse": "Removing exactly two native hunks reconstructs50397.",
+    "helper_inverse": "Replacing one native pin reconstructs3c24.",
+    "workflow_inverse": "Replacing two helper pins and one native pin reconstructs0ae1/772f.",
+    "exact_blob_readback": true
+  },
+  "reviews": [
+    {
+      "agent": "progress_completion",
+      "scope": "native fixture/API and unchanged checks",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "qualification": "No native or release PASS claimed for the successor. Source189/installed189 at db6 remain separate exact-head evidence; all44 native checks remain required.",
+  "created_utc": "2026-11-28 00:15:47 UTC"
+}

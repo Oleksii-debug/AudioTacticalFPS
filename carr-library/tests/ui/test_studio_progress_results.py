@@ -23,10 +23,16 @@ def harness(*, saved=None, closed=False, reject_submit=False):
     run = next(n for n in studio.body if isinstance(n, ast.FunctionDef) and n.name == 'run')
     # Compile the actual handler in a minimal closure, not a second algorithm.
     factory = ast.parse("""def create(environment):
-    busy, alive = False, not environment.closed
+    busy, alive = False, True
     dialog, cancel, controls = environment.dialog, environment.cancel, environment.controls
     progress, executor, wx = environment.progress, environment.executor, environment.wx
     report, service, current_job = environment.report, environment.service, 'saved-job'
+    scope_current = lambda: alive
+    stopping = lambda: cancel.is_set() or not scope_current()
+    def detach():
+        nonlocal alive
+        alive = False
+    environment.detach = detach
 """).body[0]
     factory.body.extend([run, ast.parse('return run').body[0]])
     tree = ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[]))
@@ -43,7 +49,10 @@ def harness(*, saved=None, closed=False, reject_submit=False):
                 raise RuntimeError('Synthetic submission failure')
             future = Future()
             try:
-                future.set_result(operation())
+                result = operation()
+                if closed:
+                    environment.detach()
+                future.set_result(result)
             except BaseException as error:
                 future.set_exception(error)
             return future

@@ -1,0 +1,288 @@
+{
+  "schema": "carr-native-backup-actual-evidence/1",
+  "recorded_utc": "2026-11-28 00:31:07 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "c037d9721e92ef390932c63c7be9225e903872c0",
+  "tree": "2f5bbc785870fe8e197605bd19705811d4be8516",
+  "run": {
+    "id": 46087224131,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46087224131",
+    "scope": "Windows job only; Linux same-head job was still queued when recorded"
+  },
+  "job": {
+    "id": 140799525152,
+    "platform": "windows-2022",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "source": {
+    "whole_suites": 11,
+    "passed": 189,
+    "failed": 0,
+    "skipped": 0,
+    "verdicts": [
+      {
+        "path": "tests/packaging/test_library_scale_benchmark.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/packaging/test_library_capacity_measurement.py",
+        "passed": 25,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_backup_capacity.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_backup_capacity_cli.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/ui/test_backup_capacity.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_library_backup.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_crash_backup.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_complete_pending_backup.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_backup_pending_common4.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/storage/test_backup_schema_identity.py",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "path": "tests/ui/test_native_backup_capacity_driver.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "whole_suites": 11,
+    "passed": 189,
+    "failed": 0,
+    "skipped": 0,
+    "summaries": [
+      {
+        "passed": 24,
+        "seconds": 16.14
+      },
+      {
+        "passed": 25,
+        "seconds": 32.48
+      },
+      {
+        "passed": 28,
+        "seconds": 109.91
+      },
+      {
+        "passed": 3,
+        "seconds": 1.32
+      },
+      {
+        "passed": 17,
+        "seconds": 1.75
+      },
+      {
+        "passed": 9,
+        "seconds": 3.47
+      },
+      {
+        "passed": 5,
+        "seconds": 0.28
+      },
+      {
+        "passed": 4,
+        "seconds": 1.44
+      },
+      {
+        "passed": 27,
+        "seconds": 9.44
+      },
+      {
+        "passed": 36,
+        "seconds": 9.2
+      },
+      {
+        "passed": 11,
+        "seconds": 0.18
+      }
+    ]
+  },
+  "receipt": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 189,
+    "source_commit": "c037d9721e92ef390932c63c7be9225e903872c0",
+    "source_passed": 189,
+    "source_tree": "2f5bbc785870fe8e197605bd19705811d4be8516",
+    "status": "PASS"
+  },
+  "native": {
+    "required_checks": 44,
+    "all_required_present": true,
+    "origins": 12,
+    "report": {
+      "status": "PASS",
+      "checks": [
+        "exact installed source: carr_library.application",
+        "exact installed source: carr_library.backup_capacity",
+        "exact installed source: carr_library.library_backup",
+        "exact installed source: carr_library.pending_backup",
+        "exact installed source: carr_library.backup_sidecars",
+        "exact installed source: carr_library.storage.revisions",
+        "exact installed source: carr_library.ingest.catalog_asset_copy",
+        "exact installed source: carr_library.ui.backup_capacity",
+        "exact installed source: carr_library.ui.desktop_app",
+        "exact installed source: carr_library.ui.worker_lifetime",
+        "exact installed source: carr_library.durable_state",
+        "exact installed source: carr_library.native_runtime",
+        "real native Windows controls",
+        "existing host executor owns backup work and finalizers",
+        "native failure answers owned No before closing only the active inner modal",
+        "capacity dialog starts with the ordinary allowance",
+        "native capacity cancellation opens no folder or worker",
+        "capacity dialog starts with the ordinary allowance",
+        "actual backup executes on the shared worker",
+        "native completion retains focused readable result",
+        "capacity dialog starts with the ordinary allowance",
+        "actual backup executes on the shared worker",
+        "native completion retains focused readable result",
+        "ordinary and large selections reach the real canonical backup",
+        "backup result explicitly includes validated unfinished imports",
+        "native backup presents the independently retainable manifest checksum",
+        "selected allowance preserves complete4 and pending1 wire",
+        "selected allowance preserves complete4 and pending1 wire",
+        "capacity dialog starts with the ordinary allowance",
+        "native checksum entry preserves the exact retained manifest identity",
+        "actual restore executes on the shared worker",
+        "restored-library opening uses actual default-No native confirmation",
+        "native completion retains focused readable result",
+        "explicit large restore reaches the same canonical fresh-destination API",
+        "real restored library preserves both retained originals and search",
+        "default-No restore leaves the original LibraryApp active",
+        "native backup menus dispatch the existing host workflow",
+        "native host Close drains the actual executor without retained failure",
+        "unchanged installed source after cleanup: carr_library.application",
+        "unchanged installed source after cleanup: carr_library.backup_capacity",
+        "unchanged installed source after cleanup: carr_library.library_backup",
+        "unchanged installed source after cleanup: carr_library.pending_backup",
+        "unchanged installed source after cleanup: carr_library.backup_sidecars",
+        "unchanged installed source after cleanup: carr_library.storage.revisions",
+        "unchanged installed source after cleanup: carr_library.ingest.catalog_asset_copy",
+        "unchanged installed source after cleanup: carr_library.ui.backup_capacity",
+        "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+        "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+        "unchanged installed source after cleanup: carr_library.durable_state",
+        "unchanged installed source after cleanup: carr_library.native_runtime",
+        "native failure cleanup control completed"
+      ],
+      "origins": {
+        "carr_library.application": "82e29e7f60b53733ca8165a8e53e92c744e0bd1accb3132879a9f771776c6c96",
+        "carr_library.backup_capacity": "12d38188e625a0106ac289a5d833d6f4302536f8c9898ad2fe285064a7d81aa5",
+        "carr_library.library_backup": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7",
+        "carr_library.pending_backup": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b",
+        "carr_library.backup_sidecars": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c",
+        "carr_library.storage.revisions": "bb17cbafbbca9e0663d4f308a0542bd228361b34737592b375f4e391d56c5698",
+        "carr_library.ingest.catalog_asset_copy": "403b3cdc088ebefd26b97a5ad0e36fea7311634b064b60c993061711a01d65c6",
+        "carr_library.ui.backup_capacity": "d20b890be15ef53dcfd6365a8512e0fce1b89f8206fcddf014372a47ef5d7beb",
+        "carr_library.ui.desktop_app": "28cc10d724badc164b34814e24264e81bf1ee1e20e0afedb4c795d30dc29005f",
+        "carr_library.ui.worker_lifetime": "321720af78ed1605db5164a1cb8b675ba8f013343660f5449e811d12844a8c18",
+        "carr_library.durable_state": "9f9aed7d28ce985286433db619b7fc2e9f35d92937e74d8e03b5960add5d06ae",
+        "carr_library.native_runtime": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+      },
+      "native_keyboard": "PASS",
+      "native_backup_restore": "PASS",
+      "native_host_cleanup": "PASS",
+      "native_failure_cleanup": "PASS",
+      "large_corpus_measurement": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "physical_media": "NOT_RUN",
+      "power_loss": "NOT_RUN",
+      "folder_picker": "explicit fixture selections; system picker not automated"
+    }
+  },
+  "actual_restore_binding": {
+    "calls": 1,
+    "expected_profile": "large-source-v1",
+    "actual_profile": "large-source-v1",
+    "expected_parent": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-native-backup-capacity-32ubwg4o\\restored",
+    "actual_parent": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-native-backup-capacity-32ubwg4o\\restored",
+    "expected_checksum": "e55893cc678c239a96d0e5421c51eaaf3b6c5f7778b7d5fb18adea74db1eb898",
+    "actual_checksum": "e55893cc678c239a96d0e5421c51eaaf3b6c5f7778b7d5fb18adea74db1eb898"
+  },
+  "total_case_executions": 378,
+  "total_whole_suite_executions": 22,
+  "source_bindings": {
+    "native": "412bae4ad7ffe7600497ede1add0c9c4a14fbf4b",
+    "helper": "841bc48f36b70415d0aedbd67987e0bcd5f2d409",
+    "workflow": "f0901304cffb1ed0406235f81dfa39eabb6b8386",
+    "change_manifest": "23df55bb7b0e2ec1802375585a14486f08809cbf"
+  },
+  "artifact": {
+    "id": 15240346134,
+    "name": "capacity-profile-contracts-windows-2022-c037d9721e92ef390932c63c7be9225e903872c0-1",
+    "size_bytes": 56547,
+    "sha256": "016a6e419216171859809d6055d826b6bbe9a9dade9b5cf6a7a54a85a5e3d9c6",
+    "head": "c037d9721e92ef390932c63c7be9225e903872c0",
+    "metadata_reconciled_with_job_upload": true,
+    "archive_downloaded": false
+  },
+  "evidence_source": "Completed exact-head Windows job logs, strict11-suite source/installed child verdicts, final helper receipt, complete native report and artifact API metadata matched to actual upload lines.",
+  "qualifications": {
+    "native_windows_controls": "PASS",
+    "actual_small_library_backup_restore": "PASS",
+    "windows11": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "physical_media": "NOT_RUN",
+    "power_loss": "NOT_RUN",
+    "large_corpus": "NOT_RUN",
+    "release": "NOT_QUALIFIED",
+    "linux_same_head": "PENDING",
+    "other_heads": "NO_RESULT_TRANSFER"
+  },
+  "counts_note": "378 are source plus installed case executions on Windows, not378 unique tests. All44 required native names were checked as a set; report length alone was not used."
+}

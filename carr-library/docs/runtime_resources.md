@@ -1,206 +1,163 @@
-# Cooperative runtime resources and saved operations
+# Shared local resource admission and saved operations
 
-The shared resource broker coordinates **participating local operations**. It
-reuses the pinned `filelock` native lock implementation and the existing private
-JSON helpers. Import journals, assistant checkpoints, studio jobs, translations
-and transcription jobs remain in their original stores. There is no replacement
-queue or universal job database.
+## Source provenance and scope
 
-## Admission contract
+This composition reuses the operations modules from prepared PR152 commit
+[51577f01770e382c59ef1589d91221388a2f8c1b](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/51577f01770e382c59ef1589d91221388a2f8c1b).
+It carries the narrow unowned Windows lock-path and relative policy-binding
+corrections from PR99, while keeping PR152's cancellation-aware policy compare
+and swap and retired lease cleanup. The adapters use the current isolated import
+supervisor, guarded Studio and original library-scoped transcription service.
+Prior donor results are not execution evidence for this composition: source,
+installed-wheel and native acceptance must run on the exact assembled candidate.
 
-```python
-from carr_library.operations import ResourceBroker, ResourceRequest
 
-broker = ResourceBroker.for_app(library.root)
-request = ResourceRequest(
-    cpu_slots=2,
-    memory_bytes=2 * 1024**3,       # declared estimate, not measured consumption
-    disk_bytes=512 * 1024**2,
-    disk_path=chosen_staging_directory,
-    additional_disks=((chosen_export_directory, 256 * 1024**2),),
-)
-with broker.reserve(request, operation_id='asr:' + job_id,
-                    cancelled=cancelled, timeout=60) as lease:
-    # The existing worker must receive this cancellation callback, and must
-    # terminate/close its native process before this context exits.
-    result = existing_worker(cancelled=lease.cancelled)
-    lease.checkpoint()
-```
+The coordinator is not another job queue. Original services retain job identity,
+state transitions, recovery, progress, publication and explicit resume.
+No provider call, automatic retry, source transfer or model download is added.
 
-All CPU, memory, disk and device fields in a request are admitted atomically.
-Additional disk directories account for cache/output on different filesystems
-without holding one partial reservation while waiting for another. Multiple
-directories on one filesystem share the same free-space accounting. The broker
-checks the configured aggregate disk budget and queries actual free disk bytes;
-outstanding peak-byte reservations and the configured free reserve are deducted
-conservatively, even if a running job has already written part of its output.
+## Policy and reservations
 
-`gpu_device='cuda:0'` with a positive `gpu_memory_bytes` requests one configured
-GPU exclusively. `devices=('microphone:<canonical-id>',)` requests an exclusive
-device. The actual device adapter must supply the same canonical, non-secret ID
-for the same device; a hash may represent an OS endpoint identifier. Admission
-does not enumerate devices or establish that a microphone or GPU exists.
+ResourceBroker.for_app(data_root) uses native file locks in runtime/resources.
+Its operator policy is state/operations/resources.json. Only that saved policy
+is included in ordinary application-state backups. Live lock files and lease
+records stay outside backed-up state; restore creates a new empty coordinator.
+The same pinned filelock==3.29.0 native backend is reused. Unsupported native
+locking fails visibly instead of falling back to soft lock files.
 
-An impossible request raises `ResourceUnavailable` immediately. A busy request
-waits up to `timeout`, then raises `ResourceTimeout`. Cancellation before or
-during the wait raises `ResourceCancelled`. Duplicate live operation IDs raise
-`ResourceConflict`; the owning service still handles durable retry/idempotency.
-All are subclasses of `ResourceError`.
+Adapters declare CPU slots, estimated RAM, selected GPU capacity, estimated disk
+bytes on each output volume and exclusive device IDs. Admission checks the
+combined declared amounts and actual free disk space. A GPU requires an explicit
+configured allowance; admission never chooses a replacement device. Policy
+changes cannot invalidate a live reservation. The native editor also compares
+the exact policy the user reviewed, so a concurrent change requires refresh.
 
-The optional `run_timeout` is a cooperative execution deadline. The lease's
-`cancelled()` becomes true and `checkpoint()` raises the precise timeout or
-cancellation exception. **A timeout never revokes a live reservation.** The
-adapter must finish process cleanup before leaving the context. Cancellation
-callbacks must be short and must not recursively call broker operations.
+These values are cooperative allowances, not measured CPU/RAM/VRAM usage or
+operating-system memory limits. Waiting is cancellable and bounded. A lease
+remains held through the owning operation's existing child cleanup and receipt
+publication. If that process layer retains a CleanupOwner, the operation worker
+waits for its quiescent event before releasing admission; interrupts are delivered
+after cleanup, and the original failure is not converted into success. Time passing or a stale-looking PID cannot revoke a live lock.
+Native lock ownership decides crash recovery; the next admission or snapshot
+reaps unlocked stale records. The broker does not kill orphan descendants or
+replace existing process containment and network restrictions.
 
-`ResourceBroker(directory, limits=None, policy_path=None)` supports explicit
-embedding. `ResourceBroker.for_app(library_root, limits=None)` places temporary
-lease records under `runtime/resources`, outside the backup state tree, and
-saves only the non-secret policy in `state/operations/resources.json`.
+## Current service adapters
 
-## Saved policy
+**Studio.** The service admits the actual configured AudioRuntime thread count.
+Existing default and explicit runtime budgets are preserved and may be refused
+when their declared demand exceeds the saved operator policy. The default policy
+has at least two logical CPU slots to support the existing two-thread workers;
+this does not claim the host has two free physical cores.
+A verified completed job returns without starting a runtime or acquiring capacity.
+Approved clip inspection takes a short CPU/RAM lease before estimating duration.
+The subsequent render acquires its cache and output-volume allowances atomically.
+Estimates account for speech text, pauses, clip trim/placement and requested
+speaker/clip stems. Source bytes, project fingerprint and output identity are
+checked again after waiting. Existing pause/cancel semantics and receipt reuse
+remain authoritative. Model peak memory is unknown, so neural work reserves the
+configured RAM/GPU pool exclusively.
 
-```python
-from dataclasses import replace
-from carr_library.operations import ResourceLimits
+**Supplied-worker transcription.** The current TranscriptionService(app, workspace)
+and its workspace-hashed jobs are retained. Admission occurs after the verified
+completed-result shortcut and before reading the worker configuration, retained
+sources or model contents. The existing transcribe lock and lease enclose the
+original V5/bootstrap, child supervision, stopped-state handling and final
+receipt admission. Unknown model memory reserves the configured RAM pool.
+CUDA work requires the configured cuda:0 allowance. The declared CPU estimate is
+parallel_files multiplied by the existing two-thread host hint. The unchanged
+worker environment passes 2 as OMP_NUM_THREADS and OPENBLAS_NUM_THREADS. These
+environment settings are not proof of a worker's actual thread count; a supplied
+worker may have other pools. Explicit parallel-file and recognition settings
+are unchanged. The original AudioBudget controls execution time, including valid
+allowances longer than one day. No shorter broker execution timer is imposed.
 
-current = broker.limits
-broker.configure(replace(current, cpu_slots=2, memory_bytes=4 * 1024**3))
-# Only after the actual chosen GPU has been reviewed/configured:
-broker.configure(replace(broker.limits,
-    gpu_devices=(('cuda:0', 8 * 1024**3),)))
-```
+**Isolated document import.** One parser-process CPU slot, 3 GiB declared memory
+and 512 MiB temporary disk are admitted before the current request attempt starts.
+The memory allowance matches the existing POSIX address ceiling; it is only a
+declared allowance on Windows. Native library threads are not measured by this
+slot. Existing source authority, isolated child launch, journal and recovery are
+retained. Cancellation or admission timeout saves a resumable request outcome
+without starting a child. A completed request reuses its existing publication
+without requesting capacity. A cleanup diagnostic after committed publication
+cannot relabel the durable request as failed.
 
-`ResourceLimits` contains `cpu_slots`, `memory_bytes`, `disk_bytes`,
-`min_free_disk_bytes`, `gpu_devices` and `max_leases`. `to_dict()` / `from_dict()`
-provide a strict versioned-policy payload for native settings and CLI tools.
-Construction with different limits never silently overwrites an existing policy;
-use `configure()` explicitly. A reduction that would invalidate a live
-reservation is rejected.
+Small direct text operations, interactive clip-preview/retention, recording and
+discovery keep their existing bounded process paths in this slice. The shared
+broker does not claim universal admission for every background service or
+third-party process. Exclusive device primitives are available to explicit
+participating adapters; the dashboard does not enumerate or claim ownership of
+an unintegrated microphone.
 
-The default CPU policy uses at most four detected logical CPUs, leaving one
-logical CPU outside the heavy-work allowance when possible. The defaults of
-4 GiB declared RAM capacity, 16 GiB declared disk capacity and a 256 MiB free
-disk reserve are policy defaults, **not a hardware audit**. GPUs are disabled
-until explicitly configured. A worker's configured thread count must fit the
-selected policy; the broker does not silently rewrite engine settings. The
-active reservation limit bounds runtime bookkeeping, not development workers,
-branches, PRs or repository coordination.
+## Saved-operation view and CLI
 
-## Locks, crashes and recovery
+Open Tools, Tasks and resources, or find that action with Ctrl+Shift+P.
+The native dialog and CLI read the same bounded canonical journal view. A refreshed
+row never inherits the former row's selection or pause/cancel authority. They
+show Studio, assistant, import-batch, translation and transcription checkpoints.
+Stored completion is a journal observation. Original workstations still verify
+actual outputs and authorize resume. An active cooperative reservation is
+positive evidence of ownership; absence is unknown, not evidence of termination.
 
-Every reservation has an unpredictable lease ID, a process-local random token,
-an informational PID and a native OS file lock. The lock, not the PID or a wall
-clock deadline, is the authority for liveness. Reused PIDs therefore cannot make
-an abandoned lease appear live or cause a current lease to be reclaimed.
+Current transcription jobs live at
+state/transcription/<sha256(workspace)>/jobs/<job-id>/job.json.
+The view reports ready, running, stopped, partial or completed as recorded and
+uses accepted receipt counts, not a worker's unverified live progress. Selecting
+a library restricts ASR discovery to its exact scope directory before any journal
+read. The common view has no transcription pause/cancel buttons because this
+canonical service does not expose a durable cross-process control API. Open
+workstation selects the existing job in its original active library and starts
+no recognition. The current workstation's stop/continue controls remain available.
 
-The coordinator serializes inventory changes. Readers probe each lease lock;
-an unlocked record is reclaimed on the next admission or snapshot. A live lock
-with missing/corrupt metadata fails admission closed. Normal exceptions release
-the lease in `finally`; abrupt process exit releases the OS lock. Expired or
-unresponsive workers are never killed by PID. POSIX fork hooks close only the
-child's inherited lock descriptors, without unlocking the parent's open file
-description. A lease cannot be transferred to or released by a forked child.
+Studio and assistant controls forward only their existing explicit methods,
+with fresh library/data-root checks. A requested stop is not reported as an
+acknowledged stop. Import and translation expose no invented control operation.
+Current translation/2 jobs retain their validated source binding and source workspace
+in filtering; older unbound translation/1 jobs remain readable. Aggregate journal
+reads are bounded to 10,000 namespace entries and 256 MiB, with no live ASR-status
+read or external source reopening. No
+checkpoint source text, transcript or credential is copied into the shared view;
+malformed records receive fixed recovery text.
 
-The implementation uses native `UnixFileLock` / `WindowsFileLock` from the pinned
-filelock 3.29.0 dependency already used by ingest. A soft-lock fallback is rejected.
-Local regular files and directories are required; links, hardlinked state files,
-reparse points and explicit network paths are rejected. These are cooperating
-process boundaries in a trusted private directory, not protection against a
-hostile administrator replacing paths or a guarantee for arbitrary network
-filesystems.
+Examples, using the existing installed entrypoint:
 
-The reservation belongs to the **owning application process**. It does not
-manage independently orphaned native descendants after that process crashes.
-Normal native-worker cancellation/timeout cleanup remains the existing runner's
-responsibility. A future process supervisor or worker-held lease must be tested
-before claiming orphan-process containment. No OS CPU affinity, whole-process
-RAM cap, measured VRAM usage, thermal control or network sandbox is provided by
-this broker. `capabilities()` states these limits explicitly.
+    python -m carr_library operations --data-dir <data-folder> list
+    python -m carr_library operations --data-dir <data-folder> --workspace <library-id> get asr <job-id>
+    python -m carr_library operations --data-dir <data-folder> resources
+    python -m carr_library operations --data-dir <data-folder> configure-resources <policy.json>
 
-## Canonical studio integration
+The configuration file contains the exact ResourceLimits fields. Invalid policy
+preserves the last committed allowance. This interface contains no Run or Resume
+command. CLI execution uses the existing installation lease.
 
-`ProductionService(..., broker=shared_broker)` uses this policy. Its default is
-the application's shared broker for the canonical `state/studio` directory.
-Already completed outputs are checksum-verified and returned before requesting
-heavy resources or constructing an audio runtime.
+## Native lifecycle and acceptance
 
-New/resumed work reserves the actual `AudioRuntime.budget.threads` value, a
-declared RAM estimate, and cache/export disk estimates. The job records both the
-request and its calculation basis in `resource_plan`. Disk estimates use source
-character count, explicit pause/minimum durations and PCM/intermediate/stem
-copies; they do not claim measured TTS duration or a whole-job hard output cap.
-The existing native runner's byte/time/free-space checks remain in force.
+Policy reads, journal refresh and controls use the desktop's existing worker,
+not another executor. The native close control stays available during a pending
+view request and cancels only that request. Disposal detaches callbacks before
+deferred native destruction and closes only services created by this controller.
+Successful durable policy saves and accepted controls remain successful even if
+an optional refresh is cancelled. Unchanged form fields preserve exact saved
+byte values despite rounded display units.
 
-Neural music takes the configured RAM pool and configured whole GPU capacity
-exclusively because this adapter has no measured model peak. This is not an
-assertion that the model fits. A selected CUDA/MPS device without explicit policy
-capacity is rejected before rendering. Mixed GPU-device projects require one
-selected device per job in this implementation. Music model hashes, runtime
-identity, rights and actual-inference readiness remain the existing music
-adapter's separate checks.
+The reused scripts/windows_operations_smoke.py exercises the actual installed
+wx main loop and command inventory: keyboard entry through the palette, assistant
+pause/cancel without resubmission, concurrent policy rejection, reviewed save,
+close while a native admission lock is held, and deferred destruction.
+It reports NOT_RUN on non-Windows systems. It makes no manual NVDA, acoustic
+inference or measured hardware-capacity claim.
 
-Pause/cancel while waiting is written to the same existing studio control file.
-The admitted context surrounds native worker execution and cleanup. Completed
-node receipts and output verification are unchanged, so resource admission does
-not create a second production job or duplicate accepted audio on resume.
+Required portable coverage includes actual native-lock process contention and
+crash recovery, canonical synthetic ASR child/receipt/stop tests, actual isolated
+PDF import and completed replay, Studio child cleanup and FFmpeg output, backup
+policy restore without live leases, source-scoped discovery, and native-controller
+lifecycle. The fork-inheritance test in test_resources_posix.py is POSIX-only;
+keep it in the Linux gate rather than weakening it for a zero-skip Windows gate.
 
-## Shared operation view
+## Qualification boundary
 
-```python
-from carr_library.operations import OperationFacade
-
-operations = OperationFacade(app, broker=broker,
-                            studio=studio_service,
-                            assistant=assistant_service,
-                            transcription=transcription_service)
-rows = operations.list(workspace=selected_workspace, limit=1000)
-row = operations.get('studio', job_id)
-operations.control('studio', job_id, 'pause')
-```
-
-Kinds are `import`, `assistant`, `studio`, `translation` and `asr`. An
-`OperationView` contains `kind`, `id`, `workspace`, stored `status`, measured
-checkpoint `completed` / `total` when present, a fixed `phase`, `updated`,
-supported `controls`, relative `checkpoint` and `live`. The view neither loads
-models nor executes jobs or provider requests. It does not copy document text,
-credentials, raw error bodies or provider profiles into the dashboard.
-
-`live=True` means a matching native broker reservation exists. `live=None`
-means unknown: a legacy or light operation may legitimately run outside this
-broker. Absence of a reservation never changes a saved job into failed or
-interrupted. Likewise, a saved `complete` status is a journal observation;
-opening/resuming/exporting through the owning service retains its original
-artifact verification requirements.
-
-Only explicitly supplied service instances expose their existing pause/cancel
-methods. A stop request is not reported as an acknowledged stopped state.
-Resume stays in the original workflow, where its exact saved plan and any
-external-provider approval can be checked. Imports/translation lacking durable
-cross-process stop controls remain view-only here. Corrupt checkpoints are
-represented as attention rows without leaking their contents.
-
-The view returns at most its explicit `limit` in stable kind/ID order and scans
-at most 10,000 checkpoints. It is a bounded dashboard, not a replacement large
-corpus job index. No capability is inferred from a format name or a stored
-completed status alone.
-
-## Evidence and remaining native checks
-
-`tests/operations` runs real spawned-process contention and abrupt exit,
-PID-reuse metadata simulation, cancellation, live timeout behavior, failed state
-publication, corrupt live metadata, policy conflicts, filesystem/device/GPU
-admission contracts, POSIX fork inheritance, existing LibraryApp import and
-assistant journals, and actual FFmpeg studio output/reuse. GPU admission tests
-exercise declared capacity and exclusivity; they are not GPU inference tests.
-
-The canonical existing studio suite still exercises real installed Flite speech,
-music, mix/stem export, pause/restart and corruption recovery. Linux evidence is
-not transferred to Windows: native Windows lock behavior and keyboard/NVDA
-acceptance need their own execution on the target build. No models, heavyweight
-dependencies or paid API calls are required by these resource tests.
-
-Primary implementation evidence is the installed pinned filelock source
-(`filelock/_unix.py`, `_windows.py`, `_api.py`), the existing
-`ingest/writer_guard.py`, `durable_state.py`, canonical job stores and
-`audio/process.py`. The broker does not introduce another lock library.
+The source and test files describe required acceptance, not a completed run.
+Real native locks and child fixtures qualify coordination only after execution.
+Neither synthetic ASR outputs nor declared resource estimates establish acoustic
+quality, actual model memory peaks, safe unmeasured device sharing, physical
+microphone behavior, or manual NVDA acceptance.

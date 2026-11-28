@@ -1,0 +1,161 @@
+{
+  "schema": "carr-exact-change-handoff/1",
+  "created_utc": "2026-11-28 00:43:52 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "title": "Actual selected-conversion ODF and fresh-state corrections with exact276 source/installed gate",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_head": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "old": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab",
+      "new": "85fab268d21295106f3f05794cb68768167f3cd9",
+      "owner": "locate_project"
+    },
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "old": "a92b5e20180462812634dda50266a61df8b9d4e3",
+      "new": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd",
+      "owner": "locate_project"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "old": "238207043c10273984fe2244153f5cf965bc9ade",
+      "new": "f2f712af05cdf154bd4633ba818661b926a954a7",
+      "owner": "canonical_regression"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "old": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4",
+      "new": "fbf155467e7217eb1870167849241756690d01cb",
+      "owner": "canonical_regression"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "old": "6906734c565379c8b086f012894de0a7250b6c64",
+      "new": "1af25e62f74c7e7aed8415b693efeb072be1b985",
+      "owner": "canonical_regression"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "old": "cc4013e9ecfb76c5454f850eaba2f25285d370b1",
+      "new": "a77117519744b111f57e9235e1793b0093afb337",
+      "owner": "canonical_regression"
+    }
+  ],
+  "components": {
+    "fresh_state_manifest": "101d6dedb6670cf808e7206bb2aa0d4d6e2b612a",
+    "odf_manifest": "b90466b1a1c7472ff5de57af6b7a7356f457291e",
+    "exact_completed_baseline_evidence": "afb8cb6a963ff9d45c4a553c143ee948d0600c26"
+  },
+  "changes": [
+    "ConversionService initializes only the exact state child of the already captured existing library after caller/root guards; it never recreates the parent or overwrites an existing file.",
+    "ODF permits only six content-free disabled header/footer elements in the exact styles/master hierarchy, with sole display=false attribute and no children or non-whitespace text/tail. Full visibility/active-content checks remain.",
+    "Focused helper changes exactly four source/test pins and two counts; workflow changes only the helper pin in each platform and explicit count labels."
+  ],
+  "strict_contract": {
+    "whole_suites": 8,
+    "source_cases": 276,
+    "installed_cases": 276,
+    "counts": [
+      29,
+      49,
+      19,
+      20,
+      114,
+      23,
+      12,
+      10
+    ],
+    "source_pins": 29,
+    "origins": 19,
+    "companions": [
+      "scripts/windows_document_conversion_smoke.py"
+    ],
+    "source_outer_seconds": 2700,
+    "per_suite_seconds": 600,
+    "installed_child_literal": "BYTE_IDENTICAL",
+    "runtime_native_phases": 6,
+    "native_formats_each_mode": 14,
+    "old_full_suite_each_mode": 34,
+    "gui_checks_each_mode": 30,
+    "gui_origins_each_mode": 30,
+    "gui_result_wait_seconds": 50,
+    "gui_hard_watchdog_seconds": 180,
+    "firewall": "UNCHANGED",
+    "retention": "UNCHANGED closed eight-suite inventory"
+  },
+  "new_tests": [
+    {
+      "suite": "tests/ui/test_document_conversion.py",
+      "old_cases": 17,
+      "new_static_cases": 20,
+      "whole_functions": 10,
+      "added_functions": [
+        "test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion",
+        "test_fresh_state_admission_rejects_replaced_existing_library_before_mkdir",
+        "test_fresh_state_creation_never_replaces_an_existing_regular_file"
+      ]
+    },
+    {
+      "suite": "tests/extract/test_document_formats_xml.py",
+      "old_cases": 95,
+      "new_static_cases": 114,
+      "whole_functions": 44,
+      "old_bytes": "EXACT_UNCHANGED_PREFIX",
+      "added_functions": [
+        "test_empty_disabled_odf_master_header_footer_preserves_exact_visible_sheet",
+        "test_disabled_odf_header_exception_never_admits_hidden_or_misplaced_content",
+        "test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_scan"
+      ],
+      "added_case_counts": [
+        6,
+        12,
+        1
+      ]
+    }
+  ],
+  "review": {
+    "fresh_state": "canonical_regression accepted bounded source/API/test review85fab/b6b651; no runtime claim",
+    "odf": "root independently accepted f2f712/fbf155 and exact primary LibreOffice/OASIS evidence; no runtime claim",
+    "helper_workflow": "Exact inverse replacements reconstruct690673 andcc401 byte-for-byte; external root review pending"
+  },
+  "validation": {
+    "blobs": "All six component blobs saved/read back exactly",
+    "source_execution": "NOT_RUN",
+    "installed_execution": "NOT_RUN",
+    "native_execution": "NOT_RUN"
+  },
+  "pin_map": {
+    "src/carr_library/conversion/_selected_files.py": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4",
+    "src/carr_library/conversion/calibre.py": "917146418b06b28ac927c9a5cccbe90e9e86426c",
+    "src/carr_library/conversion/office.py": "e3d6f71b063b0640dc248304e74e0480a9f56090",
+    "src/carr_library/conversion/selected_adapters.py": "51ed8d7076ab9a5f4168aeaba8f2365e18ce588a",
+    "src/carr_library/conversion/selected_worker.py": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673",
+    "src/carr_library/conversion/selected.py": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6",
+    "src/carr_library/conversion/models.py": "fc087b6acd2284b08f5384c986a9c1233a5fda5c",
+    "src/carr_library/conversion/worker.py": "722d3c7b61717890dc242d8113d0617714d53a67",
+    "src/carr_library/conversion/service.py": "85fab268d21295106f3f05794cb68768167f3cd9",
+    "src/carr_library/ui/document_conversion.py": "83a48872bd07a0e4611ee68b1a59155fe4468239",
+    "tests/conversion/test_selected_conversion.py": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
+    "tests/conversion/test_calibre_admission.py": "bdea0804017e54a38d6036ca137feb778fea2e97",
+    "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
+    "tests/ui/test_document_conversion.py": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd",
+    "tests/conversion/test_conversion.py": "db3884363c51654c7d16ef2c5d2e82d0e714b411",
+    "src/carr_library/extract/document_formats_xml.py": "f2f712af05cdf154bd4633ba818661b926a954a7",
+    "tests/extract/test_document_formats_xml.py": "fbf155467e7217eb1870167849241756690d01cb",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "scripts/selected_conversion_fixture_support.py": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b",
+    "scripts/selected_conversion_acceptance.py": "b4c60707e1554df514cd954afa89c0c7dc099713",
+    "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
+    "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
+    "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
+    "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+    "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
+    "tests/audio/test_live_metadata_retry.py": "9d97fca2633815e61a55c16f51a06484944f6fbc",
+    "tests/ui/test_native_conversion_diagnostics.py": "dc523d350e151eaa6c6d94a63752abf38a37a497",
+    "scripts/windows_document_conversion_smoke.py": "4b67819886d4324a616bce8dff13251fec2370f0"
+  },
+  "no_ref_changes": true
+}

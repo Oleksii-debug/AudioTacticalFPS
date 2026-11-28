@@ -7,6 +7,8 @@ import sqlite3
 import sys
 from tempfile import TemporaryDirectory
 
+from .installation_lease import installed_entrypoint
+
 
 def self_test():
     """Exercise real SQLite and retained originals without touching user data."""
@@ -62,33 +64,62 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
+        from .academic_integration.doi import _worker_main
+        return _worker_main(arguments[1:])
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
-    if arguments[:1] == ['translation']:
+    if arguments and arguments[0] == 'import-batches':
+        from .ingest.batch_cli import run as import_batches_main
+        return import_batches_main(arguments[1:])
+    if arguments and arguments[0] == 'operations':
+        from .operations.cli import main as operations_main
+        return operations_main(arguments[1:])
+    if arguments and arguments[0] == 'sync':
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
+    if arguments and arguments[0] == 'local-schedules':
+        from .local_schedules_cli import main as local_schedules_main
+        return local_schedules_main(arguments[1:])
+    if arguments and arguments[0] == 'backup-repository':
+        from .incremental_backup_cli import main as backup_repository_main
+        return backup_repository_main(arguments[1:])
+    if arguments and arguments[0] in ('transcribe', 'transcription'):
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
+    if arguments and arguments[0] == 'translation':
         from .assistant.translation_cli import main as translation_main
         return translation_main(arguments[1:])
+    if arguments and arguments[0] == 'braille':
+        from .reader.braille import main as braille_main
+        return braille_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
-    if arguments[:1] == ['transcription']:
-        from .transcription_cli import main as transcription_main
-        return transcription_main(arguments[1:])
-    if arguments[:1] == ['operations']:
-        from .operations_cli import main as operations_main
-        return operations_main(arguments[1:])
+    if arguments and arguments[0] == 'prepare-update-host':
+        from .security.update_runtime import main as prepare_update_host_main
+        return prepare_update_host_main(arguments[1:])
     from . import __version__
+    from .backup_capacity import LARGE_SOURCE_PROFILE
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
+    parser.add_argument('--update-configuration', type=Path,
+                        help='Explicit owner update configuration or host-preparation recipe')
+    parser.add_argument('--update-configuration-sha256',
+                        help='Independently supplied SHA256 of the owner update configuration')
     parser.add_argument('--self-test', action='store_true', help='Check an isolated synthetic library and exit')
     parser.add_argument('--model-dir', type=Path, help='Verified local MiniLM model directory')
     parser.add_argument('--model-manifest', type=Path, help='Pinned model manifest outside the model directory')
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    parser.add_argument('--backup-capacity', choices=(LARGE_SOURCE_PROFILE,),
+                        help='Explicit larger full-backup allowance; default remains ordinary. Required again when restoring a larger backup.')
     ocr = parser.add_mutually_exclusive_group()
     ocr.add_argument('--list-ocr-models', action='store_true',
                      help='List the pinned official OCR catalogue; never downloads models')
@@ -117,7 +148,7 @@ def main(argv=None):
     add_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -127,8 +158,21 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    parser.add_argument('--offset-per-library', type=int, default=0,
+                        help='Nonnegative result offset within this bounded source window')
+    parser.add_argument('--library-offset', type=int, default=0,
+                        help='Continue the selected-library list, 20 libraries per invocation')
+    parser.add_argument('--source-cursors', default='{}',
+                        help='Exact next_source_cursors JSON from the previous search; passive navigation only')
+    parser.add_argument('--search-timeout', type=float, default=300,
+                        help='Cooperative search allowance in seconds, at most 86400')
     args = parser.parse_args(argv)
+    if (args.update_configuration is None) != (args.update_configuration_sha256 is None):
+        parser.error('Supply both --update-configuration and its independent --update-configuration-sha256.')
+
     validate_arguments(parser, args)
+    if args.backup_capacity is not None and not (args.backup or args.restore):
+        parser.error('--backup-capacity requires --backup or --restore.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
     if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
@@ -151,6 +195,8 @@ def main(argv=None):
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and args.lookup_doi is None:
         parser.error('--workspace is used with --search or --lookup-doi.')
+    if (args.offset_per_library or args.library_offset or args.source_cursors != '{}' or args.search_timeout != 300) and args.search is None:
+        parser.error('Search navigation and time-budget arguments require --search.')
     native_handle = None
     try:
         if args.document_formats:
@@ -188,7 +234,8 @@ def main(argv=None):
             if not args.data_dir or not args.manifest_sha256:
                 parser.error('--restore requires a new --data-dir and --manifest-sha256')
             from .library_backup import restore_backup
-            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256)
+            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256,
+                           capacity_profile=args.backup_capacity)
             print('Backup restored. Open the new data directory to continue.')
             return 0
         location_notice = ''
@@ -227,20 +274,34 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
+            if len(args.source_cursors.encode('utf-8')) > 1024 * 1024:
+                raise ValueError('Source continuation exceeds its navigation budget.')
+            source_cursors = json.loads(args.source_cursors)
+            if type(source_cursors) is not dict:
+                raise ValueError('Source continuation must be a workspace-to-cursor JSON object.')
             session = FederatedSearch(app).search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, offset_per_library=args.offset_per_library,
+                on_status=notices.append, paged=True, source_cursors=source_cursors,
+                library_offset=args.library_offset, timeout=args.search_timeout)
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
-                'ordering': 'Selected libraries in selection order; relevance is local to each library.',
+                'offset_per_library': session.offset_per_library,
+                'has_more': session.has_more,
+                'ordering': 'Selected libraries in selection order; relevance is local to the current source window.',
+                'library_offset': session.library_offset, 'selected_library_count': len(session.selected_workspaces),
+                'has_more_libraries': session.has_more_libraries,
+                'next_source_cursors': dict(session.next_source_cursors),
+                'source_windows': [dict(workspace=row[0], source_pages=row[1], editions=row[2], characters=row[3])
+                                   for row in session.source_windows],
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}
                               for group in session.groups]}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            checksum = app.backup(args.backup, capacity_profile=args.backup_capacity)
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
         try:
@@ -251,6 +312,16 @@ def main(argv=None):
         from .preferences import remember_directory
         desktop = wx.App(False)
         frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        if args.update_configuration is not None:
+            try:
+                from .security.controller import configured_update_controller
+                frame.trust_controller = configured_update_controller(args.update_configuration,
+                    args.update_configuration_sha256, app)
+                from .ui.trust_status import install_update_check_timer
+                install_update_check_timer(frame)
+            except (ValueError, RuntimeError, OSError, ImportError) as error:
+                frame.report('Updates are unavailable for this explicit configuration: ' + str(error)
+                             + '\nReading, saving, export, backup and recovery remain available.')
         frame.Show()
         desktop.MainLoop()
         return 0

@@ -6,113 +6,7 @@ Current review: 2026-11-27. This ledger supports the [technical specification](U
 
 Reuse canonical implementation → reconcile an existing reviewed PR → adopt a pinned upstream engine/library → implement only missing glue. The existing native UI, catalog, immutable citations, extraction, semantic search, voice/model manifests, FFmpeg production, provider gateway, assistant executor and backup producers remain the integration boundaries.
 
-### Reconciliation on 2026-11-27
-
-- [PR136](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/136), head
-  `9523886`: reuse the create-only export receipt/cleanup handling and reviewed
-  transcript timestamp validation/formatting. Its in-process faster-whisper
-  session and alternate audio job/model stack are not adopted: the current
-  architecture requires the supplied external worker and canonical durable jobs.
-- [PR137](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/137), commit
-  `cb966fc`: adopt its source authorization checks before and after the native
-  Save As chooser, with the real library authorization regression. Its later
-  commit `1601930fc672c7740e0f72715853b38a31a77e9c` adds retained source lineage
-  to portable reading copies, verifies each original slice and preserves legacy
-  projects without attaching them to a source merely by matching text.
-- [PR138](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/138), commit
-  `69f1eb359bbbdd0192c44a06b9e51c1822b6b0d5`: adopt only its three-file OCR
-  path-identity and streamed-mutation change onto the current canonical code.
-  Equivalent model directory paths retain their selected hash expectations;
-  no older branch-wide tree is substituted for the current application.
-- [PR145](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/145), commit
-  `93c09745a6a4dc3d498308d001f214d1ef10ba5c`: reuse portable state-manifest
-  validation before backup publication, including Unicode/case and
-  file/directory collisions. The combined source-lineage, backup and OCR
-  regressions passed 149 tests locally; installed Windows evidence is separate.
-- [PR139](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/139), commit
-  `74ee2073af2d67aad7bb1fa92e22d4a9627ba37f`: reuse its bounded import
-  cancellation/progress-observer handling and typed Studio interruption
-  classification. Completed imports remain completed, and a late stop request
-  does not conceal an independent publication error. Keep the current shared
-  resource admission and speech-progress implementations.
-- [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143), reviewed
-  head `ab53b696241a9168b64096fd669cd9416945dcce`: adopt the captured export
-  destination/receipt contract and its eight native UI callers, including the
-  academic return-value compatibility correction. The same selection includes
-  commit `32772117ffb5fcdb972f66f62204585cebe658b8`'s guarded import watermark,
-  stopped-worker publication reconciliation and pending-backup validation
-  together; an existing/replayed or damaged revision cannot imply completion.
-  Reuse the bounded Windows state-replacement retry from `44821a0` without
-  replacing any other state protocol. No alternate ASR implementation or
-  branch-wide replacement is adopted.
-- [PR135](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/135) is an earlier
-  ASR-03-only preparation. The privately corrected supplied worker addresses
-  all four reviewed integrity findings; do not replace it with the narrower fix.
-- Shared runtime admission reuses `filelock`/native OS lock release and
-  `durable_state`, while the operation view reads existing typed checkpoints.
-  No alternate database, queue, inference engine or model downloader is added.
-- Progress speech reuses the canonical selected local-voice provider and WAV player;
-  it does not implement another synthesizer or write into rendered audio.
-- Integration of canonical `962297eef228870b6eaab3f46163124db8f5045c` retains
-  its explicitly selected voice, quiet/media isolation and accessible busy-time
-  commands, replacing the earlier duplicate UI-local speech worker. Portable
-  backup-name checks and canonical copied-content revalidation both remain.
-- Private ZIP refresh reuses the existing exact-source wheel, dependency lock,
-  sealed inventory and strict archive verifier. Directory and direct-ZIP
-  assembly share one validation/selection path, and the existing OCR source
-  companion is reverified instead of creating another large staging copy.
-
 Record exact source commit/release, binary/model hashes, license texts/notices, dependencies/assets, supported hardware/OS, chosen distribution profile and real acceptance results. A code license does not automatically license weights, voices, training/reference recordings, SoundFonts, citation styles or generated content. GPL/AGPL allow commercial use but may impose incompatible source/combination duties for a particular closed application; IPC and a “private” ZIP are not automatic exemptions. Resolve the affected package rather than blocking unrelated platform work.
-
-## Selective Advanced v3 adoption — 2026-11-27
-
-Reuse the Advanced translation slice of [PR112 head
-`8bf411718548809793748ed01f458c79f3692e98`](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/8bf411718548809793748ed01f458c79f3692e98),
-whose feature implementation originates in
-`20e275e5112566cd07c3aa56459bd8634240bc3e`. The broad donor branch is not merged.
-The reviewed slice extends `assistant/profiles.py`, `providers.py` and
-`translation.py`, the existing provider settings and translation dialog, and adds
-`assistant/translation_cli.py` with one main-entrypoint dispatch. Existing
-credential renewal is reused unchanged. No new SDK, model, provider queue,
-database or dependency is introduced. Existing source lineage, ASR, resource
-admission, rendering and export-approval implementations are retained.
-
-The service performs plain-text NMT and applies an already existing glossary,
-using a manually supplied expiring OAuth token held in the OS vault. It verifies
-the exact numeric project, region, requested model and glossary in the response
-before publishing a derivative. This does not implement automatic ADC discovery
-or refresh, glossary creation, Cloud Storage batch translation, formatted
-document translation or local translation inference.
-
-Evidence: the three integrated provider/Basic v2/Advanced v3 suites passed 122
-tests, including unchanged v2 credential-redaction and not-sent replay guards.
-The donor's [Windows run45929429163](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45929429163),
-job140278375920, passed its separate Advanced native step23. Its broader workflow
-has unrelated failures and is not release acceptance. The required new
-`windows_translation_v3_smoke.py` uses installed wx controls and the actual
-Windows vault but synthetic HTTPS, confirmations and directory pickers; it must
-pass again for the exact integrated build. No live Google calls, upload of user
-text, charges, independent linguistic quality or NVDA listening acceptance are
-claimed. Google account/IAM, quota/billing and glossary rights remain explicit
-owner configuration and acceptance boundaries.
-
-Official REST/authentication references were checked on2026-11-27:
-[translateText](https://docs.cloud.google.com/translate/docs/reference/rest/v3/projects.locations/translateText),
-[supported-language request](https://docs.cloud.google.com/translate/docs/list-supported-languages),
-[authentication](https://docs.cloud.google.com/translate/docs/authentication).
-
-The same exact donor's local-model planning slice is selectively adopted in
-`assistant/llm.py`, `assistant/service.py`, the assistant dialog and only
-`assistant_main` in `studio/cli.py`. The canonical production service, broker and
-process handling are retained. Its existing lazy `.voices` property and inventory
-resolve on the dialog worker; donor `discover_voices`/`close` methods are not
-imported or called. Proposal, review and explicit execution stay separate, using
-the existing typed scope/parser and jobs. No model/server download or startup is
-added. The three integrated planning suites passed41 cases with actual local
-HTTP/CLI and synthetic model responses. The donor Windows job's native planning
-step19 and loopback step24 passed; `windows_local_planning_smoke.py` and the
-required suites must pass on the integrated build. This evidence does not
-establish a particular local model's planning quality, model rights or NVDA.
 
 ## Current reuse map
 
@@ -131,8 +25,8 @@ establish a particular local model's planning quality, model rights or NVDA.
 | MusicGen | Retain optional adapter for terms-compatible use profiles | AudioCraft code MIT, released MusicGen weights CC-BY-NC4.0. Not the default unrestricted commercial-use pack. Real inference/quality remains separate. [AudioCraft](https://github.com/facebookresearch/audiocraft), [weights license](https://github.com/facebookresearch/audiocraft/blob/main/LICENSE_weights) |
 | MIDI | Review FluidSynth/Pretty MIDI where current MIDI path lacks a required capability | FluidSynth LGPL2.1, Pretty MIDI MIT; SoundFonts/dependencies separately licensed. Do not label the current simple synthesis fallback professional sound-library output. [FluidSynth](https://github.com/FluidSynth/fluidsynth), [Pretty MIDI](https://github.com/craffel/pretty-midi) |
 | Transcription | Adopt the supplied Whisper Transcribe headless worker after targeted corrections | Uses faster-whisper; retain model session and existing file-job protocol through a versioned adapter. Source review is in TRANSCRIPTION_INTEGRATION_REVIEW.md. [faster-whisper MIT](https://github.com/SYSTRAN/faster-whisper), [Whisper code/weights](https://github.com/openai/whisper); supplied wrapper/dependency/model distribution rights still need a complete record. |
-| Local agent | Reuse the typed executor and selected loopback model proposal/review workflow; no runtime/model launch or download | Actual HTTP/native control fixtures use synthetic model responses. The selected installed server, model weights/rights and multilingual planning quality require separate acceptance. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
-| Translation | Reuse Basic v2 and the selectively adopted Advanced v3 NMT extension through the existing gateway; independently qualify local engines | Basic v2 uses API keys; Advanced v3 uses explicitly entered expiring IAM/ADC-derived OAuth tokens and existing glossary resources. Automatic token refresh, document/batch translation and local model inference remain unimplemented. Coverage and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
+| Local agent | Keep current typed plans/executor; evaluate llama.cpp for actual model planning | Runtime MIT, selected LLM weights separate. Guided regex commands do not demonstrate LLM planning. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
+| Translation | Add official Google through the existing gateway; independently qualify local engines | Basic v2 supports API keys; Advanced v3 requires supported IAM/ADC authentication. Coverage, glossaries/batch and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
 | Bibliography | Preserve existing RIS/BibTeX/CSL-JSON and candidate citeproc-js/QuickJS integration | citeproc-js CPAL1.0/AGPL alternative and CSL styles/locales have distinct obligations. Verify accessible attribution/source in the shipped package; do not replace a working adapter solely because it is not MIT. [citeproc-js](https://github.com/Juris-M/citeproc-js) |
 | Larger applications | Use Zotero/calibre/Audacity and similar tools as interoperability/reference candidates where suitable | Do not embed a second GUI/database or copy an entire licensed application without an explicit integration/distribution decision. Existing standard-format interchange is preferable when it meets the task. |
 | Updates/security | Reuse reviewed signed-update/entitlement and credential contracts | Evaluate python-tuf/standard Windows tooling for actual gaps; signatures, key lifecycle, installer/runtime and data migration all require exact tests. No new cryptographic protocol. [TUF](https://theupdateframework.io/docs/security/) |

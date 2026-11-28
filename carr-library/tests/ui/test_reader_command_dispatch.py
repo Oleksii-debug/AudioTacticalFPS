@@ -102,6 +102,7 @@ def reader(tmp_path):
     dialog.wx = SimpleNamespace(CallAfter=dialog.wx_queue.append, ID_CANCEL=5101)
     dialog.dialog = SimpleNamespace(IsModal=lambda: False)
     dialog.closed = dialog.busy = False
+    dialog._audio_dialog = None
     dialog.cancelled, dialog.controller = cancelled, controller
     dialog.executor = _Executor()
     dialog.text, dialog.location, dialog.status = _Control(), _Control(), _Control()

@@ -1,0 +1,35 @@
+{
+  "schema": "carr-bounded-peer-review/1",
+  "created_utc": "2026-11-28 07:08:37 UTC",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "path": "carr-library/tests/studio/test_clip_dialog.py",
+  "preimage": "22f82b84c019c1c917424612d41699da2c806ba8",
+  "successor": "3a5d5b970d68be41fc6424c75aad6000dc3ac9aa",
+  "actual_failure_evidence": "93ded39d63d0d4ee171d444bbf31392b03796c1e",
+  "scope": "Only stale expected-refusal regex in the existing actual structural-script-edit case.",
+  "findings": [
+    "The sole hunk changes only pytest.raises match to the exact fully anchored marker-aware refusal already observed in the closed real run.",
+    "The actual controller.save call and all three following stored project/current project/draft preservation assertions are byte-identical.",
+    "All32 test functions and all parametrization data are unchanged; whole45 remains.",
+    "No product, exception type, case count, skip or gate assertion is changed."
+  ],
+  "exact_diff": [
+    {
+      "oldLine": 377,
+      "newLine": 377,
+      "before": [
+        "    with pytest.raises(ValueError, match='attached audio changed its identity'):"
+      ],
+      "after": [
+        "    with pytest.raises(ValueError, match=(",
+        "        r'^A scene with attached audio, effects or named markers changed its identity\\. '",
+        "        r'Move or remove its clips and markers in the scene editor before changing scene structure\\.$')):"
+      ]
+    }
+  ],
+  "limitations": [
+    "The old run did not reach the three following preservation assertions.",
+    "Successor execution remains NOT_RUN."
+  ]
+}

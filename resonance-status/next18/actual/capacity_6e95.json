@@ -1,0 +1,309 @@
+{
+  "schema": "carr.actual-qualification-evidence/1",
+  "status": "PARTIAL_SOURCE_AND_INSTALLED_PASS_NATIVE_FAIL",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+  "source_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+  "workflow": ".github/workflows/carr-next11-capacity-repair.yml",
+  "run_id": 46074879941,
+  "run_attempt": 1,
+  "branch": "carr/ci-next11-capacity-repair-20261127-5a9e",
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46074879941",
+  "workflow_conclusion": "failure",
+  "jobs": [
+    {
+      "platform": "ubuntu-24.04",
+      "id": 140760167185,
+      "conclusion": "success",
+      "contracts": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 178,
+        "source_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+        "source_passed": 178,
+        "source_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+        "status": "PASS",
+        "suites": [
+          {
+            "path": "tests/packaging/test_library_scale_benchmark.py",
+            "cases": 24,
+            "source_seconds": 2.89,
+            "installed_seconds": 2.27
+          },
+          {
+            "path": "tests/packaging/test_library_capacity_measurement.py",
+            "cases": 25,
+            "source_seconds": 12.65,
+            "installed_seconds": 9.5
+          },
+          {
+            "path": "tests/storage/test_backup_capacity_cli.py",
+            "cases": 3,
+            "source_seconds": 1.38,
+            "installed_seconds": 0.62
+          },
+          {
+            "path": "tests/ui/test_backup_capacity.py",
+            "cases": 17,
+            "source_seconds": 0.66,
+            "installed_seconds": 0.37
+          },
+          {
+            "path": "tests/storage/test_library_backup.py",
+            "cases": 9,
+            "source_seconds": 0.87,
+            "installed_seconds": 0.62
+          },
+          {
+            "path": "tests/storage/test_crash_backup.py",
+            "cases": 5,
+            "source_seconds": 0.17,
+            "installed_seconds": 0.14
+          },
+          {
+            "path": "tests/storage/test_complete_pending_backup.py",
+            "cases": 4,
+            "source_seconds": 0.99,
+            "installed_seconds": 0.53
+          },
+          {
+            "path": "tests/storage/test_backup_pending_common4.py",
+            "cases": 27,
+            "source_seconds": 3.35,
+            "installed_seconds": 2.46
+          },
+          {
+            "path": "tests/storage/test_backup_schema_identity.py",
+            "cases": 36,
+            "source_seconds": 1.75,
+            "installed_seconds": 1.47
+          },
+          {
+            "path": "tests/storage/test_backup_capacity.py",
+            "cases": 28,
+            "source_seconds": 22.64,
+            "installed_seconds": 20.81
+          }
+        ],
+        "source_verdicts": [
+          "PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+        ]
+      },
+      "native": "NOT_RUN"
+    },
+    {
+      "platform": "windows-2022",
+      "id": 140760166819,
+      "conclusion": "failure",
+      "contracts": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 178,
+        "source_commit": "6e95fc07b2824b7f523922ba9b6de70a7f7174e3",
+        "source_passed": 178,
+        "source_tree": "bfcd3a10c2acddd7b3bc8d4cf77c7bf03127558c",
+        "status": "PASS",
+        "suites": [
+          {
+            "path": "tests/packaging/test_library_scale_benchmark.py",
+            "cases": 24,
+            "source_seconds": 18.25,
+            "installed_seconds": 11.88
+          },
+          {
+            "path": "tests/packaging/test_library_capacity_measurement.py",
+            "cases": 25,
+            "source_seconds": 58.66,
+            "installed_seconds": 27.88
+          },
+          {
+            "path": "tests/storage/test_backup_capacity_cli.py",
+            "cases": 3,
+            "source_seconds": 3.01,
+            "installed_seconds": 1.26
+          },
+          {
+            "path": "tests/ui/test_backup_capacity.py",
+            "cases": 17,
+            "source_seconds": 7.98,
+            "installed_seconds": 1.42
+          },
+          {
+            "path": "tests/storage/test_library_backup.py",
+            "cases": 9,
+            "source_seconds": 12.58,
+            "installed_seconds": 2.58
+          },
+          {
+            "path": "tests/storage/test_crash_backup.py",
+            "cases": 5,
+            "source_seconds": 0.81,
+            "installed_seconds": 0.27
+          },
+          {
+            "path": "tests/storage/test_complete_pending_backup.py",
+            "cases": 4,
+            "source_seconds": 4.68,
+            "installed_seconds": 1.33
+          },
+          {
+            "path": "tests/storage/test_backup_pending_common4.py",
+            "cases": 27,
+            "source_seconds": 33.52,
+            "installed_seconds": 8
+          },
+          {
+            "path": "tests/storage/test_backup_schema_identity.py",
+            "cases": 36,
+            "source_seconds": 30.16,
+            "installed_seconds": 6.77
+          },
+          {
+            "path": "tests/storage/test_backup_capacity.py",
+            "cases": 28,
+            "source_seconds": 321.25,
+            "installed_seconds": 97.46
+          }
+        ],
+        "source_verdicts": [
+          "PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+          "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+        ]
+      },
+      "native": "FAIL"
+    }
+  ],
+  "totals": {
+    "source_case_executions": 356,
+    "installed_case_executions": 356,
+    "total_case_executions": 712,
+    "whole_suite_executions": 40,
+    "distinct_cases_per_platform_mode": 178,
+    "failed_cases": 0,
+    "skipped_cases": 0,
+    "qualification": "These are repeated case executions across source/installed and two platforms, not 712 unique tests or a maximum-library measurement."
+  },
+  "installed_proof": {
+    "route": "Current exact source-built wheel, installed into setupPython; isolated child with staged tests outside checkout.",
+    "payload": "Every application and bootstrap wheel payload plus 20 actual module origins checked before and after each suite.",
+    "result": "PASS in both platforms; all child processes reaped and pinned inputs unchanged."
+  },
+  "windows_native": {
+    "status": "FAIL",
+    "probe_blob": "ac651695779424fcba69696ce05c2d84c807899e",
+    "required_checks": 44,
+    "installed_origins": 12,
+    "observed_unique_passed_check_names": [
+      "exact installed source: carr_library.application",
+      "exact installed source: carr_library.backup_capacity",
+      "exact installed source: carr_library.library_backup",
+      "exact installed source: carr_library.pending_backup",
+      "exact installed source: carr_library.backup_sidecars",
+      "exact installed source: carr_library.storage.revisions",
+      "exact installed source: carr_library.ingest.catalog_asset_copy",
+      "exact installed source: carr_library.ui.backup_capacity",
+      "exact installed source: carr_library.ui.desktop_app",
+      "exact installed source: carr_library.ui.worker_lifetime",
+      "exact installed source: carr_library.durable_state",
+      "exact installed source: carr_library.native_runtime",
+      "real native Windows controls",
+      "existing host executor owns backup work and finalizers",
+      "native failure answers owned No before closing only the active inner modal",
+      "capacity dialog starts with the ordinary allowance",
+      "native capacity cancellation opens no folder or worker",
+      "actual backup executes on the shared worker",
+      "native completion retains focused readable result",
+      "native host Close drains the actual executor without retained failure",
+      "unchanged installed source after cleanup: carr_library.application",
+      "unchanged installed source after cleanup: carr_library.backup_capacity",
+      "unchanged installed source after cleanup: carr_library.library_backup",
+      "unchanged installed source after cleanup: carr_library.pending_backup",
+      "unchanged installed source after cleanup: carr_library.backup_sidecars",
+      "unchanged installed source after cleanup: carr_library.storage.revisions",
+      "unchanged installed source after cleanup: carr_library.ingest.catalog_asset_copy",
+      "unchanged installed source after cleanup: carr_library.ui.backup_capacity",
+      "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+      "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+      "unchanged installed source after cleanup: carr_library.durable_state",
+      "unchanged installed source after cleanup: carr_library.native_runtime"
+    ],
+    "first_failure": {
+      "utc": "2026-11-27T22:19:06.4909287Z",
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "line": 429,
+      "message": "Native keyboard did not select the reviewed capacity.",
+      "location": "command(backup_item, selected=1) after ordinary backup; visit queried dialog.GetSelection before pressing OK."
+    },
+    "observed_progress": [
+      "Owned TaskDialog No cleanup completed through actual wx.NO and parent-modal survival.",
+      "Explicit capacity Cancel opened no folder/worker; ordinary selection ran actual backup on shared worker and displayed readable completion.",
+      "Final actual host Close drained executor and all 12 installed source hashes remained unchanged."
+    ],
+    "diagnosis": {
+      "class": "Native probe cached-result getter, no demonstrated product defect.",
+      "primary_sources": [
+        "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/include/wx/generic/choicdgg.h",
+        "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/generic/choicdgg.cpp"
+      ],
+      "explanation": "GetSelection returns m_selection; DoChoice updates it from the actual list only when OK/doubleclick accepts. Live list selection must be observed before the existing OK keyboard action; final selected profile remains checked at actual backup and restore APIs."
+    },
+    "current_correction": {
+      "probe_blob": "3f633a875f8232d4c0cce5cdf40e47d9064f9987",
+      "portable_driver": "a1f05ecf49e2eba8d8d2ba3a980221d0e44cd32c",
+      "expected_new_cases": 6,
+      "status": "STATIC_NOT_RUN"
+    },
+    "remaining": "Large-profile native backup/verify/restore and the complete native44 verdict were not reached.",
+    "windows11": "NOT_RUN",
+    "bundled_runtime": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "hardware_audio": "NOT_RUN"
+  },
+  "timings": {
+    "scope": "Individual pytest child durations, excluding workflow setup/build. Source uses jobs2; sums are sequential cost evidence, not measured wall time.",
+    "windows_five_remainder_seconds": 391.71,
+    "linux_five_remainder_seconds": 37.5
+  },
+  "artifacts": [
+    {
+      "id": 15235480105,
+      "name": "capacity-profile-contracts-windows-2022-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "bytes": 49096,
+      "sha256": "1eea6b8d52e6cfbc5ff91ca53f34fce6ed810e44ab76f25df3d80767bddc0eb5",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46074879941/artifacts/15235480105",
+      "metadata_matches_job_upload": true,
+      "access": "Exact GitHub artifact metadata reconciled with upload log; archive bytes were not downloaded or inspected."
+    },
+    {
+      "id": 15234632332,
+      "name": "capacity-profile-contracts-ubuntu-24.04-6e95fc07b2824b7f523922ba9b6de70a7f7174e3-1",
+      "bytes": 44475,
+      "sha256": "785c6608b04e4a8825a05705f9073173f61a2d9a7ee87b7368658f234779fc68",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46074879941/artifacts/15234632332",
+      "metadata_matches_job_upload": true,
+      "access": "Exact GitHub artifact metadata reconciled with upload log; archive bytes were not downloaded or inspected."
+    }
+  ],
+  "limits": [
+    "Overall workflow failed and is not a release/native qualification.",
+    "No result is transferred to the proposed184/184 successor or to another source head.",
+    "No large corpus measurement ran in this repair workflow; separate measured capacity evidence belongs to its exact profile run."
+  ]
+}

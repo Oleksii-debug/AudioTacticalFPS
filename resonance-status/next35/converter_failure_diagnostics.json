@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "component": "Exact failed-XLS structural observation and unchanged Reader equality diagnostics",
+  "status": "STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 01:32:26 UTC",
+  "base_head": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+  "actual_failure_evidence": "1accf2df4992f3cf6d9c098eb208265a473c0a37",
+  "files": [
+    {
+      "path": "carr-library/scripts/selected_conversion_fixture_support.py",
+      "before": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b",
+      "after": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "before": "b4c60707e1554df514cd954afa89c0c7dc099713",
+      "after": "12ad3b13bbd452890961110b5852b05a7ef010aa"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_selected_conversion.py",
+      "before": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
+      "after": "16b19effb90f86ebc7b2b595de9441b69e28d767"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "before": "4b67819886d4324a616bce8dff13251fec2370f0",
+      "after": "2c3a928d748e337d48d2a2b9e8345a6105360fa2"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "before": "dc523d350e151eaa6c6d94a63752abf38a37a497",
+      "after": "77bd5b3d02e0f1070b8798c2b944d89cd24c2d70"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "before": "dc9bb968e9e5153bef8fef6f7859a684f28ef6f5",
+      "after": "71d90797e3546442df81c04baf49d7f908897973"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "before": "43f181e01867305b728b4439ef3fe152d4b6605e",
+      "after": "67572361557c3f683175b10c84900a2eb990d3c6"
+    }
+  ],
+  "selected_tests": {
+    "whole_before": 29,
+    "whole_after": 39,
+    "old_prefix": "BYTE_IDENTICAL",
+    "new_cases": 10,
+    "new_functions": [
+      "test_native_xls_diagnostic_reads_exact_zip_but_retains_only_bounded_structure",
+      "test_native_xls_diagnostic_refuses_changed_unbounded_active_or_cancelled_input",
+      "test_native_xls_observer_preserves_exact_success_arguments_and_restores_runner",
+      "test_native_xls_observer_keeps_original_failure_after_quiescent_exact_intermediate",
+      "test_native_xls_observer_never_reads_intermediate_while_child_owner_is_live",
+      "test_native_xls_diagnostic_failure_never_replaces_or_reveals_original_failure"
+    ],
+    "companion": "scripts/selected_conversion_fixture_support.py"
+  },
+  "reader_tests": {
+    "whole_before": 10,
+    "whole_after": 13,
+    "new_cases": 3,
+    "new_functions": [
+      "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+      "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings"
+    ],
+    "companion": "scripts/windows_document_conversion_smoke.py",
+    "component_manifest": "49c695be05873b59627fd6960f6008fc6bc8661d"
+  },
+  "gate": {
+    "whole_suites": 8,
+    "source_cases": 289,
+    "installed_cases": 289,
+    "pinned_files": 29,
+    "installed_origins": 19,
+    "companions": [
+      "scripts/windows_document_conversion_smoke.py",
+      "scripts/selected_conversion_fixture_support.py"
+    ],
+    "source_aggregate_seconds": 2700,
+    "per_suite_seconds": 600,
+    "installed_child": "BYTE_IDENTICAL",
+    "native_phases": [
+      "formats-source",
+      "old-suite-source",
+      "formats-installed",
+      "old-suite-installed",
+      "gui-source",
+      "gui-installed"
+    ],
+    "actual_formats_per_mode": 14,
+    "old_whole_cases_per_mode": 34,
+    "old_child_origins": 22,
+    "native_GUI_checks": 30,
+    "native_GUI_origins": 30,
+    "GUI_deadline_seconds": 180,
+    "GUI_conversion_wait_seconds": 50,
+    "native_phase_deadline_seconds": 1200,
+    "retention": "Existing exact installed1..8 XML/text/origin maps and native JSON/text allowlist unchanged."
+  },
+  "diagnostic": {
+    "source": "The known synthetic XLS row, after its ordinary AudioError, before existing owned staging is removed.",
+    "native_process": "Existing exact run_process arguments/result/error path; read admission requires all newly observed real children/Jobs closed. No second conversion.",
+    "bytes": "Same held source.xls and office-output/source.ods; exact source SHA, local ordinary single-link identities rechecked.",
+    "limits": {
+      "file_bytes": 8388608,
+      "archive_members": 4096,
+      "declared_uncompressed_bytes": 16777216,
+      "styles_bytes": 524288,
+      "xml_nodes": 20000,
+      "xml_depth": 32,
+      "disabled_headers": 64,
+      "retained_nodes": 256,
+      "retained_depth": 16,
+      "attributes_per_node": 32,
+      "report_bytes": 131072
+    },
+    "retention": "Fixed tag/attribute vocabulary, value lengths and boolean text/tail flags, a closed enum for display/visibility only, source/ODS/styles hashes. No document text, arbitrary attribute values, original/XML/native bytes or paths.",
+    "cancellation": "Actual callback True raises InterruptedError before further diagnostic reads; original AudioError remains the outcome.",
+    "policy": "Product extraction/visibility, exact Reader text comparison and all actual format/GUI success requirements unchanged."
+  },
+  "review": {
+    "xls": "Progress ACCEPTED_STATIC_NOT_RUN for f91ee1/12ad/16b19 after fixing True-return cancellation.",
+    "reader": "Progress ACCEPTED_STATIC_NOT_RUN; Locate manifest49c695.",
+    "gate": "Exact inverse reconstructs dc9/43f; independent root review pending.",
+    "execution": "NOT_RUN"
+  },
+  "claims": {
+    "new_portable_tests": "NOT_RUN",
+    "actual_XLS_structure": "NOT_YET_CAPTURED",
+    "ODF_policy_fix": "NONE",
+    "Reader_text_fix": "NONE",
+    "actual14_each_mode": "NOT_PASS",
+    "actualGUI30_each_mode": "NOT_PASS"
+  },
+  "readback": "All seven successor files read back exactly. No refs moved."
+}

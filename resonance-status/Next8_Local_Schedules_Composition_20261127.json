@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "status": "SOURCE_COMPOSED_FRESH_CI_REQUIRED",
+  "feature_manifest": "77a619d71686b010fba23ee7796cea4463f493eb",
+  "hooks": "667ca617fc389b1257585d6556975615c62dd3e8",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "71741e60eb237ac93268f5e3447bfec7abd40c5a",
+      "preimage": "a2e97d9fe0683dda95682480f625b5b11ad05abd",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "a27bd8d41d0761cc391ed6494816bd4b30ef9b53",
+      "preimage": "2a61d841237c047036b5d7936f84cb5aaf8b4b03",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "9a03ff34ec8393a98b6d1e43df562f74a7858761",
+      "preimage": "2726e65eef04c46febc48a7db1e859eed00e9876",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "sha": "714540bcab93aae319788fbeb57848ea34a8c203",
+      "preimage": "4b521d584fed29dfca88c96c8e2a906efb0dbcfb",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "2da122b36792579a442e976548ec72db1b868ab6",
+      "preimage": "1135886dedf44a1ce0e62ced5fbcb5ca9b6cdaad",
+      "from": "scheduler-shared-composition"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "sha": "b2a6ae41bc9742dc7c8ab951041c5006566fcf34",
+      "preimage": "af7e619bd1116b4496bbf69aa1d3d46ee1428ff2",
+      "from": "actual-menu-fixture-and-scheduler"
+    }
+  ]
+}

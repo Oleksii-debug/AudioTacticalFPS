@@ -1,0 +1,781 @@
+{
+  "schema": "carr-closed-focused-results/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "recorded_utc": "2026-11-28 04:21:49 UTC",
+  "scope": "Exact completed GitHub jobs and closed decoded logs on their own HEADs; no qualification transfer to the new integration tree.",
+  "status": "PARTIAL_COMPONENT_RESULTS",
+  "records": [
+    {
+      "component": "remote_transcription",
+      "run_id": 46104192390,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104192390",
+      "jobs": [
+        {
+          "id": 140853144196,
+          "name": "Remote STT 86 source and installed on windows-2022",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "7e042074c0190879bb21a07f5361bd29a93d3682",
+          "started_at": "2026-11-28T03:50:36Z",
+          "completed_at": "2026-11-28T03:53:11Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104192390/job/140853144196",
+          "artifact": {
+            "id": 15247506044,
+            "name": "remote-stt-windows-2022-7e042074c0190879bb21a07f5361bd29a93d3682-1",
+            "size_in_bytes": 48021,
+            "digest": "sha256:e5e2480c71821313a9620c792cfab95d23ec9f9fd172a58977599cf27744a5c4",
+            "expired_at_observation": false,
+            "head": "7e042074c0190879bb21a07f5361bd29a93d3682",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 1070,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 86,
+              "source_commit": "7e042074c0190879bb21a07f5361bd29a93d3682",
+              "source_passed": 86,
+              "source_tree": "b4ed667fa1d0580c5d9a1b7a81e077ecced4455c",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "id": 140853144397,
+          "name": "Remote STT 86 source and installed on ubuntu-24.04",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "7e042074c0190879bb21a07f5361bd29a93d3682",
+          "started_at": "2026-11-28T03:51:13Z",
+          "completed_at": "2026-11-28T03:52:07Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104192390/job/140853144397",
+          "artifact": {
+            "id": 15247071538,
+            "name": "remote-stt-ubuntu-24.04-7e042074c0190879bb21a07f5361bd29a93d3682-1",
+            "size_in_bytes": 26765,
+            "digest": "sha256:c7b7aa6cb91121e205e41110895e0df1f9cb848cf6a58a355b51492ead58440c",
+            "expired_at_observation": false,
+            "head": "7e042074c0190879bb21a07f5361bd29a93d3682",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 733,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 86,
+              "source_commit": "7e042074c0190879bb21a07f5361bd29a93d3682",
+              "source_passed": 86,
+              "source_tree": "b4ed667fa1d0580c5d9a1b7a81e077ecced4455c",
+              "status": "PASS"
+            }
+          ]
+        }
+      ],
+      "windows_details": {
+        "loopback": [
+          {
+            "line": 846,
+            "mode": "source",
+            "cases": 6,
+            "status": "PASS",
+            "required": [
+              "test_actual_stt_loopback_uploads_only_reviewed_bytes_and_returns_bound_usage",
+              "test_actual_stt_local_only_never_reaches_loopback_or_credentials",
+              "test_actual_stt_http_refusal_never_redirects_or_retries[302]",
+              "test_actual_stt_http_refusal_never_redirects_or_retries[401]",
+              "test_actual_stt_http_refusal_never_redirects_or_retries[503]",
+              "test_actual_stt_loopback_rejects_unrequested_response_shape_without_resending"
+            ],
+            "actual_paid_provider_call": "NOT_RUN"
+          },
+          {
+            "line": 874,
+            "mode": "installed",
+            "cases": 6,
+            "status": "PASS",
+            "required": [
+              "test_actual_stt_loopback_uploads_only_reviewed_bytes_and_returns_bound_usage",
+              "test_actual_stt_local_only_never_reaches_loopback_or_credentials",
+              "test_actual_stt_http_refusal_never_redirects_or_retries[302]",
+              "test_actual_stt_http_refusal_never_redirects_or_retries[401]",
+              "test_actual_stt_http_refusal_never_redirects_or_retries[503]",
+              "test_actual_stt_loopback_rejects_unrequested_response_shape_without_resending"
+            ],
+            "actual_paid_provider_call": "NOT_RUN"
+          }
+        ],
+        "native": {
+          "line": 951,
+          "status": "PASS",
+          "check_occurrences": 74,
+          "unique_required_labels": 73,
+          "origins": 23,
+          "checks": [
+            "exact installed source: carr_library.application",
+            "exact installed source: carr_library.transcription",
+            "exact installed source: carr_library.assistant.models",
+            "exact installed source: carr_library.assistant.profiles",
+            "exact installed source: carr_library.assistant.providers",
+            "exact installed source: carr_library.assistant.credentials",
+            "exact installed source: carr_library.assistant.transcription_provider",
+            "exact installed source: carr_library.assistant.transcription_worker",
+            "exact installed source: carr_library.integrations.transcription_remote",
+            "exact installed source: carr_library.integrations.transcription_remote_values",
+            "exact installed source: carr_library.integrations.transcription_values",
+            "exact installed source: carr_library.backup_transcription",
+            "exact installed source: carr_library.backup_producers",
+            "exact installed source: carr_library.ui.transcription_dialog",
+            "exact installed source: carr_library.ui.transcription_remote_dialog",
+            "exact installed source: carr_library.ui.desktop_app",
+            "exact installed source: carr_library.ui.worker_lifetime",
+            "exact installed source: carr_library.operations.broker",
+            "exact installed source: carr_library.audio.process",
+            "exact installed source: carr_library.audio.windows_job",
+            "exact installed source: carr_library.audio.voice_transport",
+            "exact installed source: carr_library.native_runtime",
+            "exact installed source: carr_library.durable_state",
+            "actual remote transcription controls use native Windows wx",
+            "existing host registry retains its explicit transcription command",
+            "one existing host menu opens the shared transcription workflow",
+            "owned failure answers native No before closing only the active inner modal",
+            "registered transcription keeps its existing local default controls",
+            "remote child borrows exact local parent and original shared executor",
+            "opening remote transcription grants no transfer consent or implicit work",
+            "actual local review binds original bytes and normal retention without a child call",
+            "review alone leaves actual native consent unchecked and Send disabled",
+            "actual native Space grants only the reviewed selected-recording checkbox",
+            "transfer confirmation defaults to the actual owned No button",
+            "observed default No retains no remote job or usage reservation",
+            "transfer confirmation defaults to the actual owned No button",
+            "one explicit Yes runs one current Gateway child on the shared host worker",
+            "actual retained transcript has exact source and inactive public provider snapshot",
+            "real usage and retained remote receipt expose provider timestamps without local inference",
+            "completed child settles its actual Windows Job before returning the transcript",
+            "native completion clears review and permission before another transfer",
+            "existing transcription editor displays the verified remote text",
+            "native edit keeps original audio and recognition text unchanged",
+            "busy native Close requests cancellation and retains the current modal until settlement",
+            "cancelled queued review creates no second job or provider attempt",
+            "all explicit picker answers remain bound to the selected original",
+            "actual host Close drains original shared worker and finalizers",
+            "all actual STT Job handles are settled before fallback cleanup",
+            "no STT resource lease survives actual host cleanup",
+            "synthetic STT fixture remains byte-identical through owner cleanup",
+            "unchanged installed source after cleanup: carr_library.application",
+            "unchanged installed source after cleanup: carr_library.transcription",
+            "unchanged installed source after cleanup: carr_library.assistant.models",
+            "unchanged installed source after cleanup: carr_library.assistant.profiles",
+            "unchanged installed source after cleanup: carr_library.assistant.providers",
+            "unchanged installed source after cleanup: carr_library.assistant.credentials",
+            "unchanged installed source after cleanup: carr_library.assistant.transcription_provider",
+            "unchanged installed source after cleanup: carr_library.assistant.transcription_worker",
+            "unchanged installed source after cleanup: carr_library.integrations.transcription_remote",
+            "unchanged installed source after cleanup: carr_library.integrations.transcription_remote_values",
+            "unchanged installed source after cleanup: carr_library.integrations.transcription_values",
+            "unchanged installed source after cleanup: carr_library.backup_transcription",
+            "unchanged installed source after cleanup: carr_library.backup_producers",
+            "unchanged installed source after cleanup: carr_library.ui.transcription_dialog",
+            "unchanged installed source after cleanup: carr_library.ui.transcription_remote_dialog",
+            "unchanged installed source after cleanup: carr_library.ui.desktop_app",
+            "unchanged installed source after cleanup: carr_library.ui.worker_lifetime",
+            "unchanged installed source after cleanup: carr_library.operations.broker",
+            "unchanged installed source after cleanup: carr_library.audio.process",
+            "unchanged installed source after cleanup: carr_library.audio.windows_job",
+            "unchanged installed source after cleanup: carr_library.audio.voice_transport",
+            "unchanged installed source after cleanup: carr_library.native_runtime",
+            "unchanged installed source after cleanup: carr_library.durable_state",
+            "actual remote-STT nested failure control completed"
+          ],
+          "native_keyboard": "PASS",
+          "native_host_cleanup": "PASS",
+          "native_failure_cleanup": "PASS",
+          "paid_provider_call": "NOT_RUN",
+          "acoustic_quality": "NOT_RUN",
+          "language_coverage": "NOT_RUN",
+          "manual_nvda": "NOT_RUN"
+        }
+      }
+    },
+    {
+      "component": "saved_audio_cleanup",
+      "run_id": 46104478672,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104478672",
+      "jobs": [
+        {
+          "id": 140854032590,
+          "name": "Saved-audio cleanup19 source and installed, native15 and bounded playback diagnostic",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "6d12d7b570875bb2b864740dcdb73331b4ae40dc",
+          "started_at": "2026-11-28T03:55:17Z",
+          "completed_at": "2026-11-28T03:56:54Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104478672/job/140854032590",
+          "artifact": {
+            "id": 15247405934,
+            "name": "saved-audio-cleanup-windows-6d12d7b570875bb2b864740dcdb73331b4ae40dc-1",
+            "size_in_bytes": 30617,
+            "digest": "sha256:d4f5908f97cc9d273d071e642e160eb9565b6654367afa8a5d9d7eabd03d9dea",
+            "expired_at_observation": false,
+            "head": "6d12d7b570875bb2b864740dcdb73331b4ae40dc",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": []
+        }
+      ],
+      "windows_details": {
+        "receipts": [
+          {
+            "status": "PASS",
+            "checks": [
+              "exact installed player module: carr_library.speech.player",
+              "exact installed player module: carr_library.speech.playlist",
+              "exact installed player module: carr_library.speech._wave_output",
+              "exact installed player module: carr_library.speech.playback_devices",
+              "exact installed player module: carr_library.ui.audio_playback",
+              "exact installed player module: carr_library.ui.reader_playback",
+              "exact installed player module: carr_library.ui.desktop_app",
+              "exact installed player module: carr_library.studio.clips",
+              "exact installed player module: carr_library.ui.save_all",
+              "exact installed player module: carr_library.operations.broker",
+              "exact installed player module: carr_library.backup_playback_queue",
+              "one stable native command without a conflicting default shortcut",
+              "controlled worker failure closes only its owned passive playback modal",
+              "actual host Close drains saved playback owners and the existing worker",
+              "all installed queue sources stay exact after native execution"
+            ],
+            "mode": "failure-cleanup-only",
+            "failure_cleanup": "PASS",
+            "actual_windows_waveout": "NOT_RUN",
+            "physical_device": "NOT_RUN",
+            "audible_listening": "NOT_RUN",
+            "nvda": "NOT_RUN"
+          },
+          {
+            "default_native_cleanup": "PASS",
+            "inputs_unchanged": true,
+            "installed_passed": 19,
+            "required_native_cleanup": "PASS",
+            "source_commit": "6d12d7b570875bb2b864740dcdb73331b4ae40dc",
+            "source_passed": 19,
+            "source_tree": "52820bb94754f06a148072f755a92129dcd06cff",
+            "status": "PASS"
+          }
+        ],
+        "actual_close_observations": [
+          {
+            "line": 660,
+            "text": "SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"requested\", \"accepted\": true, \"before\": {\"working\": false, \"busy\": false, \"closing\": false, \"main_loop\": true, \"destroy_event_seen\": false, \"status\": \"Controlled passive playback worker failure: Controlled passive playback worker failure.\"}, \"native_window_present\": true}"
+          },
+          {
+            "line": 661,
+            "text": "SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"settled\", \"native_window_present\": false, \"destroy_event_seen\": true}"
+          },
+          {
+            "line": 708,
+            "text": "SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"requested\", \"accepted\": true, \"before\": {\"working\": false, \"busy\": false, \"closing\": false, \"main_loop\": true, \"destroy_event_seen\": false, \"status\": \"Review selected playback files: complete.\"}, \"native_window_present\": true}"
+          },
+          {
+            "line": 709,
+            "text": "SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"settled\", \"native_window_present\": false, \"destroy_event_seen\": true}"
+          }
+        ],
+        "default_playback": {
+          "status": "FAIL",
+          "failure": "TimeoutError: Real waveOut did not advance",
+          "cleanup_after_failure": "PASS",
+          "required_playback_gate": "UNCHANGED; cleanup-only lane success does not qualify playback"
+        }
+      }
+    },
+    {
+      "component": "selected_conversion",
+      "run_id": 46104964412,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104964412",
+      "jobs": [
+        {
+          "id": 140855538706,
+          "name": "Actual portable source/installed and selected Windows converters",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+          "started_at": "2026-11-28T03:56:50Z",
+          "completed_at": "2026-11-28T04:05:07Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104964412/job/140855538706",
+          "artifact": {
+            "id": 15247552746,
+            "name": "selected-conversion-windows-2022-321e0a39d08433901f037a66560cf01b1d44f2a7-1",
+            "size_in_bytes": 133563,
+            "digest": "sha256:c060793bc16ea1d6214d2fd5bbd116050225639ffe546ecadc861694e50a1252",
+            "expired_at_observation": false,
+            "head": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 1430,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 358,
+              "source_commit": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+              "source_passed": 358,
+              "source_tree": "f40d6e06ab82524f7ee8e086c5456747c7312db6",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "id": 140855538505,
+          "name": "Exact portable source and isolated installed conversion contracts",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+          "started_at": "2026-11-28T04:07:07Z",
+          "completed_at": "2026-11-28T04:08:05Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46104964412/job/140855538505",
+          "artifact": {
+            "id": 15247337140,
+            "name": "selected-conversion-ubuntu-24.04-321e0a39d08433901f037a66560cf01b1d44f2a7-1",
+            "size_in_bytes": 53321,
+            "digest": "sha256:88b0fb94484186299f4d5b566a31be3965685879bc5bb3a284e864699327b1e3",
+            "expired_at_observation": false,
+            "head": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 1400,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 358,
+              "source_commit": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+              "source_passed": 358,
+              "source_tree": "f40d6e06ab82524f7ee8e086c5456747c7312db6",
+              "status": "PASS"
+            }
+          ]
+        }
+      ],
+      "windows_details": {
+        "phase_receipts": [
+          {
+            "line": 1762,
+            "mode": "source",
+            "native_gui": "NOT_RUN",
+            "origins": 22,
+            "phase": "formats",
+            "report_sha256": "f23bb42fcc82e0eae3a4d460153d4da2e4e577eb2b0ac26aed81eba682b4406a",
+            "required_formats": 14,
+            "required_native_controls": null,
+            "runtime_quality": "NOT_RUN",
+            "status": "PASS",
+            "whole_cases": null
+          },
+          {
+            "line": 1928,
+            "mode": "source",
+            "native_gui": "NOT_RUN",
+            "origins": 22,
+            "phase": "old-suite",
+            "report_sha256": "4d17d25057d454de25e3616c5718cb938f30ddc874e1de1079da4cd169c686e2",
+            "required_formats": null,
+            "required_native_controls": null,
+            "runtime_quality": "NOT_RUN",
+            "status": "PASS",
+            "whole_cases": 34
+          },
+          {
+            "line": 1944,
+            "mode": "installed",
+            "native_gui": "NOT_RUN",
+            "origins": 22,
+            "phase": "formats",
+            "report_sha256": "c2f30d035d0c2234863eef6ac9c1df4473015a5201961ac6bf372e6d052f4764",
+            "required_formats": 14,
+            "required_native_controls": null,
+            "runtime_quality": "NOT_RUN",
+            "status": "PASS",
+            "whole_cases": null
+          },
+          {
+            "line": 2110,
+            "mode": "installed",
+            "native_gui": "NOT_RUN",
+            "origins": 22,
+            "phase": "old-suite",
+            "report_sha256": "ff57ca224e00b1ef282a35f162420a825aff98ae9cc47c69031a3f6761524b47",
+            "required_formats": null,
+            "required_native_controls": null,
+            "runtime_quality": "NOT_RUN",
+            "status": "PASS",
+            "whole_cases": 34
+          },
+          {
+            "line": 2364,
+            "mode": "source",
+            "native_gui": "PASS",
+            "origins": 30,
+            "phase": "gui",
+            "report_sha256": "f926917a4bc269877643c9f7a015cf065164e750dcbd46d10eb2b651f4bdd4f8",
+            "required_formats": null,
+            "required_native_controls": 30,
+            "runtime_quality": "NOT_RUN",
+            "status": "PASS",
+            "whole_cases": null
+          },
+          {
+            "line": 2618,
+            "mode": "installed",
+            "native_gui": "PASS",
+            "origins": 30,
+            "phase": "gui",
+            "report_sha256": "bb71d96d3f2f4916e1de76ce5dc057479e84aa72da00066a28b06f17fe8b4694",
+            "required_formats": null,
+            "required_native_controls": 30,
+            "runtime_quality": "NOT_RUN",
+            "status": "PASS",
+            "whole_cases": null
+          }
+        ],
+        "gui": [
+          {
+            "line": 2158,
+            "mode": "source",
+            "status": "PASS",
+            "check_count": 30,
+            "origins": 30,
+            "checks": [
+              "all selected source or installed module identities are exact",
+              "real native Windows controls",
+              "existing host worker and workspace own the conversion path",
+              "conversion reuses its actual registered command identifier",
+              "native failure answers owned No before closing only the active inner modal",
+              "cancelling the source picker admits no conversion or output",
+              "cancelling the selected runtime picker admits no conversion or output",
+              "actual existing menu converts RTF with the selected native Pandoc",
+              "native conversion commits exact original reading text and fidelity report",
+              "result names the external original and report without catalog authority",
+              "conversion alone neither imports nor automatically starts reading",
+              "real existing reader receives the exact verified UTF-8 copy",
+              "verified copy remains unbound and gives no native quotation authority",
+              "real reader Save preserves the verified copy and its original",
+              "native reader closes and returns to the same conversion result window",
+              "import confirmation actually starts with default No",
+              "native default No preserves the library and external result",
+              "explicit import still starts with default No",
+              "explicit native Yes runs the canonical TXT importer on the existing worker",
+              "import completion explicitly preserves the external evidence boundary",
+              "actual imported text is searchable and native original is not substituted",
+              "unrelated original and all selected native bytes remain exact",
+              "changed reading bytes cannot reopen the reader or re-run a converter",
+              "native result close revokes its actual queued Read callback",
+              "native host Close drains the shared worker and retained finalizers",
+              "actual reader finalizers release their existing worker owners",
+              "actual converter private Job and child are closed before any fallback",
+              "current conversion resource leases and staging are empty after cleanup",
+              "all source or installed origins remain unchanged after actual cleanup",
+              "native owned temporary files were removed after every worker settled"
+            ],
+            "native_host_cleanup": "PASS",
+            "native_failure_cleanup": "PASS",
+            "physical_audio_device": "NOT_RUN",
+            "nvda": "NOT_RUN"
+          },
+          {
+            "line": 2412,
+            "mode": "installed",
+            "status": "PASS",
+            "check_count": 30,
+            "origins": 30,
+            "checks": [
+              "all selected source or installed module identities are exact",
+              "real native Windows controls",
+              "existing host worker and workspace own the conversion path",
+              "conversion reuses its actual registered command identifier",
+              "native failure answers owned No before closing only the active inner modal",
+              "cancelling the source picker admits no conversion or output",
+              "cancelling the selected runtime picker admits no conversion or output",
+              "actual existing menu converts RTF with the selected native Pandoc",
+              "native conversion commits exact original reading text and fidelity report",
+              "result names the external original and report without catalog authority",
+              "conversion alone neither imports nor automatically starts reading",
+              "real existing reader receives the exact verified UTF-8 copy",
+              "verified copy remains unbound and gives no native quotation authority",
+              "real reader Save preserves the verified copy and its original",
+              "native reader closes and returns to the same conversion result window",
+              "import confirmation actually starts with default No",
+              "native default No preserves the library and external result",
+              "explicit import still starts with default No",
+              "explicit native Yes runs the canonical TXT importer on the existing worker",
+              "import completion explicitly preserves the external evidence boundary",
+              "actual imported text is searchable and native original is not substituted",
+              "unrelated original and all selected native bytes remain exact",
+              "changed reading bytes cannot reopen the reader or re-run a converter",
+              "native result close revokes its actual queued Read callback",
+              "native host Close drains the shared worker and retained finalizers",
+              "actual reader finalizers release their existing worker owners",
+              "actual converter private Job and child are closed before any fallback",
+              "current conversion resource leases and staging are empty after cleanup",
+              "all source or installed origins remain unchanged after actual cleanup",
+              "native owned temporary files were removed after every worker settled"
+            ],
+            "native_host_cleanup": "PASS",
+            "native_failure_cleanup": "PASS",
+            "physical_audio_device": "NOT_RUN",
+            "nvda": "NOT_RUN"
+          }
+        ],
+        "note": "Each source/installed mode passed14 actual format conversions, the34-case existing selected-converter suite, and30 actual GUI checks. These scopes overlap ordinary tests and are not added into an invented total."
+      }
+    },
+    {
+      "component": "managed_backends",
+      "run_id": 46103669005,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103669005",
+      "jobs": [
+        {
+          "id": 140851521886,
+          "name": "Managed backends and current scopes138 source and138 installed on Windows",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:40:18Z",
+          "completed_at": "2026-11-28T03:47:57Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103669005/job/140851521886",
+          "artifact": {
+            "id": 15247000634,
+            "name": "managed-backends-windows-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 45838,
+            "digest": "sha256:7b36e2b1edf5e4cdc95c42516a264773e71c12c670026e6a577832582a70e7f0",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 957,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 138,
+              "source_commit": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+              "source_passed": 138,
+              "source_tree": "b7f4615c1e2c56d0d5d399d4216eb0c8c441bc5c",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "id": 140851522068,
+          "name": "Managed backends and current scopes138 source and138 installed on Linux",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:38:51Z",
+          "completed_at": "2026-11-28T03:40:49Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103669005/job/140851522068",
+          "artifact": {
+            "id": 15245918968,
+            "name": "managed-backends-linux-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 41596,
+            "digest": "sha256:f92279ffe8daf14e20394a77a03ecd30f6f5865bcd77d346bfd50d20d1914562",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 1435,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 138,
+              "source_commit": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+              "source_passed": 138,
+              "source_tree": "b7f4615c1e2c56d0d5d399d4216eb0c8c441bc5c",
+              "status": "PASS"
+            }
+          ]
+        }
+      ],
+      "scope_limits": "Actual managed protocol tests with synthetic reviewed child fixtures; private engine/model inference, acoustic and135-language qualification are NOT_RUN."
+    },
+    {
+      "component": "voice_management",
+      "run_id": 46103663250,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103663250",
+      "jobs": [
+        {
+          "id": 140851502767,
+          "name": "Voice495 source,495 installed and actual owner facade on Linux",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:36:43Z",
+          "completed_at": "2026-11-28T03:42:34Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103663250/job/140851502767",
+          "artifact": {
+            "id": 15245944065,
+            "name": "voice-management-linux-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 136502,
+            "digest": "sha256:5e692a6c8d634591e9c0e8bb8c0d732c2576eaadb5193762f2a5d68326fd9234",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": [
+            {
+              "log_line": 2573,
+              "all_children_reaped": true,
+              "inputs_unchanged": true,
+              "installed_passed": 495,
+              "source_commit": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+              "source_passed": 495,
+              "source_tree": "b7f4615c1e2c56d0d5d399d4216eb0c8c441bc5c",
+              "status": "PASS"
+            }
+          ]
+        },
+        {
+          "id": 140851503072,
+          "name": "Voice495 source,495 installed, actual owner facade and native83 controls",
+          "status": "completed",
+          "conclusion": "failure",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:36:53Z",
+          "completed_at": "2026-11-28T03:52:17Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103663250/job/140851503072",
+          "artifact": {
+            "id": 15246059978,
+            "name": "voice-management-windows-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 22606,
+            "digest": "sha256:1f4d3d5fe2df2c1d4db7cbe4999857415eb6886db71fe3a88da780d3bc5d7bb7",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": []
+        }
+      ],
+      "linux_owner_receipts": [
+        {
+          "line": 2545,
+          "checks": 25,
+          "error": null,
+          "mode": "source",
+          "report_sha256": "0994787295c7b13ed12da0aa5f8a6c303756667449692bf2d5cccf66a0c85645",
+          "status": "PASS"
+        },
+        {
+          "line": 2570,
+          "checks": 25,
+          "error": null,
+          "mode": "installed",
+          "report_sha256": "ed57db3b3c8703a8ab6b7b16780d7dd1da8528e3766ede57674eda64e60a25e0",
+          "status": "PASS"
+        }
+      ],
+      "windows_failure": {
+        "status": "FAIL",
+        "source_whole_suites_passed": 20,
+        "source_cases_passed": 465,
+        "package_suite_cases": 30,
+        "package_suite_status": "INCOMPLETE",
+        "suite_timeout_seconds": 600,
+        "installed": "NOT_RUN",
+        "owner": "NOT_RUN",
+        "native": "NOT_RUN",
+        "durable_closed_evidence_blob": "d660b512570aca0fedb6e03a91c29c1933596643",
+        "proposed_scheduling_peer": "61a388850db43f792b4a3f6e4580abe26e6d3d93",
+        "rerun": "REQUIRED"
+      }
+    },
+    {
+      "component": "voice_phase_diagnostics",
+      "run_id": 46103666855,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103666855",
+      "jobs": [
+        {
+          "id": 140851514755,
+          "name": "Diagnostic voice profile / Windows / package",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:37:35Z",
+          "completed_at": "2026-11-28T03:39:13Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103666855/job/140851514755",
+          "artifact": {
+            "id": 15246169903,
+            "name": "voice-profile-package-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 59784,
+            "digest": "sha256:5962c8a0f1d108b37317a3a2c7bc72583f7f4fb61169ca699496a25b179c9302",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": []
+        },
+        {
+          "id": 140851515038,
+          "name": "Diagnostic voice profile / Windows / reference",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:39:14Z",
+          "completed_at": "2026-11-28T03:40:14Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103666855/job/140851515038",
+          "artifact": {
+            "id": 15246123455,
+            "name": "voice-profile-reference-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 59479,
+            "digest": "sha256:a97d5f7338ea5f5a6c35051c083276f29bdb06b04af406b532b6ab649a38cd46",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": []
+        },
+        {
+          "id": 140851515043,
+          "name": "Diagnostic voice profile / Windows / managed",
+          "status": "completed",
+          "conclusion": "success",
+          "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+          "started_at": "2026-11-28T03:40:16Z",
+          "completed_at": "2026-11-28T03:41:37Z",
+          "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103666855/job/140851515043",
+          "artifact": {
+            "id": 15246404752,
+            "name": "voice-profile-managed-69ace26fb76b258ebb13caa9702f2948549cbb1c-1",
+            "size_in_bytes": 60789,
+            "digest": "sha256:8c8192d272dd9cc4283cc1cd39670a24b941f20711d952ad708288ee7d43720c",
+            "expired_at_observation": false,
+            "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+            "upload_log_identity": "PASS",
+            "archive_contents_independently_downloaded": "NOT_RUN"
+          },
+          "receipts": []
+        }
+      ],
+      "diagnostic_only": {
+        "package_seconds": 44.73,
+        "reference_seconds": 20.19,
+        "managed_seconds": 29.04,
+        "cases_per_job": 1,
+        "qualification": "Single-case diagnostic times only; no whole-suite or comparative speed claim."
+      }
+    }
+  ],
+  "overall_product_qualification": "NOT_DONE",
+  "remaining": "New complete487 source/installed union, exact native configured update, corrected ASCII compatibility and four unchanged capacity geometries require actual new-head results. Actual playback and manual/private qualification remain separately required."
+}
