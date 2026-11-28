@@ -1,0 +1,50 @@
+{
+  "schema": "carr-receiving-dispatch/1",
+  "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "all_refs_compare_and_swap_from": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "dispatch_completed_at_utc": "2026-11-28 05:19:24 UTC",
+  "ref_readbacks": [
+    {
+      "branch": "carr/ci-endpoint-evaluation-20261127",
+      "sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    },
+    {
+      "branch": "carr/reader-voice-controls-evaluation-20261127",
+      "sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    },
+    {
+      "branch": "carr/component-followup-evaluation-20261127",
+      "sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    },
+    {
+      "branch": "carr/standard-installation-evaluation-20261128",
+      "sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    },
+    {
+      "branch": "carr/v3-integrated-final-dbbb-20261126",
+      "sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    }
+  ],
+  "pr": 127,
+  "pr_head_readback": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "pr_body_readback_exact": true,
+  "existing_active_jobs_preserved": true,
+  "run_ids": {
+    "native": 46111569613,
+    "bibliography": 46111569574,
+    "bridge": 46111569581,
+    "canonical": 46111569575,
+    "main": 46111569593,
+    "v3": 46111569577,
+    "reader": 46111570967,
+    "components": 46111572572,
+    "standard_installation": 46111573953,
+    "pr_native": 46111581919,
+    "pr_bibliography": 46111582006,
+    "pr_main": 46111581939,
+    "pr_v3": 46111581947,
+    "pr_bridge": 46111581953,
+    "push_integration_bridge": 46111575068
+  }
+}

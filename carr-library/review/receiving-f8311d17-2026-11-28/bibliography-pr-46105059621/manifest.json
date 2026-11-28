@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run_id": 46105059621,
+  "job_id": 140855843981,
+  "status": "INCOMPLETE_CI_STEP_TIMEOUT",
+  "full_decoded_log_preserved": true,
+  "original_zip_downloaded": false,
+  "all_blob_readbacks_exact": true,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/qualification.json",
+      "git_blob": "354adf3934b420085c3832338a20463679174cdb",
+      "utf8_bytes": 8294,
+      "utf8_sha256": "cb384b653c894001cbf5e80c1f697e8dac38020e2f38901233011d03e10a385e"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/completed-job.decoded.log",
+      "git_blob": "ceb024010ebcc76a8c7dc76a6ecebd5eba005ffa",
+      "utf8_bytes": 135527,
+      "utf8_sha256": "8367367ba5b0dc2f015a1af124742c923c268a1a11eb5e6132050a69c6887521"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/job-metadata.json",
+      "git_blob": "a00e51d96c67695efb6eaf64f8766508518d131e",
+      "utf8_bytes": 3713,
+      "utf8_sha256": "9475bb91ba952d124a9893060eeeebdb3ee9a7a9a95f9df836d65e92cf440054"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/run-metadata.json",
+      "git_blob": "1cf4a4511ed484e86183e4ac1c25b76d5cdf7e83",
+      "utf8_bytes": 15648,
+      "utf8_sha256": "7cb27d9c43d383b1165cc13fce289afe5fc5ebf2257c3be1c01d447139c2d77a"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/artifact-metadata.json",
+      "git_blob": "982a8a26c51638de8f354cfcf7292e696a3030e5",
+      "utf8_bytes": 864,
+      "utf8_sha256": "5bb7592e4e461fa073221213914212cb64b66c9a681e24a62de4954556924432"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/source-wheel.log-extracted.json",
+      "git_blob": "a516c81b9e7efd23f2880d0ce119d20db1a84715",
+      "utf8_bytes": 337,
+      "utf8_sha256": "d0919cb29e569de7f1fe7c9a9e2f061af65b1b791b2482dc38d5946966b33df2"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/installed-native.log-extracted.json",
+      "git_blob": "e68a9ab7e8f82528bb33eced668b91bf2f92885a",
+      "utf8_bytes": 1015,
+      "utf8_sha256": "d73a2078c6dbfed4f8c786fac5aa55a7cb97bc54a85dbbd347a0053deb7d40f0"
+    },
+    {
+      "path": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/terminal-summary.decoded.txt",
+      "git_blob": "9e69b0d1a9e8f86e86878df16815a8c5e08433df",
+      "utf8_bytes": 4513,
+      "utf8_sha256": "0e6d67af913e4f54f1216ed7e1a5cad5746267cc5abb4e33f60e045d0c6352e7"
+    }
+  ]
+}

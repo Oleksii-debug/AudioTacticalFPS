@@ -1,0 +1,49 @@
+{
+  "schema": "carr-exact-source-receiving-evidence/1",
+  "application_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "application_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "branch": "carr/receiving-evidence-2dfc5d32-20261128",
+  "purpose": "Append-only exact-source receiving records kept separately from application changes.",
+  "application_changes": false,
+  "qualification_transfer": false,
+  "previous_evidence": {
+    "commit": "b3f17bf707f2c7d287633e867382d03e4033364c",
+    "index": "carr-library/review/receiving-evidence-f8311d17-2026-11-28.json"
+  },
+  "composition_review": {
+    "status": "SOURCE_REVIEWED; NOT_RUN",
+    "tree": "62a9bfe2fcca898e136e84ea7b313e1d5b79dd8f",
+    "path": "carr-library/review/silence-composition-independent-2026-11-28.json",
+    "blob": "da4eac5ac8401fe2023ae6996d73cb9ca6a81fc9"
+  },
+  "evidence_sets": [
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105059621,
+      "job": 140855843981,
+      "sparse_tree": "b4e30f8c68773df8b87d73e629a17e1d005be4af",
+      "kind": "Historical actual PR checkout; incomplete8-minute strict bibliography aggregate with1034 observed passes and five unfinished modules; native69PASS",
+      "qualification": "carr-library/review/receiving-f8311d17-2026-11-28/bibliography-pr-46105059621/qualification.json"
+    }
+  ],
+  "candidate_runs": {
+    "native": 46111569613,
+    "bibliography": 46111569574,
+    "bridge": 46111569581,
+    "canonical": 46111569575,
+    "main": 46111569593,
+    "v3": 46111569577,
+    "reader": 46111570967,
+    "components": 46111572572,
+    "standard_installation": 46111573953,
+    "pr_native": 46111581919,
+    "pr_bibliography": 46111582006,
+    "pr_main": 46111581939,
+    "pr_v3": 46111581947,
+    "pr_bridge": 46111581953,
+    "push_integration_bridge": 46111575068
+  },
+  "execution": "No new candidate terminal result is claimed by this initial evidence index. Run status must be received from the exact terminal job.",
+  "ci_trigger_review": "Evidence branch name is outside every current workflow push branch filter. Workflow files and all application blobs are unchanged.",
+  "private_artifacts": "Only public source review, metadata, decoded logs and synthetic test evidence; no private model, recordings, runtime binaries or credentials."
+}

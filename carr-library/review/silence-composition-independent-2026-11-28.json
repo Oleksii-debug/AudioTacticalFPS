@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "kind": "independent exact composition review",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "parent": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "components": {
+    "base": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+    "composed": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "core": "2ee6c29815bad3cf44f0afe137d6b0b3c6acacbb",
+    "wrappers": "429425ac54cbbd7ca94218e63dbc0ad255aa31d7",
+    "scene_ui": "156c9df7c04d8e39f1487db440c979bdffbdaea7",
+    "book_publication_ui": "23c553c1133112dc6b0b3f3c1d3c2c3c8b3c5c65",
+    "process": "15a2bc82cb40c54108447440cd712e0b87d4a1cd",
+    "csl": "376214814d511b304246f4e19102091afb128f61",
+    "workflows": "d58cc5acce38705d90eb21c84ebdd249c400553b",
+    "docs": "d244563ba236956167c371def2b59b60fdc467b5"
+  },
+  "base_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "composed_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "component_paths": 47,
+  "expected_matches_composed": true,
+  "mismatches": [],
+  "overlaps": [],
+  "added": 22,
+  "modified": 26,
+  "deleted": [],
+  "app_package_blobs": 476,
+  "app_python": 383,
+  "app_python_modified": 9,
+  "app_python_added": [
+    "carr-library/src/carr_library/audio/silence.py",
+    "carr-library/src/carr_library/studio/silence_inspection.py",
+    "carr-library/src/carr_library/ui/studio_silence_inspection.py"
+  ],
+  "manifest_preimages_match": true,
+  "manifestMismatch": [],
+  "manifestUnlisted": [],
+  "changed_modes": [
+    "100644"
+  ],
+  "changed_extensions": [
+    ".yml",
+    ".txt",
+    ".md",
+    ".json",
+    ".py"
+  ],
+  "source_inventory_digests": {
+    "full_path": "0b7b07269abcde4961a02ba1b086d064881fd919996758f9b54b669e9fa69365",
+    "relative_path": "8d37449c9afecba565c81a084bbc4e1287a16b20dc1678654148279f9d654a62"
+  },
+  "manifest_inventory_sha256": "0b7b07269abcde4961a02ba1b086d064881fd919996758f9b54b669e9fa69365",
+  "checks": [
+    "All8 component trees and complete baseline/composed trees were fetched independently; no recursive response truncated.",
+    "Expected leaf entries were assembled from the baseline and47 disjoint component entries plus the exact composition manifest, then compared with every final leaf.",
+    "Every declared preimage, final blob and file mode matches the observed baseline/composed trees.",
+    "The exact commit has the reviewed tree and sole f831 parent.",
+    "No runtime/test/native result is inferred from this metadata/source composition check."
+  ]
+}

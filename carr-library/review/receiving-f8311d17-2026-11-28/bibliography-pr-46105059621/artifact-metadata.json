@@ -1,0 +1,20 @@
+{
+  "id": 15248635149,
+  "node_id": "MDg6QXJ0aWZhY3QxNTI0ODYzNTE0OQ==",
+  "name": "bibliography-windows-f8311d17fa960448b350cb739b5a90584c30c74b",
+  "size_in_bytes": 6420,
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248635149",
+  "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248635149/zip",
+  "expired": false,
+  "digest": "sha256:cfe1a00c8db4d3036fbe6c0f6ccb613b2db6eb25142b776359b8268dc5f609e4",
+  "created_at": "2026-11-28T04:31:32Z",
+  "updated_at": "2026-11-28T04:31:32Z",
+  "expires_at": "2026-12-05T04:31:32Z",
+  "workflow_run": {
+    "id": 46105059621,
+    "repository_id": 1341777614,
+    "head_repository_id": 1341777614,
+    "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+    "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "id": 140855843981,
+  "run_id": 46105059621,
+  "workflow_name": "CARR bibliography and import acceptance",
+  "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46105059621",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgy6mcjQ",
+  "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140855843981",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46105059621/job/140855843981",
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-11-28T03:54:37Z",
+  "started_at": "2026-11-28T04:22:21Z",
+  "completed_at": "2026-11-28T04:31:36Z",
+  "name": "Windows x64 / CPython 3.11 / installed bibliography",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T04:22:22Z",
+      "completed_at": "2026-11-28T04:22:23Z"
+    },
+    {
+      "name": "Preserve the exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T04:22:23Z",
+      "completed_at": "2026-11-28T04:22:24Z"
+    },
+    {
+      "name": "Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T04:22:24Z",
+      "completed_at": "2026-11-28T04:22:32Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T04:22:32Z",
+      "completed_at": "2026-11-28T04:22:32Z"
+    },
+    {
+      "name": "Build, verify and install the actual application wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T04:22:32Z",
+      "completed_at": "2026-11-28T04:23:25Z"
+    },
+    {
+      "name": "Exercise installed native BibTeX and citation controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T04:23:25Z",
+      "completed_at": "2026-11-28T04:23:31Z"
+    },
+    {
+      "name": "Run strict bibliography, replay and export acceptance",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 7,
+      "started_at": "2026-11-28T04:23:31Z",
+      "completed_at": "2026-11-28T04:31:31Z"
+    },
+    {
+      "name": "Retain text acceptance evidence only",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T04:31:31Z",
+      "completed_at": "2026-11-28T04:31:32Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 15,
+      "started_at": "2026-11-28T04:31:32Z",
+      "completed_at": "2026-11-28T04:31:32Z"
+    },
+    {
+      "name": "Post Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T04:31:32Z",
+      "completed_at": "2026-11-28T04:31:34Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T04:31:34Z",
+      "completed_at": "2026-11-28T04:31:34Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140855843981",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490044,
+  "runner_name": "GitHub Actions 1000490044",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

@@ -1,0 +1,36 @@
+Selected lines from the complete connector-decoded job log, with timestamps retained.
+These are not original artifact-member bytes.
+
+2026-11-28T04:22:24.1209469Z   ref: f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:22:29.5048213Z f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:22:30.0825109Z HEAD is now at f8311d1 Complete Unicode-safe bundle fixtures and retain exact Windows receiving evidence
+2026-11-28T04:22:30.1663132Z f8311d17fa960448b350cb739b5a90584c30c74b
+2026-11-28T04:23:21.8026209Z {"payload_files": 490, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b", "source_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c", "wheel_sha256": "e4a77ab7e27da0e32b588f02f28d7e6fdb72e6cdf39452a956913aea98eb141b"}
+2026-11-28T04:23:35.1009639Z PASS: tests/research/test_bibtex_import.py: junit_passed=68, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:26:50.2219262Z PASS: tests/research/test_academic_library.py: junit_passed=94, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:26:56.3639572Z PASS: tests/research/test_csl_author_boundaries.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:05.3116754Z PASS: tests/citations/test_csl.py: junit_passed=79, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:28:07.4690622Z PASS: tests/citations/test_custom_csl.py: junit_passed=132, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:29:53.0289379Z PASS: tests/citations/test_bibliography_workbench.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:29:55.9058132Z PASS: tests/citations/test_custom_workbench.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:29:56.6563081Z PASS: tests/ui/test_citation_styles_jobs.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:09.9816394Z PASS: tests/ui/test_academic_library_dialog.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:11.0338236Z PASS: tests/ui/test_academic_actions.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:36.0384200Z PASS: tests/ui/test_academic_export_handler.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:42.7998424Z PASS: tests/catalog/test_bibliography.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:43.2660477Z PASS: tests/catalog/test_archive_portability.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:43.6707886Z PASS: tests/catalog/test_intake_portability.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:30:44.1451871Z PASS: tests/catalog/test_reference_exchange.py: junit_passed=64, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:01.6106845Z PASS: tests/ingest/test_import_replay_identity.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:05.4182194Z PASS: tests/ingest/test_txt_replay_registration.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:16.9910719Z PASS: tests/reader/test_export_no_clobber.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:17.5848250Z PASS: tests/reader/test_export_reconciliation.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:18.7872903Z PASS: tests/reader/test_file_export.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:19.5768705Z PASS: tests/reader/test_binary_file_export.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:23.0044767Z PASS: tests/reader/test_academic_documents.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:23.3883995Z PASS: tests/reader/test_bibliographic_locators.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:23.8023584Z PASS: tests/reader/test_evidence_export.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0
+2026-11-28T04:31:31.7070916Z ##[error]The action 'Run strict bibliography, replay and export acceptance' has timed out after 8 minutes.
+2026-11-28T04:31:32.4640522Z SHA256 digest of uploaded artifact is cfe1a00c8db4d3036fbe6c0f6ccb613b2db6eb25142b776359b8268dc5f609e4
+2026-11-28T04:31:32.8222454Z Artifact bibliography-windows-f8311d17fa960448b350cb739b5a90584c30c74b successfully finalized. Artifact ID 15248635149
+2026-11-28T04:31:32.8223872Z Artifact bibliography-windows-f8311d17fa960448b350cb739b5a90584c30c74b has been successfully uploaded! Final size is 6420 bytes. Artifact ID is 15248635149

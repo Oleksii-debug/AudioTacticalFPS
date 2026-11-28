@@ -1,0 +1,276 @@
+{
+  "schema": 1,
+  "status": "INCOMPLETE_CI_STEP_TIMEOUT",
+  "provenance": {
+    "run_id": 46105059621,
+    "run_attempt": 1,
+    "job_id": 140855843981,
+    "event": "pull_request",
+    "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+    "workflow_blob": "53d7e3142f94dbab7e67273550b9809189c94b81",
+    "checkout_confirmed_by": [
+      "actions/checkout ref",
+      "git log -1 --format=%H",
+      "actual wheel source verifier"
+    ],
+    "run_metadata_pull_requests_caveat": "The nested pull_requests object reports the current PR head at metadata retrieval; it is not used as this historical run's checkout identity.",
+    "original_artifact_downloaded": false,
+    "log_kind": "Complete unchanged connector-decoded GitHub job log; derived records are explicitly log-extracted."
+  },
+  "terminal": {
+    "run_status": "completed",
+    "run_conclusion": "failure",
+    "job_status": "completed",
+    "job_conclusion": "failure",
+    "started_at": "2026-11-28T04:22:21Z",
+    "completed_at": "2026-11-28T04:31:36Z"
+  },
+  "source_identity": {
+    "payload_files": 490,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 395,
+    "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "source_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+    "wheel_sha256": "e4a77ab7e27da0e32b588f02f28d7e6fdb72e6cdf39452a956913aea98eb141b"
+  },
+  "strict_contracts": {
+    "status": "INCOMPLETE",
+    "selected_modules": 29,
+    "completed_module_verdicts": 24,
+    "observed_passed": 1034,
+    "observed_failed": 0,
+    "observed_errors": 0,
+    "observed_skipped": 0,
+    "completed_verdicts": [
+      {
+        "module": "tests/research/test_bibtex_import.py",
+        "passed": 68,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/research/test_academic_library.py",
+        "passed": 94,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/research/test_csl_author_boundaries.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/citations/test_custom_csl.py",
+        "passed": 132,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/citations/test_bibliography_workbench.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/citations/test_custom_workbench.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_citation_styles_jobs.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_academic_library_dialog.py",
+        "passed": 63,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_academic_actions.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ui/test_academic_export_handler.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/catalog/test_bibliography.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/catalog/test_archive_portability.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/catalog/test_intake_portability.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/catalog/test_reference_exchange.py",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ingest/test_import_replay_identity.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/ingest/test_txt_replay_registration.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_export_no_clobber.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_export_reconciliation.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_file_export.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_binary_file_export.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_academic_documents.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_bibliographic_locators.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "module": "tests/reader/test_evidence_export.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "uncompleted_modules": [
+      "tests/storage/test_academic_migration.py",
+      "tests/e2e/test_academic_workflow.py",
+      "tests/e2e/test_academic_workflows.py",
+      "tests/e2e/test_academic_document_export.py",
+      "tests/e2e/test_export_destination.py"
+    ],
+    "overall_pass_claim": false,
+    "final_required_suites_complete_marker_present": false,
+    "timeout": {
+      "scope": "GitHub Actions aggregate step",
+      "minutes": 8,
+      "job_budget_minutes": 15,
+      "started_at": "2026-11-28T04:23:31Z",
+      "completed_at": "2026-11-28T04:31:31Z",
+      "literal_error": "The action 'Run strict bibliography, replay and export acceptance' has timed out after 8 minutes.",
+      "no_product_timeout_or_failed_case_trace_observed": true
+    }
+  },
+  "installed_native": {
+    "status": "PASS",
+    "dynamic_checks": 69,
+    "report_file": "installed-native.log-extracted.json",
+    "counting_unit": "successful dynamic assertions, not independent test cases",
+    "nvda": "NOT_RUN",
+    "native_file_pickers": "NOT_RUN",
+    "manual_keyboard": "NOT_RUN",
+    "installer": "NOT_RUN"
+  },
+  "artifact": {
+    "id": 15248635149,
+    "name": "bibliography-windows-f8311d17fa960448b350cb739b5a90584c30c74b",
+    "size_in_bytes": 6420,
+    "digest": "sha256:cfe1a00c8db4d3036fbe6c0f6ccb613b2db6eb25142b776359b8268dc5f609e4",
+    "provenance": "GitHub artifact metadata corroborated by the upload log; original ZIP/member bytes were not downloaded."
+  },
+  "decoded_log": {
+    "utf8_bytes": 135527,
+    "utf8_sha256": "8367367ba5b0dc2f015a1af124742c923c268a1a11eb5e6132050a69c6887521"
+  },
+  "reconciliation": {
+    "exact_checkout_is_f831": true,
+    "pr_merge_mismatch": false,
+    "separately_completed_endpoint": {
+      "run_id": 46105047642,
+      "job_id": 140855804357,
+      "receipt_blob": "6a456b4ee394030c27041b9e296d67f2c98c30e4",
+      "status": "PASS",
+      "selected_modules": 29,
+      "passed": 1092,
+      "note": "This separate successful trial does not complete or replace the timed-out PR trial."
+    },
+    "diagnosis": "Observed aggregate CI capacity cutoff. No product exception or individual failed-case verdict is present in the complete log.",
+    "source_change": "NONE; no speculative product fix or deadline change is made."
+  },
+  "qualification_limits": [
+    "Five unfinished modules receive no PASS result in this trial.",
+    "No result is transferred to the new 2dfc5d32 candidate.",
+    "No acoustic, private-runtime, NVDA or final release qualification is inferred."
+  ]
+}
