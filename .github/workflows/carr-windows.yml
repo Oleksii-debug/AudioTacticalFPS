@@ -33,6 +33,7 @@ jobs:
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
       PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      CARR_FINAL_SCOPE_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
       ORT_DISABLE_TELEMETRY: '1'
       HF_HUB_OFFLINE: '1'
       HF_HUB_DISABLE_TELEMETRY: '1'
@@ -914,7 +915,7 @@ jobs:
           & $python -I -B -X utf8 -c $nativeProbe (Resolve-Path scripts/windows_backup_import_access_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-backup-import-access-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native import continuation and full/incremental recovery controls failed.' }
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
-          & $python -I -B -X utf8 scripts/run_final_scope_native.py --expected-head '${{ github.event.pull_request.head.sha || github.sha }}' --audio-evidence 'ci-results/external-test-audio-binding.json' --bundle-root $bundle --output 'ci-results/final-scope-native' 2>&1 | Tee-Object 'ci-results/final-scope-native.txt'
+          & $python -I -B -X utf8 scripts/run_final_scope_native.py --expected-head $env:CARR_FINAL_SCOPE_EXPECTED_HEAD --audio-evidence 'ci-results/external-test-audio-binding.json' --bundle-root $bundle --output 'ci-results/final-scope-native' 2>&1 | Tee-Object 'ci-results/final-scope-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Final exact-head installed native feature acceptance failed.' }
           $runInstalledTests = @'
           import atexit, ctypes, hashlib, importlib, json, os, pathlib, sys

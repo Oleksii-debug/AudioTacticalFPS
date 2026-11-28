@@ -232,11 +232,13 @@ together as if they were distinct cases.
 | Live range/sleep, common head `a07b52423823f8c175218178047ce883746667dc`, native head `c1285910738e71b2c15b68599f54b29938be1cfe` | 987 source and 987 installed cases on each OS; 126 actual native assertions and five real selected SAPI renders, with explicitly controlled PCM output. | Common `8a55ed632361b245533d91788d8c291cfe7424d5`; native `3e97f7fca1e68fbdb9e6752fdafd1391b9be858e`. |
 | Word common contracts, head `8a7b8632009f8019c3223465c4129b8d23ccafdf`, [run 46120130479](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120130479) | 539 source and 539 installed cases on each OS, including current CSL/document protocols and controlled host ownership; 408 Python files and 20 CSL/runtime/notice assets checked before and after. | `9b620e7e1045049eb3af6eb2decc79268620e7c9`; actual Office and native CARR UI remain distinct records. |
 | Research merge common contracts, head `cf16f98880eb5fb72c0eeb9eb6121e85a7181406`, [run 46120328460](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120328460) | 237 source and 237 installed cases on each OS, including all 36 new graph, rollback, conflict, executor and late-result cases; 408 Python files and 20 CSL assets checked before and after. | `4b69a98a4dc6e7b5cb3495470fdd0667dd286eec`. |
+| CUE interchange and silence common contracts, head `3c56c6c4489d2a5da7c3a9ebd3f9b5803a8b817e`, [run 46121179440](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121179440) | 342 source and 342 installed cases on each OS across 17 suites, with 408 Python files bound before and after. Linux also ran six upstream libcue self-tests and parsed actual published two-track and 100-chapter boundary artifacts without modifying them. | `f8befd32c9b070f11349dfa41faac7440ee5b681`; native Studio inspection has its own record. |
+| Research merge native controls, head `1e7395ad6105e0e9d952ffbd6fa17eb6d9d669a6`, [run 46122906464](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122906464) | All 12 fixed acceptance criteria and 310 actual native assertions passed, including both workspace choices, unchanged input backups, exact visible result data, held-result owner withdrawal and cleanup. | `d259039397492b121752bc777a827e4dc2108065`; key-event assertion totals are observations for this component run, not a fixed count required of a different menu composition. |
 
-These completed contracts have no skipped or expected-failure cases. CUE and
-silence use a combined 17-suite acceptance route with an actual independent
-libcue reader; its exact result and the remaining native records are attached
-to the composed-head qualification, rather than inferred from authored tests.
+These completed contracts have no skipped or expected-failure cases. Each result
+belongs to the recorded component head and its installed package. Remaining
+native and composed-head records must come from their own executed runs;
+authored tests and earlier component counts do not establish those outcomes.
 The maintained Windows and V3 gates execute all eight final native scope
 contracts through one committed helper, with all installed Python modules,
 22 selected runtime/notice assets, exact probe files and the selected audio

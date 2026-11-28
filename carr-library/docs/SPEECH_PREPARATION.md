@@ -45,6 +45,6 @@ A change in the current document, selected range, language, voice, source author
 
 ## Qualification boundary
 
-The component's source, isolated installed, recovery and native keyboard checks must be recorded against their exact commit and installed file inventory. New preparation runtime results are **NOT_RUN** until those gates complete. Existing component evidence does not qualify this new composition.
+The component completed 755 source and 755 isolated installed cases on each OS at `20e56f1a8423b3943f610b7579bacedc773410d2` ([run 46118114870](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118114870), evidence `277388ce9e6444d1789fe8281aded18ebdbe705e`). Its native Windows controls completed 321 assertions at `f127fecc136ee129e5d8ed7b63cd4b0a892412de` ([run 46120170430](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46120170430), evidence `9033d18c80d3ea299122968fe9075dac5ee128a5`). These results bind their recorded commit and installed inventory. Final composed-head qualification requires its own completed gates; the component results do not establish that outcome.
 
 Deterministic text fixtures establish exact conversions, source positions, history and lifetime behavior. They do not establish Ukrainian/Slovak/English pronunciation naturalness, physical output, NVDA behavior, punctuation interpretation, foreign-name stress or a voice/model's quality. Those require the explicitly selected actual runtime and the owner's listening/accessibility review.
