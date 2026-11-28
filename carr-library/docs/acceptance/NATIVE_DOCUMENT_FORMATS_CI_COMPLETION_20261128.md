@@ -1,4 +1,4 @@
-# Native document probe owner and completion CI
+# Native document probe owners and completion CI
 
 Source checkpoint: 28 November 2026 (Europe/Budapest). The failed execution below occurred on 27 November UTC.
 
@@ -31,7 +31,7 @@ Only the Start lookup changes from `dialog.GetChildren()` to `dialog.body.GetChi
 
 All 27 literal acceptance-check call sites, their predicates, and every other byte of this probe are preserved. The 90-second acceptance deadline, polling cadence and error/cleanup behavior remain unchanged. The declaration of the `check` helper is not an additional acceptance check.
 
-The root independently fetched the candidate commit, one-file compare and complete source and proved that reversing this one replacement restores the exact original file. The current reading controls and callback interfaces used after the repaired lookup were also checked; no second concrete mismatch was found in that bounded review.
+The root independently fetched the candidate commit, one-file compare and complete source and proved that reversing this one replacement restores the exact original file. The initial reading-control review checked the constructors and callback interfaces used after the repaired lookup. It did not establish compatibility of a later lookup with dynamic shortcut-caption decoration; the subsequent early installed execution exposed that separate issue, recorded below.
 
 ## Earlier native feedback with the same installed checks
 
@@ -55,9 +55,32 @@ A bounded comparison with the actual 192 MAIN log found 739 unique printed call 
 
 The larger operational budget preserves the complete selected workload while allowing its actual duration to be observed. It is not evidence of successful runtime, product throughput or installer performance.
 
+## Follow-up from the early installed execution
+
+The next exact source `7b0c52a3e542be9f98b9e211d5a1887c532874d0`, tree `eee3c31ac11b719d5586d03816e22a6e42d0d666`, ran the document probe early in [MAIN 46085345795, native job 140793530175](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085345795/job/140793530175).
+
+The probe passed its first 24 checks in the installed package. These include the corrected Start-button lookup and native event, both actual HTML/Markdown imports, unverified extraction status, source-byte/digest retention, exclusion of hidden script text, actual Unicode reader content and native source-text focus. Thus the original parent lookup has actual corrected execution evidence.
+
+It then failed at line 232:
+
+```text
+next_button = next(button for button in reader.buttons if button.GetLabel() == 'Next source location')
+StopIteration
+```
+
+`ReadingDialog._button` assigns the stable accessible name with `button.SetName(label)`. `ReaderKeyboardAdapter.refresh` deliberately keeps that name and renders the current keyboard shortcut into the visible label using `SetLabel(GetName() + shortcut)`. The old probe's exact visible-caption lookup was therefore stale.
+
+Detached candidate `f92b202989ac6acb0bf9d95fef2139f27f29c195`, parent exact 7b0, changes only this lookup from `GetLabel()` to `GetName()`. It still selects the exact semantic name `Next source location`, dispatches the same native button event and requires the actual second source paragraph and continued absence of quotation authority. All 27 literal checks, their predicates and the 90-second bound remain unchanged. The final three checks were NOT_RUN in the failing 7b0 execution and are not reported as PASS.
+
+Root and independent peer reviews verified the one-line inverse byte comparison and the current adapter implementation. A second bounded audit of the same 46 probes found no other lookup through mutable labels for this ReadingDialog adapter. The existing native ReadingDesk probe already uses stable names; the directly labeled EPUB-reader controls use other constructors without this adapter.
+
+Native failure artifact: [15238419794](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46085345795/artifacts/15238419794), 3,853 bytes, SHA-256 `7c5bbfd4782136691366abec758d0c452e83a8d02ca6f093c464b0837fb90e01`.
+
+This follow-up preserves the workflow/order/budgets from 7b0 and changes no application module. Its corrected native execution remains NOT_RUN at this updated source checkpoint. The full MAIN bundle and standard setup still require actual complete execution.
+
 ## Qualification at this source checkpoint
 
-The one-line probe and workflow changes have source review and exact-delta checks. Corrected native execution and complete full-bundle/setup execution are NOT_RUN at the time of this source checkpoint. Subsequent actual results must retain their executed commit, tree and artifact identities in PR99.
+The original parent lookup correction, the subsequent stable-name lookup correction and the workflow changes have source review and exact-delta checks. Corrected native execution and complete full-bundle/setup execution are NOT_RUN at the time of this source checkpoint. Subsequent actual results must retain their executed commit, tree and artifact identities in PR99.
 
 All application source bytes, version `0.2.0.dev3`, the 17-core / 53-semantic dependency profiles and the exact FULL FFmpeg 9.1 identity are retained. The code is not qualified for private-model inference, per-feature 135-language coverage, physical audio/listening, manual NVDA, full DAISY/external-reader acceptance, production signing/authority or distribution rights merely by this probe or CI-order change.
 
