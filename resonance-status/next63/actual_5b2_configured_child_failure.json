@@ -1,0 +1,352 @@
+{
+  "schema": "carr-configured-update-closed-child-evidence/1",
+  "recorded_utc": "2026-11-28T06:21:13Z",
+  "status": "ACTUAL_FAILURE_DURING_HOST_SOURCE_ADMISSION",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_a": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "source_b": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "run_id": 46110647047,
+  "job_id": 140873303994,
+  "parent_evidence_git_blob": "6da62e81e21ae7693b464504bffae4357a11a9b6",
+  "inspector": {
+    "source_head": "464fdb9e7052bd366c5961c320921d9700191a7e",
+    "workflow_git_blob": "cb151198120a621648914b07c1e3778a5cddcaf4",
+    "run_id": 46114269612,
+    "job_id": 140884429036,
+    "conclusion": "success",
+    "started_at": "2026-11-28T06:21:04Z",
+    "completed_at": "2026-11-28T06:21:16Z",
+    "final": {
+      "meaning": "Only the exact public diagnostic ZIP and bounded report contents were read. No application code was extracted or executed; no product gate is passed by this inspection.",
+      "status": "PASS"
+    }
+  },
+  "artifact": {
+    "id": 15250412975,
+    "source_head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "bytes": 562650,
+    "sha256": "14eb7707422a203ad8a31cccdb0969f06fd007ea506b2fe513637dbe1eb13316",
+    "members": 38
+  },
+  "selection": {
+    "absent": [],
+    "boundary": "Absence means no file in this exact artifact, not an execution verdict.",
+    "present": [
+      "native/configured-native-child.txt",
+      "native/configured-update.json",
+      "retention.json",
+      "source-identities.json"
+    ]
+  },
+  "actual_ui_checks": [
+    "actual installed A entrypoint owns the selected library and explicit recipe",
+    "actual native updater command is registered exactly once",
+    "offline configuration grants no idle network permission",
+    "preparation question defaults to the actual owned No button",
+    "observed No creates no host or configuration"
+  ],
+  "actual_ui_check_count": 5,
+  "actual_child_diagnostic": {
+    "bytes": 5874,
+    "complete": false,
+    "path": "native/configured-native-child.txt",
+    "selected_lines": [
+      {
+        "line": 1,
+        "text": "CHECK: actual installed A entrypoint owns the selected library and explicit recipe"
+      },
+      {
+        "line": 2,
+        "text": "CHECK: actual native updater command is registered exactly once"
+      },
+      {
+        "line": 3,
+        "text": "CHECK: offline configuration grants no idle network permission"
+      },
+      {
+        "line": 4,
+        "text": "CHECK: preparation question defaults to the actual owned No button"
+      },
+      {
+        "line": 5,
+        "text": "CHECK: observed No creates no host or configuration"
+      },
+      {
+        "line": 6,
+        "text": "NATIVE_UPDATE_WORKER_ERROR Traceback (most recent call last):"
+      },
+      {
+        "line": 7,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 651, in work"
+      },
+      {
+        "line": 8,
+        "text": "    return operation(*arguments, **options)"
+      },
+      {
+        "line": 9,
+        "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 10,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\ui\\trust_status.py\", line 365, in work"
+      },
+      {
+        "line": 11,
+        "text": "    return operation(stopped, received)"
+      },
+      {
+        "line": 12,
+        "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 13,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\ui\\trust_status.py\", line 203, in <lambda>"
+      },
+      {
+        "line": 14,
+        "text": "    lambda cancelled, progress: self.controller.prepare_update_host(cancelled=cancelled),"
+      },
+      {
+        "line": 19,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\security\\update_runtime.py\", line 265, in prepare_update_host"
+      },
+      {
+        "line": 20,
+        "text": "    raw, files, helpers = _source(recipe, cancelled=stopped)"
+      },
+      {
+        "line": 21,
+        "text": "                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 22,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\security\\update_runtime.py\", line 198, in _source"
+      },
+      {
+        "line": 23,
+        "text": "    raise TrustError('The host cannot include private, ambiguous or unowned distribution paths.')"
+      },
+      {
+        "line": 24,
+        "text": "carr_library.security._files.TrustError: The host cannot include private, ambiguous or unowned distribution paths."
+      },
+      {
+        "line": 25,
+        "text": ""
+      },
+      {
+        "line": 26,
+        "text": "NATIVE_UPDATE_ERROR Traceback (most recent call last):"
+      },
+      {
+        "line": 27,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 339, in invoke"
+      },
+      {
+        "line": 28,
+        "text": "    callback()"
+      },
+      {
+        "line": 29,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 611, in drive"
+      },
+      {
+        "line": 30,
+        "text": "    raise RuntimeError('Actual update worker failed: ' + operation_errors[0])"
+      },
+      {
+        "line": 31,
+        "text": "RuntimeError: Actual update worker failed: Traceback (most recent call last):"
+      },
+      {
+        "line": 32,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 651, in work"
+      },
+      {
+        "line": 33,
+        "text": "    return operation(*arguments, **options)"
+      },
+      {
+        "line": 34,
+        "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 35,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\ui\\trust_status.py\", line 365, in work"
+      },
+      {
+        "line": 36,
+        "text": "    return operation(stopped, received)"
+      },
+      {
+        "line": 37,
+        "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 38,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\ui\\trust_status.py\", line 203, in <lambda>"
+      },
+      {
+        "line": 39,
+        "text": "    lambda cancelled, progress: self.controller.prepare_update_host(cancelled=cancelled),"
+      },
+      {
+        "line": 40,
+        "text": "                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 41,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\security\\controller.py\", line 233, in prepare_update_host"
+      },
+      {
+        "line": 42,
+        "text": "    result = prepare_update_host(self.provisioning, cancelled=cancelled)"
+      },
+      {
+        "line": 43,
+        "text": "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 44,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\security\\update_runtime.py\", line 265, in prepare_update_host"
+      },
+      {
+        "line": 45,
+        "text": "    raw, files, helpers = _source(recipe, cancelled=stopped)"
+      },
+      {
+        "line": 46,
+        "text": "                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 47,
+        "text": "  File \"D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω\\app\\.venv\\Lib\\site-packages\\carr_library\\security\\update_runtime.py\", line 198, in _source"
+      },
+      {
+        "line": 48,
+        "text": "    raise TrustError('The host cannot include private, ambiguous or unowned distribution paths.')"
+      },
+      {
+        "line": 49,
+        "text": "carr_library.security._files.TrustError: The host cannot include private, ambiguous or unowned distribution paths."
+      },
+      {
+        "line": 50,
+        "text": ""
+      },
+      {
+        "line": 51,
+        "text": ""
+      },
+      {
+        "line": 52,
+        "text": "Traceback (most recent call last):"
+      },
+      {
+        "line": 53,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1177, in <module>"
+      },
+      {
+        "line": 54,
+        "text": "    raise SystemExit(main())"
+      },
+      {
+        "line": 55,
+        "text": "                     ^^^^^^"
+      },
+      {
+        "line": 56,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1167, in main"
+      },
+      {
+        "line": 57,
+        "text": "    return ui_child(args.ui_child, args.plan_sha256, args.probe_sha256)"
+      },
+      {
+        "line": 58,
+        "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+      },
+      {
+        "line": 59,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 788, in ui_child"
+      },
+      {
+        "line": 60,
+        "text": "    assert_checks(checks, UI_CHECKS)"
+      },
+      {
+        "line": 61,
+        "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 268, in assert_checks"
+      },
+      {
+        "line": 62,
+        "text": "    raise RuntimeError('Native configured-update check inventory is incomplete or duplicated.')"
+      },
+      {
+        "line": 63,
+        "text": "RuntimeError: Native configured-update check inventory is incomplete or duplicated."
+      }
+    ],
+    "sha256": "02df95bfce21b66a2293d9c5f84338d2164b45de31f009066c1449306afb2d7c",
+    "total_lines": 63
+  },
+  "parent_failure_report": {
+    "path": "native/configured-update.json",
+    "sha256": "db17a91779acbe103ff3e3b76a920b93bd39875c1c5e1063c3a4fdea5894e5b8",
+    "value": {
+      "actual_host_preparation": "NOT_RUN",
+      "actual_native_restart": "NOT_RUN",
+      "actual_update": "NOT_RUN",
+      "authenticode": "NOT_CLAIMED",
+      "checks": [
+        "both compiled source receipts and full owned A payload are exact",
+        "temporary actual Windows vault anchor begins at A"
+      ],
+      "error": "The actual configured A desktop failed; retain its bounded diagnostic.",
+      "error_type": "RuntimeError",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN",
+      "production_publisher": "NOT_CONFIGURED",
+      "production_rollout": "NOT_RUN",
+      "real_user_installation": "NOT_RUN",
+      "recovery": {
+        "profile_id": "configured-native-8cea4e5360b04949bfca07ac955c7131",
+        "program": "D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\Configured Resonance Україна Ω",
+        "protected_anchor": "RETAINED_FOR_REVIEW",
+        "reference": "carr/provider/configured-native-8cea4e5360b04949bfca07ac955c7131/8cea4e5360b04949bfca07ac955c7131",
+        "work": "D:\\a\\_temp\\carr-configured-upgrade-private\\actual-native-work\\update recovery"
+      },
+      "schema": 1,
+      "source_a": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+      "source_b": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "status": "FAIL",
+      "ui_checks": []
+    }
+  },
+  "boundary": {
+    "inspector": "Read-only exact artifact validation; no product qualification is transferred from inspector SUCCESS.",
+    "preparation": "Actual explicit preparation worker was entered and failed inside _source before the later destination creation/offline installer code.",
+    "update": "NOT_REACHED",
+    "restart": "NOT_REACHED",
+    "owner_cleanup": "NOT_ESTABLISHED_BY_THE_RETAINED_FOUR_REPORTS",
+    "protected_anchor": "Parent report retains temporary controlled anchor for review.",
+    "native_parent_check_count": 2,
+    "ui_receipt": "Parent failure summary ui_checks is empty; five actual CHECK lines are independently observed in the retained child log.",
+    "exact_offending_entry": "NOT_YET_IDENTIFIED: the observed error combines duplicate-name, private-component and owner-digest admission checks."
+  },
+  "source_comparison": {
+    "path": "carr-library/src/carr_library/security/update_runtime.py",
+    "a2_git_blob": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+    "current_git_blob": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+    "consequence": "An actual product correction needs a corrected immutable baseline A3; changing only B cannot alter the installed A2 caller."
+  },
+  "qualification": {
+    "actual_signed_vendor_rollout": "NOT_RUN",
+    "production_keys_or_endpoint": "NOT_CONFIGURED",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "whole_compiled_apply_restart": "FAIL_NOT_QUALIFIED"
+  }
+}

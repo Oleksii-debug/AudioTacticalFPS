@@ -1,0 +1,98 @@
+{
+  "schema": "carr-review-manifest/1",
+  "purpose": "Read only the exact retained configured-updater install-A.log to identify observed distribution paths matching the current source-admission private components.",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "source": {
+    "path": ".github/workflows/carr-owner-phase-evidence.yml",
+    "preimage": "cb151198120a621648914b07c1e3778a5cddcaf4",
+    "git_blob": "ee50722880a1cf67820f39847dc5631845fa936c",
+    "bytes": 14492,
+    "readback_exact": true
+  },
+  "trigger": {
+    "push_branch_pattern": "carr/ci-owner-phase-evidence-configured-files-*",
+    "timeout_minutes": 5
+  },
+  "fixed_evidence": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "artifact_id": 15250412975,
+    "run_id": 46110647047,
+    "head_sha": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "archive_bytes": 562650,
+    "archive_sha256": "14eb7707422a203ad8a31cccdb0969f06fd007ea506b2fe513637dbe1eb13316",
+    "member": "native/install-A.log",
+    "member_bytes": 713910,
+    "member_sha256": "2b5daf4ee0b74fec0656cd4b3fdec7932d77da7863b7a3202b8d5fece4a41825"
+  },
+  "projection": {
+    "kind": "literal path-component matches",
+    "private_components": [
+      ".venv",
+      "data",
+      "state",
+      "models",
+      "voices",
+      "references",
+      "voice-packages",
+      "dordiai-voices",
+      "node_modules",
+      ".git",
+      ".env"
+    ],
+    "bound_source": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+    "max_lines": 80,
+    "max_line_characters": 1200,
+    "max_serialized_excerpt_characters": 16000,
+    "all_match_counts_reported": true,
+    "destination_filename_flag": true,
+    "strict_bom_specific_decoding": true
+  },
+  "retained_guards": {
+    "same_authenticated_metadata": true,
+    "same_no_redirect_and_header_free_storage_fetch": true,
+    "same_exact_archive_hash": true,
+    "entries": 256,
+    "member_bytes_max": 8388608,
+    "expanded_bytes_max": 33554432,
+    "output_bytes_max": 262144,
+    "checkout": false,
+    "extraction": false,
+    "execution": false
+  },
+  "change": {
+    "exact_replacements": [
+      {
+        "from": "name: Inspect exact configured updater native diagnostics",
+        "to": "name: Inspect exact configured updater installation paths"
+      },
+      {
+        "from": "branches: ['carr/ci-owner-phase-evidence-*']",
+        "to": "branches: ['carr/ci-owner-phase-evidence-configured-files-*']"
+      },
+      {
+        "from": "      - name: Verify one exact public phase report archive and print bounded diagnostics",
+        "to": "      - name: Verify the exact failed A installation log and print bounded private-component path matches"
+      },
+      {
+        "from": "              selected = {\n                  'native/configured-native-child.txt',\n                  'native/configured-update.json',\n                  'retention.json',\n                  'source-identities.json',\n              }",
+        "to": "              selected = {'native/install-A.log'}"
+      },
+      {
+        "from": "              for name, raw in sorted(payloads.items()):\n",
+        "to": "              for name, raw in sorted(payloads.items()):\n                  if name == 'native/install-A.log':\n                      require(len(raw) == 713910 and sha256(raw).hexdigest() ==\n                          '2b5daf4ee0b74fec0656cd4b3fdec7932d77da7863b7a3202b8d5fece4a41825',\n                          'The exact installed A log bytes differ.')\n                      encoding = 'utf-16' if raw.startswith((b'\\xff\\xfe', b'\\xfe\\xff')) else 'utf-8-sig'\n                      lines = raw.decode(encoding).splitlines()\n                      private = {'.venv', 'data', 'state', 'models', 'voices', 'references',\n                          'voice-packages', 'dordiai-voices', 'node_modules', '.git', '.env'}\n                      counts, matches, used, total_matches, destination_matches = {}, [], 0, 0, 0\n                      for index, line in enumerate(lines):\n                          parts = {part.strip(\"'\\\"\").casefold() for part in line.replace('\\\\', '/').split('/')}\n                          found = sorted(parts & private)\n                          if not found:\n                              continue\n                          total_matches += 1\n                          destination = 'dest filename:' in line.casefold()\n                          destination_matches += int(destination)\n                          for part in found:\n                              counts[part] = counts.get(part, 0) + 1\n                          entry = dict(line=index + 1, text=line[:1200],\n                              private_components=found, destination_filename_line=destination)\n                          cost = len(json.dumps(entry, ensure_ascii=True, sort_keys=True)) + 2\n                          if len(matches) < 80 and used + cost <= 16000:\n                              matches.append(entry)\n                              used += cost\n                      emit('INSTALLATION_PATH_COMPONENTS', dict(path=name, bytes=len(raw),\n                          sha256=sha256(raw).hexdigest(), encoding=encoding, total_lines=len(lines),\n                          source_components_git_blob='0f8b16912dcea56cf157f0d5d22a3afd6bef4960',\n                          fixed_private_components=sorted(private), matching_lines=total_matches,\n                          destination_filename_matches=destination_matches, component_line_counts=counts,\n                          selected_lines=matches, complete=len(matches) == total_matches,\n                          boundary='Read-only literal path-component matches in the exact original installer log; no source admission is changed and no update outcome is qualified.'))\n                      continue\n"
+      }
+    ],
+    "inverse_byte_exact": true
+  },
+  "review": {
+    "author": "progress_completion",
+    "independent_peer": "locate_project",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact five-hunk inverse; fixed artifact/member SHA and lengths; literal components equal current _PRIVATE; output and ZIP/token/redirect bounds unchanged."
+  },
+  "limitations": [
+    "No inspector execution is claimed by this manifest.",
+    "No actual offending path or failed source-admission conjunct is inferred until the inspector returns its observations.",
+    "No production source, configuration, private asset, gate, timeout or ref is changed."
+  ]
+}
