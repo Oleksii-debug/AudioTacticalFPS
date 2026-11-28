@@ -1,0 +1,839 @@
+{
+  "schema": "carr-actual-runtime-evidence/1",
+  "recorded_utc": "2026-11-28 02:19:34 UTC",
+  "qualification": "FAILURE_EVIDENCE_ONLY",
+  "current": {
+    "head": "4ccb38169775cf515b0d2a0a0cbcb0683617b4dd",
+    "run_id": 46095602628,
+    "branch": "carr/ci-voice-management-final-20261128-5a9e",
+    "linux": {
+      "job_id": 140826105764,
+      "status": "completed",
+      "conclusion": "failure",
+      "source": {
+        "whole_suites": 21,
+        "passed_whole_suites": 20,
+        "failed_whole_suites": 1,
+        "passed": 494,
+        "failed": 1,
+        "skipped": 0,
+        "verdicts": [
+          {
+            "line": 1691,
+            "path": "tests/audio/test_voice_package_management.py",
+            "status": "PASS",
+            "passed": 30,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1692,
+            "path": "tests/audio/test_voice_management_state.py",
+            "status": "PASS",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1693,
+            "path": "tests/audio/test_voice_reference_management.py",
+            "status": "FAIL",
+            "passed": 29,
+            "failed": 1,
+            "skipped": 0,
+            "pytest_exit": 1
+          },
+          {
+            "line": 1694,
+            "path": "tests/audio/test_voice_protected_management.py",
+            "status": "PASS",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1695,
+            "path": "tests/audio/test_voice_publication_lifetime.py",
+            "status": "PASS",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1696,
+            "path": "tests/audio/test_voice_ownership.py",
+            "status": "PASS",
+            "passed": 30,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1697,
+            "path": "tests/integrations/test_dordiai_owner_lease.py",
+            "status": "PASS",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1698,
+            "path": "tests/integrations/test_dordiai_managed_authority.py",
+            "status": "PASS",
+            "passed": 18,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1699,
+            "path": "tests/ui/test_voice_packages.py",
+            "status": "PASS",
+            "passed": 46,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1700,
+            "path": "tests/ui/test_voice_reference.py",
+            "status": "PASS",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1701,
+            "path": "tests/ui/test_engine_settings_lifetime.py",
+            "status": "PASS",
+            "passed": 43,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1702,
+            "path": "tests/integrations/test_dordiai_voices.py",
+            "status": "PASS",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1703,
+            "path": "tests/integrations/test_dordiai_speech.py",
+            "status": "PASS",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1704,
+            "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+            "status": "PASS",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1705,
+            "path": "tests/integrations/test_dordiai_settings.py",
+            "status": "PASS",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1706,
+            "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+            "status": "PASS",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1707,
+            "path": "tests/integrations/test_dordiai_convergence.py",
+            "status": "PASS",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1708,
+            "path": "tests/audio/test_bundled_runtime_settings.py",
+            "status": "PASS",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1709,
+            "path": "tests/storage/test_v3_state_backup.py",
+            "status": "PASS",
+            "passed": 42,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1710,
+            "path": "tests/storage/test_library_backup.py",
+            "status": "PASS",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1711,
+            "path": "tests/storage/test_state_backup_portability.py",
+            "status": "PASS",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          }
+        ]
+      },
+      "failed_case": "tests/audio/test_voice_reference_management.py::test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation",
+      "diagnosis": "The fixture's competing callback itself calls Path.write_bytes after globally replacing Path.open with its no-competitor-open observer. The traceback reaches that callback write, not the product's publication code. The reference service's handling of the independent competitor has not yet been exercised by this failed case.",
+      "bounded_trace": [
+        "2026-11-28T02:00:00.0846605Z _ test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation _",
+        "2026-11-28T02:00:00.0846873Z ",
+        "2026-11-28T02:00:00.0847471Z environment = {'calls': [(PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/reviewed-runtime/python/python.exe...nifest': PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/reviewed-runtime/manifest.json'), ...}",
+        "2026-11-28T02:00:00.0848612Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f684d517150>",
+        "2026-11-28T02:00:00.0848847Z ",
+        "2026-11-28T02:00:00.0849068Z     def test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation(",
+        "2026-11-28T02:00:00.0849447Z             environment, monkeypatch):",
+        "2026-11-28T02:00:00.0849716Z         env = environment",
+        "2026-11-28T02:00:00.0849960Z         proposal = reviewed(env)",
+        "2026-11-28T02:00:00.0850205Z         target = env['root'] / 'competing.zip'",
+        "2026-11-28T02:00:00.0850526Z         original_query = reference._query",
+        "2026-11-28T02:00:00.0850787Z         def competing(*args, **kwargs):",
+        "2026-11-28T02:00:00.0851071Z             result = original_query(*args, **kwargs)",
+        "2026-11-28T02:00:00.0851374Z             target.write_bytes(b'new independent file')",
+        "2026-11-28T02:00:00.0851633Z             return result",
+        "2026-11-28T02:00:00.0852043Z         monkeypatch.setattr(reference, '_query', competing)",
+        "2026-11-28T02:00:00.0852338Z         original_open = Path.open",
+        "2026-11-28T02:00:00.0852667Z         def no_competing_read(path, *args, **kwargs):",
+        "2026-11-28T02:00:00.0853085Z             assert path != target, 'Create-only export must not open the independent competing file.'",
+        "2026-11-28T02:00:00.0853582Z             return original_open(path, *args, **kwargs)",
+        "2026-11-28T02:00:00.0854081Z         monkeypatch.setattr(Path, 'open', no_competing_read)",
+        "2026-11-28T02:00:00.0854543Z         with pytest.raises((ValueError, FileExistsError)):",
+        "2026-11-28T02:00:00.0855012Z >           env['service'].create(proposal, target, consent=True, quality_reviewed=True)",
+        "2026-11-28T02:00:00.0855255Z ",
+        "2026-11-28T02:00:00.0855398Z tests/audio/test_voice_reference_management.py:252: ",
+        "2026-11-28T02:00:00.0855702Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ",
+        "2026-11-28T02:00:00.0856066Z src/carr_library/audio/voice_reference.py:434: in create",
+        "2026-11-28T02:00:00.0856432Z     returned = _document(_query(manifest, 'create_reference', source=str(stage),",
+        "2026-11-28T02:00:00.0856848Z tests/audio/test_voice_reference_management.py:243: in competing",
+        "2026-11-28T02:00:00.0857196Z     target.write_bytes(b'new independent file')",
+        "2026-11-28T02:00:00.0857594Z /opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/pathlib.py:1067: in write_bytes",
+        "2026-11-28T02:00:00.0857989Z     with self.open(mode='wb') as f:",
+        "2026-11-28T02:00:00.0858240Z          ^^^^^^^^^^^^^^^^^^^^",
+        "2026-11-28T02:00:00.0858552Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ",
+        "2026-11-28T02:00:00.0858763Z ",
+        "2026-11-28T02:00:00.0858977Z path = PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip')",
+        "2026-11-28T02:00:00.0859392Z args = (), kwargs = {'mode': 'wb'}, @py_assert1 = False",
+        "2026-11-28T02:00:00.0860052Z @py_format3 = \"PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip') != PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip')\"",
+        "2026-11-28T02:00:00.0861179Z @py_format5 = \"Create-only export must not open the independent competing file.\\n>assert PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/tes...nation_is_0/competing.zip') != PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip')\"",
+        "2026-11-28T02:00:00.0861809Z ",
+        "2026-11-28T02:00:00.0861956Z     def no_competing_read(path, *args, **kwargs):",
+        "2026-11-28T02:00:00.0862341Z >       assert path != target, 'Create-only export must not open the independent competing file.'",
+        "2026-11-28T02:00:00.0862806Z E       AssertionError: Create-only export must not open the independent competing file.",
+        "2026-11-28T02:00:00.0863509Z E       assert PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip') != PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip')",
+        "2026-11-28T02:00:00.0864129Z ",
+        "2026-11-28T02:00:00.0864302Z tests/audio/test_voice_reference_management.py:248: AssertionError",
+        "2026-11-28T02:00:00.0864727Z ------------- generated xml file: /tmp/carr-ci-ai7hs7mm/junit.xml --------------",
+        "2026-11-28T02:00:00.0865103Z =========================== short test summary info ============================",
+        "2026-11-28T02:00:00.0865813Z FAILED tests/audio/test_voice_reference_management.py::test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation - AssertionError: Create-only export must not open the independent competing file.",
+        "2026-11-28T02:00:00.0866850Z assert PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip') != PosixPath('/tmp/carr-ci-ai7hs7mm/pytest/test_competing_destination_is_0/competing.zip')",
+        "2026-11-28T02:00:00.0867451Z ======================== 1 failed, 29 passed in 33.78s ========================="
+      ],
+      "installed": "NOT_RUN",
+      "actual_owner_source": "NOT_RUN",
+      "actual_owner_installed": "NOT_RUN",
+      "native": "NOT_RUN",
+      "artifact": {
+        "id": 15243411854,
+        "name": "voice-management-linux-4ccb38169775cf515b0d2a0a0cbcb0683617b4dd-1",
+        "size_in_bytes": 18851,
+        "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15243411854",
+        "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15243411854/zip",
+        "expired": false,
+        "created_at": "2026-11-28T02:00:02Z",
+        "expires_at": "2027-02-26T01:56:40Z",
+        "updated_at": "2026-11-28T02:00:02Z",
+        "digest": "sha256:bb3b7d3122d3c94f0322e7de588bcbcd3859806d28ab70ff4469615c080b37b8",
+        "workflow_run": {
+          "id": 46095602628,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-voice-management-final-20261128-5a9e",
+          "head_sha": "4ccb38169775cf515b0d2a0a0cbcb0683617b4dd"
+        }
+      }
+    },
+    "windows": {
+      "job_id": 140826105475,
+      "status": "completed",
+      "conclusion": "failure",
+      "source": {
+        "whole_suites": 21,
+        "passed_whole_suites": 17,
+        "failed_whole_suites": 4,
+        "complete_whole_suites": 18,
+        "incomplete_whole_suites": 3,
+        "observed_junit": {
+          "passed": 414,
+          "failed": 0,
+          "skipped": 3
+        },
+        "unqualified_incomplete_suite_capacity": 78,
+        "verdicts": [
+          {
+            "line": 1119,
+            "path": "tests/audio/test_voice_package_management.py",
+            "status": "FAIL",
+            "state": "INCOMPLETE",
+            "deadline_seconds": 600
+          },
+          {
+            "line": 1120,
+            "path": "tests/audio/test_voice_management_state.py",
+            "status": "PASS",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1121,
+            "path": "tests/audio/test_voice_reference_management.py",
+            "status": "FAIL",
+            "state": "INCOMPLETE",
+            "deadline_seconds": 600
+          },
+          {
+            "line": 1122,
+            "path": "tests/audio/test_voice_protected_management.py",
+            "status": "PASS",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1123,
+            "path": "tests/audio/test_voice_publication_lifetime.py",
+            "status": "PASS",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1124,
+            "path": "tests/audio/test_voice_ownership.py",
+            "status": "PASS",
+            "passed": 30,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1125,
+            "path": "tests/integrations/test_dordiai_owner_lease.py",
+            "status": "PASS",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1126,
+            "path": "tests/integrations/test_dordiai_managed_authority.py",
+            "status": "FAIL",
+            "state": "INCOMPLETE",
+            "deadline_seconds": 600
+          },
+          {
+            "line": 1127,
+            "path": "tests/ui/test_voice_packages.py",
+            "status": "PASS",
+            "passed": 46,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1128,
+            "path": "tests/ui/test_voice_reference.py",
+            "status": "PASS",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1129,
+            "path": "tests/ui/test_engine_settings_lifetime.py",
+            "status": "PASS",
+            "passed": 43,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1130,
+            "path": "tests/integrations/test_dordiai_voices.py",
+            "status": "PASS",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1131,
+            "path": "tests/integrations/test_dordiai_speech.py",
+            "status": "PASS",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1132,
+            "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+            "status": "PASS",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1133,
+            "path": "tests/integrations/test_dordiai_settings.py",
+            "status": "PASS",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1134,
+            "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+            "status": "PASS",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1135,
+            "path": "tests/integrations/test_dordiai_convergence.py",
+            "status": "PASS",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1136,
+            "path": "tests/audio/test_bundled_runtime_settings.py",
+            "status": "PASS",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1137,
+            "path": "tests/storage/test_v3_state_backup.py",
+            "status": "PASS",
+            "passed": 42,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1138,
+            "path": "tests/storage/test_library_backup.py",
+            "status": "PASS",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0
+          },
+          {
+            "line": 1139,
+            "path": "tests/storage/test_state_backup_portability.py",
+            "status": "FAIL",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 3,
+            "pytest_exit": 0
+          }
+        ]
+      },
+      "incomplete_modules": [
+        {
+          "path": "tests/audio/test_voice_package_management.py",
+          "expected_cases": 30,
+          "deadline_seconds": 600,
+          "last_visible_node": "test_export_requires_separate_exact_permission_before_owner_read[False]",
+          "line": 593
+        },
+        {
+          "path": "tests/audio/test_voice_reference_management.py",
+          "expected_cases": 30,
+          "deadline_seconds": 600,
+          "last_visible_node": "test_truncated_pcm_is_not_a_successful_reference",
+          "line": 608
+        },
+        {
+          "path": "tests/integrations/test_dordiai_managed_authority.py",
+          "expected_cases": 18,
+          "deadline_seconds": 600,
+          "last_visible_node": "test_current_managed_stream_rechecks_authority_after_each_actual_pcm_yield[document]",
+          "line": 1105
+        }
+      ],
+      "observation": "The 78 figure is the contract size of three unfinished whole suites, not a claim that none of their individual test bodies ran. No completed JUnit verdict exists for those suites. Parent deadlines remain600s, no actual per-case120s stack dump was emitted. The helper printed its entire captured mixed stdout after all children ended; log timestamp is not a per-case timestamp.",
+      "completed_timing_samples": [
+        {
+          "path": "tests/audio/test_voice_protected_management.py",
+          "passed": 15,
+          "seconds": 465.81
+        },
+        {
+          "path": "tests/audio/test_voice_management_state.py",
+          "passed": 25,
+          "seconds": 56.54
+        },
+        {
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "passed": 28,
+          "seconds": 84.06
+        }
+      ],
+      "additional_failure": "Unchanged portability module completed24PASS/3SKIP and therefore fails strict no-skip requirement. Accepted27a9 fixture successor exercises real native alias/invalid-name evidence instead, but was not in this4ccb run.",
+      "installed": "NOT_RUN",
+      "actual_owner_source": "NOT_RUN",
+      "actual_owner_installed": "NOT_RUN",
+      "native": "NOT_RUN",
+      "artifact": {
+        "id": 15243757213,
+        "name": "voice-management-windows-4ccb38169775cf515b0d2a0a0cbcb0683617b4dd-1",
+        "size_in_bytes": 24262,
+        "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15243757213",
+        "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15243757213/zip",
+        "expired": false,
+        "created_at": "2026-11-28T02:17:29Z",
+        "expires_at": "2027-02-26T01:56:40Z",
+        "updated_at": "2026-11-28T02:17:29Z",
+        "digest": "sha256:159378fb305af9e26364da7f5581d5dc3913d07c621bb2627eb1e3faa9aa4e8f",
+        "workflow_run": {
+          "id": 46095602628,
+          "repository_id": 1341777614,
+          "head_repository_id": 1341777614,
+          "head_branch": "carr/ci-voice-management-final-20261128-5a9e",
+          "head_sha": "4ccb38169775cf515b0d2a0a0cbcb0683617b4dd"
+        }
+      }
+    },
+    "proposed_fixture_correction": {
+      "manifest": "eb7dfcd02f4f693d6180009a7be52742bd1ee0d6",
+      "blob": "48da3169be41c3524ebd5af86e7af686450013a2",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "no_result_transfer": true
+    }
+  },
+  "prior_windows": {
+    "head": "40a175813f62a20455520b8b6a1932f0f7626fb3",
+    "run_id": 46094267681,
+    "job_id": 140821929403,
+    "status": "completed",
+    "conclusion": "failure",
+    "source": {
+      "expected_cases": 483,
+      "whole_suites": 21,
+      "passed_whole_suites": 14,
+      "failed_whole_suites": 7,
+      "observed_junit": {
+        "passed": 430,
+        "failed_or_error_entries": 12,
+        "skipped": 3
+      },
+      "incomplete_whole_suites": 1,
+      "verdicts": [
+        {
+          "line": 1714,
+          "path": "tests/audio/test_voice_package_management.py",
+          "status": "FAIL",
+          "detail": "Required whole suite did not complete: parent subprocess timeout after 600 seconds."
+        },
+        {
+          "line": 1715,
+          "path": "tests/audio/test_voice_management_state.py",
+          "status": "PASS",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1716,
+          "path": "tests/audio/test_voice_reference_management.py",
+          "status": "FAIL",
+          "passed": 23,
+          "failed": 7,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "line": 1717,
+          "path": "tests/audio/test_voice_protected_management.py",
+          "status": "FAIL",
+          "passed": 14,
+          "failed": 1,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "line": 1718,
+          "path": "tests/audio/test_voice_publication_lifetime.py",
+          "status": "FAIL",
+          "passed": 0,
+          "failed": 1,
+          "skipped": 0,
+          "pytest_exit": 2
+        },
+        {
+          "line": 1719,
+          "path": "tests/audio/test_voice_ownership.py",
+          "status": "PASS",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1720,
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "status": "FAIL",
+          "passed": 21,
+          "failed": 1,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "line": 1721,
+          "path": "tests/integrations/test_dordiai_managed_authority.py",
+          "status": "PASS",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1722,
+          "path": "tests/ui/test_voice_packages.py",
+          "status": "PASS",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1723,
+          "path": "tests/ui/test_voice_reference.py",
+          "status": "PASS",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1724,
+          "path": "tests/ui/test_engine_settings_lifetime.py",
+          "status": "PASS",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1725,
+          "path": "tests/integrations/test_dordiai_voices.py",
+          "status": "PASS",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1726,
+          "path": "tests/integrations/test_dordiai_speech.py",
+          "status": "PASS",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1727,
+          "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+          "status": "PASS",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1728,
+          "path": "tests/integrations/test_dordiai_settings.py",
+          "status": "FAIL",
+          "passed": 15,
+          "failed": 2,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "line": 1729,
+          "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+          "status": "PASS",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1730,
+          "path": "tests/integrations/test_dordiai_convergence.py",
+          "status": "PASS",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1731,
+          "path": "tests/audio/test_bundled_runtime_settings.py",
+          "status": "PASS",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1732,
+          "path": "tests/storage/test_v3_state_backup.py",
+          "status": "PASS",
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1733,
+          "path": "tests/storage/test_library_backup.py",
+          "status": "PASS",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "line": 1734,
+          "path": "tests/storage/test_state_backup_portability.py",
+          "status": "FAIL",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 3,
+          "pytest_exit": 0
+        }
+      ]
+    },
+    "classifications": [
+      {
+        "component": "voice reference/protected/publication",
+        "cause": "Missing capture_publication_destination import in the old source. Current4ccb source resolves this prior import cause; no current Windows result is transferred."
+      },
+      {
+        "component": "owner lease/settings",
+        "cause": "Old library-state-only restriction rejected established arbitrary-state-directory use. Current4ccb has the separately reviewed compatibility repair; current Linux suites passed."
+      },
+      {
+        "component": "voice package management",
+        "cause": "Parent's unchanged600-second whole-suite timeout. There is no actual per-case timed stack dump or completed package JUnit verdict in the closed log.",
+        "last_visible_package_node": "test_delete_needs_exact_reviewed_action_before_child[yes]",
+        "last_visible_raw_line": 1288,
+        "stdout": "Full fetched job log contains entire helper-emitted source-contracts.txt, not a truncated tail. Three child stdout streams share the console and interleave unfinished pytest lines, so adjacent progress status cannot be safely attributed to a named case."
+      },
+      {
+        "component": "state backup portability",
+        "cause": "Three explicit platform fixture skips: two actual case-insensitive filesystem alias branches and one unconditional Windows skip for POSIX-only draft?.json. This fails the preserved no-skip gate.",
+        "test_blob": "b346d9eab3eb98627116228ac5b13c93e3283476",
+        "skipped_cases": [
+          "test_snapshot_refuses_unrestorable_portable_names[names0]",
+          "test_snapshot_refuses_unrestorable_portable_names[names1]",
+          "test_snapshot_rejects_nonportable_real_source"
+        ],
+        "repair_owner": "/root/progress_completion"
+      }
+    ],
+    "installed": "NOT_RUN",
+    "actual_owner_source": "NOT_RUN",
+    "actual_owner_installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "artifact": {
+      "id": 15243407330,
+      "name": "voice-management-windows-40a175813f62a20455520b8b6a1932f0f7626fb3-1",
+      "size_in_bytes": 28294,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15243407330",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15243407330/zip",
+      "expired": false,
+      "created_at": "2026-11-28T01:55:30Z",
+      "expires_at": "2027-02-26T01:40:16Z",
+      "updated_at": "2026-11-28T01:55:30Z",
+      "digest": "sha256:51415d4016536f76d853868be532ba7f6b3a5057b74e42b295506b423e9d39d2",
+      "workflow_run": {
+        "id": 46094267681,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-voice-management-final-20261128-5a9e",
+        "head_sha": "40a175813f62a20455520b8b6a1932f0f7626fb3"
+      }
+    }
+  },
+  "provenance": {
+    "job_logs": "Fetched complete closed GitHub job logs; immutable candidate head checked through run identity.",
+    "artifact_digests": "GitHub artifact API metadata only; ZIP bytes were not independently downloaded/rehashed here.",
+    "current_windows_completion_not_yet_observed": false,
+    "current_windows_log_complete_characters": 177609
+  },
+  "refs_changed": false,
+  "supersedes": "6bf406c78939ce10dec66409fea2186e3dac5db2",
+  "followup": {
+    "head": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+    "voice_run_id": 46097299416,
+    "v3_run_id": 46097288504,
+    "verdict": "PENDING",
+    "unchanged_deadlines": true
+  }
+}
