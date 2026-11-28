@@ -240,6 +240,7 @@ def historical_v4(backup, *, forged_review=None, uppercase_job=False):
     manifest['sidecars'] = [item for item in manifest['sidecars'] if item not in omitted]
     for item in omitted:
         (backup / item['filename']).unlink()
+    (backup / 'state/studio/inputs').rmdir()
     if forged_review is not None:
         raw = encode(forged_review)
         (backup / 'state' / REVIEW).write_bytes(raw)
@@ -439,6 +440,7 @@ def test_legacy_v4_without_studio_receipt_remains_readable(backed_up, tmp_path):
     manifest['sidecars'] = [item for item in manifest['sidecars'] if item not in omitted]
     for item in omitted:
         (backup / item['filename']).unlink()
+    (backup / 'state/studio/inputs').rmdir()
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
     restored = restore_backup(backup, tmp_path / 'restored', sha256(raw).hexdigest())
