@@ -172,3 +172,48 @@ def test_total_metadata_limit_is_checked_during_archive_reads(source_job, tmp_pa
     monkeypatch.setattr(publishing, 'MAX_XML_TOTAL', 128)
     with pytest.raises(ValueError, match='metadata budget'):
         inspect_epub(output)
+
+
+@pytest.mark.parametrize('book_format', ['epub', 'daisy-2.02'])
+@pytest.mark.parametrize('change_requested_route', [False, True])
+def test_publication_approval_retains_selected_route_and_canonical_target(
+        source_job, tmp_path, book_format, change_requested_route):
+    service, state = source_job
+    directory = tmp_path / 'reviewed-route'
+    directory.mkdir()
+    suffix = '.epub' if book_format == 'epub' else '.zip'
+    output = tmp_path / ('reviewed-publication' + suffix)
+    selected = directory / '..' / output.name
+    private_root = service.root.parent.parent
+    approval = capture_export_destination(selected, private_root=private_root)
+    assert approval.requested == selected.absolute()
+    assert approval.target == output.resolve()
+    assert approval.requested != approval.target
+    publisher = PublicationService(service, private_root=private_root)
+    before = {row['path']: (Path(row['path']).read_bytes(), Path(row['path']).stat().st_mtime_ns)
+              for row in state['artifacts']}
+    publish = publisher.export_epub if book_format == 'epub' else publisher.export_daisy
+    options = {'language': 'en', 'approval': approval}
+    if book_format == 'daisy-2.02':
+        options['publisher'] = 'Synthetic boundary acceptance publisher'
+    target = output.resolve() if change_requested_route else selected
+    if change_requested_route:
+        with pytest.raises(ValueError, match='export destination changed'):
+            publish(state['id'], target, **options)
+        assert not output.exists() and not publisher.publications()
+    else:
+        receipt = publish(state['id'], target, **options)
+        assert receipt['status'] == 'complete'
+        assert receipt['output'] == str(output.resolve())
+        assert publisher.verify(receipt['id']) == receipt
+        if book_format == 'epub':
+            proof = inspect_epub(output)
+        else:
+            from carr_library.studio.daisy import inspect_daisy
+            proof = inspect_daisy(output)
+        assert proof['source'] == receipt['source']
+        assert proof['original_script'] == _fixtures.SCRIPT
+    assert service.get(state['id']) == state
+    assert before == {path: (Path(path).read_bytes(), Path(path).stat().st_mtime_ns)
+                      for path in before}
+    assert not list(tmp_path.glob('.pending-*'))

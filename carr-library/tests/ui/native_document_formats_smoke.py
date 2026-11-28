@@ -181,8 +181,10 @@ def run_native(source=None):
                 dialog = state['import']
                 check('native queue recognizes HTML and Markdown as two documents',
                       dialog.batch['counts']['queued'] == 2 and dialog.rows.GetCount() == 2)
-                button = next(child for child in dialog.GetChildren()
-                              if isinstance(child, wx.Button) and child.GetLabel() == '&Start queued files')
+                button, = [child for child in dialog.content.GetChildren()
+                           if isinstance(child, wx.Button)
+                           and child.GetLabel() == '&Start queued files'
+                           and child.GetName() == 'Start queued files']
                 event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
                 event.SetEventObject(button)
                 check('native Start queued files button event launches work',

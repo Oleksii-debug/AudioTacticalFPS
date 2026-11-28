@@ -153,6 +153,13 @@ def main():
                     target = root/'publication.epub'
                     dialog.job_choice.SetSelection(0); dialog.language.ChangeValue('en'); dialog.output.ChangeValue(str(target))
                     press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    if not (target.exists() and len(dialog.receipts) == 1
+                            and 'saved and its bytes verified' in dialog.status.GetValue()):
+                        print('DIAGNOSTIC: native publication outcome ' + json.dumps({
+                            'target_exists': target.exists(), 'receipt_count': len(dialog.receipts),
+                            'busy': dialog.busy, 'job_selection': dialog.job_choice.GetSelection(),
+                            'format_selection': dialog.format_choice.GetSelection(),
+                            'status': dialog.status.GetValue()[:4096]}, ensure_ascii=True), flush=True)
                     check('native export completed with a durable receipt', target.exists() and len(dialog.receipts)==1
                           and 'saved and its bytes verified' in dialog.status.GetValue())
                     check('shared progress completes only after publication verification',frame.progress_panel.active_task.snapshot().state=='succeeded')

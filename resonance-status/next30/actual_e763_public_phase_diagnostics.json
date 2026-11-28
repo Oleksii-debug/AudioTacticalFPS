@@ -1,0 +1,1289 @@
+{
+  "schema": 1,
+  "kind": "actual-public-phase-artifact-inspection",
+  "source": {
+    "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+    "run": 46079552451,
+    "job": 140782052561,
+    "artifact": 15239201929
+  },
+  "inspector": {
+    "head": "bbbec345f4f0cc988c41ff74b213007fbcfbfdb5",
+    "run": 46088420988,
+    "job": 140803361504,
+    "status": "SUCCESS",
+    "workflow": "c83e9792d935f7fcb6c898a05d9dff22b8b9929e"
+  },
+  "records": [
+    {
+      "archive_bytes": 179450,
+      "archive_sha256": "e79359b315b68739e63e8384b2d579523c1f2e23d237e2a320e82f2057b11505",
+      "artifact_id": 15239201929,
+      "members": [
+        {
+          "bytes": 1611,
+          "path": "audio-acquisition.json",
+          "sha256": "9cf3988795db5bff1d5eb0aaa53aac695eabbd410f0bc5cfd46cd499e23c61dd"
+        },
+        {
+          "bytes": 55751,
+          "path": "bibliography-publication.txt",
+          "sha256": "a982a655c79a8af66029c2d096d63f3e3b77802a0cc2f86f89d6ebc83dfd92f2"
+        },
+        {
+          "bytes": 13346,
+          "path": "core-bundle-install.txt",
+          "sha256": "6744c9fd2bdff8b18296c2d1340985dcf2d48513ad4e1536b9821f2b11554244"
+        },
+        {
+          "bytes": 797,
+          "path": "audio-preparation.json",
+          "sha256": "8f53fe220ef0e19b2536a4c59a966b0dcab91c437e03aa9c8d6e860c1fff87f9"
+        },
+        {
+          "bytes": 4186,
+          "path": "core-bundle-native.txt",
+          "sha256": "7edad9a34c3092b6ad394a09339cb7a8ab6934eadd0fe00bc4902ff2f8f726be"
+        },
+        {
+          "bytes": 2244,
+          "path": "core-fallback.txt",
+          "sha256": "87f42d6d9158610d914022cac72202a5cbdcbc84117a904d04b19af66fce6cb0"
+        },
+        {
+          "bytes": 1435,
+          "path": "daisy-schema-acquisition.json",
+          "sha256": "935128ab694185d92f2428cff812ccc7c9ff3aff982e31a0346170f9935f8eeb"
+        },
+        {
+          "bytes": 272,
+          "path": "core-bundle-self-test.json",
+          "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc"
+        },
+        {
+          "bytes": 2836,
+          "path": "full-bundle-academic-native.txt",
+          "sha256": "0dc9a3cc1684a85e11afa3c9884f717b13d91ce2513e39a5a31a0e10255daf5c"
+        },
+        {
+          "bytes": 1109,
+          "path": "full-bundle-advanced-search.txt",
+          "sha256": "7aa864c7111d19457a8b9c55701672dba67d93339a59d4f65fb29b280c2e1599"
+        },
+        {
+          "bytes": 3098,
+          "path": "full-bundle-assistant.json",
+          "sha256": "5934fcf1b6b60344305778237c9abb27d5afdb8791f28c9a4b915d1ed746ad23"
+        },
+        {
+          "bytes": 4637,
+          "path": "full-bundle-assistant.log",
+          "sha256": "d7d778f175db68684430429c34e2bd6c3715a77094ade9ca1829278d6d1aef9a"
+        },
+        {
+          "bytes": 2872,
+          "path": "full-bundle-audio-conversion-batch.json",
+          "sha256": "1b5967a0ad6f74ba150f5c422413b3bf85140f5fcd52a773291a223cff3d522d"
+        },
+        {
+          "bytes": 4870,
+          "path": "full-bundle-audio-conversion-batch.txt",
+          "sha256": "78134c3d829e46e6a70b7d3157898679d2d0c00326dc6d5a9a984cac48365694"
+        },
+        {
+          "bytes": 1367,
+          "path": "full-bundle-audio-runtime.json",
+          "sha256": "c6dfba82a91e4280ac22ead5fee4dead3da507f822edd72f0106dc44ea6168ff"
+        },
+        {
+          "bytes": 33593,
+          "path": "full-bundle-bibliography-native.txt",
+          "sha256": "5a0fcd4139274b398c93eb72333d3159f1a6d8f3b77f00b0bd100995fa5be4f3"
+        },
+        {
+          "bytes": 1303,
+          "path": "full-bundle-audio-native.txt",
+          "sha256": "cdfe5183a37f83a1dcd936a5395e61409500f8ca84f4b3642b7aab946cb05704"
+        },
+        {
+          "bytes": 13850,
+          "path": "full-bundle-book-audio.txt",
+          "sha256": "13552cf1a78eb11bbdc76c150603c0d1ed21a4bb53c85dd62ec85bb3d329079c"
+        },
+        {
+          "bytes": 9148,
+          "path": "full-bundle-book-batch.json",
+          "sha256": "dd7c26ecd035d828d28d0d8e29bb827cafbcdee160542c6f2ad82111e32f9edb"
+        },
+        {
+          "bytes": 18143,
+          "path": "full-bundle-book-batch.txt",
+          "sha256": "28a7cfc8a797bd5a2a9798506f1316b801dcd3a38cef21c318cb7bb032106e77"
+        },
+        {
+          "bytes": 10518,
+          "path": "full-bundle-braille.json",
+          "sha256": "9a5d6735a11305e442510211f7a8549987699c1313a17698d9f5960841e26737"
+        },
+        {
+          "bytes": 8869,
+          "path": "full-bundle-braille.txt",
+          "sha256": "e6e638ebde01270a80487ef6688849bf0d137e8f1ba205969ee76f6a3a00268c"
+        },
+        {
+          "bytes": 198,
+          "path": "full-bundle-build.json",
+          "sha256": "b05efe26ce9187e455e75aa90ea59773dcfea53216358b50b9b82c924bbcb74a"
+        },
+        {
+          "bytes": 6992,
+          "path": "full-bundle-clips-native.txt",
+          "sha256": "db0a3b4fc62a3adb07ae0d2b6460e5ae318f2b5dec140f4ffb14ebe52698a342"
+        },
+        {
+          "bytes": 1959,
+          "path": "full-bundle-daisy.txt",
+          "sha256": "64fa07610b65ac2538bc0d9c56a3e009c20d67ea7872bb3a5675661ce0167f66"
+        },
+        {
+          "bytes": 5626,
+          "path": "full-bundle-effects.json",
+          "sha256": "8c62205f89f98fe6917024ccdd984a27699c1f3a5c1891b46ac739f5c0a2907d"
+        },
+        {
+          "bytes": 9912,
+          "path": "full-bundle-effects.txt",
+          "sha256": "dcbf4c2e009e431e3dfe3133b4d20c0c83171a72c491fff388f34dfc42916954"
+        },
+        {
+          "bytes": 3032,
+          "path": "full-bundle-epubcheck.json",
+          "sha256": "d50959fc8ce6e0bb2efc30c8d056e10cecc1cfeee1371287bfcb325c6bff9014"
+        },
+        {
+          "bytes": 3032,
+          "path": "full-bundle-epubcheck.txt",
+          "sha256": "d50959fc8ce6e0bb2efc30c8d056e10cecc1cfeee1371287bfcb325c6bff9014"
+        },
+        {
+          "bytes": 4759,
+          "path": "full-bundle-federated-search.json",
+          "sha256": "e709763459701dce4dd155012bad8fe242280be35338ffdd0a48cced1de6a689"
+        },
+        {
+          "bytes": 1327,
+          "path": "full-bundle-firewall.json",
+          "sha256": "2677f871e9bb1730d35ae0dcf56b8f114542d2889fb9328fe60e7e74af3de312"
+        },
+        {
+          "bytes": 4186,
+          "path": "full-bundle-federated-search.txt",
+          "sha256": "7edad9a34c3092b6ad394a09339cb7a8ab6934eadd0fe00bc4902ff2f8f726be"
+        },
+        {
+          "bytes": 5898,
+          "path": "full-bundle-import-scan.json",
+          "sha256": "1893a16bf07abf54085f7f66ae9f7de6c240f0eab092a7edb03b868861166d8c"
+        },
+        {
+          "bytes": 8596,
+          "path": "full-bundle-import-scan.txt",
+          "sha256": "b5b02442a2dd5bf2c50f38750bf642aaa71d2a0e60b1d5efc30e86120064ede7"
+        },
+        {
+          "bytes": 635,
+          "path": "full-bundle-native-runtime.json",
+          "sha256": "5b902b41c098c82ef202a2a6f65645fdfc0da877a533feae0ba5fc314a9c4b39"
+        },
+        {
+          "bytes": 1626,
+          "path": "full-bundle-primary-studio.txt",
+          "sha256": "241efc49909f24e208ab8660f99c2e4c411dfe83fc45606fb7b9ce9a7d4a230b"
+        },
+        {
+          "bytes": 939,
+          "path": "full-bundle-reader-player.txt",
+          "sha256": "d269c4a311cb59e25f6849bbac1a959ca5d9ad8460bde782fcf7dc810a146325"
+        },
+        {
+          "bytes": 2435,
+          "path": "full-bundle-publishing-native.txt",
+          "sha256": "91fca260fc5b1e85a57a0ae39e02700b84e45d05a8f536032fdd7357f7a65409"
+        },
+        {
+          "bytes": 2965,
+          "path": "full-bundle-reading-presentation.json",
+          "sha256": "e852dd72aed114619c699b6e76d75b1e937db6f7c14ac16994d211bb7352a6e4"
+        },
+        {
+          "bytes": 4856,
+          "path": "full-bundle-reading-presentation.txt",
+          "sha256": "d4ab6b87e42e1f73815a46e77c389d5aeb852c58384fdf6aa3f7342acac7422b"
+        },
+        {
+          "bytes": 3291,
+          "path": "full-bundle-reading-tabs.json",
+          "sha256": "54e82f7ca3335656238b15fcf94898024a356733ed43508a81e393b6cbd5e8f0"
+        },
+        {
+          "bytes": 5505,
+          "path": "full-bundle-reading-tabs.txt",
+          "sha256": "a6b92269c843c652c1636b5752115cd60d0ffc4fffdd673e6bab2f5a76f055d5"
+        },
+        {
+          "bytes": 3008,
+          "path": "full-bundle-recorded-epub.txt",
+          "sha256": "424fe6561817d33c8ac45e47551625c7fe56b6ce1015211ddc35dee12aba256f"
+        },
+        {
+          "bytes": 5879,
+          "path": "full-bundle-recording-native.txt",
+          "sha256": "02f3c04f0cf320ff477530bea0f969cf30b96c3944cf551c88e628bc738e43a0"
+        },
+        {
+          "bytes": 3566,
+          "path": "full-bundle-saved-audio-queue.txt",
+          "sha256": "8c12643eba67e329c8ea2d34559d046980332d6118d6a52f27de17b963efce73"
+        },
+        {
+          "bytes": 20933,
+          "path": "full-bundle-studio-effects.json",
+          "sha256": "d876e2153df5750dbe8e5517e0cabc8bce9725cdde6be27391a76011b278943e"
+        },
+        {
+          "bytes": 4741,
+          "path": "full-bundle-transcription-native.json",
+          "sha256": "7318ae8e4691f29175013ad40c6ae83f53f6a0fac9fc980dcaf49219c97bdedb"
+        },
+        {
+          "bytes": 34834,
+          "path": "full-bundle-studio-effects.txt",
+          "sha256": "52f431592a177b9a33069ea8358611302defb6b483614f2530af637ef4a71091"
+        },
+        {
+          "bytes": 4174,
+          "path": "full-bundle-transcription-native.txt",
+          "sha256": "a10a984665123581687977f937d94b97dac073dcfc91ae628717e81b9b15582f"
+        },
+        {
+          "bytes": 6383,
+          "path": "full-bundle-translation-documents.json",
+          "sha256": "f9d3f686e6e3fb1321c924868e55954ed897f8c54716755eba94a9b34424c801"
+        },
+        {
+          "bytes": 8679,
+          "path": "full-bundle-translation-documents.txt",
+          "sha256": "0a1b7ecd2970bd9bd12f38962c7fb9b57ccf123a0ff86f64f6afcaa9dcf452da"
+        },
+        {
+          "bytes": 903,
+          "path": "full-bundle-trust-native.json",
+          "sha256": "7a09eaa17c97b7116ecdf03d123c46b16021187bd2c7d21838d7ff1ad8112d4a"
+        },
+        {
+          "bytes": 1438,
+          "path": "full-bundle-trust-native.txt",
+          "sha256": "4deda267fc7b76dcb00984d02f03cf8efc817219a43ee9bf580268bb56885c9e"
+        },
+        {
+          "bytes": 93715,
+          "path": "full-bundle-trusted-client.origins.json",
+          "sha256": "0ea0310e3b43396a25f9d9ea649943572b5c5da02c0c32a1b5cb632025cbc1c6"
+        },
+        {
+          "bytes": 5520,
+          "path": "full-bundle-trusted-client.txt",
+          "sha256": "aad7a9aa985737a175da262ac77a4c840c744305ba609af700ad2f92157f76fb"
+        },
+        {
+          "bytes": 125015,
+          "path": "full-bundle-trusted-client.xml",
+          "sha256": "c41e57247baece72c06b73356c1f51fec87127eae2fd53bd8e9e597a139b9f94"
+        },
+        {
+          "bytes": 283,
+          "path": "full-bundle-verified.json",
+          "sha256": "d5c5e665bdd0add1e0a69ed613bbd10af058da38e2fda46ad4de2fcf5c366b9e"
+        },
+        {
+          "bytes": 2826,
+          "path": "full-bundle-voice-preferences.json",
+          "sha256": "5f33b501662310b85bd10008aea61e38000f18092073243fccd5d208a5dc73c7"
+        },
+        {
+          "bytes": 4130,
+          "path": "full-bundle-voice-preferences.txt",
+          "sha256": "d5242d4f1a23af2d74f0a2809ba277c8f53d3d031160783304755879653e9892"
+        },
+        {
+          "bytes": 1151,
+          "path": "full-lock-source-inventory.json",
+          "sha256": "d8524f25a1b79c0146e78c80b5229491d183bc5e9f65ae6b853a757046611fa7"
+        },
+        {
+          "bytes": 259,
+          "path": "installed-launchers.json",
+          "sha256": "5083a306e439c253a72eafda4d906187ca7d4992b2e4802d6e19570ae137fc5a"
+        },
+        {
+          "bytes": 391,
+          "path": "installed-native-launcher.json",
+          "sha256": "2cbdac286608f39a0364ac5193b708e406dcdc11f4be89d187bcd6abcdf6a652"
+        },
+        {
+          "bytes": 391,
+          "path": "installed-native-launcher.txt",
+          "sha256": "2cbdac286608f39a0364ac5193b708e406dcdc11f4be89d187bcd6abcdf6a652"
+        },
+        {
+          "bytes": 208,
+          "path": "installed-ocr-catalogue.json",
+          "sha256": "b5038ce702bd733ede2f706de924fd7495ccac8cc5d483b19223dc21c5b54be3"
+        },
+        {
+          "bytes": 365,
+          "path": "installed-ocr-catalogue-console.json",
+          "sha256": "8005414339a580b51ab00e5d0411e3275ba53a91c4fe53bc87433031730baa87"
+        },
+        {
+          "bytes": 272,
+          "path": "installed-self-test.json",
+          "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc"
+        },
+        {
+          "bytes": 1486,
+          "path": "installed-packages.json",
+          "sha256": "d33b1665c6c22b2abe8d50ddf30bc09f0dba3d50c7eff9e3ed214cbcb539d3b0"
+        },
+        {
+          "bytes": 111,
+          "path": "local-transport.json",
+          "sha256": "82fab86aab32c24f2d6554dddce03507058bbea0408eccf9506527168d9df631"
+        },
+        {
+          "bytes": 526,
+          "path": "local-transport.txt",
+          "sha256": "b66b891db3c42d03a9aa41e5100190a8702a2feebb6c2cec6e1133a3f93ff267"
+        },
+        {
+          "bytes": 4244,
+          "path": "local-transport.xml",
+          "sha256": "db188ecbea69c3ed7cf0506eef8f08775a07e20dc846aadb3cbfcbc006ac3e1c"
+        },
+        {
+          "bytes": 13484,
+          "path": "managed-ocr-unicode.txt",
+          "sha256": "77ca7f5482f95a54ee4da225d266d8a4cdc81b3bb4fd241a7a93baaa21cbfa5d"
+        },
+        {
+          "bytes": 88,
+          "path": "model-acquisition.json",
+          "sha256": "9f562a862f9d55bfcde89928a41295d6d066bbf808b12dab043a2f2e377e7d7b"
+        },
+        {
+          "bytes": 2836,
+          "path": "native-academic-library.txt",
+          "sha256": "0dc9a3cc1684a85e11afa3c9884f717b13d91ce2513e39a5a31a0e10255daf5c"
+        },
+        {
+          "bytes": 854,
+          "path": "native-academic-workflows.txt",
+          "sha256": "d0ea93a4f7e8ed3fdac9bde3f9fbea8ad9fe84190cad3e2860100b8259ab3b64"
+        },
+        {
+          "bytes": 1110,
+          "path": "native-advanced-search.txt",
+          "sha256": "2f352c00132b18472c642c636f2185df9c708460944d575b46d45cfa29d16d21"
+        },
+        {
+          "bytes": 3010,
+          "path": "native-assistant-early.json",
+          "sha256": "71b3b757fb6f2d0203d74ed931f2ddbad71079c805e318904bd2ce72e95ea6ec"
+        },
+        {
+          "bytes": 4415,
+          "path": "native-assistant-early.log",
+          "sha256": "707f62b706e030da03bfec486b9ac071466ea1738c761affe45d096ec0ea7e14"
+        },
+        {
+          "bytes": 33524,
+          "path": "native-bibliography-interchange.txt",
+          "sha256": "9b4aaa48c37a8e87c3987b5e1aa5384ee569ec1c2a420d8fc7f41391b7516f46"
+        },
+        {
+          "bytes": 1432,
+          "path": "native-catalog-insights.txt",
+          "sha256": "ea98178e8cde790194e9ecf95758dabc17d69a40fdaf4509d6570791111e54a1"
+        },
+        {
+          "bytes": 3018,
+          "path": "native-catalog-tools.txt",
+          "sha256": "7d0e99f10acdcb96793887bce26a63c36cdc69acb2ce8279180de1b6860fc2df"
+        },
+        {
+          "bytes": 4015,
+          "path": "native-desktop.txt",
+          "sha256": "174d2bc7ac7b61cc8ed8d69b0ac6afc3e4683844f077bd8e248edfcb0cf22dcf"
+        },
+        {
+          "bytes": 1842,
+          "path": "native-document-formats.txt",
+          "sha256": "4f5010913ca6ac9f5ef411891788f8de142b4fddf8050846d090db7082b12527"
+        },
+        {
+          "bytes": 62143,
+          "path": "native-citation-styles.txt",
+          "sha256": "3a0a92b7af0dd714761632d207dd002e33e3b700d5d571668b48f14c19afbded"
+        },
+        {
+          "bytes": 852,
+          "path": "native-ebook-contents.txt",
+          "sha256": "e59a60cace1aced96797634b461f09f0d96e5589fb34b8629382a2a144259c06"
+        },
+        {
+          "bytes": 1547,
+          "path": "native-ebook-reader.txt",
+          "sha256": "471d20b64f15bed63e55dc0b9a8800022b4377a406efcfeda201c9e72bfe595a"
+        },
+        {
+          "bytes": 1806,
+          "path": "native-evidence-pages.txt",
+          "sha256": "e29118f9465d3dff496735bccdc2c4ca2c239cd36439629cbb8145fd319dbf70"
+        },
+        {
+          "bytes": 163,
+          "path": "native-import-center.json",
+          "sha256": "380f72ea23a26b680293f515194d151d52d19431b218f910b8212fa9f2d81f7e"
+        },
+        {
+          "bytes": 248,
+          "path": "native-import-center.txt",
+          "sha256": "aa6d3ef6369722d9c4e59f95d90756894ab6da34a7d154d492809984abed9d35"
+        },
+        {
+          "bytes": 1233,
+          "path": "native-incremental-backup.json",
+          "sha256": "02e78f2fbf2f5228b84938367f0422a3dc7c922317a9dd221babdab3fa7525e7"
+        },
+        {
+          "bytes": 1235,
+          "path": "native-incremental-backup.txt",
+          "sha256": "7b0f4343b19c00de90aa6a0599398b221173a9931188535b710898352eae931f"
+        },
+        {
+          "bytes": 1586,
+          "path": "native-launcher-build.json",
+          "sha256": "be43f906ca6f717dedc0aad04ad684f0baae4a9ec4edf59e1132198b06086e44"
+        },
+        {
+          "bytes": 815,
+          "path": "native-launcher-process.json",
+          "sha256": "e946290b0a2c034f60fa79e69d08ef684edfa4d35d8fdfa45997e4437155b378"
+        },
+        {
+          "bytes": 2403,
+          "path": "native-notebook-search.txt",
+          "sha256": "8dde9b7879f24234242fadae39c80d342e46f968500abb4898823fc32bb19690"
+        },
+        {
+          "bytes": 12171,
+          "path": "native-ocr-models.txt",
+          "sha256": "f253c91831440e56163fafe2a5ccd1686422877483bdcb40e8ce6e162c72e359"
+        },
+        {
+          "bytes": 3471,
+          "path": "native-operation-progress.txt",
+          "sha256": "662e87b2cd8107da448c29859b589a48d883b95117cfd28a1309ceb37817cddb"
+        },
+        {
+          "bytes": 6274,
+          "path": "native-operations.txt",
+          "sha256": "3df17a3bbcddb806238e6ececa6b75eac635f33098709df0381d8b7568a7dc6b"
+        },
+        {
+          "bytes": 3189,
+          "path": "native-operations.json",
+          "sha256": "817b36436855f5a926423570d74ad998e600d06889a4364e1c95d78ec4c357e6"
+        },
+        {
+          "bytes": 3621,
+          "path": "native-progress.txt",
+          "sha256": "c31f2c1379539eac072f6d5edc5a4402199639efcbaed92df38eafe0e3c77a06"
+        },
+        {
+          "bytes": 7967,
+          "path": "native-reading-desk.txt",
+          "sha256": "2e27bfbc2c7f90c65ddacc002ecebec7cba38263675e56a9d2b3bd68c4e2983b"
+        },
+        {
+          "bytes": 3223,
+          "path": "native-reader-usability.json",
+          "sha256": "5c9e90dabeeed1b58c78873631d36b491b7be5bc6b45e4d3877116d5a866a271"
+        },
+        {
+          "bytes": 393,
+          "path": "native-runtime-preparation.json",
+          "sha256": "bc9c4a3c389a0537146e1c777bd9d8518cb0f7605dcb6f3ead40ebc5f5eb3071"
+        },
+        {
+          "bytes": 201,
+          "path": "native-runtime.json",
+          "sha256": "64281eeb3711297f6bd32a6778396ab3ad7ff4ea689a9a34c070916f16b0d182"
+        },
+        {
+          "bytes": 221,
+          "path": "ocr-preparation.json",
+          "sha256": "a42014ba215e057c2f3fa3e7ff1280da06187a88c970647a79037b1d9219d31b"
+        },
+        {
+          "bytes": 199,
+          "path": "offline-bundle-ocr-catalogue.json",
+          "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751"
+        },
+        {
+          "bytes": 369,
+          "path": "publication-audio-preparation.json",
+          "sha256": "d22bfb80e543166ec773d83439bb2696b7d1afd55401d57c12fccfeec632dad5"
+        },
+        {
+          "bytes": 713,
+          "path": "publication-test-runtimes.json",
+          "sha256": "376a0763569f170ec7f3d7c735fdbdbe11dcced720444bba55f9440fb895216d"
+        },
+        {
+          "bytes": 1194,
+          "path": "required-native-failures.json",
+          "sha256": "26d019e1525a2043ee55256d2e06e0e1016354a8e794019b3bf7e2f2a4a30e75"
+        },
+        {
+          "bytes": 107,
+          "path": "sealed-sbom.json",
+          "sha256": "9596e055c214cc2a39a65e141e2f136566fb097a167ecf0c7eebc75bb077dbaf"
+        },
+        {
+          "bytes": 356,
+          "path": "source-wheel-proof.json",
+          "sha256": "1dbb190fca490d6276644bc74644c6cdab9b84fd624817c3be19d6a0d8832518"
+        },
+        {
+          "bytes": 284,
+          "path": "standard-inno-toolchain.json",
+          "sha256": "310fe0b1b1df90d23fec179d17c5673a5b549bf08220408e20eaeb50b7e5d073"
+        },
+        {
+          "bytes": 42,
+          "path": "tested-commit.txt",
+          "sha256": "4a4f1a508dd14f9dea73b651ea901a891e2b42efc2d1a9730dec61ea16def8ed"
+        },
+        {
+          "bytes": 848,
+          "path": "windows-audio-services.json",
+          "sha256": "fd1e4c5026c49caeb670ee529d7881c6a00acbb9ad39d27fb1bb49704342a10c"
+        }
+      ],
+      "note": "Metadata binds the source head; the artifact name carries the distinct PR merge identity.",
+      "repository": "Oleksii-debug/AudioTacticalFPS",
+      "run_id": 46079552451,
+      "source_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+      "source_tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4"
+    },
+    {
+      "absent": [
+        "full-bundle-book-audio.json",
+        "full-bundle-recorded-epub.json",
+        "full-bundle-workflows.txt",
+        "full-bundle-workflows.xml",
+        "owner-candidate/transferable-academic-native.txt",
+        "owner-candidate/transferable-advanced-search.txt",
+        "owner-candidate/transferable-audio-setup-plan.txt",
+        "owner-candidate/transferable-bundle.txt",
+        "owner-candidate/transferable-install.txt",
+        "owner-candidate/transferable-native-launcher.json",
+        "owner-candidate/transferable-native-launcher.txt",
+        "owner-candidate/transferable-native.txt",
+        "owner-candidate/transferable-self-test.json"
+      ],
+      "boundary": "Absence means no file in this exact artifact, not an execution verdict.",
+      "present": [
+        "full-bundle-book-audio.txt",
+        "full-bundle-reader-player.txt",
+        "full-bundle-recorded-epub.txt",
+        "native-document-formats.txt",
+        "required-native-failures.json",
+        "windows-audio-services.json"
+      ]
+    },
+    {
+      "bytes": 13850,
+      "complete": false,
+      "path": "full-bundle-book-audio.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: exact installed source: carr_library.studio.book_audio"
+        },
+        {
+          "line": 2,
+          "text": "PASS: exact installed source: carr_library.ui.book_audio_dialog"
+        },
+        {
+          "line": 3,
+          "text": "PASS: exact installed source: carr_library.ui.worker_lifetime"
+        },
+        {
+          "line": 4,
+          "text": "PASS: exact installed source: carr_library.studio.render"
+        },
+        {
+          "line": 5,
+          "text": "PASS: exact installed source: carr_library.studio.project"
+        },
+        {
+          "line": 151,
+          "text": "PASS: confirmation defaults to No: Publish reviewed measured audio"
+        },
+        {
+          "line": 152,
+          "text": "PASS: native Yes button exists: Publish reviewed measured audio"
+        },
+        {
+          "line": 153,
+          "text": "PASS: native explicit Yes focus: Publish reviewed measured audio"
+        },
+        {
+          "line": 154,
+          "text": "PASS: native confirmation key: Publish reviewed measured audio"
+        },
+        {
+          "line": 155,
+          "text": "PASS: native key release: Publish reviewed measured audio"
+        },
+        {
+          "line": 156,
+          "text": "DIAG: actual measured Book publication {\"started\": true}"
+        },
+        {
+          "line": 157,
+          "text": "DIAG: actual measured Book publication {\"error\": \"ValueError: The measured audio ranges, names, source or output changed. Review them again.\", \"traceback\": \"Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_book_audio_smoke.py\\\", line 505, in observed_publish_duration\\n    result = actual_publish_duration(*arguments, **options)\\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\book_audio.py\\\", line 778, in publish_duration\\n    return self._measured_publication(plan_id, index, output, maximum_ms=maximum_ms,\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\book_audio.py\\\", line 758, in _measured_publication\\n    return publisher.export_pcm_parts(plan.job_id(index), output,\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\studio\\\\publishing.py\\\", "
+        },
+        {
+          "line": 158,
+          "text": "DIAG: measured Book idle UI {\"status\": \"The measured audio ranges, names, source or output changed. Review them again.\", \"started\": true, \"returned\": false, \"error\": \"ValueError: The measured audio ranges, names, source or output changed. Review them again.\", \"preview_enabled\": true, \"publish_enabled\": true}"
+        },
+        {
+          "line": 159,
+          "text": "FAIL: native Book probe callback"
+        },
+        {
+          "line": 160,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 161,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 270, in invoke"
+        },
+        {
+          "line": 162,
+          "text": "    callback()"
+        },
+        {
+          "line": 163,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 763, in drive"
+        },
+        {
+          "line": 164,
+          "text": "    raise RuntimeError('Actual measured Book publication failed: '"
+        },
+        {
+          "line": 165,
+          "text": "RuntimeError: Actual measured Book publication failed: ValueError: The measured audio ranges, names, source or output changed. Review them again."
+        },
+        {
+          "line": 166,
+          "text": ""
+        },
+        {
+          "line": 167,
+          "text": "FAIL: native Book probe callback"
+        },
+        {
+          "line": 168,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 169,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 829, in open_dialog"
+        },
+        {
+          "line": 170,
+          "text": "    check('native Escape closes the book dialog', stage == 12)"
+        },
+        {
+          "line": 171,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 66, in check"
+        },
+        {
+          "line": 172,
+          "text": "    raise AssertionError(name)"
+        },
+        {
+          "line": 173,
+          "text": "AssertionError: native Escape closes the book dialog"
+        },
+        {
+          "line": 174,
+          "text": ""
+        },
+        {
+          "line": 175,
+          "text": "PASS: native host shutdown has no retained cleanup failure"
+        },
+        {
+          "line": 176,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 177,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 904, in <module>"
+        },
+        {
+          "line": 178,
+          "text": "    raise SystemExit(main())"
+        },
+        {
+          "line": 179,
+          "text": "                     ^^^^^^"
+        },
+        {
+          "line": 180,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 871, in main"
+        },
+        {
+          "line": 181,
+          "text": "    raise RuntimeError('\\n'.join(errors))"
+        },
+        {
+          "line": 182,
+          "text": "RuntimeError: Traceback (most recent call last):"
+        },
+        {
+          "line": 183,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 270, in invoke"
+        },
+        {
+          "line": 184,
+          "text": "    callback()"
+        },
+        {
+          "line": 185,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 763, in drive"
+        },
+        {
+          "line": 186,
+          "text": "    raise RuntimeError('Actual measured Book publication failed: '"
+        },
+        {
+          "line": 187,
+          "text": "RuntimeError: Actual measured Book publication failed: ValueError: The measured audio ranges, names, source or output changed. Review them again."
+        },
+        {
+          "line": 188,
+          "text": ""
+        },
+        {
+          "line": 189,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 190,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 829, in open_dialog"
+        },
+        {
+          "line": 191,
+          "text": "    check('native Escape closes the book dialog', stage == 12)"
+        },
+        {
+          "line": 192,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_book_audio_smoke.py\", line 66, in check"
+        },
+        {
+          "line": 193,
+          "text": "    raise AssertionError(name)"
+        },
+        {
+          "line": 194,
+          "text": "AssertionError: native Escape closes the book dialog"
+        },
+        {
+          "line": 195,
+          "text": ""
+        }
+      ],
+      "sha256": "13552cf1a78eb11bbdc76c150603c0d1ed21a4bb53c85dd62ec85bb3d329079c",
+      "total_lines": 195
+    },
+    {
+      "bytes": 939,
+      "complete": true,
+      "path": "full-bundle-reader-player.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: installed reader output module: carr_library.speech.player"
+        },
+        {
+          "line": 2,
+          "text": "PASS: installed reader output module: carr_library.speech.playback_devices"
+        },
+        {
+          "line": 3,
+          "text": "PASS: installed reader output module: carr_library.speech.listening"
+        },
+        {
+          "line": 4,
+          "text": "PASS: installed reader output module: carr_library.audio.dsp"
+        },
+        {
+          "line": 5,
+          "text": "PASS: installed reader output module: carr_library.ui.reader_playback"
+        },
+        {
+          "line": 6,
+          "text": "PASS: actual Windows output inventory stays within its bound"
+        },
+        {
+          "line": 7,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 8,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 499, in <module>"
+        },
+        {
+          "line": 9,
+          "text": "    raise SystemExit(main())"
+        },
+        {
+          "line": 10,
+          "text": "                     ^^^^^^"
+        },
+        {
+          "line": 11,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 385, in main"
+        },
+        {
+          "line": 12,
+          "text": "    raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')"
+        },
+        {
+          "line": 13,
+          "text": "RuntimeError: Actual output-device qualification requires an identifiable Windows output."
+        }
+      ],
+      "sha256": "d269c4a311cb59e25f6849bbac1a959ca5d9ad8460bde782fcf7dc810a146325",
+      "total_lines": 13
+    },
+    {
+      "bytes": 3008,
+      "complete": true,
+      "path": "full-bundle-recorded-epub.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: exact installed source: carr_library.reader.ebook_audio"
+        },
+        {
+          "line": 2,
+          "text": "PASS: exact installed source: carr_library.ui.ebook_audio_dialog"
+        },
+        {
+          "line": 3,
+          "text": "PASS: exact installed source: carr_library.ui.reading_desk"
+        },
+        {
+          "line": 4,
+          "text": "PASS: exact installed source: carr_library.runtime_settings"
+        },
+        {
+          "line": 5,
+          "text": "PASS: exact installed source: carr_library.speech.player"
+        },
+        {
+          "line": 6,
+          "text": "PASS: exact installed source: carr_library.audio.process"
+        },
+        {
+          "line": 7,
+          "text": "PASS: exact installed source: carr_library.audio.cleanup"
+        },
+        {
+          "line": 8,
+          "text": "PASS: real native Windows controls"
+        },
+        {
+          "line": 9,
+          "text": "PASS: explicit selected audio executable: ffmpeg"
+        },
+        {
+          "line": 10,
+          "text": "PASS: pinned audio executable bytes: ffmpeg"
+        },
+        {
+          "line": 11,
+          "text": "PASS: explicit selected audio executable: ffprobe"
+        },
+        {
+          "line": 12,
+          "text": "PASS: pinned audio executable bytes: ffprobe"
+        },
+        {
+          "line": 13,
+          "text": "PASS: actual local production completes"
+        },
+        {
+          "line": 14,
+          "text": "PASS: actual publication imports as a retained EPUB"
+        },
+        {
+          "line": 15,
+          "text": "PASS: existing Reading Desk presents the exact source"
+        },
+        {
+          "line": 16,
+          "text": "PASS: owned native focus: EPUB synchronized recorded audio..."
+        },
+        {
+          "line": 17,
+          "text": "PASS: native key down: EPUB synchronized recorded audio..."
+        },
+        {
+          "line": 18,
+          "text": "PASS: native key release: EPUB synchronized recorded audio..."
+        },
+        {
+          "line": 19,
+          "text": "PASS: recorded preparation borrows the current host worker"
+        },
+        {
+          "line": 20,
+          "text": "PASS: opening recorded audio does not start playback"
+        },
+        {
+          "line": 21,
+          "text": "DIAGNOSTIC: recorded EPUB source highlight {\"selected\": \"\", \"expected\": \"Exact \\u03b1 \\ud83d\\ude00 source & words.\", \"native_selection\": [0, 0], \"cue_offsets\": [530, 555], \"same_source_page\": true, \"native_value_exact\": true, \"status\": \"The text control could not locate that exact extracted-text position.\"}"
+        },
+        {
+          "line": 22,
+          "text": "FAIL: native recorded EPUB callback"
+        },
+        {
+          "line": 23,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 24,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 133, in invoke"
+        },
+        {
+          "line": 25,
+          "text": "    callback()"
+        },
+        {
+          "line": 26,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 286, in drive"
+        },
+        {
+          "line": 27,
+          "text": "    check('native source highlight is an exact Unicode fragment',"
+        },
+        {
+          "line": 28,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 62, in check"
+        },
+        {
+          "line": 29,
+          "text": "    raise AssertionError(name)"
+        },
+        {
+          "line": 30,
+          "text": "AssertionError: native source highlight is an exact Unicode fragment"
+        },
+        {
+          "line": 31,
+          "text": ""
+        },
+        {
+          "line": 32,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 33,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 389, in <module>"
+        },
+        {
+          "line": 34,
+          "text": "    raise SystemExit(main())"
+        },
+        {
+          "line": 35,
+          "text": "                     ^^^^^^"
+        },
+        {
+          "line": 36,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 374, in main"
+        },
+        {
+          "line": 37,
+          "text": "    raise RuntimeError('\\n'.join(errors))"
+        },
+        {
+          "line": 38,
+          "text": "RuntimeError: Traceback (most recent call last):"
+        },
+        {
+          "line": 39,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 133, in invoke"
+        },
+        {
+          "line": 40,
+          "text": "    callback()"
+        },
+        {
+          "line": 41,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 286, in drive"
+        },
+        {
+          "line": 42,
+          "text": "    check('native source highlight is an exact Unicode fragment',"
+        },
+        {
+          "line": 43,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 62, in check"
+        },
+        {
+          "line": 44,
+          "text": "    raise AssertionError(name)"
+        },
+        {
+          "line": 45,
+          "text": "AssertionError: native source highlight is an exact Unicode fragment"
+        },
+        {
+          "line": 46,
+          "text": ""
+        }
+      ],
+      "sha256": "424fe6561817d33c8ac45e47551625c7fe56b6ce1015211ddc35dee12aba256f",
+      "total_lines": 46
+    },
+    {
+      "bytes": 1842,
+      "complete": true,
+      "path": "native-document-formats.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: native document modules are loaded from the installed distribution"
+        },
+        {
+          "line": 2,
+          "text": "PASS: native file selector includes all additional formats"
+        },
+        {
+          "line": 3,
+          "text": "PASS: document support help is reachable from the native menu"
+        },
+        {
+          "line": 4,
+          "text": "PASS: format help has a named read-only multiline text control"
+        },
+        {
+          "line": 5,
+          "text": "PASS: format help describes unverified text and unsupported conversions"
+        },
+        {
+          "line": 6,
+          "text": "PASS: format help describes bounded raster frames and independent review"
+        },
+        {
+          "line": 7,
+          "text": "PASS: format help can receive native keyboard focus"
+        },
+        {
+          "line": 8,
+          "text": "PASS: native document help menu event is handled"
+        },
+        {
+          "line": 9,
+          "text": "PASS: native import controls expose their spoken names"
+        },
+        {
+          "line": 10,
+          "text": "PASS: document preflight runs asynchronously with cancellation enabled"
+        },
+        {
+          "line": 11,
+          "text": "PASS: native queue recognizes HTML and Markdown as two documents"
+        },
+        {
+          "line": 12,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 13,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_document_formats_smoke.py\", line 272, in <module>"
+        },
+        {
+          "line": 14,
+          "text": "    raise SystemExit(main())"
+        },
+        {
+          "line": 15,
+          "text": "                     ^^^^^^"
+        },
+        {
+          "line": 16,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_document_formats_smoke.py\", line 268, in main"
+        },
+        {
+          "line": 17,
+          "text": "    return run_native(args.source.resolve() if args.source is not None else None)"
+        },
+        {
+          "line": 18,
+          "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        },
+        {
+          "line": 19,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_document_formats_smoke.py\", line 211, in run_native"
+        },
+        {
+          "line": 20,
+          "text": "    raise AssertionError('\\n'.join(errors))"
+        },
+        {
+          "line": 21,
+          "text": "AssertionError: Traceback (most recent call last):"
+        },
+        {
+          "line": 22,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_document_formats_smoke.py\", line 156, in poll"
+        },
+        {
+          "line": 23,
+          "text": "    callback()"
+        },
+        {
+          "line": 24,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\ui\\native_document_formats_smoke.py\", line 184, in planned"
+        },
+        {
+          "line": 25,
+          "text": "    button = next(child for child in dialog.GetChildren()"
+        },
+        {
+          "line": 26,
+          "text": "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        },
+        {
+          "line": 27,
+          "text": "StopIteration"
+        },
+        {
+          "line": 28,
+          "text": ""
+        }
+      ],
+      "sha256": "4f5010913ca6ac9f5ef411891788f8de142b4fddf8050846d090db7082b12527",
+      "total_lines": 28
+    },
+    {
+      "path": "required-native-failures.json",
+      "sha256": "26d019e1525a2043ee55256d2e06e0e1016354a8e794019b3bf7e2f2a4a30e75",
+      "value": {
+        "failures": [
+          {
+            "block": "reader-player",
+            "error": "Actual installed native reader playback failed.",
+            "error_type": "System.Management.Automation.RuntimeException"
+          },
+          {
+            "block": "recording",
+            "error": "Required native process exited with code 1",
+            "error_type": "System.Management.Automation.RuntimeException"
+          },
+          {
+            "block": "book-audio",
+            "error": "Actual installed native book narration failed.",
+            "error_type": "System.Management.Automation.RuntimeException"
+          },
+          {
+            "block": "saved-audio-queue",
+            "error": "Actual installed native saved-audio-queue failed.",
+            "error_type": "System.Management.Automation.RuntimeException"
+          },
+          {
+            "block": "recorded-epub",
+            "error": "Actual installed recorded EPUB playback failed.",
+            "error_type": "System.Management.Automation.RuntimeException"
+          },
+          {
+            "block": "publishing",
+            "error": "Installed native EPUB publishing failed.",
+            "error_type": "System.Management.Automation.RuntimeException"
+          }
+        ],
+        "qualification": "Every native block remains required",
+        "status": "FAIL"
+      }
+    },
+    {
+      "path": "windows-audio-services.json",
+      "sha256": "fd1e4c5026c49caeb670ee529d7881c6a00acbb9ad39d27fb1bb49704342a10c",
+      "value": {
+        "device_installation": "NOT_PERFORMED",
+        "playback_evidence": "NOT_RUN",
+        "prepared": true,
+        "purpose": "Prerequisite preparation; actual native MCI acceptance remains required",
+        "schema": "carr-windows-audio-service-preparation/1",
+        "services": [
+          {
+            "actions": [
+              "Existing service started"
+            ],
+            "after_start_type": "Manual",
+            "after_state": "Running",
+            "before_start_type": "Manual",
+            "before_state": "Stopped",
+            "name": "AudioEndpointBuilder",
+            "requested_prepare": true
+          },
+          {
+            "actions": [
+              "Existing service started"
+            ],
+            "after_start_type": "Manual",
+            "after_state": "Running",
+            "before_start_type": "Manual",
+            "before_state": "Stopped",
+            "name": "Audiosrv",
+            "requested_prepare": true
+          }
+        ]
+      }
+    },
+    {
+      "meaning": "Only the exact public diagnostic ZIP and bounded report contents were read. No application code was extracted or executed; no product gate is passed by this inspection.",
+      "status": "PASS"
+    }
+  ],
+  "findings": [
+    "Actual native formats failure is StopIteration in immediate-child Start button lookup after two documents are correctly queued.",
+    "Actual recorded EPUB source value/page match, but native source highlight cannot map offsets530..555; selection remains0..0.",
+    "Actual reader-player admission has no identifiable output device. Both existing audio services are Running; no device was installed.",
+    "Actual Book failure is old measured destination review mismatch; later db6 focused evidence is separate and must not be transferred to e763.",
+    "Owner-candidate diagnostics are absent from this exact artifact; job step43 itself failed and assembly45 was skipped. No exact owner cause is established here."
+  ],
+  "claim_limits": "Inspector success verifies exact public bytes and bounded contents only, not application qualification. No private source/audio/model/package payload was downloaded or retained."
+}

@@ -789,9 +789,9 @@ class PublicationService:
         language = language_tag(language)
         creator = _text(creator, 'Creator', maximum=512, empty=True)
         job_id = _id(job_id)
-        # The measured approval binds the original user-selected route as well
-        # as its resolved target. Keep that same route for every recheck.
-        requested_output = Path(output).absolute() if book_format == 'pcm-parts' else None
+        # Every approval binds the original user-selected route as well as its
+        # resolved target. Keep that same route for every publication recheck.
+        requested_output = Path(output).absolute()
         output = local_path(output)
         if output.suffix.lower() != suffix:
             raise ValueError(f'Choose a new {suffix} filename.')
@@ -824,7 +824,7 @@ class PublicationService:
             check()
             try:
                 value = capture_export_destination(
-                    requested_output if book_format == 'pcm-parts' else output,
+                    requested_output,
                     private_root=self.private_root, cancelled=cancelled)
             except TimeoutError:
                 # Keep the shared publication cancellation/deadline outcome

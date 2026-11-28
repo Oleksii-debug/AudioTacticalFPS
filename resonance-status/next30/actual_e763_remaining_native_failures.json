@@ -1,0 +1,625 @@
+{
+  "schema": 1,
+  "kind": "actual-remaining-public-native-failures",
+  "source": {
+    "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "tree": "a82f252b37db7ba244ba2cc25246a31dc78085d4",
+    "run": 46079552451,
+    "artifact": 15239201929,
+    "artifact_sha256": "e79359b315b68739e63e8384b2d579523c1f2e23d237e2a320e82f2057b11505"
+  },
+  "inspector": {
+    "head": "455db3d8d425bc7c06fad0ea7b79fad15dcd32fc",
+    "run": 46088763982,
+    "job": 140804450314,
+    "status": "SUCCESS"
+  },
+  "previous_evidence": "148e80c7dfc4de8a441d5c0f9cddd50b961d4ee1",
+  "reports": [
+    {
+      "bytes": 2435,
+      "complete": true,
+      "path": "full-bundle-publishing-native.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: publication UI comes from installed package"
+        },
+        {
+          "line": 2,
+          "text": "PASS: installed module origin: ui/publishing_dialog.py"
+        },
+        {
+          "line": 3,
+          "text": "PASS: exact installed source bytes: ui/publishing_dialog.py"
+        },
+        {
+          "line": 4,
+          "text": "PASS: installed module origin: audio/audiobook.py"
+        },
+        {
+          "line": 5,
+          "text": "PASS: exact installed source bytes: audio/audiobook.py"
+        },
+        {
+          "line": 6,
+          "text": "PASS: installed module origin: audio/dsp.py"
+        },
+        {
+          "line": 7,
+          "text": "PASS: exact installed source bytes: audio/dsp.py"
+        },
+        {
+          "line": 8,
+          "text": "PASS: installed module origin: studio/daisy.py"
+        },
+        {
+          "line": 9,
+          "text": "PASS: exact installed source bytes: studio/daisy.py"
+        },
+        {
+          "line": 10,
+          "text": "PASS: installed module origin: studio/publishing.py"
+        },
+        {
+          "line": 11,
+          "text": "PASS: exact installed source bytes: studio/publishing.py"
+        },
+        {
+          "line": 12,
+          "text": "PASS: installed module origin: studio/render.py"
+        },
+        {
+          "line": 13,
+          "text": "PASS: exact installed source bytes: studio/render.py"
+        },
+        {
+          "line": 14,
+          "text": "PASS: real native Windows widgets"
+        },
+        {
+          "line": 15,
+          "text": "PASS: explicit selected audio executable: ffmpeg"
+        },
+        {
+          "line": 16,
+          "text": "PASS: pinned audio executable bytes: ffmpeg"
+        },
+        {
+          "line": 17,
+          "text": "PASS: explicit selected audio executable: ffprobe"
+        },
+        {
+          "line": 18,
+          "text": "PASS: pinned audio executable bytes: ffprobe"
+        },
+        {
+          "line": 19,
+          "text": "PASS: actual FFmpeg produced a completed Studio fixture"
+        },
+        {
+          "line": 20,
+          "text": "PASS: M4B carries actual measured chapter names and bounds"
+        },
+        {
+          "line": 21,
+          "text": "PASS: LRC retains measured line starts without inferred word timestamps"
+        },
+        {
+          "line": 22,
+          "text": "PASS: real native main loop is active"
+        },
+        {
+          "line": 23,
+          "text": "PASS: export controls have native accessible names"
+        },
+        {
+          "line": 24,
+          "text": "PASS: native Space down: &Load jobs / receipts"
+        },
+        {
+          "line": 25,
+          "text": "PASS: native Space up: &Load jobs / receipts"
+        },
+        {
+          "line": 26,
+          "text": "PASS: completed job is listed without implicit selection"
+        },
+        {
+          "line": 27,
+          "text": "PASS: native Space down: &Export publication"
+        },
+        {
+          "line": 28,
+          "text": "PASS: native Space up: &Export publication"
+        },
+        {
+          "line": 29,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 30,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py\", line 227, in <module>"
+        },
+        {
+          "line": 31,
+          "text": "    raise SystemExit(main())"
+        },
+        {
+          "line": 32,
+          "text": "                     ^^^^^^"
+        },
+        {
+          "line": 33,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py\", line 217, in main"
+        },
+        {
+          "line": 34,
+          "text": "    if errors: raise RuntimeError('\\n'.join(errors))"
+        },
+        {
+          "line": 35,
+          "text": "               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        },
+        {
+          "line": 36,
+          "text": "RuntimeError: Traceback (most recent call last):"
+        },
+        {
+          "line": 37,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py\", line 156, in scenario"
+        },
+        {
+          "line": 38,
+          "text": "    check('native export completed with a durable receipt', target.exists() and len(dialog.receipts)==1"
+        },
+        {
+          "line": 39,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py\", line 52, in check"
+        },
+        {
+          "line": 40,
+          "text": "    if not condition: raise AssertionError(name)"
+        },
+        {
+          "line": 41,
+          "text": "                      ^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        },
+        {
+          "line": 42,
+          "text": "AssertionError: native export completed with a durable receipt"
+        },
+        {
+          "line": 43,
+          "text": ""
+        }
+      ],
+      "sha256": "91fca260fc5b1e85a57a0ae39e02700b84e45d05a8f536032fdd7357f7a65409",
+      "total_lines": 43
+    },
+    {
+      "bytes": 5879,
+      "complete": false,
+      "path": "full-bundle-recording-native.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: installed exact source: carr_library.audio.process"
+        },
+        {
+          "line": 2,
+          "text": "PASS: installed exact source: carr_library.audio.recording"
+        },
+        {
+          "line": 3,
+          "text": "PASS: installed exact source: carr_library.audio.recording_monitor"
+        },
+        {
+          "line": 4,
+          "text": "PASS: installed exact source: carr_library.speech._wave_output"
+        },
+        {
+          "line": 5,
+          "text": "PASS: installed exact source: carr_library.operations.broker"
+        },
+        {
+          "line": 50,
+          "text": "PASS: native focus reaches Cancel unfinished recording"
+        },
+        {
+          "line": 51,
+          "text": "PASS: native key dispatch: Cancel unfinished recording"
+        },
+        {
+          "line": 52,
+          "text": "PASS: Cancel removes unfinished audio and preserves prior original"
+        },
+        {
+          "line": 53,
+          "text": "PASS: Cancel is announced distinctly"
+        },
+        {
+          "line": 54,
+          "text": "PASS: native focus reaches Start recording"
+        },
+        {
+          "line": 55,
+          "text": "PASS: native key dispatch: Start recording"
+        },
+        {
+          "line": 56,
+          "text": "PASS: native focus reaches Stop and save recording"
+        },
+        {
+          "line": 57,
+          "text": "PASS: native key dispatch: Stop and save recording"
+        },
+        {
+          "line": 58,
+          "text": "PASS: Escape closes only after active capture cleanup"
+        },
+        {
+          "line": 59,
+          "text": "PASS: closing preserves exactly the verified original"
+        },
+        {
+          "line": 60,
+          "text": "PASS: second recording modal starts after first HWND and callbacks retire"
+        },
+        {
+          "line": 61,
+          "text": "NATIVE_RECORDING_MODAL: 100:1639456"
+        },
+        {
+          "line": 62,
+          "text": "PASS: new dialog starts with dry monitoring disabled"
+        },
+        {
+          "line": 63,
+          "text": "PASS: native focus reaches Refresh microphones"
+        },
+        {
+          "line": 64,
+          "text": "PASS: native key dispatch: Refresh microphones"
+        },
+        {
+          "line": 65,
+          "text": "PASS: native focus reaches Microphone device (explicit selection required)"
+        },
+        {
+          "line": 66,
+          "text": "PASS: native key dispatch: Microphone device (explicit selection required)"
+        },
+        {
+          "line": 67,
+          "text": "PASS: native focus reaches Refresh monitoring outputs"
+        },
+        {
+          "line": 68,
+          "text": "PASS: native key dispatch: Refresh monitoring outputs"
+        },
+        {
+          "line": 69,
+          "text": "ACTUAL_MONITORING_OUTPUTS: 0"
+        },
+        {
+          "line": 70,
+          "text": "FAIL: native recording phase 103"
+        },
+        {
+          "line": 71,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 72,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 43, in invoke"
+        },
+        {
+          "line": 73,
+          "text": "    callback()"
+        },
+        {
+          "line": 74,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 372, in drive"
+        },
+        {
+          "line": 75,
+          "text": "    drive_monitor()"
+        },
+        {
+          "line": 76,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 486, in drive_monitor"
+        },
+        {
+          "line": 77,
+          "text": "    raise RuntimeError('Actual Windows monitoring output is required; no output was enumerated. '"
+        },
+        {
+          "line": 78,
+          "text": "RuntimeError: Actual Windows monitoring output is required; no output was enumerated. Native monitoring remains unqualified. Choose a monitoring output explicitly. Use headphones to avoid microphone feedback; no output was opened."
+        },
+        {
+          "line": 79,
+          "text": ""
+        },
+        {
+          "line": 80,
+          "text": "PASS: recording host Close drains its registered native owners"
+        },
+        {
+          "line": 81,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 82,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 655, in <module>"
+        },
+        {
+          "line": 83,
+          "text": "    main()"
+        },
+        {
+          "line": 84,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 607, in main"
+        },
+        {
+          "line": 85,
+          "text": "    raise AssertionError('\\n'.join(errors))"
+        },
+        {
+          "line": 86,
+          "text": "AssertionError: Traceback (most recent call last):"
+        },
+        {
+          "line": 87,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 43, in invoke"
+        },
+        {
+          "line": 88,
+          "text": "    callback()"
+        },
+        {
+          "line": 89,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 372, in drive"
+        },
+        {
+          "line": 90,
+          "text": "    drive_monitor()"
+        },
+        {
+          "line": 91,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 486, in drive_monitor"
+        },
+        {
+          "line": 92,
+          "text": "    raise RuntimeError('Actual Windows monitoring output is required; no output was enumerated. '"
+        },
+        {
+          "line": 93,
+          "text": "RuntimeError: Actual Windows monitoring output is required; no output was enumerated. Native monitoring remains unqualified. Choose a monitoring output explicitly. Use headphones to avoid microphone feedback; no output was opened."
+        },
+        {
+          "line": 94,
+          "text": ""
+        }
+      ],
+      "sha256": "02f3c04f0cf320ff477530bea0f969cf30b96c3944cf551c88e628bc738e43a0",
+      "total_lines": 94
+    },
+    {
+      "bytes": 3566,
+      "complete": false,
+      "path": "full-bundle-saved-audio-queue.txt",
+      "selected_lines": [
+        {
+          "line": 1,
+          "text": "PASS: exact installed player module: carr_library.speech.player"
+        },
+        {
+          "line": 2,
+          "text": "PASS: exact installed player module: carr_library.speech.playlist"
+        },
+        {
+          "line": 3,
+          "text": "PASS: exact installed player module: carr_library.speech._wave_output"
+        },
+        {
+          "line": 4,
+          "text": "PASS: exact installed player module: carr_library.speech.playback_devices"
+        },
+        {
+          "line": 5,
+          "text": "PASS: exact installed player module: carr_library.ui.audio_playback"
+        },
+        {
+          "line": 18,
+          "text": "PASS: actual keyboard Space"
+        },
+        {
+          "line": 19,
+          "text": "PASS: native file chooser Enter"
+        },
+        {
+          "line": 20,
+          "text": "PASS: actual file picker order and original hashes"
+        },
+        {
+          "line": 21,
+          "text": "PASS: review is passive"
+        },
+        {
+          "line": 22,
+          "text": "PASS: native playback control: Stop and select item"
+        },
+        {
+          "line": 23,
+          "text": "PASS: actual keyboard Space"
+        },
+        {
+          "line": 24,
+          "text": "PASS: queue selection is silent"
+        },
+        {
+          "line": 25,
+          "text": "PASS: native playback control: This player volume, 0 to 100"
+        },
+        {
+          "line": 26,
+          "text": "PASS: native playback control: Apply player volume, mute and balance"
+        },
+        {
+          "line": 27,
+          "text": "PASS: actual keyboard Space"
+        },
+        {
+          "line": 28,
+          "text": "PASS: stopped live setting does not open a device"
+        },
+        {
+          "line": 29,
+          "text": "PASS: native playback control: Play queue from selected item"
+        },
+        {
+          "line": 30,
+          "text": "PASS: actual keyboard Space"
+        },
+        {
+          "line": 31,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 32,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 315, in main"
+        },
+        {
+          "line": 33,
+          "text": "    raise RuntimeError('\\n'.join(errors))"
+        },
+        {
+          "line": 34,
+          "text": "RuntimeError: Traceback (most recent call last):"
+        },
+        {
+          "line": 35,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 167, in controls"
+        },
+        {
+          "line": 36,
+          "text": "    pump(lambda: current.position_seconds >= .05, 'Real waveOut did not advance')"
+        },
+        {
+          "line": 37,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 82, in pump"
+        },
+        {
+          "line": 38,
+          "text": "    raise TimeoutError(label)"
+        },
+        {
+          "line": 39,
+          "text": "TimeoutError: Real waveOut did not advance"
+        },
+        {
+          "line": 40,
+          "text": ""
+        },
+        {
+          "line": 41,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 42,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 288, in scenario"
+        },
+        {
+          "line": 43,
+          "text": "    raise RuntimeError('\\n'.join(errors))"
+        },
+        {
+          "line": 44,
+          "text": "RuntimeError: Traceback (most recent call last):"
+        },
+        {
+          "line": 45,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 167, in controls"
+        },
+        {
+          "line": 46,
+          "text": "    pump(lambda: current.position_seconds >= .05, 'Real waveOut did not advance')"
+        },
+        {
+          "line": 47,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 82, in pump"
+        },
+        {
+          "line": 48,
+          "text": "    raise TimeoutError(label)"
+        },
+        {
+          "line": 49,
+          "text": "TimeoutError: Real waveOut did not advance"
+        },
+        {
+          "line": 50,
+          "text": ""
+        },
+        {
+          "line": 51,
+          "text": ""
+        },
+        {
+          "line": 52,
+          "text": ""
+        },
+        {
+          "line": 53,
+          "text": "During handling of the above exception, another exception occurred:"
+        },
+        {
+          "line": 54,
+          "text": ""
+        },
+        {
+          "line": 55,
+          "text": "Traceback (most recent call last):"
+        },
+        {
+          "line": 56,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 351, in <module>"
+        },
+        {
+          "line": 57,
+          "text": "    main()"
+        },
+        {
+          "line": 58,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 326, in main"
+        },
+        {
+          "line": 59,
+          "text": "    pump(lambda: bool(destroyed), 'Failure-path desktop close', allow_errors=True)"
+        },
+        {
+          "line": 60,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 82, in pump"
+        },
+        {
+          "line": 61,
+          "text": "    raise TimeoutError(label)"
+        },
+        {
+          "line": 62,
+          "text": "TimeoutError: Failure-path desktop close"
+        }
+      ],
+      "sha256": "8c12643eba67e329c8ea2d34559d046980332d6118d6a52f27de17b963efce73",
+      "total_lines": 62
+    }
+  ],
+  "findings": [
+    "Recording passed retained-original/cancel/close and second-modal sequencing, then explicitly refused at actual monitoring output inventory0. Host Close drained registered owners.",
+    "Saved audio queue passed explicit file picker, exact original hashes and passive review. Actual waveOut did not advance; error-path desktop close also timed out. No passing playback or cleanup claim.",
+    "Publishing created actual FFmpeg fixture and verified measured M4B/LRC, then failed durable publication receipt. Retained log does not include the underlying worker/status value, so exact product-versus-fixture cause is not established."
+  ],
+  "limits": "Same exact public diagnostic ZIP only. No new source/runtime/audio execution; no product PASS or owner-candidate cause inferred."
+}

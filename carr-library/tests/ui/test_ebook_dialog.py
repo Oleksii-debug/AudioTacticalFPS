@@ -88,6 +88,9 @@ class Control:
             return -1
         return sum(count(line) + 2 for line in lines[:row]) + column
 
+    def GetLastPosition(self):
+        return len(self.value.replace('\n', '\r\n').encode('utf-16-le')) // 2
+
     def GetRange(self, start, end):
         native = self.value.replace('\n', '\r\n').encode('utf-16-le')
         return native[start * 2:end * 2].decode('utf-16-le').replace('\r\n', '\n')
@@ -314,6 +317,8 @@ def test_unavailable_native_position_keeps_chapter_and_explains_fallback(monkeyp
     def interaction(wx):
         reader = wx.named(NOTICE)
         reader.XYToPosition = lambda column, row: -1
+        # Both coordinate discovery and the native range evidence are unavailable.
+        reader.GetRange = lambda start, end: 'unavailable native range'
         contents = wx.named('Book contents (levels and chapter destinations)')
         contents.SetSelection(1)
         contents.handlers[wx.EVT_CHOICE](None)
@@ -581,3 +586,55 @@ def test_menu_installation_is_idempotent_and_binds_keyboard_command(monkeypatch)
     assert install_ebook_actions(frame) is first
     menu.Append.assert_called_once_with(wx.ID_ANY, 'Read electronic book contents\tCtrl+Shift+O')
     assert frame.Bind.call_args.args[1] == first.open
+
+
+@pytest.mark.parametrize('encoding,newline', [
+    ('utf-32-le', '\n'), ('utf-32-le', '\r\n'),
+    ('utf-16-le', '\n'), ('utf-16-le', '\r\n'),
+])
+def test_wrapped_positions_prove_every_boundary_and_exact_unicode_fragment(encoding, newline):
+    raw = ('Title 😀\n' + 'A long wrapped source line α e\u0301. ' * 20
+           + '\nExact α 😀 source & words.\nEnd.')
+    unit = 4 if encoding == 'utf-32-le' else 2
+    data = raw.replace('\n', newline).encode(encoding)
+
+    class WrappedControl:
+        def GetValue(self):
+            return raw
+
+        def XYToPosition(self, column, row):
+            # Native physical lines do not accept these logical source coordinates.
+            return -1
+
+        def GetLastPosition(self):
+            return len(data) // unit
+
+        def GetRange(self, start, end):
+            return data[start * unit:end * unit].decode(encoding).replace('\r\n', '\n')
+
+    control = WrappedControl()
+    for offset in range(len(raw) + 1):
+        position = native_position(control, raw, offset)
+        assert 0 <= position <= control.GetLastPosition()
+        assert control.GetRange(0, position) == raw[:offset]
+    start = raw.index('Exact')
+    end = start + len('Exact α 😀 source & words.')
+    assert control.GetRange(native_position(control, raw, start),
+                            native_position(control, raw, end)) == raw[start:end]
+
+
+def test_wrapped_position_rejects_clamped_range_with_unproved_native_length():
+    control = Control(WxDouble(lambda wx: None), value='A😀\nEnd.')
+    control.XYToPosition = lambda column, row: -1
+    original_end = control.GetLastPosition()
+    control.GetLastPosition = lambda: original_end + 1000
+    with pytest.raises(ValueError, match='could not locate'):
+        native_position(control, control.GetValue(), len(control.GetValue()))
+
+
+def test_wrapped_position_requires_actual_prefix_after_matching_length():
+    control = Control(WxDouble(lambda wx: None), value='A😀\nExact source.')
+    control.XYToPosition = lambda column, row: -1
+    control.GetRange = lambda start, end: 'different native text'
+    with pytest.raises(ValueError, match='could not locate'):
+        native_position(control, control.GetValue(), 5)

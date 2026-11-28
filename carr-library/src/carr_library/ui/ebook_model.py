@@ -266,8 +266,9 @@ def native_position(control, raw_text, offset):
     """Map a source offset only if the native control proves the exact prefix.
 
     wx.TextCtrl positions differ from Python indices on Windows (CRLF and
-    UTF-16). XYToPosition supplies platform-native candidates; GetRange verifies
-    them against the unmodified source. Unsupported mappings fail explicitly.
+    UTF-16). XYToPosition and bounded absolute candidates supply native positions;
+    GetRange verifies them against the unmodified source. Physical line wrapping
+    must not be mistaken for source newlines. Unsupported mappings fail explicitly.
     """
     if type(offset) is not int or not 0 <= offset <= len(raw_text):
         raise ValueError('Invalid extracted-text position.')
@@ -286,5 +287,23 @@ def native_position(control, raw_text, offset):
             except UnicodeError:
                 # A Windows candidate may end between a surrogate pair.
                 # Try the UTF-16 column only; never accept a partial character.
+                continue
+    # MSW XY coordinates follow physical wrapped lines. A source newline
+    # count is then not a native row number, even when GetValue is exact.
+    # Admit a finite absolute candidate only when both the full native length
+    # and the actual GetRange prefix establish its coordinate representation.
+    last = control.GetLastPosition()
+    whole_units = (len(raw_text), len(raw_text.encode('utf-16-le')) // 2)
+    prefix_units = (len(prefix), len(prefix.encode('utf-16-le')) // 2)
+    whole_newlines = raw_text.count('\n')
+    for whole, before in zip(whole_units, prefix_units):
+        for newline_extra in (0, 1):
+            position = before + newline_extra * row
+            if last != whole + newline_extra * whole_newlines or not 0 <= position <= last:
+                continue
+            try:
+                if control.GetRange(0, position) == prefix:
+                    return position
+            except UnicodeError:
                 continue
     raise ValueError('The text control could not locate that exact extracted-text position.')

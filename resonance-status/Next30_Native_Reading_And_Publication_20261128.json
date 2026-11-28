@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "kind": "native-reading-and-publication-repair",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 00:52 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent": "2c75b8305c7f9bedcf89c3c998137a5f07a3324e",
+  "base_tree": "d4905a4b376b8eee01bc93394cf9524852a2a3a1",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_model.py",
+      "before": "d548230c4bfd4cb0d998572d2b5c287b9663da25",
+      "after": "358ff820e01e07410a3227f895bec17905bc3e68"
+    },
+    {
+      "path": "carr-library/tests/ui/test_ebook_dialog.py",
+      "before": "5b5df3e15f94a330965647eb77b33e283b307f72",
+      "after": "63a70758799bfa88bc00f042d49a029a4f028a7b"
+    },
+    {
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "before": "82f31e5ba0528351a805a62826549d3cdd469a22",
+      "after": "986a1afc208e6d6ba057b95e0346c3306ee9bde9"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing.py",
+      "before": "bf9a653f5baa37e452430658b1043b9a9019d90a",
+      "after": "e369f0d40cbc818d9374e1d4f84bc3e28e09ad63"
+    },
+    {
+      "path": "carr-library/tests/studio/test_publishing_boundaries.py",
+      "before": "fe9cd9abef317a41db55847e767f09cad99984cb",
+      "after": "92af546865656226faceae9c1e1cb4ea1b97a64d"
+    },
+    {
+      "path": "carr-library/scripts/windows_publishing_smoke.py",
+      "before": "a9af2ef5c52a1a8dda9afbe95eebb6c8cc45de5a",
+      "after": "bf37a4b206c6f05fec383902eae577f528a05f3d"
+    },
+    {
+      "path": "carr-library/scripts/windows_text_positions_smoke.py",
+      "before": null,
+      "after": "0aba933834760f198e685d55926b639d799e1c1d"
+    },
+    {
+      "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "before": null,
+      "after": "47ca6950d785552b6cbd1754e899a4bb7e69469f"
+    },
+    {
+      "path": ".github/workflows/carr-native-reading-publication.yml",
+      "before": null,
+      "after": "91f6cf17450253d0946d6a58ee936856dd69658f"
+    }
+  ],
+  "actual_predecessor_evidence": [
+    "148e80c7dfc4de8a441d5c0f9cddd50b961d4ee1",
+    "1984818274bbe60637b471bdac9c851835a39e26"
+  ],
+  "changes": [
+    {
+      "area": "Native source positions",
+      "reason": "Exact source/page values remained unchanged but native EPUB highlight failed at offsets530..555. Logical XY mapping does not cover physical soft-wrapped MSW rows.",
+      "implementation": "Keep exact existing XY/prefix proof; additionally admit only four absolute code-point/UTF-16 and LF/CRLF candidates whose whole native length and actual GetRange prefix agree.",
+      "tests": "Old32 whole UI cases retained; six added. Actual native TextCtrl source+installed probes require20 checks each, three wrap/width profiles and every Unicode boundary. No native result exists yet."
+    },
+    {
+      "area": "Import Center native action",
+      "reason": "Actual document smoke correctly queued HTML/Markdown, then immediate dialog-child lookup failed; current Start button is inside its existing content scroller.",
+      "implementation": "Find exactly one button with both the old label and accessible name under that same owned content container. All dispatch/import/reading assertions remain unchanged."
+    },
+    {
+      "area": "Publication destination approval",
+      "reason": "Source review established that EPUB/DAISY recaptured a normalized destination while caller approval bound the original requested route. Previous native receipt assertion lacked status, so its exact cause remains unproven until execution.",
+      "implementation": "Extend the already qualified PCM original-route handling to all publication formats. Every exact snapshot/source/parent/no-clobber/receipt guard is retained.",
+      "tests": "All old15 boundary cases retained plus four actual rendered EPUB/DAISY route cases. Original route must succeed; canonical-equivalent changed requested route must refuse. Native failure gets bounded status diagnostics."
+    }
+  ],
+  "gate": {
+    "suites": {
+      "tests/ui/test_ebook_dialog.py": 38,
+      "tests/studio/test_publishing_boundaries.py": 19,
+      "tests/studio/test_publishing_handlers.py": 12
+    },
+    "source_cases": 69,
+    "installed_cases": 69,
+    "whole_suites": 3,
+    "pins": {
+      "src/carr_library/ui/ebook_model.py": "358ff820e01e07410a3227f895bec17905bc3e68",
+      "src/carr_library/ui/ebook_dialog.py": "224cc307e27732b284f1ddfb2b076a6a31762849",
+      "src/carr_library/ui/ebook_actions.py": "10c7f842e1dcfcde6cd8dafee994beca2e035cd6",
+      "src/carr_library/ui/ebook_audio_dialog.py": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5",
+      "src/carr_library/ui/publishing_dialog.py": "9f5047e74f38a17189e43157c0f432d118e3cdeb",
+      "src/carr_library/ui/import_center.py": "b304c895432fe69f68b7ea7a768ee0c70c9d4f0d",
+      "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+      "src/carr_library/studio/publishing.py": "e369f0d40cbc818d9374e1d4f84bc3e28e09ad63",
+      "src/carr_library/studio/daisy.py": "bbc6f559aa3aa11a14fd6eefa6c802058541f98c",
+      "src/carr_library/studio/render.py": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "src/carr_library/studio/project.py": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "src/carr_library/audio/audiobook.py": "64932ca712ce871cb77bebb9ad0c63dab3abd996",
+      "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
+      "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+      "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
+      "src/carr_library/research/export_file.py": "335fd4d03ed4e612d628ec2f93b615feba49e97d",
+      "src/carr_library/extract/document_formats.py": "ad6ff25c379e8b08b4aafc443a934f9a948fa398",
+      "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "src/carr_library/file_publication.py": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f",
+      "src/carr_library/runtime_settings.py": "269814e94549fdff700027afa450686a4a15f81b",
+      "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+      "tests/ui/test_ebook_dialog.py": "63a70758799bfa88bc00f042d49a029a4f028a7b",
+      "tests/studio/test_publishing_boundaries.py": "92af546865656226faceae9c1e1cb4ea1b97a64d",
+      "tests/studio/test_publishing_handlers.py": "82ce7755f62c716ed70f63fcb672c0e8d39e4806",
+      "tests/studio/test_publishing.py": "3f6ad2d411de67c28296c3bb9c8d9bafb6b80ba3",
+      "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+      "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+      "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+      "scripts/windows_text_positions_smoke.py": "0aba933834760f198e685d55926b639d799e1c1d",
+      "tests/ui/native_document_formats_smoke.py": "986a1afc208e6d6ba057b95e0346c3306ee9bde9",
+      "scripts/windows_publishing_smoke.py": "bf37a4b206c6f05fec383902eae577f528a05f3d"
+    },
+    "origins": [
+      "carr_library.ui.ebook_model",
+      "carr_library.ui.ebook_dialog",
+      "carr_library.ui.ebook_actions",
+      "carr_library.ui.ebook_audio_dialog",
+      "carr_library.ui.publishing_dialog",
+      "carr_library.ui.import_center",
+      "carr_library.ui.desktop_app",
+      "carr_library.studio.publishing",
+      "carr_library.studio.daisy",
+      "carr_library.studio.render",
+      "carr_library.studio.project",
+      "carr_library.audio.audiobook",
+      "carr_library.audio.dsp",
+      "carr_library.audio.process",
+      "carr_library.audio.cleanup",
+      "carr_library.research.export_file",
+      "carr_library.extract.document_formats",
+      "carr_library.durable_state",
+      "carr_library.file_publication",
+      "carr_library.runtime_settings",
+      "carr_library.operations.broker",
+      "carr_library.application",
+      "bootstrap"
+    ],
+    "companions": [
+      "tests/studio/test_publishing.py"
+    ],
+    "native_phases": [
+      "Actual native source text positions20",
+      "Actual native installed text positions20",
+      "Whole installed document formats/import/reading",
+      "Whole installed EPUB/DAISY publishing"
+    ],
+    "source_outer_seconds": 1500,
+    "per_suite_seconds": 600,
+    "native_timeouts_seconds": [
+      90,
+      90,
+      180,
+      330
+    ],
+    "job_minutes": 110,
+    "acceptance_step_minutes": 85,
+    "original_installed_and_origin_children": "Byte-identical to accepted Book9f78 framework",
+    "acquisition": "Existing exact audio lock and dependencies only",
+    "network": "All acquisition before the existing exact-program outbound block; owned rules/profile states restored",
+    "retention": "Fixed ordinary JSON/TXT/XML set;8MiB per file,64MiB total; no binaries/audio/runtime files"
+  },
+  "peer": "locate_project independently accepted product/test deltas, exact borrowed child literals, pins, counts, native inventories, closed retention and finite scheduling budget; NOT_RUN.",
+  "external_gates": {
+    "actual_output_device": "NOT_RUN",
+    "physical_microphone": "NOT_RUN",
+    "private_owner_inference": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "listening_quality": "NOT_RUN",
+    "release": "NOT_RUN"
+  },
+  "publication": "Only a new focused reading/publication CI branch. PR173, canonical and currently running profiles remain unchanged."
+}
