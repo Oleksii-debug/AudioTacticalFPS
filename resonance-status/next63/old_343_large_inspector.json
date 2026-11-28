@@ -1,0 +1,222 @@
+{
+  "schema": "carr.immutable-capacity-inspector-rebinding/1",
+  "recorded_utc": "2026-11-28 06:27:33 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "file": {
+    "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+    "preimage": null,
+    "blob": "16afe6e4efea7b3676ee66c676d47fdd8940e0ed",
+    "bytes": 19815,
+    "readback_exact": true
+  },
+  "composition": {
+    "new_path_on_confirmed_bases": [
+      "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "80b64bac746851830d23e25a38e7a78870760a74"
+    ],
+    "optional_root_parent": "663bff7b5d6be889f0eef54e13e5375c85e7d90b",
+    "no_checkout_or_product_execution": true,
+    "branch_prefix": "carr/ci-c3-capacity-evidence-343-large-*",
+    "only_root_may_publish": true
+  },
+  "template": {
+    "blob": "2cee59f6ff6a39fdd07ea7a53b3ac893ecac5d40",
+    "actual_successful_run": 46112137738,
+    "actual_successful_job": 140877801750,
+    "prior_actual_metrics": "be0410b63af507abcab26816d10309aabfe94305"
+  },
+  "measurement_identity": {
+    "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+    "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9",
+    "run_id": 46107711781,
+    "evidence_blob": "f7de2e9e8d5141ea0d0ef1f30a368f7cd2752d67",
+    "archives": [
+      {
+        "artifact": 15251088078,
+        "job": 140866490967,
+        "books": 50000,
+        "segments_per_book": 20,
+        "zip_bytes": 13490,
+        "zip_sha256": "9b20c696e7b9de4009aeb468710def909a265687f18dd33d972f6703cee3604f",
+        "name": "retained-capacity-large-source-v1-50000x20-343efc505230f969ec9519bd04e4340381f07909-1",
+        "status": "PARTIAL",
+        "phases": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": "BudgetExceeded",
+            "status": "PARTIAL"
+          }
+        ],
+        "retained": {
+          "50000/build.json": {
+            "bytes": 5985,
+            "sha256": "599327d73ef5b9e214440bd5590a7eab163c9deb4ad3f760668e26db386f90e1"
+          },
+          "50000/build.stderr.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "50000/build.stdout.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "50000/measure.json": {
+            "bytes": 5593,
+            "sha256": "848fbbe04fa912c0b8ec593534b58cd176f503cd0d165fcb31edb5e4fd967030"
+          },
+          "50000/measure.stderr.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "50000/measure.stdout.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "configuration.json": {
+            "bytes": 5462,
+            "sha256": "22e2653c0ed1cba469368e20428f83ed6507bec557ab0de7590b3ca00ddbba47"
+          },
+          "library-corpus-scale.json": {
+            "bytes": 19239,
+            "sha256": "eb005b55987a0e20dcfc9570fcaecfaa8e83e76793d5c7db4bd781fdf822f886"
+          }
+        }
+      },
+      {
+        "artifact": 15251540149,
+        "job": 140866491018,
+        "books": 50000,
+        "segments_per_book": 40,
+        "zip_bytes": 13481,
+        "zip_sha256": "721f63791f4f3bc0a996b38d5518451146a51c003cd446118241d21b50b9f8dd",
+        "name": "retained-capacity-large-source-v1-50000x40-343efc505230f969ec9519bd04e4340381f07909-1",
+        "status": "PARTIAL",
+        "phases": [
+          {
+            "phase": "build",
+            "reason": null,
+            "status": "PASS"
+          },
+          {
+            "phase": "measure",
+            "reason": "BudgetExceeded",
+            "status": "PARTIAL"
+          }
+        ],
+        "retained": {
+          "50000/build.json": {
+            "bytes": 5981,
+            "sha256": "ade10c10c2c7ca207aae79c2d9a5d18968c8c897d3b6e5735696481eadfba118"
+          },
+          "50000/build.stderr.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "50000/build.stdout.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "50000/measure.json": {
+            "bytes": 5596,
+            "sha256": "1494f58e06876729ca867fc6d7571d8f30e4a157e1fcbf2e2062e51deca8bd66"
+          },
+          "50000/measure.stderr.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "50000/measure.stdout.txt": {
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "configuration.json": {
+            "bytes": 5462,
+            "sha256": "f048d1e07aafc58eaf6bfcb899389b1313d3dc151b6a4db61e2d7f146e907077"
+          },
+          "library-corpus-scale.json": {
+            "bytes": 19242,
+            "sha256": "1f0c1281e17875a6191491c6a403b530e9fe061ce0a57fb7da8c4d167ec91db4"
+          }
+        }
+      }
+    ]
+  },
+  "delta": {
+    "replacement_count": 5,
+    "description": [
+      "Workflow display name only",
+      "Narrow dedicated343-large branch prefix",
+      "Step display name only",
+      "Two fixed artifact declarations from exact closed partial receipts",
+      "Truthful final scope text"
+    ],
+    "exact_inverse_to_template": true,
+    "entire_inspection_body_except_final_scope_byte_identical": true
+  },
+  "unchanged_guards": {
+    "runner": "ubuntu-24.04",
+    "python": "3.11",
+    "setup_action": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+    "job_minutes": 6,
+    "permissions": {
+      "contents": "read",
+      "actions": "read"
+    },
+    "token": "Only fixed api.github.com metadata and artifact-redirect GET requests",
+    "redirects": "NoRedirect; a fresh header-free request for the validated HTTPS object-store URL; no further redirects",
+    "archive_maximum_bytes": 65536,
+    "archive_exact_size_and_digest": true,
+    "zip_maximum_members": 32,
+    "zip_maximum_expanded_bytes": 2097152,
+    "member_maximum_bytes": 262144,
+    "member_path_and_type_closed": true,
+    "json_duplicate_keys_refused": true,
+    "json_maximum_nodes": 20000,
+    "json_maximum_depth": 32,
+    "output_maximum_bytes": 262144,
+    "section_maximum_bytes": 24000,
+    "source_origins": 21,
+    "case_controls": {
+      "phase_timeout": 3600,
+      "result_page_size": 37,
+      "repeats": 9,
+      "segment_bytes": 256,
+      "max_disk_bytes": 25769803776,
+      "min_free_bytes": 1073741824
+    },
+    "public_samples": 12,
+    "retained_hashes_per_archive": 8,
+    "additional_fixed_metadata_members": 5
+  },
+  "expected_observation": {
+    "prior_log_outcome": "Both exact old343 profiles: build PASS followed by measure PARTIAL BudgetExceeded.",
+    "required_phase_order": [
+      "build",
+      "measure"
+    ],
+    "phases_not_run": [
+      "restart",
+      "operations",
+      "backup"
+    ],
+    "prints_actual_progress_and_timings_only_when_retained": true,
+    "original_failed_phase_status_retained": true,
+    "process_reaped_required": true,
+    "inspection_PASS_is_not_corpus_PASS": true
+  },
+  "scope_limits": [
+    "No corpus construction, benchmark execution, native process, source execution, checkout, repository/ref mutation or new timeout.",
+    "No result is transferred to current5b2 profiles; they remain running independently.",
+    "No exact partial counters or timing is asserted before this new inspection executes."
+  ],
+  "peer": {
+    "agent": "/root/progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Exact five-replacement inverse and both fixed archived identities, geometry/status/phases and all8-member maps compared with f7de; unchanged token/redirect/ZIP/JSON/output/time machinery; no execution claim."
+  }
+}
