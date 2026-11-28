@@ -193,9 +193,28 @@ def inspect_shortcuts(root, report):
     script.write_text(SHORTCUT_INSPECTOR, encoding='utf-8')
     output = report / 'shortcuts.json'
     evidence = report / 'shortcut-inspection.json'
-    owned_process([powershell, '-NoProfile', '-NonInteractive', '-File', script,
-                   '-Folder', folder, '-Output', output, '-Evidence', evidence], cwd=report,
-                  log=report / 'shortcuts-process.log', timeout=30)
+    log = report / 'shortcuts-process.log'
+    try:
+        owned_process([powershell, '-NoProfile', '-NonInteractive', '-File', script,
+                       '-Folder', folder, '-Output', output, '-Evidence', evidence], cwd=report,
+                      log=log, timeout=30)
+    except RuntimeError as error:
+        # Preserve the failed child and its owned cleanup; expose only a bounded
+        # copy of the existing log so a temporary CI directory cannot hide why.
+        detail = {'log': log.name, 'status': 'UNAVAILABLE'}
+        try:
+            with log.open('rb') as stream:
+                saved = stream.read(16385)
+            captured = saved[:16384]
+            encoding = ('utf-16' if captured.startswith((b'\xff\xfe', b'\xfe\xff'))
+                        else 'utf-8-sig')
+            detail.update(status='READ', captured_bytes=len(captured),
+                          truncated=len(saved) > len(captured),
+                          captured_sha256=hashlib.sha256(captured).hexdigest(),
+                          text=captured.decode(encoding, errors='backslashreplace'))
+        except Exception as read_error:
+            detail['read_error'] = type(read_error).__name__
+        raise RuntimeError(f'{error}; child log: {json.dumps(detail, ensure_ascii=True)}') from error
     result = json.loads(output.read_text(encoding='utf-8-sig'))
     expected = {'Resonance': root / 'app/ResearchLibrary.exe',
                 'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
