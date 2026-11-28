@@ -1,0 +1,83 @@
+[
+  {
+    "line": 742,
+    "status": "PASS",
+    "selector": "tests/packaging/test_ci_check.py",
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 760,
+    "status": "PASS",
+    "selector": "tests/e2e/test_pdf_review_cancellation.py",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 766,
+    "status": "PASS",
+    "selector": "tests/storage/test_v3_state_backup.py",
+    "passed": 43,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 2492,
+    "status": "PASS",
+    "selector": "tests/e2e/test_semantic_fallback_status.py",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 2503,
+    "status": "PASS",
+    "selector": "tests/e2e/test_offline_startup.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 2780,
+    "status": "PASS",
+    "selector": "tests/extract/test_managed_ocr.py",
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 2791,
+    "status": "PASS",
+    "selector": "tests/e2e/test_managed_ocr_import.py",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 2803,
+    "status": "PASS",
+    "selector": "tests/extract/test_ocr_languages.py",
+    "passed": 102,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  },
+  {
+    "line": 2815,
+    "status": "PASS",
+    "selector": "tests/ui/test_ocr_selection.py",
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "device_count": 0,
+  "devices": [],
+  "inventory_truncated": false,
+  "fixture": {
+    "sample_rate": 16000,
+    "channels": 1,
+    "bits_per_sample": 16
+  },
+  "format_query_result": 2,
+  "format_query_message": "A device ID has been used that is out of range for your system.",
+  "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+  "scope": "Read-only endpoint and format query; actual MCI playback remains required.",
+  "status": "UNAVAILABLE",
+  "actual_playback": "NOT_RUN"
+}

@@ -1,0 +1,78 @@
+[
+  {
+    "id": 15250330563,
+    "name": "carr-windows-9250662a12f01e077edefbeb3b87cfb1d47016b2-1",
+    "size_in_bytes": 204615,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15250330563",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15250330563/zip",
+    "expired": false,
+    "created_at": "2026-11-28T05:30:40Z",
+    "expires_at": "2026-12-05T05:30:39Z",
+    "updated_at": "2026-11-28T05:30:40Z",
+    "digest": "sha256:8bd2cd15b573a519b222aafad12ad9786128ce1cff2d367326d461476d684a13",
+    "workflow_run": {
+      "id": 46105059505,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+      "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+    }
+  },
+  {
+    "id": 15248337235,
+    "name": "carr-windows-pre-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+    "size_in_bytes": 181516,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248337235",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248337235/zip",
+    "expired": false,
+    "created_at": "2026-11-28T04:31:06Z",
+    "expires_at": "2026-12-05T04:31:05Z",
+    "updated_at": "2026-11-28T04:31:06Z",
+    "digest": "sha256:19a5855ed23fa6c050fcbdd653493bd6001086b3b168d00ee241dc754a9b4aa9",
+    "workflow_run": {
+      "id": 46105059505,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+      "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+    }
+  },
+  {
+    "id": 15248185042,
+    "name": "carr-windows-audio-endpoint-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+    "size_in_bytes": 1003,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248185042",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15248185042/zip",
+    "expired": false,
+    "created_at": "2026-11-28T04:14:15Z",
+    "expires_at": "2026-12-05T04:14:13Z",
+    "updated_at": "2026-11-28T04:14:15Z",
+    "digest": "sha256:a21838dcfae9da784665586892ab69bab78064aed0459dfc76bcdd83e747166d",
+    "workflow_run": {
+      "id": 46105059505,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+      "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+    }
+  },
+  {
+    "id": 15246804766,
+    "name": "carr-windows-recording-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+    "size_in_bytes": 8808,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246804766",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15246804766/zip",
+    "expired": false,
+    "created_at": "2026-11-28T04:17:02Z",
+    "expires_at": "2026-12-05T04:17:00Z",
+    "updated_at": "2026-11-28T04:17:02Z",
+    "digest": "sha256:4727a2ad158accaa3a3847ca7773d95cc286a1e5538f99d32c4034f4774fe19a",
+    "workflow_run": {
+      "id": 46105059505,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+      "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+    }
+  }
+]

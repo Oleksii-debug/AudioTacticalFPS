@@ -1,0 +1,130 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "Separate pull-request bibliography source suites and installed native controls",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "run_id": 46111582006,
+  "run_attempt": 1,
+  "job_id": 140876084007,
+  "event": "pull_request",
+  "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:22:26Z",
+  "completed_at": "2026-11-28T05:29:25Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111582006/job/140876084007",
+  "workflow": {
+    "path": ".github/workflows/carr-bibliography.yml",
+    "git_blob": "53d7e3142f94dbab7e67273550b9809189c94b81"
+  },
+  "checkout_proof": {
+    "observed_commit_lines": 2,
+    "wheel_source_verifier": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+      "wheel_sha256": "e28350966b525750a5e24420cb711a43b376331f32e914d05d080d7c78a3c220"
+    },
+    "not_a_merge_checkout": true,
+    "qualification": "Historical checkout is established from actual checkout output and the wheel-source proof; mutable pull_requests[].head metadata is not used as historical evidence."
+  },
+  "tests": {
+    "strict_source_selected_modules": 29,
+    "completed_module_verdicts": 29,
+    "passed": 1092,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit_codes": [
+      0
+    ],
+    "selectors": [
+      "tests/research/test_bibtex_import.py",
+      "tests/research/test_academic_library.py",
+      "tests/research/test_csl_author_boundaries.py",
+      "tests/citations/test_csl.py",
+      "tests/citations/test_custom_csl.py",
+      "tests/citations/test_bibliography_workbench.py",
+      "tests/citations/test_custom_workbench.py",
+      "tests/ui/test_citation_styles_jobs.py",
+      "tests/ui/test_academic_library_dialog.py",
+      "tests/ui/test_academic_actions.py",
+      "tests/ui/test_academic_export_handler.py",
+      "tests/catalog/test_bibliography.py",
+      "tests/catalog/test_archive_portability.py",
+      "tests/catalog/test_intake_portability.py",
+      "tests/catalog/test_reference_exchange.py",
+      "tests/ingest/test_import_replay_identity.py",
+      "tests/ingest/test_txt_replay_registration.py",
+      "tests/reader/test_export_no_clobber.py",
+      "tests/reader/test_export_reconciliation.py",
+      "tests/reader/test_file_export.py",
+      "tests/reader/test_binary_file_export.py",
+      "tests/reader/test_academic_documents.py",
+      "tests/reader/test_bibliographic_locators.py",
+      "tests/reader/test_evidence_export.py",
+      "tests/storage/test_academic_migration.py",
+      "tests/e2e/test_academic_workflow.py",
+      "tests/e2e/test_academic_workflows.py",
+      "tests/e2e/test_academic_document_export.py",
+      "tests/e2e/test_export_destination.py"
+    ],
+    "execution": "ci_check runs each selected suite with checkout src on PYTHONPATH; installed native controls are a distinct stage.",
+    "individual_results": "module-results.json"
+  },
+  "native": {
+    "status": "PASS",
+    "dynamic_checks": 69,
+    "installed_modules_checked": 5,
+    "independent_hash_comparison": "Every emitted installed-module SHA256 was independently recomputed from the exact2df Git blob and matched.",
+    "identity_file": "native-module-identity.json",
+    "native_keyboard": "PASS",
+    "native_clipboard": "PASS",
+    "native_custom_style": "PASS",
+    "service_exports": [
+      "text",
+      "html",
+      "docx"
+    ],
+    "manual_keyboard": "NOT_RUN",
+    "native_file_pickers": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "installer": "NOT_RUN",
+    "count_meaning": "Dynamic assertions in the native probe, not69 independent test cases."
+  },
+  "runtime": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.20348-SP0",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "artifact": {
+    "id": 15250036967,
+    "name": "bibliography-windows-2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "size_bytes": 6628,
+    "sha256": "aa370a3a2b01117a6ad5d49c8fa33f0656d904ae46a07cac05a03f5b8b2127a5",
+    "api_upload_match": true,
+    "downloaded": false,
+    "original_member_bytes": "NOT_READ"
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "log_type": "Complete connector-decoded text, original timestamps/line endings retained.",
+    "decoded_utf8_bytes": 139810,
+    "decoded_utf8_sha256": "3d4b5672431150736578c90c0724b1b74c31f162629d13cec8d8ccdc4c241479",
+    "derived_json": "Source-wheel and native receipts are parsed from the completed log, not copied original artifact members."
+  },
+  "separate_trials": {
+    "endpoint_run": 46111569574,
+    "endpoint_status": "Still separate; no result inferred from this pull-request trial.",
+    "earlier_failed_pr_run": 46105059621,
+    "earlier_failed_pr_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "earlier_failure_preserved": "Its8-minute aggregate cutoff remains in its own historical receipt; this successful2df run does not rewrite it."
+  },
+  "limits": [
+    "This is an independent exact-head PR receiving trial; it is not a claim that the still-pending endpoint copy succeeded.",
+    "The verified wheel binds the complete declared payload to the selected commit. Its source-proof493payload/398required counts are actual, not transferred from another run.",
+    "No final release, sealed installer, human accessibility, acoustic quality or physical-device qualification is implied."
+  ]
+}

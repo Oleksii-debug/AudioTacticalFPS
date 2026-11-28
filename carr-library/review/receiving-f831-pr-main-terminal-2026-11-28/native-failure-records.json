@@ -1,0 +1,249 @@
+[
+  {
+    "line": 422,
+    "end": 422,
+    "raw": "{\"device_count\": 0, \"devices\": [], \"inventory_truncated\": false, \"fixture\": {\"sample_rate\": 16000, \"channels\": 1, \"bits_per_sample\": 16}, \"format_query_result\": 2, \"format_query_message\": \"A device ID has been used that is out of range for your system.\", \"mci_326_message\": \"No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.\", \"scope\": \"Read-only endpoint and format query; actual MCI playback remains required.\", \"status\": \"UNAVAILABLE\", \"actual_playback\": \"NOT_RUN\"}\n",
+    "value": {
+      "device_count": 0,
+      "devices": [],
+      "inventory_truncated": false,
+      "fixture": {
+        "sample_rate": 16000,
+        "channels": 1,
+        "bits_per_sample": 16
+      },
+      "format_query_result": 2,
+      "format_query_message": "A device ID has been used that is out of range for your system.",
+      "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+      "scope": "Read-only endpoint and format query; actual MCI playback remains required.",
+      "status": "UNAVAILABLE",
+      "actual_playback": "NOT_RUN"
+    }
+  },
+  {
+    "line": 1892,
+    "end": 1892,
+    "raw": "{\"status\": \"PASS\", \"runtime\": {\"version\": 2, \"voices\": [{\"id\": \"sapi5:x64:a4a21a4d14ca43b3714c2898\", \"engine\": \"sapi5\", \"name\": \"Microsoft David Desktop (x64)\", \"languages\": [\"en-US\"], \"capabilities\": [\"pcm\", \"rate\", \"volume\", \"local\"], \"vendor\": \"Microsoft\", \"license_note\": \"User-installed runtime and voice; their terms apply.\", \"candidate_languages\": []}, {\"id\": \"sapi5:x64:dac5df3cd814aa727e5b904b\", \"engine\": \"sapi5\", \"name\": \"Microsoft Zira Desktop (x64)\", \"languages\": [\"en-US\"], \"capabilities\": [\"pcm\", \"rate\", \"volume\", \"local\"], \"vendor\": \"Microsoft\", \"license_note\": \"User-installed runtime and voice; their terms apply.\", \"candidate_languages\": []}, {\"id\": \"sapi5:x86:a4a21a4d14ca43b3714c2898\", \"engine\": \"sapi5\", \"name\": \"Microsoft David Desktop (x86)\", \"languages\": [\"en-US\"], \"capabilities\": [\"pcm\", \"rate\", \"volume\", \"local\"], \"vendor\": \"Microsoft\", \"license_note\": \"User-installed runtime and voice; their terms apply.\", \"candidate_languages\": []}, {\"id\": \"sapi5:x86:dac5df3cd814aa727e5b904b\", \"engine\": \"sapi5\", \"name\": \"Microsoft Zira Desktop (x86)\", \"languages\": [\"en-US\"], \"capabilities\": [\"pcm\", \"rate\", \"volume\", \"local\"], \"vendor\": \"Microsoft\", \"license_note\": \"User-installed runtime and voice; their terms apply.\", \"candidate_languages\": []}], \"executables\": [{\"engine\": \"sapi5\", \"executable_sha256\": \"38f4384643b3fa0de714d2367b712c2e0fa1c89e2cfd131ae6b831ad962b1033\"}, {\"engine\": \"sapi5\", \"executable_sha256\": \"e093a521b1ce57bcface048f263bc21f93745663cdf0dd1c780c418f3802b7ef\"}], \"sapi_helper_sha256\": \"3ef273f7461c6fbcffef65bda9039b1fc913c92b7a2d869f727c280c6ccf82aa\", \"sapi_runtime\": {\"x64\": {\"system_speech_version\": \"4.0.0.0\", \"powershell_version\": \"5.1.20348.5773\", \"bitness\": 64}, \"x86\": {\"system_speech_version\": \"4.0.0.0\", \"powershell_version\": \"5.1.20348.5773\", \"bitness\": 32}}, \"model_manifests\": [], \"model_adapter_sha256\": \"b3feecba08d652469b6ebc3c02c23387e5e0655f0a19e1d04af188c48edfbb0b\", \"model_validator_sha256\": \"8353d58898c6c34441c058c1ea9232b999201d926dbde493d3040863dc2d19ce\", \"owner_package_adapter_sha256\": \"5742183f44368fd1ab9f699dfc6da324ad0fbb1c39774ce76879c1d2676f5275\", \"registry_sha256\": \"68f0b5f68394f50c92db610e898469aa73f59c8231affb44c788989d15c59ce3\", \"fingerprint_scope\": \"executables, versions, helpers, installed identities, configured model manifests and verified assets\"}, \"render\": {\"sha256\": \"72a78bc30415506e376d6fa0ef354306355b20afcab21b59683ded338d1f8a31\", \"sample_rate\": 24000, \"channels\": 1, \"frames\": 73908, \"duration_seconds\": 3.0795, \"voice_id\": \"sapi5:x64:a4a21a4d14ca43b3714c2898\", \"engine\": \"sapi5\", \"text_sha256\": \"ecf11d72fbc64511d2461d12da1e4f8db96f87176a0b1903bd39a18c89e08ab3\", \"timing\": \"utterance\", \"rate_control\": \"engine_relative\"}, \"manual_nvda\": \"NOT_RUN\"}\n",
+    "value": {
+      "status": "PASS",
+      "runtime": {
+        "version": 2,
+        "voices": [
+          {
+            "id": "sapi5:x64:a4a21a4d14ca43b3714c2898",
+            "engine": "sapi5",
+            "name": "Microsoft David Desktop (x64)",
+            "languages": [
+              "en-US"
+            ],
+            "capabilities": [
+              "pcm",
+              "rate",
+              "volume",
+              "local"
+            ],
+            "vendor": "Microsoft",
+            "license_note": "User-installed runtime and voice; their terms apply.",
+            "candidate_languages": []
+          },
+          {
+            "id": "sapi5:x64:dac5df3cd814aa727e5b904b",
+            "engine": "sapi5",
+            "name": "Microsoft Zira Desktop (x64)",
+            "languages": [
+              "en-US"
+            ],
+            "capabilities": [
+              "pcm",
+              "rate",
+              "volume",
+              "local"
+            ],
+            "vendor": "Microsoft",
+            "license_note": "User-installed runtime and voice; their terms apply.",
+            "candidate_languages": []
+          },
+          {
+            "id": "sapi5:x86:a4a21a4d14ca43b3714c2898",
+            "engine": "sapi5",
+            "name": "Microsoft David Desktop (x86)",
+            "languages": [
+              "en-US"
+            ],
+            "capabilities": [
+              "pcm",
+              "rate",
+              "volume",
+              "local"
+            ],
+            "vendor": "Microsoft",
+            "license_note": "User-installed runtime and voice; their terms apply.",
+            "candidate_languages": []
+          },
+          {
+            "id": "sapi5:x86:dac5df3cd814aa727e5b904b",
+            "engine": "sapi5",
+            "name": "Microsoft Zira Desktop (x86)",
+            "languages": [
+              "en-US"
+            ],
+            "capabilities": [
+              "pcm",
+              "rate",
+              "volume",
+              "local"
+            ],
+            "vendor": "Microsoft",
+            "license_note": "User-installed runtime and voice; their terms apply.",
+            "candidate_languages": []
+          }
+        ],
+        "executables": [
+          {
+            "engine": "sapi5",
+            "executable_sha256": "38f4384643b3fa0de714d2367b712c2e0fa1c89e2cfd131ae6b831ad962b1033"
+          },
+          {
+            "engine": "sapi5",
+            "executable_sha256": "e093a521b1ce57bcface048f263bc21f93745663cdf0dd1c780c418f3802b7ef"
+          }
+        ],
+        "sapi_helper_sha256": "3ef273f7461c6fbcffef65bda9039b1fc913c92b7a2d869f727c280c6ccf82aa",
+        "sapi_runtime": {
+          "x64": {
+            "system_speech_version": "4.0.0.0",
+            "powershell_version": "5.1.20348.5773",
+            "bitness": 64
+          },
+          "x86": {
+            "system_speech_version": "4.0.0.0",
+            "powershell_version": "5.1.20348.5773",
+            "bitness": 32
+          }
+        },
+        "model_manifests": [],
+        "model_adapter_sha256": "b3feecba08d652469b6ebc3c02c23387e5e0655f0a19e1d04af188c48edfbb0b",
+        "model_validator_sha256": "8353d58898c6c34441c058c1ea9232b999201d926dbde493d3040863dc2d19ce",
+        "owner_package_adapter_sha256": "5742183f44368fd1ab9f699dfc6da324ad0fbb1c39774ce76879c1d2676f5275",
+        "registry_sha256": "68f0b5f68394f50c92db610e898469aa73f59c8231affb44c788989d15c59ce3",
+        "fingerprint_scope": "executables, versions, helpers, installed identities, configured model manifests and verified assets"
+      },
+      "render": {
+        "sha256": "72a78bc30415506e376d6fa0ef354306355b20afcab21b59683ded338d1f8a31",
+        "sample_rate": 24000,
+        "channels": 1,
+        "frames": 73908,
+        "duration_seconds": 3.0795,
+        "voice_id": "sapi5:x64:a4a21a4d14ca43b3714c2898",
+        "engine": "sapi5",
+        "text_sha256": "ecf11d72fbc64511d2461d12da1e4f8db96f87176a0b1903bd39a18c89e08ab3",
+        "timing": "utterance",
+        "rate_control": "engine_relative"
+      },
+      "manual_nvda": "NOT_RUN"
+    }
+  },
+  {
+    "line": 1893,
+    "end": 1893,
+    "raw": "{\"status\": \"NOT_RUN\", \"reason\": \"DEVICE_UNAVAILABLE\", \"manual_listening\": \"NOT_RUN\", \"manual_nvda\": \"NOT_RUN\"}\n",
+    "value": {
+      "status": "NOT_RUN",
+      "reason": "DEVICE_UNAVAILABLE",
+      "manual_listening": "NOT_RUN",
+      "manual_nvda": "NOT_RUN"
+    }
+  },
+  {
+    "line": 5941,
+    "end": 5981,
+    "raw": "{\n  \"status\": \"FAILED\",\n  \"checks\": [\n    \"installed exact source: carr_library.speech.player\",\n    \"installed exact source: carr_library.ui.reader_playback\",\n    \"installed exact source: carr_library.ui.speech_dialog\",\n    \"real Windows native widgets\",\n    \"native named reader control: Mark A at current position\",\n    \"native named reader control: Mark B at current position\",\n    \"native named reader control: Set A/B times...\",\n    \"native named reader control: Enable A/B repeat\",\n    \"native named reader control: Clear A/B\",\n    \"native named reader control: Sleep timer...\",\n    \"native named reader control: Repeat and sleep status\",\n    \"native named reader control: A/B repeat and sleep timer status\",\n    \"actual installed Windows MCI transport\"\n  ],\n  \"fixture\": \"synthetic PCM16 tone\",\n  \"actual_winmm\": false,\n  \"actual_native_keys\": false,\n  \"nvda\": \"NOT_RUN\",\n  \"human_listening\": \"NOT_RUN\",\n  \"voice_inference\": \"NOT_RUN\",\n  \"independent_deadline_seconds\": 180,\n  \"wave_output\": {\n    \"device_count\": 0,\n    \"devices\": [],\n    \"inventory_truncated\": false,\n    \"fixture\": {\n      \"sample_rate\": 16000,\n      \"channels\": 1,\n      \"bits_per_sample\": 16\n    },\n    \"format_query_result\": 2,\n    \"format_query_message\": \"A device ID has been used that is out of range for your system.\",\n    \"mci_326_message\": \"No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.\",\n    \"scope\": \"Read-only endpoint and format query; actual MCI playback remains required.\"\n  },\n  \"failure\": \"Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 407, in _run_probe\\n    raise AssertionError('\\\\n'.join(failures))\\nAssertionError: Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 143, in guarded\\n    callback()\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 157, in tick\\n    done()\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 323, in begin_playback\\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\progress_speech.py\\\", line 343, in play_when_quiet\\n    attempt()\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\progress_speech.py\\\", line 341, in attempt\\n    on_error(exc)\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 325, in <lambda>\\n    on_error=lambda error: (_ for _ in ()).throw(error))\\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 325, in <genexpr>\\n    on_error=lambda error: (_ for _ in ()).throw(error))\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\progress_speech.py\\\", line 329, in attempt\\n    start()\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 323, in <lambda>\\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 582, in play\\n    self._replace_recording(path, start_seconds=start_seconds)\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 578, in _replace_recording\\n    self._start(target, start_seconds=start_seconds)\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 539, in _start\\n    self._mci_open(transport)\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-windows-python\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 423, in _mci_open\\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\\nRuntimeError: Windows audio device rejected the operation (MCI 326).\\n\\n\",\n  \"count\": 13\n}\n",
+    "value": {
+      "status": "FAILED",
+      "checks": [
+        "installed exact source: carr_library.speech.player",
+        "installed exact source: carr_library.ui.reader_playback",
+        "installed exact source: carr_library.ui.speech_dialog",
+        "real Windows native widgets",
+        "native named reader control: Mark A at current position",
+        "native named reader control: Mark B at current position",
+        "native named reader control: Set A/B times...",
+        "native named reader control: Enable A/B repeat",
+        "native named reader control: Clear A/B",
+        "native named reader control: Sleep timer...",
+        "native named reader control: Repeat and sleep status",
+        "native named reader control: A/B repeat and sleep timer status",
+        "actual installed Windows MCI transport"
+      ],
+      "fixture": "synthetic PCM16 tone",
+      "actual_winmm": false,
+      "actual_native_keys": false,
+      "nvda": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "voice_inference": "NOT_RUN",
+      "independent_deadline_seconds": 180,
+      "wave_output": {
+        "device_count": 0,
+        "devices": [],
+        "inventory_truncated": false,
+        "fixture": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "bits_per_sample": 16
+        },
+        "format_query_result": 2,
+        "format_query_message": "A device ID has been used that is out of range for your system.",
+        "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+        "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+      },
+      "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 343, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 341, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 329, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+      "count": 13
+    }
+  },
+  {
+    "line": 8797,
+    "end": 8837,
+    "raw": "{\n  \"status\": \"FAILED\",\n  \"checks\": [\n    \"installed exact source: carr_library.speech.player\",\n    \"installed exact source: carr_library.ui.reader_playback\",\n    \"installed exact source: carr_library.ui.speech_dialog\",\n    \"real Windows native widgets\",\n    \"native named reader control: Mark A at current position\",\n    \"native named reader control: Mark B at current position\",\n    \"native named reader control: Set A/B times...\",\n    \"native named reader control: Enable A/B repeat\",\n    \"native named reader control: Clear A/B\",\n    \"native named reader control: Sleep timer...\",\n    \"native named reader control: Repeat and sleep status\",\n    \"native named reader control: A/B repeat and sleep timer status\",\n    \"actual installed Windows MCI transport\"\n  ],\n  \"fixture\": \"synthetic PCM16 tone\",\n  \"actual_winmm\": false,\n  \"actual_native_keys\": false,\n  \"nvda\": \"NOT_RUN\",\n  \"human_listening\": \"NOT_RUN\",\n  \"voice_inference\": \"NOT_RUN\",\n  \"independent_deadline_seconds\": 180,\n  \"wave_output\": {\n    \"device_count\": 0,\n    \"devices\": [],\n    \"inventory_truncated\": false,\n    \"fixture\": {\n      \"sample_rate\": 16000,\n      \"channels\": 1,\n      \"bits_per_sample\": 16\n    },\n    \"format_query_result\": 2,\n    \"format_query_message\": \"A device ID has been used that is out of range for your system.\",\n    \"mci_326_message\": \"No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.\",\n    \"scope\": \"Read-only endpoint and format query; actual MCI playback remains required.\"\n  },\n  \"failure\": \"Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 407, in _run_probe\\n    raise AssertionError('\\\\n'.join(failures))\\nAssertionError: Traceback (most recent call last):\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 143, in guarded\\n    callback()\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 157, in tick\\n    done()\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 323, in begin_playback\\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\progress_speech.py\\\", line 343, in play_when_quiet\\n    attempt()\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\progress_speech.py\\\", line 341, in attempt\\n    on_error(exc)\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 325, in <lambda>\\n    on_error=lambda error: (_ for _ in ()).throw(error))\\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 325, in <genexpr>\\n    on_error=lambda error: (_ for _ in ()).throw(error))\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\progress_speech.py\\\", line 329, in attempt\\n    start()\\n  File \\\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_reader_controls_smoke.py\\\", line 323, in <lambda>\\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 582, in play\\n    self._replace_recording(path, start_seconds=start_seconds)\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 578, in _replace_recording\\n    self._start(target, start_seconds=start_seconds)\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 539, in _start\\n    self._mci_open(transport)\\n  File \\\"D:\\\\a\\\\_temp\\\\carr-bundle-ci\\\\complete bundle\\\\.venv\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\player.py\\\", line 423, in _mci_open\\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\\nRuntimeError: Windows audio device rejected the operation (MCI 326).\\n\\n\",\n  \"count\": 13\n}\n",
+    "value": {
+      "status": "FAILED",
+      "checks": [
+        "installed exact source: carr_library.speech.player",
+        "installed exact source: carr_library.ui.reader_playback",
+        "installed exact source: carr_library.ui.speech_dialog",
+        "real Windows native widgets",
+        "native named reader control: Mark A at current position",
+        "native named reader control: Mark B at current position",
+        "native named reader control: Set A/B times...",
+        "native named reader control: Enable A/B repeat",
+        "native named reader control: Clear A/B",
+        "native named reader control: Sleep timer...",
+        "native named reader control: Repeat and sleep status",
+        "native named reader control: A/B repeat and sleep timer status",
+        "actual installed Windows MCI transport"
+      ],
+      "fixture": "synthetic PCM16 tone",
+      "actual_winmm": false,
+      "actual_native_keys": false,
+      "nvda": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "voice_inference": "NOT_RUN",
+      "independent_deadline_seconds": 180,
+      "wave_output": {
+        "device_count": 0,
+        "devices": [],
+        "inventory_truncated": false,
+        "fixture": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "bits_per_sample": 16
+        },
+        "format_query_result": 2,
+        "format_query_message": "A device ID has been used that is out of range for your system.",
+        "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+        "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+      },
+      "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 343, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 341, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 329, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+      "count": 13
+    }
+  }
+]

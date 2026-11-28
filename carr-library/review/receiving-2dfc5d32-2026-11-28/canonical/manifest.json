@@ -1,0 +1,64 @@
+{
+  "schema": "carr-text-evidence-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569575,
+  "job_id": 140876044009,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/full-decoded-log.txt",
+      "git_blob": "0776be3fa672f9d6bafc1245ea38f6206527c818",
+      "utf8_bytes": 146246,
+      "sha256": "9625bafba291bbd8c90f7f24cef1d9a3faea6671907fbfd75d9d6cbe85e45d5d"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/job-metadata.json",
+      "git_blob": "584f48cfd957d263237e9f3f6bd29853fac061b5",
+      "utf8_bytes": 5196,
+      "sha256": "77aaa66853cfbaec8e3506032f3e8c6105cba12df27e7d39b3b4842d58388c15"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/run-metadata.json",
+      "git_blob": "eb3ecf63268491663ee353c6c6e4560b64c82350",
+      "utf8_bytes": 15443,
+      "sha256": "1652b662c777cf63e336c53c3e59ee489ae624c8b0a01f727934738379f3a259"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/source-module-results.json",
+      "git_blob": "278dd184f2add6afd5dfed2f2a91136ec171317d",
+      "utf8_bytes": 5390,
+      "sha256": "943e737e4e69b41f9fccab07d63cbf465d9b30ea5401546add6a7ccc4bddc89d"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/installed-summary-log-extracted.json",
+      "git_blob": "832120f2fbcdcdfe2556abc506ed39b650f1a93a",
+      "utf8_bytes": 344,
+      "sha256": "77e4f968c632f0ecd3eef28ff765f679367d4f7b685cc63b9a2ff45024692cb8"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/native-receipts-log-extracted.json",
+      "git_blob": "0c6d2ed6e31478bbe0d2a1258d654490da0195d5",
+      "utf8_bytes": 23454,
+      "sha256": "825211dc14c742538d6b8b47ce2cdfaa1e6e159f394960b5a1c4e828e2787374"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/artifact-metadata.json",
+      "git_blob": "cc860b1e35e5374b5561a45f210a2081cbc057ce",
+      "utf8_bytes": 998,
+      "sha256": "8debc623a66c83ee6274d8c1607e92997e3e8365bdf7955fd5d470cc0b16cd26"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/qualification.json",
+      "git_blob": "61397ba40741c2c678d40ac6f40fbee8b335d4af",
+      "utf8_bytes": 8411,
+      "sha256": "d7718f4a82f44a9e98551a116157ec13b0b64e0394c8162cc41d27651de3fb2e"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/canonical/README.md",
+      "git_blob": "f149e19da0a3da3ea2435ae903a6bd9ceee43476",
+      "utf8_bytes": 1288,
+      "sha256": "8f21ae98600277ef1667d15868ef9263a5c0e904172bf4d8d567a1b1da349371"
+    }
+  ],
+  "readback": "Every listed blob fetched and compared completely.",
+  "archive_bytes_downloaded": false
+}

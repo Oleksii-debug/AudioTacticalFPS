@@ -1,0 +1,165 @@
+{
+  "schema": "carr-completed-github-job-evidence/1",
+  "status": "RECEIVED",
+  "observed_at_utc": "2026-11-28 05:38:28 UTC",
+  "identity": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "source_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+    "event": "pull_request",
+    "branch": "carr/v3-integrated-final-dbbb-20261126",
+    "run": 46105059505,
+    "job": 140855843797,
+    "attempt": 1,
+    "conclusion": "failure",
+    "updated_at": "2026-11-28T05:30:47Z",
+    "checked_out_workflow_blob": "029cf775f6acdf7407ddeaab196949451698ead9",
+    "checkout_observation": "The terminal log explicitly checks out f8311d17fa960448b350cb739b5a90584c30c74b. The final artifact name uses the pull-request merge-event SHA9250662a12f01e077edefbeb3b87cfb1d47016b2; artifact metadata binds it to this head/run."
+  },
+  "required_source": {
+    "declared": 445,
+    "received": 445,
+    "unique_received": 445,
+    "passed_suites": 444,
+    "failed_suites": 1,
+    "cases": {
+      "passed": 11516,
+      "failed": 5,
+      "skipped": 0
+    },
+    "exact_selector_multiset": true,
+    "completion_order_matches_declaration": false,
+    "ordering_note": "Concurrent required-suite completion order is preserved in verdicts; exact multiset and cardinality match the workflow inventory.",
+    "failures": [
+      {
+        "line": 9496,
+        "status": "FAIL",
+        "selector": "tests/ui/test_word_citations.py",
+        "passed": 14,
+        "failed": 5,
+        "skipped": 0,
+        "pytest_exit": 1
+      }
+    ]
+  },
+  "word_failure": {
+    "trace": "word-preview-failure.txt",
+    "passed": 14,
+    "failed": 5,
+    "seconds": 128.58,
+    "observed": "All five fail previewed() line102 because actions.plan is None after frame.finish(); recorded error text is empty.",
+    "cause": "NOT_ESTABLISHED",
+    "diagnosis_owner": "Word owner assigned by root",
+    "unchanged_blobs_on_10e3_f831_2df": {
+      "test": "fc46e14535806decdb977e98fcd91948d8c3da52",
+      "ui": "5934777dd0319a2a3acc724db7040ea19f4a64bd",
+      "formatter": "798560a96e409047dd36a6f77e1ca6a864c5ccc1"
+    },
+    "comparison": {
+      "head": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182988,
+      "job": 140850017588,
+      "word_passed": 19,
+      "word_failed": 0,
+      "evidence_tree": "89dbcc4105879870553eaa478dff19ac582c8a40"
+    }
+  },
+  "earlier_strict": {
+    "executions": 9,
+    "passed": 280,
+    "overlaps_source": true
+  },
+  "aggregate": {
+    "status": "FAIL",
+    "failed_steps": [
+      {
+        "number": 5,
+        "name": "Start existing Windows audio services and record actual endpoint capability"
+      },
+      {
+        "number": 23,
+        "name": "Verify actual installed Windows SAPI speech and native preview"
+      },
+      {
+        "number": 53,
+        "name": "Exercise native reader, translation, voice setup and delivery lifecycle"
+      },
+      {
+        "number": 66,
+        "name": "Build, install and exercise the complete bundle with runtime egress blocked"
+      },
+      {
+        "number": 70,
+        "name": "Run required workflows against the complete pinned runtime"
+      }
+    ],
+    "eligible_wheel": false
+  },
+  "playback_observation": {
+    "fresh_output_device_count": 0,
+    "format_query_result": 2,
+    "installed_and_bundle_mci_error": 326,
+    "installed_reader_prior_checks": 13,
+    "bundle_reader_prior_checks": 13,
+    "sapi_synthesis": "PASS",
+    "native_preview": "NOT_RUN DEVICE_UNAVAILABLE",
+    "meaning": "The exact PR runner reported no output endpoint. No output fallback, device/policy change or application fix is proposed from this evidence."
+  },
+  "artifacts": [
+    {
+      "id": 15250330563,
+      "name": "carr-windows-9250662a12f01e077edefbeb3b87cfb1d47016b2-1",
+      "size_in_bytes": 204615,
+      "digest": "sha256:8bd2cd15b573a519b222aafad12ad9786128ce1cff2d367326d461476d684a13",
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105059505,
+      "archive_bytes_downloaded_in_this_pass": false
+    },
+    {
+      "id": 15248337235,
+      "name": "carr-windows-pre-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "size_in_bytes": 181516,
+      "digest": "sha256:19a5855ed23fa6c050fcbdd653493bd6001086b3b168d00ee241dc754a9b4aa9",
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105059505,
+      "archive_bytes_downloaded_in_this_pass": false
+    },
+    {
+      "id": 15248185042,
+      "name": "carr-windows-audio-endpoint-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "size_in_bytes": 1003,
+      "digest": "sha256:a21838dcfae9da784665586892ab69bab78064aed0459dfc76bcdd83e747166d",
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105059505,
+      "archive_bytes_downloaded_in_this_pass": false
+    },
+    {
+      "id": 15246804766,
+      "name": "carr-windows-recording-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "size_in_bytes": 8808,
+      "digest": "sha256:4727a2ad158accaa3a3847ca7773d95cc286a1e5538f99d32c4034f4774fe19a",
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "run": 46105059505,
+      "archive_bytes_downloaded_in_this_pass": false
+    }
+  ],
+  "log": {
+    "file": "job.log",
+    "characters": 1434961,
+    "utf8_bytes": 1435091,
+    "sha256": "75014b79e0353ebd865f761226239c1ecf59da494c99568e3d7bc61a3b57ec68",
+    "representation": "Exact decoded completed-job log returned by the GitHub tool, preserving CRLF and leading BOM."
+  },
+  "application_inventory": {
+    "file": "application-python-inventory.json",
+    "count": 380,
+    "basis": "Exact checked-out f831 Git source inventory; scoped installed origin checks remain in the raw log."
+  },
+  "claims": [
+    "Phase/suite counts are not added across overlapping invocations.",
+    "These results belong to the exact f831 PR run and do not qualify the guarded f831 run or2df.",
+    "Artifact-member byte preservation is a separate guarded-reader task.",
+    "No physical capture, acoustic listening, manual NVDA, private model quality or release acceptance is claimed.",
+    "Initial FAILED/incomplete probe placeholders in the log are not counted as final outcomes when followed by their completed result."
+  ]
+}

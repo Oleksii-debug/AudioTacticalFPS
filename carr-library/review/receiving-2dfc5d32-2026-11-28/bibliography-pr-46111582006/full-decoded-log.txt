@@ -1,0 +1,944 @@
+﻿2026-11-28T05:22:27.7144956Z Current runner version: '2.338.2'
+2026-11-28T05:22:27.7178058Z ##[group]Runner Image Provisioner
+2026-11-28T05:22:27.7178995Z Hosted Compute Agent
+2026-11-28T05:22:27.7179603Z Version: 20261111.635
+2026-11-28T05:22:27.7180234Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T05:22:27.7180988Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T05:22:27.7181719Z Worker ID: {fa9ac390-0dd2-4077-810a-96ed0d1dbbb1}
+2026-11-28T05:22:27.7182443Z Region: westus2
+2026-11-28T05:22:27.7183547Z Cloud: Azure
+2026-11-28T05:22:27.7184068Z ##[endgroup]
+2026-11-28T05:22:27.7185624Z ##[group]Operating System
+2026-11-28T05:22:27.7186267Z Microsoft Windows Server 2022
+2026-11-28T05:22:27.7186896Z 10.0.20348
+2026-11-28T05:22:27.7187439Z Datacenter
+2026-11-28T05:22:27.7187966Z ##[endgroup]
+2026-11-28T05:22:27.7189117Z ##[group]Runner Image
+2026-11-28T05:22:27.7189686Z Image: windows-2022
+2026-11-28T05:22:27.7190225Z Version: 20261123.376.1
+2026-11-28T05:22:27.7191848Z Included Software: https://github.com/actions/runner-images/blob/win22/20261123.376/images/windows/Windows2022-Readme.md
+2026-11-28T05:22:27.7193722Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20261123.376
+2026-11-28T05:22:27.7195395Z ##[endgroup]
+2026-11-28T05:22:27.7196565Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T05:22:27.7198691Z Contents: read
+2026-11-28T05:22:27.7199326Z Metadata: read
+2026-11-28T05:22:27.7200732Z ##[endgroup]
+2026-11-28T05:22:27.7203197Z Secret source: Actions
+2026-11-28T05:22:27.7204275Z Cache mode: write
+2026-11-28T05:22:27.7205050Z Prepare workflow directory
+2026-11-28T05:22:27.7706321Z Prepare all required actions
+2026-11-28T05:22:27.7747838Z Getting action download info
+2026-11-28T05:22:28.1699548Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T05:22:28.2594646Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T05:22:28.3748101Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T05:22:28.6243042Z Complete job name: Windows x64 / CPython 3.11 / installed bibliography
+2026-11-28T05:22:28.7901474Z ##[group]Run git config --global core.autocrlf false
+2026-11-28T05:22:28.7902360Z [36;1mgit config --global core.autocrlf false[0m
+2026-11-28T05:22:28.7902953Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:28.7985012Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T05:22:28.7985860Z env:
+2026-11-28T05:22:28.7986202Z   PYTHONUTF8: 1
+2026-11-28T05:22:28.7986550Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:22:28.7986943Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:22:28.7987388Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:28.7987766Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:22:28.7988131Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:28.7988591Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:22:28.7989035Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:22:28.7989408Z   DO_NOT_TRACK: 1
+2026-11-28T05:22:28.7989892Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:28.7990440Z ##[endgroup]
+2026-11-28T05:22:29.6925526Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T05:22:29.6926803Z with:
+2026-11-28T05:22:29.6927537Z   ref: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:29.6928497Z   persist-credentials: false
+2026-11-28T05:22:29.6929361Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T05:22:29.6935802Z   token: ***
+2026-11-28T05:22:29.6936450Z   ssh-strict: true
+2026-11-28T05:22:29.6937102Z   ssh-user: git
+2026-11-28T05:22:29.6937727Z   clean: true
+2026-11-28T05:22:29.6938407Z   sparse-checkout-cone-mode: true
+2026-11-28T05:22:29.6939262Z   fetch-depth: 1
+2026-11-28T05:22:29.6939909Z   fetch-tags: false
+2026-11-28T05:22:29.6940568Z   show-progress: true
+2026-11-28T05:22:29.6942798Z   lfs: false
+2026-11-28T05:22:29.6943415Z   submodules: false
+2026-11-28T05:22:29.6944088Z   set-safe-directory: true
+2026-11-28T05:22:29.6944860Z   allow-unsafe-pr-checkout: false
+2026-11-28T05:22:29.6945647Z env:
+2026-11-28T05:22:29.6946269Z   PYTHONUTF8: 1
+2026-11-28T05:22:29.6946917Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:22:29.6947649Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:22:29.6948462Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:29.6949172Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:22:29.6949836Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:29.6950615Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:22:29.6951419Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:22:29.6952119Z   DO_NOT_TRACK: 1
+2026-11-28T05:22:29.6952990Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:29.6954044Z ##[endgroup]
+2026-11-28T05:22:29.8256759Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T05:22:29.8258966Z ##[group]Getting Git version info
+2026-11-28T05:22:29.8260066Z Working directory is 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T05:22:29.8772958Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T05:22:29.9052764Z git version 2.56.1.windows.1
+2026-11-28T05:22:29.9086651Z ##[endgroup]
+2026-11-28T05:22:29.9095013Z Copying 'C:\Users\runneradmin\.gitconfig' to 'D:\a\_temp\3c494783-25af-44a3-8c7d-09dab45ab95a\.gitconfig'
+2026-11-28T05:22:29.9112403Z Temporarily overriding HOME='D:\a\_temp\3c494783-25af-44a3-8c7d-09dab45ab95a' before making global git config changes
+2026-11-28T05:22:29.9114455Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T05:22:29.9120887Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T05:22:29.9362286Z Deleting the contents of 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T05:22:29.9366062Z ##[group]Determining repository object format
+2026-11-28T05:22:29.9367899Z ##[endgroup]
+2026-11-28T05:22:29.9369133Z ##[group]Initializing the repository
+2026-11-28T05:22:29.9375894Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T05:22:29.9950737Z Initialized empty Git repository in D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T05:22:29.9988361Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T05:22:30.0543113Z ##[endgroup]
+2026-11-28T05:22:30.0544292Z ##[group]Disabling automatic garbage collection
+2026-11-28T05:22:30.0551199Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-28T05:22:30.0811968Z ##[endgroup]
+2026-11-28T05:22:30.0813144Z ##[group]Setting up auth
+2026-11-28T05:22:30.0813986Z Removing SSH command configuration
+2026-11-28T05:22:30.0820946Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T05:22:30.1080424Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T05:22:31.4969261Z Removing HTTP extra header
+2026-11-28T05:22:31.4980211Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T05:22:31.5236714Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T05:22:31.9725157Z Removing includeIf entries pointing to credentials config files
+2026-11-28T05:22:31.9734403Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T05:22:31.9996355Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T05:22:32.4430388Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-28T05:22:32.4711115Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D:\a\_temp\git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:32.4973331Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D:\a\_temp\git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:32.5288698Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:32.5552160Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:32.5821715Z ##[endgroup]
+2026-11-28T05:22:32.5822200Z ##[group]Fetching the repository
+2026-11-28T05:22:32.5833322Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:34.6909945Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T05:22:34.6910636Z  * branch            2dfc5d32558c722ba05068dfff9ebb19eeae52f7 -> FETCH_HEAD
+2026-11-28T05:22:34.6945687Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 2dfc5d32558c722ba05068dfff9ebb19eeae52f7^{object}
+2026-11-28T05:22:34.7213607Z 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:34.7242078Z ##[endgroup]
+2026-11-28T05:22:34.7242637Z ##[group]Determining the checkout info
+2026-11-28T05:22:34.7243182Z ##[endgroup]
+2026-11-28T05:22:34.7251705Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-28T05:22:34.7544923Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-28T05:22:34.7802226Z ##[group]Checking out the ref
+2026-11-28T05:22:34.7810092Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:35.4108244Z Note: switching to '2dfc5d32558c722ba05068dfff9ebb19eeae52f7'.
+2026-11-28T05:22:35.4108580Z 
+2026-11-28T05:22:35.4108869Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T05:22:35.4109296Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T05:22:35.4109733Z state without impacting any branches by switching back to a branch.
+2026-11-28T05:22:35.4109979Z 
+2026-11-28T05:22:35.4110126Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T05:22:35.4110547Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T05:22:35.4110753Z 
+2026-11-28T05:22:35.4110852Z   git switch -c <new-branch-name>
+2026-11-28T05:22:35.4111032Z 
+2026-11-28T05:22:35.4111107Z Or undo this operation with:
+2026-11-28T05:22:35.4112119Z 
+2026-11-28T05:22:35.4112237Z   git switch -
+2026-11-28T05:22:35.4112333Z 
+2026-11-28T05:22:35.4112501Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T05:22:35.4112726Z 
+2026-11-28T05:22:35.4112917Z HEAD is now at 2dfc5d3 Inspect saved Studio, Book and Director masters for long silences
+2026-11-28T05:22:35.4256584Z ##[endgroup]
+2026-11-28T05:22:35.4832235Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T05:22:35.5109893Z 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:35.5147112Z ##[group]Removing auth
+2026-11-28T05:22:35.5147515Z Removing SSH command configuration
+2026-11-28T05:22:35.5156011Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T05:22:35.5445463Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T05:22:35.9805412Z Removing HTTP extra header
+2026-11-28T05:22:35.9814036Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T05:22:36.0076325Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T05:22:36.4496496Z Removing includeIf entries pointing to credentials config files
+2026-11-28T05:22:36.4505281Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T05:22:36.4737188Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T05:22:36.4737804Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T05:22:36.4738179Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T05:22:36.4738446Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T05:22:36.4772661Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T05:22:36.4989980Z D:\a\_temp\git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:36.5021480Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D\:\\a\\_temp\\git\-credentials\-05f1fbcb\-464b\-4901\-b2cf\-abd7c01155f2\.config
+2026-11-28T05:22:36.5286496Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T05:22:36.5510443Z D:\a\_temp\git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:36.5545323Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-05f1fbcb\-464b\-4901\-b2cf\-abd7c01155f2\.config
+2026-11-28T05:22:36.5803337Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T05:22:36.6027301Z /github/runner_temp/git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:36.6058235Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-05f1fbcb\-464b\-4901\-b2cf\-abd7c01155f2\.config
+2026-11-28T05:22:36.6309177Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T05:22:36.6546647Z /github/runner_temp/git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config
+2026-11-28T05:22:36.6582738Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-05f1fbcb\-464b\-4901\-b2cf\-abd7c01155f2\.config
+2026-11-28T05:22:36.6854581Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T05:22:37.1090352Z Removing credentials config 'D:\a\_temp\git-credentials-05f1fbcb-464b-4901-b2cf-abd7c01155f2.config'
+2026-11-28T05:22:37.1100300Z ##[endgroup]
+2026-11-28T05:22:37.1384753Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T05:22:37.1385121Z with:
+2026-11-28T05:22:37.1385274Z   python-version: 3.11
+2026-11-28T05:22:37.1385451Z   architecture: x64
+2026-11-28T05:22:37.1385606Z   check-latest: false
+2026-11-28T05:22:37.1387729Z   token: ***
+2026-11-28T05:22:37.1387985Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T05:22:37.1388282Z   update-environment: true
+2026-11-28T05:22:37.1388453Z   allow-prereleases: false
+2026-11-28T05:22:37.1388611Z   freethreaded: false
+2026-11-28T05:22:37.1388767Z env:
+2026-11-28T05:22:37.1388900Z   PYTHONUTF8: 1
+2026-11-28T05:22:37.1389043Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:22:37.1389201Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:22:37.1389382Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:37.1389537Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:22:37.1389685Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:37.1389907Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:22:37.1390087Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:22:37.1390241Z   DO_NOT_TRACK: 1
+2026-11-28T05:22:37.1390447Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:37.1390698Z ##[endgroup]
+2026-11-28T05:22:37.2571708Z ##[group]Installed versions
+2026-11-28T05:22:37.2807991Z Successfully set up CPython (3.11.9)
+2026-11-28T05:22:37.2808711Z ##[endgroup]
+2026-11-28T05:22:37.3154617Z ##[group]Run $environment = Join-Path $env:RUNNER_TEMP 'carr-bibliography-python'
+2026-11-28T05:22:37.3155206Z [36;1m$environment = Join-Path $env:RUNNER_TEMP 'carr-bibliography-python'[0m
+2026-11-28T05:22:37.3155595Z [36;1m$wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-bibliography-wheel'[0m
+2026-11-28T05:22:37.3155894Z [36;1mpython -m venv $environment[0m
+2026-11-28T05:22:37.3156127Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3156407Z [36;1m$python = Join-Path $environment 'Scripts/python.exe'[0m
+2026-11-28T05:22:37.3156768Z [36;1m"CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append[0m
+2026-11-28T05:22:37.3157204Z [36;1mNew-Item -ItemType Directory -Force 'ci-bibliography-results' | Out-Null[0m
+2026-11-28T05:22:37.3157543Z [36;1m$sourceCommit = (git rev-parse HEAD).Trim()[0m
+2026-11-28T05:22:37.3157831Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3158286Z [36;1mif ($sourceCommit -cne $env:EXPECTED_SOURCE_COMMIT) { throw 'Checkout does not match the exact event head.' }[0m
+2026-11-28T05:22:37.3158779Z [36;1m$sourceCommit | Set-Content 'ci-bibliography-results/tested-commit.txt'[0m
+2026-11-28T05:22:37.3159221Z [36;1m& $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock[0m
+2026-11-28T05:22:37.3159591Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3159898Z [36;1m& $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9[0m
+2026-11-28T05:22:37.3160236Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3160521Z [36;1m& $python -m pip wheel --no-deps --wheel-dir $wheelDirectory .[0m
+2026-11-28T05:22:37.3160808Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3161117Z [36;1m$wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl')[0m
+2026-11-28T05:22:37.3161490Z [36;1mif ($wheels.Count -ne 1) { throw 'Exactly one application wheel is required.' }[0m
+2026-11-28T05:22:37.3161780Z [36;1m$verify = @'[0m
+2026-11-28T05:22:37.3161945Z [36;1mimport json, runpy, sys[0m
+2026-11-28T05:22:37.3162131Z [36;1mfrom pathlib import Path[0m
+2026-11-28T05:22:37.3162434Z [36;1mverify = runpy.run_path('packaging/source_wheel.py')['verify_application_wheel'][0m
+2026-11-28T05:22:37.3162828Z [36;1mevidence = verify(Path(sys.argv[1]), Path.cwd().parent, sys.argv[2])[0m
+2026-11-28T05:22:37.3163134Z [36;1mprint(json.dumps(evidence, sort_keys=True))[0m
+2026-11-28T05:22:37.3163347Z [36;1m'@[0m
+2026-11-28T05:22:37.3163705Z [36;1m& $python -I -c $verify $wheels[0].FullName $sourceCommit | Tee-Object 'ci-bibliography-results/wheel-source-proof.json'[0m
+2026-11-28T05:22:37.3164132Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3165062Z [36;1m& $python -m pip install --no-deps $wheels[0].FullName[0m
+2026-11-28T05:22:37.3165440Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3165715Z [36;1m& $python -m pip check[0m
+2026-11-28T05:22:37.3165915Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3166289Z [36;1m& $python -m pip list --format=json | Set-Content 'ci-bibliography-results/installed-packages.json'[0m
+2026-11-28T05:22:37.3166661Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3167583Z [36;1m& $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-bibliography-results/native-runtime.json'[0m
+2026-11-28T05:22:37.3168551Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:22:37.3245032Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T05:22:37.3245333Z env:
+2026-11-28T05:22:37.3247260Z   PYTHONUTF8: 1
+2026-11-28T05:22:37.3247459Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:22:37.3247638Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:22:37.3247831Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:37.3247995Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:22:37.3248162Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:22:37.3248359Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:22:37.3248537Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:22:37.3248689Z   DO_NOT_TRACK: 1
+2026-11-28T05:22:37.3248916Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:22:37.3249243Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:22:37.3249603Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T05:22:37.3249946Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:22:37.3250264Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:22:37.3250562Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:22:37.3250812Z ##[endgroup]
+2026-11-28T05:22:45.6824461Z Collecting comtypes==1.5.0 (from -r packaging/windows-cp311.lock (line 1))
+2026-11-28T05:22:45.8468257Z   Downloading comtypes-1.5.0-py3-none-any.whl (325 kB)
+2026-11-28T05:22:45.9424872Z      -------------------------------------- 325.6/325.6 kB 3.4 MB/s eta 0:00:00
+2026-11-28T05:22:45.9788799Z Collecting defusedxml==0.7.1 (from -r packaging/windows-cp311.lock (line 3))
+2026-11-28T05:22:45.9888151Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T05:22:46.0958583Z Collecting filelock==3.29.0 (from -r packaging/windows-cp311.lock (line 5))
+2026-11-28T05:22:46.1039983Z   Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T05:22:46.3930479Z Collecting lxml==6.1.3 (from -r packaging/windows-cp311.lock (line 8))
+2026-11-28T05:22:46.4016598Z   Downloading lxml-6.1.3-cp311-cp311-win_amd64.whl (4.0 MB)
+2026-11-28T05:22:46.5510035Z      ---------------------------------------- 4.0/4.0 MB 25.6 MB/s eta 0:00:00
+2026-11-28T05:22:46.7859603Z Collecting numpy==2.4.6 (from -r packaging/windows-cp311.lock (line 185))
+2026-11-28T05:22:46.8010812Z   Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl (12.6 MB)
+2026-11-28T05:22:46.9871007Z      --------------------------------------- 12.6/12.6 MB 73.0 MB/s eta 0:00:00
+2026-11-28T05:22:47.1814540Z Collecting pillow==13.0.0 (from -r packaging/windows-cp311.lock (line 258))
+2026-11-28T05:22:47.1897625Z   Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl (7.3 MB)
+2026-11-28T05:22:47.2516201Z      ---------------------------------------- 7.3/7.3 MB 115.4 MB/s eta 0:00:00
+2026-11-28T05:22:47.3016137Z Collecting platformdirs==4.10.0 (from -r packaging/windows-cp311.lock (line 342))
+2026-11-28T05:22:47.3097634Z   Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T05:22:47.4994042Z Collecting pypdf==7.1.1 (from -r packaging/windows-cp311.lock (line 345))
+2026-11-28T05:22:47.5077594Z   Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T05:22:47.5285889Z      ------------------------------------- 421.0/421.0 kB 25.7 MB/s eta 0:00:00
+2026-11-28T05:22:47.6718630Z Collecting pypdfium2==5.13.0 (from -r packaging/windows-cp311.lock (line 348))
+2026-11-28T05:22:47.6838531Z   Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl (3.9 MB)
+2026-11-28T05:22:47.7710680Z      ---------------------------------------- 3.9/3.9 MB 49.7 MB/s eta 0:00:00
+2026-11-28T05:22:47.8171252Z Collecting python-docx==1.2.0 (from -r packaging/windows-cp311.lock (line 371))
+2026-11-28T05:22:47.8256938Z   Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T05:22:47.8463820Z      ------------------------------------- 253.0/253.0 kB 15.2 MB/s eta 0:00:00
+2026-11-28T05:22:47.9328664Z Collecting typing-extensions==4.16.0 (from -r packaging/windows-cp311.lock (line 374))
+2026-11-28T05:22:47.9409576Z   Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T05:22:47.9621459Z      ---------------------------------------- 45.6/45.6 kB 1.1 MB/s eta 0:00:00
+2026-11-28T05:22:48.0043396Z Collecting wxpython==4.2.4 (from -r packaging/windows-cp311.lock (line 377))
+2026-11-28T05:22:48.0155507Z   Downloading wxpython-4.2.4-cp311-cp311-win_amd64.whl (16.5 MB)
+2026-11-28T05:22:48.2455758Z      --------------------------------------- 16.5/16.5 MB 59.4 MB/s eta 0:00:00
+2026-11-28T05:22:48.4189193Z Collecting bibtexparser==2.1.0 (from -r packaging/windows-cp311.lock (line 407))
+2026-11-28T05:22:48.4290831Z   Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T05:22:48.4441119Z      ---------------------------------------- 50.1/50.1 kB 2.7 MB/s eta 0:00:00
+2026-11-28T05:22:48.4717537Z Collecting pylatexenc==2.11 (from -r packaging/windows-cp311.lock (line 409))
+2026-11-28T05:22:48.4859152Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T05:22:48.5005196Z      -------------------------------------- 137.5/137.5 kB 8.0 MB/s eta 0:00:00
+2026-11-28T05:22:48.5446998Z Collecting quickjs-ng==0.18.0.2 (from -r packaging/windows-cp311.lock (line 411))
+2026-11-28T05:22:48.5568172Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl (401 kB)
+2026-11-28T05:22:48.5762948Z      ------------------------------------- 401.4/401.4 kB 26.1 MB/s eta 0:00:00
+2026-11-28T05:22:48.6037830Z Collecting py3langid==0.4.0 (from -r packaging/windows-cp311.lock (line 413))
+2026-11-28T05:22:48.6157962Z   Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T05:22:48.6758799Z      ---------------------------------------- 4.6/4.6 MB 72.9 MB/s eta 0:00:00
+2026-11-28T05:22:48.8716959Z Collecting cryptography==50.0.2 (from -r packaging/windows-cp311.lock (line 417))
+2026-11-28T05:22:49.2012671Z   Downloading cryptography-50.0.2-cp311-abi3-win_amd64.whl (3.8 MB)
+2026-11-28T05:22:49.2354474Z      ---------------------------------------- 3.8/3.8 MB 123.0 MB/s eta 0:00:00
+2026-11-28T05:22:49.3452784Z Collecting cffi==2.1.1 (from -r packaging/windows-cp311.lock (line 419))
+2026-11-28T05:22:49.3533412Z   Downloading cffi-2.1.1-cp311-cp311-win_amd64.whl (185 kB)
+2026-11-28T05:22:49.4400652Z      -------------------------------------- 185.1/185.1 kB 1.9 MB/s eta 0:00:00
+2026-11-28T05:22:49.4704575Z Collecting pycparser==3.12 (from -r packaging/windows-cp311.lock (line 421))
+2026-11-28T05:22:49.4788705Z   Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+2026-11-28T05:22:49.4943771Z      ---------------------------------------- 62.6/62.6 kB 3.5 MB/s eta 0:00:00
+2026-11-28T05:22:49.6822738Z Installing collected packages: pylatexenc, typing-extensions, quickjs-ng, pypdfium2, pypdf, pycparser, platformdirs, pillow, numpy, lxml, filelock, defusedxml, comtypes, bibtexparser, wxpython, python-docx, py3langid, cffi, cryptography
+2026-11-28T05:22:54.7889096Z Successfully installed bibtexparser-2.1.0 cffi-2.1.1 comtypes-1.5.0 cryptography-50.0.2 defusedxml-0.7.1 filelock-3.29.0 lxml-6.1.3 numpy-2.4.6 pillow-13.0.0 platformdirs-4.10.0 py3langid-0.4.0 pycparser-3.12 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 python-docx-1.2.0 quickjs-ng-0.18.0.2 typing-extensions-4.16.0 wxpython-4.2.4
+2026-11-28T05:22:56.4173308Z Collecting pytest==9.0.2
+2026-11-28T05:22:56.5765393Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T05:22:56.7348553Z Collecting reportlab==4.4.9
+2026-11-28T05:22:56.7448240Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T05:22:56.7988187Z Collecting colorama>=0.4 (from pytest==9.0.2)
+2026-11-28T05:22:56.8069498Z   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+2026-11-28T05:22:56.8698272Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2)
+2026-11-28T05:22:56.9003181Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T05:22:57.0096810Z Collecting packaging>=22 (from pytest==9.0.2)
+2026-11-28T05:22:57.0188263Z   Downloading packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T05:22:57.0627679Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2)
+2026-11-28T05:22:57.0753502Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T05:22:57.1224088Z Collecting pygments>=2.7.2 (from pytest==9.0.2)
+2026-11-28T05:22:57.1310660Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T05:22:57.1515221Z Requirement already satisfied: pillow>=9.0.0 in d:\a\_temp\carr-bibliography-python\lib\site-packages (from reportlab==4.4.9) (13.0.0)
+2026-11-28T05:22:57.3435034Z Collecting charset-normalizer (from reportlab==4.4.9)
+2026-11-28T05:22:57.3533990Z   Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl.metadata (44 kB)
+2026-11-28T05:22:57.3793285Z      ---------------------------------------- 44.2/44.2 kB 2.1 MB/s eta 0:00:00
+2026-11-28T05:22:57.4121973Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T05:22:57.4692929Z    ---------------------------------------- 374.8/374.8 kB 7.8 MB/s eta 0:00:00
+2026-11-28T05:22:57.4781768Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T05:22:57.6684702Z    ---------------------------------------- 2.0/2.0 MB 10.3 MB/s eta 0:00:00
+2026-11-28T05:22:57.6790475Z Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+2026-11-28T05:22:57.6998416Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T05:22:57.7210856Z Downloading packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T05:22:57.9213675Z    -------------------------------------- 140.0/140.0 kB 690.5 kB/s eta 0:00:00
+2026-11-28T05:22:57.9310689Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T05:22:57.9945442Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T05:22:58.0546019Z    ---------------------------------------- 1.3/1.3 MB 20.0 MB/s eta 0:00:00
+2026-11-28T05:22:58.0651780Z Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl (212 kB)
+2026-11-28T05:22:58.0833197Z    --------------------------------------- 212.9/212.9 kB 12.7 MB/s eta 0:00:00
+2026-11-28T05:22:58.2126816Z Installing collected packages: pygments, pluggy, packaging, iniconfig, colorama, charset-normalizer, reportlab, pytest
+2026-11-28T05:23:00.0320044Z Successfully installed charset-normalizer-3.5.3 colorama-0.4.6 iniconfig-2.3.1 packaging-26.4 pluggy-1.7.0 pygments-2.21.0 pytest-9.0.2 reportlab-4.4.9
+2026-11-28T05:23:01.0680563Z Processing d:\a\audiotacticalfps\audiotacticalfps\carr-library
+2026-11-28T05:23:01.0719524Z   Installing build dependencies: started
+2026-11-28T05:23:05.1975218Z   Installing build dependencies: finished with status 'done'
+2026-11-28T05:23:05.1988360Z   Getting requirements to build wheel: started
+2026-11-28T05:23:05.6622959Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T05:23:05.6644958Z   Preparing metadata (pyproject.toml): started
+2026-11-28T05:23:06.2335456Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T05:23:06.2490817Z Building wheels for collected packages: universal-research-library
+2026-11-28T05:23:06.2514072Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T05:23:08.1341125Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T05:23:08.1384023Z   Created wheel for universal-research-library: filename=universal_research_library-0.2.0.dev2-py3-none-any.whl size=2614462 sha256=e28350966b525750a5e24420cb711a43b376331f32e914d05d080d7c78a3c220
+2026-11-28T05:23:08.1385331Z   Stored in directory: c:\users\runneradmin\appdata\local\pip\cache\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+2026-11-28T05:23:08.1472518Z Successfully built universal-research-library
+2026-11-28T05:23:21.3583136Z {"payload_files": 493, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 398, "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7", "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80", "wheel_sha256": "e28350966b525750a5e24420cb711a43b376331f32e914d05d080d7c78a3c220"}
+2026-11-28T05:23:22.2469983Z Processing d:\a\_temp\carr-bibliography-wheel\universal_research_library-0.2.0.dev2-py3-none-any.whl
+2026-11-28T05:23:22.2704189Z Installing collected packages: universal-research-library
+2026-11-28T05:23:23.5547383Z Successfully installed universal-research-library-0.2.0.dev2
+2026-11-28T05:23:24.0201637Z No broken requirements found.
+2026-11-28T05:23:24.6370687Z {"python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "windows": "Windows-10-10.0.20348-SP0", "sqlite": "3.45.1", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T05:23:24.6781799Z ##[group]Run & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-bibliography-results/native-citation-styles.txt'
+2026-11-28T05:23:24.6782651Z [36;1m& $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-bibliography-results/native-citation-styles.txt'[0m
+2026-11-28T05:23:24.6783191Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:23:24.6813645Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T05:23:24.6813918Z env:
+2026-11-28T05:23:24.6814069Z   PYTHONUTF8: 1
+2026-11-28T05:23:24.6814230Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:23:24.6814405Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:23:24.6814601Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:23:24.6814763Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:23:24.6814930Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:23:24.6815113Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:23:24.6815349Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:23:24.6815520Z   DO_NOT_TRACK: 1
+2026-11-28T05:23:24.6815740Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:23:24.6816069Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:24.6816407Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T05:23:24.6816749Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:24.6817045Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:24.6817342Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:24.6817652Z   CARR_PYTHON: D:\a\_temp\carr-bibliography-python\Scripts\python.exe
+2026-11-28T05:23:24.6817916Z ##[endgroup]
+2026-11-28T05:23:25.0941283Z PASS: isolated installed CPython 3.11 x64 is running
+2026-11-28T05:23:25.0943052Z PASS: all feature modules come from this environment site-packages
+2026-11-28T05:23:25.0944288Z PASS: wx uses native Windows controls
+2026-11-28T05:23:25.0945560Z PASS: the pinned bibliography and native dependencies are installed
+2026-11-28T05:23:25.7357526Z PASS: BibTeX preview resolves safe macros and Unicode without importing
+2026-11-28T05:23:25.7843327Z PASS: native BibTeX review starts with no selected imports
+2026-11-28T05:23:25.7856776Z PASS: native BibTeX details expose key provenance and unsupported metadata
+2026-11-28T05:23:25.7864859Z {"foreground_class": "#32770", "foreground_handle": 131224, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [], "target": "References to import; Space selects or clears an entry", "target_handle": 131670, "thread_active_handle": 131224, "thread_focus_handle": 131670, "top_active": true, "top_handle": 131224, "wx_focus": "References to import; Space selects or clears an entry", "wx_focus_class": "CheckListBox"}
+2026-11-28T05:23:25.7870343Z {"foreground_class": "#32770", "foreground_handle": 131224, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [], "target": "References to import; Space selects or clears an entry", "target_handle": 131670, "thread_active_handle": 131224, "thread_focus_handle": 131670, "top_active": true, "top_handle": 131224, "wx_focus": "References to import; Space selects or clears an entry", "wx_focus_class": "CheckListBox"}
+2026-11-28T05:23:25.9222439Z PASS: Space selects exactly the intended native import row
+2026-11-28T05:23:25.9223014Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:25.9235609Z {"foreground_class": "#32770", "foreground_handle": 131224, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}], "target": "button", "target_handle": 197146, "thread_active_handle": 131224, "thread_focus_handle": 197146, "top_active": true, "top_handle": 131224, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:25.9239286Z {"foreground_class": "#32770", "foreground_handle": 131224, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}], "target": "button", "target_handle": 197146, "thread_active_handle": 131224, "thread_focus_handle": 197146, "top_active": true, "top_handle": 131224, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.0665948Z PASS: native BibTeX import keeps an application identity and source key provenance
+2026-11-28T05:23:26.1244568Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "Citation style", "target_handle": 131520, "thread_active_handle": 262474, "thread_focus_handle": 131520, "top_active": true, "top_handle": 262474, "wx_focus": "Citation style", "wx_focus_class": "Choice"}
+2026-11-28T05:23:26.1255278Z PASS: citation controls have explicit accessible names and read-only results
+2026-11-28T05:23:26.1268153Z PASS: copy and export require a completed preview
+2026-11-28T05:23:26.1271210Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 9", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "Citation style", "target_handle": 131520, "thread_active_handle": 262474, "thread_focus_handle": 131520, "top_active": true, "top_handle": 262474, "wx_focus": "Citation style", "wx_focus_class": "Choice"}
+2026-11-28T05:23:26.2506489Z PASS: real Tab traverses from citation style to reference scope
+2026-11-28T05:23:26.2508740Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 9", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}], "target": "References to format; independent of list filters", "target_handle": 131516, "thread_active_handle": 262474, "thread_focus_handle": 131516, "top_active": true, "top_handle": 262474, "wx_focus": "References to format; independent of list filters", "wx_focus_class": "Choice"}
+2026-11-28T05:23:26.3802502Z PASS: real Shift+Tab returns from reference scope to citation style
+2026-11-28T05:23:26.3803848Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:26.3817903Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.3825871Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.5325358Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T05:23:26.5637323Z PASS: real formatting executes outside the native UI thread
+2026-11-28T05:23:26.5638601Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T05:23:26.5639501Z PASS: selected-reference preview preserves literal names and excludes other records
+2026-11-28T05:23:26.5643519Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:26.5647846Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66152, "thread_active_handle": 262474, "thread_focus_handle": 66152, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.5653262Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66152, "thread_active_handle": 262474, "thread_focus_handle": 66152, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.7048347Z PASS: native bibliography button copies exactly the current formatted text
+2026-11-28T05:23:26.7049393Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:26.7059332Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66154, "thread_active_handle": 262474, "thread_focus_handle": 66154, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.7067867Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66154, "thread_active_handle": 262474, "thread_focus_handle": 66154, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.8451680Z PASS: native citation button copies exactly the current citation examples
+2026-11-28T05:23:26.9083800Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:26.9093616Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66152, "thread_active_handle": 262474, "thread_focus_handle": 66152, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:26.9099306Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66152, "thread_active_handle": 262474, "thread_focus_handle": 66152, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:27.0501277Z PASS: changed metadata prevents native clipboard replacement and focuses the reason
+2026-11-28T05:23:27.0514533Z PASS: changed metadata also prevents service export
+2026-11-28T05:23:27.0515658Z PASS: rejected stale export leaves no output
+2026-11-28T05:23:27.0532467Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "References to format; independent of list filters", "target_handle": 131516, "thread_active_handle": 262474, "thread_focus_handle": 131516, "top_active": true, "top_handle": 262474, "wx_focus": "References to format; independent of list filters", "wx_focus_class": "Choice"}
+2026-11-28T05:23:27.0542061Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 313", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "References to format; independent of list filters", "target_handle": 131516, "thread_active_handle": 262474, "thread_focus_handle": 131516, "top_active": true, "top_handle": 262474, "wx_focus": "References to format; independent of list filters", "wx_focus_class": "Choice"}
+2026-11-28T05:23:27.1927351Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}], "target": "Author-name convention; organisations can be enclosed in braces", "target_handle": 131524, "thread_active_handle": 262474, "thread_focus_handle": 131524, "top_active": true, "top_handle": 262474, "wx_focus": "Author-name convention; organisations can be enclosed in braces", "wx_focus_class": "Choice"}
+2026-11-28T05:23:27.1938165Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 312", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}], "target": "Author-name convention; organisations can be enclosed in braces", "target_handle": 131524, "thread_active_handle": 262474, "thread_focus_handle": 131524, "top_active": true, "top_handle": 262474, "wx_focus": "Author-name convention; organisations can be enclosed in braces", "wx_focus_class": "Choice"}
+2026-11-28T05:23:27.3315596Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:27.3330516Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:27.3342582Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:27.4572743Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T05:23:27.4889189Z PASS: real formatting executes outside the native UI thread
+2026-11-28T05:23:27.4889803Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T05:23:27.4890417Z PASS: all-active scope excludes archived and foreign references and private notes
+2026-11-28T05:23:27.4914430Z PASS: explicit personal names format while protected corporate names remain literal
+2026-11-28T05:23:27.4915343Z PASS: a preview cannot be copied through another library controller
+2026-11-28T05:23:27.5043419Z PASS: installed service exports exact UTF-8 plain text
+2026-11-28T05:23:27.5091913Z PASS: create-only export refuses an existing destination
+2026-11-28T05:23:27.5092819Z PASS: refused create-only export preserves the existing bytes
+2026-11-28T05:23:27.6146394Z PASS: installed service exports inert self-contained HTML
+2026-11-28T05:23:27.7925481Z PASS: installed service exports an editable Word bibliography
+2026-11-28T05:23:27.7926072Z PASS: Word bibliography contains no external relationships
+2026-11-28T05:23:27.7942424Z PASS: cancelled export reports cancellation
+2026-11-28T05:23:27.7942870Z PASS: cancelled export creates no destination
+2026-11-28T05:23:27.7947907Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:27.7964630Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 131682, "thread_active_handle": 262474, "thread_focus_handle": 131682, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:27.7978508Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to import; Space selects or clears an entry", "event": "down", "key": 32}, {"control": "References to import; Space selects or clears an entry", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 131682, "thread_active_handle": 262474, "thread_focus_handle": 131682, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:27.8323685Z PASS: native custom-style action requests its explicit local picker
+2026-11-28T05:23:27.9266070Z PASS: real local style loading captures exact bytes and updates the native selector
+2026-11-28T05:23:27.9266519Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:27.9280953Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:27.9294985Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:28.0671572Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T05:23:28.0672425Z PASS: real formatting executes outside the native UI thread
+2026-11-28T05:23:28.0673040Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T05:23:28.0673727Z PASS: native preview uses the actual custom CSL engine and both active references
+2026-11-28T05:23:28.1356503Z PASS: custom export preserves the captured style after its file changes
+2026-11-28T05:23:28.1356930Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:28.1369643Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 131682, "thread_active_handle": 262474, "thread_focus_handle": 131682, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:28.1382595Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to format; independent of list filters", "event": "up", "key": 9}, {"control": "References to format; independent of list filters", "event": "down", "key": 306}, {"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 131682, "thread_active_handle": 262474, "thread_focus_handle": 131682, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:28.1767049Z PASS: native custom-style action requests its explicit local picker
+2026-11-28T05:23:28.2705481Z PASS: native custom-style load failure preserves the valid snapshot and preview
+2026-11-28T05:23:28.2706781Z PASS: the controlled file choices have both been disposed
+2026-11-28T05:23:28.2722425Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "Citation style", "target_handle": 131520, "thread_active_handle": 262474, "thread_focus_handle": 131520, "top_active": true, "top_handle": 262474, "wx_focus": "Citation style", "wx_focus_class": "Choice"}
+2026-11-28T05:23:28.2732438Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 315", "recent_key_events": [{"control": "Citation style", "event": "up", "key": 9}, {"control": "Citation style", "event": "up", "key": 306}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "Citation style", "target_handle": 131520, "thread_active_handle": 262474, "thread_focus_handle": 131520, "top_active": true, "top_handle": 262474, "wx_focus": "Citation style", "wx_focus_class": "Choice"}
+2026-11-28T05:23:28.4117218Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 315", "recent_key_events": [{"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}], "target": "Citation style", "target_handle": 131520, "thread_active_handle": 262474, "thread_focus_handle": 131520, "top_active": true, "top_handle": 262474, "wx_focus": "Citation style", "wx_focus_class": "Choice"}
+2026-11-28T05:23:28.5533600Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 315", "recent_key_events": [{"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}], "target": "Citation style", "target_handle": 131520, "thread_active_handle": 262474, "thread_focus_handle": 131520, "top_active": true, "top_handle": 262474, "wx_focus": "Citation style", "wx_focus_class": "Choice"}
+2026-11-28T05:23:28.6933071Z PASS: native keyboard selection returns from the custom style to Harvard
+2026-11-28T05:23:28.7643600Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:28.7663937Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:28.7674757Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "button", "event": "up", "key": 32}, {"control": "References to format; independent of list filters", "event": "down", "key": 313}, {"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:28.8965298Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T05:23:28.8965901Z PASS: real formatting executes outside the native UI thread
+2026-11-28T05:23:28.8966373Z PASS: async validation failure is focused and leaves no publishable preview
+2026-11-28T05:23:28.9186817Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:28.9199950Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:28.9210063Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "References to format; independent of list filters", "event": "char", "key": 313}, {"control": "References to format; independent of list filters", "event": "up", "key": 313}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:29.0526565Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T05:23:29.0527361Z PASS: real formatting executes outside the native UI thread
+2026-11-28T05:23:29.0527748Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T05:23:29.0844965Z PASS: native action button is keyboard reachable
+2026-11-28T05:23:29.0853781Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "native focus ready; foreground request=True", "recent_key_events": [{"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:29.0861324Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 32", "recent_key_events": [{"control": "Author-name convention; organisations can be enclosed in braces", "event": "down", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "char", "key": 312}, {"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "button", "target_handle": 66148, "thread_active_handle": 262474, "thread_focus_handle": 66148, "top_active": true, "top_handle": 262474, "wx_focus": "button", "wx_focus_class": "Button"}
+2026-11-28T05:23:29.2256513Z {"foreground_class": "#32770", "foreground_handle": 262474, "main_loop_exists": true, "native_input_diagnostic": "before native key 27", "recent_key_events": [{"control": "Author-name convention; organisations can be enclosed in braces", "event": "up", "key": 312}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "Citation style", "event": "down", "key": 315}, {"control": "Citation style", "event": "char", "key": 315}, {"control": "Citation style", "event": "up", "key": 315}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}, {"control": "button", "event": "down", "key": 32}, {"control": "button", "event": "up", "key": 32}], "target": "Formatted bibliography and citation examples", "target_handle": 66150, "thread_active_handle": 262474, "thread_focus_handle": 66150, "top_active": true, "top_handle": 262474, "wx_focus": "Formatted bibliography and citation examples", "wx_focus_class": "TextCtrl"}
+2026-11-28T05:23:29.4123812Z PASS: Escape closes the native dialog and cancels its queued real worker job
+2026-11-28T05:23:29.4124355Z PASS: a cancelled callback cannot publish a preview after the window closes
+2026-11-28T05:23:29.4190464Z PASS: bibliography work preserves retained originals and exact saved source evidence
+2026-11-28T05:23:29.4191095Z PASS: all bibliography operations stayed offline
+2026-11-28T05:23:29.4314987Z {"checks": 69, "custom_style_file_choice": "controlled path only", "installed_modules": {"carr_library.citations.bibliography_workbench": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a", "carr_library.citations.csl": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6", "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a", "carr_library.ui.academic_library_dialog": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b", "carr_library.ui.citation_styles_dialog": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"}, "installer": "NOT_RUN", "manual_keyboard": "NOT_RUN", "native_clipboard": "PASS", "native_custom_style": "PASS", "native_file_pickers": "NOT_RUN", "native_keyboard": "PASS", "nvda": "NOT_RUN", "platform": "Windows-10-10.0.20348-SP0", "python": "3.11.9", "result": "PASS", "service_exports": ["text", "html", "docx"], "style": "harvard", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T05:23:29.5689556Z ##[group]Run $suites = @(
+2026-11-28T05:23:29.5689878Z [36;1m$suites = @([0m
+2026-11-28T05:23:29.5690093Z [36;1m  'tests/research/test_bibtex_import.py',[0m
+2026-11-28T05:23:29.5690365Z [36;1m  'tests/research/test_academic_library.py',[0m
+2026-11-28T05:23:29.5690645Z [36;1m  'tests/research/test_csl_author_boundaries.py',[0m
+2026-11-28T05:23:29.5690913Z [36;1m  'tests/citations/test_csl.py',[0m
+2026-11-28T05:23:29.5691147Z [36;1m  'tests/citations/test_custom_csl.py',[0m
+2026-11-28T05:23:29.5691422Z [36;1m  'tests/citations/test_bibliography_workbench.py',[0m
+2026-11-28T05:23:29.5691704Z [36;1m  'tests/citations/test_custom_workbench.py',[0m
+2026-11-28T05:23:29.5691959Z [36;1m  'tests/ui/test_citation_styles_jobs.py',[0m
+2026-11-28T05:23:29.5692201Z [36;1m  'tests/ui/test_academic_library_dialog.py',[0m
+2026-11-28T05:23:29.5692435Z [36;1m  'tests/ui/test_academic_actions.py',[0m
+2026-11-28T05:23:29.5692891Z [36;1m  'tests/ui/test_academic_export_handler.py',[0m
+2026-11-28T05:23:29.5693132Z [36;1m  'tests/catalog/test_bibliography.py',[0m
+2026-11-28T05:23:29.5693383Z [36;1m  'tests/catalog/test_archive_portability.py',[0m
+2026-11-28T05:23:29.5693643Z [36;1m  'tests/catalog/test_intake_portability.py',[0m
+2026-11-28T05:23:29.5693898Z [36;1m  'tests/catalog/test_reference_exchange.py',[0m
+2026-11-28T05:23:29.5694170Z [36;1m  'tests/ingest/test_import_replay_identity.py',[0m
+2026-11-28T05:23:29.5694450Z [36;1m  'tests/ingest/test_txt_replay_registration.py',[0m
+2026-11-28T05:23:29.5694708Z [36;1m  'tests/reader/test_export_no_clobber.py',[0m
+2026-11-28T05:23:29.5694962Z [36;1m  'tests/reader/test_export_reconciliation.py',[0m
+2026-11-28T05:23:29.5695207Z [36;1m  'tests/reader/test_file_export.py',[0m
+2026-11-28T05:23:29.5695456Z [36;1m  'tests/reader/test_binary_file_export.py',[0m
+2026-11-28T05:23:29.5695699Z [36;1m  'tests/reader/test_academic_documents.py',[0m
+2026-11-28T05:23:29.5695958Z [36;1m  'tests/reader/test_bibliographic_locators.py',[0m
+2026-11-28T05:23:29.5696213Z [36;1m  'tests/reader/test_evidence_export.py',[0m
+2026-11-28T05:23:29.5696455Z [36;1m  'tests/storage/test_academic_migration.py',[0m
+2026-11-28T05:23:29.5696745Z [36;1m  'tests/e2e/test_academic_workflow.py',[0m
+2026-11-28T05:23:29.5697019Z [36;1m  'tests/e2e/test_academic_workflows.py',[0m
+2026-11-28T05:23:29.5697257Z [36;1m  'tests/e2e/test_academic_document_export.py',[0m
+2026-11-28T05:23:29.5697498Z [36;1m  'tests/e2e/test_export_destination.py'[0m
+2026-11-28T05:23:29.5697700Z [36;1m)[0m
+2026-11-28T05:23:29.5698064Z [36;1m& $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-bibliography-results/strict-acceptance.txt'[0m
+2026-11-28T05:23:29.5698492Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T05:23:29.5729061Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T05:23:29.5729356Z env:
+2026-11-28T05:23:29.5729506Z   PYTHONUTF8: 1
+2026-11-28T05:23:29.5729680Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:23:29.5729860Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:23:29.5730056Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:23:29.5730225Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:23:29.5730380Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:23:29.5730566Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:23:29.5730772Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:23:29.5730943Z   DO_NOT_TRACK: 1
+2026-11-28T05:23:29.5731171Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:23:29.5731501Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:29.5731839Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T05:23:29.5732174Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:29.5732476Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:29.5732778Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:23:29.5735070Z   CARR_PYTHON: D:\a\_temp\carr-bibliography-python\Scripts\python.exe
+2026-11-28T05:23:29.5735421Z ##[endgroup]
+2026-11-28T05:23:30.1733140Z ============================= test session starts =============================
+2026-11-28T05:23:30.1734897Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:23:30.1736530Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:23:30.1738259Z configfile: pyproject.toml
+2026-11-28T05:23:30.2569029Z collected 68 items
+2026-11-28T05:23:30.2569306Z 
+2026-11-28T05:23:30.3665566Z tests\research\test_bibtex_import.py ................................... [ 51%]
+2026-11-28T05:23:31.6143494Z .................................                                        [100%]
+2026-11-28T05:23:31.6143905Z 
+2026-11-28T05:23:31.6146211Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-hkn77527\junit.xml -
+2026-11-28T05:23:31.6147787Z ============================= 68 passed in 1.45s ==============================
+2026-11-28T05:23:31.6730689Z PASS: tests/research/test_bibtex_import.py: junit_passed=68, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:23:31.8574831Z ============================= test session starts =============================
+2026-11-28T05:23:31.8606768Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:23:31.8607727Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:23:31.8608716Z configfile: pyproject.toml
+2026-11-28T05:23:31.9922375Z collected 94 items
+2026-11-28T05:23:31.9922658Z 
+2026-11-28T05:24:22.2255049Z tests\research\test_academic_library.py ................................ [ 34%]
+2026-11-28T05:25:30.6183728Z ..............................................................           [100%]
+2026-11-28T05:25:30.6185546Z 
+2026-11-28T05:25:30.6187687Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-3t8bhgih\junit.xml -
+2026-11-28T05:25:30.6188771Z ======================= 94 passed in 118.76s (0:01:58) ========================
+2026-11-28T05:25:30.6753454Z PASS: tests/research/test_academic_library.py: junit_passed=94, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:25:30.9359873Z ============================= test session starts =============================
+2026-11-28T05:25:30.9383572Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:25:30.9384684Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:25:30.9385161Z configfile: pyproject.toml
+2026-11-28T05:25:31.0759978Z collected 20 items
+2026-11-28T05:25:31.0760926Z 
+2026-11-28T05:25:34.3027228Z tests\research\test_csl_author_boundaries.py ....................        [100%]
+2026-11-28T05:25:34.3027947Z 
+2026-11-28T05:25:34.3028580Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-j512oubs\junit.xml -
+2026-11-28T05:25:34.3029213Z ============================= 20 passed in 3.37s ==============================
+2026-11-28T05:25:34.3626533Z PASS: tests/research/test_csl_author_boundaries.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:25:34.5549925Z ============================= test session starts =============================
+2026-11-28T05:25:34.5582691Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:25:34.5583498Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:25:34.5586179Z configfile: pyproject.toml
+2026-11-28T05:25:34.6328967Z collected 79 items
+2026-11-28T05:25:34.6330278Z 
+2026-11-28T05:26:27.2306551Z tests\citations\test_csl.py ............................................ [ 55%]
+2026-11-28T05:26:27.7890394Z ...................................                                      [100%]
+2026-11-28T05:26:27.7890796Z 
+2026-11-28T05:26:27.7891191Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-m9_ncqqk\junit.xml -
+2026-11-28T05:26:27.7893065Z ============================= 79 passed in 53.23s =============================
+2026-11-28T05:26:27.8306031Z PASS: tests/citations/test_csl.py: junit_passed=79, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:26:28.0161600Z ============================= test session starts =============================
+2026-11-28T05:26:28.0184760Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:26:28.0185540Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:26:28.0186194Z configfile: pyproject.toml
+2026-11-28T05:26:28.0736108Z collected 132 items
+2026-11-28T05:26:28.0737163Z 
+2026-11-28T05:26:28.9842768Z tests\citations\test_custom_csl.py ..................................... [ 28%]
+2026-11-28T05:26:29.1090907Z ........................................................................ [ 82%]
+2026-11-28T05:26:29.4434719Z .......................                                                  [100%]
+2026-11-28T05:26:29.4435137Z 
+2026-11-28T05:26:29.4435511Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-mcmwbzlx\junit.xml -
+2026-11-28T05:26:29.4436416Z ============================= 132 passed in 1.43s =============================
+2026-11-28T05:26:29.4868193Z PASS: tests/citations/test_custom_csl.py: junit_passed=132, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:26:29.6684204Z ============================= test session starts =============================
+2026-11-28T05:26:29.6708255Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:26:29.6708896Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:26:29.6709362Z configfile: pyproject.toml
+2026-11-28T05:26:29.7606317Z collected 19 items
+2026-11-28T05:26:29.7606956Z 
+2026-11-28T05:27:51.7055672Z tests\citations\test_bibliography_workbench.py ...................       [100%]
+2026-11-28T05:27:51.7056124Z 
+2026-11-28T05:27:51.7056454Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-hh93j8oa\junit.xml -
+2026-11-28T05:27:51.7057121Z ======================== 19 passed in 82.04s (0:01:22) ========================
+2026-11-28T05:27:51.8050282Z PASS: tests/citations/test_bibliography_workbench.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:27:51.9930384Z ============================= test session starts =============================
+2026-11-28T05:27:51.9952698Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:27:51.9953940Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:27:51.9954642Z configfile: pyproject.toml
+2026-11-28T05:27:52.1177355Z collected 20 items
+2026-11-28T05:27:52.1178373Z 
+2026-11-28T05:27:53.7786741Z tests\citations\test_custom_workbench.py ....................            [100%]
+2026-11-28T05:27:53.7787200Z 
+2026-11-28T05:27:53.7787604Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-p0fnwqbs\junit.xml -
+2026-11-28T05:27:53.7788209Z ============================= 20 passed in 1.79s ==============================
+2026-11-28T05:27:53.8507203Z PASS: tests/citations/test_custom_workbench.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:27:54.0331302Z ============================= test session starts =============================
+2026-11-28T05:27:54.0353820Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:27:54.0354464Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:27:54.0355505Z configfile: pyproject.toml
+2026-11-28T05:27:54.1843140Z collected 31 items
+2026-11-28T05:27:54.1844871Z 
+2026-11-28T05:27:54.3329310Z tests\ui\test_citation_styles_jobs.py ...............................    [100%]
+2026-11-28T05:27:54.3329887Z 
+2026-11-28T05:27:54.3330223Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-kwdttebd\junit.xml -
+2026-11-28T05:27:54.3330857Z ============================= 31 passed in 0.30s ==============================
+2026-11-28T05:27:54.3841693Z PASS: tests/ui/test_citation_styles_jobs.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:27:54.6700329Z ============================= test session starts =============================
+2026-11-28T05:27:54.6723237Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:27:54.6723897Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:27:54.6724384Z configfile: pyproject.toml
+2026-11-28T05:27:54.8476242Z collected 63 items
+2026-11-28T05:27:54.8477734Z 
+2026-11-28T05:27:59.3272929Z tests\ui\test_academic_library_dialog.py ............................... [ 49%]
+2026-11-28T05:28:02.0901065Z ................................                                         [100%]
+2026-11-28T05:28:02.0901545Z 
+2026-11-28T05:28:02.0901882Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-vzhc3jg_\junit.xml -
+2026-11-28T05:28:02.0902729Z ============================= 63 passed in 7.42s ==============================
+2026-11-28T05:28:02.1495773Z PASS: tests/ui/test_academic_library_dialog.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:02.3765329Z ============================= test session starts =============================
+2026-11-28T05:28:02.3787216Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:02.3788186Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:02.3788647Z configfile: pyproject.toml
+2026-11-28T05:28:02.4906371Z collected 39 items
+2026-11-28T05:28:02.4906899Z 
+2026-11-28T05:28:02.7715871Z tests\ui\test_academic_actions.py ...................................... [ 97%]
+2026-11-28T05:28:02.7905160Z .                                                                        [100%]
+2026-11-28T05:28:02.7905533Z 
+2026-11-28T05:28:02.7906101Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-fvy9mug0\junit.xml -
+2026-11-28T05:28:02.7906691Z ============================= 39 passed in 0.41s ==============================
+2026-11-28T05:28:02.8408611Z PASS: tests/ui/test_academic_actions.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:03.0382276Z ============================= test session starts =============================
+2026-11-28T05:28:03.0403914Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:03.0404599Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:03.0405604Z configfile: pyproject.toml
+2026-11-28T05:28:03.1761843Z collected 39 items
+2026-11-28T05:28:03.1762292Z 
+2026-11-28T05:28:15.1264773Z tests\ui\test_academic_export_handler.py ............................... [ 79%]
+2026-11-28T05:28:18.7581379Z ........                                                                 [100%]
+2026-11-28T05:28:18.7581727Z 
+2026-11-28T05:28:18.7582048Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-nwqhkpv8\junit.xml -
+2026-11-28T05:28:18.7582911Z ============================= 39 passed in 15.72s =============================
+2026-11-28T05:28:18.8141403Z PASS: tests/ui/test_academic_export_handler.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:19.0214167Z ============================= test session starts =============================
+2026-11-28T05:28:19.0235651Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:19.0237060Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:19.0237504Z configfile: pyproject.toml
+2026-11-28T05:28:19.0949523Z collected 39 items
+2026-11-28T05:28:19.0950819Z 
+2026-11-28T05:28:21.7936704Z tests\catalog\test_bibliography.py ..................................... [ 94%]
+2026-11-28T05:28:21.9482266Z ..                                                                       [100%]
+2026-11-28T05:28:21.9482639Z 
+2026-11-28T05:28:21.9482944Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-fdue10p9\junit.xml -
+2026-11-28T05:28:21.9483524Z ============================= 39 passed in 2.93s ==============================
+2026-11-28T05:28:21.9892013Z PASS: tests/catalog/test_bibliography.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:22.2199976Z ============================= test session starts =============================
+2026-11-28T05:28:22.2221837Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:22.2223864Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:22.2224332Z configfile: pyproject.toml
+2026-11-28T05:28:22.2468435Z collected 54 items
+2026-11-28T05:28:22.2470959Z 
+2026-11-28T05:28:22.2786326Z tests\catalog\test_archive_portability.py .............................. [ 55%]
+2026-11-28T05:28:22.3091802Z ........................                                                 [100%]
+2026-11-28T05:28:22.3092172Z 
+2026-11-28T05:28:22.3092532Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-fff50p5u\junit.xml -
+2026-11-28T05:28:22.3093228Z ============================= 54 passed in 0.09s ==============================
+2026-11-28T05:28:22.3470646Z PASS: tests/catalog/test_archive_portability.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:22.5231210Z ============================= test session starts =============================
+2026-11-28T05:28:22.5253348Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:22.5254150Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:22.5254727Z configfile: pyproject.toml
+2026-11-28T05:28:22.5496988Z collected 16 items
+2026-11-28T05:28:22.5498751Z 
+2026-11-28T05:28:22.5938367Z tests\catalog\test_intake_portability.py ................                [100%]
+2026-11-28T05:28:22.5938835Z 
+2026-11-28T05:28:22.5939147Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-c8db26b3\junit.xml -
+2026-11-28T05:28:22.5939701Z ============================= 16 passed in 0.07s ==============================
+2026-11-28T05:28:22.6320560Z PASS: tests/catalog/test_intake_portability.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:22.8073938Z ============================= test session starts =============================
+2026-11-28T05:28:22.8096106Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:22.8097387Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:22.8097816Z configfile: pyproject.toml
+2026-11-28T05:28:22.8528056Z collected 64 items
+2026-11-28T05:28:22.8529633Z 
+2026-11-28T05:28:22.8792115Z tests\catalog\test_reference_exchange.py ............................... [ 48%]
+2026-11-28T05:28:22.9153511Z .................................                                        [100%]
+2026-11-28T05:28:22.9153915Z 
+2026-11-28T05:28:22.9154243Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-5sa6iugq\junit.xml -
+2026-11-28T05:28:22.9154834Z ============================= 64 passed in 0.11s ==============================
+2026-11-28T05:28:22.9546205Z PASS: tests/catalog/test_reference_exchange.py: junit_passed=64, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:23.1326890Z ============================= test session starts =============================
+2026-11-28T05:28:23.1349890Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:23.1350430Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:23.1350837Z configfile: pyproject.toml
+2026-11-28T05:28:23.2146401Z collected 22 items
+2026-11-28T05:28:23.2147709Z 
+2026-11-28T05:28:35.0562999Z tests\ingest\test_import_replay_identity.py ......................       [100%]
+2026-11-28T05:28:35.0563460Z 
+2026-11-28T05:28:35.0563767Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-_qxr1df4\junit.xml -
+2026-11-28T05:28:35.0564367Z ============================= 22 passed in 11.92s =============================
+2026-11-28T05:28:35.1498668Z PASS: tests/ingest/test_import_replay_identity.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:35.3495185Z ============================= test session starts =============================
+2026-11-28T05:28:35.3520008Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:35.3521766Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:35.3522256Z configfile: pyproject.toml
+2026-11-28T05:28:35.6154179Z collected 4 items
+2026-11-28T05:28:35.6155510Z 
+2026-11-28T05:28:37.5116376Z tests\ingest\test_txt_replay_registration.py ....                        [100%]
+2026-11-28T05:28:37.5116940Z 
+2026-11-28T05:28:37.5117237Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-79ndm0ad\junit.xml -
+2026-11-28T05:28:37.5117787Z ============================== 4 passed in 2.16s ==============================
+2026-11-28T05:28:37.5752619Z PASS: tests/ingest/test_txt_replay_registration.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:37.7582324Z ============================= test session starts =============================
+2026-11-28T05:28:37.7606021Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:37.7606811Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:37.7607266Z configfile: pyproject.toml
+2026-11-28T05:28:37.8028839Z collected 35 items
+2026-11-28T05:28:37.8029995Z 
+2026-11-28T05:28:46.6256977Z tests\reader\test_export_no_clobber.py ................................. [ 94%]
+2026-11-28T05:28:46.6448901Z ..                                                                       [100%]
+2026-11-28T05:28:46.6449321Z 
+2026-11-28T05:28:46.6449654Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-oh7gptyp\junit.xml -
+2026-11-28T05:28:46.6450282Z ============================= 35 passed in 8.89s ==============================
+2026-11-28T05:28:46.7045750Z PASS: tests/reader/test_export_no_clobber.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:46.8992225Z ============================= test session starts =============================
+2026-11-28T05:28:46.9016769Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:46.9017744Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:46.9018320Z configfile: pyproject.toml
+2026-11-28T05:28:46.9396090Z collected 20 items
+2026-11-28T05:28:46.9398199Z 
+2026-11-28T05:28:47.0739143Z tests\reader\test_export_reconciliation.py ....................          [100%]
+2026-11-28T05:28:47.0739619Z 
+2026-11-28T05:28:47.0739836Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-aa1a8nm6\junit.xml -
+2026-11-28T05:28:47.0740299Z ============================= 20 passed in 0.17s ==============================
+2026-11-28T05:28:47.1143740Z PASS: tests/reader/test_export_reconciliation.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:47.3001371Z ============================= test session starts =============================
+2026-11-28T05:28:47.3024192Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:47.3024767Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:47.3025458Z configfile: pyproject.toml
+2026-11-28T05:28:47.3441995Z collected 54 items
+2026-11-28T05:28:47.3443406Z 
+2026-11-28T05:28:47.5546731Z tests\reader\test_file_export.py ....................................... [ 72%]
+2026-11-28T05:28:47.8317847Z ...............                                                          [100%]
+2026-11-28T05:28:47.8318391Z 
+2026-11-28T05:28:47.8318759Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-1ki50nwc\junit.xml -
+2026-11-28T05:28:47.8319785Z ============================= 54 passed in 0.53s ==============================
+2026-11-28T05:28:47.8751451Z PASS: tests/reader/test_file_export.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:48.0958864Z ============================= test session starts =============================
+2026-11-28T05:28:48.0982009Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:48.0983184Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:48.0984074Z configfile: pyproject.toml
+2026-11-28T05:28:48.1380083Z collected 35 items
+2026-11-28T05:28:48.1380658Z 
+2026-11-28T05:28:48.3121126Z tests\reader\test_binary_file_export.py ................................ [ 91%]
+2026-11-28T05:28:48.3527690Z ...                                                                      [100%]
+2026-11-28T05:28:48.3528071Z 
+2026-11-28T05:28:48.3528428Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-oayhj66m\junit.xml -
+2026-11-28T05:28:48.3529073Z ============================= 35 passed in 0.26s ==============================
+2026-11-28T05:28:48.3973035Z PASS: tests/reader/test_binary_file_export.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:48.5815237Z ============================= test session starts =============================
+2026-11-28T05:28:48.5837043Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:48.5838086Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:48.5839417Z configfile: pyproject.toml
+2026-11-28T05:28:48.7293615Z collected 41 items
+2026-11-28T05:28:48.7294274Z 
+2026-11-28T05:28:49.4322018Z tests\reader\test_academic_documents.py ................................ [ 78%]
+2026-11-28T05:28:50.7047187Z .........                                                                [100%]
+2026-11-28T05:28:50.7047618Z 
+2026-11-28T05:28:50.7047944Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-s6xpa2xz\junit.xml -
+2026-11-28T05:28:50.7048555Z ============================= 41 passed in 2.12s ==============================
+2026-11-28T05:28:50.8015472Z PASS: tests/reader/test_academic_documents.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:50.9827688Z ============================= test session starts =============================
+2026-11-28T05:28:50.9849830Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:50.9850612Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:50.9851162Z configfile: pyproject.toml
+2026-11-28T05:28:51.0197411Z collected 6 items
+2026-11-28T05:28:51.0197647Z 
+2026-11-28T05:28:51.0389067Z tests\reader\test_bibliographic_locators.py ......                       [100%]
+2026-11-28T05:28:51.0389620Z 
+2026-11-28T05:28:51.0389980Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-427mbiov\junit.xml -
+2026-11-28T05:28:51.0390632Z ============================== 6 passed in 0.06s ==============================
+2026-11-28T05:28:51.0778016Z PASS: tests/reader/test_bibliographic_locators.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:51.2605270Z ============================= test session starts =============================
+2026-11-28T05:28:51.2629419Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:51.2630097Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:51.2630601Z configfile: pyproject.toml
+2026-11-28T05:28:51.3027559Z collected 40 items
+2026-11-28T05:28:51.3028238Z 
+2026-11-28T05:28:51.3355690Z tests\reader\test_evidence_export.py ................................... [ 87%]
+2026-11-28T05:28:51.3484182Z .....                                                                    [100%]
+2026-11-28T05:28:51.3484516Z 
+2026-11-28T05:28:51.3485057Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-md480fd8\junit.xml -
+2026-11-28T05:28:51.3485658Z ============================= 40 passed in 0.09s ==============================
+2026-11-28T05:28:51.3887455Z PASS: tests/reader/test_evidence_export.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:28:51.5682119Z ============================= test session starts =============================
+2026-11-28T05:28:51.5705579Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:28:51.5706958Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:28:51.5707375Z configfile: pyproject.toml
+2026-11-28T05:28:51.7493612Z collected 32 items
+2026-11-28T05:28:51.7493836Z 
+2026-11-28T05:29:01.1221404Z tests\storage\test_academic_migration.py ............................... [ 96%]
+2026-11-28T05:29:01.5538144Z .                                                                        [100%]
+2026-11-28T05:29:01.5538513Z 
+2026-11-28T05:29:01.5539028Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-b25fx40u\junit.xml -
+2026-11-28T05:29:01.5539669Z ============================= 32 passed in 9.99s ==============================
+2026-11-28T05:29:01.6161738Z PASS: tests/storage/test_academic_migration.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:29:01.8160577Z ============================= test session starts =============================
+2026-11-28T05:29:01.8184164Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:29:01.8185606Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:29:01.8186191Z configfile: pyproject.toml
+2026-11-28T05:29:01.9817617Z collected 6 items
+2026-11-28T05:29:01.9819053Z 
+2026-11-28T05:29:03.7637720Z tests\e2e\test_academic_workflow.py ......                               [100%]
+2026-11-28T05:29:03.7638174Z 
+2026-11-28T05:29:03.7638401Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-1c8ifyey\junit.xml -
+2026-11-28T05:29:03.7638786Z ============================== 6 passed in 1.95s ==============================
+2026-11-28T05:29:03.8296985Z PASS: tests/e2e/test_academic_workflow.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:29:04.0125865Z ============================= test session starts =============================
+2026-11-28T05:29:04.0147683Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:29:04.0148469Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:29:04.0148920Z configfile: pyproject.toml
+2026-11-28T05:29:04.1739637Z collected 4 items
+2026-11-28T05:29:04.1741125Z 
+2026-11-28T05:29:06.6730970Z tests\e2e\test_academic_workflows.py ....                                [100%]
+2026-11-28T05:29:06.6731482Z 
+2026-11-28T05:29:06.6731819Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-wgxm8sgm\junit.xml -
+2026-11-28T05:29:06.6732388Z ============================== 4 passed in 2.66s ==============================
+2026-11-28T05:29:06.7446451Z PASS: tests/e2e/test_academic_workflows.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:29:06.9297273Z ============================= test session starts =============================
+2026-11-28T05:29:06.9320209Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:29:06.9320784Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:29:06.9321248Z configfile: pyproject.toml
+2026-11-28T05:29:07.0458694Z collected 10 items
+2026-11-28T05:29:07.0459968Z 
+2026-11-28T05:29:13.1461333Z tests\e2e\test_academic_document_export.py ..........                    [100%]
+2026-11-28T05:29:13.1461867Z 
+2026-11-28T05:29:13.1462197Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-oisgfbfp\junit.xml -
+2026-11-28T05:29:13.1462657Z ============================= 10 passed in 6.22s ==============================
+2026-11-28T05:29:13.2154895Z PASS: tests/e2e/test_academic_document_export.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:29:13.3987687Z ============================= test session starts =============================
+2026-11-28T05:29:13.4010347Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T05:29:13.4010994Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T05:29:13.4011438Z configfile: pyproject.toml
+2026-11-28T05:29:13.6222624Z collected 6 items
+2026-11-28T05:29:13.6223995Z 
+2026-11-28T05:29:19.9550563Z tests\e2e\test_export_destination.py ......                              [100%]
+2026-11-28T05:29:19.9551109Z 
+2026-11-28T05:29:19.9551334Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-1wun3amj\junit.xml -
+2026-11-28T05:29:19.9551953Z ============================== 6 passed in 6.56s ==============================
+2026-11-28T05:29:20.0723910Z PASS: tests/e2e/test_export_destination.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T05:29:20.0777424Z Required suites complete: 29; passed=29; failed=0
+2026-11-28T05:29:20.1660007Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T05:29:20.1660430Z with:
+2026-11-28T05:29:20.1660709Z   name: bibliography-windows-2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:29:20.1661098Z   path: carr-library/ci-bibliography-results/
+2026-11-28T05:29:20.1661378Z   if-no-files-found: error
+2026-11-28T05:29:20.1661615Z   retention-days: 7
+2026-11-28T05:29:20.1661801Z   compression-level: 6
+2026-11-28T05:29:20.1662008Z   overwrite: false
+2026-11-28T05:29:20.1662212Z   include-hidden-files: false
+2026-11-28T05:29:20.1662437Z   archive: true
+2026-11-28T05:29:20.1662625Z env:
+2026-11-28T05:29:20.1663426Z   PYTHONUTF8: 1
+2026-11-28T05:29:20.1663595Z   PYTHONUNBUFFERED: 1
+2026-11-28T05:29:20.1663818Z   PIP_DISABLE_PIP_VERSION_CHECK: 1
+2026-11-28T05:29:20.1664036Z   ORT_DISABLE_TELEMETRY: 1
+2026-11-28T05:29:20.1664204Z   HF_HUB_OFFLINE: 1
+2026-11-28T05:29:20.1664368Z   HF_HUB_DISABLE_TELEMETRY: 1
+2026-11-28T05:29:20.1664573Z   HF_HUB_DISABLE_IMPLICIT_TOKEN: 1
+2026-11-28T05:29:20.1664763Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T05:29:20.1664924Z   DO_NOT_TRACK: 1
+2026-11-28T05:29:20.1665138Z   EXPECTED_SOURCE_COMMIT: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T05:29:20.1665460Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:29:20.1665793Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T05:29:20.1666122Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:29:20.1666419Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:29:20.1666716Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T05:29:20.1667046Z   CARR_PYTHON: D:\a\_temp\carr-bibliography-python\Scripts\python.exe
+2026-11-28T05:29:20.1667302Z ##[endgroup]
+2026-11-28T05:29:20.3062040Z With the provided path, there will be 6 files uploaded
+2026-11-28T05:29:20.3066359Z Artifact name is valid!
+2026-11-28T05:29:20.3067463Z Root directory input is valid!
+2026-11-28T05:29:20.6821268Z Uploading artifact: bibliography-windows-2dfc5d32558c722ba05068dfff9ebb19eeae52f7.zip
+2026-11-28T05:29:20.6850809Z Beginning upload of artifact content to blob storage
+2026-11-28T05:29:21.0077000Z Uploaded bytes 6628
+2026-11-28T05:29:21.0850713Z Finished uploading artifact content to blob storage!
+2026-11-28T05:29:21.0851572Z SHA256 digest of uploaded artifact is aa370a3a2b01117a6ad5d49c8fa33f0656d904ae46a07cac05a03f5b8b2127a5
+2026-11-28T05:29:21.0852234Z Finalizing artifact upload
+2026-11-28T05:29:21.6051388Z Artifact bibliography-windows-2dfc5d32558c722ba05068dfff9ebb19eeae52f7 successfully finalized. Artifact ID 15250036967
+2026-11-28T05:29:21.6052324Z Artifact bibliography-windows-2dfc5d32558c722ba05068dfff9ebb19eeae52f7 has been successfully uploaded! Final size is 6628 bytes. Artifact ID is 15250036967
+2026-11-28T05:29:21.6057698Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111582006/artifacts/15250036967
+2026-11-28T05:29:21.6309996Z Post job cleanup.
+2026-11-28T05:29:21.7596871Z Post job cleanup.
+2026-11-28T05:29:21.9153036Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T05:29:21.9433507Z git version 2.56.1.windows.1
+2026-11-28T05:29:21.9477247Z Copying 'C:\Users\runneradmin\.gitconfig' to 'D:\a\_temp\40a45c83-d9cf-4d14-818f-5542578af2b7\.gitconfig'
+2026-11-28T05:29:21.9493890Z Temporarily overriding HOME='D:\a\_temp\40a45c83-d9cf-4d14-818f-5542578af2b7' before making global git config changes
+2026-11-28T05:29:21.9494991Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T05:29:21.9503054Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T05:29:21.9741863Z Removing SSH command configuration
+2026-11-28T05:29:21.9750609Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T05:29:22.0002555Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T05:29:22.4210904Z Removing HTTP extra header
+2026-11-28T05:29:22.4219429Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T05:29:22.4462492Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T05:29:22.8352839Z Removing includeIf entries pointing to credentials config files
+2026-11-28T05:29:22.8367823Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T05:29:22.8612508Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T05:29:23.4790342Z Cleaning up orphan processes

@@ -1,0 +1,112 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "Exact-source Linux supplied-transcription bridge",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "event": "push",
+  "run_id": 46111569581,
+  "run_attempt": 1,
+  "job_id": 140876044199,
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:44:49Z",
+  "completed_at": "2026-11-28T05:46:42Z",
+  "workflow": {
+    "path": ".github/workflows/carr-transcription-bridge.yml",
+    "git_blob": "847b1e36301a5f3185555d727a27bc20363ae23e"
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569581/job/140876044199",
+  "environment": {
+    "runner": "ubuntu-24.04",
+    "python": "3.11.18",
+    "pytest": "9.0.2",
+    "application": "universal-research-library0.2.0.dev2",
+    "pip_check": "No broken requirements found."
+  },
+  "source_binding": {
+    "observed_checkout": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "checkout_occurrences": 3,
+    "suite_execution": "ci_check sets PYTHONPATH to the checkout src and uses isolated per-suite processes.",
+    "installed_python_inventory": "NOT_CLAIMED: this workflow installs the current source package but does not emit a complete installed-module byte comparison.",
+    "application_python_modules_in_reviewed_tree": 383,
+    "built_wheel": {
+      "file": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "size_bytes": 2614335,
+      "sha256": "ea015865a39c6fec5e0c2a905ca92a15f1d50b7e85224da4cdabaa65ca808c02",
+      "provenance": "Pip build log; wheel not downloaded or retained by this workflow."
+    }
+  },
+  "tests": {
+    "expected_modules": [
+      "tests/assistant/test_transcription_workflow.py",
+      "tests/transcription/test_supplied_worker_bridge.py",
+      "tests/storage/test_transcription_recovery.py",
+      "tests/storage/test_import_publication_backup.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/transcription/test_protocol_routing.py",
+      "tests/transcription/test_owned_admission.py",
+      "tests/transcription/test_protocol_fixture.py",
+      "tests/transcription/test_runtime_admission.py",
+      "tests/transcription/test_runtime_inventory.py",
+      "tests/storage/test_asr_additional_profile.py",
+      "tests/storage/test_state_json_reader.py",
+      "tests/transcription/test_control_reads.py",
+      "tests/transcription/test_service.py",
+      "tests/transcription/test_admission_boundaries.py",
+      "tests/transcription/test_restore.py",
+      "tests/e2e/test_transcription_cli.py",
+      "tests/storage/test_transcription_backup.py",
+      "tests/storage/test_transcription_composite_backup.py",
+      "tests/operations/test_resources.py",
+      "tests/operations/test_facade.py",
+      "tests/operations/test_transcription_views.py",
+      "tests/e2e/test_operations_cli.py",
+      "tests/storage/test_atomic_state_publication.py",
+      "tests/audio/test_audio_process.py",
+      "tests/audio/test_process_deadline.py",
+      "tests/operations_posix/test_fork_ownership.py"
+    ],
+    "completed_modules": 27,
+    "passed": 838,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit_codes": [
+      0
+    ],
+    "individual_suite_verdicts": "module-results.json",
+    "selected_new_process_regressions": {
+      "module": "tests/audio/test_audio_process.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "coverage": "Includes the15 added opening-only directory-disappearance regression cases in the exact selected source; Windows-specific native scope is separate."
+    },
+    "deadline_module": {
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "artifacts": {
+    "workflow_uploads_artifacts": false,
+    "api_observation": {
+      "total_count": 0,
+      "artifacts": []
+    },
+    "zip_downloaded": false,
+    "raw_artifact_members_claimed": false
+  },
+  "provenance": {
+    "log_type": "Complete GitHub connector-decoded job text; original timestamps and line endings preserved.",
+    "log_file": "full-decoded-log.txt",
+    "decoded_utf8_bytes": 94152,
+    "decoded_utf8_sha256": "a8fabdded972b7192b41b1c0a9baa09f13dd6ba408e04d5cb01fa7a3c243414a",
+    "analysis": "Only derived analysis strips timestamps and line endings to parse exact emitted verdicts. No hosted application or test executed by this reviewer."
+  },
+  "limits": [
+    "This is the Linux source lane, not the pending Windows lane or an aggregate result for the entire run.",
+    "Windows-only workflow steps are conditionally skipped; every selected Linux test has zero skipped cases.",
+    "No private ASR weights, recognition quality, physical audio, NVDA, sealed delivery or final-release qualification is claimed."
+  ]
+}

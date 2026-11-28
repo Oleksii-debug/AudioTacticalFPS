@@ -1,0 +1,425 @@
+[
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "audio-endpoint.json",
+    "bytes": 655,
+    "sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "audio-services.json",
+    "bytes": 376,
+    "sha256": "6564af2a829c395d75c4b854bee7cd0ab39a7b651b59dbfc5c809cb628a9dde6",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "bundle-reader-controls.json",
+    "bytes": 4603,
+    "sha256": "5b7bbe6113a06dffcd207d342c9271ca1859b92acf17a5633e1005382b8240d7",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "core-bundle-install.txt",
+    "bytes": 13143,
+    "sha256": "32cb63ba75baea4cf2359198cf676b80b76fcda9455fb79378aa4eb094a9a76f",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "core-bundle-native.txt",
+    "bytes": 1396,
+    "sha256": "af5764988d27973199c6ffb50fcad76f5fee5ace2f5326c1f518a14f8d890571",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "core-bundle-self-test.json",
+    "bytes": 272,
+    "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-academic-native.txt",
+    "bytes": 2753,
+    "sha256": "5218194c239eb69b93a9bad4b73c7ac42f0a9b004de419fe93b3c8eb5478e317",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-audio-effects.json",
+    "bytes": 656,
+    "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-audio-studio.json",
+    "bytes": 561,
+    "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-build.json",
+    "bytes": 1641,
+    "sha256": "5d8e85c9110e510cabffcef5b29a4f55c19f5e4d09019154feb15372470e473b",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-catalog-tools.txt",
+    "bytes": 7290,
+    "sha256": "09846d6aeac2b5b22b1f9f9600654082320d516fa2746dfc4816e98c0f7b6484",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-citation-styles.txt",
+    "bytes": 62334,
+    "sha256": "19a649ed6f73914989497c9f54b3876ec3afaff9c9e139a6475d907ae77a83b4",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-delivery-lifecycle.txt",
+    "bytes": 2566,
+    "sha256": "b67bc16c454b43a6a4a5e757b5c1f1110954230ee564040e2a300a432e1e5290",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-firewall.json",
+    "bytes": 1063,
+    "sha256": "0b43a176b2559913b32685ccea63915032610e006476eb7ae3fc1a0d5c7d3567",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-native-runtime.json",
+    "bytes": 637,
+    "sha256": "166b373c74d974199091d774c0779c5ac976872cbee6ded4ed31f441c375c0b8",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-reader-controls.txt",
+    "bytes": 5985,
+    "sha256": "01a992b589caa6c46ac65e0379eea758bfc7d2acc7f2312ce592829e1c67dda0",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "full-bundle-voice-settings.json",
+    "bytes": 279,
+    "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "installed-scene-clip-editor.txt",
+    "bytes": 10315,
+    "sha256": "d0c01d0bf5496f1e463d5715bec1bcb68808e257f9ad2e8e7ae40ab4007537fc",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-audio-preview.json",
+    "bytes": 112,
+    "sha256": "1c0e533adc3e4456da3b34186b93c5cdb148f5c7e90282dc4fc74fe55ba691aa",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-audio-runtime-setup.json",
+    "bytes": 2700,
+    "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-audio-runtime-setup.txt",
+    "bytes": 4593,
+    "sha256": "06b83c4b3c5f895b1b31eaa5e17ec8b2fdb46c8ff0730bfc2ebd4ec0bde41efa",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-delivery-lifecycle.txt",
+    "bytes": 2566,
+    "sha256": "b67bc16c454b43a6a4a5e757b5c1f1110954230ee564040e2a300a432e1e5290",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-draft-timer.json",
+    "bytes": 1398,
+    "sha256": "ca18dee0a1a4c198f48eeda1c85115a5610fd23baa5fb8751d9678fac33238ea",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-draft-timer.txt",
+    "bytes": 18937,
+    "sha256": "b5532a7d626119d5d04d108a11bd9c80f4e05c12895197e130a969d5c3f7ba84",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-owner-voice-controls.txt",
+    "bytes": 800,
+    "sha256": "6f62a06cbae2c98b12ca9b83d0c996fb10dc655d357995707037b81ba8a3e328",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-reader-controls.json",
+    "bytes": 4470,
+    "sha256": "1251504659622b82a82f2bba892a07f2da7856102e9730c098cfff5cee50be39",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-reader-controls.txt",
+    "bytes": 5852,
+    "sha256": "c3efe5450c388fb6dcb999bd7c65a7da3efad5f8f803ca0fdb6377f0721419c7",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-reader-keymap.json",
+    "bytes": 3377,
+    "sha256": "2a8824481da719e65947e75d4b720a1c11ae62a262e17101450a2e9e1b8907bd",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-reader-keymap.txt",
+    "bytes": 2827,
+    "sha256": "6cf4ee3a85dc16098bdf13398f22d1349b7fa2ed8e8ac24581feae0baf494367",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-sapi-speech.json",
+    "bytes": 2747,
+    "sha256": "a9caeb99392c31014159f9c7d67d44694a3c0b08e5218a4dd9a595099e78f514",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-save-all-recovery.json",
+    "bytes": 3671,
+    "sha256": "4f520bbe6b0a3954df450c0ba0fa4e8cf5056881dd055627b8b56ebc3da0e967",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-save-all-recovery.txt",
+    "bytes": 6085,
+    "sha256": "012d87c9130578b4c512fc7e357e5523c89e7a81d6635d848c97ffcf83c34ae5",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "native-translation-source.txt",
+    "bytes": 849,
+    "sha256": "a27ad3101ce7acfbb4810ed386a1cb30f5602d1ec4fd80197d8b992e6ad8a62e",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-command-palette.txt",
+    "bytes": 3154,
+    "sha256": "b9487d9c438476d8660d0f71f304859b4493abe500f97a65fdf9bc95e652ed18",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-daisy-schema.json",
+    "bytes": 6058,
+    "sha256": "ba4ac3caaa3daab1e1e3456c5718684910e9a531c94adf57439b036a3e11fbfe",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-daisy-schema.txt",
+    "bytes": 6058,
+    "sha256": "ba4ac3caaa3daab1e1e3456c5718684910e9a531c94adf57439b036a3e11fbfe",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-document-formats.json",
+    "bytes": 2400,
+    "sha256": "f2f117bfc5ff92cdbf1947595d9b06ce214866f7adb417af59e4d9110069d827",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-epub-publication.txt",
+    "bytes": 5568,
+    "sha256": "5b07a0d396eaa363514aad45136fbd87db1c95eb70481277af703b7de1e72de5",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-epubcheck.json",
+    "bytes": 3398,
+    "sha256": "63faba45be9af88eb3fbc07292accc8dda43040d349c081c0bf7745ebade82ee",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-epubcheck.txt",
+    "bytes": 3398,
+    "sha256": "63faba45be9af88eb3fbc07292accc8dda43040d349c081c0bf7745ebade82ee",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-keyboard-preferences.json",
+    "bytes": 2024,
+    "sha256": "6d3e65930582bb6e76e48c1017dd72bb0f6b1caeddb8738a9dc02dd64511f73c",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-ocr-catalogue.json",
+    "bytes": 199,
+    "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": false
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-ocr-manager.json",
+    "bytes": 12171,
+    "sha256": "578e6d2c22c7fb1e4c9b4c0cdfeab4746403da6dfe042fc58b19da2d9ae749f4",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-ocr-selection.json",
+    "bytes": 1620,
+    "sha256": "b043af184f571d405e6df63e86b1634b1a34774448fdd04f119915db0385f0e8",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248337235,
+    "mode": "main",
+    "path": "offline-bundle-workflow-productivity.txt",
+    "bytes": 4876,
+    "sha256": "981b6d494b3e75f74d1ccc652e1bded55a0f8db40deac6d81b3774523e05e46f",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248185042,
+    "mode": "endpoint",
+    "path": "audio-endpoint.json",
+    "bytes": 655,
+    "sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  },
+  {
+    "artifact": 15248185042,
+    "mode": "endpoint",
+    "path": "audio-services.json",
+    "bytes": 376,
+    "sha256": "6564af2a829c395d75c4b854bee7cd0ab39a7b651b59dbfc5c809cb628a9dde6",
+    "encoding": "utf-8-sig",
+    "raw_bytes_reconstructed": true
+  }
+]

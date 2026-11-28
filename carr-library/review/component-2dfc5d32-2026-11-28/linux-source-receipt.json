@@ -1,0 +1,338 @@
+{
+  "schema": "carr-exact-head-job-receipt/1",
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-28 05:49:53 UTC",
+  "candidate": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "workflow": {
+    "id": 46111572572,
+    "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "head_branch": "carr/component-followup-evaluation-20261127",
+    "event": "push",
+    "run_attempt": 1,
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572",
+    "path": ".github/workflows/carr-component-followup-evaluation.yml",
+    "workflow_git_blob": "40c95c79f99b1293877919759ca608e3593699e1"
+  },
+  "job": {
+    "id": 140876054303,
+    "name": "Updated components / ubuntu-24.04 / source",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T05:40:50Z",
+    "completed_at": "2026-11-28T05:48:00Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054303",
+    "runner_name": "GitHub Actions 1000490171",
+    "labels": [
+      "ubuntu-24.04"
+    ]
+  },
+  "mode": "source",
+  "platform": "ubuntu-24.04",
+  "execution_scope": "Actual source selection through the existing strict per-module ci_check/JUnit policy; the installed wheel was independently compared to all current source Python bytes before execution.",
+  "tests": {
+    "modules": 89,
+    "passed": 3220,
+    "failed": 0,
+    "skipped": 0,
+    "unique_modules": 89,
+    "all_requested_modules_observed": true,
+    "source_selection": [
+      "tests/academic_integration/test_formatting.py",
+      "tests/citations/test_csl.py",
+      "tests/assistant/test_local_planning.py",
+      "tests/assistant/test_state_io.py",
+      "tests/catalog/test_archive_portability.py",
+      "tests/catalog/test_intake_portability.py",
+      "tests/catalog/test_epub_metadata.py",
+      "tests/catalog/test_registration.py",
+      "tests/extract/test_page_ocr.py",
+      "tests/extract/test_ocr_language_regions.py",
+      "tests/extract/test_ocr_evidence_fidelity.py",
+      "tests/extract/test_automatic_ocr_native.py",
+      "tests/studio/test_production_cancellation_outcomes.py",
+      "tests/studio/test_production.py",
+      "tests/studio/test_production_hardening.py",
+      "tests/studio/test_clip_dialog.py",
+      "tests/studio/test_book_audio.py",
+      "tests/storage/test_production_operation_backup.py",
+      "tests/ui/test_studio_output_settings.py",
+      "tests/storage/test_studio_draft_backup.py",
+      "tests/storage/test_backup_scan_bounds.py",
+      "tests/storage/test_state_backup_portability.py",
+      "tests/storage/test_v3_state_backup.py",
+      "tests/storage/test_backup_sidecars.py",
+      "tests/storage/test_canonical_backup_compat.py",
+      "tests/transcription/test_runtime_inventory.py",
+      "tests/transcription/test_runtime_admission.py",
+      "tests/transcription/test_admission_boundaries.py",
+      "tests/transcription/test_service.py",
+      "tests/storage/test_asr_additional_profile.py",
+      "tests/storage/test_transcription_backup.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/operations/test_resources.py",
+      "tests/operations/test_facade.py",
+      "tests/operations/test_production_admission.py",
+      "tests/e2e/test_operations_cli.py",
+      "tests/e2e/test_import_worker_publication.py",
+      "tests/ui/test_operations_policy.py",
+      "tests/speech/test_synthesis_admission.py",
+      "tests/ui/test_reader_playback.py",
+      "tests/speech/test_progress_speech.py",
+      "tests/ui/test_operation_progress.py",
+      "tests/ui/test_progress_media_quiet.py",
+      "tests/ui/test_studio_progress_isolation.py",
+      "tests/speech/test_registered_studio_voices.py",
+      "tests/audio/test_model_voices.py",
+      "tests/storage/test_backup_book_plan_bindings.py",
+      "tests/ui/test_book_audio_dialog.py",
+      "tests/studio/test_publishing_handlers.py",
+      "tests/speech/test_python_helper.py",
+      "tests/storage/test_python_helper_backup.py",
+      "tests/speech/test_runtime_settings_restore.py",
+      "tests/ui/test_engine_settings_review.py",
+      "tests/audio/test_cleanup_contexts.py",
+      "tests/audio/test_audio_process.py",
+      "tests/audio/test_silence_inspection.py",
+      "tests/studio/test_silence_inspection.py",
+      "tests/studio/test_book_silence.py",
+      "tests/studio/test_director_silence.py",
+      "tests/ui/test_studio_silence_inspection.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/audio/test_process_deadline.py",
+      "tests/audio/test_capture_access_diagnostic.py",
+      "tests/audio/test_recording_windows_process.py",
+      "tests/ui/test_ebook_audio_initialization.py",
+      "tests/ui/test_ebook_dialog.py",
+      "tests/reader/test_ebook_audio.py",
+      "tests/reader/test_ebook_audio_lifecycle.py",
+      "tests/speech/test_wave_output.py",
+      "tests/speech/test_player_controls.py",
+      "tests/speech/test_player_transport.py",
+      "tests/speech/test_output_devices.py",
+      "tests/speech/test_listening.py",
+      "tests/speech/test_playlist.py",
+      "tests/search/test_source_page_benchmark.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/ui/test_federated_labels.py",
+      "tests/ui/test_reader_synthesis.py",
+      "tests/ui/test_progress_voice_actions.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/storage/test_reader_synthesis_backup.py",
+      "tests/storage/test_state_json_reader.py",
+      "tests/transcription/test_control_reads.py",
+      "tests/studio/test_publishing.py",
+      "tests/studio/test_daisy_publishing.py",
+      "tests/studio/test_measured_audio.py",
+      "tests/storage_posix/test_state_backup_names.py"
+    ],
+    "relevant_observed_verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/academic_integration/test_formatting.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_progress_speech.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_book_audio_dialog.py",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_publishing_handlers.py",
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_audio_process.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_silence_inspection.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_book_silence.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_director_silence.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/studio/test_silence_inspection.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_local_runtime_cli.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_studio_silence_inspection.py",
+        "passed": 65,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_process_deadline.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "complete_verdict_file": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-modules.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4cf0bffa0ca2c5f0da3292c2054e377c58ba10c"
+    }
+  },
+  "identity": {
+    "actual_inventory": {
+      "status": "PASS",
+      "module_origin": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library",
+      "python_modules": 383,
+      "source_inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6"
+    },
+    "reference": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/source-reference.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fd6f1423359cc18ac8c652b1e09294c72c68f60"
+    },
+    "all_383_hashes_match_current_candidate": true,
+    "comparison": "The actual workflow's complete source/installed map digest equals the independently Git-bound 383-module reference. No historical test result is transferred."
+  },
+  "artifacts": [
+    {
+      "id": 15251091028,
+      "name": "carr-component-followup-ubuntu-24.04-source-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "size_in_bytes": 5584,
+      "digest": "sha256:c2d8f35615ce7bb16fcfcdcd5cbfa9b1db3903ef619318eb94400639d4467bad",
+      "created_at": "2026-11-28T05:47:57Z",
+      "expired": false,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251091028",
+      "workflow_run": {
+        "id": 46111572572,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/component-followup-evaluation-20261127",
+        "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+      }
+    }
+  ],
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e31636cb4d2b6a9ce2de556274be6324b8fd006",
+      "sha256": "4914abc8b4ab85b3d3a7f9d89841f21ff6469d6e3d1e93cb971d50b3a128d9b6",
+      "bytes": 6251,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb4ab67ca4c1545f5d05f350079c85b1b0ec3f97",
+      "sha256": "0393bb08957f568f83f9c9963b611167510d8107e966ac7d1bac7686875dd19c",
+      "bytes": 228612,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25c47878f7d06126e18fca293e93d2f88da6fd5e",
+      "sha256": "015870cfd9f496a59d470449d3804107b006dbc1a99f7b44e753c9fcf2400185",
+      "bytes": 249,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-modules.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4cf0bffa0ca2c5f0da3292c2054e377c58ba10c",
+      "sha256": "94910887862a3826e16317bf6dac400620de832fe1bcb0fbcbd4199b976e59f0",
+      "bytes": 20134,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-source-artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ce85e9ce7e75a865422a99a4dd35e924e6b2b5e",
+      "sha256": "581689d897ff702a30f84fba23a2488794e6dd15662357148fa53033f4e86e45",
+      "bytes": 894,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "SHA-256 of the exact decoded GitHub job-log string re-encoded as UTF-8, including its BOM and original newlines. This is distinct from the artifact ZIP digest.",
+  "remaining_scope": {
+    "installed_test_execution": "NOT_RUN in this source-mode job; receive the separate installed job.",
+    "windows_native_studio_inspection": "NOT_RUN on Linux; receive the separate Windows installed job.",
+    "windows_native_reader": "NOT_RUN in this component/Linux job.",
+    "audible_loop": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "perceptual_audio_quality": "NOT_CLAIMED",
+    "private_engines_assets_rights": "Not qualified by these public synthetic tests.",
+    "overall_release": "NOT_CLAIMED"
+  }
+}

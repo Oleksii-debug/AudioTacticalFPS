@@ -1,0 +1,212 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "Windows canonical compatibility, exact source and installed application",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_id": 46111569575,
+  "run_attempt": 1,
+  "job_id": 140876044009,
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:38:45Z",
+  "completed_at": "2026-11-28T05:48:14Z",
+  "workflow": {
+    "path": ".github/workflows/carr-reconciliation-checks.yml",
+    "git_blob": "1c698acbfb85594a60c152b4db0a756b2c8cf2f3"
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569575/job/140876044009",
+  "environment": {
+    "runner": "windows-2022",
+    "architecture": "x64",
+    "python": "3.11.9",
+    "pytest": "9.0.2",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+    "isolated_venv": "D:\\a\\_temp\\carr-canonical-compatibility-python"
+  },
+  "source_binding": {
+    "observed_checkout": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "checkout_occurrences": 2,
+    "application_python_modules_in_reviewed_tree": 383,
+    "built_wheel": {
+      "file": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "size_bytes": 2614462,
+      "sha256": "5aabec76d694bf5ae0f402b2dbc5939644edfce488063101ca172b83b59661f1",
+      "provenance": "Observed pip build line; not a final delivery or downloaded wheel."
+    },
+    "installed_origin_checks": {
+      "module_count": 34,
+      "modules": [
+        "carr_library.recording_backup",
+        "carr_library.audio.playback",
+        "carr_library.evidence_drafts",
+        "carr_library.ui.save_all",
+        "carr_library.runtime_settings",
+        "carr_library.speech.runtime",
+        "carr_library.speech.progress_speech",
+        "carr_library.backup_compat",
+        "carr_library.backup_sidecars",
+        "carr_library.library_backup",
+        "carr_library.state_recovery",
+        "carr_library.keybindings",
+        "carr_library.ui.keyboard_settings",
+        "carr_library.ui.productivity",
+        "carr_library.ui.reading_desk",
+        "carr_library.ui.save_actions",
+        "carr_library.ui.speech_dialog",
+        "carr_library.ui.studio_dialog",
+        "carr_library.ui.audio_studio",
+        "carr_library.speech.reading",
+        "carr_library.ui.scope_bindings",
+        "carr_library.ui.language_matrix",
+        "carr_library.research.export_file",
+        "carr_library.ui.export_destination",
+        "carr_library.ui.academic_actions",
+        "carr_library.ui.catalog_insights_actions",
+        "carr_library.ui.catalog_tools_dialog",
+        "carr_library.ui.desktop_app",
+        "carr_library.assistant.models",
+        "carr_library.assistant.planner",
+        "carr_library.assistant.service",
+        "carr_library.assistant.transcription",
+        "carr_library.transcription",
+        "carr_library.ui.assistant_dialog"
+      ],
+      "checks": "Actual installed gate requires each imported file beneath purelib, outside checkout, and byte-identical to its current checkout file before joint pytest.",
+      "complete_package_inventory": "NOT_CLAIMED: this workflow checks the named modules, not an emitted383-module inventory."
+    }
+  },
+  "tests": {
+    "source": {
+      "selected_modules": 39,
+      "completed_module_verdicts": 39,
+      "passed": 1186,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exits": [
+        0
+      ],
+      "step_seconds": 214
+    },
+    "installed": {
+      "selected_modules": 39,
+      "passed": 1186,
+      "subtests_passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "expected_failures": [],
+      "pytest_reported_seconds": 277.18,
+      "step_seconds": 279,
+      "independent_module_verdicts": "Not emitted:39 selected files execute in one pytest invocation; its actual JUnit aggregate is validated."
+    },
+    "selectors": [
+      "tests/storage/test_recording_backup.py",
+      "tests/audio/test_playback.py",
+      "tests/storage/test_evidence_drafts.py",
+      "tests/ui/test_save_all.py",
+      "tests/ui/test_evidence_draft_recovery.py",
+      "tests/speech/test_progress_speech.py",
+      "tests/storage/test_canonical_backup_compat.py",
+      "tests/storage/test_composite_backup.py",
+      "tests/storage/test_v3_state_backup.py",
+      "tests/ui/test_save_all_access.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/ui/test_save_actions.py",
+      "tests/ui/test_reader_keymap_context.py",
+      "tests/ui/test_command_palette.py",
+      "tests/ui/test_keyboard_export.py",
+      "tests/ui/test_keyboard_rename.py",
+      "tests/ui/test_keyboard_settings.py",
+      "tests/speech/test_reading.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/ui/test_scope_labels.py",
+      "tests/language_qualification/test_inventory_cleanup.py",
+      "tests/speech/test_runtime_settings_restore.py",
+      "tests/ui/test_export_confirmation.py",
+      "tests/reader/test_export_approval_budget.py",
+      "tests/e2e/test_export_destination.py",
+      "tests/ui/test_academic_actions.py",
+      "tests/ui/test_academic_export_handler.py",
+      "tests/ui/test_catalog_tools_dialog.py",
+      "tests/ui/probe_catalog_insights_actions.py",
+      "tests/reader/test_file_export.py",
+      "tests/reader/test_binary_file_export.py",
+      "tests/reader/test_export_no_clobber.py",
+      "tests/reader/test_export_publication_boundary.py",
+      "tests/reader/test_finish_export_formats.py",
+      "tests/assistant/test_transcription_workflow.py",
+      "tests/transcription/test_supplied_worker_bridge.py",
+      "tests/assistant/test_workflows.py",
+      "tests/assistant/test_workflow_access.py",
+      "tests/ui/test_assistant_voice_preview.py"
+    ],
+    "word_citation_ui": "Not selected; no inference about the separate19-case Word UI failure or its diagnostic successor."
+  },
+  "native": {
+    "successful_gates": 7,
+    "counts": [
+      {
+        "gate": "source Save All and recovery",
+        "step": 7,
+        "successful_dynamic_checks": 46
+      },
+      {
+        "gate": "source Reader keyboard dispatch",
+        "step": 8,
+        "successful_dynamic_checks": 34
+      },
+      {
+        "gate": "installed Save All and recovery",
+        "step": 9,
+        "successful_dynamic_checks": 47
+      },
+      {
+        "gate": "installed Reader keyboard dispatch",
+        "step": 10,
+        "successful_dynamic_checks": 35
+      },
+      {
+        "gate": "source asynchronous catalog exports",
+        "step": 11,
+        "successful_dynamic_checks": 52
+      },
+      {
+        "gate": "installed asynchronous catalog exports",
+        "step": 12,
+        "successful_dynamic_checks": 52
+      },
+      {
+        "gate": "installed workflow reuse and asynchronous voice preview",
+        "step": 13,
+        "successful_dynamic_checks": 44
+      }
+    ],
+    "detailed_log_extracted_receipts": "native-receipts-log-extracted.json",
+    "count_meaning": "Dynamic assertions, including repeated source/installed controls; not independent pytest cases.",
+    "manual_nvda": "NOT_RUN",
+    "file_chooser_interaction": "NOT_RUN; synthetic destination supplied",
+    "audio_quality": "NOT_RUN"
+  },
+  "artifact": {
+    "id": 15250157628,
+    "name": "carr-canonical-compatibility-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_bytes": 39611,
+    "sha256": "616cc130dac05d125a8609f01f5801a6e3f5bdc2353604aeee2cf4b850446a8f",
+    "api_and_upload_digest_match": true,
+    "uploaded_member_count": 15,
+    "downloaded": false,
+    "original_member_bytes": "NOT_READ"
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "log_type": "Complete connector-decoded text, timestamps and line endings retained.",
+    "decoded_utf8_bytes": 146246,
+    "decoded_utf8_sha256": "9625bafba291bbd8c90f7f24cef1d9a3faea6671907fbfd75d9d6cbe85e45d5d",
+    "derived_json": "Native JSON and phase lists are extracted from decoded console text, not asserted original artifact-member bytes."
+  },
+  "limits": [
+    "Current20-minute job and10-minute source/installed aggregate limits are unchanged in this tested workflow; individual product and native deadlines are unchanged.",
+    "No Word UI, private-model quality, physical capture, audible assessment, manual accessibility, sealed final installer or final download qualification is implied."
+  ]
+}

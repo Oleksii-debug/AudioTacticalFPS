@@ -1,0 +1,164 @@
+{
+  "id": 140876044009,
+  "run_id": 46111569575,
+  "workflow_name": "Resonance canonical compatibility checks",
+  "head_branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569575",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzN3W6Q",
+  "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140876044009",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569575/job/140876044009",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T05:19:21Z",
+  "started_at": "2026-11-28T05:38:45Z",
+  "completed_at": "2026-11-28T05:48:14Z",
+  "name": "Windows x64 / exact installed canonical compatibility",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T05:38:45Z",
+      "completed_at": "2026-11-28T05:38:46Z"
+    },
+    {
+      "name": "Check out the exact source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T05:38:46Z",
+      "completed_at": "2026-11-28T05:38:53Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T05:38:53Z",
+      "completed_at": "2026-11-28T05:38:53Z"
+    },
+    {
+      "name": "Install the exact source into a fresh environment",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T05:38:53Z",
+      "completed_at": "2026-11-28T05:39:27Z"
+    },
+    {
+      "name": "Require integrated canonical source contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T05:39:27Z",
+      "completed_at": "2026-11-28T05:43:01Z"
+    },
+    {
+      "name": "Require the same contracts from the installed application",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T05:43:01Z",
+      "completed_at": "2026-11-28T05:47:40Z"
+    },
+    {
+      "name": "Require native source Save All and recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T05:47:40Z",
+      "completed_at": "2026-11-28T05:47:42Z"
+    },
+    {
+      "name": "Require native source Reader keyboard dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T05:47:42Z",
+      "completed_at": "2026-11-28T05:47:50Z"
+    },
+    {
+      "name": "Require native installed Save All and recovery",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T05:47:50Z",
+      "completed_at": "2026-11-28T05:47:52Z"
+    },
+    {
+      "name": "Require native installed Reader keyboard dispatch",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T05:47:52Z",
+      "completed_at": "2026-11-28T05:48:00Z"
+    },
+    {
+      "name": "Require native source asynchronous catalog exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T05:48:00Z",
+      "completed_at": "2026-11-28T05:48:03Z"
+    },
+    {
+      "name": "Require native installed asynchronous catalog exports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T05:48:03Z",
+      "completed_at": "2026-11-28T05:48:05Z"
+    },
+    {
+      "name": "Require native installed asynchronous voice preview",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T05:48:05Z",
+      "completed_at": "2026-11-28T05:48:09Z"
+    },
+    {
+      "name": "Retain source identity and contract receipts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T05:48:09Z",
+      "completed_at": "2026-11-28T05:48:10Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27,
+      "started_at": "2026-11-28T05:48:10Z",
+      "completed_at": "2026-11-28T05:48:10Z"
+    },
+    {
+      "name": "Post Check out the exact source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 28,
+      "started_at": "2026-11-28T05:48:10Z",
+      "completed_at": "2026-11-28T05:48:12Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 29,
+      "started_at": "2026-11-28T05:48:12Z",
+      "completed_at": "2026-11-28T05:48:12Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140876044009",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490168,
+  "runner_name": "GitHub Actions 1000490168",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

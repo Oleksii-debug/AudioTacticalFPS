@@ -1,0 +1,13 @@
+{
+  "provenance": "Actual strict JUnit summary printed in the decoded job log; original XML not downloaded.",
+  "summary": {
+    "status": "PASS",
+    "passed": 1186,
+    "failed": 0,
+    "skipped": 0,
+    "expected_failures": [],
+    "native_sapi": "required by existing speech case",
+    "human_nvda": "NOT_RUN"
+  },
+  "subtests_passed": 7
+}

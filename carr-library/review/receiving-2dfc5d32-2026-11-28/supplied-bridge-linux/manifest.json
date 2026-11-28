@@ -1,0 +1,47 @@
+{
+  "schema": "carr-text-evidence-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569581,
+  "job_id": 140876044199,
+  "content_kind": "Public synthetic CI metadata and complete connector-decoded logs",
+  "files": [
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-linux/full-decoded-log.txt",
+      "git_blob": "6f4049434e1415c0ef470b47e0f45c9e9bd68870",
+      "utf8_bytes": 94152,
+      "sha256": "a8fabdded972b7192b41b1c0a9baa09f13dd6ba408e04d5cb01fa7a3c243414a"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-linux/job-metadata.json",
+      "git_blob": "7ad97e04a23d4e1c786e2ee13288eecc92f82a31",
+      "utf8_bytes": 4102,
+      "sha256": "419123ba7a3702d7e9bef0cf22b21d223e7aa37931fffd05d05b3bd594239b49"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-linux/run-metadata.json",
+      "git_blob": "37f17bc6b151a4ba34b2698fbca89f427cd8fa63",
+      "utf8_bytes": 15440,
+      "sha256": "709d47783a50a99c9da46d97d6bc2b47e68072e40d1a98c52e02ad1d7e56ba8a"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-linux/module-results.json",
+      "git_blob": "e357378de769617ffbbbaed8269a7b9599f7ac8b",
+      "utf8_bytes": 3840,
+      "sha256": "82dcb978691a00419587f70c5614aa8cb8d5228b0bcdafe4fa6597245daf88ac"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-linux/qualification.json",
+      "git_blob": "2d07574ac05027352f0c336e3f49c26ccea0f01e",
+      "utf8_bytes": 4796,
+      "sha256": "90f2fc36e81f2c5c56f1fc84aa4f6037bef99a01c585300e7ef335702bbcd58e"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-linux/README.md",
+      "git_blob": "41139eced5c334c171cc8b528fd6cb716035152e",
+      "utf8_bytes": 965,
+      "sha256": "1f40ab0dd3b31b8e52628d1b15e7bb358f4309663715c8a0763313dbdcc16457"
+    }
+  ],
+  "archive_bytes_downloaded": false,
+  "readback": "Alllistedfiles fetched byblob and compared fully before tree creation."
+}

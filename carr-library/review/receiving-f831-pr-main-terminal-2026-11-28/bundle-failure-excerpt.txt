@@ -1,0 +1,81 @@
+PASS: license and update actions share the native command registry
+PASS: status has a readable native name and read-only style
+PASS: native Escape closes the dialog
+PASS: native status accepts keyboard focus
+PASS: native Tab reaches a named action
+PASS: native button event handled: Refresh local status
+PASS: local license status is presented
+PASS: native button event handled: Refresh local status
+PASS: expiry is visible without hiding user data
+PASS: native button event handled: Import signed license...
+PASS: offline import updates verified local view
+PASS: native button event handled: Check for updates...
+PASS: offer needs separate download and install
+PASS: native button event handled: Download selected update...
+PASS: prepared package permits explicit backup/install review
+PASS: native button event handled: Inspect update recovery
+PASS: recovery invalidates prior install approval
+PASS: native button event handled: Check for updates...
+PASS: closing a running request requests cancellation and retains dialog
+PASS: cancelled provider detail is redacted
+PASS: saved research remains unchanged after license/update operations
+{"status": "PASS", "checks": ["delivery controls load from installed wheel", "native Windows controls active", "license and update actions share the native command registry", "status has a readable native name and read-only style", "native Escape closes the dialog", "native status accepts keyboard focus", "native Tab reaches a named action", "native button event handled: Refresh local status", "local license status is presented", "native button event handled: Refresh local status", "expiry is visible without hiding user data", "native button event handled: Import signed license...", "offline import updates verified local view", "native button event handled: Check for updates...", "offer needs separate download and install", "native button event handled: Download selected update...", "prepared package permits explicit backup/install review", "native button event handled: Inspect update recovery", "recovery invalidates prior install approval", "native button event handled: Check for updates...", "closing a running request requests cancellation and retains dialog", "cancelled provider detail is redacted", "saved research remains unchanged after license/update operations"], "count": 23, "provider": "synthetic", "cryptographic_acceptance": "NOT_RUN", "nvda": "NOT_RUN", "manual_keyboard": "NOT_RUN"}
+Independent native reader deadline: 180 seconds; incomplete execution remains FAILED.
+PASS: installed exact source: carr_library.speech.player
+PASS: installed exact source: carr_library.ui.reader_playback
+PASS: installed exact source: carr_library.ui.speech_dialog
+PASS: real Windows native widgets
+Actual WinMM capability: {"device_count": 0, "devices": [], "inventory_truncated": false, "fixture": {"sample_rate": 16000, "channels": 1, "bits_per_sample": 16}, "format_query_result": 2, "format_query_message": "A device ID has been used that is out of range for your system.", "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.", "scope": "Read-only endpoint and format query; actual MCI playback remains required."}
+PASS: native named reader control: Mark A at current position
+PASS: native named reader control: Mark B at current position
+PASS: native named reader control: Set A/B times...
+PASS: native named reader control: Enable A/B repeat
+PASS: native named reader control: Clear A/B
+PASS: native named reader control: Sleep timer...
+PASS: native named reader control: Repeat and sleep status
+PASS: native named reader control: A/B repeat and sleep timer status
+PASS: actual installed Windows MCI transport
+{
+  "status": "FAILED",
+  "checks": [
+    "installed exact source: carr_library.speech.player",
+    "installed exact source: carr_library.ui.reader_playback",
+    "installed exact source: carr_library.ui.speech_dialog",
+    "real Windows native widgets",
+    "native named reader control: Mark A at current position",
+    "native named reader control: Mark B at current position",
+    "native named reader control: Set A/B times...",
+    "native named reader control: Enable A/B repeat",
+    "native named reader control: Clear A/B",
+    "native named reader control: Sleep timer...",
+    "native named reader control: Repeat and sleep status",
+    "native named reader control: A/B repeat and sleep timer status",
+    "actual installed Windows MCI transport"
+  ],
+  "fixture": "synthetic PCM16 tone",
+  "actual_winmm": false,
+  "actual_native_keys": false,
+  "nvda": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "voice_inference": "NOT_RUN",
+  "independent_deadline_seconds": 180,
+  "wave_output": {
+    "device_count": 0,
+    "devices": [],
+    "inventory_truncated": false,
+    "fixture": {
+      "sample_rate": 16000,
+      "channels": 1,
+      "bits_per_sample": 16
+    },
+    "format_query_result": 2,
+    "format_query_message": "A device ID has been used that is out of range for your system.",
+    "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+    "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+  },
+  "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 343, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 341, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 329, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+  "count": 13
+}
+##[error]Process completed with exit code 1.
+##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+with:

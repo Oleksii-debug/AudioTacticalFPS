@@ -1,0 +1,966 @@
+[
+  {
+    "artifact": 15248337235,
+    "files": [
+      {
+        "path": "audio-endpoint.json",
+        "bytes": 655,
+        "compressed_bytes": 380,
+        "selected": true
+      },
+      {
+        "path": "audio-runtime.json",
+        "bytes": 825,
+        "compressed_bytes": 458,
+        "selected": false
+      },
+      {
+        "path": "audio-services.json",
+        "bytes": 376,
+        "compressed_bytes": 171,
+        "selected": true
+      },
+      {
+        "path": "bundle-reader-controls.json",
+        "bytes": 4603,
+        "compressed_bytes": 1237,
+        "selected": true
+      },
+      {
+        "path": "core-bundle-install.txt",
+        "bytes": 13143,
+        "compressed_bytes": 2210,
+        "selected": true
+      },
+      {
+        "path": "core-bundle-native.txt",
+        "bytes": 1396,
+        "compressed_bytes": 745,
+        "selected": true
+      },
+      {
+        "path": "core-bundle-self-test.json",
+        "bytes": 272,
+        "compressed_bytes": 186,
+        "selected": true
+      },
+      {
+        "path": "core-fallback.txt",
+        "bytes": 1255,
+        "compressed_bytes": 419,
+        "selected": false
+      },
+      {
+        "path": "daisy-schema-preparation.json",
+        "bytes": 1498,
+        "compressed_bytes": 666,
+        "selected": false
+      },
+      {
+        "path": "full-bundle-academic-native.txt",
+        "bytes": 2753,
+        "compressed_bytes": 1091,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-audio-effects.json",
+        "bytes": 656,
+        "compressed_bytes": 398,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-audio-studio.json",
+        "bytes": 561,
+        "compressed_bytes": 348,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-build.json",
+        "bytes": 1641,
+        "compressed_bytes": 954,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-catalog-tools.txt",
+        "bytes": 7290,
+        "compressed_bytes": 1311,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-citation-styles.txt",
+        "bytes": 62334,
+        "compressed_bytes": 3243,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-delivery-lifecycle.txt",
+        "bytes": 2566,
+        "compressed_bytes": 684,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-firewall.json",
+        "bytes": 1063,
+        "compressed_bytes": 361,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-native-runtime.json",
+        "bytes": 637,
+        "compressed_bytes": 380,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-reader-controls.txt",
+        "bytes": 5985,
+        "compressed_bytes": 1423,
+        "selected": true
+      },
+      {
+        "path": "full-bundle-voice-settings.json",
+        "bytes": 279,
+        "compressed_bytes": 193,
+        "selected": true
+      },
+      {
+        "path": "full-lock-source-inventory.json",
+        "bytes": 1237,
+        "compressed_bytes": 573,
+        "selected": false
+      },
+      {
+        "path": "installed-assistant-domains.json",
+        "bytes": 6182,
+        "compressed_bytes": 1939,
+        "selected": false
+      },
+      {
+        "path": "installed-audio-metadata.json",
+        "bytes": 3695,
+        "compressed_bytes": 1222,
+        "selected": false
+      },
+      {
+        "path": "installed-audio-metadata.txt",
+        "bytes": 11051,
+        "compressed_bytes": 2381,
+        "selected": false
+      },
+      {
+        "path": "installed-automatic-ocr.json",
+        "bytes": 2379,
+        "compressed_bytes": 909,
+        "selected": false
+      },
+      {
+        "path": "installed-book-audio.json",
+        "bytes": 5761,
+        "compressed_bytes": 1722,
+        "selected": false
+      },
+      {
+        "path": "installed-book-audio.txt",
+        "bytes": 4800,
+        "compressed_bytes": 875,
+        "selected": false
+      },
+      {
+        "path": "installed-clipboard-reader.json",
+        "bytes": 2225,
+        "compressed_bytes": 992,
+        "selected": false
+      },
+      {
+        "path": "installed-conversion-batch.json",
+        "bytes": 7780,
+        "compressed_bytes": 1445,
+        "selected": false
+      },
+      {
+        "path": "installed-conversion-batch.txt",
+        "bytes": 16419,
+        "compressed_bytes": 2382,
+        "selected": false
+      },
+      {
+        "path": "installed-daisy-schema.json",
+        "bytes": 6002,
+        "compressed_bytes": 1227,
+        "selected": false
+      },
+      {
+        "path": "installed-daisy-schema.txt",
+        "bytes": 6002,
+        "compressed_bytes": 1227,
+        "selected": false
+      },
+      {
+        "path": "installed-desktop.txt",
+        "bytes": 4792,
+        "compressed_bytes": 1122,
+        "selected": false
+      },
+      {
+        "path": "installed-epubcheck.json",
+        "bytes": 3342,
+        "compressed_bytes": 1190,
+        "selected": false
+      },
+      {
+        "path": "installed-epubcheck.txt",
+        "bytes": 3342,
+        "compressed_bytes": 1190,
+        "selected": false
+      },
+      {
+        "path": "installed-incremental-backup.json",
+        "bytes": 1920,
+        "compressed_bytes": 524,
+        "selected": false
+      },
+      {
+        "path": "installed-incremental-backup.txt",
+        "bytes": 3828,
+        "compressed_bytes": 668,
+        "selected": false
+      },
+      {
+        "path": "installed-launchers.json",
+        "bytes": 259,
+        "compressed_bytes": 136,
+        "selected": false
+      },
+      {
+        "path": "installed-ocr-catalogue-console.json",
+        "bytes": 365,
+        "compressed_bytes": 232,
+        "selected": false
+      },
+      {
+        "path": "installed-ocr-catalogue.json",
+        "bytes": 208,
+        "compressed_bytes": 158,
+        "selected": false
+      },
+      {
+        "path": "installed-packages.json",
+        "bytes": 1401,
+        "compressed_bytes": 410,
+        "selected": false
+      },
+      {
+        "path": "installed-portable-sync.json",
+        "bytes": 5386,
+        "compressed_bytes": 1569,
+        "selected": false
+      },
+      {
+        "path": "installed-protected-voice.json",
+        "bytes": 5385,
+        "compressed_bytes": 1650,
+        "selected": false
+      },
+      {
+        "path": "installed-reading-preparation.json",
+        "bytes": 4780,
+        "compressed_bytes": 1734,
+        "selected": false
+      },
+      {
+        "path": "installed-reading-tabs.json",
+        "bytes": 4731,
+        "compressed_bytes": 1850,
+        "selected": false
+      },
+      {
+        "path": "installed-recording-controls.json",
+        "bytes": 4292,
+        "compressed_bytes": 1277,
+        "selected": false
+      },
+      {
+        "path": "installed-recording-controls.txt",
+        "bytes": 8033,
+        "compressed_bytes": 1547,
+        "selected": false
+      },
+      {
+        "path": "installed-scene-clip-editor.txt",
+        "bytes": 10315,
+        "compressed_bytes": 1801,
+        "selected": true
+      },
+      {
+        "path": "installed-search-pagination.json",
+        "bytes": 2840,
+        "compressed_bytes": 1064,
+        "selected": false
+      },
+      {
+        "path": "installed-self-test.json",
+        "bytes": 272,
+        "compressed_bytes": 186,
+        "selected": false
+      },
+      {
+        "path": "installed-source-pagination.json",
+        "bytes": 3423,
+        "compressed_bytes": 1279,
+        "selected": false
+      },
+      {
+        "path": "installed-streamed-import.json",
+        "bytes": 3910,
+        "compressed_bytes": 1380,
+        "selected": false
+      },
+      {
+        "path": "installed-voice-preferences.json",
+        "bytes": 6230,
+        "compressed_bytes": 1779,
+        "selected": false
+      },
+      {
+        "path": "installed-voice-reference.json",
+        "bytes": 3450,
+        "compressed_bytes": 1262,
+        "selected": false
+      },
+      {
+        "path": "installed-word-apa.json",
+        "bytes": 4309,
+        "compressed_bytes": 1407,
+        "selected": false
+      },
+      {
+        "path": "installed-word-chicago-notes.json",
+        "bytes": 4309,
+        "compressed_bytes": 1407,
+        "selected": false
+      },
+      {
+        "path": "managed-ocr-unicode.txt",
+        "bytes": 2698,
+        "compressed_bytes": 545,
+        "selected": false
+      },
+      {
+        "path": "model-acquisition.json",
+        "bytes": 88,
+        "compressed_bytes": 84,
+        "selected": false
+      },
+      {
+        "path": "native-academic-library.txt",
+        "bytes": 2753,
+        "compressed_bytes": 1091,
+        "selected": false
+      },
+      {
+        "path": "native-academic-workflows.txt",
+        "bytes": 854,
+        "compressed_bytes": 518,
+        "selected": false
+      },
+      {
+        "path": "native-advanced-search.txt",
+        "bytes": 1110,
+        "compressed_bytes": 657,
+        "selected": false
+      },
+      {
+        "path": "native-audio-effects.json",
+        "bytes": 656,
+        "compressed_bytes": 398,
+        "selected": false
+      },
+      {
+        "path": "native-audio-preview.json",
+        "bytes": 112,
+        "compressed_bytes": 81,
+        "selected": true
+      },
+      {
+        "path": "native-audio-runtime-setup.json",
+        "bytes": 2700,
+        "compressed_bytes": 1042,
+        "selected": true
+      },
+      {
+        "path": "native-audio-runtime-setup.txt",
+        "bytes": 4593,
+        "compressed_bytes": 1234,
+        "selected": true
+      },
+      {
+        "path": "native-audio-studio.json",
+        "bytes": 561,
+        "compressed_bytes": 348,
+        "selected": false
+      },
+      {
+        "path": "native-catalog-insights.txt",
+        "bytes": 1432,
+        "compressed_bytes": 619,
+        "selected": false
+      },
+      {
+        "path": "native-catalog-tools.txt",
+        "bytes": 7024,
+        "compressed_bytes": 1300,
+        "selected": false
+      },
+      {
+        "path": "native-command-palette.txt",
+        "bytes": 3154,
+        "compressed_bytes": 761,
+        "selected": false
+      },
+      {
+        "path": "native-delivery-lifecycle.txt",
+        "bytes": 2566,
+        "compressed_bytes": 684,
+        "selected": true
+      },
+      {
+        "path": "native-desktop.txt",
+        "bytes": 1396,
+        "compressed_bytes": 745,
+        "selected": false
+      },
+      {
+        "path": "native-document-formats.json",
+        "bytes": 2343,
+        "compressed_bytes": 908,
+        "selected": false
+      },
+      {
+        "path": "native-draft-timer.json",
+        "bytes": 1398,
+        "compressed_bytes": 603,
+        "selected": true
+      },
+      {
+        "path": "native-draft-timer.txt",
+        "bytes": 18937,
+        "compressed_bytes": 1266,
+        "selected": true
+      },
+      {
+        "path": "native-ebook-contents.txt",
+        "bytes": 852,
+        "compressed_bytes": 529,
+        "selected": false
+      },
+      {
+        "path": "native-ebook-reader.txt",
+        "bytes": 1547,
+        "compressed_bytes": 601,
+        "selected": false
+      },
+      {
+        "path": "native-epub-publication.txt",
+        "bytes": 5188,
+        "compressed_bytes": 1223,
+        "selected": false
+      },
+      {
+        "path": "native-evidence-pages.txt",
+        "bytes": 1806,
+        "compressed_bytes": 752,
+        "selected": false
+      },
+      {
+        "path": "native-import-center.txt",
+        "bytes": 106,
+        "compressed_bytes": 84,
+        "selected": false
+      },
+      {
+        "path": "native-keyboard-preferences.json",
+        "bytes": 2024,
+        "compressed_bytes": 531,
+        "selected": false
+      },
+      {
+        "path": "native-launcher-build.json",
+        "bytes": 2769,
+        "compressed_bytes": 1026,
+        "selected": false
+      },
+      {
+        "path": "native-launcher-installed.json",
+        "bytes": 391,
+        "compressed_bytes": 216,
+        "selected": false
+      },
+      {
+        "path": "native-launcher-process.json",
+        "bytes": 815,
+        "compressed_bytes": 443,
+        "selected": false
+      },
+      {
+        "path": "native-notebook-search.txt",
+        "bytes": 2403,
+        "compressed_bytes": 851,
+        "selected": false
+      },
+      {
+        "path": "native-ocr-languages.json",
+        "bytes": 920,
+        "compressed_bytes": 422,
+        "selected": false
+      },
+      {
+        "path": "native-ocr-models.txt",
+        "bytes": 12171,
+        "compressed_bytes": 2225,
+        "selected": false
+      },
+      {
+        "path": "native-operation-progress.txt",
+        "bytes": 3247,
+        "compressed_bytes": 743,
+        "selected": false
+      },
+      {
+        "path": "native-owner-voice-controls.txt",
+        "bytes": 800,
+        "compressed_bytes": 407,
+        "selected": true
+      },
+      {
+        "path": "native-provider-credentials.json",
+        "bytes": 225,
+        "compressed_bytes": 152,
+        "selected": false
+      },
+      {
+        "path": "native-provider-settings.json",
+        "bytes": 416,
+        "compressed_bytes": 267,
+        "selected": false
+      },
+      {
+        "path": "native-reader-controls.json",
+        "bytes": 4470,
+        "compressed_bytes": 1225,
+        "selected": true
+      },
+      {
+        "path": "native-reader-controls.txt",
+        "bytes": 5852,
+        "compressed_bytes": 1412,
+        "selected": true
+      },
+      {
+        "path": "native-reader-keymap.json",
+        "bytes": 3377,
+        "compressed_bytes": 1172,
+        "selected": true
+      },
+      {
+        "path": "native-reader-keymap.txt",
+        "bytes": 2827,
+        "compressed_bytes": 897,
+        "selected": true
+      },
+      {
+        "path": "native-reading-desk.txt",
+        "bytes": 2313,
+        "compressed_bytes": 766,
+        "selected": false
+      },
+      {
+        "path": "native-recording-process.json",
+        "bytes": 2420,
+        "compressed_bytes": 687,
+        "selected": false
+      },
+      {
+        "path": "native-recording-process.txt",
+        "bytes": 3799,
+        "compressed_bytes": 867,
+        "selected": false
+      },
+      {
+        "path": "native-runtime-preparation.json",
+        "bytes": 393,
+        "compressed_bytes": 268,
+        "selected": false
+      },
+      {
+        "path": "native-runtime.json",
+        "bytes": 201,
+        "compressed_bytes": 168,
+        "selected": false
+      },
+      {
+        "path": "native-sapi-speech.json",
+        "bytes": 2747,
+        "compressed_bytes": 1011,
+        "selected": true
+      },
+      {
+        "path": "native-save-all-recovery.json",
+        "bytes": 3671,
+        "compressed_bytes": 1142,
+        "selected": true
+      },
+      {
+        "path": "native-save-all-recovery.txt",
+        "bytes": 6085,
+        "compressed_bytes": 1333,
+        "selected": true
+      },
+      {
+        "path": "native-transcription-controls.txt",
+        "bytes": 459,
+        "compressed_bytes": 264,
+        "selected": false
+      },
+      {
+        "path": "native-translation-source.txt",
+        "bytes": 849,
+        "compressed_bytes": 455,
+        "selected": true
+      },
+      {
+        "path": "native-voice-settings.json",
+        "bytes": 279,
+        "compressed_bytes": 193,
+        "selected": false
+      },
+      {
+        "path": "native-winmm-sdk-layout.json",
+        "bytes": 700,
+        "compressed_bytes": 299,
+        "selected": false
+      },
+      {
+        "path": "native-workflow-productivity.txt",
+        "bytes": 4876,
+        "compressed_bytes": 1045,
+        "selected": false
+      },
+      {
+        "path": "ocr-preparation.json",
+        "bytes": 221,
+        "compressed_bytes": 167,
+        "selected": false
+      },
+      {
+        "path": "offline-bundle-command-palette.txt",
+        "bytes": 3154,
+        "compressed_bytes": 761,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-daisy-schema.json",
+        "bytes": 6058,
+        "compressed_bytes": 1247,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-daisy-schema.txt",
+        "bytes": 6058,
+        "compressed_bytes": 1247,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-document-formats.json",
+        "bytes": 2400,
+        "compressed_bytes": 919,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-epub-publication.txt",
+        "bytes": 5568,
+        "compressed_bytes": 1289,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-epubcheck.json",
+        "bytes": 3398,
+        "compressed_bytes": 1209,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-epubcheck.txt",
+        "bytes": 3398,
+        "compressed_bytes": 1209,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-keyboard-preferences.json",
+        "bytes": 2024,
+        "compressed_bytes": 531,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-ocr-catalogue.json",
+        "bytes": 199,
+        "compressed_bytes": 146,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-ocr-manager.json",
+        "bytes": 12171,
+        "compressed_bytes": 2225,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-ocr-selection.json",
+        "bytes": 1620,
+        "compressed_bytes": 622,
+        "selected": true
+      },
+      {
+        "path": "offline-bundle-workflow-productivity.txt",
+        "bytes": 4876,
+        "compressed_bytes": 1045,
+        "selected": true
+      },
+      {
+        "path": "provider-policy.json",
+        "bytes": 97,
+        "compressed_bytes": 86,
+        "selected": false
+      },
+      {
+        "path": "provider-policy.txt",
+        "bytes": 1256,
+        "compressed_bytes": 367,
+        "selected": false
+      },
+      {
+        "path": "provider-policy.xml",
+        "bytes": 52311,
+        "compressed_bytes": 5908,
+        "selected": false
+      },
+      {
+        "path": "required-source-suites.json",
+        "bytes": 20010,
+        "compressed_bytes": 3671,
+        "selected": false
+      },
+      {
+        "path": "runner-regressions.txt",
+        "bytes": 649,
+        "compressed_bytes": 360,
+        "selected": false
+      },
+      {
+        "path": "runtime-sbom-seal.json",
+        "bytes": 210,
+        "compressed_bytes": 163,
+        "selected": false
+      },
+      {
+        "path": "source-assistant-domains.json",
+        "bytes": 6254,
+        "compressed_bytes": 1919,
+        "selected": false
+      },
+      {
+        "path": "source-audio-metadata.json",
+        "bytes": 3765,
+        "compressed_bytes": 1219,
+        "selected": false
+      },
+      {
+        "path": "source-audio-metadata.txt",
+        "bytes": 11121,
+        "compressed_bytes": 2377,
+        "selected": false
+      },
+      {
+        "path": "source-automatic-ocr.json",
+        "bytes": 2461,
+        "compressed_bytes": 936,
+        "selected": false
+      },
+      {
+        "path": "source-book-audio.json",
+        "bytes": 5760,
+        "compressed_bytes": 1722,
+        "selected": false
+      },
+      {
+        "path": "source-book-audio.txt",
+        "bytes": 4800,
+        "compressed_bytes": 875,
+        "selected": false
+      },
+      {
+        "path": "source-clipboard-reader.json",
+        "bytes": 2254,
+        "compressed_bytes": 983,
+        "selected": false
+      },
+      {
+        "path": "source-conversion-batch.json",
+        "bytes": 7810,
+        "compressed_bytes": 1450,
+        "selected": false
+      },
+      {
+        "path": "source-conversion-batch.txt",
+        "bytes": 16479,
+        "compressed_bytes": 2387,
+        "selected": false
+      },
+      {
+        "path": "source-daisy-schema.json",
+        "bytes": 6003,
+        "compressed_bytes": 1230,
+        "selected": false
+      },
+      {
+        "path": "source-daisy-schema.txt",
+        "bytes": 6003,
+        "compressed_bytes": 1230,
+        "selected": false
+      },
+      {
+        "path": "source-desktop.txt",
+        "bytes": 4046,
+        "compressed_bytes": 1019,
+        "selected": false
+      },
+      {
+        "path": "source-incremental-backup.json",
+        "bytes": 1651,
+        "compressed_bytes": 476,
+        "selected": false
+      },
+      {
+        "path": "source-incremental-backup.txt",
+        "bytes": 3297,
+        "compressed_bytes": 600,
+        "selected": false
+      },
+      {
+        "path": "source-portable-sync.json",
+        "bytes": 5412,
+        "compressed_bytes": 1530,
+        "selected": false
+      },
+      {
+        "path": "source-protected-voice.json",
+        "bytes": 5435,
+        "compressed_bytes": 1648,
+        "selected": false
+      },
+      {
+        "path": "source-reading-preparation.json",
+        "bytes": 4867,
+        "compressed_bytes": 1763,
+        "selected": false
+      },
+      {
+        "path": "source-reading-tabs.json",
+        "bytes": 4730,
+        "compressed_bytes": 1849,
+        "selected": false
+      },
+      {
+        "path": "source-recording-controls.json",
+        "bytes": 4292,
+        "compressed_bytes": 1277,
+        "selected": false
+      },
+      {
+        "path": "source-recording-controls.txt",
+        "bytes": 8033,
+        "compressed_bytes": 1547,
+        "selected": false
+      },
+      {
+        "path": "source-search-pagination.json",
+        "bytes": 2883,
+        "compressed_bytes": 1052,
+        "selected": false
+      },
+      {
+        "path": "source-source-pagination.json",
+        "bytes": 3487,
+        "compressed_bytes": 1268,
+        "selected": false
+      },
+      {
+        "path": "source-streamed-import.json",
+        "bytes": 4002,
+        "compressed_bytes": 1374,
+        "selected": false
+      },
+      {
+        "path": "source-voice-preferences.json",
+        "bytes": 6301,
+        "compressed_bytes": 1769,
+        "selected": false
+      },
+      {
+        "path": "source-voice-reference.json",
+        "bytes": 3503,
+        "compressed_bytes": 1247,
+        "selected": false
+      },
+      {
+        "path": "source-word-apa.json",
+        "bytes": 4351,
+        "compressed_bytes": 1396,
+        "selected": false
+      },
+      {
+        "path": "source-word-chicago-notes.json",
+        "bytes": 4351,
+        "compressed_bytes": 1396,
+        "selected": false
+      },
+      {
+        "path": "test-font.json",
+        "bytes": 443,
+        "compressed_bytes": 305,
+        "selected": false
+      },
+      {
+        "path": "tested-commit.txt",
+        "bytes": 42,
+        "compressed_bytes": 44,
+        "selected": false
+      },
+      {
+        "path": "windows-locale-cancellation-regressions.txt",
+        "bytes": 1342,
+        "compressed_bytes": 448,
+        "selected": false
+      }
+    ]
+  },
+  {
+    "artifact": 15248185042,
+    "files": [
+      {
+        "path": "audio-endpoint.json",
+        "bytes": 655,
+        "compressed_bytes": 380,
+        "selected": true
+      },
+      {
+        "path": "audio-services.json",
+        "bytes": 376,
+        "compressed_bytes": 171,
+        "selected": true
+      },
+      {
+        "path": "tested-commit.txt",
+        "bytes": 42,
+        "compressed_bytes": 44,
+        "selected": false
+      }
+    ]
+  }
+]

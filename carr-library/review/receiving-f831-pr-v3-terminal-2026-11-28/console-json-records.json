@@ -1,0 +1,494 @@
+[
+  {
+    "line": 676,
+    "end": 697,
+    "raw": "{\n  \"executables\": {\n    \"ffmpeg.exe\": {\n      \"sha256\": \"3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf\",\n      \"size_bytes\": 231078400\n    },\n    \"ffplay.exe\": {\n      \"sha256\": \"35fa7c57b0c9e7fe64991f70dff52c5a273fce47d0fc329e7820362108590700\",\n      \"size_bytes\": 232610304\n    },\n    \"ffprobe.exe\": {\n      \"sha256\": \"ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed\",\n      \"size_bytes\": 230862848\n    }\n  },\n  \"manifest_sha256\": \"c0b4ffb6d5bfc8b46ea2569ca9ff9002555ea0f6bdef1e05e04db7894b75b6e7\",\n  \"release\": \"9.1\",\n  \"source_lock_sha256\": \"34992db6bd04f54e83a1ee3faa03c906b419f2c2289f8a86826106a71e163a86\",\n  \"status\": \"VERIFIED\",\n  \"use_scope\": \"private-local-installation\",\n  \"windows_execution\": \"PASS: exact pinned native executables started on Windows\"\n}\n",
+    "value": {
+      "executables": {
+        "ffmpeg.exe": {
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "size_bytes": 231078400
+        },
+        "ffplay.exe": {
+          "sha256": "35fa7c57b0c9e7fe64991f70dff52c5a273fce47d0fc329e7820362108590700",
+          "size_bytes": 232610304
+        },
+        "ffprobe.exe": {
+          "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed",
+          "size_bytes": 230862848
+        }
+      },
+      "manifest_sha256": "c0b4ffb6d5bfc8b46ea2569ca9ff9002555ea0f6bdef1e05e04db7894b75b6e7",
+      "release": "9.1",
+      "source_lock_sha256": "34992db6bd04f54e83a1ee3faa03c906b419f2c2289f8a86826106a71e163a86",
+      "status": "VERIFIED",
+      "use_scope": "private-local-installation",
+      "windows_execution": "PASS: exact pinned native executables started on Windows"
+    }
+  },
+  {
+    "line": 731,
+    "end": 737,
+    "raw": "{\n  \"engine_version\": \"5.5.4\",\n  \"runtime_files\": 205,\n  \"runtime_bytes\": 55302460,\n  \"source_archive_sha256\": \"11a0045ed934c2d96b85ec1f78e60abb6bea21ee2c8b7af8ee91ad3b989bbab0\",\n  \"windows_execution\": \"NOT_RUN\"\n}\n",
+    "value": {
+      "engine_version": "5.5.4",
+      "runtime_files": 205,
+      "runtime_bytes": 55302460,
+      "source_archive_sha256": "11a0045ed934c2d96b85ec1f78e60abb6bea21ee2c8b7af8ee91ad3b989bbab0",
+      "windows_execution": "NOT_RUN"
+    }
+  },
+  {
+    "line": 738,
+    "end": 738,
+    "raw": "{\"status\": \"PASS\", \"engine\": \"tesseract 5.5.4\", \"languages\": [\"eng\", \"osd\", \"slk\", \"ukr\"], \"runtime\": \"portable\", \"manifest_sha256\": \"a81c4297303078d5ca0f1ab12adee792ef97f426128140f266f8eb12428ebe8c\", \"synthetic_recognition\": \"RESEARCH\", \"platform\": \"win32\", \"windows_execution\": \"PASS\"}\n",
+    "value": {
+      "status": "PASS",
+      "engine": "tesseract 5.5.4",
+      "languages": [
+        "eng",
+        "osd",
+        "slk",
+        "ukr"
+      ],
+      "runtime": "portable",
+      "manifest_sha256": "a81c4297303078d5ca0f1ab12adee792ef97f426128140f266f8eb12428ebe8c",
+      "synthetic_recognition": "RESEARCH",
+      "platform": "win32",
+      "windows_execution": "PASS"
+    }
+  },
+  {
+    "line": 757,
+    "end": 757,
+    "raw": "{\"archive_sha256\": \"5c6e497a2f36552cb5ffb112c413a6af39c0f3c47653662b90b4fa6499822fd7\", \"font_sha256\": \"7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954\", \"scope\": \"public synthetic OCR test prerequisite only\", \"selected_member\": \"dejavu-sans-ttf-2.37/ttf/DejaVuSans.ttf\", \"size_bytes\": 757076, \"source\": \"https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-sans-ttf-2.37.zip\", \"status\": \"PASS\"}\n",
+    "value": {
+      "archive_sha256": "5c6e497a2f36552cb5ffb112c413a6af39c0f3c47653662b90b4fa6499822fd7",
+      "font_sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954",
+      "scope": "public synthetic OCR test prerequisite only",
+      "selected_member": "dejavu-sans-ttf-2.37/ttf/DejaVuSans.ttf",
+      "size_bytes": 757076,
+      "source": "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-sans-ttf-2.37.zip",
+      "status": "PASS"
+    }
+  },
+  {
+    "line": 807,
+    "end": 807,
+    "raw": "{\"status\": \"PASS\", \"passed\": 2014, \"failed\": 0, \"skipped\": 0, \"nvda\": \"NOT_RUN\"}\n",
+    "value": {
+      "status": "PASS",
+      "passed": 2014,
+      "failed": 0,
+      "skipped": 0,
+      "nvda": "NOT_RUN"
+    }
+  },
+  {
+    "line": 930,
+    "end": 930,
+    "raw": "{\"status\": \"PASS\", \"passed\": 641, \"failed\": 0, \"skipped\": 0, \"pytest_exit\": 0, \"expected_failures\": false, \"origins\": {\"carr_library\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\__init__.py\", \"carr_library.state_backup\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\state_backup.py\", \"carr_library.state_recovery\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\state_recovery.py\", \"carr_library.ingest.worker\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ingest\\\\worker.py\", \"carr_library.application\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\application.py\", \"carr_library.pending_backup\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\pending_backup.py\", \"carr_library.library_backup\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\library_backup.py\", \"carr_library.recording_backup\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\recording_backup.py\", \"carr_library.speech.reading\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\reading.py\", \"carr_library.speech.source\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\source.py\", \"carr_library.ui.speech_dialog\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\speech_dialog.py\", \"carr_library.speech.runtime\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\runtime.py\", \"carr_library.academic_integration.doi\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\academic_integration\\\\doi.py\", \"carr_library.speech.session\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\speech\\\\session.py\", \"carr_library.extract.ocr_runtime\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\extract\\\\ocr_runtime.py\", \"carr_library.storage.revisions\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\storage\\\\revisions.py\", \"carr_library.storage.schema_identity\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\storage\\\\schema_identity.py\"}, \"ocr_inventory_cases\": [\"test_directory_inventory_checks_budget_between_entries\", \"test_empty_directory_inventory_has_a_bound\", \"test_unreadable_directory_rejects_entire_inventory\"], \"ocr_inventory_exact\": true, \"state_inventory_exact\": true, \"state_inventory_cases\": [\"test_state_inventory_rejects_unreadable_subtree[restore]\", \"test_state_inventory_rejects_unreadable_subtree[snapshot]\", \"test_state_restore_rejects_unlisted_file_before_scanning_later_subtree\", \"test_state_root_lookup_error_is_not_absence[NotADirectoryError]\", \"test_state_root_lookup_error_is_not_absence[PermissionError]\", \"test_state_root_missing_is_optional_only_when_requested\"], \"manual_nvda\": \"NOT_RUN\"}\n",
+    "value": {
+      "status": "PASS",
+      "passed": 641,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "expected_failures": false,
+      "origins": {
+        "carr_library": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\__init__.py",
+        "carr_library.state_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_backup.py",
+        "carr_library.state_recovery": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_recovery.py",
+        "carr_library.ingest.worker": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\worker.py",
+        "carr_library.application": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+        "carr_library.pending_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\pending_backup.py",
+        "carr_library.library_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "carr_library.recording_backup": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\recording_backup.py",
+        "carr_library.speech.reading": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\reading.py",
+        "carr_library.speech.source": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\source.py",
+        "carr_library.ui.speech_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+        "carr_library.speech.runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\runtime.py",
+        "carr_library.academic_integration.doi": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\academic_integration\\doi.py",
+        "carr_library.speech.session": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\speech\\session.py",
+        "carr_library.extract.ocr_runtime": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\ocr_runtime.py",
+        "carr_library.storage.revisions": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+        "carr_library.storage.schema_identity": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\schema_identity.py"
+      },
+      "ocr_inventory_cases": [
+        "test_directory_inventory_checks_budget_between_entries",
+        "test_empty_directory_inventory_has_a_bound",
+        "test_unreadable_directory_rejects_entire_inventory"
+      ],
+      "ocr_inventory_exact": true,
+      "state_inventory_exact": true,
+      "state_inventory_cases": [
+        "test_state_inventory_rejects_unreadable_subtree[restore]",
+        "test_state_inventory_rejects_unreadable_subtree[snapshot]",
+        "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+        "test_state_root_lookup_error_is_not_absence[NotADirectoryError]",
+        "test_state_root_lookup_error_is_not_absence[PermissionError]",
+        "test_state_root_missing_is_optional_only_when_requested"
+      ],
+      "manual_nvda": "NOT_RUN"
+    }
+  },
+  {
+    "line": 967,
+    "end": 1009,
+    "raw": "{\n  \"status\": \"PASS\",\n  \"checks\": [\n    \"descendant alive after its original leader exited\",\n    \"owned cancellation waits for the actual descendant exit\",\n    \"owned job and native pipes are closed after cancellation\",\n    \"native assignment failure remains explicit\",\n    \"unassigned suspended child is killed and waited before return\",\n    \"concurrent owned launch reaches suspended assignment\",\n    \"concurrent owned cancellation completes\",\n    \"unrelated concurrent native process remains outside capture ownership\",\n    \"native short-worker venv is created without acquiring dependencies\",\n    \"short venv worker preserves the explicitly selected environment\",\n    \"short venv uses the real base interpreter behind its redirector\",\n    \"short venv lifetime members and native streams finish before return\",\n    \"nested-short venv worker preserves the explicitly selected environment\",\n    \"nested-short venv uses the real base interpreter behind its redirector\",\n    \"nested-short venv lifetime members and native streams finish before return\"\n  ],\n  \"scope\": \"actual Windows owned process lifecycle\",\n  \"physical_microphone\": \"NOT_RUN\",\n  \"human_listening\": \"NOT_RUN\",\n  \"short_venv_workers\": [\n    {\n      \"prefix\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-xeurtdon\\\\short-worker-venv\",\n      \"base_prefix\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\",\n      \"executable\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-xeurtdon\\\\short-worker-venv\\\\Scripts\\\\python.exe\",\n      \"base_executable\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\n      \"native_image\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\n      \"case\": \"short\",\n      \"lifetime_processes\": 3\n    },\n    {\n      \"prefix\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-xeurtdon\\\\short-worker-venv\",\n      \"base_prefix\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\",\n      \"executable\": \"C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-native-recording-process-xeurtdon\\\\short-worker-venv\\\\Scripts\\\\python.exe\",\n      \"base_executable\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\n      \"native_image\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\python.exe\",\n      \"case\": \"nested-short\",\n      \"lifetime_processes\": 5\n    }\n  ]\n}\n",
+    "value": {
+      "status": "PASS",
+      "checks": [
+        "descendant alive after its original leader exited",
+        "owned cancellation waits for the actual descendant exit",
+        "owned job and native pipes are closed after cancellation",
+        "native assignment failure remains explicit",
+        "unassigned suspended child is killed and waited before return",
+        "concurrent owned launch reaches suspended assignment",
+        "concurrent owned cancellation completes",
+        "unrelated concurrent native process remains outside capture ownership",
+        "native short-worker venv is created without acquiring dependencies",
+        "short venv worker preserves the explicitly selected environment",
+        "short venv uses the real base interpreter behind its redirector",
+        "short venv lifetime members and native streams finish before return",
+        "nested-short venv worker preserves the explicitly selected environment",
+        "nested-short venv uses the real base interpreter behind its redirector",
+        "nested-short venv lifetime members and native streams finish before return"
+      ],
+      "scope": "actual Windows owned process lifecycle",
+      "physical_microphone": "NOT_RUN",
+      "human_listening": "NOT_RUN",
+      "short_venv_workers": [
+        {
+          "prefix": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-xeurtdon\\short-worker-venv",
+          "base_prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+          "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-xeurtdon\\short-worker-venv\\Scripts\\python.exe",
+          "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "native_image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "case": "short",
+          "lifetime_processes": 3
+        },
+        {
+          "prefix": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-xeurtdon\\short-worker-venv",
+          "base_prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+          "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-xeurtdon\\short-worker-venv\\Scripts\\python.exe",
+          "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "native_image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+          "case": "nested-short",
+          "lifetime_processes": 5
+        }
+      ]
+    }
+  },
+  {
+    "line": 1391,
+    "end": 1430,
+    "raw": "{\n  \"status\": \"PASS\",\n  \"platform\": \"win32\",\n  \"manual_nvda\": \"NOT_RUN\",\n  \"checks\": [\n    \"actual installed SAPI voice to measured PCM\",\n    \"actual local three-role production with score and pause\",\n    \"WAV/FLAC, chapter and stem publication\",\n    \"completed-job restart and checksum verification\",\n    \"native menu integration and unique global shortcuts\",\n    \"actual installed CSL processor and native DOCX provenance\",\n    \"actual isolated document conversion and atomic Windows publication\",\n    \"native studio/assistant/provider/engine dialogs with named keyboard controls\"\n  ],\n  \"voices\": [\n    {\n      \"id\": \"sapi5-64:8ceac258515d5a474e76deba\",\n      \"name\": \"Microsoft David Desktop - English (United States)\",\n      \"language\": \"en-US\"\n    },\n    {\n      \"id\": \"sapi5-64:745a26bc99ef3c4c944377b9\",\n      \"name\": \"Microsoft Zira Desktop - English (United States)\",\n      \"language\": \"en-US\"\n    }\n  ],\n  \"speech_peak_pcm16\": 10989,\n  \"audio\": {\n    \"duration\": 10.691958,\n    \"artifacts\": 13,\n    \"loudness\": {\n      \"integrated_lufs\": -24.89,\n      \"true_peak_dbfs\": -6.29,\n      \"loudness_range_lu\": 4.5,\n      \"threshold_lufs\": -38.02,\n      \"silent\": false\n    },\n    \"distinct_voice_tokens\": 2\n  }\n}\n",
+    "value": {
+      "status": "PASS",
+      "platform": "win32",
+      "manual_nvda": "NOT_RUN",
+      "checks": [
+        "actual installed SAPI voice to measured PCM",
+        "actual local three-role production with score and pause",
+        "WAV/FLAC, chapter and stem publication",
+        "completed-job restart and checksum verification",
+        "native menu integration and unique global shortcuts",
+        "actual installed CSL processor and native DOCX provenance",
+        "actual isolated document conversion and atomic Windows publication",
+        "native studio/assistant/provider/engine dialogs with named keyboard controls"
+      ],
+      "voices": [
+        {
+          "id": "sapi5-64:8ceac258515d5a474e76deba",
+          "name": "Microsoft David Desktop - English (United States)",
+          "language": "en-US"
+        },
+        {
+          "id": "sapi5-64:745a26bc99ef3c4c944377b9",
+          "name": "Microsoft Zira Desktop - English (United States)",
+          "language": "en-US"
+        }
+      ],
+      "speech_peak_pcm16": 10989,
+      "audio": {
+        "duration": 10.691958,
+        "artifacts": 13,
+        "loudness": {
+          "integrated_lufs": -24.89,
+          "true_peak_dbfs": -6.29,
+          "loudness_range_lu": 4.5,
+          "threshold_lufs": -38.02,
+          "silent": false
+        },
+        "distinct_voice_tokens": 2
+      }
+    }
+  },
+  {
+    "line": 1551,
+    "end": 1551,
+    "raw": "{\"result\": \"PASS\", \"checks\": [\"real wx Windows controls\", \"installed module: carr_library.ui.studio_clips\", \"installed module: carr_library.studio.clips\", \"real native main loop is active\", \"keyboard focus: Reload projects\", \"Space key down: Reload projects\", \"Space key up: Reload projects\", \"native project choice binds saved identity\", \"all timing controls have readable names\", \"native loop controls are named and require an explicit preview\", \"opening the clip editor does not start a preview loop\", \"keyboard focus: Add audio file\", \"Space key down: Add audio file\", \"Space key up: Add audio file\", \"original selection requires an existing file\", \"native Add retains an actual clip\", \"keyboard focus: Save clip settings\", \"Space key down: Save clip settings\", \"Space key up: Save clip settings\", \"native Save persists reviewed numeric controls\", \"real edited project rendered\", \"actual left-only timeline and one-second duration\", \"keyboard focus: Copy clip instructions\", \"Space key down: Copy clip instructions\", \"Space key up: Copy clip instructions\", \"native copy preserves the saved project\", \"keyboard focus: Split selected clip...\", \"Space key down: Split selected clip...\", \"Space key up: Split selected clip...\", \"actual native clip review button: Split at an output sample\", \"keyboard focus: button\", \"Space key down: button\", \"Space key up: button\", \"native split preserves retained source and measured cuts\", \"keyboard focus: Join adjacent clips...\", \"Space key down: Join adjacent clips...\", \"Space key up: Join adjacent clips...\", \"actual native clip review button: Join adjacent clips\", \"keyboard focus: button\", \"Space key down: button\", \"Space key up: button\", \"native join restores the original instructions\", \"keyboard focus: Undo clip edit\", \"Space key down: Undo clip edit\", \"Space key up: Undo clip edit\", \"native undo restores both cuts\", \"keyboard focus: Redo clip edit\", \"Space key down: Redo clip edit\", \"Space key up: Redo clip edit\", \"native redo restores the joined clip\", \"keyboard focus: Paste copied clip...\", \"Space key down: Paste copied clip...\", \"Space key up: Paste copied clip...\", \"actual native clip review button: Paste copied clip\", \"keyboard focus: button\", \"Space key down: button\", \"Space key up: button\", \"native paste creates a distinct clip at the reviewed position\", \"keyboard focus: Cut clip\", \"Space key down: Cut clip\", \"Space key up: Cut clip\", \"native cut keeps original bytes and the remaining clip\", \"keyboard focus: Clip effects...\", \"Space key down: Clip effects...\", \"Space key up: Clip effects...\", \"actual supported effect choice\", \"keyboard focus: Add effect\", \"Space key down: Add effect\", \"Space key up: Add effect\", \"keyboard focus: Edit selected effect\", \"Space key down: Edit selected effect\", \"Space key up: Edit selected effect\", \"actual numeric clip effect control\", \"keyboard focus: Apply effect\", \"Space key down: Apply effect\", \"Space key up: Apply effect\", \"keyboard focus: Apply effect chain\", \"Space key down: Apply effect chain\", \"Space key up: Apply effect chain\", \"native clip effects persist in schema three\", \"keyboard focus: Master effects...\", \"Space key down: Master effects...\", \"Space key up: Master effects...\", \"actual supported effect choice\", \"keyboard focus: Add effect\", \"Space key down: Add effect\", \"Space key up: Add effect\", \"keyboard focus: Edit selected effect\", \"Space key down: Edit selected effect\", \"Space key up: Edit selected effect\", \"actual numeric clip effect control\", \"keyboard focus: Apply effect\", \"Space key down: Apply effect\", \"Space key up: Apply effect\", \"keyboard focus: Apply effect chain\", \"Space key down: Apply effect chain\", \"Space key up: Apply effect chain\", \"native master effects persist independently\", \"native effect project completes actual rendering\", \"actual native clip and master effects both apply\", \"delivered chapter matches the mastered audio\", \"keyboard focus: Set master sample rate\", \"Space key down: Set master sample rate\", \"Space key up: Set master sample rate\", \"native master sample rate preserves effect chains\", \"keyboard focus: Save clip settings\", \"Space key down: Save clip settings\", \"Space key up: Save clip settings\", \"stale native edit cannot replace a newer revision\", \"keyboard focus: Reload projects\", \"Space key down: Reload projects\", \"Space key up: Reload projects\", \"keyboard focus: Remove clip\", \"Space key down: Remove clip\", \"Space key up: Remove clip\", \"remove changes project but retains original bytes\", \"keyboard focus: Close\", \"Space key down: Close\", \"Space key up: Close\", \"native keyboard close finishes cleanly\"], \"native_keyboard\": \"PASS\", \"fixture\": \"synthetic PCM rendered by actual FFmpeg\", \"audio_runtime\": {\"ffmpeg\": {\"path\": \"D:\\\\a\\\\_temp\\\\carr-v3-audio\\\\bin\\\\ffmpeg.exe\", \"sha256\": \"3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf\"}, \"ffprobe\": {\"path\": \"D:\\\\a\\\\_temp\\\\carr-v3-audio\\\\bin\\\\ffprobe.exe\", \"sha256\": \"ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed\"}}, \"nvda\": \"NOT_RUN\", \"native_file_pickers\": \"NOT_RUN\", \"physical_microphone\": \"NOT_RUN\", \"loop_preview\": {\"status\": \"NOT_RUN\", \"reason\": \"No exact reviewed output endpoint was supplied for loop playback.\", \"acoustic_listening\": \"NOT_RUN\", \"physical_output_device\": \"NOT_RUN\"}}\n",
+    "value": {
+      "result": "PASS",
+      "checks": [
+        "real wx Windows controls",
+        "installed module: carr_library.ui.studio_clips",
+        "installed module: carr_library.studio.clips",
+        "real native main loop is active",
+        "keyboard focus: Reload projects",
+        "Space key down: Reload projects",
+        "Space key up: Reload projects",
+        "native project choice binds saved identity",
+        "all timing controls have readable names",
+        "native loop controls are named and require an explicit preview",
+        "opening the clip editor does not start a preview loop",
+        "keyboard focus: Add audio file",
+        "Space key down: Add audio file",
+        "Space key up: Add audio file",
+        "original selection requires an existing file",
+        "native Add retains an actual clip",
+        "keyboard focus: Save clip settings",
+        "Space key down: Save clip settings",
+        "Space key up: Save clip settings",
+        "native Save persists reviewed numeric controls",
+        "real edited project rendered",
+        "actual left-only timeline and one-second duration",
+        "keyboard focus: Copy clip instructions",
+        "Space key down: Copy clip instructions",
+        "Space key up: Copy clip instructions",
+        "native copy preserves the saved project",
+        "keyboard focus: Split selected clip...",
+        "Space key down: Split selected clip...",
+        "Space key up: Split selected clip...",
+        "actual native clip review button: Split at an output sample",
+        "keyboard focus: button",
+        "Space key down: button",
+        "Space key up: button",
+        "native split preserves retained source and measured cuts",
+        "keyboard focus: Join adjacent clips...",
+        "Space key down: Join adjacent clips...",
+        "Space key up: Join adjacent clips...",
+        "actual native clip review button: Join adjacent clips",
+        "keyboard focus: button",
+        "Space key down: button",
+        "Space key up: button",
+        "native join restores the original instructions",
+        "keyboard focus: Undo clip edit",
+        "Space key down: Undo clip edit",
+        "Space key up: Undo clip edit",
+        "native undo restores both cuts",
+        "keyboard focus: Redo clip edit",
+        "Space key down: Redo clip edit",
+        "Space key up: Redo clip edit",
+        "native redo restores the joined clip",
+        "keyboard focus: Paste copied clip...",
+        "Space key down: Paste copied clip...",
+        "Space key up: Paste copied clip...",
+        "actual native clip review button: Paste copied clip",
+        "keyboard focus: button",
+        "Space key down: button",
+        "Space key up: button",
+        "native paste creates a distinct clip at the reviewed position",
+        "keyboard focus: Cut clip",
+        "Space key down: Cut clip",
+        "Space key up: Cut clip",
+        "native cut keeps original bytes and the remaining clip",
+        "keyboard focus: Clip effects...",
+        "Space key down: Clip effects...",
+        "Space key up: Clip effects...",
+        "actual supported effect choice",
+        "keyboard focus: Add effect",
+        "Space key down: Add effect",
+        "Space key up: Add effect",
+        "keyboard focus: Edit selected effect",
+        "Space key down: Edit selected effect",
+        "Space key up: Edit selected effect",
+        "actual numeric clip effect control",
+        "keyboard focus: Apply effect",
+        "Space key down: Apply effect",
+        "Space key up: Apply effect",
+        "keyboard focus: Apply effect chain",
+        "Space key down: Apply effect chain",
+        "Space key up: Apply effect chain",
+        "native clip effects persist in schema three",
+        "keyboard focus: Master effects...",
+        "Space key down: Master effects...",
+        "Space key up: Master effects...",
+        "actual supported effect choice",
+        "keyboard focus: Add effect",
+        "Space key down: Add effect",
+        "Space key up: Add effect",
+        "keyboard focus: Edit selected effect",
+        "Space key down: Edit selected effect",
+        "Space key up: Edit selected effect",
+        "actual numeric clip effect control",
+        "keyboard focus: Apply effect",
+        "Space key down: Apply effect",
+        "Space key up: Apply effect",
+        "keyboard focus: Apply effect chain",
+        "Space key down: Apply effect chain",
+        "Space key up: Apply effect chain",
+        "native master effects persist independently",
+        "native effect project completes actual rendering",
+        "actual native clip and master effects both apply",
+        "delivered chapter matches the mastered audio",
+        "keyboard focus: Set master sample rate",
+        "Space key down: Set master sample rate",
+        "Space key up: Set master sample rate",
+        "native master sample rate preserves effect chains",
+        "keyboard focus: Save clip settings",
+        "Space key down: Save clip settings",
+        "Space key up: Save clip settings",
+        "stale native edit cannot replace a newer revision",
+        "keyboard focus: Reload projects",
+        "Space key down: Reload projects",
+        "Space key up: Reload projects",
+        "keyboard focus: Remove clip",
+        "Space key down: Remove clip",
+        "Space key up: Remove clip",
+        "remove changes project but retains original bytes",
+        "keyboard focus: Close",
+        "Space key down: Close",
+        "Space key up: Close",
+        "native keyboard close finishes cleanly"
+      ],
+      "native_keyboard": "PASS",
+      "fixture": "synthetic PCM rendered by actual FFmpeg",
+      "audio_runtime": {
+        "ffmpeg": {
+          "path": "D:\\a\\_temp\\carr-v3-audio\\bin\\ffmpeg.exe",
+          "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"
+        },
+        "ffprobe": {
+          "path": "D:\\a\\_temp\\carr-v3-audio\\bin\\ffprobe.exe",
+          "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+        }
+      },
+      "nvda": "NOT_RUN",
+      "native_file_pickers": "NOT_RUN",
+      "physical_microphone": "NOT_RUN",
+      "loop_preview": {
+        "status": "NOT_RUN",
+        "reason": "No exact reviewed output endpoint was supplied for loop playback.",
+        "acoustic_listening": "NOT_RUN",
+        "physical_output_device": "NOT_RUN"
+      }
+    }
+  },
+  {
+    "line": 1594,
+    "end": 1669,
+    "raw": "{\n  \"status\": \"PASS\",\n  \"platform\": \"win32\",\n  \"checks\": [\n    \"native ASR profile refresh uses the shared job host\",\n    \"ASR accessible native control: Registered transcription runtime\",\n    \"ASR accessible native control: Source language code or auto\",\n    \"ASR accessible native control: Selected local audio or video\",\n    \"ASR accessible native control: Saved transcription jobs\",\n    \"ASR accessible native control: Transcription source result\",\n    \"ASR accessible native control: Transcript reading copy\",\n    \"ASR accessible native control: Transcription progress and result\",\n    \"native ASR pages and Escape route are present\",\n    \"runtime inspection completes without inference\",\n    \"unchecked trust blocks runtime registration\",\n    \"explicit inspected fingerprint trust registers one profile\",\n    \"native Start enters the isolated service boundary\",\n    \"help retains focus during coalesced progress\",\n    \"native Pause preserves a real paused UI outcome\",\n    \"native Resume reuses the stored job\",\n    \"native transcript reader opens an independent reading copy\",\n    \"explicit load focuses the transcript editor\",\n    \"native Tab leaves the multiline editor for another dialog control\",\n    \"native edit save preserves original recognition text\",\n    \"native Undo restores the independent source copy\",\n    \"native Redo restores the saved correction\",\n    \"native export delegates into a new folder\",\n    \"native Escape closes an idle ASR dialog and stops its timer\",\n    \"dashboard accessible native control: Saved platform operations\",\n    \"dashboard accessible native control: Operation details and resource status\",\n    \"dashboard accessible native control: Allowed CPU slots\",\n    \"dashboard accessible native control: Declared memory allowance in MiB\",\n    \"dashboard accessible native control: Declared temporary disk allowance in GiB\",\n    \"dashboard accessible native control: Keep free disk space in MiB\",\n    \"dashboard submission failure restores usable controls\",\n    \"dashboard asynchronous refresh preserves details focus\",\n    \"native resource policy saves through the shared broker\",\n    \"dashboard Escape routes to explicit close\",\n    \"dashboard native Escape requests close and hides its window\",\n    \"dashboard native Escape ends its modal lifecycle\",\n    \"native progress fixture explicitly selects an installed English SAPI voice\",\n    \"native progress speech queues without blocking the GUI\",\n    \"actual native SAPI progress synthesis produces measured non-silent PCM\",\n    \"the first owned progress notification drains before quiet review\",\n    \"quiet progress speech rejects queued playback\",\n    \"progress speech worker stops and removes temporary PCM\"\n  ],\n  \"asr_service\": \"SYNTHETIC_UI_FIXTURE\",\n  \"model_inference\": \"NOT_RUN\",\n  \"manual_nvda\": \"NOT_RUN\",\n  \"physical_playback\": \"NOT_RUN\",\n  \"protocol\": \"local-file-job/1\",\n  \"origins\": {\n    \"carr_library.ui.transcription_dialog\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\transcription_dialog.py\",\n    \"carr_library.ui.operations_dialog\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\operations_dialog.py\",\n    \"carr_library.transcription\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\transcription\\\\__init__.py\",\n    \"carr_library.transcription.service\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\transcription\\\\service.py\"\n  },\n  \"source_override\": null,\n  \"module_sha256\": {\n    \"carr_library.ui.transcription_dialog\": \"73846cb764d3cb61e73e726f823e13751de342f72962b71ecbfa532ddfdc69a1\",\n    \"carr_library.ui.operations_dialog\": \"99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b\",\n    \"carr_library.transcription\": \"4eeed849a4057871429135576fd964cf93bbe8eb568a3a1c6262ea6ff2f2db5f\",\n    \"carr_library.transcription.service\": \"ed8dbb1142b751a07e66ab764a412325cf4bd5f8c1b2070864fb8a3e85e31234\"\n  },\n  \"native_sapi_progress_pcm\": {\n    \"frames\": 146164,\n    \"rate\": 22050,\n    \"width\": 2,\n    \"peak\": 4868\n  },\n  \"native_sapi_progress_voice\": {\n    \"id\": \"sapi5-64:8ceac258515d5a474e76deba\",\n    \"language\": \"en-US\"\n  }\n}\n",
+    "value": {
+      "status": "PASS",
+      "platform": "win32",
+      "checks": [
+        "native ASR profile refresh uses the shared job host",
+        "ASR accessible native control: Registered transcription runtime",
+        "ASR accessible native control: Source language code or auto",
+        "ASR accessible native control: Selected local audio or video",
+        "ASR accessible native control: Saved transcription jobs",
+        "ASR accessible native control: Transcription source result",
+        "ASR accessible native control: Transcript reading copy",
+        "ASR accessible native control: Transcription progress and result",
+        "native ASR pages and Escape route are present",
+        "runtime inspection completes without inference",
+        "unchecked trust blocks runtime registration",
+        "explicit inspected fingerprint trust registers one profile",
+        "native Start enters the isolated service boundary",
+        "help retains focus during coalesced progress",
+        "native Pause preserves a real paused UI outcome",
+        "native Resume reuses the stored job",
+        "native transcript reader opens an independent reading copy",
+        "explicit load focuses the transcript editor",
+        "native Tab leaves the multiline editor for another dialog control",
+        "native edit save preserves original recognition text",
+        "native Undo restores the independent source copy",
+        "native Redo restores the saved correction",
+        "native export delegates into a new folder",
+        "native Escape closes an idle ASR dialog and stops its timer",
+        "dashboard accessible native control: Saved platform operations",
+        "dashboard accessible native control: Operation details and resource status",
+        "dashboard accessible native control: Allowed CPU slots",
+        "dashboard accessible native control: Declared memory allowance in MiB",
+        "dashboard accessible native control: Declared temporary disk allowance in GiB",
+        "dashboard accessible native control: Keep free disk space in MiB",
+        "dashboard submission failure restores usable controls",
+        "dashboard asynchronous refresh preserves details focus",
+        "native resource policy saves through the shared broker",
+        "dashboard Escape routes to explicit close",
+        "dashboard native Escape requests close and hides its window",
+        "dashboard native Escape ends its modal lifecycle",
+        "native progress fixture explicitly selects an installed English SAPI voice",
+        "native progress speech queues without blocking the GUI",
+        "actual native SAPI progress synthesis produces measured non-silent PCM",
+        "the first owned progress notification drains before quiet review",
+        "quiet progress speech rejects queued playback",
+        "progress speech worker stops and removes temporary PCM"
+      ],
+      "asr_service": "SYNTHETIC_UI_FIXTURE",
+      "model_inference": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "protocol": "local-file-job/1",
+      "origins": {
+        "carr_library.ui.transcription_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\transcription_dialog.py",
+        "carr_library.ui.operations_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\operations_dialog.py",
+        "carr_library.transcription": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription\\__init__.py",
+        "carr_library.transcription.service": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription\\service.py"
+      },
+      "source_override": null,
+      "module_sha256": {
+        "carr_library.ui.transcription_dialog": "73846cb764d3cb61e73e726f823e13751de342f72962b71ecbfa532ddfdc69a1",
+        "carr_library.ui.operations_dialog": "99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b",
+        "carr_library.transcription": "4eeed849a4057871429135576fd964cf93bbe8eb568a3a1c6262ea6ff2f2db5f",
+        "carr_library.transcription.service": "ed8dbb1142b751a07e66ab764a412325cf4bd5f8c1b2070864fb8a3e85e31234"
+      },
+      "native_sapi_progress_pcm": {
+        "frames": 146164,
+        "rate": 22050,
+        "width": 2,
+        "peak": 4868
+      },
+      "native_sapi_progress_voice": {
+        "id": "sapi5-64:8ceac258515d5a474e76deba",
+        "language": "en-US"
+      }
+    }
+  },
+  {
+    "line": 2009,
+    "end": 2026,
+    "raw": "{\n  \"result\": \"PASS\",\n  \"checks\": [\n    \"assistant UI imports from installed package\",\n    \"real Windows widgets\",\n    \"named native planner selector defaults to guided commands\",\n    \"request is pending with run disabled\",\n    \"proposal remains unexecuted until separate review action\",\n    \"exact selected model reached the loopback gateway\",\n    \"review receives native keyboard focus\",\n    \"edited instructions cancel the pending native proposal\",\n    \"separate run uses existing durable assistant service\",\n    \"completion returns focus to readable result\"\n  ],\n  \"actual_llm_model\": \"NOT_RUN \\u2014 synthetic protocol fixture\",\n  \"manual_keyboard\": \"NOT_RUN\",\n  \"nvda\": \"NOT_RUN\"\n}\n",
+    "value": {
+      "result": "PASS",
+      "checks": [
+        "assistant UI imports from installed package",
+        "real Windows widgets",
+        "named native planner selector defaults to guided commands",
+        "request is pending with run disabled",
+        "proposal remains unexecuted until separate review action",
+        "exact selected model reached the loopback gateway",
+        "review receives native keyboard focus",
+        "edited instructions cancel the pending native proposal",
+        "separate run uses existing durable assistant service",
+        "completion returns focus to readable result"
+      ],
+      "actual_llm_model": "NOT_RUN — synthetic protocol fixture",
+      "manual_keyboard": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    }
+  },
+  {
+    "line": 2160,
+    "end": 2160,
+    "raw": "{\"status\": \"PASS\", \"passed\": 6821, \"failed\": 0, \"skipped\": 0}\n",
+    "value": {
+      "status": "PASS",
+      "passed": 6821,
+      "failed": 0,
+      "skipped": 0
+    }
+  }
+]

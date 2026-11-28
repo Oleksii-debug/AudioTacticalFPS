@@ -1,0 +1,168 @@
+{
+  "schema": "carr-pinned-public-artifact-evidence/1",
+  "status": "RECEIVED",
+  "observed_at_utc": "2026-11-28T05:44:00Z",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "application": {
+    "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+    "run_id": 46105059505,
+    "event": "pull_request",
+    "branch": "carr/v3-integrated-final-dbbb-20261126",
+    "attempt": 1
+  },
+  "reader": {
+    "head": "724850b3c04f26a8c81093ff37863fe3f2691b55",
+    "tree": "d39c958a6a6f7597179f630387aada1382d1af2d",
+    "run_id": 46112084717,
+    "job_id": 140877630923,
+    "conclusion": "success",
+    "updated_at": "2026-11-28T05:35:28Z",
+    "script_blob": "fe1c558771ca9368fc2fae417ce8775b92a26496",
+    "unchanged_workflow_blob": "000d4e554a14bd6cd47e51e6d2e4a2e83c0363a1",
+    "raw_job_log_sha256": "22e4a365f2da90e9eea76e8a5814158d8ac9c73693770092d1a68c3fb9a622f2",
+    "raw_job_log_utf8_bytes": 464623
+  },
+  "archives": [
+    {
+      "id": 15248337235,
+      "name": "carr-windows-pre-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 181516,
+      "sha256": "19a5855ed23fa6c050fcbdd653493bd6001086b3b168d00ee241dc754a9b4aa9",
+      "created_at": "2026-11-28T04:31:06Z",
+      "updated_at": "2026-11-28T04:31:06Z",
+      "run": 46105059505,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "main"
+    },
+    {
+      "id": 15248185042,
+      "name": "carr-windows-audio-endpoint-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 1003,
+      "sha256": "a21838dcfae9da784665586892ab69bab78064aed0459dfc76bcdd83e747166d",
+      "created_at": "2026-11-28T04:14:15Z",
+      "updated_at": "2026-11-28T04:14:15Z",
+      "run": 46105059505,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "endpoint"
+    }
+  ],
+  "completion": {
+    "run": 46105059505,
+    "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "artifacts": 2,
+    "selected_files": 47,
+    "zip_digests_verified": true,
+    "application_acceptance": "NOT_ASSESSED",
+    "long_logs": "bounded excerpts; full member hashes retained",
+    "private_assets": "NOT_READ"
+  },
+  "raw_members": [
+    {
+      "archive_id": 15248337235,
+      "archive_path": "audio-endpoint.json",
+      "evidence_path": "raw/audio-endpoint.json",
+      "original_bytes": 655,
+      "original_sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "audio-services.json",
+      "evidence_path": "raw/audio-services.json",
+      "original_bytes": 376,
+      "original_sha256": "6564af2a829c395d75c4b854bee7cd0ab39a7b651b59dbfc5c809cb628a9dde6",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "bundle-reader-controls.json",
+      "evidence_path": "raw/bundle-reader-controls.json",
+      "original_bytes": 4603,
+      "original_sha256": "5b7bbe6113a06dffcd207d342c9271ca1859b92acf17a5633e1005382b8240d7",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "native-reader-controls.json",
+      "evidence_path": "raw/native-reader-controls.json",
+      "original_bytes": 4470,
+      "original_sha256": "1251504659622b82a82f2bba892a07f2da7856102e9730c098cfff5cee50be39",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "native-audio-preview.json",
+      "evidence_path": "raw/native-audio-preview.json",
+      "original_bytes": 112,
+      "original_sha256": "1c0e533adc3e4456da3b34186b93c5cdb148f5c7e90282dc4fc74fe55ba691aa",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "native-sapi-speech.json",
+      "evidence_path": "raw/native-sapi-speech.json",
+      "original_bytes": 2747,
+      "original_sha256": "a9caeb99392c31014159f9c7d67d44694a3c0b08e5218a4dd9a595099e78f514",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "full-bundle-reader-controls.txt",
+      "evidence_path": "raw/full-bundle-reader-controls.txt",
+      "original_bytes": 5985,
+      "original_sha256": "01a992b589caa6c46ac65e0379eea758bfc7d2acc7f2312ce592829e1c67dda0",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    },
+    {
+      "archive_id": 15248337235,
+      "archive_path": "native-reader-controls.txt",
+      "evidence_path": "raw/native-reader-controls.txt",
+      "original_bytes": 5852,
+      "original_sha256": "c3efe5450c388fb6dcb999bd7c65a7da3efad5f8f803ca0fdb6377f0721419c7",
+      "representation": "Original UTF-8 bytes reconstructed from ordered base64 parts; BOM retained; byte count and SHA-256 independently recomputed."
+    }
+  ],
+  "all_selected_member_metadata": "selected-members.json",
+  "archive_inventory": "archive-inventory.json",
+  "findings": {
+    "output_endpoint": {
+      "device_count": 0,
+      "format_query_result": 2,
+      "status": "UNAVAILABLE",
+      "archive_members_identical_in_both_inputs": true
+    },
+    "installed_reader": {
+      "status": "FAILED",
+      "checks_completed": 13,
+      "error": "MCI 326",
+      "source_identity_checks": "Passed for installed player, reader_playback and speech_dialog before the actual native playback call."
+    },
+    "bundled_reader": {
+      "status": "FAILED",
+      "checks_completed": 13,
+      "error": "MCI 326",
+      "actual_winmm": false
+    },
+    "native_preview": {
+      "status": "NOT_RUN",
+      "reason": "DEVICE_UNAVAILABLE"
+    },
+    "sapi_synthesis": {
+      "status": "PASS",
+      "sample_rate": 24000,
+      "channels": 1,
+      "frames": 73908,
+      "duration_seconds": 3.0795
+    },
+    "sealed_bundle_aggregate": "FAIL; no whole-bundle acceptance follows from earlier successful subchecks."
+  },
+  "limitations": [
+    "This is the f831 pull-request environment, distinct from the guarded endpoint push environment.",
+    "No output endpoint or default-device fallback was supplied, and no OS consent or policy was changed.",
+    "These output receipts do not establish the current input-capture consent or WASAPI state.",
+    "The selected reports are public synthetic/native diagnostics; no private executable, model, user document, source audio, or application wheel was extracted or executed.",
+    "The separate five Word UI source-suite failures are recorded in receiving-f831-pr-main-terminal-2026-11-28 and remain a distinct fixture investigation.",
+    "Manual NVDA, listening quality, physical recording, final release qualification and a tested downloadable wheel remain unclaimed."
+  ]
+}

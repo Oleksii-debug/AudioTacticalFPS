@@ -1,0 +1,26 @@
+{
+  "schema": "carr-evidence-correction/1",
+  "scope": "10e3 MAIN source verdict completion order only",
+  "old_provenance_blob": "8ef73bb0eadc9c60085a733e5992e682206bfacd",
+  "reason": "Two concurrent suites print verdicts upon completion; completion order is not declaration order.",
+  "original_field": true,
+  "corrected_field": false,
+  "exact_selector_multiset_match": true,
+  "required_selectors": 445,
+  "unique_selectors": 445,
+  "passing_modules": 445,
+  "junit_passed": 11521,
+  "junit_failed": 0,
+  "junit_skipped": 0,
+  "result_counts_changed": false,
+  "first_difference": {
+    "index": 1,
+    "declared": "tests/sync/test_crypto.py",
+    "completed": "tests/sync/test_crypto_publication.py"
+  },
+  "verification": "Recomputed from the retained exact required-source-inventory.json and source-suite-verdicts.json; no test rerun.",
+  "old_raw_log_blob": "749a6d56d05ecca2e14fc61282fc3b8c96eda29c",
+  "historical_receipt_rewritten": false,
+  "corrected_provenance": "provenance-corrected.json",
+  "command": "python scripts/ci_check.py --jobs 2 @suites"
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "carr-text-evidence-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111582006,
+  "job_id": 140876084007,
+  "files": [
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/full-decoded-log.txt",
+      "git_blob": "96d149a38916a1a7265cfa990f146ab10b3cd976",
+      "utf8_bytes": 139810,
+      "sha256": "3d4b5672431150736578c90c0724b1b74c31f162629d13cec8d8ccdc4c241479"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/run-metadata.json",
+      "git_blob": "bfe52a9fee3d5331a45525cec00984d89684417c",
+      "utf8_bytes": 16192,
+      "sha256": "277b71ffebfd7469639d8c41c950a6e32339963134cfa47c68f19d686504516a"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/job-metadata.json",
+      "git_blob": "712c26694ceffc564ad365f2db1d30ca003a3de5",
+      "utf8_bytes": 3713,
+      "sha256": "65960e199659e403352401efbe1a3da86a8f52f0a874327e9aa02167c7b84dd1"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/module-results.json",
+      "git_blob": "64fb2ce5973941fc6cd0e3dba3cd8e5788d8ac5d",
+      "utf8_bytes": 4044,
+      "sha256": "33923f8752fcb42f0af8397ef7e48b23ff245d43da3351bacd2032ab7f7ffd51"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/wheel-source-proof-log-extracted.json",
+      "git_blob": "5fccdf7e4a47c1e170a6781e01123a1b12ebe910",
+      "utf8_bytes": 481,
+      "sha256": "cbc92d5177f40ac8b1ba534ade9173ad468d96a4ed832d2ff3b024fb0732aa44"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/native-result-log-extracted.json",
+      "git_blob": "2212b9bbc38ca755d438bb506c085a22ac1e5439",
+      "utf8_bytes": 1255,
+      "sha256": "4e601fe60c55cc67ab632fd6ef4f8b5eb2f6fc9707b88a0eb9d82ed978d32896"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/native-module-identity.json",
+      "git_blob": "a17c4e1965d5465a8ebd860e58567d2059b70d15",
+      "utf8_bytes": 1994,
+      "sha256": "2caaad423fead519cf0b922ab287f19b52e821b282c45076bffa15c1ad4317ec"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/artifact-metadata.json",
+      "git_blob": "20e6d3cbc1bfa22618edfb3556f88683cc370339",
+      "utf8_bytes": 989,
+      "sha256": "3d12ee59d7b9cc0a04d9e2174513a4793285911d4f42b227bf557eef55e52e30"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/qualification.json",
+      "git_blob": "430d8ac3d5d2884d1ceec3843070f9c575ac9926",
+      "utf8_bytes": 5711,
+      "sha256": "29c4c2df03b53cb8c655453e789f995ea94d2c6337f5ba525f2dd70e15f32911"
+    },
+    {
+      "path": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography-pr-46111582006/README.md",
+      "git_blob": "9f7e097ea18b7ea7a8b516e31606ec524902080d",
+      "utf8_bytes": 1358,
+      "sha256": "47477cc8457d3c3ea3d4975ca89df737f556ed7bc7bdeffb071fc195c802aed4"
+    }
+  ],
+  "readback": "Every listed blob fetched and compared completely.",
+  "original_archive_bytes_downloaded": false
+}

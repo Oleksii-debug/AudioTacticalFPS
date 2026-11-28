@@ -1,0 +1,21 @@
+[
+  {
+    "id": 15251066405,
+    "name": "carr-v3-evidence-46105047699-1",
+    "size_in_bytes": 207891,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251066405",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251066405/zip",
+    "expired": false,
+    "created_at": "2026-11-28T05:49:17Z",
+    "expires_at": "2026-12-05T05:49:16Z",
+    "updated_at": "2026-11-28T05:49:17Z",
+    "digest": "sha256:88e306136ddefc4dc1f284b1971494d52e9b93611fbbfd1c5c619637a546c05c",
+    "workflow_run": {
+      "id": 46105047699,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "f8311d17fa960448b350cb739b5a90584c30c74b"
+    }
+  }
+]

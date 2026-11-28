@@ -1,0 +1,12 @@
+{
+  "provenance": "JSON emitted in the completed decoded log; original artifact member not read.",
+  "value": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "wheel_sha256": "e28350966b525750a5e24420cb711a43b376331f32e914d05d080d7c78a3c220"
+  }
+}
