@@ -1,0 +1,138 @@
+{
+  "schema": "carr-word-ui-completion-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "baseline": {
+    "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "file": {
+    "path": "carr-library/tests/ui/test_word_citations.py",
+    "before_git_blob": "fc46e14535806decdb977e98fcd91948d8c3da52",
+    "after_git_blob": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+    "before_sha256": "6efb783428d68185ffc9c95123cb2f9eed698fa1a730b960fbb33f6589da09a6",
+    "after_sha256": "53690c9a9e23421616bed04f12edfeedb1fd30b51b8f8a8cf51985e22b95e966",
+    "before_utf8_bytes": 11859,
+    "after_utf8_bytes": 15860
+  },
+  "observed_failure": {
+    "run_id": 46105059505,
+    "job_id": 140855843797,
+    "checkout_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "event": "pull_request",
+    "module": "tests/ui/test_word_citations.py",
+    "passed": 14,
+    "failed": 5,
+    "skipped": 0,
+    "module_seconds": 128.58,
+    "failed_cases": [
+      "test_real_formatter_and_native_owner_use_one_existing_executor",
+      "test_modal_return_cannot_clear_revoked_approval_before_dispatch[cancel]",
+      "test_modal_return_cannot_clear_revoked_approval_before_dispatch[dialog-close]",
+      "test_modal_return_cannot_clear_revoked_approval_before_dispatch[desktop-close]",
+      "test_modal_return_cannot_clear_revoked_approval_before_dispatch[library-changed]"
+    ],
+    "observed_status_messages": [
+      "Captured the named open Word document. Choose a change and prepare a preview.",
+      ""
+    ],
+    "historical_exception_type": "NOT_RECORDED",
+    "historical_case_durations": "NOT_RETAINED",
+    "cause": "NOT_PROVEN: a Future readiness TimeoutError is compatible with the blank message; the console does not identify the exception.",
+    "trace_git_blob": "702b9dd6e4839024fb14957347d93947b40efffb",
+    "full_decoded_log_git_blob": "026be596ce57ccbd84cd66f49ad54c2dc4ccb512",
+    "evidence_tree": "521a90a4dddbb2353207010cced7d3cfb3102eeb",
+    "per_case_junit_limit": "ci_check.py writes the suite XML under TemporaryDirectory and removes it after an ordinary verdict; only process-cleanup failure retains that directory. MAIN uploads ci-results, not the deleted temporary suite files.",
+    "ci_check_git_blob": "801ae3d91b0bb287bcb10d987c4af37d234db722"
+  },
+  "comparison": {
+    "commit": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+    "run_id": 46103182988,
+    "job_id": 140850017588,
+    "scope": "Separate exact source MAIN trial; no transferred result",
+    "passed": 19,
+    "failed": 0,
+    "module_seconds": 78.95,
+    "evidence_tree": "89dbcc4105879870553eaa478dff19ac582c8a40",
+    "python": "Both observed trials report3.11.9.",
+    "temp_path": "Both JUnit paths use C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-*; the fixture tmp_path is not in the failure trace."
+  },
+  "unchanged_source_identity": [
+    {
+      "path": "carr-library/tests/ui/test_word_citations.py",
+      "f831": "fc46e14535806decdb977e98fcd91948d8c3da52",
+      "current": "fc46e14535806decdb977e98fcd91948d8c3da52"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/word_citations.py",
+      "f831": "5934777dd0319a2a3acc724db7040ea19f4a64bd",
+      "current": "5934777dd0319a2a3acc724db7040ea19f4a64bd"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_formatting.py",
+      "f831": "9a8d8ee4be27589c976eb5e74574e313af1d2981",
+      "current": "9a8d8ee4be27589c976eb5e74574e313af1d2981"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/formatting.py",
+      "f831": "798560a96e409047dd36a6f77e1ca6a864c5ccc1",
+      "current": "798560a96e409047dd36a6f77e1ca6a864c5ccc1"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "f831": "fe77a11a0d99fba0348263198b2feb3379dfa3aa",
+      "current": "fe77a11a0d99fba0348263198b2feb3379dfa3aa"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_com.py",
+      "f831": "2cd382b6105053d8ae0ccdd9ce83d2f833148365",
+      "current": "2cd382b6105053d8ae0ccdd9ce83d2f833148365"
+    },
+    {
+      "path": "carr-library/tests/fixtures/word_model.py",
+      "f831": "1b2d0fbc1917b20f2229f1416f47424e0e8cd388",
+      "current": "1b2d0fbc1917b20f2229f1416f47424e0e8cd388"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_fields.py",
+      "f831": "f89df65016f12aff454a71fe93f7ff333044626e",
+      "current": "f89df65016f12aff454a71fe93f7ff333044626e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/worker_lifetime.py",
+      "f831": "6357a490ff89a1cb58ea3733a177ddbdedccc2fd",
+      "current": "6357a490ff89a1cb58ea3733a177ddbdedccc2fd"
+    }
+  ],
+  "diagnosed_fixture_contract": [
+    "Old Frame.finish removed the callback tuple before waiting and caught its own future.result(timeout=10) readiness exception inside business-failure delivery.",
+    "Actual DesktopFrame schedules finish through Future.add_done_callback and reads result only after the Future is terminal.",
+    "New Frame.finish uses an Event set by that same callback contract. It keeps the existing10-second readiness bound outside the business-exception handler. Readiness failure retains callback queue and busy state, then raises a labeled harness error.",
+    "A genuinely completed worker TimeoutError or ValueError still reaches the existing failed callback."
+  ],
+  "limits": {
+    "readiness_seconds_before": 10,
+    "readiness_seconds_after": 10,
+    "formatter_seconds_before": 30,
+    "formatter_seconds_after": 30,
+    "production_files_changed": 0,
+    "existing_cases": 19,
+    "additional_cases": 3,
+    "planned_cases": 22,
+    "old_assertion_or_raises_lines_preserved": 61,
+    "diagnostic": "Failure-only; Future done/running/cancelled flags, elapsed time, at most12 stack frames and6000 characters per existing single-worker thread. No local variable values or user documents."
+  },
+  "verification": {
+    "full_blob_readback": "EXACT",
+    "full_inverse": "EXACT",
+    "original_test_function_section": "BYTE_IDENTICAL",
+    "original_assertions": "UNCHANGED",
+    "peer": "/root/voice_reading: CLEAR for exact047bc60d / da59c0ff",
+    "runtime_tests": "NOT_RUN",
+    "historical_failures_resolved": "NOT_CLAIMED"
+  },
+  "selector_scope": {
+    "component_and_canonical_at_2df": "Neither workflow selects tests/ui/test_word_citations.py; their successful historical receipts do not qualify this suite.",
+    "required_focused_selector": "tests/ui/test_word_citations.py"
+  }
+}

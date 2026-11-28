@@ -1,0 +1,72 @@
+{
+  "schema": "carr-focused-word-receiving-workflow/1",
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "baseline": {
+    "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "purpose": "Resolve the observed five Word preview failures using a corrected completion-only test fixture and unchanged production code. This additional scope does not replace ordinary/full Windows or release gates.",
+  "requirement": "Meaningful exact-source runtime evidence and honest failure ownership; updated finalization scope/traceability and acceptance.",
+  "reused_workflow": {
+    "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "git_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1"
+  },
+  "path": ".github/workflows/carr-word-preview-evaluation.yml",
+  "branch": "carr/word-preview-evaluation-20261128",
+  "selected_modules": [
+    "tests/ui/test_word_citations.py"
+  ],
+  "planned_cases": 22,
+  "original_cases": 19,
+  "new_cases": 3,
+  "test_blob": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+  "source_scope": "Exact diagnostic event head, complete source/wheel/installed application byte inventory, original strict ci_check source policy.",
+  "installed_scope": "Exact same selector under -I/-B/-X utf8, empty pytest pythonpath, importlib mode and original PYTEST_CHILD no-network/xfail policy; strict JUnit no failures/errors/skips.",
+  "reused_steps": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    10
+  ],
+  "new_scope_omissions": "The standard-installer-specific toolchain, core bundle build and Install/Repair/Uninstall steps are outside this new Word-only workflow. Their original required workflow is untouched.",
+  "retained_guards": [
+    "contents:read only",
+    "pinned checkout/setup/upload actions",
+    "exact event checkout",
+    "credential persistence disabled",
+    "Windows dependency wheel hashes and package versions",
+    "dependency pip check",
+    "committed source wheel verification",
+    "all Python module bytes compared to checkout",
+    "venv and site-packages origin",
+    "original strict source and installed failure/skip/xfail handling",
+    "8min dependency step,12min source step,12min installed step",
+    "always-upload only text/JSON/XML receipts",
+    "immutable-head concurrency with cancel-in-progress false"
+  ],
+  "new_job_bound": {
+    "windows_minutes": 35,
+    "note": "New isolated diagnostic job budget covers retained8+12+12 minute phase ceilings and setup; no existing workflow or product deadline changes."
+  },
+  "fixture_review": {
+    "root": "CLEAR; exact inverse and all original test-function bytes retained",
+    "voice": "CLEAR for047bc60d",
+    "readiness_seconds": 10,
+    "formatter_seconds": 30,
+    "historical_failure_cause": "NOT_PROVEN; compatible fixture timing failure is distinguished from a real completed worker error",
+    "execution": "NOT_RUN"
+  },
+  "qualification_limits": [
+    "This suite models Word/COM and wx controls but uses the actual formatter/native owner. It does not qualify an installed Microsoft Word instance, manual NVDA, selected audio, or complete desktop.",
+    "No result transfers between diagnostic and application commit identities.",
+    "All383 application Python blobs remain byte-identical to2df; no production file is changed."
+  ],
+  "content_digest": {
+    "sha256": "00727aede6d28e3fb04d33a1facc55036c815a51c1b55d4af91a261a9e745d3d",
+    "bytes": 13285
+  }
+}

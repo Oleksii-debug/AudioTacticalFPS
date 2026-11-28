@@ -4,6 +4,8 @@ import importlib.util
 from pathlib import Path
 import sys
 import threading
+import time
+import traceback
 from types import SimpleNamespace
 
 import pytest
@@ -39,10 +41,33 @@ class Frame:
         # Real DesktopFrame.run_job returns None; callers must not treat it as a Future.
         return None
 
+    @staticmethod
+    def _await_completed(future, timeout):
+        completed = threading.Event()
+        future.add_done_callback(lambda _future: completed.set())
+        return completed.wait(timeout)
+
     def finish(self):
-        future, done, failed, discard = self.completions.pop(0)
+        future, done, failed, discard = self.completions[0]
+        started = time.monotonic()
+        if not self._await_completed(future, 10):
+            # The real desktop receives completion only from add_done_callback.
+            # A test readiness timeout must not manufacture a business failure
+            # or revoke a still-running operation's callback/ownership.
+            frames = sys._current_frames()
+            workers = []
+            for thread in tuple(self.executor._threads):
+                frame = frames.get(thread.ident)
+                if frame is not None:
+                    workers.append("".join(traceback.format_stack(frame, limit=12))[-6000:])
+            raise TimeoutError("Desktop test completion was not ready within 10 seconds: " + repr({
+                "elapsed_seconds": time.monotonic() - started,
+                "future_done": future.done(), "future_running": future.running(),
+                "future_cancelled": future.cancelled(), "worker_stacks": workers,
+            }))
+        self.completions.pop(0)
         try:
-            value = future.result(timeout=10)
+            value = future.result()
         except BaseException as exc:
             self.working = self.busy = False
             if not self._closing:
@@ -294,3 +319,70 @@ def test_native_probe_requires_exact_explicit_office_fixture_authorization():
                                           expected_document=None, fixture_token=None))
     with pytest.raises(ValueError, match="do not apply"):
         probe.validate_options(SimpleNamespace(**{**valid, "mode": "modeled"}))
+
+
+def test_pending_completion_does_not_dispatch_a_word_failure(ready, monkeypatch):
+    values, app, frame, bridge, actions, reports = ready
+    entered, release = threading.Event(), threading.Event()
+    deliveries = []
+    value = object()
+
+    def work():
+        entered.set()
+        assert release.wait(5), "release the exact still-owned worker"
+        return value
+
+    frame.run_job("Pending modeled desktop completion", work,
+                  lambda result: deliveries.append(("done", result)),
+                  lambda error: deliveries.append(("failed", error)),
+                  discard=lambda result: deliveries.append(("discard", result)))
+    queued = frame.completions[0]
+    future = queued[0]
+    actual_wait = Frame._await_completed
+    observed = []
+
+    def pending_at_readiness_boundary(selected, timeout):
+        observed.append((selected, timeout))
+        # Model expiration of the existing readiness bound without spending it.
+        # The actual worker remains blocked and the real Future stays pending.
+        return actual_wait(selected, 0)
+
+    try:
+        assert entered.wait(3)
+        monkeypatch.setattr(Frame, "_await_completed",
+                            staticmethod(pending_at_readiness_boundary))
+        with pytest.raises(TimeoutError, match="completion was not ready within 10 seconds"):
+            frame.finish()
+        assert observed == [(future, 10)]
+        assert frame.completions == [queued]
+        assert frame.working and frame.busy
+        assert future.running() and not future.done()
+        assert deliveries == []
+        release.set()
+        monkeypatch.setattr(Frame, "_await_completed", staticmethod(actual_wait))
+        assert frame.finish() is value
+        assert deliveries == [("done", value)]
+        assert frame.completions == [] and not frame.working and not frame.busy
+    finally:
+        release.set()
+
+
+@pytest.mark.parametrize("error_type", [TimeoutError, ValueError],
+                         ids=["worker-timeout", "worker-value-error"])
+def test_completed_worker_exception_still_uses_business_failure_delivery(ready, error_type):
+    values, app, frame, bridge, actions, reports = ready
+    error = error_type()
+    deliveries = []
+
+    def work():
+        raise error
+
+    frame.run_job("Completed modeled worker failure", work,
+                  lambda result: deliveries.append(("done", result)),
+                  lambda failure: deliveries.append(("failed", failure)),
+                  discard=lambda result: deliveries.append(("discard", result)))
+    future = frame.completions[0][0]
+    assert Frame._await_completed(future, 10)
+    assert frame.finish() is error
+    assert deliveries == [("failed", error)]
+    assert frame.completions == [] and not frame.working and not frame.busy
