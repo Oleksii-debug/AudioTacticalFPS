@@ -974,3 +974,203 @@ def test_native_tasks_manager_observer_preserves_actual_callback_result_and_fail
     manager.invoke = replacement
     restore()
     assert manager.invoke is replacement and invoked == ['operations.open']
+
+
+
+@pytest.mark.parametrize('displayed, focus_attempts', [
+    (3, 1), (3, 3), (3, None), (2, 1),
+])
+def test_native_tasks_reviewed_policy_edit_survives_real_key_focus_retries(
+        displayed, focus_attempts):
+    import ast
+    import ctypes
+    from ctypes import wintypes
+    import os
+    from pathlib import Path
+    from types import SimpleNamespace
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts/windows_operations_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    names = {'advance', 'release', 'foreground', 'key', 'tick'}
+    methods = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in methods} == names
+    tick = next(node for node in methods if node.name == 'tick')
+    factory = ast.parse('def make_tick(gate, detached):\n    return None\n').body[0]
+    factory.body = [tick, ast.Return(value=ast.Name(id='tick', ctx=ast.Load()))]
+    module = ast.fix_missing_locations(ast.Module(
+        body=[node for node in methods if node is not tick] + [factory], type_ignores=[]))
+
+    value, focus, clock, held = [displayed], [None], [0.0], [None]
+    checks, edits, presses, releases, scheduled, errors, focus_requests = [], [], [], [], [], [], []
+    phase = ['refreshed_policy', 0.0]
+    class Control:
+        def SetFocus(self):
+            focus_requests.append(self)
+            if focus_attempts is not None and len(focus_requests) >= focus_attempts:
+                focus[0] = self
+        def GetValue(self): return value[0]
+        def SetValue(self, changed):
+            value[0] = changed
+            edits.append(changed)
+
+    save, cpu = Control(), Control()
+    dialog = SimpleNamespace(controller=SimpleNamespace(
+        busy=False, policy=SimpleNamespace(cpu_slots=3), status='Refreshed policy'),
+        cpu=cpu, buttons={'save': save})
+    top = SimpleNamespace(GetHandle=lambda: 900, Raise=lambda: None)
+    def thread_owner(handle, destination):
+        assert handle == 900
+        destination._obj.value = os.getpid()
+    def check(label, condition):
+        assert condition, label
+        checks.append(label)
+    def down(code, modifiers):
+        presses.append((code, modifiers))
+        return True
+    def up(code, modifiers):
+        releases.append((code, modifiers))
+        return True
+
+    environment = dict(ctypes=ctypes, wintypes=wintypes, os=os, traceback=traceback,
+        monotonic=lambda: clock[0], deadline=120.0, phase=phase, held=held,
+        simulator=SimpleNamespace(KeyDown=down, KeyUp=up), check=check, abort=errors.append,
+        user32=SimpleNamespace(GetForegroundWindow=lambda: 900,
+            GetWindowThreadProcessId=thread_owner, SetForegroundWindow=lambda handle: True),
+        window=lambda title: dialog if title == 'Tasks and resources' else None,
+        wx=SimpleNamespace(MOD_NONE=0, WXK_SPACE=32, GetTopLevelParent=lambda control: top,
+            Window=SimpleNamespace(FindFocus=lambda: focus[0]),
+            CallLater=lambda delay, callback: scheduled.append((delay, callback))))
+    exec(compile(module, str(script), 'exec'), environment)
+    callback = environment['make_tick'](None, None)
+    callback()
+    if displayed != 3:
+        assert len(errors) == 1 and 'native Refresh shows the actual current policy' in errors[0]
+        assert not checks and not edits and not presses and not scheduled
+        assert phase[0] == 'refreshed_policy' and value[0] == displayed
+        return
+
+    assert checks == ['native Refresh shows the actual current policy']
+    assert edits == [2] and value[0] == 2 and phase[0] == 'save_policy'
+    assert not errors and not presses and not scheduled
+    for unused in range(focus_attempts if focus_attempts is not None else 3):
+        callback()
+        assert phase[0] == 'save_policy' and not presses and not scheduled
+        assert value[0] == 2 and edits == [2] and len(checks) == 1 and not errors
+    if focus_attempts is None:
+        clock[0] = 16.0
+        callback()
+        assert len(errors) == 1 and 'Native Tasks/resources timed out at save_policy' in errors[0]
+        assert not presses and not releases and not scheduled and held == [None]
+    else:
+        callback()
+        assert phase[0] == 'saved_policy' and presses == [(32, 0)]
+        assert held == [(32, 0)] and not errors and len(scheduled) == 1
+        delay, finish_release = scheduled.pop()
+        assert delay == 40
+        finish_release()
+        assert releases == [(32, 0)] and held == [None]
+    assert edits == [2] and len(checks) == 1
+    assert dialog.controller.policy.cpu_slots == 3
+
+
+
+@pytest.mark.parametrize('focus_change', [None, 'missing', 'wrong-id', 'wrong-handle'])
+def test_native_tasks_results_return_requires_prior_native_tab_focus_and_normal_close(
+        tmp_path, focus_change):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace
+    import traceback
+    from carr_library.ui import keyboard_settings as keyboard
+    from carr_library.ui.command_registry import CommandRegistry, CommandSpec
+
+    script = Path(__file__).resolve().parents[2] / 'scripts/windows_operations_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    tick, = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name == 'tick']
+    named, = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name == 'named']
+    factory = ast.parse('def make_tick(gate, detached):\n    return None\n').body[0]
+    factory.body = [tick, ast.Return(value=ast.Name(id='tick', ctx=ast.Load()))]
+    module = ast.fix_missing_locations(ast.Module(body=[named, factory], type_ignores=[]))
+
+    manager = keyboard.KeyboardManager(registry=CommandRegistry((
+        CommandSpec('operations.open', 'Tasks and resources'),)))
+    keys, checks, notes, errors, locks = [], [], [], [], []
+    focus, clock, windows = [None], [0.0], {'palette': True, 'tasks': False}
+    phase = ['select_results', 0.0]
+    search = SimpleNamespace(GetName=lambda: 'Search commands by name',
+        GetValue=lambda: 'Tasks and resources')
+    results = SimpleNamespace(GetName=lambda: 'Matching commands and shortcuts',
+        GetId=lambda: 92, GetHandle=lambda: 904, GetSelection=lambda: 0,
+        GetCount=lambda: 1, GetString=lambda index: 'Tasks and resources — Not assigned')
+    palette = SimpleNamespace(GetChildren=lambda: (search, results), GetDefaultItem=lambda: None)
+    status = object()
+    dialog = SimpleNamespace(controller=SimpleNamespace(busy=False,
+        policy=SimpleNamespace(cpu_slots=2)), status=status,
+        selection=lambda: SimpleNamespace(key='assistant:retained-job'))
+    def advance(stage): phase[:] = [stage, clock[0]]
+    def check(label, condition):
+        assert condition, label
+        checks.append(label)
+    def key(control, value, stage, modifiers=0):
+        keys.append((control, value, stage))
+        advance(stage)
+        return True
+    def window(title):
+        if title == 'Find a command':
+            return palette if windows['palette'] else None
+        return dialog if windows['tasks'] else None
+    def native_lock(path):
+        lock = NativeLock(path)
+        locks.append(lock)
+        return lock
+
+    environment = dict(monotonic=lambda: clock[0], deadline=120.0, phase=phase, held=[None],
+        frame=SimpleNamespace(keyboard_commands=manager, working=False),
+        identity='retained-job', broker=SimpleNamespace(root=tmp_path), NativeLock=native_lock,
+        check=check, advance=advance, key=key, window=window, abort=errors.append,
+        note=lambda kind, **values: notes.append(dict(kind=kind, **values)),
+        traceback=traceback, wx=SimpleNamespace(WXK_TAB=9, WXK_RETURN=13, WXK_ESCAPE=27,
+            Window=SimpleNamespace(FindFocus=lambda: focus[0])))
+    exec(compile(module, str(script), 'exec'), environment)
+    callback = environment['make_tick'](None, None)
+    try:
+        callback()
+        assert keys == [(search, 9, 'results_focus')] and not errors
+        assert phase[0] == 'results_focus' and len(checks) == 1
+        # A distinct Python proxy must prove the exact native ID and HWND.
+        focus[0] = None if focus_change == 'missing' else SimpleNamespace(
+            GetId=lambda: 93 if focus_change == 'wrong-id' else 92,
+            GetHandle=lambda: 905 if focus_change == 'wrong-handle' else 904)
+        callback()
+        if focus_change is not None:
+            assert keys == [(search, 9, 'results_focus')] and not notes and not locks
+            assert phase[0] == 'results_focus' and len(checks) == 1 and not errors
+            clock[0] = 16.0
+            callback()
+            assert len(errors) == 1 and 'Native Tasks/resources timed out at results_focus' in errors[0]
+            return
+
+        assert keys[-1] == (results, 13, 'results_loaded') and phase[0] == 'results_loaded'
+        assert notes == [dict(kind='results-enter-ready', focus_id=92,
+            focus_handle=904, selected=0, default_item_supported=True, default_item_id=None)]
+        assert len(checks) == 2 and not locks and not errors
+        windows.update(palette=False, tasks=True)
+        callback()
+        assert keys[-1] == (status, 27, 'results_closed') and phase[0] == 'results_closed'
+        assert len(checks) == 3 and not locks and not errors
+        callback()
+        assert len(checks) == 3 and not locks and phase[0] == 'results_closed'
+        windows['tasks'] = False
+        callback()
+        assert phase[0] == 'open_blocked' and len(locks) == 1 and locks[0].held
+        assert len(checks) == 5 and not errors
+        assert [(value, stage) for control, value, stage in keys] == [
+            (9, 'results_focus'), (13, 'results_loaded'), (27, 'results_closed')]
+        assert dialog.controller.policy.cpu_slots == 2
+    finally:
+        for lock in locks:
+            if lock.held:
+                lock.release()
