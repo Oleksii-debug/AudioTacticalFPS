@@ -981,7 +981,10 @@ class ProductionService:
                     metadata['markers'] = marker_timeline
                     metadata['marker_notice'] = 'Authored scene annotations; not transcript alignment or source citations.'
                 from ..audio.audiobook import line_lrc
-                for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
+                from .interchange import chapter_cues
+                cue_files, metadata['editor_interchange'] = chapter_cues(
+                    project, metadata, cancelled=stopping)
+                for name, raw in [*cue_files, ('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
                                   ('script.lrc', line_lrc(timeline).encode('utf-8')),
                                   ('timeline.json', encode(metadata)),
