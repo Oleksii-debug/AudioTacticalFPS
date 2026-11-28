@@ -208,7 +208,7 @@ def _run_native():
         slices, worker, session, retained_assets)
     from carr_library.storage import revisions
     from carr_library.ui import (desktop_app, import_center, import_resources,
-        backup_resources, backup_actions, backup_incremental_dialog)
+        backup_resources, backup_actions, backup_incremental_dialog, save_actions)
 
     binding_path = Path(__file__).with_name('windows_publishing_smoke.py')
     sibling_identity = {str(path.resolve()): sha256(path.read_bytes()).hexdigest()
@@ -218,7 +218,7 @@ def _run_native():
         backup_incremental, backup_budget, backup_options, backup_sidecars,
         cleanup, process, intake, batches, batch_pages, batch_scan, resource_budget,
         slices, worker, session, retained_assets, revisions, desktop_app, import_center,
-        import_resources, backup_resources, backup_actions, backup_incremental_dialog)
+        import_resources, backup_resources, backup_actions, backup_incremental_dialog, save_actions)
     identities = binding.verify_installed_sources(*modules)
     checks, errors, jobs, peers, directory_answers = [], [], [], [], []
     frame, failure_handler = None, None
@@ -506,7 +506,13 @@ def _run_native():
 
     def command(label, title):
         check('menu operation starts with the same idle Desktop owner', quiet() and not owners())
-        menu = frame.GetMenuBar().GetMenu(0)
+        bar = frame.GetMenuBar()
+        count = bar.GetMenuCount()
+        check('native menu inventory has a finite positive count', 0 < count <= 64)
+        libraries = [bar.GetMenu(index) for index in range(count)
+                     if bar.GetMenuLabel(index).replace('&', '') == 'Library']
+        check('one actual Library menu caption', len(libraries) == 1)
+        menu = libraries[0]
         items = [item for item in menu.GetMenuItems() if not item.IsSeparator() and item.IsEnabled()]
         matches = [index for index, item in enumerate(items) if item.GetItemLabelText() == label]
         check('one actual Library menu command: ' + label, len(matches) == 1)
