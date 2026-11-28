@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 import json
 
-from ..catalog.read_views import browse_editions
+from ..catalog.read_views import _edition_keys
 
 MAX_TIMEOUT_SECONDS = 24 * 60 * 60
 LIBRARIES_PER_PAGE = 20
@@ -112,13 +112,12 @@ def select_window(db, catalog, *, scope, cursor=None, check=lambda: None, **filt
     """
     check()
     current = _cursor(cursor, scope)
-    views = browse_editions(catalog, after=current['edition_after'],
-                            limit=CATALOG_PAGE_SIZE, **filters)
+    keys = _edition_keys(catalog, after=current['edition_after'],
+                         limit=CATALOG_PAGE_SIZE, **filters)
     check()
-    allowed = {view.edition_id: view.work_id for view in views}
-    if not views:
+    allowed = dict(keys)
+    if not keys:
         return SourceWindow({}, (), current, None, sha256(b'[]').hexdigest(), 0)
-    next_catalog = browse_editions(catalog, after=views[-1].edition_id, limit=1, **filters)
     previous = current['after_page']
     if previous is not None:
         edition, revision, ordinal, page_id = previous
@@ -185,9 +184,12 @@ def select_window(db, catalog, *, scope, cursor=None, check=lambda: None, **filt
     if more_pages:
         last = rows[-1]
         following = {**current, 'after_page': [last[1], last[2], last[3], last[0]]}
-    elif next_catalog:
-        following = {**current, 'edition_after': views[-1].edition_id, 'after_page': None}
     else:
-        following = None
+        # An unfinished page range already determines its continuation. Only
+        # a completed range needs the next catalog key, in this same snapshot.
+        next_catalog = _edition_keys(catalog, after=keys[-1][0], limit=1, **filters)
+        check()
+        following = ({**current, 'edition_after': keys[-1][0], 'after_page': None}
+                     if next_catalog else None)
     identity = sha256(canonical([scope, tuple(allowed.items()), rows]).encode('utf-8')).hexdigest()
     return SourceWindow(allowed, tuple(row[0] for row in rows), current, following, identity, characters)

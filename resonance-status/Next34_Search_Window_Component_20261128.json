@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "component": "catalog identity projection with unchanged paged-search authority and retained-capacity profiles",
+  "created_utc": "2026-11-28 01:20:08 UTC",
+  "base_head": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+  "base_tree": "5a8592921f44839f9b219ddab038a9a2c0e1de05",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "before": "d2e2045738ace3ca99ac5decefc3d8ba3a955297",
+      "after": "53bdbf577bd7da349347d8a58cb7f0f5792db138"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "before": "ebd2a0d92dbc14ab2620e0d540ebb76e4e02c9c6",
+      "after": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615"
+    },
+    {
+      "path": "carr-library/tests/search/test_window_catalog_projection.py",
+      "before": null,
+      "after": "a1b813b72e036a68fa8683be40bd91293d6b8d51"
+    },
+    {
+      "path": "carr-library/docs/SEARCH_CATALOG_WINDOW_WORK.md",
+      "before": null,
+      "after": "f7416aa0a7ee36aba6a2652799da5b1d59b90b27"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "841bc48f36b70415d0aedbd67987e0bcd5f2d409",
+      "after": "7aa53346bdf525229187050302ce8a817fc49c46"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "363e9a4e3d99dff012479e8452f8c9036e42a162",
+      "after": "4ece19add65d92e6f04c63ac1066b11549dd5fcf"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "before": "8d9e7b1c94907ce298c3931cf584585ca69538e9",
+      "after": "c6fdb9f37292b3e7f063028ae9daa4201647d20b"
+    }
+  ],
+  "new_test": {
+    "path": "tests/search/test_window_catalog_projection.py",
+    "cases": 27,
+    "functions": [
+      "test_private_keys_are_exact_public_view_projection_with_literal_filters",
+      "test_identity_query_does_not_repeat_unused_author_fanout",
+      "test_identity_query_preserves_sqlite_cancellation_and_following_snapshot_read",
+      "test_every_window_keeps_old_wire_and_only_necessary_next_catalog_lookup",
+      "test_cancellation_after_deferred_lookup_returns_no_window_and_preserves_snapshot",
+      "test_new_snapshot_never_adopts_stale_catalog_or_active_continuation",
+      "test_private_projection_preserves_public_authorization_and_input_refusals"
+    ],
+    "companions": []
+  },
+  "required_execution": {
+    "capacity": {
+      "old_whole": 11,
+      "old_cases": 189,
+      "new_whole": 12,
+      "source_cases": 216,
+      "installed_cases": 216,
+      "installed_origins": 21,
+      "installed_child": "BYTE_IDENTICAL",
+      "per_child_seconds": 600,
+      "source_aggregate_seconds": 3200,
+      "outer_helper_minutes": 170,
+      "outer_validation_job_minutes": 195,
+      "native_backup_checks": 44,
+      "native_backup_origins": 12
+    },
+    "focused_linux": {
+      "old_whole": 34,
+      "new_whole": 35,
+      "old_cases": 450,
+      "new_cases": 477
+    },
+    "focused_windows": {
+      "old_whole": 33,
+      "new_whole": 34,
+      "old_cases": 449,
+      "new_cases": 476
+    },
+    "original_other_source_jobs": "BYTE_IDENTICAL"
+  },
+  "profile_contract": {
+    "profiles": [
+      [
+        1000,
+        20
+      ],
+      [
+        10000,
+        20
+      ],
+      [
+        50000,
+        20
+      ],
+      [
+        50000,
+        40
+      ]
+    ],
+    "result_page_size": 37,
+    "source_window_pages": 100,
+    "phase_seconds": 3600,
+    "job_minutes": 330,
+    "complete_backup": true,
+    "backup_capacity_profile": "large-source-v1",
+    "source_origins": 21,
+    "profile_work_and_bounds": "UNCHANGED"
+  },
+  "preserved": [
+    "public complete EditionView output and validation",
+    "current Catalog transaction, FK/workspace/collection guards",
+    "literal metadata/author predicates, fixed keyset/exact-ID SQL, BINARY order",
+    "raw source window rows/digest/wire/character limits",
+    "both independent application reads and hidden-result lookahead",
+    "retained-source authentication and text attestation",
+    "all original whole suites, strict JUnit/no skips or xfail, wheel proof and installed payload hashes",
+    "native backup/control obligations and deterministic report-only outputs",
+    "all existing child, cleanup, firewall, native and corpus envelopes"
+  ],
+  "source_audit": {
+    "search_modules_scanned": 31,
+    "paging_browse_editions_references": 0,
+    "public_browse_editions_callers": "Existing test_search_query_work.py imports public catalog.read_views API, retained unchanged."
+  },
+  "review": {
+    "root_source": "ACCEPTED_STATIC_NOT_RUN",
+    "locate_source_and_tests": "ACCEPTED_STATIC_NOT_RUN for a1b813/53bdb/1c8",
+    "gates": "Exact reverse reconstruction independently checkable; peer pending",
+    "runtime": "NOT_RUN",
+    "performance": "NOT_MEASURED"
+  },
+  "prior_measured_evidence": "57c82d60133c51fbd62deb86c8c96153057c4da3",
+  "claims": {
+    "new_regression_execution": "NOT_RUN",
+    "new_query_VM_work": "NOT_RUN",
+    "speedup": "NOT_MEASURED",
+    "two_million_complete": "NOT_ESTABLISHED",
+    "ordinary_import_throughput": "NOT_INFERRED"
+  },
+  "readback": "All seven successor blobs fetched byte-exact; no refs moved."
+}
