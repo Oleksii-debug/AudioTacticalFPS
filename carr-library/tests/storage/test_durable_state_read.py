@@ -189,3 +189,208 @@ def test_windows_handle_transfer_closes_exactly_its_current_owner(tmp_path, monk
     assert closed_descriptors == ([descriptor] if failure == 'stream' else [])
     assert len(calls) == 1
     assert calls[0][1:] == (0x80000000, 0x7, None, 3, 0x00200000, None)
+
+
+def test_local_path_uses_one_fresh_component_snapshot_per_call(tmp_path, monkeypatch):
+    path = tmp_path / 'parent' / 'child' / 'state.json'
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b'{}')
+    path = path.resolve(strict=True)
+    expected = path.resolve(strict=True)
+    ordered = list(reversed((path.absolute(), *path.absolute().parents)))
+    real_lstat = type(path).lstat
+    calls, sizes = [], []
+
+    def observed(candidate):
+        value = real_lstat(candidate)
+        calls.append(candidate)
+        if candidate == path:
+            sizes.append(value.st_size)
+        return value
+
+    monkeypatch.setattr(type(path), 'lstat', observed)
+    assert durable_state.local_path(path, root=tmp_path, exists=True) == expected
+    assert calls == ordered
+    path.write_bytes(b'{"changed":true}')
+    assert durable_state.local_path(path, root=tmp_path, exists=True) == expected
+    assert calls == ordered + ordered
+    assert sizes == [2, len(b'{"changed":true}')]
+
+
+@pytest.mark.parametrize('exists', [False, True])
+def test_local_path_preserves_missing_component_resolution(tmp_path, exists):
+    path = tmp_path / 'not-created' / 'child' / 'state.json'
+    if exists:
+        with pytest.raises(FileNotFoundError):
+            durable_state.local_path(path, exists=True)
+    else:
+        assert durable_state.local_path(path) == tmp_path.resolve() / 'not-created' / 'child' / 'state.json'
+    assert not (tmp_path / 'not-created').exists()
+
+
+def test_local_path_accepts_an_actual_final_directory(tmp_path):
+    path = tmp_path / 'selected'
+    (path / 'child').mkdir(parents=True)
+    assert durable_state.local_path(path, root=tmp_path, exists=True) == path.resolve(strict=True)
+    assert durable_state.regular(path, directory=True).st_mode == path.lstat().st_mode
+    with pytest.raises(ValueError, match='regular local files'):
+        durable_state.regular(path)
+
+
+def test_local_path_refuses_an_actual_file_used_as_an_ancestor(tmp_path):
+    parent = tmp_path / 'parent'
+    parent.write_bytes(b'original')
+    with pytest.raises(ValueError, match='regular local files'):
+        durable_state.local_path(parent / 'state.json')
+    assert parent.read_bytes() == b'original'
+
+
+def test_local_path_refuses_an_actual_hard_link(tmp_path):
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{"value":1}')
+    alias = tmp_path / 'alias.json'
+    os.link(path, alias)
+    with pytest.raises(ValueError, match='regular local files'):
+        durable_state.local_path(path, exists=True)
+    assert path.read_bytes() == alias.read_bytes() == b'{"value":1}'
+
+
+def _changed_path_snapshot(value, kind):
+    fields = dict(st_mode=value.st_mode,
+                  st_file_attributes=getattr(value, 'st_file_attributes', 0),
+                  st_nlink=value.st_nlink, st_size=value.st_size)
+    if kind == 'symlink':
+        fields['st_mode'] = durable_state.stat.S_IFLNK | durable_state.stat.S_IMODE(value.st_mode)
+    elif kind == 'reparse':
+        fields['st_file_attributes'] |= 0x400
+    elif kind == 'special':
+        fields['st_mode'] = 0
+    elif kind == 'hard-link':
+        fields['st_nlink'] = 2
+    elif kind == 'unlinked':
+        fields['st_nlink'] = 0
+    else:
+        raise AssertionError(kind)
+    return SimpleNamespace(**fields)
+
+
+@pytest.mark.parametrize('kind', ['symlink', 'reparse', 'special', 'unlinked'])
+def test_local_path_snapshot_refusal_is_not_an_ignored_existence_error(tmp_path, monkeypatch, kind):
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{"value":1}')
+    path = path.resolve(strict=True)
+    real_lstat = type(path).lstat
+    streams = _track_read(monkeypatch)
+
+    def changed(candidate):
+        value = real_lstat(candidate)
+        return _changed_path_snapshot(value, kind) if candidate == path else value
+
+    monkeypatch.setattr(type(path), 'lstat', changed)
+    error_type = durable_state.UnlinkedRegularFile if kind == 'unlinked' else ValueError
+    with pytest.raises(error_type, match='regular local files') as caught:
+        durable_state.read_json(path)
+    if kind == 'unlinked':
+        assert caught.value.path == path
+    assert streams == []
+    assert path.read_bytes() == b'{"value":1}'
+
+
+@pytest.mark.parametrize('kind', ['symlink', 'reparse'])
+def test_local_path_refuses_an_untrusted_ancestor_snapshot(tmp_path, monkeypatch, kind):
+    parent = tmp_path / 'parent'
+    parent.mkdir()
+    path = parent / 'state.json'
+    path.write_bytes(b'{"value":1}')
+    parent, path = parent.resolve(strict=True), path.resolve(strict=True)
+    real_lstat = type(path).lstat
+
+    def changed(candidate):
+        value = real_lstat(candidate)
+        return _changed_path_snapshot(value, kind) if candidate == parent else value
+
+    monkeypatch.setattr(type(path), 'lstat', changed)
+    with pytest.raises(ValueError, match='regular local files'):
+        durable_state.local_path(path, exists=True)
+    assert path.read_bytes() == b'{"value":1}'
+
+
+@pytest.mark.parametrize('kind', ['symlink', 'reparse', 'special', 'hard-link', 'unlinked'])
+def test_json_keeps_its_separate_fresh_regular_check_after_path_review(tmp_path, monkeypatch, kind):
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{"value":1}')
+    path = path.resolve(strict=True)
+    real_lstat = type(path).lstat
+    observed = []
+    streams = _track_read(monkeypatch)
+
+    def changed(candidate):
+        value = real_lstat(candidate)
+        if candidate == path:
+            observed.append(value)
+            if len(observed) == 2:
+                return _changed_path_snapshot(value, kind)
+        return value
+
+    monkeypatch.setattr(type(path), 'lstat', changed)
+    error_type = durable_state.UnlinkedRegularFile if kind == 'unlinked' else ValueError
+    with pytest.raises(error_type, match='regular local files') as caught:
+        durable_state.read_json(path)
+    if kind == 'unlinked':
+        assert caught.value.path == path.resolve(strict=True)
+    assert len(observed) == 2
+    assert streams == []
+    assert path.read_bytes() == b'{"value":1}'
+
+
+def test_local_path_keeps_canonical_root_containment(tmp_path):
+    root = tmp_path / 'selected'
+    root.mkdir()
+    outside = tmp_path / 'outside.json'
+    outside.write_bytes(b'{"value":1}')
+    with pytest.raises(ValueError, match='outside the selected directory'):
+        durable_state.local_path(outside, root=root, exists=True)
+    assert outside.read_bytes() == b'{"value":1}'
+    assert list(root.iterdir()) == []
+
+
+@pytest.mark.parametrize('error_type', [FileNotFoundError, PermissionError, OSError, ValueError])
+def test_local_path_preserves_the_existence_probe_error_boundary(tmp_path, monkeypatch, error_type):
+    """The former lexists probe ignored these errors, but never skipped resolve."""
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{"value":1}')
+    path = path.resolve(strict=True)
+    expected = path.resolve(strict=True)
+    real_lstat, real_resolve = type(path).lstat, type(path).resolve
+    resolved = []
+
+    def observed(candidate):
+        if candidate == path:
+            raise error_type('controlled existence observation')
+        return real_lstat(candidate)
+
+    def resolve(candidate, strict=False):
+        resolved.append((candidate, strict))
+        return real_resolve(candidate, strict=strict)
+
+    monkeypatch.setattr(type(path), 'lstat', observed)
+    monkeypatch.setattr(type(path), 'resolve', resolve)
+    assert durable_state.local_path(path, root=tmp_path, exists=True) == expected
+    assert resolved == [(path, True), (tmp_path, True)]
+    assert path.read_bytes() == b'{"value":1}'
+
+
+def test_local_path_does_not_swallow_canonical_resolution_failure(tmp_path, monkeypatch):
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{"value":1}')
+    real_resolve = type(path).resolve
+
+    def resolve(candidate, strict=False):
+        if candidate == path:
+            raise PermissionError('controlled canonical resolution refusal')
+        return real_resolve(candidate, strict=strict)
+
+    monkeypatch.setattr(type(path), 'resolve', resolve)
+    with pytest.raises(PermissionError, match='canonical resolution refusal'):
+        durable_state.local_path(path, exists=True)
+    assert path.read_bytes() == b'{"value":1}'

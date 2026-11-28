@@ -19,9 +19,7 @@ class UnlinkedRegularFile(ValueError):
         super().__init__('State must use regular local files, without links.')
 
 
-def regular(path, *, directory=False):
-    path = Path(path)
-    value = path.lstat()
+def _regular_snapshot(path, value, *, directory=False):
     if (stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400
             or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))):
         raise ValueError('State must use regular local files, without links.')
@@ -32,16 +30,27 @@ def regular(path, *, directory=False):
     return value
 
 
+def regular(path, *, directory=False):
+    path = Path(path)
+    return _regular_snapshot(path, path.lstat(), directory=directory)
+
+
 def local_path(value, *, root=None, exists=False):
     path = Path(value).absolute()
     if str(value).startswith(('//', '\\\\')) or '\x00' in str(value):
         raise ValueError('Choose a local path.')
     for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
-            if parent != path or parent.is_dir():
-                regular(parent, directory=True)
-            else:
-                regular(parent)
+        try:
+            value = parent.lstat()
+        except (OSError, ValueError):
+            # Preserve the former lexists probe's error boundary. Canonical
+            # resolution below still decides strict existence and containment.
+            continue
+        # Validate this fresh snapshot once, without repeating the same native
+        # filesystem query. Nothing is retained between calls; regular/open
+        # checks at the eventual reader or writer remain independent.
+        _regular_snapshot(parent, value,
+                          directory=parent != path or stat.S_ISDIR(value.st_mode))
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('The path is outside the selected directory.')
