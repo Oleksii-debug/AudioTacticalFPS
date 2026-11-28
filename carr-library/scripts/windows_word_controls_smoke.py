@@ -287,14 +287,24 @@ def _native():
         for _ in range(index):
             key(wx.WXK_DOWN)
         key(wx.WXK_TAB)
-        pump(lambda: control.GetSelection() == index, 'Actual native selection did not arrive.')
+        # A choice may already have this index. Wait for the actual TAB as well,
+        # so its queued focus change cannot overtake the following button press.
+        top = wx.GetTopLevelParent(control)
+        pump(lambda: control.GetSelection() == index
+             and wx.Window.FindFocus() is not control
+             and inside(wx.Window.FindFocus(), top),
+             'Actual native selection and TAB focus departure did not arrive.')
 
     def enter(control, value):
         focus(control)
         key(ord('A'), (wx.WXK_CONTROL,))
         check('native ASCII text accepted', simulator.Text(str(value).encode('ascii')))
         key(wx.WXK_TAB)
-        pump(lambda: control.GetValue() == str(value), 'Actual native text did not arrive.')
+        top = wx.GetTopLevelParent(control)
+        pump(lambda: control.GetValue() == str(value)
+             and wx.Window.FindFocus() is not control
+             and inside(wx.Window.FindFocus(), top),
+             'Actual native text and TAB focus departure did not arrive.')
 
     def waiting(predicate, message, seconds=60):
         return predicate, message, monotonic() + seconds
@@ -412,6 +422,9 @@ def _native():
         formatter = state.formatter = titled('Format bibliography and citations')
         yield waiting(lambda: formatter.snapshot is not None and not formatter.pending,
                       'Actual reference loading did not complete.')
+        press(formatter.none_button)
+        yield waiting(lambda: len(formatter.references_box.GetCheckedItems()) == 0,
+                      'Actual Check none handler did not clear the initially selected references.')
         press(formatter.all_button)
         yield waiting(lambda: len(formatter.references_box.GetCheckedItems()) == len(formatter.references),
                       'Actual Check all handler did not select the current references.')
