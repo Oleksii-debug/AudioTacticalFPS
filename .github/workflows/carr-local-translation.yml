@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   translation:
-    name: Windows / local HTTP, Google regressions and eight native flows
+    name: Windows / Basic native plus eight translation flows / source and installed
     runs-on: windows-2022
     timeout-minutes: 50
     defaults:
@@ -97,6 +97,63 @@ jobs:
       - name: Block external egress during finite local and synthetic translation qualification
         run: |
           New-NetFirewallRule -Name ("CARR-translation-scopes-" + $env:GITHUB_RUN_ID) -DisplayName 'CARR synthetic translation qualification' -Direction Outbound -Program $env:CARR_TRANSLATION_PYTHON -Action Block -Profile Any -ErrorAction Stop | Out-Null
+      - name: Require installed Basic translation before the complete translation population
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_TRANSLATION_PYTHON -I -B -X utf8 scripts/windows_translation_smoke.py --output local-translation-results/translation-basic-native.json 2>&1 |
+              Tee-Object local-translation-results/translation-basic-native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verify = @'
+          import hashlib, json, pathlib, re, sys
+          from carr_library import providers
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError('Duplicate Basic native receipt key.')
+                  result[key] = value
+              return result
+          def invalid_constant(value):
+              raise ValueError('Nonfinite Basic native receipt value.')
+          with pathlib.Path('local-translation-results/translation-basic-native.json').open('rb') as stream:
+              raw = stream.read(65537)
+          if len(raw) > 65536:
+              raise ValueError('Basic native receipt exceeds its fixed bound.')
+          report = json.loads(raw.decode('utf-8'), object_pairs_hook=unique,
+                              parse_constant=invalid_constant)
+          expected = {
+              'schema': 'carr-native-translation-smoke/1', 'status': 'PASS',
+              'native_controls': True, 'synthetic_provider_requests': 2,
+              'exact_reviewed_pair': 'en->uk', 'source_immutable': True,
+              'quotation_authority': False,
+              'approval_and_folder_picker': 'injected explicit synthetic decisions',
+              'actual_google_api': 'NOT_RUN', 'actual_credential_vault': 'NOT_RUN',
+              'nvda': 'NOT_RUN',
+          }
+          if type(report) is not dict or set(report) != set(expected) | {'installed_module', 'derivative_hashes'}:
+              raise ValueError('Basic native receipt fields differ.')
+          for key, value in expected.items():
+              if type(report[key]) is not type(value) or report[key] != value:
+                  raise ValueError('Basic native receipt contract differs: ' + key)
+          installed = pathlib.Path(providers.__file__).resolve(strict=True)
+          site = (pathlib.Path(sys.prefix) / 'Lib' / 'site-packages').resolve(strict=True)
+          if (sys.platform != 'win32' or not sys.flags.isolated
+                  or type(report['installed_module']) is not str
+                  or pathlib.Path(report['installed_module']).resolve(strict=True) != installed
+                  or not installed.is_relative_to(site)
+                  or hashlib.sha256(installed.read_bytes()).digest()
+                     != hashlib.sha256(pathlib.Path('src/carr_library/providers.py').read_bytes()).digest()):
+              raise ValueError('Basic native receipt does not bind the current installed provider.')
+          hashes = report['derivative_hashes']
+          if (type(hashes) is not dict
+                  or set(hashes) != {'original.txt', 'translated.txt', 'bilingual.txt', 'translation.narration.json'}
+                  or any(type(value) is not str or re.fullmatch('[0-9a-f]{64}', value) is None
+                         for value in hashes.values())):
+              raise ValueError('Basic native derivative digest inventory differs.')
+          print('PASS: strict installed Basic translation native receipt')
+          '@
+          & $env:CARR_TRANSLATION_PYTHON -I -B -X utf8 -c $verify
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require exact source and installed cases plus eight actual native flows
         timeout-minutes: 40
         run: |
