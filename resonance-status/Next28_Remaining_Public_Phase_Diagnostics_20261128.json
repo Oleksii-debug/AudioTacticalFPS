@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "kind": "bounded-public-phase-inspector-followup",
+  "status": "NOT_RUN",
+  "parent": "bbbec345f4f0cc988c41ff74b213007fbcfbfdb5",
+  "previous_actual_evidence": "148e80c7dfc4de8a441d5c0f9cddd50b961d4ee1",
+  "change": "Add exactly three known ordinary text reports for the remaining failures in required-native-failures.json. Same exact ZIP, no extraction/application execution, same guards and budgets.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-owner-phase-evidence.yml",
+      "before": "c83e9792d935f7fcb6c898a05d9dff22b8b9929e",
+      "after": "4fb44550be86a65083aa1e6538397e65714065c9"
+    }
+  ],
+  "requested": [
+    {
+      "bytes": 2435,
+      "path": "full-bundle-publishing-native.txt",
+      "sha256": "91fca260fc5b1e85a57a0ae39e02700b84e45d05a8f536032fdd7357f7a65409"
+    },
+    {
+      "bytes": 5879,
+      "path": "full-bundle-recording-native.txt",
+      "sha256": "02f3c04f0cf320ff477530bea0f969cf30b96c3944cf551c88e628bc738e43a0"
+    },
+    {
+      "bytes": 3566,
+      "path": "full-bundle-saved-audio-queue.txt",
+      "sha256": "8c12643eba67e329c8ea2d34559d046980332d6118d6a52f27de17b963efce73"
+    }
+  ]
+}
