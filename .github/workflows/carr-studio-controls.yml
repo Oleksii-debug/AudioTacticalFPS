@@ -211,14 +211,14 @@ jobs:
             $receipt | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 $path
           }
 
-      - name: Run all 211 declared current Studio source regressions
+      - name: Run all 256 declared current Studio source regressions
         id: source
         timeout-minutes: 28
         run: |
           & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/studio_controls_acceptance.py source --results studio-controls-ci-results --work $env:CARR_BATCH_WORK 2>&1 | Tee-Object 'studio-controls-ci-results/source-runner.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Run the identical 211 isolated installed Studio regressions
+      - name: Run the identical 256 isolated installed Studio regressions
         id: installed
         if: ${{ !cancelled() && steps.prepare-runtime.outcome == 'success' && steps.firewall.outcome == 'success' }}
         timeout-minutes: 28
