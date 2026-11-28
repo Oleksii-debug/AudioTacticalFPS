@@ -171,7 +171,8 @@ def _native():
     checks, errors, records, bridges, applications, originals = [], [], [], [], [], []
     frame = timer = failure_handler = None
     state = N(waiting=None, description='', entered=False, finished=False,
-        returned=True, started=monotonic(), formatter=None)
+        returned=True, started=monotonic(), formatter=None,
+        formatter_destroy_returned=False, formatter_deaths=0)
     hold = N(armed=False, ready=threading.Event(), release=threading.Event(), mode=None)
     hold.release.set()
 
@@ -181,7 +182,28 @@ def _native():
         checks.append(label)
         print('PASS: ' + label, flush=True)
 
+    def native_state(phase):
+        # Bounded observations of this authored fixture only; no event is handled
+        # and no callback result is substituted by these diagnostics.
+        result = dict(phase=phase, waiting=state.description[:200],
+            formatter_destroy_returned=state.formatter_destroy_returned,
+            formatter_deaths=state.formatter_deaths, word_dialogs=len(records))
+        try:
+            formatter = state.formatter
+            result['formatter_native_alive'] = bool(formatter)
+            result['formatter_owner_alive'] = getattr(formatter, '_alive', None)
+            if formatter:
+                result.update(formatter_modal=formatter.IsModal(),
+                    formatter_shown=formatter.IsShown(),
+                    formatter_deleting=formatter.IsBeingDeleted())
+            if frame and frame.status:
+                result['desktop_status'] = frame.status.GetValue()[:1200]
+        except Exception as error:
+            result['observation_error'] = type(error).__name__
+        print('CARR_WORD_CONTROLS_STATE ' + json.dumps(result, ensure_ascii=True), flush=True)
+
     def failed(detail):
+        native_state('failure')
         errors.append(detail)
         print('FAIL: native Word controls\n' + detail, file=sys.stderr, flush=True)
 
@@ -371,10 +393,14 @@ def _native():
         return bridge
 
     def observed_factory(parent, *arguments, **options):
-        # The actual wrapper already returned from and destroyed the formatter.
-        check('Word dialog opens after the formatter modal has really returned',
+        # wx top-level Destroy may finish on idle. Bind its real return here and
+        # require the actual native death below, before any host connection.
+        native_state('word-factory-entry')
+        check('Word dialog opens after formatter modal return and owner withdrawal',
               titled('Format bibliography and citations') is None
-              and (state.formatter is None or not state.formatter))
+              and state.formatter is not None
+              and not state.formatter._alive and state.formatter_destroy_returned
+              and (not state.formatter or not state.formatter.IsModal()))
         dialog = real_factory(parent, *arguments, **options)
         record = N(dialog=dialog, native_id=dialog.GetId(), deaths=[])
         def destroyed(event):
@@ -420,6 +446,17 @@ def _native():
         yield waiting(lambda: titled('Format bibliography and citations') is not None,
                       'The actual formatter did not open.')
         formatter = state.formatter = titled('Format bibliography and citations')
+        formatter_id, destroy_formatter = formatter.GetId(), formatter.Destroy
+        def formatter_destroyed(event):
+            if event.GetId() == formatter_id:
+                state.formatter_deaths += 1
+            event.Skip()
+        formatter.Bind(wx.EVT_WINDOW_DESTROY, formatter_destroyed)
+        def observed_destroy():
+            value = destroy_formatter()
+            state.formatter_destroy_returned = bool(value)
+            return value
+        formatter.Destroy = observed_destroy
         yield waiting(lambda: formatter.snapshot is not None and not formatter.pending,
                       'Actual reference loading did not complete.')
         press(formatter.none_button)
@@ -444,6 +481,11 @@ def _native():
         press(formatter.word_button)
         yield waiting(lambda: len(records) == 1 and records[-1].dialog.IsModal(),
                       'Actual formatter-to-Word handoff did not open controls.')
+        yield waiting(lambda: not formatter and state.formatter_deaths == 1,
+                      'The old formatter did not complete its native destruction before Word use.')
+        check('formatter receives one real native destruction before any Word host use',
+              state.formatter_destroy_returned and state.formatter_deaths == 1
+              and not formatter and not applications[-1].opens)
         record = records[-1]
         dialog, bridge, host = record.dialog, bridges[-1], applications[-1]
         check('opening Word controls starts no external mutation or new Desktop executor',
