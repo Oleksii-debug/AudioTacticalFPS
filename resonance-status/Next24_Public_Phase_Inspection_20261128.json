@@ -1,0 +1,32 @@
+{
+  "schema": "resonance-public-phase-artifact-inspector/1",
+  "status": "PEER_REVIEWED_NOT_RUN",
+  "created_utc": "2026-11-28T00:17:46Z",
+  "base_commit": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+  "base_tree": "1a9cf51a75e3e5e860ded1bca2b041cb52f399e4",
+  "workflow": {
+    "path": ".github/workflows/carr-owner-phase-evidence.yml",
+    "sha": "98773d7b651a64f5abe593d88366c2cfc7fdaa72"
+  },
+  "artifact": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "id": 15239201929,
+    "bytes": 179450,
+    "sha256": "e79359b315b68739e63e8384b2d579523c1f2e23d237e2a320e82f2057b11505",
+    "run": 46079552451,
+    "head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "name": "carr-phase-diagnostics-da2c8143ed7acd0432bbbef7551740b5ee379f1d-1"
+  },
+  "purpose": "Read already-public bounded phase reports while the original desktop job continues, to identify actual document/full/owner failures without waiting for unrelated whole-source regressions.",
+  "guards": [
+    "Exact artifact/run/source/name/size/SHA metadata and downloaded bytes.",
+    "Authenticated GitHub requests are separated from unauthenticated signed-object fetch; no forwarded bearer token.",
+    "No checkout, filesystem extraction or source/application execution.",
+    "At most256 safe ordinary unencrypted report entries,8MiB/member and32MiB expanded; ZIP bounded256KiB.",
+    "Only19 fixed report names may be projected;24000chars/record,256KiB aggregate and bounded text excerpts.",
+    "Absent report means absent from this archive, not an execution verdict.",
+    "Source head comes from workflow metadata; distinct merge SHA in the artifact name is not treated as the tested source."
+  ],
+  "review": "Progress independently accepted the complete bounded workflow; root derived metadata/SHA/redirect helpers from prior reviewed6fdd inspector, changing only compressed archive bound for the known179450-byte input.",
+  "scope": "Isolated read-only inspector branch. No product ref, canonical, release, deployment, current test or private asset mutation."
+}

@@ -1,0 +1,235 @@
+name: Inspect exact current Windows phase diagnostics
+
+on:
+  push:
+    branches: ['carr/ci-owner-phase-evidence-*']
+    paths: ['.github/workflows/carr-owner-phase-evidence.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect-exact-phase-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify one exact public phase report archive and print bounded diagnostics
+        env:
+          CARR_EVIDENCE_TOKEN: ${{ github.token }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          from io import BytesIO
+          import json
+          import math
+          import os
+          from pathlib import PurePosixPath
+          import re
+          import stat
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          
+          REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
+          RUN = 46079552451
+          HEAD = 'e7636ca3f9e6b7474145f6e1799bd19a135a3250'
+          TREE = 'a82f252b37db7ba244ba2cc25246a31dc78085d4'
+          ITEM = dict(
+              artifact=15239201929, zip_bytes=179450,
+              zip_sha256='e79359b315b68739e63e8384b2d579523c1f2e23d237e2a320e82f2057b11505',
+              name='carr-phase-diagnostics-da2c8143ed7acd0432bbbef7551740b5ee379f1d-1')
+          printed_bytes = 0
+          
+          class InspectionFailure(ValueError):
+              pass
+          
+          def require(value, message):
+              if not value:
+                  raise InspectionFailure(message)
+          
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  require(key not in result, 'Duplicate JSON key.')
+                  result[key] = value
+              return result
+          
+          def parsed(raw):
+              require(len(raw) <= 256 * 1024, 'JSON member is oversized.')
+              value = json.loads(raw.decode('utf-8'), object_pairs_hook=unique,
+                  parse_constant=lambda _: (_ for _ in ()).throw(InspectionFailure('Non-finite JSON.')))
+              pending, count = [(value, 0)], 0
+              while pending:
+                  item, depth = pending.pop()
+                  count += 1
+                  require(count <= 20000 and depth <= 32, 'JSON structure exceeds its bound.')
+                  if isinstance(item, float):
+                      require(math.isfinite(item), 'Non-finite JSON number.')
+                  elif isinstance(item, dict):
+                      pending.extend((v, depth + 1) for v in item.values())
+                  elif isinstance(item, list):
+                      pending.extend((v, depth + 1) for v in item)
+              return value
+          
+          def emit(label, value):
+              global printed_bytes
+              raw = json.dumps(value, ensure_ascii=True, sort_keys=True, allow_nan=False)
+              require(len(raw) <= 24000, 'Projected log section is oversized.')
+              printed_bytes += len(label) + len(raw) + 2
+              require(printed_bytes <= 256 * 1024, 'Aggregate log projection is oversized.')
+              print(label + ' ' + raw, flush=True)
+          
+          def read_bounded(response, maximum):
+              data = response.read(maximum + 1)
+              require(len(data) <= maximum, 'HTTP or ZIP response exceeds its bound.')
+              return data
+          
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          
+          def download(item):
+              endpoint = ('https://api.github.com/repos/' + REPOSITORY
+                          + '/actions/artifacts/' + str(item['artifact']))
+              headers = {'Authorization': 'Bearer ' + os.environ['CARR_EVIDENCE_TOKEN'],
+                         'Accept': 'application/vnd.github+json',
+                         'X-GitHub-Api-Version': '2022-11-28'}
+              opener = urllib.request.build_opener(NoRedirect)
+              with opener.open(urllib.request.Request(endpoint, headers=headers), timeout=20) as response:
+                  metadata = parsed(read_bounded(response, 64 * 1024))
+              require(metadata['id'] == item['artifact'] and metadata['expired'] is False
+                      and metadata['size_in_bytes'] == item['zip_bytes'], 'Artifact identity or size differs.')
+              require(metadata['workflow_run']['id'] == RUN
+                      and metadata['workflow_run']['head_sha'] == HEAD, 'Artifact source run differs.')
+              require(metadata['digest'] == 'sha256:' + item['zip_sha256']
+                      and metadata['name'] == item['name'], 'Artifact digest or matrix identity differs.')
+              try:
+                  with opener.open(urllib.request.Request(endpoint + '/zip', headers=headers), timeout=20):
+                      raise InspectionFailure('Expected an authenticated storage redirect.')
+              except urllib.error.HTTPError as response:
+                  require(response.code == 302, 'Artifact endpoint refused its storage redirect.')
+                  location = response.headers.get('Location', '')
+                  response.close()
+              target = urllib.parse.urlsplit(location)
+              require(target.scheme == 'https' and bool(target.hostname)
+                      and target.username is None and target.password is None
+                      and not target.fragment, 'Unsafe artifact storage URL.')
+              # The ephemeral GitHub credential is never forwarded to object storage.
+              with opener.open(urllib.request.Request(location), timeout=30) as response:
+                  archive = read_bounded(response, 256 * 1024)
+              require(len(archive) == item['zip_bytes']
+                      and sha256(archive).hexdigest() == item['zip_sha256'],
+                      'Downloaded ZIP differs from the exact requested artifact.')
+              return archive
+          
+          def inspect():
+              archive = download(ITEM)
+              selected = {
+                  'native-document-formats.txt',
+                  'required-native-failures.json',
+                  'full-bundle-workflows.txt', 'full-bundle-workflows.xml',
+                  'full-bundle-recorded-epub.txt', 'full-bundle-recorded-epub.json',
+                  'full-bundle-book-audio.txt', 'full-bundle-book-audio.json',
+                  'full-bundle-reader-player.txt', 'windows-audio-services.json',
+                  'owner-candidate/transferable-install.txt',
+                  'owner-candidate/transferable-self-test.json',
+                  'owner-candidate/transferable-native-launcher.txt',
+                  'owner-candidate/transferable-native-launcher.json',
+                  'owner-candidate/transferable-native.txt',
+                  'owner-candidate/transferable-academic-native.txt',
+                  'owner-candidate/transferable-advanced-search.txt',
+                  'owner-candidate/transferable-audio-setup-plan.txt',
+                  'owner-candidate/transferable-bundle.txt',
+              }
+              inventory, payloads, seen = [], {}, set()
+              total = 0
+              with zipfile.ZipFile(BytesIO(archive)) as bundle:
+                  members = bundle.infolist()
+                  require(0 < len(members) <= 256, 'Unexpected ZIP entry count.')
+                  for entry in members:
+                      name = entry.filename
+                      require(isinstance(name, str) and 0 < len(name) <= 240
+                              and '\\' not in name and '\x00' not in name
+                              and not name.startswith('/') and ':' not in name,
+                              'Unsafe ZIP member name.')
+                      parts = name.rstrip('/').split('/')
+                      require(all(p not in ('', '.', '..') for p in parts)
+                              and len(parts) <= 4, 'Unsafe ZIP member path.')
+                      require(name not in seen, 'Duplicate ZIP member.')
+                      seen.add(name)
+                      mode = entry.external_attr >> 16
+                      require(not stat.S_ISLNK(mode) and not (entry.flag_bits & 1),
+                              'Linked or encrypted ZIP entry.')
+                      require(entry.compress_type in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED),
+                              'Unsupported ZIP compression.')
+                      if entry.is_dir():
+                          require(entry.file_size == 0, 'Nonempty directory entry.')
+                          continue
+                      require(stat.S_IFMT(mode) in (0, stat.S_IFREG), 'Nonordinary ZIP entry.')
+                      require(0 <= entry.file_size <= 8 * 1024 * 1024, 'Oversized report.')
+                      total += entry.file_size
+                      require(total <= 32 * 1024 * 1024, 'Expanded artifact is oversized.')
+                      logical = name[11:] if name.startswith('ci-results/') else name
+                      require(PurePosixPath(logical).suffix.lower() in ('.txt', '.log', '.json', '.xml'),
+                              'Non-report artifact member.')
+                      with bundle.open(entry) as stream:
+                          raw = read_bounded(stream, entry.file_size)
+                      require(len(raw) == entry.file_size, 'Report size differs.')
+                      inventory.append(dict(path=logical, bytes=len(raw), sha256=sha256(raw).hexdigest()))
+                      if logical in selected:
+                          require(logical not in payloads, 'Ambiguous report root.')
+                          payloads[logical] = raw
+              emit('EXACT_PHASE_ARTIFACT', dict(repository=REPOSITORY, run_id=RUN,
+                  source_head=HEAD, source_tree=TREE, artifact_id=ITEM['artifact'],
+                  archive_sha256=ITEM['zip_sha256'], archive_bytes=len(archive),
+                  members=inventory,
+                  note='Metadata binds the source head; the artifact name carries the distinct PR merge identity.'))
+              emit('REPORT_SELECTION', dict(present=sorted(payloads),
+                  absent=sorted(selected - payloads.keys()),
+                  boundary='Absence means no file in this exact artifact, not an execution verdict.'))
+              for name, raw in sorted(payloads.items()):
+                  if name.endswith('.json') and len(raw) <= 256 * 1024:
+                      value = parsed(raw)
+                      text = json.dumps(value, ensure_ascii=True, sort_keys=True, allow_nan=False)
+                      if len(text) <= 18000:
+                          emit('EXACT_JSON_REPORT', dict(path=name, sha256=sha256(raw).hexdigest(), value=value))
+                          continue
+                  text = raw.decode('utf-8-sig', errors='replace')
+                  lines = text.splitlines()
+                  selected_lines = set(range(min(5, len(lines))))
+                  selected_lines.update(range(max(0, len(lines) - 45), len(lines)))
+                  for index, line in enumerate(lines):
+                      if re.search(r'Traceback|Error|Exception|FAIL|failed|Assertion|refus|unavailable|not found|Missing|missing|denied', line):
+                          selected_lines.update(range(max(0, index-3), min(len(lines), index+9)))
+                  excerpt, used = [], 0
+                  for index in sorted(selected_lines):
+                      line = lines[index][:1200]
+                      cost = len(line) + 40
+                      if used + cost > 16000 or len(excerpt) >= 140:
+                          break
+                      excerpt.append(dict(line=index+1, text=line))
+                      used += cost
+                  emit('BOUNDED_REPORT_EXCERPT', dict(path=name, bytes=len(raw),
+                      sha256=sha256(raw).hexdigest(), total_lines=len(lines),
+                      selected_lines=excerpt, complete=len(excerpt)==len(lines)))
+              emit('INSPECTION', dict(status='PASS',
+                  meaning='Only the exact public diagnostic ZIP and bounded report contents were read. No application code was extracted or executed; no product gate is passed by this inspection.'))
+          
+          try:
+              inspect()
+          except Exception as error:
+              print('PHASE_INSPECTION_FAILED ' + type(error).__name__
+                    + ': ' + str(error)[:500], flush=True)
+              raise
+          
+          PY
