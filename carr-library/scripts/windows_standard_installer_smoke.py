@@ -110,6 +110,79 @@ def wait_ready(path, child, seconds=30):
         time.sleep(0.05)
 
 
+SHORTCUT_INSPECTOR = r"""param([string]$Folder,[string]$Output,[string]$Evidence)
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+internal class CarrShortcutObject {}
+
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
+ InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface CarrShortcutReadW {
+    [PreserveSig]
+    int GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,
+                int characters, IntPtr findData, uint flags);
+}
+
+public static class CarrShortcutInspector {
+    public static string ReadTarget(string filename) {
+        object link = new CarrShortcutObject();
+        try {
+            ((IPersistFile)link).Load(filename, 0); // STGM_READ; never Resolve or Save.
+            var target = new StringBuilder(32768);
+            int result = ((CarrShortcutReadW)link).GetPath(target, target.Capacity,
+                                                        IntPtr.Zero, 4); // SLGP_RAWPATH
+            if (result != 0 || target.Length == 0)
+                throw new InvalidOperationException("IShellLinkW.GetPath did not return an exact target.");
+            return target.ToString();
+        } finally {
+            Marshal.FinalReleaseComObject(link);
+        }
+    }
+}
+'@
+$values = @{}
+$observations = @{}
+$shell = New-Object -ComObject WScript.Shell
+try {
+    foreach ($name in @('Resonance','Repair Resonance','Uninstall Resonance')) {
+        $path = Join-Path $Folder ($name + '.lnk')
+        $target = [CarrShortcutInspector]::ReadTarget($path)
+        $legacy = $null
+        $legacyError = $null
+        $shortcut = $null
+        try {
+            $shortcut = $shell.CreateShortcut($path)
+            $legacy = $shortcut.TargetPath
+        } catch {
+            $legacyError = $_.Exception.GetType().FullName
+        } finally {
+            if ($null -ne $shortcut) {
+                [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut)
+            }
+        }
+        $values[$name] = $target
+        $observations[$name] = [ordered]@{
+            unicode_target = $target
+            legacy_target = $legacy
+            legacy_error = $legacyError
+            link_bytes = (Get-Item -LiteralPath $path).Length
+            link_sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
+    }
+} finally {
+    [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)
+}
+$values | ConvertTo-Json | Set-Content -Encoding utf8 $Output
+$observations | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 $Evidence
+"""
+
+
 def inspect_shortcuts(root, report):
     folder = Path(os.environ['APPDATA']) / 'Microsoft/Windows/Start Menu/Programs/Resonance'
     names = ('Resonance', 'Repair Resonance', 'Uninstall Resonance')
@@ -117,21 +190,18 @@ def inspect_shortcuts(root, report):
         raise RuntimeError('The per-user Start-menu shortcuts were not installed.')
     powershell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
     script = report / 'inspect-shortcuts.ps1'
-    script.write_text(
-        "param([string]$Folder,[string]$Output)\n$ErrorActionPreference='Stop'\n"
-        "$shell=New-Object -ComObject WScript.Shell\n$values=@{}\n"
-        "foreach($name in @('Resonance','Repair Resonance','Uninstall Resonance')) { "
-        "$values[$name]=$shell.CreateShortcut((Join-Path $Folder ($name+'.lnk'))).TargetPath }\n"
-        "$values | ConvertTo-Json | Set-Content -Encoding utf8 $Output\n", encoding='utf-8')
+    script.write_text(SHORTCUT_INSPECTOR, encoding='utf-8')
     output = report / 'shortcuts.json'
+    evidence = report / 'shortcut-inspection.json'
     owned_process([powershell, '-NoProfile', '-NonInteractive', '-File', script,
-                   '-Folder', folder, '-Output', output], cwd=report,
+                   '-Folder', folder, '-Output', output, '-Evidence', evidence], cwd=report,
                   log=report / 'shortcuts-process.log', timeout=30)
     result = json.loads(output.read_text(encoding='utf-8-sig'))
     expected = {'Resonance': root / 'app/ResearchLibrary.exe',
                 'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
                 'Uninstall Resonance': root / 'unins000.exe'}
-    if any(Path(result[name]).resolve() != path.resolve() for name, path in expected.items()):
+    if any(not path.is_file() or Path(result[name]).resolve() != path.resolve()
+           for name, path in expected.items()):
         raise RuntimeError('A Start-menu shortcut targets another installation.')
     return folder
 
