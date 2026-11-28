@@ -1,0 +1,116 @@
+{
+  "schema": "carr.final-main-successor-binding-overlay.v1",
+  "status": "SOURCE_REVIEW_PREPARATION_NOT_EXECUTED",
+  "base_plan": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json",
+    "blob": "955081bda0d4a47d8eff6200a010943da7bd0cf2"
+  },
+  "previous_candidate": {
+    "source_commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+    "source_tree": "88a99ee91806d71dca04c75c0aca8c963f5292e1",
+    "run_id": 46078342596,
+    "job_id": 140771249163,
+    "run_attempt": 1,
+    "conclusion": "failure",
+    "source_suites_passed": 451,
+    "protected_source_cases_passed": 5813,
+    "loopback_passed": 12,
+    "loopback_failed": 2,
+    "later_full_main_qualification": "NOT_RUN"
+  },
+  "previous_reader_config": {
+    "commit": "c76f65d953a0704d5da373f760bcbbb2aaa3322e",
+    "path": "carr-library/scripts/main_artifact_reader.json",
+    "blob": "27ca2bc6233a6c222f4ff1cc49cde9753e4b95eb",
+    "sha256": "8be43729889e67c6805eb8cdcf548e630d09052a2f4c329d8782d16f40751029",
+    "snapshot_path": "carr-library/scripts/main_artifact_reader.f77.json"
+  },
+  "candidate": {
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "source_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+    "run_id": 46089514448,
+    "job_id": 140806885393,
+    "run_attempt": 1
+  },
+  "changes": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": {
+        "blob": "3a3c73ca547e6b7b590555657eed0ddc88c6777e",
+        "sha256": "ab6cc3ba7d484ccaa7c88a5b6c522c7e416cbae0ec004f0d79f587c422cdd8aa"
+      },
+      "after": {
+        "blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+        "sha256": "70befd739fd9cac7467fcbfdaf57e0153404d9fd7e843e5edab707aa6c3581fd"
+      }
+    },
+    {
+      "path": "carr-library/tests/loopback/test_local_planning.py",
+      "before": {
+        "blob": "188068d04b2ded11c4c80b402f939d41d9f9c0e8",
+        "sha256": "fb375ad6eccf6c2c64d29f61511d7006bb95876376a076f625cd2da423a70a85"
+      },
+      "after": {
+        "blob": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab",
+        "sha256": "b4bacd663fc19e945db6b6f1fddff758b1993f7310e673357755ab84482dace7"
+      }
+    }
+  ],
+  "unchanged_bindings": [
+    {
+      "path": "carr-library/packaging/probe_standard_update_windows.py",
+      "blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+      "sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e"
+    },
+    {
+      "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+      "blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+      "sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54"
+    }
+  ],
+  "scope": "This additive map accepts only the two reviewed source changes for the actual successor. The historical base plan, failed f77 candidate, original config bytes and every unchanged oracle, receipt family and archive limit remain intact.",
+  "reviewed_changes": [
+    {
+      "commit": "618fb56f1913e8ee9a5c3fe6bfa635446b8e7674",
+      "meaning": "Move the byte-unchanged three-minute source loopback step before the integrated source phase. The source and protected-source phase order, all selectors and all later steps are preserved."
+    },
+    {
+      "commit": "701a51c0875986b17d89ebc4d21dd71074b22b0d",
+      "meaning": "Preserve all 14 loopback case identities while explicitly expecting ProviderError and asserting the existing cancelled-operation ledger and replay boundaries. No application code change."
+    }
+  ],
+  "actual_previous_artifact": {
+    "id": 15239558005,
+    "name": "carr-windows-f77cdd445c158f3f66d13c03d920418965840d16-1",
+    "bytes": 305121,
+    "sha256": "1273db3f66c99d213a3e620fd3e488e27fc5e3698898ec5e30cc56bfc38a5a3f"
+  },
+  "previous_result_limit": "The f77 integrated source and protected-source phases passed; its real loopback phase had 12 passed and 2 failed. The absent later installed/native/standard acceptance is NOT_RUN. Historical successes from other jobs cannot supply missing receipts.",
+  "candidate_metadata": {
+    "event": "pull_request",
+    "created_at": "2026-11-28T00:44:38Z",
+    "freeze_confirmed": true
+  },
+  "actual_artifact": {
+    "id": null,
+    "name": null,
+    "bytes": null,
+    "sha256": null
+  },
+  "preserved_contracts": {
+    "protected_source_cases": 5813,
+    "protected_installed_cases": 5485,
+    "source_selectors": 451,
+    "planning_loopback_cases": 14,
+    "translation_cases_per_mode": 324,
+    "translation_native_flows": 8,
+    "root_exact_members": 151,
+    "r7_native_families": 21,
+    "separate_reader_interactive_members": 5,
+    "standard_installer_checks": 6,
+    "ordinary_maintenance_checks": 4,
+    "managed_update_checks": 15,
+    "installed_library_cases": 50
+  },
+  "runtime": "NOT_RUN: this is a source-bound preparation. The separate parser-only run must be reviewed and executed; no artifact read may start until completed immutable artifact metadata is supplied."
+}

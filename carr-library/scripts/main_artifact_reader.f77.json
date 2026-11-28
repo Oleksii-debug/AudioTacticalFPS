@@ -1,0 +1,47 @@
+{
+  "schema": "carr-full-main-reader-input/1",
+  "source_commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+  "source_tree": "88a99ee91806d71dca04c75c0aca8c963f5292e1",
+  "run_id": 46078342596,
+  "job_id": 140771249163,
+  "run_attempt": 1,
+  "artifact": {
+    "id": null,
+    "name": null,
+    "bytes": null,
+    "sha256": null
+  },
+  "source_blobs": {
+    "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+    ".github/workflows/carr-windows.yml": "3a3c73ca547e6b7b590555657eed0ddc88c6777e",
+    "carr-library/packaging/probe_standard_update_windows.py": "3ac3401e48e937c78142e8d296cb408f32df0429",
+    "carr-library/scripts/standard_qualification_shell_acceptance.py": "ec240ce21e39f261a09bf4403179be894c548e8d",
+    "carr-library/scripts/v3_acceptance_oracles.json": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+    "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+    "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+    "carr-library/scripts/reader_interactive_native_gate.py": "7e415972d50ae4851934e60e585b739add6242e4",
+    "carr-library/scripts/local_translation_oracles.json": "a954839a9e373b60f13f35b16c57d7160e43750c",
+    "carr-library/scripts/translation_scope_oracles.json": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+    "carr-library/scripts/reader_appearance_acceptance_oracle.json": "a63625ec4911c9258927fff5dd8f32e7efe9f665",
+    "carr-library/scripts/assistant_interactive_acceptance_oracle.json": "bb16b437acbb980999729a5312ae4322dcd69198",
+    "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+    "carr-library/scripts/qualify_reader_appearance.py": "4bb2a090a42dffd5cba9c5c11814a9055b9000ee",
+    "carr-library/scripts/local_translation_acceptance.py": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+    "carr-library/scripts/translation_scope_acceptance.py": "60d841da5b74fde0ee8491899c12aa516b461851",
+    "carr-library/packaging/source_wheel.py": "bba3d0cda29b475d51347434d832af9187840547",
+    "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b",
+    "carr-library/scripts/ci_standard_installer.ps1": "f1c00bcdb02b520316d2d9832f0ce4ce61bd2905",
+    "carr-library/scripts/ci_check.py": "5937231e2f3a00a163b0e10b9707df27f279b134"
+  },
+  "wheel_extension": {
+    "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_WHEEL_EXTENSION_20261127.json",
+    "sha256": "2122cc43fac4eca30cb2b02ca8580245f796868e0d56a772adeee038e97647bf"
+  },
+  "bounds": {
+    "archive_bytes": 8388608,
+    "members": 10000,
+    "expanded_bytes": 536870912,
+    "member_bytes": 4194304
+  },
+  "instruction": "No launch before immutable completed artifact id/name/bytes/SHA are filled from actual metadata and the parser has independent source review. Null is a hard NOT_READY condition, not a fallback to another artifact."
+}
