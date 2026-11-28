@@ -67,7 +67,7 @@ PINS = {
     "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
     "src/carr_library/file_publication.py": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f",
     "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
-    "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
     "src/carr_library/audio/models.py": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
     "src/carr_library/assistant/state.py": "e8657e7b18075c193b05b71769310b1616c452dd",
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55"

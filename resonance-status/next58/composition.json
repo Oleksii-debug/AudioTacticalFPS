@@ -1,0 +1,270 @@
+{
+  "schema": "carr-integration-composition/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "SOURCE_COMPOSED_RUNTIME_NOT_RUN",
+  "parent": "652b98eb47da2b7afb1710ae69e51b2b3e9a15c5",
+  "parent_tree": "ada689d939264674a2e18dc175f48f9cb9db0ec3",
+  "scope": "Compose reviewed actual-failure repairs, complete ordinary suite union, measured source work optimization, and required actual configured update without changing previous acceptance limits.",
+  "code_changes": [
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "preimage": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+      "blob": "8518f012491b542a57593af75993907983ddda0d"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "preimage": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88",
+      "blob": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc"
+    },
+    {
+      "path": "carr-library/tests/catalog/test_text_screen_work.py",
+      "preimage": null,
+      "blob": "3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f"
+    },
+    {
+      "path": "carr-library/tests/search/test_ascii_mapping_work.py",
+      "preimage": null,
+      "blob": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "d5849508e7f0c3fcdaf811d98810610044cc237c",
+      "blob": "f5bd70522a58e35aa7d52d27d7b65334d9217be0"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "f99b44db5c2e3b5d0eda655f10b2c8fa6e7d99be",
+      "blob": "0d102dccf94ff0993fed4488aac4c27e4747aeda"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "fcab460375aaf6bbe806bfe232be20f5b210bb50",
+      "blob": "33d55583b27e42ed2b3d1f8b4b2f8ff7b1ef41a5"
+    },
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "preimage": "7a4901339a2be0b03f7897e2728fe53e8055d18e",
+      "blob": "24d4bdb71b25597faffed9e5979c58ef7cc263ff"
+    },
+    {
+      "path": "carr-library/scripts/ci_managed_backend_contracts.py",
+      "preimage": "2eb9cef013609b8b26339bf4c4d7f2843d53f5d5",
+      "blob": "8392ae3eea3d1971539666dac9b4d1f0913bd763"
+    },
+    {
+      "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "preimage": "a1d09b66d1afa85f3853113592e96995fe178228",
+      "blob": "6aae175b7036ac056653d2f251d7d7bf8b2ae6a1"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "preimage": "ca412b958498884897c53e4623a8144308d5e8e2",
+      "blob": "56de4b31e3a5cf39aaaad9a238a4d5729a5ba1f8"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "preimage": "9c80ca9d610512978e5a7175a3f73e6022780565",
+      "blob": "838ff28ad3baea931b0a99f3071f1d000cb5b42c"
+    },
+    {
+      "path": ".github/workflows/carr-managed-backends.yml",
+      "preimage": "552e80a204fde81b5920d1447463f2d84d35f080",
+      "blob": "51ed9b704de0954c61183ec36c0be22dc055808e"
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "preimage": "9545da0d89eb6954b2f6401901b4629bc2419ac1",
+      "blob": "4b24b08dab0a059c329d8bca914a5afdc6ad5500"
+    },
+    {
+      "path": ".github/workflows/carr-remote-stt.yml",
+      "preimage": "ebb9d3de3395548de167ac399701a318de7d5ab4",
+      "blob": "1b24a06bbf5e3b2bfd697325fbc6a3bdcf5da01e"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "preimage": "96403d71db449a181532e8833a34f8c2effa5baa",
+      "blob": "5c4ad92d6d363d51ddd97f21a4623d0be812af34"
+    },
+    {
+      "path": ".github/workflows/carr-voice-windows-profile.yml",
+      "preimage": "c1b3c371961f65594d29f9a5b1775a9f623886ee",
+      "blob": "262274836799b170991e13554aee52473ee7cec1"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "670d9c9e710ae31e83e82ab5d36045a227bda707",
+      "blob": "c480180284fbece879c76a5a435e23733891c1f5"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "16c1533bc8f733bcc4ffbad32e50f5b45ed5d051",
+      "blob": "8e191caf9b8c4053203b1df8041f1140b32d1565"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "ecb812d1b9ceadc9bca652abd90cad40698f7bcf",
+      "blob": "33e1f0b75071bc1f64d86553d0197b6b05196a93"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "be3cfe47b9af04eb0a2ea8e396f4b71c790edbcd",
+      "blob": "e1ac6435d5769b987b87a16e19a43a41bf27005d"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "e88c8042020b331896326d27ceed23be46f6a096",
+      "blob": "1ab6dbd6063e85b104a0f2998d18ebb1a21a9cf4"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "preimage": "dbfa8e61add47e00596d85e98a887ff13425628a",
+      "blob": "d2dc46cc56dda98e901f8a183be8253447dcfd7d"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_windows_profile.py",
+      "preimage": "4b4fa5ffd73558df5b6d4a348bbff15241d48c4b",
+      "blob": "8bf675e879da22b7758cf3b5d10ee8932a2163d5"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/presentation.py",
+      "preimage": "215bec49315c8ef83254f3258f3deb8163bdbcda",
+      "blob": "8ba46fa6ba4d7bafae451fab06d84ab4046bf64a"
+    },
+    {
+      "path": "carr-library/scripts/windows_epub_reading_smoke.py",
+      "preimage": "9f528b70d07b6c3021d42f21ad95e67c39647972",
+      "blob": "86407c2199e99b3a24338098e552477dd961f4d0"
+    }
+  ],
+  "evidence_records": [
+    {
+      "path": "resonance-status/next58/performance_source_and_gates.json",
+      "blob": "b649ab95059e19e90314616c533d95f260995b09"
+    },
+    {
+      "path": "resonance-status/next58/mapping_consumer_audit.json",
+      "blob": "fc785342fb5f641a473936d1b099b46bccb20048"
+    },
+    {
+      "path": "resonance-status/next58/closed_focused_results.json",
+      "blob": "86fc92cc499bf5f8cbb23012c3c923a1e2b0def7"
+    },
+    {
+      "path": "resonance-status/next58/voice_source_scheduling.json",
+      "blob": "61a388850db43f792b4a3f6e4580abe26e6d3d93"
+    },
+    {
+      "path": "resonance-status/next58/voice_windows_source_failure.json",
+      "blob": "d660b512570aca0fedb6e03a91c29c1933596643"
+    },
+    {
+      "path": "resonance-status/next58/profile_before_optimization.json",
+      "blob": "40dbdb37ac4a2d74fe730ac977e38367a6660387"
+    },
+    {
+      "path": "resonance-status/next58/recorded_epub_timeout_visibility.json",
+      "blob": "77532e2dac5316c3b767c7d3f8b5ffaa3bdf71d3"
+    },
+    {
+      "path": "resonance-status/next58/required_native_update_gate.json",
+      "blob": "c00857bef9ac120771c9b7decb13daeb26990e54"
+    },
+    {
+      "path": "resonance-status/next58/previous_integrated_native_failure.json",
+      "blob": "d8e20a5c1467c19cdbd332069768d7f3948c4a5d"
+    },
+    {
+      "path": "resonance-status/next58/complete_ordinary_gate_union_base.json",
+      "blob": "631604c62fc34b00dbb868c964dc37601e527d0e"
+    },
+    {
+      "path": "resonance-status/next58/complete_ordinary_gate_union.json",
+      "blob": "1b919c490503afa7e2388aea2db1b60e79e342a1"
+    }
+  ],
+  "verification": {
+    "exact_code_blob_readbacks": 26,
+    "preimages": "PASS",
+    "literal_consumer_modules": 399,
+    "literal_consumer_inventory": "PASS",
+    "focused_pin_maps": 31,
+    "focused_pin_entries": 729,
+    "focused_pin_mismatches": [],
+    "full_gate_delta": {
+      "proof": [
+        {
+          "path": ".github/workflows/carr-v3.yml",
+          "index": 1,
+          "totalWholeContracts": 135,
+          "ascii_cases": 41,
+          "functions": 10
+        },
+        {
+          "path": "carr-library/scripts/check_installed_bundle.py",
+          "index": 0,
+          "totalWholeContracts": 159,
+          "ascii_cases": 41,
+          "functions": 10
+        },
+        {
+          "path": ".github/workflows/carr-windows.yml",
+          "asciiPSCounts": [
+            41
+          ]
+        },
+        {
+          "path": ".github/workflows/carr-v3.yml",
+          "asciiPSCounts": [
+            41
+          ]
+        },
+        {
+          "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+          "asciiPSCounts": [
+            41
+          ]
+        }
+      ],
+      "requiredNativeTriggerPaths": 2,
+      "sourcePSHelperPins": 3,
+      "overlappingContracts": 155,
+      "distinctContracts": 159
+    },
+    "source_whole_modules": 487,
+    "shard_wholes": [
+      122,
+      122,
+      122,
+      121
+    ],
+    "source_tests": "NOT_RUN on composed head",
+    "installed_tests": "NOT_RUN on composed head",
+    "native_tests": "NOT_RUN on composed head",
+    "four_geometry_capacity": "NOT_RUN on composed head",
+    "physical_audio": "NOT_RUN on composed head; previous playback failure retained",
+    "manual_nvda": "NOT_RUN",
+    "production_deployment": "NOT_RUN"
+  },
+  "preserved": {
+    "git_normalization_rules": true,
+    "per_whole_suite_seconds": 600,
+    "asr_exception_seconds": 900,
+    "benchmark_phase_seconds": 3600,
+    "benchmark_result_page_size": 37,
+    "source_attestation": "Fresh current bytes and authority checks on each operation; no cross-operation cache",
+    "private_inputs": "No private model, voice, recording, credential or production endpoint is added",
+    "existing_required_lanes": true,
+    "canonical_branch": "UNCHANGED",
+    "automations": "UNCHANGED"
+  },
+  "expected_files": 1811,
+  "reviewed_components": {
+    "performance": "b649ab95059e19e90314616c533d95f260995b09",
+    "ordinary_union": "1b919c490503afa7e2388aea2db1b60e79e342a1",
+    "required_updater": "c00857bef9ac120771c9b7decb13daeb26990e54",
+    "voice_scheduling": "61a388850db43f792b4a3f6e4580abe26e6d3d93",
+    "recorded_epub_visibility": "77532e2dac5316c3b767c7d3f8b5ffaa3bdf71d3"
+  },
+  "qualification": "No passing predecessor component result qualifies this new full tree. Mandatory failed/skipped/unfinished obligations remain unresolved."
+}

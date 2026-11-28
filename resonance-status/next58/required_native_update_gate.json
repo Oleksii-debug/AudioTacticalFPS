@@ -1,0 +1,92 @@
+{
+  "schema": "carr-required-configured-update-integration/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "paths": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "75eaf96dbd08f3cf90c48c1967cc8ac54b56d0f9",
+      "blob": "89143ad6ddfd1d66ffc1171ae46a73a09140cc61",
+      "utf8_bytes": 399017
+    }
+  ],
+  "component": {
+    "manifest": "dc5e18e23a45d6ef99269fade293d6ad9db8e5a2",
+    "workflow_path": ".github/workflows/carr-configured-update-native.yml",
+    "workflow_blob": "55bcaba3952137bd588ff64dc0efafc19fc4502b",
+    "native_blob": "abf7a10f52ce2c3f1a5178e4e481e5561f631dde",
+    "ui_checks": 15,
+    "parent_checks": 10,
+    "installed_origins": 15,
+    "native_runtime": "NOT_RUN"
+  },
+  "changes": [
+    "Add configured-update-native reusable job after source-syntax, with the same exact event source selected by the accepted reusable workflow.",
+    "Add final required-complete always-run job. It requires every previous non-shard top-level obligation and configured-update-native exactly once, while the unchanged source aggregate continues to validate all four shard receipts.",
+    "Validate event HEAD/tree and exact reviewed configured workflow Git object. Record all ten results and failures in a bounded JSON receipt before refusing any non-success result."
+  ],
+  "required_jobs": [
+    "source-syntax",
+    "integrated-source-complete",
+    "completion-regressions",
+    "flite-runtime",
+    "portable-sync",
+    "trusted-client",
+    "managed-update",
+    "configured-update-native",
+    "integrated-desktop",
+    "keyboard-native"
+  ],
+  "evidence": {
+    "path": "carr-library/ci-required-results/complete-workflow.json",
+    "schema": "carr-required-workflow-results/1",
+    "bytes_limit": 16384,
+    "upload": "carr-required-workflow-${event_head}-${run_attempt}",
+    "configured_artifact": "configured-update-${event_head}-${run_attempt}",
+    "retention_days": 7,
+    "qualification": "Workflow results only; no transfer or relaxation of native, physical audio, manual, private-package or source qualification."
+  },
+  "preserved": {
+    "all_predecessor_bytes_on_inverse": true,
+    "source_whole_suites": 487,
+    "source_partition_sizes": [
+      122,
+      122,
+      122,
+      121
+    ],
+    "main_fast": 180,
+    "all_existing_jobs": true,
+    "original_managed_update_lane": true,
+    "all_old_budgets_and_native_assertions": true,
+    "source_gitattributes": "Existing two -text rules remain unchanged.",
+    "whole_case_counts": "Unchanged",
+    "no_ref_mutations": true
+  },
+  "new_aggregate_bounds": {
+    "job_minutes": 5,
+    "checkout_minutes": 2,
+    "result_minutes": 1,
+    "upload_minutes": 1
+  },
+  "inverse": [
+    {
+      "kind": "insert_before",
+      "anchor": "  integrated-desktop:\n    needs: source-syntax\n",
+      "text": "  # Exercise the actual configured UI, prepared host and checked restart.\n  configured-update-native:\n    needs: source-syntax\n    name: Required configured native Apply and checked restart\n    uses: ./.github/workflows/carr-configured-update-native.yml\n\n"
+    },
+    {
+      "kind": "append",
+      "text": "\n  required-complete:\n    name: Required complete desktop, source and update results\n    needs: [source-syntax, integrated-source-complete, completion-regressions, flite-runtime, portable-sync, trusted-client, managed-update, configured-update-native, integrated-desktop, keyboard-native]\n    if: always()\n    runs-on: windows-2022\n    timeout-minutes: 5\n    defaults:\n      run:\n        shell: pwsh\n        working-directory: carr-library\n    env:\n      CARR_REQUIRED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}\n      CARR_RESULT_SOURCE_SYNTAX: ${{ needs.source-syntax.result }}\n      CARR_RESULT_SOURCE_COMPLETE: ${{ needs.integrated-source-complete.result }}\n      CARR_RESULT_COMPLETION: ${{ needs.completion-regressions.result }}\n      CARR_RESULT_FLITE: ${{ needs.flite-runtime.result }}\n      CARR_RESULT_SYNC: ${{ needs.portable-sync.result }}\n      CARR_RESULT_TRUSTED_CLIENT: ${{ needs.trusted-client.result }}\n      CARR_RESULT_MANAGED_UPDATE: ${{ needs.managed-update.result }}\n      CARR_RESULT_CONFIGURED_UPDATE: ${{ needs.configured-update-native.result }}\n      CARR_RESULT_DESKTOP: ${{ needs.integrated-desktop.result }}\n      CARR_RESULT_KEYBOARD: ${{ needs.keyboard-native.result }}\n    steps:\n      - name: Check out the exact required source\n        timeout-minutes: 2\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n        with:\n          ref: ${{ github.event.pull_request.head.sha || github.sha }}\n          persist-credentials: false\n      - name: Require every original lane and configured native update\n        timeout-minutes: 1\n        run: |\n          $ErrorActionPreference = 'Stop'\n          $head = (& git rev-parse HEAD).Trim()\n          if ($LASTEXITCODE -ne 0 -or $head -cne $env:CARR_REQUIRED_HEAD -or $head -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has a different HEAD.' }\n          $tree = (& git rev-parse 'HEAD^{tree}').Trim()\n          if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has no exact tree.' }\n          $configuredPath = '.github/workflows/carr-configured-update-native.yml'\n          $configuredBlob = (& git rev-parse ('HEAD:' + $configuredPath)).Trim()\n          if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '55bcaba3952137bd588ff64dc0efafc19fc4502b') { throw 'The required configured native workflow differs from its reviewed source.' }\n          $results = [ordered]@{\n            'source-syntax'=$env:CARR_RESULT_SOURCE_SYNTAX\n            'integrated-source-complete'=$env:CARR_RESULT_SOURCE_COMPLETE\n            'completion-regressions'=$env:CARR_RESULT_COMPLETION\n            'flite-runtime'=$env:CARR_RESULT_FLITE\n            'portable-sync'=$env:CARR_RESULT_SYNC\n            'trusted-client'=$env:CARR_RESULT_TRUSTED_CLIENT\n            'managed-update'=$env:CARR_RESULT_MANAGED_UPDATE\n            'configured-update-native'=$env:CARR_RESULT_CONFIGURED_UPDATE\n            'integrated-desktop'=$env:CARR_RESULT_DESKTOP\n            'keyboard-native'=$env:CARR_RESULT_KEYBOARD\n          }\n          $failed = @($results.GetEnumerator() | Where-Object { $_.Value -cne 'success' } | ForEach-Object { $_.Key })\n          $receipt = [ordered]@{\n            schema='carr-required-workflow-results/1'\n            status=$(if ($failed.Count -eq 0) { 'PASS' } else { 'FAIL' })\n            head=$head; tree=$tree; run_id=[long]$env:GITHUB_RUN_ID; run_attempt=[int]$env:GITHUB_RUN_ATTEMPT\n            required_jobs=$results; failed_jobs=$failed\n            source_whole_suites=487\n            configured_native_workflow=$configuredPath; configured_native_workflow_blob=$configuredBlob\n            configured_native_artifact=('configured-update-' + $head + '-' + $env:GITHUB_RUN_ATTEMPT)\n            qualification='Required workflow results only; each lane retains its original source, native, hardware and manual acceptance boundaries.'\n          }\n          New-Item -ItemType Directory -Path 'ci-required-results' -ErrorAction Stop | Out-Null\n          $raw = $receipt | ConvertTo-Json -Depth 8\n          if ([Text.Encoding]::UTF8.GetByteCount($raw) -gt 16384) { throw 'The required workflow result receipt exceeds its finite bound.' }\n          Set-Content -LiteralPath 'ci-required-results/complete-workflow.json' -Value $raw -Encoding utf8\n          if ($failed.Count -ne 0) { throw ('Required workflow lanes did not pass: ' + ($failed -join ', ')) }\n          Write-Output ('PASS: all ten required workflow results, including original managed update and configured native Apply; head=' + $head)\n      - name: Preserve the exact required-workflow result receipt\n        if: always()\n        timeout-minutes: 1\n        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n        with:\n          name: carr-required-workflow-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}\n          path: carr-library/ci-required-results/complete-workflow.json\n          if-no-files-found: error\n          retention-days: 7\n"
+    }
+  ],
+  "verification": {
+    "exact_blob_readback": "PASS",
+    "full_preimage_reconstruction": "PASS",
+    "independent_progress_peer": "ACCEPTED_STATIC_NOT_RUN",
+    "updater_cli_firewall_retention_peer": "ACCEPTED_STATIC_NOT_RUN",
+    "powershell_yaml_parse": "NOT_RUN",
+    "actual_native": "NOT_RUN",
+    "required_followup": "Run existing workflow syntax gate on exact composed files and execute the required reusable native lane; no success follows from source review."
+  }
+}

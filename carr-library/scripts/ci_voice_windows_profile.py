@@ -21,7 +21,7 @@ from time import perf_counter
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT_SHA = 'ca412b958498884897c53e4623a8144308d5e8e2'
+CONTRACT_SHA = '56de4b31e3a5cf39aaaad9a238a4d5729a5ba1f8'
 CI_SHA = '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473'
 CASES = {
     'package': 'tests/audio/test_voice_package_management.py::test_actual_version_activation_keeps_both_immutable_versions_and_rebinds_review',

@@ -30,6 +30,8 @@ SUITES = {
     'tests/storage/test_backup_pending_common4.py': 27,
     'tests/storage/test_backup_schema_identity.py': 36,
     'tests/ui/test_native_backup_capacity_driver.py': 11,
+    'tests/catalog/test_text_screen_work.py': 26,
+    'tests/search/test_ascii_mapping_work.py': 41,
 }
 PINS = {
     'tests/search/test_window_catalog_projection.py': 'a1b813b72e036a68fa8683be40bd91293d6b8d51',
@@ -59,6 +61,12 @@ PINS = {
     'src/carr_library/backup_sidecars.py': '5c2ec87913e8ad252dce9aa8cff7ccc22dca3525',
     'src/carr_library/storage/revisions.py': '417a9920d4c25eacd36cc81f7441ea321c18d632',
     'src/carr_library/ui/backup_capacity.py': '66555889648ec8b76ac11e7ffe5bd54ece6c29e9',
+    'tests/catalog/test_text_screen_work.py': '3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f',
+    'tests/search/test_ascii_mapping_work.py': 'c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a',
+    'src/carr_library/catalog/intake.py': '8518f012491b542a57593af75993907983ddda0d',
+    'src/carr_library/search/literal.py': '47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc',
+    'src/carr_library/search/presentation.py': '8ba46fa6ba4d7bafae451fab06d84ab4046bf64a',
+    'src/carr_library/operations/broker.py': 'f09561333d33ae68480260668ec05b617cd72213',
 }
 COMPANIONS = ('scripts/benchmark_library_scale.py', 'scripts/benchmark_semantic_cache.py',
               'scripts/windows_backup_capacity_smoke.py')
@@ -203,10 +211,11 @@ def main():
     benchmark = load('capacity_existing_harness', ROOT / COMPANIONS[0])
     proof_module = load('capacity_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
-    # Retain the existing aggregate envelope and every 600 s child deadline.
-    # The added portable chooser-driver suite uses the exact pinned script.
+    # Fourteen whole suites require seven parallel waves at 600 s each.
+    # 4600 s includes up to 30.2 s cleanup per wave plus orchestration reserve;
+    # every individual suite keeps the unchanged 600 s deadline.
     code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
-                  '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=3200)
+                  '--jobs', '2', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=4600)
     lines = source_log.read_text(encoding='utf-8').splitlines()
     expected = [f'PASS: {suite}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0'
                 for suite, count in SUITES.items()]
@@ -250,9 +259,10 @@ def main():
         wrapper = work / 'installed_child.py'
         wrapper.write_text(INSTALLED_CHILD, encoding='utf-8')
         contract = work / 'child-contract.json'
-        modules = list(benchmark.MODULES + benchmark.CAPACITY_MODULES)
-        require(len(modules) == len(set(modules)) == 21,
-                'The explicit backup-profile harness requires all 21 installed origins.')
+        modules = list(benchmark.MODULES + benchmark.CAPACITY_MODULES) + [
+            'carr_library.catalog.intake', 'carr_library.search.presentation']
+        require(len(modules) == len(set(modules)) == 23,
+                'All 21 harness origins plus exact screening and presentation origins are required.')
         write(contract, dict(pytest_child=ci.PYTEST_CHILD, modules=modules))
         installed = []
         for number, (suite, expected_count) in enumerate(SUITES.items(), 1):

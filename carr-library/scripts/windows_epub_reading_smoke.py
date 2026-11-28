@@ -253,6 +253,24 @@ def main():
                 if errors or finished:
                     return
                 if monotonic() >= deadline:
+                    try:
+                        print('DIAGNOSTIC: recorded EPUB timeout ' + json.dumps({
+                            'stage': stage,
+                            'host_working': bool(frame.working),
+                            'reader_busy': bool(reader.busy),
+                            'overlay_busy': None if overlay is None else bool(overlay.busy),
+                            'player_state': None if overlay is None else str(overlay.player.state)[:128],
+                            'transport_active': None if overlay is None or overlay.transport is None
+                                else bool(overlay.transport.active),
+                            'status': None if overlay is None else overlay.status.GetValue()[:4096],
+                            'last_error': None if overlay is None or overlay._last_error is None
+                                else (type(overlay._last_error).__name__ + ': ' + str(overlay._last_error))[:2048],
+                            'key_pending': bool(key_pending),
+                            'pressed': sorted(pressed),
+                        }, ensure_ascii=True, sort_keys=True), flush=True)
+                    except Exception as observation_error:
+                        print('DIAGNOSTIC: recorded EPUB timeout observation unavailable: '
+                              + type(observation_error).__name__, flush=True)
                     raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))
                 try:
                     if key_pending:

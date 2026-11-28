@@ -1,0 +1,59 @@
+{
+  "schema": "carr-voice-source-scheduling-evidence/1",
+  "recorded_utc": "2026-11-28T04:02:41Z",
+  "run": {
+    "id": 46103663250,
+    "job_id": 140851503072,
+    "head": "69ace26fb76b258ebb13caa9702f2948549cbb1c",
+    "conclusion": "failure",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46103663250"
+  },
+  "source_helper": "ca412b958498884897c53e4623a8144308d5e8e2",
+  "source_required": {
+    "whole_suites": 21,
+    "cases": 495,
+    "parallel_jobs": 3,
+    "each_suite_seconds": 600,
+    "parent_seconds": 4500
+  },
+  "strict_completed_rows": [
+    "PASS: tests/audio/test_voice_management_state.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/audio/test_voice_reference_management.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/audio/test_voice_protected_management.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/audio/test_voice_publication_lifetime.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/audio/test_voice_ownership.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_owner_lease.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_managed_authority.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/ui/test_voice_packages.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/ui/test_voice_reference.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/ui/test_engine_settings_lifetime.py: junit_passed=43, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_voices.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_speech.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_host_lifecycle.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_settings.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_probe_cancellation.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/integrations/test_dordiai_convergence.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/audio/test_bundled_runtime_settings.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/storage/test_v3_state_backup.py: junit_passed=42, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+    "PASS: tests/storage/test_state_backup_portability.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+  ],
+  "actual_summary": [
+    "Required suites complete: 21; passed=20; failed=1"
+  ],
+  "package_failure": {
+    "suite": "tests/audio/test_voice_package_management.py",
+    "required_cases": 30,
+    "actual_complete_junit": "NOT_PRODUCED",
+    "failure_kind": "600-second whole-suite TimeoutExpired",
+    "bounded_original_tail": "s)\\n\", '-v', '-o', 'addopts=', '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-auvf3dgw\\\\junit.xml', '--basetemp', 'C:\\\\Users\\\\RUNNER~1\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-auvf3dgw\\\\pytest', '--', 'D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\tests\\\\audio\\\\test_voice_package_management.py']' timed out after 600 seconds"
+  },
+  "observations": {
+    "completed_whole_suites": 20,
+    "completed_verified_cases": 465,
+    "package_whole_qualification": "FAIL",
+    "contention_cause": "SCHEDULING_HYPOTHESIS_NOT_PROVEN"
+  },
+  "proposed_control": "Run the unchanged package whole alone, then all20 remaining wholes atjobs4; retain600 seconds per whole and every strict original case.",
+  "qualification": "Evidence of the original failed source run only; no successor execution or performance claim."
+}

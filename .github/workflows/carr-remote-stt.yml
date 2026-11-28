@@ -58,7 +58,7 @@ jobs:
           path = pathlib.Path('scripts/ci_transcription_remote_contracts.py').resolve()
           assert path.is_file() and not path.is_symlink()
           raw = path.read_bytes()
-          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == 'a1d09b66d1afa85f3853113592e96995fe178228'
+          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == '6aae175b7036ac056653d2f251d7d7bf8b2ae6a1'
           compile(raw, str(path), 'exec')
           spec = importlib.util.spec_from_file_location('stt_ci_preflight', path)
           module = importlib.util.module_from_spec(spec)

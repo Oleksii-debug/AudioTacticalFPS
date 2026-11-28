@@ -46,6 +46,10 @@ class _AsciiOffsets:
         index = bisect_right(self.cuts, position) - 1
         return position + (self.removed[index] if index >= 0 else 0)
 
+    def items(self):
+        """Iterate source boundaries without materializing per-letter entries."""
+        return ((position, self[position]) for position in range(self.length + 1))
+
 
 def _ascii_mapped(text, check):
     check()
@@ -88,10 +92,10 @@ def _mapped(text, check=lambda: None):
     # TXT books need not contain form-feed page boundaries. Mapping millions of
     # ordinary ASCII letters into two dictionaries exhausted the search deadline
     # and hundreds of megabytes even when the source was within MAX_CHARS.
-    # Long ASCII segments need only sparse whitespace offsets. Long Unicode
+    # ASCII segments of every size need only sparse whitespace offsets. Long Unicode
     # segments keep the same cluster rules in compact integer arrays, avoiding
     # two per-character dictionaries and millions of retained small strings.
-    if len(text) >= _LONG_ASCII and text.isascii():
+    if text.isascii():
         return _ascii_mapped(text, check)
     compact = len(text) >= _LONG_ASCII
     if compact:

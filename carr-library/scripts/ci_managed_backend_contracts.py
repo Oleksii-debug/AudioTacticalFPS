@@ -93,7 +93,7 @@ PINS = {
     "scripts/windows_voice_management_smoke.py": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
     "scripts/ci_owner_voice_api_smoke.py": "e22c226ef24cf48957d04c32f25cb472e48c764e",
     "scripts/ci_voice_management_owner_smoke.py": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
-    "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
     "tests/integrations/test_dordiai_reference_backends.py": "de40ac027c6706886d248edaea14dec7bea36608",
     "tests/integrations/test_dordiai_managed_backends.py": "1f03119d76dbf72b839c004aacc70baea0bb8657",
     "src/carr_library/integrations/_dordiai_probe.py": "44fd0e0a169dc15c759a2d8a020341168b33defc",

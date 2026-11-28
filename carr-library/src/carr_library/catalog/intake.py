@@ -68,10 +68,11 @@ def classify(data, suffix):
         mime = "application/rtf"
     else:
         try:
-            decoded = data.decode("utf-8-sig")
+            data.decode("utf-8-sig")
         except UnicodeError as exc:
             raise IntakeError("unsupported binary or text encoding") from exc
-        if any(ord(c) < 32 and c not in "\t\r\n\f" for c in decoded):
+        # Valid UTF-8 cannot hide an ASCII control inside a multibyte character.
+        if _TEXT_CONTROLS.search(data):
             raise IntakeError("binary control character in text")
         mime = "text/plain"
     expected = {".pdf": "application/pdf", ".rtf": "application/rtf", ".txt": "text/plain"}

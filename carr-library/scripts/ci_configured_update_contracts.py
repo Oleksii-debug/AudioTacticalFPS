@@ -67,7 +67,7 @@ PINS = {
     "src/carr_library/operations/broker.py": "f09561333d33ae68480260668ec05b617cd72213",
     "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
     "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
-    "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d",
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
     "src/carr_library/ui/trust_status.py": "fa58a344dd6d601942876cc5b427315a2cc78aa2",
     "tests/security/test_update_https.py": "561bd843532445010fad409bc24c71c8ada6b0e1",

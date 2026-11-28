@@ -1,0 +1,246 @@
+{
+  "schema": "carr-full-gates-ascii-presentation-compatibility/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "supersedes_gate_contract": "631604c62fc34b00dbb868c964dc37601e527d0e",
+  "preserves_required_updater_wire": "c00857bef9ac120771c9b7decb13daeb26990e54",
+  "source_component": "b649ab95059e19e90314616c533d95f260995b09",
+  "consumer_audit": "fc785342fb5f641a473936d1b099b46bccb20048",
+  "paths": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "89143ad6ddfd1d66ffc1171ae46a73a09140cc61",
+      "blob": "c480180284fbece879c76a5a435e23733891c1f5",
+      "utf8_bytes": 399137
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "3bb25f4d18e8aee8b78dd4a39595a084470e69d2",
+      "blob": "8e191caf9b8c4053203b1df8041f1140b32d1565",
+      "utf8_bytes": 494719
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "11b08fa94fec368d1a0d517f2e59d2c0efc42193",
+      "blob": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "utf8_bytes": 49373
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "093ae2a0cf1cb3b31115a7f2a0df80b4bc5a40aa",
+      "blob": "e1ac6435d5769b987b87a16e19a43a41bf27005d",
+      "utf8_bytes": 202350
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "45233b4f3386b3ceb1cdaf804ffbcb4afd0157ef",
+      "blob": "1ab6dbd6063e85b104a0f2998d18ebb1a21a9cf4",
+      "utf8_bytes": 11536
+    }
+  ],
+  "unchanged_builder": {
+    "path": "carr-library/packaging/build_windows_bundle.py",
+    "blob": "d2dc46cc56dda98e901f8a183be8253447dcfd7d",
+    "utf8_bytes": 27911
+  },
+  "actual_source_dependencies": {
+    "carr-library/src/carr_library/search/literal.py": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+    "carr-library/src/carr_library/search/presentation.py": "8ba46fa6ba4d7bafae451fab06d84ab4046bf64a",
+    "carr-library/tests/search/test_ascii_mapping_work.py": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+    "carr-library/src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d"
+  },
+  "case_delta": {
+    "path": "tests/search/test_ascii_mapping_work.py",
+    "previous_cases": 32,
+    "cases": 41,
+    "previous_functions": 7,
+    "functions": [
+      "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary",
+      "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds",
+      "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries",
+      "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work",
+      "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners",
+      "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication",
+      "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch",
+      "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy",
+      "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries",
+      "test_actual_sparse_inverse_preserves_cancellation_during_iteration"
+    ],
+    "added_function_cases": {
+      "test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy": 6,
+      "test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries": 1,
+      "test_actual_sparse_inverse_preserves_cancellation_during_iteration": 2
+    }
+  },
+  "origin_delta": {
+    "module": "carr_library.search.presentation",
+    "required_in": [
+      "V3 publication installed before/after current-source map",
+      "full isolated installed before/after current-source map"
+    ],
+    "early_v3_recovery_map": "UNCHANGED",
+    "companions": "No new companions"
+  },
+  "trigger_delta": {
+    "path": ".github/workflows/carr-configured-update-native.yml",
+    "added_to": [
+      "pull_request.paths",
+      "push.paths"
+    ],
+    "branch_filters": "UNCHANGED",
+    "old_managed_update": "UNCHANGED",
+    "required_wire": "89143 reusable call and strict ten-result final aggregate retained"
+  },
+  "recorded_epub": {
+    "reviewed_source": "86407c2199e99b3a24338098e552477dd961f4d0",
+    "manifest": "77532e2dac5316c3b767c7d3f8b5ffaa3bdf71d3",
+    "predecessor_pin_occurrences_in_six_gates": 0,
+    "execution_paths": "Existing main/V3 invocation retained; no artificial blob pin added",
+    "source_composition": "Owned by root"
+  },
+  "preserved": {
+    "source_whole_modules": 487,
+    "source_partition_sizes": [
+      122,
+      122,
+      122,
+      121
+    ],
+    "main_fast_whole_modules": 180,
+    "v3_source_whole_modules": 217,
+    "v3_installed_whole_modules": 196,
+    "full_installed_whole_modules": 336,
+    "ordinary_whole_seconds": 600,
+    "reviewed_asr_seconds": 900,
+    "all_old_paths_functions_assertions_native_qualifiers_and_budgets": true,
+    "no_refs_moved": true
+  },
+  "source_helper_pin_delta": {
+    "preimage": "11b08fa94fec368d1a0d517f2e59d2c0efc42193",
+    "blob": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+    "main_occurrences": 2,
+    "reusable_occurrences": 1
+  },
+  "inverse_changes": [
+    {
+      "key": "fg_main",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "'tests/search/test_ascii_mapping_work.py' = 32",
+      "after": "'tests/search/test_ascii_mapping_work.py' = 41",
+      "path": ".github/workflows/carr-windows.yml"
+    },
+    {
+      "key": "fg_v3",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "'tests/search/test_ascii_mapping_work.py' = 32",
+      "after": "'tests/search/test_ascii_mapping_work.py' = 41",
+      "path": ".github/workflows/carr-v3.yml"
+    },
+    {
+      "key": "fg_source",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "'tests/search/test_ascii_mapping_work.py' = 32",
+      "after": "'tests/search/test_ascii_mapping_work.py' = 41",
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1"
+    },
+    {
+      "key": "fg_v3",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":32,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\"]}",
+      "after": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":41,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\",\"test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy\",\"test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries\",\"test_actual_sparse_inverse_preserves_cancellation_during_iteration\"]}",
+      "path": ".github/workflows/carr-v3.yml"
+    },
+    {
+      "key": "fg_installed",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":32,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\"]}",
+      "after": "\"tests/search/test_ascii_mapping_work.py\":{\"count\":41,\"functions\":[\"test_ascii_mapping_keeps_every_nonempty_raw_match_boundary\",\"test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds\",\"test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries\",\"test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work\",\"test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners\",\"test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication\",\"test_non_ascii_cluster_mapping_never_enters_the_ascii_branch\",\"test_actual_nfc_ascii_focus_keeps_unicode_source_quote_and_copy\",\"test_sparse_ascii_items_and_actual_inverse_keep_bounded_allocation_and_boundaries\",\"test_actual_sparse_inverse_preserves_cancellation_during_iteration\"]}",
+      "path": "carr-library/scripts/check_installed_bundle.py"
+    },
+    {
+      "key": "fg_v3",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "              \"carr_library.extract.docx_ordered\",\n              \"carr_library.search.literal\",\n",
+      "after": "              \"carr_library.extract.docx_ordered\",\n              \"carr_library.search.literal\",\n              \"carr_library.search.presentation\",\n",
+      "path": ".github/workflows/carr-v3.yml"
+    },
+    {
+      "key": "fg_installed",
+      "kind": "replace",
+      "occurrences": 1,
+      "before": "    \"carr_library.search.literal\",\n",
+      "after": "    \"carr_library.search.literal\",\n    \"carr_library.search.presentation\",\n",
+      "path": "carr-library/scripts/check_installed_bundle.py"
+    },
+    {
+      "key": "fg_main",
+      "kind": "replace",
+      "occurrences": 2,
+      "before": "      - .github/workflows/carr-managed-update.yml\n",
+      "after": "      - .github/workflows/carr-managed-update.yml\n      - .github/workflows/carr-configured-update-native.yml\n",
+      "path": ".github/workflows/carr-windows.yml"
+    },
+    {
+      "key": "fg_main",
+      "kind": "replace",
+      "before": "11b08fa94fec368d1a0d517f2e59d2c0efc42193",
+      "after": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "occurrences": 2,
+      "path": ".github/workflows/carr-windows.yml"
+    },
+    {
+      "key": "fg_reusable",
+      "kind": "replace",
+      "before": "11b08fa94fec368d1a0d517f2e59d2c0efc42193",
+      "after": "33e1f0b75071bc1f64d86553d0197b6b05196a93",
+      "occurrences": 1,
+      "path": ".github/workflows/carr-integrated-source-shard.yml"
+    }
+  ],
+  "verification": {
+    "exact_readbacks": "PASS",
+    "six_file_inverse": "PASS",
+    "parsed_function_maps": {
+      "fg_v3": {
+        "maps": 2,
+        "delta": [
+          {
+            "map": 1,
+            "path": "tests/search/test_ascii_mapping_work.py",
+            "count": 41,
+            "functions": 10
+          }
+        ]
+      },
+      "fg_installed": {
+        "maps": 1,
+        "delta": [
+          {
+            "map": 0,
+            "path": "tests/search/test_ascii_mapping_work.py",
+            "count": 41,
+            "functions": 10
+          }
+        ]
+      }
+    },
+    "exact_test_function_inventory": "PASS",
+    "native_or_runtime": "NOT_RUN",
+    "executable_yaml_powershell_python_syntax": "NOT_RUN",
+    "source_peer": "ACCEPTED_STATIC_NOT_RUN",
+    "independent_gate_peer": "Progress independently accepted exact c480/8e191/e1ac/33e1/1ab6: all feature maps parsed, old names retained, exact source helper inverse, two triggers and2+1pins only.",
+    "required_execution": "Run existing exact-head workflow syntax gate and all original strict whole-suite/native gates; no source or performance qualification follows from static review."
+  },
+  "utf8_limit": {
+    "limit": 500000,
+    "main": 399137,
+    "v3": 494719,
+    "passed": true
+  }
+}

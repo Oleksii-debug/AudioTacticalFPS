@@ -1,0 +1,1799 @@
+{
+  "schema": "carr-literal-mapper-consumer-audit/1",
+  "recorded_utc": "2026-11-28T04:19:58Z",
+  "scanned_commit": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+  "current_confirmation": {
+    "head": "652b98eb47da2b7afb1710ae69e51b2b3e9a15c5",
+    "count": 399,
+    "changed": [],
+    "removed": []
+  },
+  "scope": "Every399 Python product module under carr-library/src/carr_library in the exact nontruncated Git tree; each blob fetched and inspected.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/__init__.py",
+      "sha": "ee09576cfebe843794b34e7609dd3bb1b86b59a0"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "sha": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/__init__.py",
+      "sha": "142b054676a957cf87dd389e2c85989f9b715a3a"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/documents.py",
+      "sha": "9aa3f5a402c2a8fad8db5fe7b66e62e870cc5b03"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/doi.py",
+      "sha": "56fd04e3704a2d38ddb5f64e877364c723e6877c"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/formatting.py",
+      "sha": "55a1954acf5edee97aee45a44e1bdede20032cb1"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/regeneration.py",
+      "sha": "f3afd42e5332ddd45d530a2f06c2276e530ecdcd"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_bridge.py",
+      "sha": "25dc2c34cc43ea42fd724235a68a33a092ffb9a8"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_native.py",
+      "sha": "dd4f85eae9f0b4ac373f84d1260c49d5f174692a"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_records.py",
+      "sha": "55d40c59289e87fa1af78678f6b3fbb823c6ee50"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_worker.py",
+      "sha": "1bf5222e2eddf744cc65503202dad62fda528eb7"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/__init__.py",
+      "sha": "4ae1a83dff75b13a59a226f15635eb0ce1929a3a"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/cli.py",
+      "sha": "f3f8cedf8dc019db912a90c59975bf36a1527a93"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/models.py",
+      "sha": "31fdf106e9de3af17d1149a04da165d7864457e0"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/network_worker.py",
+      "sha": "48541e7c9535d400faf26d89828b7f5296c1c832"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/providers.py",
+      "sha": "18c38efeb7f2757f6733c752a330baece3fa5101"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/service.py",
+      "sha": "1dd2a1e885f8e900cf52e6052fd6448e86df3335"
+    },
+    {
+      "path": "carr-library/src/carr_library/acquisition/transport.py",
+      "sha": "6488f4f54d7408fbac8a875ccb1e29160d61d156"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "82af31743ca5cc6557477f6492c08b912751f4a4"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/__init__.py",
+      "sha": "8a72ea3eadbc2c1defdc0ae10a074f37d4d4370b"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/backup_receipt.py",
+      "sha": "cb8060e432351e99c6f28afd45626813e35c308e"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/credentials.py",
+      "sha": "12601a8e6ba34b791b524fa14934144f07dfd493"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/google_oauth.py",
+      "sha": "53bdc46a819c844ab1daf82c67f9ab3aa0371843"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/llm.py",
+      "sha": "fee05e0a41d9959576d41943c77c909350a0182c"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/models.py",
+      "sha": "1700d0191b4a27b09d18bb6e231b822cf183bd8a"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/planner.py",
+      "sha": "6d6f6a23a66a3f6bda1f33ec5e90575144cd47e6"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "sha": "a3adbe7cc693bc8a3972144007ee15cc85b3b200"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "sha": "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/service.py",
+      "sha": "9a3328166e49440a5d807d255bb76b37a6c229ba"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/state.py",
+      "sha": "e8657e7b18075c193b05b71769310b1616c452dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/templates.py",
+      "sha": "5f30e456acd385106d33381213b14b93e17f0675"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/transcription_provider.py",
+      "sha": "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/transcription_worker.py",
+      "sha": "1651009d71e720ddad1793b35f8fad1464af7422"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "sha": "29324c1891c4e1fc278f410af6221e50ae3f9b04"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
+      "sha": "36363f86034ec1d4c144506e78855fc81306d93c"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_documents.py",
+      "sha": "c4b72384ddede9f7e9f20c1e175bc8c97b602b78"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_docx_rich.py",
+      "sha": "0fb5c483bf503a79fb4b6372a8733558385394dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout.py",
+      "sha": "1708fe7dcb9cab60301fde8762af7ed6cf976a81"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_epub_layout_worker.py",
+      "sha": "273a0fc92ab088d014cb525387a2892c2b5cc520"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "sha": "f91173da3d90bb6b17be4d184799993ddfa91def"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "sha": "ed5d9734edd89ac3c40ce19ccd6fc866f8c31d0f"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_local.py",
+      "sha": "6be65ce3dd519777343b4b014722e1ea608ac225"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "sha": "db1fc8bc4c01149059cd8af346f23778fdc18855"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/__init__.py",
+      "sha": "2346d1b0b458b392f0289da2cc692aa5da7ea87e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/audiobook.py",
+      "sha": "64932ca712ce871cb77bebb9ad0c63dab3abd996"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/cleanup.py",
+      "sha": "77d69f8406db93dc0ff6110b9597ad805bd92dc5"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/conversion.py",
+      "sha": "4444de1d2eeaedeb62b874a98893dd53b04d3815"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/conversion_batch.py",
+      "sha": "459478ce10eabe93dbf23c05be5948b26d2f437e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/conversion_batch_cli.py",
+      "sha": "1538bc2617f12b4aab2904fddf2a9a84a64dfb78"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "sha": "f7833b5f600e3a822a3fa2f2068661c922576230"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/effect_presets.py",
+      "sha": "8ad8b5730b60fa6531904f83360232e7a697e834"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/envelopes.py",
+      "sha": "52bbc4b960784ac774c77071ba8682b2be5ca60c"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/models.py",
+      "sha": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/music.py",
+      "sha": "5b2f7982d11adf7be7dca1e481c34a215ec28ff4"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/package_publication.py",
+      "sha": "702cb573482265bb7e63d9483ecf2178649a63a4"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "sha": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/recording.py",
+      "sha": "7a71d0975cba5ada05772b43b881998e87b61326"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/recording_monitor.py",
+      "sha": "dbcdf2502fbf1d4cfae3c75a8f28916e98110a19"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_lifecycle.py",
+      "sha": "0508ffba185e99171d0d2e230a9adb06db05bbae"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_manifest.py",
+      "sha": "2b5cc075286d2892d1262cddb15bcb84a737d007"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_ownership.py",
+      "sha": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_packages.py",
+      "sha": "824275dcace7617ce65123d469537593877d51d3"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_reference.py",
+      "sha": "8d3265dcc37662046a3bebcf2abacf317c818553"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_restore.py",
+      "sha": "44844682df24a5d3934830e5ae0d3d78d09a9a6a"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_settings.py",
+      "sha": "64e745302ea2bffb84dc0d713be9d1e0f70eff1e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_transport.py",
+      "sha": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/windows_job.py",
+      "sha": "27aeb47c39660ac74335d791e22e58b44058db3b"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio_runtime.py",
+      "sha": "1287a330219554fcd915729d00f4f7f553eeab00"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_book_audio.py",
+      "sha": "4fd92f122d2907c0530fee912c18b45457748682"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_book_batches.py",
+      "sha": "1db56a806f6fcb50f9d19dabf790a0b196eb87ab"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_capacity.py",
+      "sha": "1fd11ab8d3a2be5434e32bdcba65447c55730ad7"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_effect_presets.py",
+      "sha": "1a19d399bf6e0fe17211ba2221791d586d12f3a4"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_generated.py",
+      "sha": "4c4a2741eb7c2e9a5725604551834e5c2a9fb947"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_local_schedules.py",
+      "sha": "3df4730c2bbee888bca204c408bc0632f70b6268"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_playback_queue.py",
+      "sha": "1e1c3e8aec3674bdd8ac182216bfdbbb8acd5023"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "c8596f4cb9792a89d3f76d08347b9ebbc963439e"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "sha": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_transcription.py",
+      "sha": "98161afe7d432a81e169602f61b8443b639ccea6"
+    },
+    {
+      "path": "carr-library/src/carr_library/bibliography_cli.py",
+      "sha": "d4b129a0d2c1c505b26db2eca7fd6f1eb8c07599"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_filetype/archive.py",
+      "sha": "df7e8a66cf10b3b2b1adf4629b0f26f5aa7b8f1b"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_filetype/base.py",
+      "sha": "7c0c0d26d9344907eb6d5cba107dd927c8477d5d"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/_rispy_parser.py",
+      "sha": "f89d29b915c590ff530cc6f3cc65f6a97245a445"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/bibliography.py",
+      "sha": "1c8547f11e78926b050c7caccfa5ce9bb1009b25"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/catalog_reports.py",
+      "sha": "0c956bd55870a5c4ae5684e47509c60c2c7811c4"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/epub_metadata.py",
+      "sha": "d31d5f11f2b3fa37115fa990acae5e8cb4bcb478"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/insights.py",
+      "sha": "8385bbdffba087da1421bf74031bc5aca36562a7"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/intake.py",
+      "sha": "5a55fa8b1326a43ea2b6a4773f4072886e436031"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/membership.py",
+      "sha": "ddffa3b2bcd23fc23dbca5c8f1104031a4887908"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/metadata_preview.py",
+      "sha": "b3b31a8f51e567cd8418498865f37f1cac8b683b"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/office_archive.py",
+      "sha": "269f1e4c478dafd7a6262cacc0b9ffa203513640"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/quality.py",
+      "sha": "08d2dfa557455a37e50def0d6ae73b63631977f0"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "sha": "53bdbf577bd7da349347d8a58cb7f0f5792db138"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/reference_exchange.py",
+      "sha": "33c589e228e1de65f577e2466927e372f61992e7"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/registration.py",
+      "sha": "337a2573b1483aeef87a1e3fc1fcd1b6f52fb0a9"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/ris_apply.py",
+      "sha": "8eaf159019e936ca9ef96e05e2489ff541289d0c"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/ris_preview.py",
+      "sha": "0da26a89199d9f8a1d81f9a502a2ffc852fe5f1a"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/anchors.py",
+      "sha": "ea012622fcf4feebd61f8d44feba87d6900b232a"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/authorized_action.py",
+      "sha": "58b6809cabf8f333d8aaba69af7544b3660f2a4b"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+      "sha": "ccc0cce0db6c7caeb44eef79763435c3829051e1"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "sha": "8f077bc131d55d5b5f4ebaa49772aa73f2ef1dc3"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/historical.py",
+      "sha": "4438576d15534f2f72a361e1ff3ef5d84b49f528"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/pdf_review_attestation.py",
+      "sha": "f0fceb11ca212c02101277f4d67f7ac9c2ee15ad"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/printed_label_attestation.py",
+      "sha": "4c9a65a79a27ad068452e2eb9cb50df4998a51c9"
+    },
+    {
+      "path": "carr-library/src/carr_library/citations/text_attestation.py",
+      "sha": "81f85562d1c12517567e9adc6bcd0b2580f6cac6"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/__init__.py",
+      "sha": "1a8682019ba188a87b68f3b695231320ce7e32dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/_selected_files.py",
+      "sha": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/calibre.py",
+      "sha": "917146418b06b28ac927c9a5cccbe90e9e86426c"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/formats.py",
+      "sha": "2f9a872ea655c7fdadc386ff9fd2a5d66166cf65"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/models.py",
+      "sha": "fc087b6acd2284b08f5384c986a9c1233a5fda5c"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/office.py",
+      "sha": "fab629a5d4d14fe847fcc6ff0ebbda0041c0ada2"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected.py",
+      "sha": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_adapters.py",
+      "sha": "51ed8d7076ab9a5f4168aeaba8f2365e18ce588a"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_worker.py",
+      "sha": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "sha": "85fab268d21295106f3f05794cb68768167f3cd9"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/worker.py",
+      "sha": "722d3c7b61717890dc242d8113d0617714d53a67"
+    },
+    {
+      "path": "carr-library/src/carr_library/data_paths.py",
+      "sha": "4eaa42c376d501f9d0f8f71e27d6a82724a00600"
+    },
+    {
+      "path": "carr-library/src/carr_library/delivery_contract.py",
+      "sha": "90163967acd50760bf15e8a98b74e0bd76aa63f2"
+    },
+    {
+      "path": "carr-library/src/carr_library/desktop_preferences.py",
+      "sha": "2a7d1d315a081d5ddd92718f344eed41f4f26d33"
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "sha": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb"
+    },
+    {
+      "path": "carr-library/src/carr_library/evidence_drafts.py",
+      "sha": "345789646032ad8b61f2ec4a7eb601f1d6bf6b39"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats.py",
+      "sha": "557798e324a126ee12bb439c6fea25237eece59d"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_text.py",
+      "sha": "4ced9b1b5813b27d6b74db90a3ec3be6e89dece2"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "sha": "f48fd1e9cface87762dac8226d83176c5cdc6864"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/docx_ordered.py",
+      "sha": "67fb9fe39762285be0af4038f524ccac4a66be60"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/docx_rich.py",
+      "sha": "809217cb1718c7422bca6b13498a0f54f30862d3"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/epub_ordered.py",
+      "sha": "54b54ace60c17f58770ecc38e31c44b45be700a3"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/language_manager.py",
+      "sha": "4cdc67ffb0436e5fd9dd6304b76bfd375ae509ee"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/managed_ocr.py",
+      "sha": "70388de61362bb959ef9c4f1a10fb729b0764ebb"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/model_catalog.py",
+      "sha": "6c8765e3ebb83206903bc74e4fc3751e862056d1"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_languages.py",
+      "sha": "09694edd4654025344e179276eaba8b8cb5c64af"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+      "sha": "18ea6dad771ba000a272cdf542d911fe825e651a"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+      "sha": "971c58ea5ed36ed2c57cb7840d19e64144f85854"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_orientation_bridge.py",
+      "sha": "b94e0ae3d70f1221d3f46ca264c20faa2aaadc32"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_process.py",
+      "sha": "87047f288f626ec161be979043aac431167fb890"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_runtime.py",
+      "sha": "6612ca069be280f6d64f3a77633bdc9434da3c4f"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/orientation.py",
+      "sha": "5238ebd402cecc11bb6c7a57a2d289de07b8a218"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "sha": "a1d8a04b3dc67ae5fdf834c4d366ad7f42024d7e"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/pinned_tessdata.py",
+      "sha": "13541a673d10fec4a9599879e7954ff90ec092e3"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/raster_pages.py",
+      "sha": "4f7604903df04e9174ee14420cca39c4161f912c"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "sha": "8d2b355ee2e95fcf4d2134d7d3143c26ab617365"
+    },
+    {
+      "path": "carr-library/src/carr_library/file_publication.py",
+      "sha": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f"
+    },
+    {
+      "path": "carr-library/src/carr_library/incremental_backup.py",
+      "sha": "e5a0270484268a78ab2090955417730ca3ccc962"
+    },
+    {
+      "path": "carr-library/src/carr_library/incremental_backup_cli.py",
+      "sha": "e6df335a9335852763f515a892745f3a0fad4957"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/asset_copy.py",
+      "sha": "81156333a3c357613da20af9484faa3892ab0ff9"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_cli.py",
+      "sha": "97cfe10705ffa2368d5c2361481b341376ef8e03"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_pages.py",
+      "sha": "6c6c346ce6d5ad51a6cf4fbe5037ff2290369c0a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "sha": "74478a6cd7643b4ba730211234d7fd5bcbd03dc3"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "sha": "07cec2575e5e72e4b252afcd787a3e7ce7c4aa66"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/bundle.py",
+      "sha": "d664107cebe9704c568220a6752c159e95c70f60"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "sha": "23f32ae91afbf154689c7f56a385f1c062f32f81"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "sha": "656ac8f3943aa4bb59b7756f7982d7985179e3b2"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/publication.py",
+      "sha": "a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/restore.py",
+      "sha": "7c752b0203eb3d85bf3dfdeb2dea9a8c76013f37"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "sha": "acbaabd4b5661daadc83dfec6cda9394deb35ce3"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "sha": "8ab4334be7f7728de84839a6a35cfae5a1347830"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/writer_guard.py",
+      "sha": "2445a40f97cdb45bd590e64da415a18fae31ce54"
+    },
+    {
+      "path": "carr-library/src/carr_library/installation_lease.py",
+      "sha": "0114cc74398d3846d64babf8eb8cf3996b46e99d"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/__init__.py",
+      "sha": "801ffd0a93cf095715c004843bd4dcb07715c2ed"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "sha": "df687d0d557fbc57af8c44ab029b7dd080084721"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_probe.py",
+      "sha": "44fd0e0a169dc15c759a2d8a020341168b33defc"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "sha": "85c9248923b6332da9ea30d7b0dc644f90dc77ba"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "sha": "b402a6cb86ee150dc67d5654a3495289269f10aa"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/liblouis.py",
+      "sha": "4c276857e7da4371e2dcbf663a107cc629c86214"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/supplied_transcription.py",
+      "sha": "e18a682490a31f962974a8fd31b1e42ad0a2fae9"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_backup.py",
+      "sha": "ba9889e81a8d0cf85dfc567cf0ebf8a0812a21ad"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_exports.py",
+      "sha": "873892f7dfd0a0865835bc988f3f0f719a646724"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+      "sha": "e1f49c8ba5e928234dd80de9157403de31eacb1e"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_remote.py",
+      "sha": "bc0c45a8c0edc8dcf8fc7e99476647e3eb8fb8dd"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_remote_values.py",
+      "sha": "25e09a95bac8f079a9e3f0d4b7016a6aa027c7b2"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_runtime.py",
+      "sha": "4d73f5a609e9d1e2760072beca896464a2cb5827"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_scope.py",
+      "sha": "19726ef6b0f239eccdcd76ceaedb7ebfcedf846c"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_values.py",
+      "sha": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab"
+    },
+    {
+      "path": "carr-library/src/carr_library/keyboard_preferences.py",
+      "sha": "ea77248e902f2974bcfcda5912a4a179c623786e"
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/__init__.py",
+      "sha": "9a6572a3c1a7e46d859d6cb8242c65880b02f285"
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "sha": "bad9aa5c644573ed18fdb83527733dd99a738ade"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_assistant.py",
+      "sha": "f96aa939066c16105c3398e507f43ef1e438d571"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "sha": "30ed3b152fc1cd26b338200b270e73f2e193a3f9"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedule_model.py",
+      "sha": "b226e776ecceaf056fe185a3e4e05c046149d2c6"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedules.py",
+      "sha": "13c2a3044729bd91c34cc055c92d62db7b5db71b"
+    },
+    {
+      "path": "carr-library/src/carr_library/local_schedules_cli.py",
+      "sha": "84a006ef3a87873ae52ac08238b96c5863a55880"
+    },
+    {
+      "path": "carr-library/src/carr_library/managed_installation.py",
+      "sha": "b68013ba422d40dc0daa5c9be68bd5447af2d0bf"
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "sha": "d1387286cf45ffd2804f2312ba241165713bc5e9"
+    },
+    {
+      "path": "carr-library/src/carr_library/native_runtime.py",
+      "sha": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f"
+    },
+    {
+      "path": "carr-library/src/carr_library/offline_policy.py",
+      "sha": "8af7970729ebdbad82c2ebc6888b78efd140bbe5"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/__init__.py",
+      "sha": "7929cba7686f36f15c212833396b5dc9cf464791"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "sha": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "sha": "f09561333d33ae68480260668ec05b617cd72213"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/cli.py",
+      "sha": "37922a1c2c9c73493d4f9d45f9b2fc0d8c02bb2e"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/facade.py",
+      "sha": "afd13b0fd4797910dbcadea536be5392fc866264"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/models.py",
+      "sha": "1b8e354327d20dc134a30783c648b88f37cfa337"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "sha": "b2c3fc3a52e9d2fef5c019196ef239381c519fc7"
+    },
+    {
+      "path": "carr-library/src/carr_library/preferences.py",
+      "sha": "cc60a9d30c5b3d9d89490036c06534520f95dea6"
+    },
+    {
+      "path": "carr-library/src/carr_library/progress.py",
+      "sha": "97554d52a5f117f1be8fd35488fed1a068d4ae8a"
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_feedback.py",
+      "sha": "69a97a9e2fc006d690e120ac38ff5c2e92d56895"
+    },
+    {
+      "path": "carr-library/src/carr_library/progress_preferences.py",
+      "sha": "011930e83ce70c861d6bf59e97fe47e8c09cd551"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/braille.py",
+      "sha": "c5090efd78bd9c824d5ec384d436a6e827f14f42"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/context.py",
+      "sha": "5253f61f57d9fb92b361a8b1ebeae0fc96b734a6"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/ebook.py",
+      "sha": "014a056ddaaa2a671d09b169d3b6ea7f6ee59634"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/ebook_audio.py",
+      "sha": "e04b672c81d70a6dc8b2905b8326a4b0fa965a47"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/ebook_contents.py",
+      "sha": "c258f37644c50afae72b70ce9ebb2523d665f377"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/reading_desk.py",
+      "sha": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/reading_state.py",
+      "sha": "c9b1fe207bfc26d4caa939ebc4d1199a1172837c"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/source_file.py",
+      "sha": "1aa43a4360f3284b9c0abf13dd08d1a0a4c448ac"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/_vendor_rispy/config.py",
+      "sha": "a66e088afbd88134cd49a4fe173ad080f95a5c42"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/_vendor_rispy/utils.py",
+      "sha": "62c522c9574142fdb369eaef5d5c4b55b074581b"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/_vendor_rispy/writer.py",
+      "sha": "785b85de40bf1d1b522213775adbc66217b99dcb"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/academic_documents.py",
+      "sha": "e1313865938cf4427ddf87967dbe58fe3609999f"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/academic_library.py",
+      "sha": "19222932e33bf34a2b825211d6cd32f31bac55b0"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/anchored_export.py",
+      "sha": "3d46ad28ff2d1c1a15529e4725e283b401b77249"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/bibtex_import.py",
+      "sha": "0571e36ff9c23b27fe9acf5d2023d047fe5a32eb"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/evidence_export.py",
+      "sha": "f6fab87a2e85f55de70bc74cb148fad852d2cddf"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "sha": "335fd4d03ed4e612d628ec2f93b615feba49e97d"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/literature_matrix.py",
+      "sha": "35678a81dbb48239b96968dbbbaee9c8780512b1"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/notebook_search.py",
+      "sha": "dede94453cf07e1074406fa7902e9cdbf7a8bf5b"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/outline_export.py",
+      "sha": "c8cab7c18b6768d14541bac0c636d2dc401e85b9"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/query_manager.py",
+      "sha": "e24f7658508e5518a634e7eed2bfef8495faf399"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/review_matrix.py",
+      "sha": "2959cc23edfb43e6079d6ea66a0855459dff8f3e"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/saved_evidence.py",
+      "sha": "d5453310ac26c001a0a339890d12ef0b5e837763"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/saved_topic_query.py",
+      "sha": "d9b9d431d390c1d12a321dec7f2a30ed4279ff07"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/span_snapshot.py",
+      "sha": "52ccb046b7a5ed28e4028d2afe34cf44d840006e"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/topic_literature_matrix.py",
+      "sha": "2f1069871a5f5f100f55895212df47558e52a51b"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/topic_search.py",
+      "sha": "d1db9a0ad19724b5e25b4f88aeca92bbbde6adf4"
+    },
+    {
+      "path": "carr-library/src/carr_library/research/topic_tree.py",
+      "sha": "a0e9fd2837eb31b8c9aa5a97ff1b9c01184586b2"
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "sha": "00df790d393f9d54f87d0dcf891e6506916437a1"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/_vendor/rifflux/rrf.py",
+      "sha": "61d9e6444a5e778120c92a7b9d9cb8394989fd20"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/advanced.py",
+      "sha": "e7145794a2fa4bd7952546da3f7f9a282c22a55a"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "sha": "eda65ad7c7b2356ca832379324ca5d04d44b49ac"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "sha": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/paging.py",
+      "sha": "1c8dd8d0cc764737d6169f74b98d6a575f6c3615"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/presentation.py",
+      "sha": "215bec49315c8ef83254f3258f3deb8163bdbcda"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/semantic_windows.py",
+      "sha": "e695d5407d8413879b75570d5a2e7d271c126017"
+    },
+    {
+      "path": "carr-library/src/carr_library/search/thematic.py",
+      "sha": "4c77e1912f23ec0c4e5b32ea1b7b86bfb2c9a399"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/__init__.py",
+      "sha": "b78a8f29038fa7c8f8f3dacd9a92084a799b13f1"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/__main__.py",
+      "sha": "75ef29f011139b1e2ced64182dd6825a285384b6"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/_files.py",
+      "sha": "eecd5c75f606741d3457ed8aef57f86556230538"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/anchors.py",
+      "sha": "2b821c8ec8b6a68a2a969f35b4d09d9d0f3d8b15"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/boundary.py",
+      "sha": "fcc03e8fd9eb754a1991925ce9711016ec14ea39"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/controller.py",
+      "sha": "1d550366b08a00aed8b13af4923f47a9c94c5dde"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/entitlements.py",
+      "sha": "9cd523f81580c04cff85024354a68c4d9967c32a"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/installation.py",
+      "sha": "35da4203d610a4eaa23dc51af65a430bfa9e4b00"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/managed_installation.py",
+      "sha": "2c203580e3ff0ea60da9262052e2cf9283632839"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/refresh.py",
+      "sha": "a3f8ace81f8e0b872e74246474f9adf4ab3fa69b"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_handoff.py",
+      "sha": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_host.py",
+      "sha": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_http_worker.py",
+      "sha": "d998af37e81fb047d1f5802a0162d93dd627f314"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_runtime.py",
+      "sha": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_transport.py",
+      "sha": "73d05451e7f15e4310ea1d2ed18e35355602ad87"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/updates.py",
+      "sha": "d39fc6c7979ee198c8e84041aa4d3594b00c577c"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/windows_registration.py",
+      "sha": "26c0438eaeb094d67d6f4de2006785d059ffe9c4"
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "sha": "19f7f5758613b94a37792ca2b3e4bb2f268468d8"
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic_cache.py",
+      "sha": "7fb913f53ae378d6b6527193e5d5fddba0a3a7a1"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/__init__.py",
+      "sha": "f3a90829d0e3780e4fd88512f200e64a947c83a8"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_io.py",
+      "sha": "8657f0942eb5eef51f30e9c938f9025bf91f9e47"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_wave_output.py",
+      "sha": "67c3ec2d0fa1e785615b49e659506f5887606348"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/listening.py",
+      "sha": "c50fc60b4f72a4ae15d81dfd3c54d9f3b2f2211e"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/marks.py",
+      "sha": "5f2459052d21d0c358641738cb595b265ef01a48"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/narration_receipt.py",
+      "sha": "8ed968bb63043018e557f4c0cbc7c771d9cb11b3"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/navigation.py",
+      "sha": "de680adf53252611593520a14ce50bc8ea5b5703"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/playback_devices.py",
+      "sha": "3f675bccbfeea8f0b0977d814e123b435bb7f0ca"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/player.py",
+      "sha": "6f758c6073e239f771a7b8627713aca8bff51d7f"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/playlist.py",
+      "sha": "544f845fa425ff643620f68fad777421a85004f4"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/presentation.py",
+      "sha": "55681bf8f712c1ff43bfd4cc8e9c948df738134a"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/progress_speech.py",
+      "sha": "40fc50742fb2c50a1bfb2920e25af692017c0aaf"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/reading.py",
+      "sha": "8fcebccb61d1e0a3b616928a75a22f3e9306ed77"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/regex_worker.py",
+      "sha": "b98d69d84e2e8d526cf16b463b720b5d63b9c514"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "sha": "f5c43ef5f03af626f44096be0a2b10f034c09c80"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/sapi_native_worker.py",
+      "sha": "0faf8b266ff9fa5a0dc5db61243e5d8e5ce99135"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/session.py",
+      "sha": "ae9e812f169409232773f082a06f44d7b5e75232"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/source.py",
+      "sha": "cef32840ecbb5b07c0313e206d9bf622ee20db87"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/spelling.py",
+      "sha": "6a8865cb812d7d36492412757b2753396ae04e57"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/spelling_worker.py",
+      "sha": "be0426fd607705d9cc774c36d9c40e2ba0ef3420"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/tabs.py",
+      "sha": "00067da194596d014ca7b1a826bf55c75a0c410a"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "sha": "7027e3f07f967403d6e523aa23c8233176a43222"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/academic_schema.py",
+      "sha": "ef9bab592169cad321ca87e327dabf8fb7260340"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/research_schema.py",
+      "sha": "52d77986d00c81c498c9a86b4d01173fa34ae08b"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/revisions.py",
+      "sha": "417a9920d4c25eacd36cc81f7441ea321c18d632"
+    },
+    {
+      "path": "carr-library/src/carr_library/storage/schema_identity.py",
+      "sha": "2c72c6132969cb1076035a47ee87c4573ebd93be"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/__init__.py",
+      "sha": "7e38d3875a79e43e24321e4a14f613a0bb7b5064"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "sha": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_batch.py",
+      "sha": "1b414a49cb44894a27a4d17d79560cc1ccddd268"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "sha": "38a26a21e314a8872b01393edd1801fb5e3ea273"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "sha": "2f6c68cb0e68d02db4f7cf8d737e61f95ad918de"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clip_operations.py",
+      "sha": "82676db10f6da0cfa2e04294f7337b82295baa13"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "sha": "f77512fc1f0f242a6202ffa247e5ce9049debefc"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/daisy.py",
+      "sha": "bbc6f559aa3aa11a14fd6eefa6c802058541f98c"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+      "sha": "6688213b891b2a3d1bf91a015918280ccc3eaeb6"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/measured_audio.py",
+      "sha": "3e4227b536a5a40edde371c829f44bd20f28685f"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "sha": "72b3260421afbfcfa912481798967e59ce9d13de"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project_history.py",
+      "sha": "ad9dd72a8101639cf03a02420dbb0c2b0c0cc7be"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing.py",
+      "sha": "e369f0d40cbc818d9374e1d4f84bc3e28e09ad63"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "sha": "11925e2f60742a3193d2ae50238ab56ae8889534"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/__init__.py",
+      "sha": "71c75685bebc6a01fc1b6c09dfe310ccbd48f659"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/archive.py",
+      "sha": "cf33e29e108131d838f77f3b489d9dec05002720"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/cli.py",
+      "sha": "9daa6cf0994faef9c6a2abee7b95a332b0226ac6"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/crypto.py",
+      "sha": "681a08530212f8cb18f600cfaf9314cc36a787e9"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/service.py",
+      "sha": "a391a98de6eb134e92f5ff56edec6595ee039cb2"
+    },
+    {
+      "path": "carr-library/src/carr_library/sync/vault.py",
+      "sha": "c51874e3e195a89173d865e9b2230f8411164531"
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription.py",
+      "sha": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e"
+    },
+    {
+      "path": "carr-library/src/carr_library/transcription_cli.py",
+      "sha": "cc4e64b5d57115725e5212a6a23cd6c322995a8c"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/__init__.py",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/_vendor/wx_grid/__init__.py",
+      "sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/_vendor/wx_grid/grid.py",
+      "sha": "d6e90ffa00712f6b8d1469b05cb6a7df4120dd95"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/_vendor/wx_grid/model.py",
+      "sha": "94d3e1ea816dfbf7ffe5fc26cbc751107d95d325"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_actions.py",
+      "sha": "ef4b8dd985674ac22aa603d32afab4b0dc099101"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "sha": "547067958f299b711320696c48bfb6404a309543"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_tools.py",
+      "sha": "2c0b20c8db64083fd45b35be276a213601045dce"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/acquisition_dialog.py",
+      "sha": "9eadc8e613e60371fb36208135af04e80e0ac561"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/advanced_search.py",
+      "sha": "4efe82abeac0203d2f58c058f655105d2853ecf7"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "sha": "ec81cbf478a225c482b3e74cd5bc9e9deadd3d9a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_templates.py",
+      "sha": "d47d37ced2405363d1b41028cf867225ef3b9b03"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_conversion.py",
+      "sha": "0cf4fa76093a02d43cf38652e3837c9569a1630e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_conversion_batch.py",
+      "sha": "e7d39f810906b5ae1362e54cd154826ff69602ce"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_playback.py",
+      "sha": "4850332970c92001564cc495c35e52bec4da1393"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/backup_capacity.py",
+      "sha": "66555889648ec8b76ac11e7ffe5bd54ece6c29e9"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/bibliography_import.py",
+      "sha": "c401721e4057bd2daf9483d2b4ce6b9ff7214234"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "sha": "0d89734850a1a1954ff0ca8312e4f6575b6c3b30"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_batch_dialog.py",
+      "sha": "ed5bd304055fa31b6d522a78f6df6ab626c4a4e0"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_duration_dialog.py",
+      "sha": "0f9daced19fca2bf4fd60cf91f96a493d07cdb75"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/braille_actions.py",
+      "sha": "b3a805b377be336eca6d1ac77d90201bbb7121e2"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "sha": "efb447b10b6054ab1488d8f969ebbf2a96a47dcd"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+      "sha": "e7419e0cd282608c23f7651a44838b78dfa1e689"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_metadata_dialog.py",
+      "sha": "1a13019717ed631599606cfc9d5d0ebeb35f8616"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_panel.py",
+      "sha": "c3412d2bb6538f696ac3b2104c0fbcf2e0ce4120"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_quality.py",
+      "sha": "6dfdd3a10b833abd77e81edc3497ee30acdf0717"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+      "sha": "73b073988da08009c20402580339afcd6ac0ad77"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_formatting.py",
+      "sha": "643db154dce828e1a14f7282b9d816f4aa37b042"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "sha": "7e0d4cc204d1aff574de0963a2d8c847bd7d3a5a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/command_registry.py",
+      "sha": "2fe71b6b3b7c46cef384d6fddb56997b30564e08"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "85c0991f744bd521ca247a0e15da93aa585ea30d"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+      "sha": "5140395fbc211900a8dd9289877c6de4b3a96d44"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_integration.py",
+      "sha": "03f5a8876d03452145d251e0b7540d1083304b22"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_settings.py",
+      "sha": "a30d58fa01ac6c412612042cad61504418751543"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "sha": "83a48872bd07a0e4611ee68b1a59155fe4468239"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_actions.py",
+      "sha": "10c7f842e1dcfcde6cd8dafee994beca2e035cd6"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_audio_dialog.py",
+      "sha": "15f27a5eb5ca8491b43dcfbe6d550de495b8dbe5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_dialog.py",
+      "sha": "224cc307e27732b284f1ddfb2b076a6a31762849"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_model.py",
+      "sha": "358ff820e01e07410a3227f895bec17905bc3e68"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_reader.py",
+      "sha": "1091b6359b90f85a094537e4f96f239785f37b92"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/effects_dialog.py",
+      "sha": "d48b985ccb38b5a48123bc2a2c39afb2b2f452e4"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "sha": "e2ca712b9df71d7808b0fdb620978772c1f4dd65"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/evidence_panel.py",
+      "sha": "d09f4ece276ce56fdf4908da7deb1e52afd75735"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "sha": "297d790c2a9e1d65051201ddd4f4d4d8c4bcd1f4"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "sha": "4c4e43c4842a2f3b309cc0d79eca20a171d54650"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/find_replace_dialog.py",
+      "sha": "3bb9ef103850e3246d152d14ace7f5968f0dde61"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/google_oauth.py",
+      "sha": "1a4e156bd758729b14bf818d94afc17a8d6afc86"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "sha": "b304c895432fe69f68b7ea7a768ee0c70c9d4f0d"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/incremental_backup_dialog.py",
+      "sha": "552fbb7d889830301938d09f67ad8e8ef08c0b73"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+      "sha": "3b874944b1bd9b02c071f654335f995401f31739"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "sha": "ba8a105cad8b021bd35625e005ffc01b1e8c578e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/library_assistant.py",
+      "sha": "c8e9e0ca148d929ead1b44f7cef17efbb76f6568"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/literature_matrix.py",
+      "sha": "72c786f6c66a822286f8e8d2117cc164f4b59eaf"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/local_schedules.py",
+      "sha": "fc3fac9e65e2d07741e84ef045535b08b6b4b310"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/notebook_search.py",
+      "sha": "5f5c441937045608fbc5c6427c3826458c90433b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_model_manager.py",
+      "sha": "8ef8d43aeddc1d65b745dc58cc8a2d1fcde80463"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_options.py",
+      "sha": "c172e351ea910fddf9aebd99dc7c7cbf8a202738"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_selection.py",
+      "sha": "d1eaabefb1ea68d7c1bb4c0211e168241fcd8858"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "sha": "a8d79a5b1690a24583719ff79b705ac165cf10f9"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/page_context_dialog.py",
+      "sha": "ac00d75857c6e984d61b3333fd0c558959ac7d3e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/paged_search_panel.py",
+      "sha": "032fb591dd9de810b2ae8f4aedd60273f0a6063f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/portable_sync.py",
+      "sha": "8ef69f8b75a7759162c63cef5c6468bf881e591b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_media.py",
+      "sha": "7a12bdb3acc22a29e3a216bf0b8b9381d58676af"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/progress_panel.py",
+      "sha": "f2e8f20c9c41ffcce0f21c1c69d302a7c550849d"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/pronunciation_dialog.py",
+      "sha": "e7cc2ed4a375717ddf29a33c37917e3edf27c52e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/publishing_dialog.py",
+      "sha": "9f5047e74f38a17189e43157c0f432d118e3cdeb"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/query_manager.py",
+      "sha": "6617e37cc459095217e0e08b0f48796b2f86644b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_playback.py",
+      "sha": "a96a5b2662cf41b5ae04f017264a59e02f4c6f6a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_tabs.py",
+      "sha": "d275bb802ae4821895141834f0e2733ff9a724c0"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "sha": "33c4ef1a242bab6226ef5cf27b1fc2bec09c5608"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_presentation.py",
+      "sha": "f4793e92177c584ce95ed8c95e534d34322bc196"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_shortcuts.py",
+      "sha": "69d17116edba844b8b758c57e1018c58cca83a80"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_tools.py",
+      "sha": "39b145318d8e5c8953009227572c593b0f1920ed"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/recording_dialog.py",
+      "sha": "d2447529f7f5ac6ee07de2e06c9da7189ee3c067"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/research_actions.py",
+      "sha": "20348348fadaba3a941031d2508c542e46a29fb9"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_actions.py",
+      "sha": "813bdce720e5fde6570fc867f268b49ea5dfdde0"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_all.py",
+      "sha": "c109f48ccb561b25fc9f348dacc4688f734f2e6b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/scope_bindings.py",
+      "sha": "f1e270ddcf0199263d3e5d77d6f4b95ab162c765"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/scope_labels.py",
+      "sha": "63347f797bc3bdc61f6764a4e800f2c17061e047"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/search_model.py",
+      "sha": "2daf635e720eb668e4d4b5e50dac008ffe76907f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/search_panel.py",
+      "sha": "f8c9ca74468c9e191d5273be670590cc4700a617"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/source_review.py",
+      "sha": "4b798a282ded3e79b520496d125070149cd8bd0b"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "8d8a18d82b22c2f3c2e6e4e16c9307e9baac1974"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/spelling_dialog.py",
+      "sha": "a80e55f628aad25df2d19e23864ceff4cdb44657"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "sha": "d926e06b20694c0e586a102bd0ec25747faea444"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "sha": "0dc5f88af5b71a6679c48f50b60dd05da3f6ce8c"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/topic_panel.py",
+      "sha": "cd2f68478e8d9b724ffafb2b2b22a451a193dd2e"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_dialog.py",
+      "sha": "83425f992811d3560cb53cc191f61dfbe54b8ec5"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_remote_dialog.py",
+      "sha": "625500b8b51d4fbc37891218b5e1b0acbb9a5898"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/transcription_runtime_dialog.py",
+      "sha": "fe89e4fd84d9a9683b278d7b830ba8fa8f2a21a8"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "sha": "99b6b68e30547e0d6e1b2328cb1e0411f9002a32"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_documents.py",
+      "sha": "11c70688e9715cf16cd9026f91beba07eec56d5f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "sha": "6cab457cf792b39217f0c7733cf0ccf93234263d"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/trust_status.py",
+      "sha": "fa58a344dd6d601942876cc5b427315a2cc78aa2"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_packages.py",
+      "sha": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_preferences.py",
+      "sha": "b94eaca264c9d6a1ec3390925de04cac6e09aa58"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_reference.py",
+      "sha": "53578efe02f434c72ebd3b3acae95eb729671659"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/word_citations_dialog.py",
+      "sha": "0f02c39331589a0e19ec7356d827af97703401fb"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/worker_cleanup.py",
+      "sha": "2f071d9d2762ef15f5f8ee3da2fcf25de165b15a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/worker_lifetime.py",
+      "sha": "ed62603159bc095724c3b240d4754f989141a2c9"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/workspace_shell.py",
+      "sha": "c4ce2664d585bf36f2911695f8f6632499218381"
+    }
+  ],
+  "fetch_failures": [],
+  "matches": [
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "sha": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "lines": [
+        {
+          "line": 36,
+          "text": "from .search import literal, thematic"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/library_assistant.py",
+      "sha": "f96aa939066c16105c3398e507f43ef1e438d571",
+      "lines": [
+        {
+          "line": 373,
+          "text": "                from .search import literal, thematic"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/search/advanced.py",
+      "sha": "e7145794a2fa4bd7952546da3f7f9a282c22a55a",
+      "lines": [
+        {
+          "line": 24,
+          "text": "from .literal import MAX_QUERY, _fold, _spans, _word"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/search/federated.py",
+      "sha": "eda65ad7c7b2356ca832379324ca5d04d44b49ac",
+      "lines": [
+        {
+          "line": 26,
+          "text": "from .literal import MAX_QUERY"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "sha": "9aa66aeca878f6ab195cb1898fc9e3213a35bd88",
+      "lines": [
+        {
+          "line": 29,
+          "text": "class _AsciiOffsets:"
+        },
+        {
+          "line": 62,
+          "text": "    offsets = _AsciiOffsets(len(folded), cuts, removed)"
+        },
+        {
+          "line": 86,
+          "text": "def _mapped(text, check=lambda: None):"
+        },
+        {
+          "line": 236,
+          "text": "        value = _mapped(raw, check)"
+        },
+        {
+          "line": 370,
+          "text": "                                   if _candidate_work is not None else _mapped(raw, check))"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/search/presentation.py",
+      "sha": "215bec49315c8ef83254f3258f3deb8163bdbcda",
+      "lines": [
+        {
+          "line": 14,
+          "text": "from .literal import _CompactOffsets, _mapped"
+        },
+        {
+          "line": 41,
+          "text": "def _reverse_offsets(offsets, length, check):"
+        },
+        {
+          "line": 67,
+          "text": "        folded, raw_starts, raw_ends = _mapped(source, check)"
+        },
+        {
+          "line": 68,
+          "text": "        normalized_folded, normalized_starts, normalized_ends = _mapped(normalized, check)"
+        },
+        {
+          "line": 71,
+          "text": "        normalized_starts = _reverse_offsets(normalized_starts, len(normalized), check)"
+        },
+        {
+          "line": 72,
+          "text": "        normalized_ends = _reverse_offsets(normalized_ends, len(normalized), check)"
+        }
+      ]
+    }
+  ],
+  "candidate_work_followup": [
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "lines": [
+        {
+          "line": 1106,
+          "text": "        candidates = (literal._CandidateWork() if options.get('mode', 'phrase')"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/search/literal.py",
+      "lines": [
+        {
+          "line": 160,
+          "text": "class _CandidateWork:"
+        },
+        {
+          "line": 229,
+          "text": "    def _normalization(self, rowid, raw, check):"
+        },
+        {
+          "line": 279,
+          "text": "            and (not isinstance(_candidate_work, _CandidateWork)"
+        },
+        {
+          "line": 369,
+          "text": "            folded, starts, ends = (_candidate_work._normalization(rowid, raw, check)"
+        }
+      ]
+    }
+  ],
+  "reviewed_protocols": [
+    {
+      "consumer": "search.literal._spans",
+      "requirements": [
+        "membership",
+        "getitem"
+      ],
+      "evidence": "Nonempty needles only; raw spans preserve complete canonical/whitespace boundaries."
+    },
+    {
+      "consumer": "search.advanced._Matcher",
+      "requirements": [
+        "membership and getitem through _spans"
+      ],
+      "evidence": "Stored maps are delegated to _spans; no items/get/dictionary iteration."
+    },
+    {
+      "consumer": "search.literal._CandidateWork._normalization",
+      "requirements": [
+        "store and return the three mapped values"
+      ],
+      "evidence": "Call-local ownership and exact fresh raw-row equality remain unchanged."
+    },
+    {
+      "consumer": "search.presentation._lexical_focus",
+      "requirements": [
+        "items for inverse",
+        "getitem",
+        "membership"
+      ],
+      "evidence": "NonASCII original can become ASCII after NFC, including Kelvin U+212A. Both normalized maps enter _reverse_offsets."
+    },
+    {
+      "consumer": "search.presentation._reverse_offsets",
+      "requirements": [
+        "lazy items",
+        "bounded inverse storage",
+        "cooperative cancellation"
+      ],
+      "evidence": "Sparse ASCII now joins the existing compact-array inversion path with each1024-entry and final check."
+    },
+    {
+      "consumer": "application/library_assistant/federated",
+      "requirements": [
+        "ordinary public search results or MAX_QUERY only"
+      ],
+      "evidence": "No offset-map iteration consumer found."
+    }
+  ],
+  "discovered_gap": "Extending sparse ASCII to short pages exposed presentation's existing items() assumption for nonASCII source whose NFC text is ASCII. Adding items alone would enter an unchecked dictionary comprehension for long normalized text.",
+  "closure": {
+    "literal": "47b9e67256d0cfa9675d2bb0b5a68df80bf22cbc",
+    "presentation": "8ba46fa6ba4d7bafae451fab06d84ab4046bf64a",
+    "tests": "c9609083f0233f6fa9fd6e8d1e0ee5082c4c6e7a",
+    "behavior": "Lazy sparse items plus the existing checked compact inverse-array branch; no cross-operation map/source cache.",
+    "coverage": "Old32 test bodies retained exactly plus6 real thematic Kelvin/source-copy cases,1 measured inverse allocation/boundary case and2 original cancellation-object cases."
+  },
+  "qualification": "STATIC_NOT_RUN; actual execution and unprofiled performance remain required."
+}

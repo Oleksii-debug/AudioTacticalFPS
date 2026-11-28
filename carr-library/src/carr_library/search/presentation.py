@@ -11,7 +11,7 @@ import re
 import sqlite3
 from unicodedata import category, normalize
 
-from .literal import _CompactOffsets, _mapped
+from .literal import _AsciiOffsets, _CompactOffsets, _mapped
 from .thematic import _groups, _quote
 
 
@@ -40,7 +40,7 @@ def _cluster_end(raw, position):
 
 def _reverse_offsets(offsets, length, check):
     """Invert cluster boundaries without recreating long-source dictionaries."""
-    if not isinstance(offsets, _CompactOffsets):
+    if not isinstance(offsets, (_AsciiOffsets, _CompactOffsets)):
         return {original: folded for folded, original in offsets.items()}
     result = _CompactOffsets(length)
     for index, (folded, original) in enumerate(offsets.items()):

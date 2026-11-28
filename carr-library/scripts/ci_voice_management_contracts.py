@@ -108,7 +108,7 @@ PINS = {
     "scripts/windows_voice_management_smoke.py": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
     "scripts/ci_owner_voice_api_smoke.py": "e22c226ef24cf48957d04c32f25cb472e48c764e",
     "scripts/ci_voice_management_owner_smoke.py": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
-    "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031"
+    "src/carr_library/catalog/intake.py": "8518f012491b542a57593af75993907983ddda0d"
 }
 COMPANIONS = ["tests/audio/voice_management_fixtures.py","tests/integrations/__init__.py"]
 BASE_MODULES = ["carr_library.audio.voice_manifest","carr_library.audio.voice_transport","carr_library.audio.voice_settings","carr_library.runtime_settings","carr_library.audio.voice_packages","carr_library.audio.package_publication","carr_library.audio.voice_lifecycle","carr_library.audio.voice_reference","carr_library.audio.voice_restore","carr_library.state_backup","carr_library.library_backup","carr_library.ui.voice_packages","carr_library.ui.voice_reference","carr_library.ui.engine_settings","carr_library.integrations._dordiai_authority","carr_library.integrations.dordiai_voices","carr_library.integrations.dordiai_speech","carr_library.audio.voice_ownership","carr_library.audio.models","carr_library.audio.dsp","carr_library.audio.cleanup","carr_library.audio.process","carr_library.operations.broker","carr_library.operations._locks","carr_library.durable_state","carr_library.file_publication","carr_library.research.export_file","carr_library.studio.publishing","carr_library.sync.crypto","carr_library.speech","carr_library.application","carr_library.native_runtime","bootstrap","carr_library.catalog.intake","carr_library.audio.windows_job"]
@@ -640,19 +640,70 @@ def main():
     ci = load('voice_existing_ci_check', ROOT / 'scripts/ci_check.py')
     proof_module = load('voice_existing_source_wheel', ROOT / 'packaging/source_wheel.py')
     source_log = evidence / 'source-contracts.txt'
-    # Twenty-one whole suites use seven waves with original 600 s limits;
-    # 4500 s includes finite child cleanup and report handling.
-    code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
-                  '--jobs', '3', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=4500)
+    source_groups = []
+    if os.name == 'nt':
+        # The Windows package suite exceeded 600 s while the other 20 wholes passed.
+        # Isolate that complete suite, then keep all remaining suites in order.
+        # 660 + 3300 = 3960 s including group cleanup allowances remains inside
+        # the original 4500 s source envelope; every whole still has 600 s.
+        package = 'tests/audio/test_voice_package_management.py'
+        remaining = tuple(suite for suite in SUITES if suite != package)
+        groups = (((package,), 1, 660), (remaining, 4, 3300))
+        flattened = tuple(suite for selected, _, _ in groups for suite in selected)
+        require(flattened == tuple(SUITES) and len(set(flattened)) == len(SUITES),
+                'Windows source groups must cover every original whole exactly once.')
+        with source_log.open('xb'):
+            pass
+        source_parent = Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
+        with tempfile.TemporaryDirectory(prefix='carr-voice-source-', dir=source_parent) as directory:
+            for number, (selected, jobs, timeout) in enumerate(groups, 1):
+                output = Path(directory) / f'source-{number}.txt'
+                header = (f'\nVOICE_SOURCE_GROUP {number}: jobs={jobs}, '
+                          f'wholes={len(selected)}, parent_seconds={timeout}\n').encode('ascii')
+                print(header.decode('ascii'), flush=True)
+                try:
+                    code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
+                                  '--jobs', str(jobs), *selected],
+                                 output, cwd=ROOT, ci=ci, timeout=timeout)
+                finally:
+                    if output.is_file():
+                        require(output.stat().st_size <= 8 * 1024**2,
+                                'Required source-group log exceeds its finite bound.')
+                        raw = output.read_bytes()
+                        with source_log.open('ab') as combined:
+                            require(combined.tell() + len(header) + len(raw) + 1 <= 8 * 1024**2,
+                                    'Combined source log exceeds its unchanged finite bound.')
+                            combined.write(header + raw + b'\n')
+                group_lines = raw.decode('utf-8').splitlines()
+                group_expected = [
+                    f'PASS: {suite}: junit_passed={SUITES[suite]}, failed=0, skipped=0, pytest_exit=0'
+                    for suite in selected]
+                valid = (code == 0 and all(group_lines.count(line) == 1 for line in group_expected)
+                         and group_lines[-1:] == [
+                             f'Required suites complete: {len(selected)}; passed={len(selected)}; failed=0'])
+                record = dict(status='PASS' if valid else 'FAIL', suites=list(selected),
+                              jobs=jobs, parent_seconds=timeout, suite_seconds=600,
+                              exit_code=code, log_sha256=sha256(raw).hexdigest())
+                source_groups.append(record)
+                print('VOICE_SOURCE_GROUP_RESULT ' + json.dumps(record, sort_keys=True), flush=True)
+        source_complete = (len(source_groups) == 2
+                           and all(group['status'] == 'PASS' for group in source_groups))
+    else:
+        # Preserve the original Linux 21-whole command and 4500 s envelope.
+        code = child([sys.executable, '-B', str(ROOT / 'scripts/ci_check.py'),
+                      '--jobs', '3', *SUITES], source_log, cwd=ROOT, ci=ci, timeout=4500)
+        group_lines = source_log.read_text(encoding='utf-8').splitlines()
+        source_complete = (code == 0 and group_lines[-1:] == [
+            f'Required suites complete: {len(SUITES)}; passed={len(SUITES)}; failed=0'])
     lines = source_log.read_text(encoding='utf-8').splitlines()
     expected = [f'PASS: {suite}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0'
                 for suite, count in SUITES.items()]
-    require(code == 0 and all(lines.count(line) == 1 for line in expected)
-            and lines[-1] == f'Required suites complete: {len(SUITES)}; passed={len(SUITES)}; failed=0',
+    require(source_complete and all(lines.count(line) == 1 for line in expected),
             'Every source whole suite must pass without skips or expected failures.')
     write(evidence / 'source-summary.json', dict(status='PASS', suites=SUITES,
           passed=sum(SUITES.values()), failed=0, skipped=0, expected_failures=False,
-          log_sha256=sha256(source_log.read_bytes()).hexdigest()))
+          log_sha256=sha256(source_log.read_bytes()).hexdigest(),
+          **({'execution_groups': source_groups} if source_groups else {})))
     work_parent = Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix='carr-voice-management-', dir=work_parent) as tmp:
         work = Path(tmp)

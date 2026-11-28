@@ -478,7 +478,22 @@ $suites = @(
     "tests/ui/test_voice_reference.py",
     "tests/storage/test_state_backup_portability.py",
     "tests/search/test_window_catalog_projection.py",
-    "tests/ui/test_native_saved_audio_cleanup.py"
+    "tests/ui/test_native_saved_audio_cleanup.py",
+  'tests/integrations/test_dordiai_reference_backends.py',
+  'tests/integrations/test_dordiai_managed_backends.py',
+  'tests/citations/test_attestation_cancellation.py',
+  'tests/packaging/test_library_scale_profile.py',
+  'tests/studio/test_daisy_schema_resolver.py',
+  'tests/assistant/test_transcription_provider.py',
+  'tests/transcription/test_remote_service.py',
+  'tests/ui/test_transcription_remote.py',
+  'tests/security/test_update_handoff.py',
+  'tests/security/test_update_runtime.py',
+  'tests/security/test_update_ui.py',
+  'tests/security/test_update_controller_actions.py',
+  'tests/audio/test_voice_scope_checks.py',
+  'tests/catalog/test_text_screen_work.py',
+  'tests/search/test_ascii_mapping_work.py',
 )
 
 $operationsCounts = @{
@@ -645,8 +660,8 @@ $completedFeatureCounts = @{
   'tests/ui/test_native_book_publication_driver.py' = 8
   'tests/search/test_paged_candidate_work.py' = 30
   'tests/audio/test_live_metadata_retry.py' = 22
-  'tests/ui/test_native_conversion_diagnostics.py' = 23
-  'tests/ui/test_native_saved_audio_cleanup.py' = 13
+  'tests/ui/test_native_conversion_diagnostics.py' = 30
+  'tests/ui/test_native_saved_audio_cleanup.py' = 19
   'tests/audio/test_voice_package_management.py' = 30
   'tests/audio/test_voice_management_state.py' = 25
   'tests/audio/test_voice_reference_management.py' = 30
@@ -669,6 +684,21 @@ $completedFeatureCounts = @{
   'tests/storage/test_v3_state_backup.py' = 42
   'tests/storage/test_library_backup.py' = 9
   'tests/storage/test_state_backup_portability.py' = 27
+  'tests/integrations/test_dordiai_reference_backends.py' = 40
+  'tests/integrations/test_dordiai_managed_backends.py' = 6
+  'tests/citations/test_attestation_cancellation.py' = 15
+  'tests/packaging/test_library_scale_profile.py' = 7
+  'tests/studio/test_daisy_schema_resolver.py' = 20
+  'tests/assistant/test_transcription_provider.py' = 39
+  'tests/transcription/test_remote_service.py' = 29
+  'tests/ui/test_transcription_remote.py' = 18
+  'tests/security/test_update_handoff.py' = 30
+  'tests/security/test_update_runtime.py' = 18
+  'tests/security/test_update_ui.py' = 15
+  'tests/security/test_update_controller_actions.py' = 14
+  'tests/audio/test_voice_scope_checks.py' = 42
+  'tests/catalog/test_text_screen_work.py' = 26
+  'tests/search/test_ascii_mapping_work.py' = 41
 }
 $formatExpected = @{
   'tests/audio/test_audiobook.py' = 17
@@ -686,7 +716,7 @@ $unique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Or
 foreach ($suite in $allSuites) {
   if ($suite -cnotmatch '^(tests|bootstrap)/[A-Za-z0-9_./-]+\.py$' -or -not $unique.Add($suite)) { throw "Invalid or duplicate whole-suite selector: $suite" }
 }
-if ($allSuites.Count -ne 472) { throw 'Exactly 472 reviewed whole source selectors are required.' }
+if ($allSuites.Count -ne 487) { throw 'Exactly 487 reviewed whole source selectors are required.' }
 $allCounts = [System.Collections.Generic.Dictionary[string,int]]::new([StringComparer]::Ordinal)
 foreach ($mapping in @($operationsCounts, $readerExpected, $completedFeatureCounts, $formatExpected, @{'tests/speech/test_runtime.py'=13})) {
   foreach ($entry in $mapping.GetEnumerator()) {
@@ -725,13 +755,13 @@ $assignedUnion = [System.Collections.Generic.HashSet[string]]::new([StringCompar
 $shards = [ordered]@{}
 for ($index = 0; $index -lt 4; $index++) {
   $selected = @($partitions[$index].ToArray())
-  if ($selected.Count -ne @(118,118,118,118)[$index]) { throw 'The reviewed four-shard inventory size differs.' }
+  if ($selected.Count -ne @(122,122,122,121)[$index]) { throw 'The reviewed four-shard inventory size differs.' }
   foreach ($suite in $selected) {
     if (-not $unique.Contains($suite) -or -not $assignedUnion.Add($suite)) { throw "Shard overlap or unknown selector: $suite" }
   }
   $shards[[string]$index] = $selected
 }
-if ($assignedUnion.Count -ne 472 -or -not $assignedUnion.SetEquals($unique)) { throw 'The source shard union is incomplete.' }
+if ($assignedUnion.Count -ne 487 -or -not $assignedUnion.SetEquals($unique)) { throw 'The source shard union is incomplete.' }
 function Text-Sha256([string]$Text) {
   $hash = [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($Text))
   return [Convert]::ToHexString($hash).ToLowerInvariant()
@@ -743,7 +773,7 @@ $countLines = @($countKeys | ForEach-Object { $_ + '=' + $allCounts[$_] })
 $inventory = [ordered]@{
   schema = 'carr-integrated-source-inventory/1'
   complete = $allSuites
-  complete_count = 472
+  complete_count = 487
   shards = $shards
   inventory_sha256 = Text-Sha256 (($allSuites -join $lf) + $lf)
   expected_counts = $allCounts
@@ -960,7 +990,7 @@ $receipt = [ordered]@{
   head = $head
   tree = $tree
   shard = $Shard
-  complete_count = 472
+  complete_count = 487
   assigned = $suites
   assigned_count = $suites.Count
   inventory_sha256 = $inventory.inventory_sha256

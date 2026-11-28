@@ -1,0 +1,947 @@
+{
+  "schema": "carr-complete-ordinary-gate-union/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "a66ee8ba7aa3a2e2740f2caf3c6c7b3edaa89499",
+  "base_tree": "0cb2fd66a989209dbdb6e8ebcd949d2aba468819",
+  "compatible_latest_parent": "321e0a39d08433901f037a66560cf01b1d44f2a7",
+  "scope": "Complete additive ordinary source/installed contracts; focused native, real HTTPS and STT loopback remain separate.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "670d9c9e710ae31e83e82ab5d36045a227bda707",
+      "blob_sha": "75eaf96dbd08f3cf90c48c1967cc8ac54b56d0f9",
+      "exact_readback": true
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "16c1533bc8f733bcc4ffbad32e50f5b45ed5d051",
+      "blob_sha": "3bb25f4d18e8aee8b78dd4a39595a084470e69d2",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "ecb812d1b9ceadc9bca652abd90cad40698f7bcf",
+      "blob_sha": "11b08fa94fec368d1a0d517f2e59d2c0efc42193",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "be3cfe47b9af04eb0a2ea8e396f4b71c790edbcd",
+      "blob_sha": "093ae2a0cf1cb3b31115a7f2a0df80b4bc5a40aa",
+      "exact_readback": true
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "e88c8042020b331896326d27ceed23be46f6a096",
+      "blob_sha": "45233b4f3386b3ceb1cdaf804ffbcb4afd0157ef",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "preimage": "dbfa8e61add47e00596d85e98a887ff13425628a",
+      "blob_sha": "d2dc46cc56dda98e901f8a183be8253447dcfd7d",
+      "exact_readback": true
+    }
+  ],
+  "component_manifests": {
+    "reference_backends": "7bf010e2e36406585ddcfcc03c3778c0922f2659",
+    "attestation_cancellation": "5c8102d1d3f5727349bba9b250f9e5a951acbc17",
+    "library_scale_profile": "5dbe60d271eda2d82d42a77fad29f06e19d35279",
+    "daisy_schema_resolver": "082f70581ec7fdd930e7a9cd07686bd842f5cfca",
+    "remote_stt": "20711bab4b5a77221f7059b40e7e8f3a0ccf861d",
+    "configured_updater": "90ee1f5e4d3f95d144d95c3db67dc39c3852ab69",
+    "fresh_voice_scope": "a51937907c4e1ff4ca58b1ec2d4ccdf9f1c27a55",
+    "configured_updater_restart": "493dd71408ebdd61739ad41bfddb37cff4477703",
+    "remote_stt_focus": "e0f20f144b2393339a34ca97bb1d0712122bed0d",
+    "measured_text_and_ascii_work": "a0292e42f7da24ecbecae625d9aff32bcb9438e4",
+    "saved_audio_destroy_observer": "212af1ec84d0a4f83fa0c81b33e0534ef601d5c0",
+    "conversion_native_key_dispatch": "50753beb11e90fd093519ac730f6d458eae103f8",
+    "measured_corpus_focused_gate_union": "f2569a83b70edc141b04170cc236cc3b00ad338b"
+  },
+  "new_whole_suites": [
+    {
+      "path": "tests/integrations/test_dordiai_reference_backends.py",
+      "cases": 40,
+      "functions": [
+        "test_actual_reference_metadata_child_uses_only_selected_backend_roles_and_available_languages",
+        "test_actual_reference_metadata_does_not_advertise_missing_model_or_carrier",
+        "test_actual_openvoice_metadata_requires_both_male_and_english_timing_carriers",
+        "test_actual_reference_metadata_rejects_unknown_backend_or_unbound_model_without_private_error_text",
+        "test_actual_reference_metadata_refuses_missing_required_package_role",
+        "test_actual_reference_pipe_uses_reviewed_argv_controls_and_terminal_or_pull_reply",
+        "test_actual_reference_pipe_rejects_bad_or_ambiguous_pcm_and_keeps_recovery_synchronized",
+        "test_actual_reference_pipe_cancel_or_abandoned_yield_never_sends_next_and_releases_child",
+        "test_actual_reference_pipe_keeps_audio_budget_and_cancel_before_yield",
+        "test_actual_reference_pipe_cancels_a_pending_single_or_streaming_reply_without_success"
+      ],
+      "per_function_cases": [
+        2,
+        5,
+        1,
+        4,
+        2,
+        2,
+        16,
+        4,
+        2,
+        2
+      ],
+      "companions": [],
+      "blob_sha": "de40ac027c6706886d248edaea14dec7bea36608"
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_backends.py",
+      "cases": 6,
+      "functions": [
+        "test_current_managed_reference_backend_preserves_version_identity_capabilities_registry_pcm_and_lease",
+        "test_current_managed_reference_reply_still_holds_real_lock_and_rechecks_document_before_completion",
+        "test_current_backend_configuration_change_retires_saved_authority_without_retargeting_approved_voice"
+      ],
+      "per_function_cases": [
+        2,
+        2,
+        2
+      ],
+      "companions": [
+        "tests/integrations/test_dordiai_reference_backends.py",
+        "tests/audio/voice_management_fixtures.py"
+      ],
+      "blob_sha": "1f03119d76dbf72b839c004aacc70baea0bb8657"
+    },
+    {
+      "path": "tests/citations/test_attestation_cancellation.py",
+      "cases": 15,
+      "functions": [
+        "test_historical_text_asset_deadline_is_preserved_through_both_attestors",
+        "test_real_file_snapshot_segmentation_does_not_turn_cancelled_read_into_unverified_text",
+        "test_actual_pdf_render_deadline_propagates_without_replacing_the_original_failure",
+        "test_printed_label_lookup_cancellation_never_falls_through_to_text_approval",
+        "test_actual_current_copy_cancellation_preserves_error_closes_snapshot_and_keeps_old_selection"
+      ],
+      "per_function_cases": [
+        3,
+        3,
+        3,
+        3,
+        3
+      ],
+      "companions": [],
+      "blob_sha": "8e1fe70637ed839a6120c2414e2933bfe16e2858"
+    },
+    {
+      "path": "tests/packaging/test_library_scale_profile.py",
+      "cases": 7,
+      "functions": [
+        "test_actual_profiled_measure_preserves_complete_traversal_restart_and_retained_identity",
+        "test_real_cprofile_bounds_function_and_caller_rows_redacts_paths_and_preserves_recursive_counts",
+        "test_diagnostic_profile_requires_explicit_boolean_before_creating_any_output"
+      ],
+      "per_function_cases": [
+        2,
+        1,
+        4
+      ],
+      "companions": [
+        "scripts/benchmark_library_scale.py"
+      ],
+      "blob_sha": "4e79f8e4299f7adc414e575a0c59ba509984ead4"
+    },
+    {
+      "path": "tests/studio/test_daisy_schema_resolver.py",
+      "cases": 20,
+      "functions": [
+        "test_actual_lxml_accepts_only_bound_root_and_sibling_entities_with_local_uri_spellings",
+        "test_actual_lxml_invalid_xhtml_still_fails_after_local_uri_mapping",
+        "test_actual_lxml_keeps_separate_exact_smil_alias",
+        "test_closed_schema_resolver_never_infers_authority_from_basename_or_url_normalization",
+        "test_actual_lxml_cannot_escape_approved_dtd_through_an_unlisted_parameter_entity",
+        "test_windows_short_file_uri_maps_only_the_exact_approved_drive_path"
+      ],
+      "per_function_cases": [
+        4,
+        4,
+        1,
+        8,
+        2,
+        1
+      ],
+      "companions": [
+        "scripts/daisy_schema_acceptance.py"
+      ],
+      "blob_sha": "4cdb3ee5f1a24bdeaf9b4725a5b0a53e0aed0b59"
+    },
+    {
+      "path": "tests/assistant/test_transcription_provider.py",
+      "cases": 39,
+      "functions": [
+        "test_actual_gateway_uses_exact_multipart_identity_and_existing_usage",
+        "test_local_only_remains_default_and_never_reads_selected_file_or_vault",
+        "test_exact_approval_fails_before_credentials_and_transport",
+        "test_reviewed_file_change_and_cancel_remain_not_sent",
+        "test_untrusted_response_stays_uncertain_and_cannot_retry",
+        "test_dedicated_profile_rejects_other_engine_or_authority",
+        "test_timestamp_and_unrequested_vendor_modes_are_refused",
+        "test_optional_duration_is_explicitly_provider_timeline_not_measured_audio",
+        "test_profile_export_never_carries_an_enabled_key_or_executes_provider",
+        "test_upload_limit_refuses_sparse_oversized_source_before_read",
+        "test_active_remote_consent_rechecked_after_upload_and_vault"
+      ],
+      "companions": [
+        "tests/transcription/remote_fixture.py"
+      ],
+      "blob_sha": "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae"
+    },
+    {
+      "path": "tests/transcription/test_remote_service.py",
+      "cases": 29,
+      "functions": [
+        "test_retained_remote_result_reuses_exact_editor_exports_and_existing_ledger",
+        "test_actual_owned_child_uses_current_gateway_then_closes_before_return",
+        "test_actual_child_total_deadline_retains_source_and_never_publishes_result",
+        "test_cancelled_admission_never_creates_the_next_effect",
+        "test_review_is_bound_to_exact_recording_profile_parameters_and_budget",
+        "test_review_mutation_after_approval_cannot_change_the_captured_transfer",
+        "test_source_receipt_exports_and_exact_usage_tampering_are_refused",
+        "test_immutable_result_commit_survives_failed_checkpoint_and_reconciles_without_network",
+        "test_complete_backup_restores_exact_source_and_inactive_remote_consent",
+        "test_real_same_path_library_replacement_is_refused_before_new_state",
+        "test_unrelated_worker_metadata_cannot_enter_remote_backup_inventory",
+        "test_approved_recording_cannot_be_retargeted_to_another_library_directory",
+        "test_actual_child_rejects_changed_current_entry_before_any_provider_effect",
+        "test_returned_transcript_requires_current_completed_usage_before_publication",
+        "test_malformed_saved_job_is_refused_by_normal_and_passive_readers"
+      ],
+      "companions": [
+        "tests/transcription/remote_fixture.py"
+      ],
+      "blob_sha": "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000"
+    },
+    {
+      "path": "tests/ui/test_transcription_remote.py",
+      "cases": 18,
+      "functions": [
+        "test_review_is_local_shows_exact_bytes_destination_and_local_budget",
+        "test_unchecked_consent_refuses_even_after_local_review",
+        "test_explicit_default_no_or_yes_uses_one_existing_worker_and_retained_receipt",
+        "test_current_inputs_cannot_reuse_an_earlier_transfer_review",
+        "test_modal_confirmation_rechecks_current_view_and_selected_recording",
+        "test_queued_close_cancels_before_source_retention_or_remote_admission",
+        "test_busy_close_requests_stop_and_keeps_host_ownership_until_settlement",
+        "test_late_completed_receipt_is_retained_without_touching_a_replaced_view",
+        "test_actual_same_path_library_change_refuses_queued_remote_work_without_canary_writes",
+        "test_host_admission_refusal_never_leaves_a_busy_remote_child",
+        "test_repeated_close_never_repeats_the_modal_finish",
+        "test_native_parent_close_waits_for_actual_refresh_and_enabled_modal_control"
+      ],
+      "companions": [
+        "tests/transcription/remote_fixture.py",
+        "scripts/windows_transcription_remote_smoke.py"
+      ],
+      "blob_sha": "fff4d63049cb191c56be757ec2e3f7a3c14e387d"
+    },
+    {
+      "path": "tests/security/test_update_handoff.py",
+      "cases": 30,
+      "functions": [
+        "test_offline_handoff_reverifies_actual_signed_metadata_and_complete_target",
+        "test_exact_external_runtime_seal_refuses_every_unreviewed_payload_change",
+        "test_same_byte_runtime_root_replacement_never_reuses_owner_configuration",
+        "test_owner_configuration_changes_are_refused_before_launch",
+        "test_real_supervisor_ready_never_means_apply_and_cancel_reaps_it",
+        "test_wrong_supervisor_ready_identity_is_refused_and_actual_child_is_reaped",
+        "test_only_actual_close_boolean_can_commit_the_exact_owned_handoff",
+        "test_visible_commit_survives_postpublication_error_without_terminating_host",
+        "test_uncertain_commit_retains_fixed_host_without_falsely_claiming_activation",
+        "test_external_host_uses_actual_exclusive_lease_and_existing_complete_transaction",
+        "test_external_host_failure_retains_exact_existing_rollback_and_backup",
+        "test_external_host_recovery_finishes_already_committed_b_without_rollback",
+        "test_real_application_child_excludes_host_until_its_own_lease_is_released",
+        "test_runtime_manifest_survives_only_outside_every_managed_payload",
+        "test_restart_uses_only_exact_owned_installed_entrypoint_and_current_library"
+      ],
+      "companions": [
+        "tests/security/__init__.py",
+        "tests/security/conftest.py",
+        "tests/security/test_managed_installation.py",
+        "packaging/windows_installer/build_setup.py",
+        "packaging/windows_installer/create_update_target.py",
+        "packaging/windows_installer/maintenance.py",
+        "packaging/windows_installer/setup.iss.in",
+        "packaging/create_delivery.py",
+        "packaging/install_windows.py",
+        "src/carr_library/__main__.py",
+        "src/carr_library/installation_lease.py",
+        "src/carr_library/managed_installation.py",
+        "src/carr_library/audio/windows_job.py",
+        "src/carr_library/audio/cleanup.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/process.py"
+      ],
+      "blob_sha": "cdb76726200bf12518501b9efa03b5b865cf48e7"
+    },
+    {
+      "path": "tests/security/test_update_runtime.py",
+      "cases": 18,
+      "functions": [
+        "test_preparation_copies_only_exact_distribution_then_seals_new_offline_host",
+        "test_wrong_independent_a_identity_is_refused_before_copy_or_child",
+        "test_changed_exact_distribution_source_never_starts_offline_installer",
+        "test_changed_fixed_helper_is_refused_before_import_or_copy",
+        "test_explicit_external_destination_cannot_overlap_or_replace_owned_material",
+        "test_cancellation_before_preparation_creates_no_runtime_or_receipts",
+        "test_offline_installer_failure_retains_owned_attempt_and_leaves_a_untouched",
+        "test_real_competing_publication_is_never_overwritten",
+        "test_visible_final_configuration_retains_truth_if_acknowledgment_fails"
+      ],
+      "companions": [
+        "tests/security/__init__.py",
+        "tests/security/conftest.py",
+        "tests/security/test_managed_installation.py",
+        "packaging/windows_installer/build_setup.py",
+        "packaging/windows_installer/create_update_target.py",
+        "packaging/windows_installer/maintenance.py",
+        "packaging/windows_installer/setup.iss.in",
+        "packaging/create_delivery.py",
+        "packaging/install_windows.py",
+        "src/carr_library/__main__.py",
+        "src/carr_library/installation_lease.py",
+        "src/carr_library/managed_installation.py",
+        "src/carr_library/audio/windows_job.py",
+        "src/carr_library/audio/cleanup.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/process.py"
+      ],
+      "blob_sha": "e1e424dfcb009adbc8a29fd44492092b090c8c9c"
+    },
+    {
+      "path": "tests/security/test_update_ui.py",
+      "cases": 15,
+      "functions": [
+        "test_actual_host_close_and_registered_finalizer_cannot_race_before_commit",
+        "test_native_close_veto_or_missing_closing_state_cancels_only_owned_handoff",
+        "test_late_callback_never_closes_changed_host_or_applies_after_cancel",
+        "test_real_host_shutdown_settles_prepared_helper_without_any_gui_callback",
+        "test_refused_shared_host_submission_creates_no_supervisor",
+        "test_close_between_preparation_and_cleanup_registration_reaps_real_helper",
+        "test_real_shared_progress_reports_received_bytes_without_premature_acceptance",
+        "test_same_byte_library_root_replacement_refuses_new_update_job_before_worker",
+        "test_uncertain_durable_commit_is_retained_through_actual_host_cleanup",
+        "test_consented_idle_check_uses_existing_worker_without_focus_download_or_close",
+        "test_idle_check_cooperatively_stops_for_new_foreground_work_on_same_worker",
+        "test_closed_host_stops_timer_and_drops_late_idle_completion_without_focus"
+      ],
+      "companions": [
+        "tests/security/__init__.py",
+        "tests/security/conftest.py",
+        "tests/security/test_managed_installation.py",
+        "packaging/windows_installer/build_setup.py",
+        "packaging/windows_installer/create_update_target.py",
+        "packaging/windows_installer/maintenance.py",
+        "packaging/windows_installer/setup.iss.in",
+        "packaging/create_delivery.py",
+        "packaging/install_windows.py",
+        "src/carr_library/__main__.py",
+        "src/carr_library/installation_lease.py",
+        "src/carr_library/managed_installation.py",
+        "src/carr_library/audio/windows_job.py",
+        "src/carr_library/audio/cleanup.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/process.py"
+      ],
+      "blob_sha": "4b7c1e0b0d379654d769da667b11e453cb55a221"
+    },
+    {
+      "path": "tests/security/test_update_controller_actions.py",
+      "cases": 14,
+      "functions": [
+        "test_unconfigured_status_never_creates_update_authority_or_contacts_a_site",
+        "test_explicit_current_library_obtains_only_actual_tuf_package_capability",
+        "test_wrong_library_is_refused_before_creating_update_cache",
+        "test_stale_same_byte_directory_scope_refuses_before_client_or_handoff",
+        "test_background_update_setting_requires_typed_explicit_consent",
+        "test_background_consent_is_bound_to_exact_owner_configuration_and_manual_by_default",
+        "test_consent_for_another_configuration_never_enables_idle_network_checks",
+        "test_offline_only_configuration_cannot_enable_background_network",
+        "test_explicit_preparation_changes_only_this_controller_to_verified_apply_service",
+        "test_update_check_outage_preserves_unmanaged_reading_permission_and_no_apply"
+      ],
+      "companions": [
+        "tests/security/__init__.py",
+        "tests/security/conftest.py",
+        "tests/security/test_managed_installation.py",
+        "packaging/windows_installer/build_setup.py",
+        "packaging/windows_installer/create_update_target.py",
+        "packaging/windows_installer/maintenance.py",
+        "packaging/windows_installer/setup.iss.in",
+        "packaging/create_delivery.py",
+        "packaging/install_windows.py",
+        "src/carr_library/__main__.py",
+        "src/carr_library/installation_lease.py",
+        "src/carr_library/managed_installation.py",
+        "src/carr_library/audio/windows_job.py",
+        "src/carr_library/audio/cleanup.py",
+        "src/carr_library/audio/models.py",
+        "src/carr_library/audio/process.py"
+      ],
+      "blob_sha": "1daad6582495e049952e9c36404214059453ada1"
+    },
+    {
+      "path": "tests/audio/test_voice_scope_checks.py",
+      "cases": 42,
+      "functions": [
+        "test_fresh_scope_checks_reduce_real_ancestor_walks_without_caching",
+        "test_broker_rechecks_both_branches_and_each_captured_identity",
+        "test_voice_settings_rechecks_each_captured_identity_after_path_resolution",
+        "test_authority_rechecks_all_runtime_and_state_identities_after_path_resolution",
+        "test_actual_linked_scope_refuses_even_when_it_reaches_the_original_directory",
+        "test_voice_settings_guard_cancellation_precedes_fresh_path_reads",
+        "test_resource_cancellation_keeps_the_real_existing_reservation",
+        "test_authority_cancellation_keeps_the_actual_package_lease_until_unwind",
+        "test_settings_with_no_captured_audio_directory_preserves_passive_behavior",
+        "test_fresh_scope_optimization_preserves_owner_namespace_presence_guard",
+        "test_broker_checks_disjoint_explicit_policy_branch_without_recreating_it"
+      ],
+      "companions": [],
+      "blob_sha": "1397674e847d3128ac7a38f2463103ad0b3c06de"
+    },
+    {
+      "path": "tests/catalog/test_text_screen_work.py",
+      "cases": 26,
+      "functions": [
+        "test_text_screen_preserves_every_ascii_code_point",
+        "test_all_non_ascii_unicode_scalars_remain_valid_text",
+        "test_invalid_utf8_precedes_the_control_character_refusal",
+        "test_real_small_snapshot_retains_exact_utf8_and_whitespace_bytes",
+        "test_real_snapshot_cancellation_never_admits_or_leaks_a_reader",
+        "test_actual_replacement_before_open_is_refused_and_owned_reader_closes",
+        "test_each_real_snapshot_screens_and_hashes_current_file_bytes"
+      ],
+      "companions": [],
+      "blob_sha": "3e14e33e4fadc3a53db39b54abd0027bcfb4cc9f"
+    },
+    {
+      "path": "tests/search/test_ascii_mapping_work.py",
+      "cases": 32,
+      "functions": [
+        "test_ascii_mapping_keeps_every_nonempty_raw_match_boundary",
+        "test_ascii_boundaries_are_identical_across_old_size_and_check_thresholds",
+        "test_actual_sqlite_modes_and_offsets_equal_independent_ascii_boundaries",
+        "test_sparse_ascii_mapping_preserves_stop_objects_during_actual_work",
+        "test_actual_ascii_page37_keeps_fresh_lookahead_attestation_copy_and_closed_owners",
+        "test_fresh_ascii_lookahead_rejects_retained_mutation_before_publication",
+        "test_non_ascii_cluster_mapping_never_enters_the_ascii_branch"
+      ],
+      "companions": [],
+      "blob_sha": "8b7143391f75205a448dcb42778e79180b5c74ac"
+    }
+  ],
+  "ordinary_case_executions_added_per_complete_lane": 364,
+  "counts": {
+    "source_whole": {
+      "before": 472,
+      "after": 487,
+      "partition_before": [
+        118,
+        118,
+        118,
+        118
+      ],
+      "partition_after": [
+        122,
+        122,
+        122,
+        121
+      ]
+    },
+    "main_fast_whole": {
+      "before": 165,
+      "after": 180
+    },
+    "v3_source_whole": {
+      "before": 202,
+      "after": 217
+    },
+    "v3_installed_whole": {
+      "before": 181,
+      "after": 196
+    },
+    "full_installed_whole": {
+      "before": 321,
+      "after": 336
+    }
+  },
+  "new_companion_inventory": [
+    "tests/integrations/test_dordiai_reference_backends.py",
+    "tests/audio/voice_management_fixtures.py",
+    "scripts/benchmark_library_scale.py",
+    "scripts/daisy_schema_acceptance.py",
+    "tests/transcription/remote_fixture.py",
+    "tests/security/__init__.py",
+    "tests/security/conftest.py",
+    "tests/security/test_managed_installation.py",
+    "packaging/windows_installer/build_setup.py",
+    "packaging/windows_installer/create_update_target.py",
+    "packaging/windows_installer/maintenance.py",
+    "packaging/windows_installer/setup.iss.in",
+    "packaging/create_delivery.py",
+    "packaging/install_windows.py",
+    "src/carr_library/__main__.py",
+    "src/carr_library/installation_lease.py",
+    "src/carr_library/managed_installation.py",
+    "src/carr_library/audio/windows_job.py",
+    "src/carr_library/audio/cleanup.py",
+    "src/carr_library/audio/models.py",
+    "src/carr_library/audio/process.py",
+    "scripts/windows_transcription_remote_smoke.py"
+  ],
+  "source_origin_requirements": [
+    "carr_library.assistant.transcription_provider",
+    "carr_library.assistant.profiles",
+    "carr_library.assistant.providers",
+    "carr_library.integrations.transcription_remote_values",
+    "carr_library.integrations.transcription_remote",
+    "carr_library.assistant.transcription_worker",
+    "carr_library.transcription",
+    "carr_library.backup_transcription",
+    "carr_library.backup_producers",
+    "carr_library.ui.transcription_remote_dialog",
+    "carr_library.ui.transcription_dialog",
+    "carr_library.ui.assistant_dialog",
+    "carr_library.security._files",
+    "carr_library.security.anchors",
+    "carr_library.security.boundary",
+    "carr_library.security.controller",
+    "carr_library.security.entitlements",
+    "carr_library.security.installation",
+    "carr_library.security.managed_installation",
+    "carr_library.security.refresh",
+    "carr_library.security.updates",
+    "carr_library.security.windows_registration",
+    "carr_library.security.update_http_worker",
+    "carr_library.security.update_transport",
+    "carr_library.security.update_handoff",
+    "carr_library.security.update_host",
+    "carr_library.security.update_runtime",
+    "carr_library.installation_lease",
+    "carr_library.managed_installation",
+    "carr_library.__main__",
+    "carr_library.delivery_contract",
+    "carr_library.application",
+    "carr_library.library_backup",
+    "carr_library.ui.worker_lifetime",
+    "carr_library.audio.models",
+    "carr_library.audio.process",
+    "carr_library.audio.windows_job",
+    "carr_library.audio.cleanup",
+    "carr_library.operations.broker",
+    "carr_library.operations._locks",
+    "carr_library.durable_state",
+    "carr_library.catalog.intake",
+    "bootstrap",
+    "carr_library.ui.trust_status",
+    "carr_library.integrations._dordiai_authority",
+    "carr_library.integrations.dordiai_voices",
+    "carr_library.integrations._dordiai_probe",
+    "carr_library.citations.text_attestation",
+    "carr_library.citations.printed_label_attestation",
+    "carr_library.citations.pdf_review_attestation",
+    "carr_library.audio.voice_settings"
+  ],
+  "guide": {
+    "path": "carr-library/docs/REMOTE_TRANSCRIPTION.md",
+    "blob": "4b169cd24758337a90bf9881f7dd98542ec8e5ba",
+    "before": 56,
+    "after": 57,
+    "existing_managed_updates": "Already explicitly shipped by the old allowlist; the current reviewed guide uses that existing entry.",
+    "all_old_names_preserved": true,
+    "other_builder_changes": false
+  },
+  "exact_followup_fixtures": {
+    "profile7": "4e79f8e4299f7adc414e575a0c59ba509984ead4",
+    "saved_audio_native_same46contract": "63d31bdd624bdac5340d1e1173155b3974b846ff",
+    "updater_handoff30": "cdb76726200bf12518501b9efa03b5b865cf48e7",
+    "remote_stt_ui18": "fff4d63049cb191c56be757ec2e3f7a3c14e387d",
+    "remote_stt_native_same73contract": "bc32ee0a787bd70e67d0b6fab5c64ff9f0d91309",
+    "saved_audio_driver19": "5eeba4884c846a6ca21a85a649ea2cd7830d7429",
+    "conversion_driver30": "f75a733ac6c1943de65198998d8055db9f17c225",
+    "conversion_native_same30contract": "a8b2cf7ce191630b50fc8ee846ada1b89559a10d"
+  },
+  "audit": {
+    "all_old_selectors_retained_in_order": true,
+    "no_duplicate_selectors": true,
+    "only_new_whole_paths_added": [
+      "tests/integrations/test_dordiai_reference_backends.py",
+      "tests/integrations/test_dordiai_managed_backends.py",
+      "tests/citations/test_attestation_cancellation.py",
+      "tests/packaging/test_library_scale_profile.py",
+      "tests/studio/test_daisy_schema_resolver.py",
+      "tests/assistant/test_transcription_provider.py",
+      "tests/transcription/test_remote_service.py",
+      "tests/ui/test_transcription_remote.py",
+      "tests/security/test_update_handoff.py",
+      "tests/security/test_update_runtime.py",
+      "tests/security/test_update_ui.py",
+      "tests/security/test_update_controller_actions.py",
+      "tests/audio/test_voice_scope_checks.py",
+      "tests/catalog/test_text_screen_work.py",
+      "tests/search/test_ascii_mapping_work.py"
+    ],
+    "all_old_feature_functions_and_counts_unchanged": false,
+    "v3_recovery_map_byte_identical": true,
+    "original_files_reconstructed_by_inverse": true,
+    "loopback_https_excluded_from_offline": true,
+    "counts": {
+      "source": 487,
+      "fast": 180,
+      "installed": 336,
+      "v3installed": 196,
+      "v3source": 217
+    },
+    "new_cases": 351,
+    "new_functions": 136,
+    "utf8_bytes": {
+      "fg_main": 393715,
+      "fg_v3": 494450,
+      "fg_source": 49373,
+      "fg_installed": 202091,
+      "fg_reusable": 11536,
+      "fg_builder": 27911
+    },
+    "guide_old_names_unchanged": true,
+    "new_focus_native_companion_present": true,
+    "restart30_and_focus18_exact": true,
+    "new_wholes": 15,
+    "updated_existing_cases_added": 13,
+    "total_additional_cases": 364,
+    "updated_existing_functions_added": 4,
+    "total_additional_functions": 140,
+    "source_new_selectors_precede_pipeline": true,
+    "only_existing_feature_count_updates": [
+      {
+        "path": "tests/ui/test_native_saved_audio_cleanup.py",
+        "count": 19,
+        "functions": 6
+      },
+      {
+        "path": "tests/ui/test_native_conversion_diagnostics.py",
+        "count": 30,
+        "functions": 14
+      }
+    ],
+    "all_old_function_names_retained": true,
+    "all_other_old_feature_entries_exact": true,
+    "hunks": 22,
+    "exact_source_helper_pin": {
+      "sha": "11b08fa94fec368d1a0d517f2e59d2c0efc42193",
+      "main_occurrences": 2,
+      "reusable_occurrences": 1
+    },
+    "overlapping_case_contracts": {
+      "unique_paths": 204,
+      "conflicting_counts": 0,
+      "independent_reviewer": "progress_completion"
+    }
+  },
+  "changes": [
+    {
+      "key": "fg_source",
+      "why": "append PS suites",
+      "multiplicity": 1,
+      "before_bytes": 21236,
+      "after_bytes": 21960
+    },
+    {
+      "key": "fg_source",
+      "why": "append counts completedFeatureCounts",
+      "multiplicity": 1,
+      "before_bytes": 8099,
+      "after_bytes": 8880
+    },
+    {
+      "key": "fg_main",
+      "why": "append PS completionSuites",
+      "multiplicity": 1,
+      "before_bytes": 9166,
+      "after_bytes": 10040
+    },
+    {
+      "key": "fg_main",
+      "why": "append counts reviewedCompletionExpected",
+      "multiplicity": 1,
+      "before_bytes": 8447,
+      "after_bytes": 9378
+    },
+    {
+      "key": "fg_v3",
+      "why": "append counts completedFeatureCounts",
+      "multiplicity": 1,
+      "before_bytes": 8217,
+      "after_bytes": 9148
+    },
+    {
+      "key": "fg_v3",
+      "why": "append ordinary source command",
+      "multiplicity": 1,
+      "before_bytes": 8064,
+      "after_bytes": 8712
+    },
+    {
+      "key": "fg_installed",
+      "why": "append contents_suites[0]",
+      "multiplicity": 1,
+      "before_bytes": 15215,
+      "after_bytes": 15968
+    },
+    {
+      "key": "fg_installed",
+      "why": "append completion_suites[0]",
+      "multiplicity": 1,
+      "before_bytes": 8655,
+      "after_bytes": 9408
+    },
+    {
+      "key": "fg_v3",
+      "why": "append suites[1]",
+      "multiplicity": 1,
+      "before_bytes": 10180,
+      "after_bytes": 11083
+    },
+    {
+      "key": "fg_v3",
+      "why": "append completion_suites[1]",
+      "multiplicity": 1,
+      "before_bytes": 8393,
+      "after_bytes": 9296
+    },
+    {
+      "key": "fg_installed",
+      "why": "append reviewed_fixture_paths[0]",
+      "multiplicity": 1,
+      "before_bytes": 2255,
+      "after_bytes": 3151
+    },
+    {
+      "key": "fg_v3",
+      "why": "append reviewed_fixture_paths[1]",
+      "multiplicity": 1,
+      "before_bytes": 2679,
+      "after_bytes": 3775
+    },
+    {
+      "key": "fg_installed",
+      "why": "append completion_modules[0]",
+      "multiplicity": 1,
+      "before_bytes": 7957,
+      "after_bytes": 9117
+    },
+    {
+      "key": "fg_v3",
+      "why": "append completion_names[1]",
+      "multiplicity": 1,
+      "before_bytes": 7851,
+      "after_bytes": 9483
+    },
+    {
+      "key": "fg_v3",
+      "why": "append exact count/function map",
+      "multiplicity": 1,
+      "before_bytes": 100261,
+      "after_bytes": 111714
+    },
+    {
+      "key": "fg_installed",
+      "why": "append exact count/function map",
+      "multiplicity": 1,
+      "before_bytes": 120722,
+      "after_bytes": 132175
+    },
+    {
+      "key": "fg_source",
+      "why": "exact whole source count 472 to 487",
+      "before_number": 472,
+      "after_number": 487,
+      "matches": 5
+    },
+    {
+      "key": "fg_main",
+      "why": "exact whole source count 472 to 487",
+      "before_number": 472,
+      "after_number": 487,
+      "matches": 11
+    },
+    {
+      "key": "fg_source",
+      "why": "balanced exact whole source partition sizes",
+      "multiplicity": 1,
+      "before_bytes": 18,
+      "after_bytes": 18
+    },
+    {
+      "key": "fg_builder",
+      "why": "ship actual new remote transcription guide; updater guide already present",
+      "multiplicity": 1,
+      "before_bytes": 37,
+      "after_bytes": 68
+    },
+    {
+      "key": "fg_main",
+      "why": "bind exact updated complete source inventory helper",
+      "multiplicity": 2,
+      "before_bytes": 40,
+      "after_bytes": 40
+    },
+    {
+      "key": "fg_reusable",
+      "why": "bind exact updated complete source inventory helper",
+      "multiplicity": 1,
+      "before_bytes": 40,
+      "after_bytes": 40
+    }
+  ],
+  "inverse_audit": "Reversing all recorded exact list/map/guide and scalar/pin edits reconstructs all six original predecessor files byte-for-byte. Every prior function and selector remains. Only the two explicitly listed existing suite counts/function lists expand; every other old feature-map entry and the V3 early recovery map remain exactly equal. Final successor/preimage Git blobs permit independent inverse checking.",
+  "preserved": {
+    "all_prior_test_paths": true,
+    "all_prior_function_requirements": true,
+    "all_prior_module_origins": true,
+    "all_prior_fixture_companions": true,
+    "whole_suite_child_seconds": 600,
+    "existing_reviewed_asr_child_seconds": 900,
+    "source_jobs": 3,
+    "academic_jobs": 1,
+    "all_native_checks_and_invocations": true,
+    "default_playback_hardware_requirements": true,
+    "all_network_firewalls": true,
+    "all_before_after_source_and_fixture_checks": true,
+    "final_bundle_seal": true,
+    "strict_zero_failure_skip_xfail_policy": true,
+    "original_shard_anchor_assignments": true,
+    "existing_outer_deadlines": true,
+    "github_gitattributes_two_raw_workflow_rules": true,
+    "no_factored_contract_loader": true,
+    "no_refs_changed": true,
+    "all_other_prior_expected_counts_unchanged": true,
+    "existing_counts_changed_only_for_two_append_only_regressions": true
+  },
+  "excluded_from_offline": [
+    "tests/assistant/test_transcription_loopback.py",
+    "tests/security/test_update_https.py"
+  ],
+  "executable_validation_plan": {
+    "existing_source_syntax_job": [
+      "Compile every tracked source/scripts/packaging/bootstrap/test Python input without importing product modules.",
+      "Parse current YAML/workflow PowerShell bodies with the existing actual parser and size controls.",
+      "Parse pinned source PS 11b08fa94fec368d1a0d517f2e59d2c0efc42193 through the native PowerShell parser, then -InventoryOnly; require487 unique whole paths, four exact partition memberships, and identical overlapping count contracts."
+    ],
+    "required_runtime": [
+      "Run all four unchanged strict source workers against exact current HEAD; require487 unique complete whole-suite receipts.",
+      "Run main fast180 and full installed336 with unchanged source/origin/fixture verification.",
+      "Run V3 source217 and installed196 with unchanged whole child bounds and zero-skip/error/xfail rules.",
+      "Continue separately required focused native and controlled network proofs; no ordinary result substitutes for them."
+    ],
+    "parse_execution": "NOT_RUN",
+    "suite_execution": "NOT_RUN"
+  },
+  "peer_reviews": {
+    "progress_completion": {
+      "base": "ACCEPTED_STATIC_NOT_RUN",
+      "final_followup": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Six complete predecessor inverses, all old selectors/functions/counts, STT/updater companion and origin coverage, offline exclusion, helper/whole partition pins.",
+      "followup_scope": "Every feature map including unchanged early V3 subset; only handoff30/STT18 function/count entries, native-script companion and exact source-helper pins. Full five-file inverse to accepted a232 successors.",
+      "latest_inventory": "ACCEPTED_STATIC_NOT_RUN",
+      "latest_scope": "Ordered unique source487 preserving485, exact122/122/122/121 assignments, helper pins2+1, cleanup19/all6 and converter30/all14 source-function equality, unchanged early V3 and other feature entries,204 overlapping case-map paths with no conflicts; native and child policies unchanged."
+    },
+    "canonical_regression": {
+      "base": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Backend40+6, cancellation15, profile7, DAISY20 and scope42 exact whole/function/companion/origin inventories; unchanged prior selectors/functions and early recovery.",
+      "latest_inventory": "ACCEPTED_STATIC_NOT_RUN",
+      "latest_scope": "Exact a029 intake26/7 and ASCII32/7 rows/selectors, no companions, retained intake/literal/application origins and no removed old path/function."
+    }
+  },
+  "supersedes_draft": "dbcd59f7356c9f063ec534c4df4f5a6f419a4507",
+  "followup_from_reviewed_draft": {
+    "old_manifest": "dbcd59f7356c9f063ec534c4df4f5a6f419a4507",
+    "preimages": {
+      "fg_main": "c5e6f7f34788a3b7dedb4234d62707cf15b2e7bf",
+      "fg_v3": "aa6da0b069ed15324d6dc5d9ea5c61497c41c60d",
+      "fg_source": "b904c158ce060f00d46fab576375d025c8bcf525",
+      "fg_installed": "b317378d66990282d7d4742fea1fdf84d588c5dd",
+      "fg_reusable": "e10834b78ca1c5b4f72f3a7e2984e6f14589f3aa",
+      "fg_builder": "d2dc46cc56dda98e901f8a183be8253447dcfd7d"
+    },
+    "edits": [
+      "Append exactly intake26 and ASCII32 whole modules with all14 required test functions to every applicable source/installed selector and count map; V3 source arguments precede its unchanged Tee-Object pipeline.",
+      "Expand existing saved-audio cleanup13→19 by its one added six-case function; retain every old function and its native companion.",
+      "Expand existing converter diagnostics23→30 by its three added functions/seven cases; retain every old function and native companion.",
+      "Update exact source487 and partition122/122/122/121; bind new source helper in main twice and reusable once."
+    ],
+    "new_case_executions_per_complete_lane_delta": 71,
+    "new_function_names_delta": 18,
+    "hardware_network_native_policies_unchanged": true
+  },
+  "execution": {
+    "python_parse": "NOT_RUN",
+    "powershell_parse": "NOT_RUN",
+    "yaml_parse": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "native": "UNCHANGED_REQUIRED_NOT_RUN_FOR_THIS_COMPOSITION"
+  },
+  "existing_suite_updates": [
+    {
+      "path": "tests/ui/test_native_saved_audio_cleanup.py",
+      "cases": 19,
+      "functions": [
+        "test_native_saved_queue_failure_always_drains_real_owner_and_shared_executor",
+        "test_native_saved_queue_unwind_closes_only_one_recorded_running_modal_per_turn",
+        "test_native_saved_queue_unwind_refuses_unowned_or_inactive_native_state",
+        "test_native_saved_queue_cleanup_keeps_primary_failure_and_continues_all_obligations",
+        "test_native_saved_queue_cleanup_only_does_not_qualify_or_bypass_default_playback",
+        "test_native_saved_queue_destroy_observer_requires_the_exact_real_event_and_host_id"
+      ],
+      "companions": [
+        "scripts/windows_audio_player_smoke.py"
+      ],
+      "blob_sha": "5eeba4884c846a6ca21a85a649ea2cd7830d7429",
+      "prior_count": 13,
+      "prior_function_count": 5,
+      "all_prior_functions_preserved": true
+    },
+    {
+      "path": "tests/ui/test_native_conversion_diagnostics.py",
+      "cases": 30,
+      "functions": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks",
+        "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+        "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings",
+        "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+        "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change",
+        "test_native_conversion_key_waits_for_prior_release_and_enabled_target",
+        "test_native_conversion_key_keeps_five_second_bound_without_dispatch",
+        "test_native_conversion_key_refuses_a_destroyed_owned_control_before_focus"
+      ],
+      "companions": [
+        "scripts/windows_document_conversion_smoke.py"
+      ],
+      "blob_sha": "f75a733ac6c1943de65198998d8055db9f17c225",
+      "prior_count": 23,
+      "prior_function_count": 11,
+      "all_prior_functions_preserved": true
+    }
+  ],
+  "added_case_accounting": {
+    "new_whole_modules": 15,
+    "new_whole_cases": 351,
+    "expanded_existing_cases": 13,
+    "total_added_cases": 364,
+    "new_whole_required_functions": 136,
+    "expanded_existing_required_functions": 4,
+    "total_added_required_functions": 140
+  }
+}
