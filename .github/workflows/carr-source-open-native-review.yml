@@ -1,0 +1,298 @@
+name: Exact installed source-opening native review
+on:
+  push:
+    branches: [carr/source-open-native-review-20261128]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: carr-source-open-native-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  syntax:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install pinned YAML parser
+        run: python -m pip install PyYAML==6.0.2
+      - name: Compile current Python and embedded workflow Python, validate YAML and source paths
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from hashlib import sha256
+          import ast, json, re, subprocess, warnings
+          import yaml
+          
+          class UniqueLoader(yaml.BaseLoader):
+              pass
+          def mapping(loader, node):
+              result = {}
+              for key_node, value_node in node.value:
+                  key = loader.construct_object(key_node, deep=True)
+                  if key in result:
+                      raise ValueError('Duplicate YAML key: ' + str(key))
+                  result[key] = loader.construct_object(value_node, deep=True)
+              return result
+          UniqueLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)
+          root = Path.cwd()
+          out = root / 'ci-syntax'
+          out.mkdir()
+          warnings.simplefilter('error', SyntaxWarning)
+          python_files, python_blocks, workflows, powershell, identities = [], [], [], [], {}
+          for relative in subprocess.run(['git', 'ls-files', '-z'], check=True, capture_output=True).stdout.decode().split('\0'):
+              if not relative:
+                  continue
+              path = root / relative
+              if relative.startswith('carr-library/') and relative.endswith('.py'):
+                  raw = path.read_bytes()
+                  compile(raw, relative, 'exec', dont_inherit=True)
+                  python_files.append(relative)
+                  identities[relative] = sha256(raw).hexdigest()
+          import tomllib
+          project = tomllib.loads((root / 'carr-library/pyproject.toml').read_text(encoding='utf-8'))
+          entrypoints = project['project'].get('scripts', {})
+          assert entrypoints
+          for name, target in entrypoints.items():
+              module, attribute = target.split(':', 1)
+              assert module and attribute, name
+              source = root / 'carr-library/src' / Path(*module.split('.'))
+              assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (name, target)
+          for path in sorted((root / '.github/workflows').glob('*.yml')):
+              data = yaml.load(path.read_text(encoding='utf-8'), Loader=UniqueLoader)
+              assert isinstance(data, dict) and 'on' in data and isinstance(data.get('jobs'), dict), str(path)
+              workflows.append(str(path.relative_to(root)))
+              if path.name not in {'carr-windows.yml', 'carr-v3.yml'}:
+                  continue
+              for job_id, job in data['jobs'].items():
+                  default_shell = job.get('defaults', {}).get('run', {}).get('shell', '')
+                  for index, step in enumerate(job.get('steps', [])):
+                      run = step.get('run')
+                      if not isinstance(run, str):
+                          continue
+                      shell = step.get('shell', default_shell)
+                      label = path.name + ':' + job_id + ':' + str(index + 1)
+                      if 'pwsh' in shell or 'powershell' in shell:
+                          powershell.append({'label': label, 'script': re.sub(r'\$\{\{.*?\}\}', 'CI_EXPRESSION', run, flags=re.S)})
+                      blocks = re.findall(r"(?ms)^\s*\$\w+\s*=\s*@'\s*\n(.*?)^\s*'@\s*$", run)
+                      for number, block in enumerate(blocks):
+                          first = block.lstrip().splitlines()[0] if block.strip() else ''
+                          if first.startswith(('import ', 'from ')):
+                              compile(block, label + ':python:' + str(number), 'exec', dont_inherit=True)
+                              python_blocks.append(label + ':' + str(number))
+                      for module in set(re.findall(r"""['"](carr_library(?:\.[A-Za-z_]\w*)*)['"]""", run)):
+                          source = root / 'carr-library/src' / Path(*module.split('.'))
+                          assert source.with_suffix('.py').is_file() or (source / '__init__.py').is_file(), (label, module)
+                      for native in set(re.findall(r'(scripts/windows_[A-Za-z0-9_]+\.py)', run)):
+                          assert (root / 'carr-library' / native).is_file(), (label, native)
+          assert python_files and python_blocks and powershell
+          (out / 'powershell.json').write_text(json.dumps(powershell), encoding='utf-8')
+          proof = {'status': 'PASS', 'scope': 'Python compile, duplicate-free YAML, current workflow module/native paths',
+                   'head': subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip(),
+                   'python_files': len(python_files), 'python_blocks': len(python_blocks), 'entrypoints': len(entrypoints),
+                   'workflows': workflows, 'powershell_blocks_pending': len(powershell), 'source_sha256': identities}
+          (out / 'python-yaml.json').write_text(json.dumps(proof, indent=2, sort_keys=True), encoding='utf-8')
+          print(json.dumps({k: v for k, v in proof.items() if k != 'source_sha256'}, sort_keys=True))
+          PY
+      - name: Parse every integrated PowerShell block
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $blocks = Get-Content -LiteralPath 'ci-syntax/powershell.json' -Raw | ConvertFrom-Json
+          $failures = @()
+          foreach ($block in $blocks) {
+            $tokens = $null
+            $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseInput([string]$block.script, [ref]$tokens, [ref]$errors)
+            foreach ($problem in $errors) {
+              $failures += @{ block = $block.label; line = $problem.Extent.StartLineNumber; message = $problem.Message }
+            }
+          }
+          $result = @{ status = $(if ($failures.Count -eq 0) { 'PASS' } else { 'FAIL' }); blocks = $blocks.Count; errors = $failures }
+          $result | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath 'ci-syntax/powershell-result.json' -Encoding utf8
+          $result | ConvertTo-Json -Depth 5
+          if ($failures.Count -ne 0) { throw 'Current workflow PowerShell syntax did not pass.' }
+      - name: Preserve exact source syntax proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: source-open-syntax-${{ github.sha }}
+          path: ci-syntax/
+          if-no-files-found: error
+
+  native:
+    needs: syntax
+    name: Actual source opening and Research Search Center
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the existing pinned standard native profile and exact package
+        run: |
+          New-Item -ItemType Directory -Force 'ci-final-scope' | Out-Null
+          python -m pip install --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the existing pinned external test audio and retain its exact evidence
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-final-scope-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-final-scope-audio-cache') --output $audio --download | Tee-Object 'ci-final-scope/audio-provisioning.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ffmpeg = Join-Path $audio 'bin/ffmpeg.exe'
+          $ffprobe = Join-Path $audio 'bin/ffprobe.exe'
+          @{
+            schema=1; status='PASS'; bundled=$false; runtime_root=$audio;
+            ffmpeg=@{path=$ffmpeg;sha256=(Get-FileHash -LiteralPath $ffmpeg -Algorithm SHA256).Hash.ToLowerInvariant()};
+            ffprobe=@{path=$ffprobe;sha256=(Get-FileHash -LiteralPath $ffprobe -Algorithm SHA256).Hash.ToLowerInvariant()}
+          } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath 'ci-final-scope/external-test-audio-binding.json' -Encoding utf8
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Verify the actual installed preparation notice in the About inventory
+        run: |
+          python -I -B -X utf8 -c "import runpy; suite=runpy.run_path('tests/packaging/test_preparation_notice_closure.py'); suite['test_installed_slovak_notice_is_discoverable_and_exact_in_about_inventory'](); print('CARR_INSTALLED_PREPARATION_NOTICE_CLOSURE PASS')" 2>&1 | Tee-Object 'ci-final-scope/preparation-notice-closure.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual original-source opening and Research Search Center with exact installed identity
+        timeout-minutes: 3
+        env:
+          CARR_SOURCE_OPEN_HEAD: ${{ github.sha }}
+        run: |
+          @'
+          from hashlib import sha1, sha256
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          project = Path.cwd().resolve()
+          repository = project.parent
+          expected_head = os.environ["CARR_SOURCE_OPEN_HEAD"]
+          output = project / "ci-final-scope" / "source-open"
+          output.mkdir(parents=True, exist_ok=True)
+          helper_path = project / "scripts" / "run_final_scope_native.py"
+          selected = {}
+          entries = subprocess.check_output(
+              ["git", "ls-tree", "-r", "-z", "--full-tree", expected_head, "carr-library"],
+              cwd=repository, timeout=30)
+          for entry in entries.split(b"\0"):
+              if not entry:
+                  continue
+              header, raw_name = entry.split(b"\t", 1)
+              mode, kind, blob = header.decode("ascii").split()
+              name = raw_name.decode("utf-8").removeprefix("carr-library/")
+              if (name.endswith(".py") or name.startswith("src/carr_library/")
+                      or name == "scripts/final_scope_native.json"
+                      or name.endswith("_native_oracle.json")):
+                  assert mode in ("100644", "100755") and kind == "blob", name
+                  selected[name] = blob
+          helper_raw = helper_path.read_bytes()
+          helper_blob = sha1(b"blob " + str(len(helper_raw)).encode("ascii") + b"\0" +
+                            helper_raw, usedforsecurity=False).hexdigest()
+          assert selected["scripts/run_final_scope_native.py"] == helper_blob
+          spec = importlib.util.spec_from_file_location("reviewed_identity_helpers", helper_path)
+          helper = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(helper)
+
+          def source_identity():
+              assert helper.git_value(repository, "rev-parse", "HEAD").decode("ascii").strip() == expected_head
+              values = {}
+              for name, blob in sorted(selected.items()):
+                  raw = helper.regular_bytes(project / name)
+                  assert sha1(b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw,
+                              usedforsecurity=False).hexdigest() == blob, name
+                  values[name] = sha256(raw).hexdigest()
+              return values
+
+          before = source_identity()
+          source = project / "src" / "carr_library"
+          installed = Path(importlib.util.find_spec("carr_library").origin).resolve().parent
+          assert not installed.is_relative_to(repository)
+          expected_package = {name.removeprefix("src/carr_library/"): value
+                              for name, value in before.items()
+                              if name.startswith("src/carr_library/") and
+                              (name.endswith(".py") or name.removeprefix("src/carr_library/") in helper.ASSETS)}
+          assert helper.package_inventory(source) == expected_package
+          assert helper.package_inventory(installed) == expected_package
+          proof = {"schema": "carr-source-open-focused-binding/1", "head": expected_head,
+                   "source_sha256": before, "package_sha256": expected_package,
+                   "package_python_files": sum(name.endswith(".py") for name in expected_package),
+                   "package_data_files": len(helper.ASSETS), "installed": str(installed),
+                   "status": "RUNNING", "physical_viewer": "NOT_RUN", "NVDA": "NOT_RUN",
+                   "offline_firewall": "NOT_ASSERTED; final main gate remains required"}
+          (output / "before.json").write_text(json.dumps(proof, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          completed = None
+          try:
+              try:
+                  completed = subprocess.run(
+                      [sys.executable, "-I", "-B", "-X", "utf8",
+                       str(project / "tests/ui/probe_source_open_native.py")],
+                      cwd=project, capture_output=True, timeout=120)
+              except subprocess.TimeoutExpired as error:
+                  (output / "stdout.txt").write_bytes(error.stdout or b"")
+                  (output / "stderr.txt").write_bytes(error.stderr or b"")
+                  raise
+              (output / "stdout.txt").write_bytes(completed.stdout)
+              (output / "stderr.txt").write_bytes(completed.stderr)
+              if completed.returncode:
+                  print(completed.stdout.decode("utf-8", errors="replace")[-8192:])
+                  print(completed.stderr.decode("utf-8", errors="replace")[-8192:], file=sys.stderr)
+              assert completed.returncode == 0, "The actual original-source probe failed."
+              records = []
+              for line in completed.stdout.decode("utf-8").splitlines():
+                  if line.lstrip().startswith("{"):
+                      records.append(json.loads(line))
+              assert len(records) == 1
+              result = records[0]
+              assert result.get("status") == "PASS"
+              assert len(result.get("checks", [])) == 8
+              assert result.get("federated_search", {}).get("status") == "PASS"
+              proof["probe"] = result
+              proof["status"] = "PASS_INSTALLED_SOURCE_OPEN"
+          finally:
+              assert source_identity() == before
+              assert helper.package_inventory(source) == expected_package
+              assert helper.package_inventory(installed) == expected_package
+              proof["exact_identity_after"] = "PASS"
+              proof["returncode"] = completed.returncode if completed else None
+              (output / "result.json").write_text(json.dumps(proof, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+              print(json.dumps({key: value for key, value in proof.items()
+                                if key not in ("source_sha256", "package_sha256")}, sort_keys=True))
+          '@ | python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve actual source and runtime identity after every outcome
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force 'ci-final-scope' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-final-scope/head.txt' -Encoding utf8
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-final-scope/tree.txt' -Encoding utf8
+          python -m pip freeze | Set-Content 'ci-final-scope/packages.txt' -Encoding utf8
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: source-open-native-${{ github.sha }}
+          path: carr-library/ci-final-scope
+          if-no-files-found: error
