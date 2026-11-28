@@ -512,10 +512,15 @@ def test_progress_model_reserves_actual_shared_resources_only_while_synthesizing
     from carr_library.speech.synthesis_admission import PROTOCOL_SCRATCH_BYTES
     speech, provider, player = selected()
     broker = ResourceBroker.for_app(speech.library_root)
-    observations = []
+    observations, canonical_parents = [], []
     render = provider.render
     def admitted(*args):
         observations.append(broker.snapshot())
+        # Capture the actual directory while it exists: Windows temp paths can
+        # retain an 8.3 spelling while resource admission records its long form.
+        parent = Path(args[2]).parent.parent
+        canonical_parents.append(parent.resolve(strict=True))
+        assert Path(observations[-1]['leases'][0]['request']['disk_path']).samefile(parent)
         return render(*args)
     provider.render = admitted
     original_play = player.play
@@ -525,13 +530,14 @@ def test_progress_model_reserves_actual_shared_resources_only_while_synthesizing
     player.play = play
     assert speech.speak_progress('A reserved local notification.', volume=.2, cancelled=lambda: False)
     assert len(observations) == 1 and len(observations[0]['leases']) == 1
+    assert len(canonical_parents) == 1
     record = observations[0]['leases'][0]
     output_parent = provider.calls[0][2].parent.parent
     assert record['operation_id'].startswith('reader.synthesis.')
     assert record['request'] == ResourceRequest(
         cpu_slots=broker.limits.cpu_slots, memory_bytes=broker.limits.memory_bytes,
         disk_bytes=4 * 1024 * 1024 + PROTOCOL_SCRATCH_BYTES,
-        disk_path=output_parent).to_dict()
+        disk_path=canonical_parents[0]).to_dict()
     assert record['request']['gpu_device'] is None
     assert record['request']['gpu_memory_bytes'] == 0
     assert not broker.snapshot()['leases'] and not speech._run_lock.locked()

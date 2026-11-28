@@ -1,0 +1,213 @@
+===== DECODED JOB LOG LINES 1332-1332 =====
+2026-11-28T03:18:46.9167907Z {"payload_files": 490, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91", "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c", "wheel_sha256": "aa8e73d8da21f4136a75d2a3b3b6b5f0a8aabdf5702a2c4095a9eacf19c4b6c7"}
+
+===== DECODED JOB LOG LINES 1448-1565 =====
+2026-11-28T03:18:50.9951327Z 
+2026-11-28T03:18:51.0825398Z tests\packaging\test_managed_launch_boundary.py ........collected 149 items
+2026-11-28T03:18:51.0827243Z 
+2026-11-28T03:18:53.6629828Z tests\packaging\test_standard_installer.py ......................... [ 51%]
+2026-11-28T03:18:54.5482661Z ...................... [ 19%]
+2026-11-28T03:18:55.9293172Z .............................                                                  [100%]
+2026-11-28T03:18:55.9293949Z 
+2026-11-28T03:18:55.9294331Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-rtnppvmq\junit.xml -
+2026-11-28T03:18:55.9295021Z ============================= 47 passed in 5.04s ==============================
+2026-11-28T03:18:55.9845509Z PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:18:56.2712135Z .....============================= test session starts =============================
+2026-11-28T03:18:56.2729379Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:18:56.2768772Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:18:56.2847488Z configfile: pyproject.toml
+2026-11-28T03:18:56.3246016Z collected 37 items
+2026-11-28T03:18:56.3251013Z 
+2026-11-28T03:18:56.5242786Z tests\packaging\test_native_checks.py ..................................... [ 91%]
+2026-11-28T03:18:56.5453354Z ...                                                                      [100%]
+2026-11-28T03:18:56.5453997Z 
+2026-11-28T03:18:56.5454575Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-pixrlbn1\junit.xml -
+2026-11-28T03:18:56.5455371Z ============================= 37 passed in 0.28s ==============================
+2026-11-28T03:18:56.6065208Z PASS: tests/packaging/test_native_checks.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:18:56.8156830Z ============================= test session starts =============================
+2026-11-28T03:18:56.8179038Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:18:56.8180121Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:18:56.8181669Z configfile: pyproject.toml
+2026-11-28T03:18:56.9067765Z collected 16 items
+2026-11-28T03:18:56.9069700Z 
+2026-11-28T03:18:58.1113855Z tests\packaging\test_windows_bundle.py .......................                  [100%]
+2026-11-28T03:18:58.1114411Z 
+2026-11-28T03:18:58.1114805Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-j0i9br0e\junit.xml -
+2026-11-28T03:18:58.1115496Z ============================= 16 passed in 1.30s ==============================
+2026-11-28T03:18:58.1762702Z PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:18:58.3616410Z ============================= test session starts =============================
+2026-11-28T03:18:58.3639711Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:18:58.3640422Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:18:58.3640994Z configfile: pyproject.toml
+2026-11-28T03:18:58.4209305Z .collected 24 items
+2026-11-28T03:18:58.4212361Z 
+2026-11-28T03:19:06.7224223Z tests\packaging\test_windows_launcher_bundle.py ........................................................... [ 67%]
+2026-11-28T03:19:14.4701133Z ....................... [100%]
+2026-11-28T03:19:14.4701881Z 
+2026-11-28T03:19:14.4702335Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-6n7exczz\junit.xml -
+2026-11-28T03:19:14.4702976Z ============================= 24 passed in 16.11s =============================
+2026-11-28T03:19:14.5308176Z PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:15.1975843Z .============================= test session starts =============================
+2026-11-28T03:19:15.2000022Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:19:15.2003034Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:19:15.2004270Z configfile: pyproject.toml
+2026-11-28T03:19:15.2361140Z collected 12 items
+2026-11-28T03:19:15.2364456Z 
+2026-11-28T03:19:18.5834916Z tests\packaging\test_install_bytecode.py .........................................                         [100%]
+2026-11-28T03:19:18.5835457Z 
+2026-11-28T03:19:18.5836571Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-wbv8tv5a\junit.xml -
+2026-11-28T03:19:18.5837149Z ============================ 149 passed in 27.70s =============================
+2026-11-28T03:19:18.6826195Z PASS: tests/packaging/test_standard_installer.py: junit_passed=149, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:19.7120782Z ============================= test session starts =============================
+2026-11-28T03:19:19.7145263Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:19:19.7146234Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:19:19.7146949Z configfile: pyproject.toml
+2026-11-28T03:19:19.8084260Z collected 3 items
+2026-11-28T03:19:19.8086644Z 
+2026-11-28T03:19:20.1203049Z tests\packaging\test_worker_bytecode.py ...                              [100%]
+2026-11-28T03:19:20.1204046Z 
+2026-11-28T03:19:20.1204713Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-87r13szb\junit.xml -
+2026-11-28T03:19:20.1205781Z ============================== 3 passed in 0.41s ==============================
+2026-11-28T03:19:20.1862766Z PASS: tests/packaging/test_worker_bytecode.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:20.4007260Z ============================= test session starts =============================
+2026-11-28T03:19:20.4032790Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:19:20.4033430Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:19:20.4033842Z configfile: pyproject.toml
+2026-11-28T03:19:20.4574849Z collected 25 items
+2026-11-28T03:19:20.4577798Z 
+2026-11-28T03:19:22.4897186Z tests\packaging\test_source_wheel.py ..........                    [100%]
+2026-11-28T03:19:22.4899385Z 
+2026-11-28T03:19:22.4900054Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-bkt0tb8h\junit.xml -
+2026-11-28T03:19:22.4900930Z ============================= 12 passed in 7.29s ==============================
+2026-11-28T03:19:22.5410395Z PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:22.7560004Z .============================= test session starts =============================
+2026-11-28T03:19:22.7585184Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:19:22.7585889Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:19:22.7586303Z configfile: pyproject.toml
+2026-11-28T03:19:22.8068566Z collected 16 items
+2026-11-28T03:19:22.8072503Z 
+2026-11-28T03:19:23.1087719Z tests\packaging\test_native_runtime.py ................                  [100%].
+2026-11-28T03:19:23.1088538Z 
+2026-11-28T03:19:23.1091128Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-fev1pdxn\junit.xml -
+2026-11-28T03:19:23.1092282Z ============================= 16 passed in 0.35s ==============================
+2026-11-28T03:19:23.1764189Z PASS: tests/packaging/test_native_runtime.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:23.3744493Z ============================= test session starts =============================
+2026-11-28T03:19:23.3767026Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:19:23.3767531Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:19:23.3768320Z configfile: pyproject.toml
+2026-11-28T03:19:23.5223944Z collected 9 items
+2026-11-28T03:19:23.5227108Z 
+2026-11-28T03:19:23.6618362Z tests\audio\test_local_runtime_cli.py .........                          [100%]
+2026-11-28T03:19:23.6619428Z 
+2026-11-28T03:19:23.6620620Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-qpolbdx3\junit.xml -
+2026-11-28T03:19:23.6621412Z ============================== 9 passed in 0.29s ==============================
+2026-11-28T03:19:23.7401972Z PASS: tests/audio/test_local_runtime_cli.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:23.9620733Z ============================= test session starts =============================
+2026-11-28T03:19:23.9649932Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T03:19:23.9650583Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T03:19:23.9651016Z configfile: pyproject.toml
+2026-11-28T03:19:24.1250338Z .collected 7 items
+2026-11-28T03:19:24.1252060Z 
+2026-11-28T03:19:25.7256091Z tests\test_delivery_cli.py .........                                       [100%]
+2026-11-28T03:19:25.7258895Z 
+2026-11-28T03:19:25.7260672Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-vzyy2ob6\junit.xml -
+2026-11-28T03:19:25.7261792Z ============================== 7 passed in 1.76s ==============================
+2026-11-28T03:19:25.8091464Z PASS: tests/test_delivery_cli.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:33.8953622Z ..................           [100%]
+2026-11-28T03:19:33.8954460Z 
+2026-11-28T03:19:33.8955018Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-f2m5k9_g\junit.xml -
+2026-11-28T03:19:33.8955833Z ============================= 25 passed in 13.50s =============================
+2026-11-28T03:19:33.9472079Z PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+2026-11-28T03:19:34.1415844Z Required suites complete: 11; passed=11; failed=0
+2026-11-28T03:19:34.2050710Z ##[group]Run $suites = @(
+
+===== DECODED JOB LOG LINES 1616-1624 =====
+2026-11-28T03:19:34.2098024Z ##[endgroup]
+2026-11-28T03:19:42.1483232Z ........................................................................ [ 20%]
+2026-11-28T03:19:55.1583247Z ........................................................................ [ 41%]
+2026-11-28T03:19:59.6942266Z ........................................................................ [ 62%]
+2026-11-28T03:20:32.7002107Z .......................................................................................................................... [ 97%]
+2026-11-28T03:20:33.7005183Z .......                                                                  [100%]
+2026-11-28T03:20:33.7007342Z 345 passed, 22 subtests passed in 59.02s
+2026-11-28T03:20:33.8012416Z INSTALLED_CASES_PASS 345
+2026-11-28T03:20:33.8558891Z ##[group]Run $ErrorActionPreference = 'Stop'
+
+===== DECODED JOB LOG LINES 1922-1957 =====
+2026-11-28T03:22:24.9274807Z {"bundle_manifest_sha256": "4ca1b798cb936ec6f8e11123a6ca4118fae3c37f096f4461391fea96a99a1ef3", "payload_files": 490, "profile": "current-core-19-windows-pins", "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91", "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c", "wheel_sha256": "aa8e73d8da21f4136a75d2a3b3b6b5f0a8aabdf5702a2c4095a9eacf19c4b6c7"}
+2026-11-28T03:22:44.8617794Z 
+2026-11-28T03:22:44.8618828Z 
+2026-11-28T03:22:54.9822440Z Preprocessing{
+2026-11-28T03:22:54.9823366Z   "schema": 1,
+2026-11-28T03:22:54.9824715Z   "status": "BUILT_NOT_INSTALLED",
+2026-11-28T03:22:54.9825613Z   "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+2026-11-28T03:22:54.9827032Z   "bundle_manifest_sha256": "4ca1b798cb936ec6f8e11123a6ca4118fae3c37f096f4461391fea96a99a1ef3",
+2026-11-28T03:22:54.9827719Z   "application_version": "0.2.0.dev2",
+2026-11-28T03:22:54.9830288Z   "managed_upgrade_protocol": "carr-managed-upgrade/1",
+2026-11-28T03:22:54.9831037Z   "template_sha256": "8db8747fbb8ed2aab59a7d926a4144d6ff389d7a33fadfee70a687e0fe82f4d3",
+2026-11-28T03:22:54.9831593Z   "maintenance_sha256": {
+2026-11-28T03:22:54.9832374Z     "maintenance.py": "db2cd3f07d3af6055667ed818a7889c6b9094100643578dda347841aed2cb5fb",
+2026-11-28T03:22:54.9833277Z     "installation_lease.py": "63068eeb4ab1aa734719df0d2b6156bda5907b8ee74dd690da958bcfb8a72562",
+2026-11-28T03:22:54.9834698Z     "bundle_verifier.py": "68dffedea8e372302bbe7a0407fb382d2730dec9b16603c537b591ad8d7fe3eb",
+2026-11-28T03:22:54.9835789Z     "managed_installation.py": "9b70d31705ad4ee7a600649018d3d7c1e07bbe922814fbd70a337f8e9f2d86fe",
+2026-11-28T03:22:54.9836812Z     "process.py": "2af9d942637da3c675a7a4861c86aca1b63a072ffbb4d5c30af7e304967dc95d",
+2026-11-28T03:22:54.9837677Z     "windows_process.py": "6907f4bf2253cc2459b3d0369947dc319a4a084ebbd8500f92fd1360177d5fa6",
+2026-11-28T03:22:54.9838641Z     "models.py": "a22ba261813330f2e4ce1dc6d44fb02c8988ea1a849cb43b2951a175293945dc",
+2026-11-28T03:22:54.9839380Z     "cleanup.py": "ce26559c9f460d347f2e67f792adaa0da53080513723432f5dab6a3c32fee588"
+2026-11-28T03:22:54.9839899Z   },
+2026-11-28T03:22:54.9840219Z   "release_status": "unsigned-private-candidate",
+2026-11-28T03:22:54.9840628Z   "authenticode_verified": false,
+2026-11-28T03:22:54.9840990Z   "windows_installation_verified": false,
+2026-11-28T03:22:54.9841351Z   "nvda_verified": false,
+2026-11-28T03:22:54.9841836Z   "setup_sha256": "775391afe223ecf54180cf1312721c0a18b39dbce1fc7c7208dbbf2c000bbc0f",
+2026-11-28T03:22:54.9842394Z   "setup_bytes": 82413667,
+2026-11-28T03:22:54.9842642Z   "toolchain": {
+2026-11-28T03:22:54.9842882Z     "publisher": "Pyrsys B.V.",
+2026-11-28T03:22:54.9843134Z     "version": "6.7.4",
+2026-11-28T03:22:54.9843375Z     "upstream_signature": "Valid",
+2026-11-28T03:22:54.9843628Z     "schema": 1,
+2026-11-28T03:22:54.9843964Z     "archive_sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c",
+2026-11-28T03:22:54.9844468Z     "iscc_sha256": "f02fa0e5f237b47d7ed1edae9b991866ec94fe02af61eb6a73e94f92fe8e0604"
+2026-11-28T03:22:54.9844842Z   }
+2026-11-28T03:22:54.9845068Z }
+
+===== DECODED JOB LOG LINES 2014-2038 =====
+2026-11-28T03:25:10.3075738Z {
+2026-11-28T03:25:10.3079430Z   "schema": 1,
+2026-11-28T03:25:10.3080868Z   "status": "PASS",
+2026-11-28T03:25:10.3084826Z   "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+2026-11-28T03:25:10.3086932Z   "setup_sha256": "775391afe223ecf54180cf1312721c0a18b39dbce1fc7c7208dbbf2c000bbc0f",
+2026-11-28T03:25:10.3088712Z   "bundle_manifest_sha256": "4ca1b798cb936ec6f8e11123a6ca4118fae3c37f096f4461391fea96a99a1ef3",
+2026-11-28T03:25:10.3090542Z   "actual_inno_install": true,
+2026-11-28T03:25:10.3092461Z   "actual_offline_runtime_bootstrap": true,
+2026-11-28T03:25:10.3094527Z   "per_user_start_menu": true,
+2026-11-28T03:25:10.3096362Z   "per_user_repair_uninstall_registration": true,
+2026-11-28T03:25:10.3097851Z   "fresh_shortcut_collision_refused": true,
+2026-11-28T03:25:10.3099532Z   "uninstaller_wrapper_removed": true,
+2026-11-28T03:25:10.3101306Z   "native_launcher_prelaunch_lease": true,
+2026-11-28T03:25:10.3103138Z   "live_job_preserved": true,
+2026-11-28T03:25:10.3104923Z   "repair_retains_modified_and_foreign_files": true,
+2026-11-28T03:25:10.3108535Z   "actual_repair": true,
+2026-11-28T03:25:10.3110040Z   "actual_uninstall": true,
+2026-11-28T03:25:10.3111698Z   "populated_library_bytes_preserved": true,
+2026-11-28T03:25:10.3113390Z   "authenticode_verified": false,
+2026-11-28T03:25:10.3115280Z   "nvda_verified": false,
+2026-11-28T03:25:10.3116610Z   "unprivileged_account_qualification": "NOT_RUN",
+2026-11-28T03:25:10.3118222Z   "native_network_trace": "NOT_RUN",
+2026-11-28T03:25:10.3119837Z   "release_status": "unsigned-private-candidate"
+2026-11-28T03:25:10.3121574Z }
+2026-11-28T03:25:10.3543940Z {"bundle_manifest_sha256": "4ca1b798cb936ec6f8e11123a6ca4118fae3c37f096f4461391fea96a99a1ef3", "native_standard_assertions": ["actual_inno_install", "actual_offline_runtime_bootstrap", "per_user_start_menu", "per_user_repair_uninstall_registration", "fresh_shortcut_collision_refused", "uninstaller_wrapper_removed", "native_launcher_prelaunch_lease", "live_job_preserved", "repair_retains_modified_and_foreign_files", "actual_repair", "actual_uninstall", "populated_library_bytes_preserved"], "release_status": "unsigned-private-candidate", "setup_sha256": "775391afe223ecf54180cf1312721c0a18b39dbce1fc7c7208dbbf2c000bbc0f", "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91", "status": "PASS"}
+
+===== DECODED JOB LOG LINES 2075-2087 =====
+2026-11-28T03:25:10.5543812Z With the provided path, there will be 47 files uploaded
+2026-11-28T03:25:10.5548212Z Artifact name is valid!
+2026-11-28T03:25:10.5549774Z Root directory input is valid!
+2026-11-28T03:25:10.8056196Z Uploading artifact: carr-standard-installation-windows-2022-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1.zip
+2026-11-28T03:25:10.8086681Z Beginning upload of artifact content to blob storage
+2026-11-28T03:25:11.1342450Z Uploaded bytes 139113
+2026-11-28T03:25:11.1906655Z Finished uploading artifact content to blob storage!
+2026-11-28T03:25:11.1907660Z SHA256 digest of uploaded artifact is 5e3fdb06ad87a6eae1278861afa34cf91cf21311e5338594a56d6fe338dba53d
+2026-11-28T03:25:11.1908435Z Finalizing artifact upload
+2026-11-28T03:25:11.6036440Z Artifact carr-standard-installation-windows-2022-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1 successfully finalized. Artifact ID 15245514893
+2026-11-28T03:25:11.6037531Z Artifact carr-standard-installation-windows-2022-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1 has been successfully uploaded! Final size is 139113 bytes. Artifact ID is 15245514893
+2026-11-28T03:25:11.6045704Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101830099/artifacts/15245514893
+2026-11-28T03:25:11.6345666Z Post job cleanup.

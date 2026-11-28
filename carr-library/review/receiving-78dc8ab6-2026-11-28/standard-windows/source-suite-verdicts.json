@@ -1,0 +1,90 @@
+[
+  {
+    "line": 1457,
+    "path": "tests/packaging/test_managed_launch_boundary.py",
+    "passed": 47,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1469,
+    "path": "tests/packaging/test_native_checks.py",
+    "passed": 37,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1480,
+    "path": "tests/packaging/test_windows_bundle.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1492,
+    "path": "tests/packaging/test_windows_launcher_bundle.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1503,
+    "path": "tests/packaging/test_standard_installer.py",
+    "passed": 149,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1514,
+    "path": "tests/packaging/test_worker_bytecode.py",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1525,
+    "path": "tests/packaging/test_install_bytecode.py",
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1536,
+    "path": "tests/packaging/test_native_runtime.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1547,
+    "path": "tests/audio/test_local_runtime_cli.py",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1558,
+    "path": "tests/test_delivery_cli.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  {
+    "line": 1563,
+    "path": "tests/packaging/test_source_wheel.py",
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  }
+]

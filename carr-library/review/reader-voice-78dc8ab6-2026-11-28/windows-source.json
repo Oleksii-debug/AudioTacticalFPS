@@ -1,0 +1,421 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-11-28 03:24:02 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "run": {
+    "id": 46101827090,
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101827090"
+  },
+  "job": {
+    "id": 140845769489,
+    "name": "Reader voice controls / windows-2022 / source",
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-11-28T03:13:44Z",
+    "completed_at": "2026-11-28T03:16:47Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101827090/job/140845769489"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+    "blob": "b683358bf3325749f852040cef8a9e704c4c414a"
+  },
+  "identity": {
+    "dependency_selection": {
+      "effective_requirements_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "excluded": [],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "comtypes": "1.5.0",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4"
+      },
+      "platform": "win32",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": true
+    },
+    "executable": "D:\\a\\_temp\\carr-reader-voice-python\\Scripts\\python.exe",
+    "installed_package": "D:\\a\\_temp\\carr-reader-voice-python\\Lib\\site-packages\\carr_library",
+    "mode": "source",
+    "prefix": "D:\\a\\_temp\\carr-reader-voice-python",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "required_suites": [
+      "tests/ui/test_reader_synthesis.py",
+      "tests/ui/test_progress_voice_actions.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/speech/test_synthesis_admission.py",
+      "tests/ui/test_reader_playback.py",
+      "tests/speech/test_progress_speech.py",
+      "tests/ui/test_operation_progress.py",
+      "tests/ui/test_progress_media_quiet.py",
+      "tests/ui/test_studio_progress_isolation.py",
+      "tests/speech/test_registered_studio_voices.py",
+      "tests/audio/test_model_voices.py",
+      "tests/storage/test_reader_synthesis_backup.py",
+      "tests/speech/test_session.py",
+      "tests/speech/test_reading_tabs.py",
+      "tests/ui/test_reader_tabs.py",
+      "tests/storage/test_reading_tabs_backup.py",
+      "tests/ui/test_save_all_access.py",
+      "tests/speech/test_source.py",
+      "tests/speech/test_voice_preferences.py",
+      "tests/ui/test_voice_preferences_dialog.py",
+      "tests/storage/test_voice_preferences_backup.py"
+    ],
+    "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "status": "PASS",
+    "python_files_reference": "python-source-inventory.json",
+    "python_module_count": 380,
+    "rows_compact_json_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971"
+  },
+  "contracts": {
+    "status": "FAIL",
+    "selected_modules": 21,
+    "passed": 745,
+    "failed": 1,
+    "skipped": 0,
+    "strict_zero_skip_required": true,
+    "failed_case": "tests/speech/test_progress_speech.py::test_progress_model_reserves_actual_shared_resources_only_while_synthesizing",
+    "count_basis": "21 exact ci_check.py module verdicts",
+    "source_module_verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_voice_actions.py",
+        "passed": 38,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_job_review.py",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_synthesis.py",
+        "passed": 53,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_playback.py",
+        "passed": 108,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_synthesis_admission.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_operation_progress.py",
+        "passed": 55,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_media_quiet.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_studio_progress_isolation.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "FAIL",
+        "path": "tests/speech/test_progress_speech.py",
+        "passed": 52,
+        "failed": 1,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_model_voices.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_reader_synthesis_backup.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_session.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_registered_studio_voices.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_reading_tabs.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_reader_tabs.py",
+        "passed": 36,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_save_all_access.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_reading_tabs_backup.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_source.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_voice_preferences_dialog.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/speech/test_voice_preferences.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_voice_preferences_backup.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "native": {
+    "status": "PASS",
+    "checks": 80,
+    "script": "scripts/windows_voice_preferences_smoke.py",
+    "stdout_reference": "windows-source-native-checks.txt",
+    "separate_seek_native_probe": "NOT_RUN_IN_THIS_WORKFLOW"
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:13:44Z",
+      "completed_at": "2026-11-28T03:13:45Z"
+    },
+    {
+      "number": 2,
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:13:45Z",
+      "completed_at": "2026-11-28T03:13:46Z"
+    },
+    {
+      "number": 3,
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:13:46Z",
+      "completed_at": "2026-11-28T03:13:55Z"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:13:55Z",
+      "completed_at": "2026-11-28T03:13:55Z"
+    },
+    {
+      "number": 5,
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:13:55Z",
+      "completed_at": "2026-11-28T03:14:49Z"
+    },
+    {
+      "number": 6,
+      "name": "Prepare actual portable speech for registered Studio voice contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T03:14:49Z",
+      "completed_at": "2026-11-28T03:14:49Z"
+    },
+    {
+      "number": 7,
+      "name": "Prepare the existing pinned Windows speech runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:14:49Z",
+      "completed_at": "2026-11-28T03:15:00Z"
+    },
+    {
+      "number": 8,
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:15:00Z",
+      "completed_at": "2026-11-28T03:15:01Z"
+    },
+    {
+      "number": 9,
+      "name": "Require source reader synthesis state and backup contracts",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T03:15:01Z",
+      "completed_at": "2026-11-28T03:16:41Z"
+    },
+    {
+      "number": 10,
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T03:16:41Z",
+      "completed_at": "2026-11-28T03:16:41Z"
+    },
+    {
+      "number": 11,
+      "name": "Require actual Windows voice option widgets in this mode",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:16:41Z",
+      "completed_at": "2026-11-28T03:16:43Z"
+    },
+    {
+      "number": 12,
+      "name": "Preserve public synthetic receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:16:43Z",
+      "completed_at": "2026-11-28T03:16:44Z"
+    },
+    {
+      "number": 23,
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T03:16:44Z",
+      "completed_at": "2026-11-28T03:16:44Z"
+    },
+    {
+      "number": 24,
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:16:44Z",
+      "completed_at": "2026-11-28T03:16:46Z"
+    },
+    {
+      "number": 25,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T03:16:46Z",
+      "completed_at": "2026-11-28T03:16:46Z"
+    }
+  ],
+  "artifact": {
+    "id": 15246420679,
+    "name": "carr-reader-voice-controls-windows-2022-source-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+    "size_in_bytes": 27323,
+    "sha256": "d834b6fe4efd15f281bf6603039be68dddc2ec09cc6d794d3b8ffcc0db994b34",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46101827090/artifacts/15246420679",
+    "downloaded": false
+  },
+  "decoded_job_log": {
+    "sha256": "ba85ad9b5ea9dbd79611e964dbd3739850d6e75b812ee1c92ff88d7a50b4507d",
+    "utf8_bytes": 295918,
+    "source_endpoint": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140845769489/logs",
+    "fetched_after_job_completed": true
+  },
+  "scope_limits": [
+    "These results qualify only the exact tested head and selected contracts.",
+    "Windows remains FAIL until the fixture correction is actually rerun.",
+    "Manual NVDA, human language quality and private voice model inference are NOT_RUN."
+  ]
+}

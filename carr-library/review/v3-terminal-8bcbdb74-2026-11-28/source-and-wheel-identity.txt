@@ -1,0 +1,23 @@
+Completed decoded log excerpts; no binary download or execution performed during review.
+
+  ref: 8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e
+  repository: Oleksii-debug/AudioTacticalFPS
+Syncing repository: Oleksii-debug/AudioTacticalFPS
+[command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e
+ * branch            8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e -> FETCH_HEAD
+[command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e^{object}
+8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e
+[command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e
+Note: switching to '8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e'.
+8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e
+    check.warn(importable)
+  Created wheel for universal-research-library: filename=universal_research_library-0.2.0.dev2-py3-none-any.whl size=2588316 sha256=072ac971916135a5f8cc5d181e78e419f4113207484c93f6ecb00b8f2c7b0439
+  Stored in directory: C:\Users\runneradmin\AppData\Local\Temp\pip-ephem-wheel-cache-otdlscri\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+Successfully built universal-research-library
+Installing collected packages: universal-research-library
+Successfully installed universal-research-library-0.2.0.dev2
+No broken requirements found.
+##[group]Run $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64

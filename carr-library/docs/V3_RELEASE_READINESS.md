@@ -39,6 +39,46 @@ application archive excludes the separately set up audio runtime. No eligible
 delivery wheel, final private archive, signed installer or whole-platform
 completion is claimed by this checkpoint.
 
+## Receiving correction after 78dc8ab6 — 2026-11-28
+
+The implementation head `78dc8ab6838e964bc115418c47c4ec3ef4226a91`
+completed the four focused Reader modes: Linux source/installed each passed
+746 cases; Windows source/installed each passed 745 and failed the same one
+new progress test's temporary-directory path expectation. Both Windows native
+voice-option probes passed all 80 checks. The exact 380-module inventories
+matched in every mode; source Reader playback passed all 108 cases.
+[The four receipts and fixture review](../review/reader-voice-78dc8ab6-2026-11-28/review.json)
+retain the exact failures, with no aggregate Windows Reader PASS.
+
+The receiving successor changes only that fixture and CI scheduling, plus
+review records and this status. The fixture captures the canonical directory
+while it exists and proves it is the actual admitted directory using samefile;
+the entire ResourceRequest comparison, all 142 old assertion lines and all
+53 progress cases remain. Two assertions are added. Application Python bytes
+are identical to 78dc8ab6; this fact does not transfer its execution verdict.
+
+Full Windows and V3 CI now retain separate concurrency groups for immutable
+source heads, with active cancellation disabled. This permits the existing
+authorized endpoint branch to evaluate a successor while earlier source-head
+runs finish. All branch/event/host guards, selected-device checks, permissions,
+test selectors and deadlines are unchanged. Default duplicate-run pending
+queue behavior is unchanged.
+[The receiving composition](../review/receiving-path-and-ci-composition-2026-11-28.json)
+binds the exact preimages and source reviews. Its own execution remains pending.
+
+The later terminal 5d19 Windows installed component receipt records 2,564
+passing cases, the known 24 clip schema setup errors and 12 passing subtests.
+Its separate real-Windows-venv EOF gate passed all 21 cases. Its native clip
+widget/render probe passed 120 checks while explicitly reporting loop playback
+NOT_RUN without a reviewed output pair. These observations complete that old
+component record without qualifying the repaired successor.
+
+The old 8bcbdb74 V3 run also completed successfully: 1,805 installed shared-service
+cases, 632 installed integrity cases and 6,564 source cases, with no failures or
+skips. Its [terminal receipt](../review/v3-terminal-8bcbdb74-2026-11-28/terminal.json)
+keeps these overlapping phases separate from the same head's failed main
+Windows source/bundle run.
+
 ## Current receiving follow-up and exact execution — 2026-11-28
 
 This source follow-up is based on `5d19dde77aca6a257ee601c1bc49b8504c342cee`.

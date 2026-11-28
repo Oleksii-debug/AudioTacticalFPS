@@ -1,0 +1,96 @@
+{
+  "schema": "carr-ci-preserve-running-candidates/1",
+  "base_head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "base_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "source_review": "CLEAR",
+  "execution": "NOT_RUN",
+  "reason": "The existing endpoint branch is the sole authorized native input/output evaluation context. A different candidate must be tested there without cancelling the valuable preceding full Windows and V3 executions.",
+  "changes": "For these two existing workflows only, append the immutable checked-out source commit to the existing concurrency group and set cancel-in-progress=false.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "28107070ccfea9e462517da1c796f4292b04249b",
+      "after": "a454322a63b25e46f13f817a9c8594521a9cf7b8",
+      "exact_inverse": true,
+      "changes": [
+        {
+          "op": "+",
+          "n": 16,
+          "x": "  group: carr-v3-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}"
+        },
+        {
+          "op": "+",
+          "n": 17,
+          "x": "  cancel-in-progress: false"
+        },
+        {
+          "op": "-",
+          "n": 16,
+          "x": "  group: carr-v3-${{ github.head_ref || github.ref_name }}"
+        },
+        {
+          "op": "-",
+          "n": 17,
+          "x": "  cancel-in-progress: true"
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "4265fb9912cfea14a2deda24d216c62c72078396",
+      "after": "23f5e6524e5b230a71cff2e8d06beace7d225450",
+      "exact_inverse": true,
+      "changes": [
+        {
+          "op": "+",
+          "n": 20,
+          "x": "  group: carr-windows-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}"
+        },
+        {
+          "op": "+",
+          "n": 21,
+          "x": "  cancel-in-progress: false"
+        },
+        {
+          "op": "-",
+          "n": 20,
+          "x": "  group: carr-windows-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}"
+        },
+        {
+          "op": "-",
+          "n": 21,
+          "x": "  cancel-in-progress: true"
+        }
+      ]
+    }
+  ],
+  "preserved": [
+    "All triggers and exact event/source checkout expressions",
+    "The exact authorized endpoint branch/push/hosted-Windows/x64 boundary",
+    "Every input/output identity, privacy and consent guard",
+    "All job and step limits, selectors, native commands, strict verdict and payload rules",
+    "All application, script, test, dependency and package bytes"
+  ],
+  "reviews": [
+    {
+      "agent": "root",
+      "verdict": "CLEAR",
+      "scope": "Exact two-line inverse in each file; unchanged domain/test/permission policy; current official GitHub syntax."
+    },
+    {
+      "agent": "locate_project",
+      "verdict": "CLEAR",
+      "scope": "Independent full blob readback and inverse,252/110minute jobs, content:read/checkout/triggers/endpoint guards and existing CI contract tests."
+    }
+  ],
+  "primary_reference": {
+    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency",
+    "observations": "GitHub supports github-context expressions for concurrency groups. Different groups do not serialize each other. Active cancellation requires cancel-in-progress:true. A false value preserves running work; the unchanged default same-group queue may still replace an older pending duplicate."
+  },
+  "limits": [
+    "This change does not make any prior or new CI result PASS.",
+    "No same-head verdict is inferred from byte-identical application source.",
+    "Default queue semantics for duplicate runs are unchanged; this is not an unlimited pending queue.",
+    "No device provisioning is added to a new branch or event."
+  ]
+}

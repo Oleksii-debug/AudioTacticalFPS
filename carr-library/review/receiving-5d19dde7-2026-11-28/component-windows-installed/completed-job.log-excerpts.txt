@@ -1,0 +1,308 @@
+===== DECODED JOB LOG LINES 137-140 =====
+2026-11-28T02:51:42.2582166Z HEAD is now at 5d19dde Complete reviewed Studio looping, operation details and reader admission
+2026-11-28T02:51:42.2639393Z ##[endgroup]
+2026-11-28T02:51:42.2971308Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T02:51:42.3244509Z 5d19dde77aca6a257ee601c1bc49b8504c342cee
+
+===== DECODED JOB LOG LINES 703-703 =====
+2026-11-28T02:52:10.8783154Z   Created wheel for universal-research-library: filename=universal_research_library-0.2.0.dev2-py3-none-any.whl size=2597639 sha256=922970fa30f5897f6086c18470c44ca687aaec023aa54e20fc67858ec07d96b1
+
+===== DECODED JOB LOG LINES 841-841 =====
+2026-11-28T02:54:45.9396670Z {"status": "PASS", "module_origin": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library", "python_modules": 380, "source_inventory_sha256": "a9fc063550fdb67303610c8e1c21fbd7678259029679df2629bd5caa5cecce95"}
+
+===== DECODED JOB LOG LINES 981-1038 =====
+2026-11-28T03:20:22.0959551Z ____ ERROR at setup of test_clip_loop_requires_an_explicit_initial_preview ____
+2026-11-28T03:20:22.0960267Z 
+2026-11-28T03:20:22.0960695Z dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x000001B19ACF7A10>
+2026-11-28T03:20:22.0962572Z tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-0/test_clip_loop_requires_an_exp0')
+2026-11-28T03:20:22.0963702Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001B19AD3B1D0>
+2026-11-28T03:20:22.0964201Z 
+2026-11-28T03:20:22.0964642Z     @pytest.fixture
+2026-11-28T03:20:22.0965401Z     def loop_preview(dialog, tmp_path, monkeypatch):
+2026-11-28T03:20:22.0966531Z         """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+2026-11-28T03:20:22.0967790Z         import wave
+2026-11-28T03:20:22.0968375Z         from carr_library.speech import player as player_module
+2026-11-28T03:20:22.0969099Z     
+2026-11-28T03:20:22.0969621Z         original = tmp_path / 'original-loop.wav'
+2026-11-28T03:20:22.0970414Z         preview = tmp_path / 'clip-preview-loop.wav'
+2026-11-28T03:20:22.0971123Z         with wave.open(str(original), 'wb') as output:
+2026-11-28T03:20:22.0972085Z             output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+2026-11-28T03:20:22.0972712Z             output.writeframes(b'\xe8\x03' * 2000)
+2026-11-28T03:20:22.0973189Z         raw = original.read_bytes()
+2026-11-28T03:20:22.0973675Z         preview.write_bytes(raw)
+2026-11-28T03:20:22.0974317Z         cue = Cue('loop-clip', str(original), duration=.25)
+2026-11-28T03:20:22.0975161Z         scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+2026-11-28T03:20:22.0976214Z >       project = Project('loop-project', 'Loop project', (), (scene,))
+2026-11-28T03:20:22.0977340Z                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T03:20:22.0978078Z 
+2026-11-28T03:20:22.0979272Z tests\studio\test_clip_dialog.py:746: 
+2026-11-28T03:20:22.0979922Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T03:20:22.0980585Z <string>:13: in __init__
+2026-11-28T03:20:22.0981205Z     ???
+2026-11-28T03:20:22.0981666Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T03:20:22.0982264Z 
+2026-11-28T03:20:22.0983823Z self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+2026-11-28T03:20:22.0985369Z 
+2026-11-28T03:20:22.0985792Z     def __post_init__(self):
+2026-11-28T03:20:22.0986241Z         _id(self.id)
+2026-11-28T03:20:22.0987107Z         _text(self.title, 'project title', 512)
+2026-11-28T03:20:22.0987796Z         _text(self.original_script, 'original script', 16_000_000, True)
+2026-11-28T03:20:22.0991174Z         if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+2026-11-28T03:20:22.0992412Z             raise ValueError('Unsupported project schema or revision.')
+2026-11-28T03:20:22.0993570Z         if self.mode not in ('faithful', 'authored'):
+2026-11-28T03:20:22.0994447Z             raise ValueError('Choose faithful narration or explicitly authored production.')
+2026-11-28T03:20:22.0995500Z         if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+2026-11-28T03:20:22.0997020Z             raise ValueError('Unsupported master sample rate.')
+2026-11-28T03:20:22.0998062Z         if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+2026-11-28T03:20:22.0998925Z             raise ValueError('Project roles must be typed.')
+2026-11-28T03:20:22.1000050Z         if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+2026-11-28T03:20:22.1002082Z             raise ValueError('Project needs typed scenes.')
+2026-11-28T03:20:22.1003057Z         roles = {role.id for role in self.roles}
+2026-11-28T03:20:22.1003866Z         if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+2026-11-28T03:20:22.1004831Z             raise ValueError('Duplicate role or scene ID.')
+2026-11-28T03:20:22.1005581Z         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+2026-11-28T03:20:22.1006336Z             raise ValueError('A line uses an unknown role.')
+2026-11-28T03:20:22.1007123Z         if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+2026-11-28T03:20:22.1008523Z                 cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+2026-11-28T03:20:22.1009888Z                 for scene in self.scenes for cue in scene.cues):
+2026-11-28T03:20:22.1010683Z >           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+2026-11-28T03:20:22.1011621Z E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.1012096Z 
+2026-11-28T03:20:22.1012663Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages\carr_library\studio\project.py:270: ValueError
+
+===== DECODED JOB LOG LINES 2373-2402 =====
+2026-11-28T03:20:22.5548324Z =========================== short test summary info ===========================
+2026-11-28T03:20:22.5549893Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_requires_an_explicit_initial_preview - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5552031Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5553941Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5555780Z ERROR tests/studio/test_clip_dialog.py::test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5557614Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[rendering] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5559436Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5561784Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5563721Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5565716Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5567697Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5569656Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5571558Z ERROR tests/studio/test_clip_dialog.py::test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5573440Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5575286Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5577070Z ERROR tests/studio/test_clip_dialog.py::test_clip_failed_device_close_keeps_owner_but_disarms_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5578884Z ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5580739Z ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5582585Z ERROR tests/studio/test_clip_dialog.py::test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5584389Z ERROR tests/studio/test_clip_dialog.py::test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5586255Z ERROR tests/studio/test_clip_dialog.py::test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5588352Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5590601Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5592854Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5595564Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T03:20:22.5596974Z 2564 passed, 24 errors, 12 subtests passed in 1535.05s (0:25:35)
+2026-11-28T03:20:23.0270701Z Traceback (most recent call last):
+2026-11-28T03:20:23.0279164Z   File "<string>", line 1, in <module>
+2026-11-28T03:20:23.0279469Z AssertionError
+2026-11-28T03:20:23.0559872Z ##[error]Process completed with exit code 1.
+
+===== DECODED JOB LOG LINES 2403-2587 =====
+2026-11-28T03:20:23.0723505Z ##[group]Run $fixtureEnvironment = Join-Path $env:RUNNER_TEMP 'carr-deadline-fixture-python'
+2026-11-28T03:20:23.0724524Z [36;1m$fixtureEnvironment = Join-Path $env:RUNNER_TEMP 'carr-deadline-fixture-python'[0m
+2026-11-28T03:20:23.0725107Z [36;1mpython -I -B -m venv --without-pip --system-site-packages $fixtureEnvironment[0m
+2026-11-28T03:20:23.0725560Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T03:20:23.0725966Z [36;1m$fixturePython = Join-Path $fixtureEnvironment 'Scripts/python.exe'[0m
+2026-11-28T03:20:23.0726325Z [36;1m$identity = @'[0m
+2026-11-28T03:20:23.0726539Z [36;1mimport json, sys[0m
+2026-11-28T03:20:23.0726763Z [36;1mfrom pathlib import Path[0m
+2026-11-28T03:20:23.0727009Z [36;1mimport carr_library[0m
+2026-11-28T03:20:23.0727409Z [36;1massert sys.prefix != sys.base_prefix, 'The regression must run through an actual venv.'[0m
+2026-11-28T03:20:23.0728039Z [36;1massert Path(sys.executable).resolve(strict=True) == Path(sys.argv[1]).resolve(strict=True)[0m
+2026-11-28T03:20:23.0728714Z [36;1mprior = json.loads(Path('ci-component-results/application-source.json').read_text(encoding='utf-8-sig'))[0m
+2026-11-28T03:20:23.0729311Z [36;1minstalled = Path(carr_library.__file__).resolve(strict=True).parent[0m
+2026-11-28T03:20:23.0729774Z [36;1massert installed == Path(prior['module_origin']).resolve(strict=True)[0m
+2026-11-28T03:20:23.0730215Z [36;1massert not installed.is_relative_to(Path('src').resolve())[0m
+2026-11-28T03:20:23.0730643Z [36;1mprint(json.dumps(dict(status='PASS', executable=sys.executable,[0m
+2026-11-28T03:20:23.0731071Z [36;1m    base_executable=sys._base_executable, python=sys.version,[0m
+2026-11-28T03:20:23.0731600Z [36;1m    installed_package=str(installed), source_inventory_sha256=prior['source_inventory_sha256'])))[0m
+2026-11-28T03:20:23.0732029Z [36;1m'@[0m
+2026-11-28T03:20:23.0732492Z [36;1m$identity | & $fixturePython -I -B -X utf8 - $fixturePython | Tee-Object ci-component-results/venv-deadline-identity.json[0m
+2026-11-28T03:20:23.0733056Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T03:20:23.0734119Z [36;1m& $fixturePython -I -B -X utf8 -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/venv-deadline.xml tests/audio/test_process_deadline.py 2>&1 | Tee-Object ci-component-results/venv-deadline.txt[0m
+2026-11-28T03:20:23.0735135Z [36;1m$testExit = $LASTEXITCODE[0m
+2026-11-28T03:20:23.0736235Z [36;1m& $fixturePython -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-component-results/venv-deadline.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('VENV_DEADLINE_CASES_PASS',len(cases))"[0m
+2026-11-28T03:20:23.0737363Z [36;1mif ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }[0m
+2026-11-28T03:20:23.0777765Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T03:20:23.0778092Z env:
+2026-11-28T03:20:23.0778266Z   PYTHONUTF8: 1
+2026-11-28T03:20:23.0778461Z   PYTHONUNBUFFERED: 1
+2026-11-28T03:20:23.0778657Z   HF_HUB_OFFLINE: 1
+2026-11-28T03:20:23.0778843Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T03:20:23.0779041Z   DO_NOT_TRACK: 1
+2026-11-28T03:20:23.0779307Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:23.0779747Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T03:20:23.0780170Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:23.0780549Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:23.0780926Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:23.0781273Z   CARR_AUDIO_RUNTIME: D:\a\_temp\carr-component-audio
+2026-11-28T03:20:23.0781591Z   CARR_CI_OCR_DIR: D:\a\_temp\carr-component-ocr\ocr
+2026-11-28T03:20:23.0783656Z   TESSDATA_PREFIX: D:\a\_temp\carr-component-ocr\ocr\tessdata
+2026-11-28T03:20:23.0784022Z ##[endgroup]
+2026-11-28T03:20:23.5296105Z {"status": "PASS", "executable": "D:\\a\\_temp\\carr-deadline-fixture-python\\Scripts\\python.exe", "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe", "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "installed_package": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library", "source_inventory_sha256": "a9fc063550fdb67303610c8e1c21fbd7678259029679df2629bd5caa5cecce95"}
+2026-11-28T03:20:33.7947106Z .....................                                                    [100%]
+2026-11-28T03:20:33.7949127Z 21 passed in 9.74s
+2026-11-28T03:20:33.8808115Z VENV_DEADLINE_CASES_PASS 21
+2026-11-28T03:20:33.9463518Z ##[group]Run python -I -B -X utf8 scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object ci-component-results/installed-native-clip-editor.txt
+2026-11-28T03:20:33.9464608Z [36;1mpython -I -B -X utf8 scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object ci-component-results/installed-native-clip-editor.txt[0m
+2026-11-28T03:20:33.9465272Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T03:20:33.9505748Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T03:20:33.9506362Z env:
+2026-11-28T03:20:33.9506626Z   PYTHONUTF8: 1
+2026-11-28T03:20:33.9506854Z   PYTHONUNBUFFERED: 1
+2026-11-28T03:20:33.9507056Z   HF_HUB_OFFLINE: 1
+2026-11-28T03:20:33.9507262Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T03:20:33.9507473Z   DO_NOT_TRACK: 1
+2026-11-28T03:20:33.9507736Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:33.9508170Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T03:20:33.9508624Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:33.9509011Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:33.9509385Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T03:20:33.9509732Z   CARR_AUDIO_RUNTIME: D:\a\_temp\carr-component-audio
+2026-11-28T03:20:33.9510064Z   CARR_CI_OCR_DIR: D:\a\_temp\carr-component-ocr\ocr
+2026-11-28T03:20:33.9510405Z   TESSDATA_PREFIX: D:\a\_temp\carr-component-ocr\ocr\tessdata
+2026-11-28T03:20:33.9510719Z ##[endgroup]
+2026-11-28T03:20:34.5054300Z PASS: real wx Windows controls
+2026-11-28T03:20:34.5057297Z PASS: installed module: carr_library.ui.studio_clips
+2026-11-28T03:20:34.5059477Z PASS: installed module: carr_library.studio.clips
+2026-11-28T03:20:35.4239006Z PASS: real native main loop is active
+2026-11-28T03:20:35.4419877Z PASS: keyboard focus: Reload projects
+2026-11-28T03:20:35.4475220Z PASS: Space key down: Reload projects
+2026-11-28T03:20:35.5042150Z PASS: Space key up: Reload projects
+2026-11-28T03:20:35.6368471Z PASS: native project choice binds saved identity
+2026-11-28T03:20:35.6369884Z PASS: all timing controls have readable names
+2026-11-28T03:20:35.6372782Z PASS: native loop controls are named and require an explicit preview
+2026-11-28T03:20:35.6375011Z PASS: opening the clip editor does not start a preview loop
+2026-11-28T03:20:35.6419993Z PASS: keyboard focus: Add audio file
+2026-11-28T03:20:35.6422128Z PASS: Space key down: Add audio file
+2026-11-28T03:20:35.6866773Z PASS: Space key up: Add audio file
+2026-11-28T03:20:35.6870308Z PASS: original selection requires an existing file
+2026-11-28T03:20:36.2101669Z PASS: native Add retains an actual clip
+2026-11-28T03:20:36.2109412Z PASS: keyboard focus: Save clip settings
+2026-11-28T03:20:36.2110975Z PASS: Space key down: Save clip settings
+2026-11-28T03:20:36.2560077Z PASS: Space key up: Save clip settings
+2026-11-28T03:20:36.5555425Z PASS: native Save persists reviewed numeric controls
+2026-11-28T03:20:39.0471336Z PASS: real edited project rendered
+2026-11-28T03:20:39.0498100Z PASS: actual left-only timeline and one-second duration
+2026-11-28T03:20:39.0547502Z PASS: keyboard focus: Copy clip instructions
+2026-11-28T03:20:39.0548405Z PASS: Space key down: Copy clip instructions
+2026-11-28T03:20:39.0981493Z PASS: Space key up: Copy clip instructions
+2026-11-28T03:20:39.3630024Z PASS: native copy preserves the saved project
+2026-11-28T03:20:39.3635832Z PASS: keyboard focus: Split selected clip...
+2026-11-28T03:20:39.3637209Z PASS: Space key down: Split selected clip...
+2026-11-28T03:20:39.4088693Z PASS: Space key up: Split selected clip...
+2026-11-28T03:20:39.4229297Z PASS: actual native clip review button: Split at an output sample
+2026-11-28T03:20:39.4235562Z PASS: keyboard focus: button
+2026-11-28T03:20:39.4236398Z PASS: Space key down: button
+2026-11-28T03:20:39.4712503Z PASS: Space key up: button
+2026-11-28T03:20:39.7601219Z PASS: native split preserves retained source and measured cuts
+2026-11-28T03:20:39.7602960Z PASS: keyboard focus: Join adjacent clips...
+2026-11-28T03:20:39.7603904Z PASS: Space key down: Join adjacent clips...
+2026-11-28T03:20:39.8056141Z PASS: Space key up: Join adjacent clips...
+2026-11-28T03:20:39.8240530Z PASS: actual native clip review button: Join adjacent clips
+2026-11-28T03:20:39.8246687Z PASS: keyboard focus: button
+2026-11-28T03:20:39.8247723Z PASS: Space key down: button
+2026-11-28T03:20:39.8671138Z PASS: Space key up: button
+2026-11-28T03:20:40.3103574Z PASS: native join restores the original instructions
+2026-11-28T03:20:40.3109715Z PASS: keyboard focus: Undo clip edit
+2026-11-28T03:20:40.3110350Z PASS: Space key down: Undo clip edit
+2026-11-28T03:20:40.3563067Z PASS: Space key up: Undo clip edit
+2026-11-28T03:20:40.7732486Z PASS: native undo restores both cuts
+2026-11-28T03:20:40.7738564Z PASS: keyboard focus: Redo clip edit
+2026-11-28T03:20:40.7739827Z PASS: Space key down: Redo clip edit
+2026-11-28T03:20:40.8192074Z PASS: Space key up: Redo clip edit
+2026-11-28T03:20:41.0993607Z PASS: native redo restores the joined clip
+2026-11-28T03:20:41.1000306Z PASS: keyboard focus: Paste copied clip...
+2026-11-28T03:20:41.1001151Z PASS: Space key down: Paste copied clip...
+2026-11-28T03:20:41.1459284Z PASS: Space key up: Paste copied clip...
+2026-11-28T03:20:41.1580546Z PASS: actual native clip review button: Paste copied clip
+2026-11-28T03:20:41.1587181Z PASS: keyboard focus: button
+2026-11-28T03:20:41.1588824Z PASS: Space key down: button
+2026-11-28T03:20:41.2015347Z PASS: Space key up: button
+2026-11-28T03:20:41.4877722Z PASS: native paste creates a distinct clip at the reviewed position
+2026-11-28T03:20:41.4884001Z PASS: keyboard focus: Cut clip
+2026-11-28T03:20:41.4885059Z PASS: Space key down: Cut clip
+2026-11-28T03:20:41.5336219Z PASS: Space key up: Cut clip
+2026-11-28T03:20:41.8396601Z PASS: native cut keeps original bytes and the remaining clip
+2026-11-28T03:20:41.8406224Z PASS: keyboard focus: Clip effects...
+2026-11-28T03:20:41.8407476Z PASS: Space key down: Clip effects...
+2026-11-28T03:20:41.8857894Z PASS: Space key up: Clip effects...
+2026-11-28T03:20:42.1802911Z PASS: actual supported effect choice
+2026-11-28T03:20:42.1807658Z PASS: keyboard focus: Add effect
+2026-11-28T03:20:42.1808367Z PASS: Space key down: Add effect
+2026-11-28T03:20:42.2240109Z PASS: Space key up: Add effect
+2026-11-28T03:20:42.2310794Z PASS: keyboard focus: Edit selected effect
+2026-11-28T03:20:42.2311906Z PASS: Space key down: Edit selected effect
+2026-11-28T03:20:42.2733741Z PASS: Space key up: Edit selected effect
+2026-11-28T03:20:42.2919603Z PASS: actual numeric clip effect control
+2026-11-28T03:20:42.2928585Z PASS: keyboard focus: Apply effect
+2026-11-28T03:20:42.2929352Z PASS: Space key down: Apply effect
+2026-11-28T03:20:42.3360047Z PASS: Space key up: Apply effect
+2026-11-28T03:20:42.3451381Z PASS: keyboard focus: Apply effect chain
+2026-11-28T03:20:42.3452069Z PASS: Space key down: Apply effect chain
+2026-11-28T03:20:42.3873941Z PASS: Space key up: Apply effect chain
+2026-11-28T03:20:42.5171548Z PASS: native clip effects persist in schema three
+2026-11-28T03:20:42.5178180Z PASS: keyboard focus: Master effects...
+2026-11-28T03:20:42.5178907Z PASS: Space key down: Master effects...
+2026-11-28T03:20:42.5594887Z PASS: Space key up: Master effects...
+2026-11-28T03:20:42.8359753Z PASS: actual supported effect choice
+2026-11-28T03:20:42.8365937Z PASS: keyboard focus: Add effect
+2026-11-28T03:20:42.8366859Z PASS: Space key down: Add effect
+2026-11-28T03:20:42.8797706Z PASS: Space key up: Add effect
+2026-11-28T03:20:42.8862251Z PASS: keyboard focus: Edit selected effect
+2026-11-28T03:20:42.8863258Z PASS: Space key down: Edit selected effect
+2026-11-28T03:20:42.9284565Z PASS: Space key up: Edit selected effect
+2026-11-28T03:20:42.9469753Z PASS: actual numeric clip effect control
+2026-11-28T03:20:42.9479043Z PASS: keyboard focus: Apply effect
+2026-11-28T03:20:42.9480666Z PASS: Space key down: Apply effect
+2026-11-28T03:20:42.9912276Z PASS: Space key up: Apply effect
+2026-11-28T03:20:43.0007209Z PASS: keyboard focus: Apply effect chain
+2026-11-28T03:20:43.0007852Z PASS: Space key down: Apply effect chain
+2026-11-28T03:20:43.0431573Z PASS: Space key up: Apply effect chain
+2026-11-28T03:20:43.1757318Z PASS: native master effects persist independently
+2026-11-28T03:20:45.6745720Z PASS: native effect project completes actual rendering
+2026-11-28T03:20:45.6817680Z PASS: actual native clip and master effects both apply
+2026-11-28T03:20:45.6834292Z PASS: delivered chapter matches the mastered audio
+2026-11-28T03:20:45.6872367Z PASS: keyboard focus: Set master sample rate
+2026-11-28T03:20:45.6874029Z PASS: Space key down: Set master sample rate
+2026-11-28T03:20:45.7309821Z PASS: Space key up: Set master sample rate
+2026-11-28T03:20:45.8583473Z PASS: native master sample rate preserves effect chains
+2026-11-28T03:20:45.9014698Z PASS: keyboard focus: Save clip settings
+2026-11-28T03:20:45.9015551Z PASS: Space key down: Save clip settings
+2026-11-28T03:20:45.9466409Z PASS: Space key up: Save clip settings
+2026-11-28T03:20:46.0730786Z PASS: stale native edit cannot replace a newer revision
+2026-11-28T03:20:46.0738338Z PASS: keyboard focus: Reload projects
+2026-11-28T03:20:46.0739202Z PASS: Space key down: Reload projects
+2026-11-28T03:20:46.1155411Z PASS: Space key up: Reload projects
+2026-11-28T03:20:46.2305728Z PASS: keyboard focus: Remove clip
+2026-11-28T03:20:46.2306097Z PASS: Space key down: Remove clip
+2026-11-28T03:20:46.2742213Z PASS: Space key up: Remove clip
+2026-11-28T03:20:46.4095736Z PASS: remove changes project but retains original bytes
+2026-11-28T03:20:46.4101963Z PASS: keyboard focus: Close
+2026-11-28T03:20:46.4102777Z PASS: Space key down: Close
+2026-11-28T03:20:46.4552618Z PASS: Space key up: Close
+2026-11-28T03:20:46.4596117Z PASS: native keyboard close finishes cleanly
+2026-11-28T03:20:46.4964237Z {"result": "PASS", "checks": ["real wx Windows controls", "installed module: carr_library.ui.studio_clips", "installed module: carr_library.studio.clips", "real native main loop is active", "keyboard focus: Reload projects", "Space key down: Reload projects", "Space key up: Reload projects", "native project choice binds saved identity", "all timing controls have readable names", "native loop controls are named and require an explicit preview", "opening the clip editor does not start a preview loop", "keyboard focus: Add audio file", "Space key down: Add audio file", "Space key up: Add audio file", "original selection requires an existing file", "native Add retains an actual clip", "keyboard focus: Save clip settings", "Space key down: Save clip settings", "Space key up: Save clip settings", "native Save persists reviewed numeric controls", "real edited project rendered", "actual left-only timeline and one-second duration", "keyboard focus: Copy clip instructions", "Space key down: Copy clip instructions", "Space key up: Copy clip instructions", "native copy preserves the saved project", "keyboard focus: Split selected clip...", "Space key down: Split selected clip...", "Space key up: Split selected clip...", "actual native clip review button: Split at an output sample", "keyboard focus: button", "Space key down: button", "Space key up: button", "native split preserves retained source and measured cuts", "keyboard focus: Join adjacent clips...", "Space key down: Join adjacent clips...", "Space key up: Join adjacent clips...", "actual native clip review button: Join adjacent clips", "keyboard focus: button", "Space key down: button", "Space key up: button", "native join restores the original instructions", "keyboard focus: Undo clip edit", "Space key down: Undo clip edit", "Space key up: Undo clip edit", "native undo restores both cuts", "keyboard focus: Redo clip edit", "Space key down: Redo clip edit", "Space key up: Redo clip edit", "native redo restores the joined clip", "keyboard focus: Paste copied clip...", "Space key down: Paste copied clip...", "Space key up: Paste copied clip...", "actual native clip review button: Paste copied clip", "keyboard focus: button", "Space key down: button", "Space key up: button", "native paste creates a distinct clip at the reviewed position", "keyboard focus: Cut clip", "Space key down: Cut clip", "Space key up: Cut clip", "native cut keeps original bytes and the remaining clip", "keyboard focus: Clip effects...", "Space key down: Clip effects...", "Space key up: Clip effects...", "actual supported effect choice", "keyboard focus: Add effect", "Space key down: Add effect", "Space key up: Add effect", "keyboard focus: Edit selected effect", "Space key down: Edit selected effect", "Space key up: Edit selected effect", "actual numeric clip effect control", "keyboard focus: Apply effect", "Space key down: Apply effect", "Space key up: Apply effect", "keyboard focus: Apply effect chain", "Space key down: Apply effect chain", "Space key up: Apply effect chain", "native clip effects persist in schema three", "keyboard focus: Master effects...", "Space key down: Master effects...", "Space key up: Master effects...", "actual supported effect choice", "keyboard focus: Add effect", "Space key down: Add effect", "Space key up: Add effect", "keyboard focus: Edit selected effect", "Space key down: Edit selected effect", "Space key up: Edit selected effect", "actual numeric clip effect control", "keyboard focus: Apply effect", "Space key down: Apply effect", "Space key up: Apply effect", "keyboard focus: Apply effect chain", "Space key down: Apply effect chain", "Space key up: Apply effect chain", "native master effects persist independently", "native effect project completes actual rendering", "actual native clip and master effects both apply", "delivered chapter matches the mastered audio", "keyboard focus: Set master sample rate", "Space key down: Set master sample rate", "Space key up: Set master sample rate", "native master sample rate preserves effect chains", "keyboard focus: Save clip settings", "Space key down: Save clip settings", "Space key up: Save clip settings", "stale native edit cannot replace a newer revision", "keyboard focus: Reload projects", "Space key down: Reload projects", "Space key up: Reload projects", "keyboard focus: Remove clip", "Space key down: Remove clip", "Space key up: Remove clip", "remove changes project but retains original bytes", "keyboard focus: Close", "Space key down: Close", "Space key up: Close", "native keyboard close finishes cleanly"], "native_keyboard": "PASS", "fixture": "synthetic PCM rendered by actual FFmpeg", "audio_runtime": {"ffmpeg": {"path": "D:\\a\\_temp\\carr-component-audio\\bin\\ffmpeg.exe", "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"}, "ffprobe": {"path": "D:\\a\\_temp\\carr-component-audio\\bin\\ffprobe.exe", "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"}}, "nvda": "NOT_RUN", "native_file_pickers": "NOT_RUN", "physical_microphone": "NOT_RUN", "loop_preview": {"status": "NOT_RUN", "reason": "No exact reviewed output endpoint was supplied for loop playback.", "acoustic_listening": "NOT_RUN", "physical_output_device": "NOT_RUN"}}
+
+===== DECODED JOB LOG LINES 2610-2625 =====
+2026-11-28T03:20:46.6120932Z   CARR_CI_OCR_DIR: D:\a\_temp\carr-component-ocr\ocr
+2026-11-28T03:20:46.6121269Z   TESSDATA_PREFIX: D:\a\_temp\carr-component-ocr\ocr\tessdata
+2026-11-28T03:20:46.6121568Z ##[endgroup]
+2026-11-28T03:20:46.7802272Z With the provided path, there will be 11 files uploaded
+2026-11-28T03:20:46.7807383Z Artifact name is valid!
+2026-11-28T03:20:46.7808760Z Root directory input is valid!
+2026-11-28T03:20:47.1159343Z Uploading artifact: carr-component-followup-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1.zip
+2026-11-28T03:20:47.1194859Z Beginning upload of artifact content to blob storage
+2026-11-28T03:20:47.4471199Z Uploaded bytes 58415
+2026-11-28T03:20:47.4992293Z Finished uploading artifact content to blob storage!
+2026-11-28T03:20:47.4993762Z SHA256 digest of uploaded artifact is c2cf13565c2ad91d5f9fa1804be679c7d6885e07e93b2dc4d8f7674f45142491
+2026-11-28T03:20:47.4994635Z Finalizing artifact upload
+2026-11-28T03:20:47.9681482Z Artifact carr-component-followup-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1 successfully finalized. Artifact ID 15246605761
+2026-11-28T03:20:47.9683924Z Artifact carr-component-followup-windows-2022-installed-5d19dde77aca6a257ee601c1bc49b8504c342cee-1 has been successfully uploaded! Final size is 58415 bytes. Artifact ID is 15246605761
+2026-11-28T03:20:47.9688754Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098479318/artifacts/15246605761
+2026-11-28T03:20:48.0035031Z Post job cleanup.

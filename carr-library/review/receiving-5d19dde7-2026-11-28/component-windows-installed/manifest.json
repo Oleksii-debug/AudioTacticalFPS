@@ -1,0 +1,79 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "run_id": 46098479318,
+    "job_id": 140835247331,
+    "decoded_log_utf8_sha256": "70b51a6444dab59cddc8df01b81a23ff00e283b2f6a757e37cf87c6d95247e55",
+    "decoded_log_characters": 250711
+  },
+  "transformations": {
+    "json": "Only each log timestamp prefix is removed from the emitted JSON line; one LF appended. No original artifact member bytes are claimed.",
+    "excerpts": "Noncontiguous exact decoded log lines, original CRLF preserved; each excerpt has an added labeled separator.",
+    "excerpt_line_ranges": [
+      [
+        137,
+        140
+      ],
+      [
+        703,
+        703
+      ],
+      [
+        841,
+        841
+      ],
+      [
+        981,
+        1038
+      ],
+      [
+        2373,
+        2402
+      ],
+      [
+        2403,
+        2587
+      ],
+      [
+        2610,
+        2625
+      ]
+    ]
+  },
+  "files": [
+    {
+      "path": "qualification.json",
+      "utf8_bytes": 15439,
+      "sha256": "758dd4368e150b62f3055ef255732adda59f341471ba2192e6c6d64a155df5ae"
+    },
+    {
+      "path": "installed-inventory.log-extracted.json",
+      "utf8_bytes": 241,
+      "sha256": "35ac36255be3a25578eac8641e5de378c1ef975f9a200d1a00e45a9cc6e90202"
+    },
+    {
+      "path": "venv-identity.log-extracted.json",
+      "utf8_bytes": 481,
+      "sha256": "a223dae0816a00cc8724a940c10b56bb5c0b4d0dfacb143bf765de7b24ef529e"
+    },
+    {
+      "path": "native-clip.log-extracted.json",
+      "utf8_bytes": 5276,
+      "sha256": "5eb22a512e4174b7eca2b37017c7e116a78ba3382e0f7dee529cf2b65e7722e5"
+    },
+    {
+      "path": "completed-job.log-excerpts.txt",
+      "utf8_bytes": 34228,
+      "sha256": "e145525efe03d4dd148e89d6cd295915b380048732e53bde531150537e95e2d4"
+    }
+  ],
+  "artifact": {
+    "id": 15246605761,
+    "size_in_bytes": 58415,
+    "digest": "sha256:c2cf13565c2ad91d5f9fa1804be679c7d6885e07e93b2dc4d8f7674f45142491",
+    "source": "GitHub API metadata and matching upload log; bytes not downloaded"
+  },
+  "verification": "All prepared files must be read back exactly before the sparse tree is handed off."
+}

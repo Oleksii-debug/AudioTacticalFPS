@@ -17,8 +17,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: carr-windows-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
-  cancel-in-progress: true
+  group: carr-windows-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   integrated-desktop:

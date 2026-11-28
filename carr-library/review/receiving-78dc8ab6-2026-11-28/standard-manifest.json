@@ -1,0 +1,180 @@
+{
+  "schema": "carr-decoded-log-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+  "source_tree": "579f46f85c75984fcf5e44167fffaa746b353d8c",
+  "run_id": 46101830099,
+  "run_attempt": 1,
+  "run_conclusion": "success",
+  "workflow_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1",
+  "jobs": [
+    {
+      "id": 140845779219,
+      "platform": "ubuntu-24.04",
+      "status": "completed",
+      "conclusion": "success",
+      "decoded_log_utf8_sha256": "39daaddee55507059f658e6dc92740daa529d19a2e803c0aac0686087334b2a2",
+      "decoded_log_characters": 274759,
+      "excerpt_line_ranges": [
+        [
+          1098,
+          1100
+        ],
+        [
+          1355,
+          1355
+        ],
+        [
+          1475,
+          1590
+        ],
+        [
+          1647,
+          1649
+        ],
+        [
+          1686,
+          1698
+        ]
+      ]
+    },
+    {
+      "id": 140845779437,
+      "platform": "windows-2022",
+      "status": "completed",
+      "conclusion": "success",
+      "decoded_log_utf8_sha256": "69b6c0b3d6bbebcb42c3a68ea5195372ed6c1eb9bbfdd5daadba89d51096074c",
+      "decoded_log_characters": 315609,
+      "excerpt_line_ranges": [
+        [
+          1332,
+          1332
+        ],
+        [
+          1448,
+          1565
+        ],
+        [
+          1616,
+          1624
+        ],
+        [
+          1922,
+          1957
+        ],
+        [
+          2014,
+          2038
+        ],
+        [
+          2075,
+          2087
+        ]
+      ]
+    }
+  ],
+  "inventory_comparison": {
+    "python_modules": 380,
+    "linux_windows_python_files_exactly_equal": true,
+    "rows_sha256": "976a29c514a270c8afa6be1623aba0821af373ed0d05df3d46916ac5f3583971",
+    "encoding": "UTF-8 JSON.stringify(python_files), no trailing LF",
+    "all_380_paths_match_exact_commit_tree": true,
+    "individual_source_wheel_checks": "Executed by the workflow from this exact commit; no local execution claim"
+  },
+  "transformations": {
+    "json": "Only timestamp prefixes and ANSI framing are removed from emitted JSON. A single LF is appended; original artifact-member bytes are not claimed.",
+    "setup_json": "The literal non-JSON prefix Preprocessing before the first opening brace on decoded Windows log line1925 is also removed. The complete emitted object ends at line1957.",
+    "excerpts": "Exact noncontiguous decoded log lines, original line endings retained, with added labeled separators."
+  },
+  "files": [
+    {
+      "path": "standard-linux/qualification.json",
+      "utf8_bytes": 6752,
+      "sha256": "82b67f2fbecde94fd08f05ec8f6b9901cb8330cdc9a82cae152130d7ec6f7fb1"
+    },
+    {
+      "path": "standard-linux/source-installed-python-inventory.log-extracted.json",
+      "utf8_bytes": 56044,
+      "sha256": "7f16c2ae2e50adec05d78a9e84682782ae836bb1d4a215f3503f73446c5cedec"
+    },
+    {
+      "path": "standard-linux/source-wheel.log-extracted.json",
+      "utf8_bytes": 337,
+      "sha256": "b4b0a5be342b87ab92fada850ec2d9de4b0b1b9bf413ed942f52c327a564ad44"
+    },
+    {
+      "path": "standard-linux/source-suite-verdicts.json",
+      "utf8_bytes": 1638,
+      "sha256": "bcfeae0766286beed5711a543ea2b4a56a573b2cbd3848ba8287a79b1c072609"
+    },
+    {
+      "path": "standard-linux/completed-job.log-excerpts.txt",
+      "utf8_bytes": 12103,
+      "sha256": "426b3d5033e6b1106208d30ae0a55be60ae7e38d1c29e6c67fee0c166ac9e8b6"
+    },
+    {
+      "path": "standard-windows/qualification.json",
+      "utf8_bytes": 8510,
+      "sha256": "02c192e01f5d2565acdbb3b0acafd142ac1e9a3ae74b21cca7dc599382dded03"
+    },
+    {
+      "path": "standard-windows/source-installed-python-inventory.log-extracted.json",
+      "utf8_bytes": 56058,
+      "sha256": "1f4c618c0813acc90d3b71740b6115fbd717592c75caa15ff528fab0fc60bea8"
+    },
+    {
+      "path": "standard-windows/source-wheel.log-extracted.json",
+      "utf8_bytes": 337,
+      "sha256": "a32132cfad3abee773273a16c58c18a4a689fb666c48103fb1bc1dab57cbb7c2"
+    },
+    {
+      "path": "standard-windows/setup-build.log-extracted.json",
+      "utf8_bytes": 1728,
+      "sha256": "5d6d23d86e6034aef059cc12b7c46d0f8fae7fbbc2025323bfbcfc58fb301e46"
+    },
+    {
+      "path": "standard-windows/native-standard.log-extracted.json",
+      "utf8_bytes": 944,
+      "sha256": "4ba67f5bb41dfd588e7cb576448e569219e0e69e18b73cf2c44f3554ca398b62"
+    },
+    {
+      "path": "standard-windows/native-verdict.log-extracted.json",
+      "utf8_bytes": 705,
+      "sha256": "0520207cac37a68fd2faadaeefdd299c41649d233328445cf07a088a7adb71dd"
+    },
+    {
+      "path": "standard-windows/source-suite-verdicts.json",
+      "utf8_bytes": 1638,
+      "sha256": "a11335b6270a02f87cc81aafb9bf512d8a21ca1df55f376183ba653aadd7633c"
+    },
+    {
+      "path": "standard-windows/completed-job.log-excerpts.txt",
+      "utf8_bytes": 18510,
+      "sha256": "c2ca65c3af045740412b3f78d8781da0efc612e15a74bced4c2adac986684fdb"
+    }
+  ],
+  "uploaded_artifacts": [
+    {
+      "id": 15245741646,
+      "name": "carr-standard-installation-ubuntu-24.04-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+      "size_in_bytes": 29424,
+      "digest": "sha256:3dfd7c81a9ffc34cfe2b6cc3abbc6c1efc0a87ba85d5ac8562a19feb526a794a",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+      "source": "GitHub artifact API and matching upload-log text; no ZIP/member bytes downloaded"
+    },
+    {
+      "id": 15245514893,
+      "name": "carr-standard-installation-windows-2022-78dc8ab6838e964bc115418c47c4ec3ef4226a91-1",
+      "size_in_bytes": 139113,
+      "digest": "sha256:5e3fdb06ad87a6eae1278861afa34cf91cf21311e5338594a56d6fe338dba53d",
+      "head_sha": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+      "source": "GitHub artifact API and matching upload-log text; no ZIP/member bytes downloaded"
+    }
+  ],
+  "scope": [
+    "345 source and345 installed passed on each OS, with22 additional installed subtests per OS.",
+    "Actual Windows native standard lifecycle has12 named true assertions and matching setup/source/bundle identities.",
+    "Signing,NVDA,unprivileged-account and network-trace limitations remain exactly as reported.",
+    "No branch/ref/workflow/product-file mutation is part of this evidence tree."
+  ]
+}

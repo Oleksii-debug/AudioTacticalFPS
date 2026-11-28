@@ -1,0 +1,301 @@
+{
+  "schema": "carr-receiving-composition/1",
+  "created_utc_date": "2026-11-28",
+  "parent": {
+    "head": "78dc8ab6838e964bc115418c47c4ec3ef4226a91",
+    "tree": "579f46f85c75984fcf5e44167fffaa746b353d8c"
+  },
+  "source_status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "scope": "One observed Windows fixture path-identity correction, preservation of running source-head CI cohorts, and exact predecessor receipts.",
+  "test_fix": {
+    "path": "carr-library/tests/speech/test_progress_speech.py",
+    "before": "9ebff94cca02a0519c4cc987c45f89e17bb62397",
+    "after": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157",
+    "old_assertion_lines": 142,
+    "new_assertion_lines": 144,
+    "cases_unchanged": 53,
+    "assertion_policy": "Complete resource request equality remains; canonical directory is captured while present and independently checked with samefile.",
+    "reviewers": [
+      "root",
+      "audio_render"
+    ]
+  },
+  "ci_fix": {
+    "review": "ci-preserve-running-candidates-2026-11-28/source-review.json",
+    "workflow_tree": "f1365aacbc4da851ffe0e92237e45bb4c075aeea",
+    "reviewers": [
+      "root",
+      "locate_project"
+    ],
+    "scope": "Exactly two lines in each existing MAIN/V3 workflow: append immutable source head to group; preserve active runs with cancel-in-progress=false.",
+    "domain_policy": "No trigger, exact endpoint branch/event/platform boundary, selected-device, privacy/consent, output identity, permission, test selection or deadline changes.",
+    "duplicate_queue": "Unchanged default same-group pending behavior; no unlimited-queue claim."
+  },
+  "application_source": {
+    "modules": 380,
+    "changed_modules": 0,
+    "all_application_script_package_and_dependency_bytes": "unchanged from78dc8ab6"
+  },
+  "historical_receipts": {
+    "reader78": "Linux746PASS each; Windows745PASS/1fixtureFAIL each; native80PASS each; exact380Python inventories. Successor fix is NOT_RUN.",
+    "components78": "Linux source2893PASS/81modules andinstalled2893PASS+12subtests; Windows results still pending.",
+    "standard78": "Both OS source345PASS/installed345PASS+22subtests; actualWindows12PASS; exact380module identities; unsigned/private-only limitations retained.",
+    "components5d_windows_installed": "2564PASS/24knownclipfixtureSETUPERROR/12subtests; separateactualWindowsvenv21PASS; native120widgets/renderPASS withloopNOT_RUN.",
+    "v3_8b": "Installed1805PASS,integrity632PASS,source6564PASS; separatefromsameheadfailedmain; no verdicttransfer."
+  },
+  "release_status": "No eligible final wheel/archive or full release claimed. Every successor requires its own exact-head execution; all external manual/model/signing/rights obligations remain.",
+  "parts": [
+    {
+      "tree": "b7c6e569e17a115a5301e6633243384091c07be8",
+      "paths": 11
+    },
+    {
+      "tree": "ee11462706fe63e87cde66fb9f99de5aee865b85",
+      "paths": 3
+    },
+    {
+      "tree": "7c2712be6ade1918a7e549dcd392fe261da8b4f4",
+      "paths": 8
+    },
+    {
+      "tree": "c35ddce4fe3e064253154b4493001f1c3bf89126",
+      "paths": 6
+    },
+    {
+      "tree": "8309efecf932e0c1f9b17dc08078b2f19185968a",
+      "paths": 14
+    },
+    {
+      "tree": "44aa71cef2819ecca85e74b5eb271c64bb084a77",
+      "paths": 2
+    }
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "28107070ccfea9e462517da1c796f4292b04249b",
+      "after": "a454322a63b25e46f13f817a9c8594521a9cf7b8"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "4265fb9912cfea14a2deda24d216c62c72078396",
+      "after": "23f5e6524e5b230a71cff2e8d06beace7d225450"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "80ea96c5211d2224ec915ed7b8a8ca6df03d4b6e",
+      "after": "67b56c5e550457d07cb3f8c59900bf3998661d72"
+    },
+    {
+      "path": "carr-library/review/ci-preserve-running-candidates-2026-11-28/source-review.json",
+      "before": null,
+      "after": "2e37afe0bc1f74b16fc5c0acb707cc55d84e0bcb"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/linux-installed.json",
+      "before": null,
+      "after": "f2ec3f1b8161811bc233bbf2d52bc8844a45a57e"
+    },
+    {
+      "path": "carr-library/review/component-78dc8ab6-2026-11-28/linux-source.json",
+      "before": null,
+      "after": "7ee56ba54b9f8c4dc1e28d81e45c7bea3e52a947"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/linux-installed.json",
+      "before": null,
+      "after": "28c2a7cee2331053a437321e52639e5cdeeac8f6"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/linux-source.json",
+      "before": null,
+      "after": "62741e18a0e6a2d1cfc9db18c72f7d69b8b154e7"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/python-source-inventory.json",
+      "before": null,
+      "after": "53549620bf5f51961c9ff4e5ed50fd33575f8ef7"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/review.json",
+      "before": null,
+      "after": "e6ce947bbb6f3544a1621e9bec7b5d15016bba22"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-installed-failure.txt",
+      "before": null,
+      "after": "a1eb2d88308091cf8a820d374aea2a44358b199b"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-installed-native-checks.txt",
+      "before": null,
+      "after": "b9f50d403221af7d455bcb02893d0d8a3504792e"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-installed.json",
+      "before": null,
+      "after": "c9e9d3001f92d681731f6bf8ce7e0509b9371ea4"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-source-failure.txt",
+      "before": null,
+      "after": "71122d317e9455f481481fddab26739724bb6b1d"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-source-native-checks.txt",
+      "before": null,
+      "after": "982123b38ba4a31b457bfe48ce16274d41cd2b18"
+    },
+    {
+      "path": "carr-library/review/reader-voice-78dc8ab6-2026-11-28/windows-source.json",
+      "before": null,
+      "after": "db5e1d29b0f144b18c4b9bb393e7756afdeb3303"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/component-windows-installed/completed-job.log-excerpts.txt",
+      "before": null,
+      "after": "17f1fe63ab07cc126788154cccf800831f982e71"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/component-windows-installed/installed-inventory.log-extracted.json",
+      "before": null,
+      "after": "e364baa10e927d4ba7bfa9de809399324d556fdc"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/component-windows-installed/manifest.json",
+      "before": null,
+      "after": "b05a2964e46676630466b19ea05d246c41667b7c"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/component-windows-installed/native-clip.log-extracted.json",
+      "before": null,
+      "after": "74786857145a115058be2b37e273d873a3f0086d"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/component-windows-installed/qualification.json",
+      "before": null,
+      "after": "8dda97a6274a0bf1a9fa411881d60f0f0a4d118f"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/component-windows-installed/venv-identity.log-extracted.json",
+      "before": null,
+      "after": "e37a41662390c00f70c344729ee4b4bd1005ac6e"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-linux/completed-job.log-excerpts.txt",
+      "before": null,
+      "after": "d844148851db130e4814536578972dd21a3d7cad"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-linux/qualification.json",
+      "before": null,
+      "after": "9d8108033cc1dfd4c9842302511c9bbf51eeb087"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-linux/source-installed-python-inventory.log-extracted.json",
+      "before": null,
+      "after": "20d0d20de3aeb4b405b3129e9d5f1a532dee046e"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-linux/source-suite-verdicts.json",
+      "before": null,
+      "after": "4348527d466844b2811337944a9989ac8a2fe8c8"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-linux/source-wheel.log-extracted.json",
+      "before": null,
+      "after": "0d1b80d6a2b05ac499eda831ec1e7ee768282050"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-manifest.json",
+      "before": null,
+      "after": "0d47de9628841c8e2e71f0d63a4e1d42ce10e7ee"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/completed-job.log-excerpts.txt",
+      "before": null,
+      "after": "0cc8e8dfafe52fcc47c1dba26fb69270eefb58d5"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/native-standard.log-extracted.json",
+      "before": null,
+      "after": "d84e40ac6d083931fad62fb45f9f235f6f908c75"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/native-verdict.log-extracted.json",
+      "before": null,
+      "after": "9f3af1c67e8784c84361f15218b7420408c4d6b0"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/qualification.json",
+      "before": null,
+      "after": "f5c3c58ff00cefcd5f31e222773fea9760d1dd99"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/setup-build.log-extracted.json",
+      "before": null,
+      "after": "3976568f84cf9fcf5dcbdf67aea7ec94dd88805f"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/source-installed-python-inventory.log-extracted.json",
+      "before": null,
+      "after": "0550d1ceeb82e60b0a082099f3c5f17b858d6941"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/source-suite-verdicts.json",
+      "before": null,
+      "after": "cbb0b08e494b2192340ecf8c7e8c29363b03b9d1"
+    },
+    {
+      "path": "carr-library/review/receiving-78dc8ab6-2026-11-28/standard-windows/source-wheel.log-extracted.json",
+      "before": null,
+      "after": "cd9e9407fe67b678ac697fd1775bcc8a51f6cd9e"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/declared-selectors.json",
+      "before": null,
+      "after": "7e7c293a964cde9598d4f501174926292bc8db3e"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/decoded-reports.json",
+      "before": null,
+      "after": "150fccbaea77f7045c76806a8f8b1b258a15b255"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/execution-summaries.txt",
+      "before": null,
+      "after": "5df2975624fe9b8921dda268f76a5635a0e3ed3f"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/native-preferences-tabs-clipboard.txt",
+      "before": null,
+      "after": "9f381dfb859c475d6851d6c3b133ed3d46af504d"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/source-and-wheel-identity.txt",
+      "before": null,
+      "after": "cbb6dada82a074646c7806af47b961ed5952f6bd"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/steps.json",
+      "before": null,
+      "after": "596c67c1aa9d6f3f079c6873082f9f9650b6bfc4"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/strict-case-counts.json",
+      "before": null,
+      "after": "7d53fa396ab3c69cda5b2ae8c26ced3bce4600ba"
+    },
+    {
+      "path": "carr-library/review/v3-terminal-8bcbdb74-2026-11-28/terminal.json",
+      "before": null,
+      "after": "6d5792b95f9d66ed92bebf1e0d5cdb31c427fad2"
+    },
+    {
+      "path": "carr-library/tests/speech/test_progress_speech.py",
+      "before": "9ebff94cca02a0519c4cc987c45f89e17bb62397",
+      "after": "957ebc7bbe8d9dbcac3ff10c2ec7c89221e3c157"
+    }
+  ]
+}

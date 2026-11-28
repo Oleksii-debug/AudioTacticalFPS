@@ -1,0 +1,150 @@
+{
+  "schema": "carr-ci-terminal-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "run": 46093366005,
+  "job": 140819158556,
+  "event": "pull_request",
+  "branch": "carr/v3-integrated-final-dbbb-20261126",
+  "attempt": 1,
+  "conclusion": "success",
+  "run_started_at": "2026-11-28T01:29:37Z",
+  "run_updated_at": "2026-11-28T03:10:57Z",
+  "workflow": {
+    "path": ".github/workflows/carr-v3.yml",
+    "blob": "2873eb24a0d7cddbe544fdcc41199192888be6c5"
+  },
+  "interpreter": {
+    "implementation": "CPython",
+    "version": "3.11.9",
+    "platform": "Windows",
+    "selection": "Existing base toolcache python command; installed origins reported under its site-packages."
+  },
+  "application_wheel": {
+    "filename": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+    "size_bytes": 2588316,
+    "sha256": "072ac971916135a5f8cc5d181e78e419f4113207484c93f6ecb00b8f2c7b0439",
+    "scope": "Exact pip-build receipt from this checkout; install --no-deps and pip check completed. This is not an independent full-module byte inventory claim."
+  },
+  "installed_shared": {
+    "status": "PASS",
+    "passed": 1805,
+    "failed": 0,
+    "skipped": 0,
+    "nvda": "NOT_RUN",
+    "elapsed_seconds": 418.74,
+    "declared_selectors": 62
+  },
+  "installed_integrity": {
+    "status": "PASS",
+    "passed": 632,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "expected_failures": false,
+    "elapsed_seconds": 423.13,
+    "reported_installed_origins": 17,
+    "ocr_inventory_exact": true,
+    "state_inventory_exact": true
+  },
+  "source": {
+    "status": "PASS",
+    "passed": 6564,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 4885.84,
+    "declared_selectors": 104,
+    "completion": "Normal successful completion; no job/source timeout."
+  },
+  "strict_adjuncts": {
+    "progress": {
+      "suites": 10,
+      "passed": 261,
+      "failed": 0,
+      "skipped": 0
+    },
+    "translation": {
+      "suites": 1,
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0
+    },
+    "local_planning": {
+      "suites": 2,
+      "passed": 110,
+      "failed": 0,
+      "skipped": 0
+    },
+    "loopback_http": {
+      "passed": 12,
+      "elapsed_seconds": 8.61,
+      "step_status": "success"
+    }
+  },
+  "native": {
+    "owned_process": {
+      "status": "PASS",
+      "checks": 15,
+      "physical_microphone": "NOT_RUN",
+      "human_listening": "NOT_RUN"
+    },
+    "sapi_studio": {
+      "status": "PASS",
+      "checks": 8,
+      "speech_peak_pcm16": 10989,
+      "manual_nvda": "NOT_RUN"
+    },
+    "clip_editor": {
+      "status": "PASS",
+      "checks": 118,
+      "native_keyboard": "PASS",
+      "fixture": "synthetic PCM rendered by actual FFmpeg"
+    },
+    "transcription_dashboard_progress": {
+      "status": "PASS",
+      "checks": 42,
+      "asr_service": "SYNTHETIC_UI_FIXTURE",
+      "model_inference": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "native_sapi_progress_pcm": {
+        "frames": 146164,
+        "rate": 22050,
+        "width": 2,
+        "peak": 4868
+      }
+    },
+    "loopback_proposal": {
+      "status": "PASS",
+      "checks": 10,
+      "actual_llm_model": "NOT_RUN — synthetic protocol fixture"
+    },
+    "preferences_tabs_clipboard": {
+      "status": "Both required native steps succeeded, preserving each source and installed invocation.",
+      "receipt_scope": "Individual widget report bodies are not printed in this log; exact phase output is preserved without inventing per-mode receipt counts."
+    }
+  },
+  "failures": [],
+  "artifacts": [
+    {
+      "id": 15246150165,
+      "name": "carr-v3-evidence-46093366005-1",
+      "size_in_bytes": 198097,
+      "digest": "sha256:6252c3ea1c851df18456b7dd2b2bd33f76b51db2bbaa243fe01bb3ad112d356d",
+      "created_at": "2026-11-28T03:10:52Z",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    }
+  ],
+  "retrieval": {
+    "kind": "Completed GitHub job log plus run/jobs/artifact metadata",
+    "decoded_log_sha256": "c5b4661d2d43d555db018b95f64a95ee682c2986698991d6f8433c01b9bb7c1f",
+    "normalization": "Evidence text removes timestamp prefix, ANSI color and CR; JSON records are reconstructed from that decoded output. Artifact ZIP was not downloaded or extracted."
+  },
+  "scope_limits": [
+    "All results belong only to exact8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e.",
+    "Overlapping suites across phases are not summed into a unique test count.",
+    "The source command's104 selectors include directories and files; no per-module JUnit inventory is inferred from quiet stdout.",
+    "This successful V3 run does not erase the separate8b main run's three early-EOF fixture failures or observed citation cleanup failure.",
+    "No new execution or candidate verification is claimed for5d or the citation/progress-speech follow-up.",
+    "Physical capture, audible quality, NVDA and real LLM/ASR model qualification remain outside these synthetic/native receipt scopes."
+  ]
+}

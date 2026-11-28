@@ -1,0 +1,330 @@
+Completed decoded stdout for native source/installed widget steps11/12; timestamps/colors/CR removed. No per-mode report count inferred.
+
+##[group]Run $failures = @()
+$failures = @()
+python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py --source . --report ci-v3-results/source-voice-preferences.json
+if ($LASTEXITCODE -ne 0) { $failures += 'source-voice-preferences' }
+python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py --expect-installed --report ci-v3-results/installed-voice-preferences.json
+if ($LASTEXITCODE -ne 0) { $failures += 'installed-voice-preferences' }
+if ($failures.Count) { throw ('Required native voice preference failures: ' + ($failures -join ', ')) }
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  PYTHONUTF8: 1
+  PYTHONUNBUFFERED: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  CARR_V3_AUDIO: D:\a\_temp\carr-v3-audio
+  CARR_OCR_DIR: D:\a\_temp\carr-v3-ocr\runtime
+##[endgroup]
+PASS opening preferences is silent and does not write
+PASS native control: Add or remove favorite
+PASS native Space down
+PASS native Space up
+PASS native favorite persists
+PASS native control: Save default for language
+PASS native Space down
+PASS native Space up
+PASS native exact-language default persists
+PASS native control: Voice profile name
+PASS native control: Profile synthesis rate, minus ten to ten
+PASS native control: Profile volume, zero to one hundred
+PASS native control: Save voice profile
+PASS native Space down
+PASS native Space up
+PASS native control: Saved voice profiles
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS native profile applies exact declared controls
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS native control: Voice preference status
+PASS fresh inventory refuses a removed voice without substitution
+PASS native control: Save default for language
+PASS native Space down
+PASS native Space up
+PASS native control: Voice preference status
+PASS changed library refuses native save
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS review is pending before close
+PASS native control: Close voice preferences
+PASS native Space down
+PASS native Space up
+PASS closed modal has no pending worker callback
+PASS close suppresses the queued selection
+PASS fresh review stays off the GUI thread
+PASS every fresh registry closes while the reader registry remains borrowed
+PASS native synthesis options own the current modal
+PASS native control: Use native voice pitch
+PASS native Space down
+PASS native Space up
+PASS native control: Read punctuation aloud
+PASS native Space down
+PASS native Space up
+PASS native control: Cancel native voice options
+PASS native Space down
+PASS native Space up
+PASS native Cancel retains default synthesis options
+PASS native synthesis options own the current modal
+PASS native control: Use native voice pitch
+PASS native Space down
+PASS native Space up
+PASS native control: Read punctuation aloud
+PASS native Space down
+PASS native Space up
+PASS native control: Apply native voice options
+PASS native Space down
+PASS native Space up
+PASS native Apply captures pitch and punctuation without automatic synthesis
+PASS native-selected settings reach the actual registry on the existing worker
+PASS native options survive passive exact draft recovery
+PASS incompatible current voice preserves and gates the requested settings
+PASS unsupported native request refuses without fallback or worker entry
+PASS native synthesis options own the current modal
+PASS unsupported native controls and Apply are disabled
+PASS native control: Reset native voice options
+PASS native Space down
+PASS native Space up
+PASS explicit native default reset makes Apply available
+PASS native control: Apply native voice options
+PASS native Space down
+PASS native Space up
+PASS native reset retains rate and volume without starting another render
+PASS native synthesis options own the current modal
+PASS direct native modal destruction cannot publish pending options
+PASS all native settings operations leave the shared worker idle
+PASS opening preferences is silent and does not write
+PASS native control: Add or remove favorite
+PASS native Space down
+PASS native Space up
+PASS native favorite persists
+PASS native control: Save default for language
+PASS native Space down
+PASS native Space up
+PASS native exact-language default persists
+PASS native control: Voice profile name
+PASS native control: Profile synthesis rate, minus ten to ten
+PASS native control: Profile volume, zero to one hundred
+PASS native control: Save voice profile
+PASS native Space down
+PASS native Space up
+PASS native control: Saved voice profiles
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS native profile applies exact declared controls
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS native control: Voice preference status
+PASS fresh inventory refuses a removed voice without substitution
+PASS native control: Save default for language
+PASS native Space down
+PASS native Space up
+PASS native control: Voice preference status
+PASS changed library refuses native save
+PASS native control: Use voice profile
+PASS native Space down
+PASS native Space up
+PASS review is pending before close
+PASS native control: Close voice preferences
+PASS native Space down
+PASS native Space up
+PASS closed modal has no pending worker callback
+PASS close suppresses the queued selection
+PASS fresh review stays off the GUI thread
+PASS every fresh registry closes while the reader registry remains borrowed
+PASS native synthesis options own the current modal
+PASS native control: Use native voice pitch
+PASS native Space down
+PASS native Space up
+PASS native control: Read punctuation aloud
+PASS native Space down
+PASS native Space up
+PASS native control: Cancel native voice options
+PASS native Space down
+PASS native Space up
+PASS native Cancel retains default synthesis options
+PASS native synthesis options own the current modal
+PASS native control: Use native voice pitch
+PASS native Space down
+PASS native Space up
+PASS native control: Read punctuation aloud
+PASS native Space down
+PASS native Space up
+PASS native control: Apply native voice options
+PASS native Space down
+PASS native Space up
+PASS native Apply captures pitch and punctuation without automatic synthesis
+PASS native-selected settings reach the actual registry on the existing worker
+PASS native options survive passive exact draft recovery
+PASS incompatible current voice preserves and gates the requested settings
+PASS unsupported native request refuses without fallback or worker entry
+PASS native synthesis options own the current modal
+PASS unsupported native controls and Apply are disabled
+PASS native control: Reset native voice options
+PASS native Space down
+PASS native Space up
+PASS explicit native default reset makes Apply available
+PASS native control: Apply native voice options
+PASS native Space down
+PASS native Space up
+PASS native reset retains rate and volume without starting another render
+PASS native synthesis options own the current modal
+PASS direct native modal destruction cannot publish pending options
+PASS all native settings operations leave the shared worker idle
+##[group]Run $failures = @()
+$failures = @()
+python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --source . --output ci-v3-results/source-reading-tabs.json
+if ($LASTEXITCODE -ne 0) { $failures += 'source-reading-tabs' }
+python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --expect-installed --output ci-v3-results/installed-reading-tabs.json
+if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-tabs' }
+python -I -B -X utf8 scripts/windows_clipboard_reader_smoke.py --source . --report ci-v3-results/source-clipboard-reader.json
+if ($LASTEXITCODE -ne 0) { $failures += 'source-clipboard-reader' }
+python -I -B -X utf8 scripts/windows_clipboard_reader_smoke.py --expect-installed --report ci-v3-results/installed-clipboard-reader.json
+if ($LASTEXITCODE -ne 0) { $failures += 'installed-clipboard-reader' }
+if ($failures.Count) { throw ('Native reading tabs failed: ' + ($failures -join ', ')) }
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  PYTHONUTF8: 1
+  PYTHONUNBUFFERED: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  CARR_V3_AUDIO: D:\a\_temp\carr-v3-audio
+  CARR_OCR_DIR: D:\a\_temp\carr-v3-ocr\runtime
+##[endgroup]
+READING_TABS_PHASE starting
+READING_TABS_PHASE exact imported module: carr_library.durable_state
+READING_TABS_PHASE exact imported module: carr_library.speech.reading
+READING_TABS_PHASE exact imported module: carr_library.speech.session
+READING_TABS_PHASE exact imported module: carr_library.speech.tabs
+READING_TABS_PHASE exact imported module: carr_library.speech.focus
+READING_TABS_PHASE exact imported module: carr_library.speech.reading_tools
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_tabs
+READING_TABS_PHASE exact imported module: carr_library.ui.reading_focus
+READING_TABS_PHASE exact imported module: carr_library.ui.speech_dialog
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_presentation
+READING_TABS_PHASE exact imported module: carr_library.ui.keyboard_settings
+READING_TABS_PHASE exact imported module: carr_library.ui.save_all
+READING_TABS_PHASE exact imported module: carr_library.ui.productivity
+READING_TABS_PHASE actual Windows native controls
+READING_TABS_PHASE one recovered native notebook page has the exact original
+READING_TABS_PHASE recovery preparation ran on the existing reader worker
+READING_TABS_PHASE an unavailable remembered voice stays passive without fallback
+READING_TABS_PHASE actual keyboard editing changes only the first reading copy
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE new native tab is a distinct blank with no automatic speech
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE two durable identities retain separate originals and undo histories
+READING_TABS_PHASE an intentionally erased copy remains a dirty edit
+READER: All 1 open drafts saved.
+READING_TABS_PHASE native shared Save All persists the erased copy and all histories
+READING_TABS_PHASE the erased tab has its own real undo history
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE native Control Tab restores first text and saved Unicode cursor
+READING_TABS_PHASE appearance follows the active editor without replacing its text
+READING_TABS_PHASE paced reading opens paused and leaves source text intact
+READING_TABS_PHASE the actual native timer advances only after explicit Start
+READING_TABS_PHASE native Pause stops paced movement without moving editor focus
+READING_TABS_PHASE explicit focus cursor return uses verified native Unicode offsets
+READING_TABS_PHASE audio follow refuses to invent a recording or word timings
+READING_TABS_PHASE the replaced default Stop binding is inactive in focus
+READING_TABS_PHASE the shared remapped Stop remains reachable after source revocation
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE all first-session tab drafts are clean before native Close
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE fresh reader restores both durable identities and active tab
+READING_TABS_PHASE fresh reader retains source bytes, other history and passive voice identity
+READING_TABS_PHASE first tab undo after restart does not alter the second copy
+READER: All 1 open drafts saved.
+READING_TABS_PHASE recovered dirty histories save through the existing coordinator
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE source-linked reader remains a separately guarded single editor
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE immutable original fixture bytes remain unchanged
+READING_TABS_PHASE complete
+READING_TABS_PHASE starting
+READING_TABS_PHASE exact imported module: carr_library.durable_state
+READING_TABS_PHASE exact imported module: carr_library.speech.reading
+READING_TABS_PHASE exact imported module: carr_library.speech.session
+READING_TABS_PHASE exact imported module: carr_library.speech.tabs
+READING_TABS_PHASE exact imported module: carr_library.speech.focus
+READING_TABS_PHASE exact imported module: carr_library.speech.reading_tools
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_tabs
+READING_TABS_PHASE exact imported module: carr_library.ui.reading_focus
+READING_TABS_PHASE exact imported module: carr_library.ui.speech_dialog
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_presentation
+READING_TABS_PHASE exact imported module: carr_library.ui.keyboard_settings
+READING_TABS_PHASE exact imported module: carr_library.ui.save_all
+READING_TABS_PHASE exact imported module: carr_library.ui.productivity
+READING_TABS_PHASE actual Windows native controls
+READING_TABS_PHASE one recovered native notebook page has the exact original
+READING_TABS_PHASE recovery preparation ran on the existing reader worker
+READING_TABS_PHASE an unavailable remembered voice stays passive without fallback
+READING_TABS_PHASE actual keyboard editing changes only the first reading copy
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE new native tab is a distinct blank with no automatic speech
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE two durable identities retain separate originals and undo histories
+READING_TABS_PHASE an intentionally erased copy remains a dirty edit
+READER: All 1 open drafts saved.
+READING_TABS_PHASE native shared Save All persists the erased copy and all histories
+READING_TABS_PHASE the erased tab has its own real undo history
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE native Control Tab restores first text and saved Unicode cursor
+READING_TABS_PHASE appearance follows the active editor without replacing its text
+READING_TABS_PHASE paced reading opens paused and leaves source text intact
+READING_TABS_PHASE the actual native timer advances only after explicit Start
+READING_TABS_PHASE native Pause stops paced movement without moving editor focus
+READING_TABS_PHASE explicit focus cursor return uses verified native Unicode offsets
+READING_TABS_PHASE audio follow refuses to invent a recording or word timings
+READING_TABS_PHASE the replaced default Stop binding is inactive in focus
+READING_TABS_PHASE the shared remapped Stop remains reachable after source revocation
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE all first-session tab drafts are clean before native Close
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE fresh reader restores both durable identities and active tab
+READING_TABS_PHASE fresh reader retains source bytes, other history and passive voice identity
+READING_TABS_PHASE first tab undo after restart does not alter the second copy
+READER: All 1 open drafts saved.
+READING_TABS_PHASE recovered dirty histories save through the existing coordinator
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE source-linked reader remains a separately guarded single editor
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE immutable original fixture bytes remain unchanged
+READING_TABS_PHASE complete
+PASS: native Unicode read preserves exact fixture whitespace
+PASS: installing the native menu starts no reader or audio
+PASS: native command retains its window owner
+PASS: clipboard ownership ends before reader handoff
+PASS: actual native menu dispatch uses the independent recoverable reading slot
+PASS: reading leaves actual clipboard bytes unchanged
+PASS: later clipboard changes do not start a watcher or another reader
+PASS: empty native clipboard text cannot enter the reader
+PASS: closing owner rejects native command admission
+PASS: native Unicode read preserves exact fixture whitespace
+PASS: installing the native menu starts no reader or audio
+PASS: native command retains its window owner
+PASS: clipboard ownership ends before reader handoff
+PASS: actual native menu dispatch uses the independent recoverable reading slot
+PASS: reading leaves actual clipboard bytes unchanged
+PASS: later clipboard changes do not start a watcher or another reader
+PASS: empty native clipboard text cannot enter the reader
+PASS: closing owner rejects native command admission
