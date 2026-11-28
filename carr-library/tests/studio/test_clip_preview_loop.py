@@ -439,3 +439,322 @@ def test_explicit_repeat_play_handles_eof_during_range_review_without_rerender(p
     assert preview.dialog.editor.preview.call_count == 1
     assert preview.project.fingerprint == fingerprint and preview.path.read_bytes() == original
     assert all(hold.closed for hold in preview.progress.holds)
+
+
+# Native driver regressions execute the exact companion's main-level helpers.
+# They control wx delivery only; real playback and a physical device are not
+# admitted by these portable cases.
+def _native_clip_driver_namespace():
+    import ctypes
+    from ctypes import wintypes
+    import os
+    import sys
+    import traceback
+    native = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_clip_editor_smoke.py'
+    tree = ast.parse(native.read_text(encoding='utf-8'))
+    mains = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    assert len(mains) == 1
+    names = ('pump', 'guarded', 'native_control_current', 'focus', 'release', 'press',
+             'descendants', 'current_modal', 'choose', 'enter', 'modal_sequence',
+             'observe_destroy', 'passive_output', 'begin_shutdown', 'shutdown_tick')
+    functions = []
+    for name in names:
+        matches = [node for node in mains[0].body
+                   if isinstance(node, ast.FunctionDef) and node.name == name]
+        assert len(matches) == 1, name
+        functions.append(matches[0])
+    state = {'time': 0.0, 'focus': None, 'foreground': 0,
+             'alive': {101, 202, 303, 404}, 'pid': {}, 'tops': [],
+             'callbacks': [], 'events': [], 'errors': []}
+    main_loop = SimpleNamespace(running=True, main=True)
+    main_loop.IsRunning = lambda: main_loop.running
+    main_loop.IsMain = lambda: main_loop.main
+    modal_loop = SimpleNamespace(running=True, main=False)
+    modal_loop.IsRunning = lambda: modal_loop.running
+    modal_loop.IsMain = lambda: modal_loop.main
+    state['active_loop'] = modal_loop
+
+    class NativeWindow:
+        def __init__(self, handle=303, identifier=30, title='Owned clip modal',
+                     parent=None, modal=True, enabled=True):
+            self.handle, self.identifier, self.title = handle, identifier, title
+            self.parent, self.modal, self.enabled = parent, modal, enabled
+            self.shown, self.children, self.name = True, [], 'Native clip control'
+            self.top = self
+            self.closed = self.pending = False
+            self.cancelled = threading.Event()
+        def GetHandle(self): return self.handle
+        def GetId(self): return self.identifier
+        def GetTitle(self): return self.title
+        def GetParent(self): return self.parent
+        def GetName(self): return self.name
+        def GetChildren(self): return self.children
+        def IsModal(self): return self.modal
+        def IsEnabled(self): return self.enabled
+        def IsShownOnScreen(self): return self.shown
+        def Raise(self): state['events'].append('raise')
+        def SetFocus(self): state['focus'] = self
+        def EndModal(self, answer):
+            state['events'].append(('end-modal', self.handle, answer))
+            self.modal = False
+            modal_loop.running = False
+            state['active_loop'] = main_loop
+
+    def call_later(milliseconds, callback):
+        state['callbacks'].append((milliseconds, callback))
+        return SimpleNamespace(Stop=lambda: None)
+    def yield_once():
+        state['events'].append('yield')
+        if state['callbacks']:
+            milliseconds, callback = state['callbacks'].pop(0)
+            state['time'] += milliseconds / 1000
+            callback()
+    def sleep(seconds): state['time'] += seconds
+    def pid(handle, result):
+        result._obj.value = state['pid'].get(handle, os.getpid())
+        return 1
+    def foreground(handle):
+        state['foreground'] = handle
+        return True
+    def key_down(key, modifiers=0):
+        state['events'].append(('down', key, modifiers))
+        return True
+    def key_up(key, modifiers=0):
+        state['events'].append(('up', key, modifiers))
+        return True
+    def check(name, condition):
+        assert condition, name
+        state['events'].append(('check', name))
+    def remember_failure():
+        state['errors'].append(sys.exc_info()[1])
+
+    wx = SimpleNamespace(
+        WXK_SPACE=32, MOD_NONE=0, MOD_CONTROL=2, ID_CANCEL=5101, ID_OK=5100,
+        Dialog=NativeWindow, CallLater=call_later, CallAfter=lambda callback: call_later(0, callback),
+        GetTopLevelParent=lambda control: control.top,
+        GetTopLevelWindows=lambda: state['tops'],
+        EventLoopBase=SimpleNamespace(GetActive=lambda: state['active_loop']),
+        Window=SimpleNamespace(FindFocus=lambda: state['focus']),
+        EventFilter=SimpleNamespace(Event_Skip=-1),
+        EVT_WINDOW_DESTROY=SimpleNamespace(typeId=98))
+    frame = NativeWindow(101, 10, 'Host', modal=False)
+    frame.working = False
+    frame.cancel_event = threading.Event()
+    dialog = NativeWindow(202, 20, 'Clip editor', parent=frame, modal=False)
+    namespace = dict(wx=wx, user32=SimpleNamespace(
+        IsWindow=lambda handle: handle in state['alive'],
+        GetWindowThreadProcessId=pid, SetForegroundWindow=foreground,
+        GetForegroundWindow=lambda: state['foreground']),
+        gui=SimpleNamespace(Yield=yield_once, ExitMainLoop=lambda: state['events'].append('loop-exit')),
+        simulator=SimpleNamespace(KeyDown=key_down, KeyUp=key_up),
+        check=check, remember_failure=remember_failure, monotonic=lambda: state['time'],
+        sleep=sleep, ctypes=ctypes, wintypes=wintypes, os=os, sys=sys, traceback=traceback,
+        errors=state['errors'], pressed=set(), modal_loops=[], destroyed=set(),
+        frame=frame, dialog=dialog, host_handle=101, dialog_handle=202, host_id=10, dialog_id=20,
+        closing={'scheduled': False, 'deadline': 45, 'dialog_destroy': False,
+                 'host_close': False, 'complete': False, 'stalled': False})
+    exec(compile(ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[])),
+                 str(native), 'exec'), namespace)
+    namespace.update(state=state, NativeWindow=NativeWindow,
+                     main_loop=main_loop, modal_loop=modal_loop)
+    return namespace
+
+
+def _native_clip_destroy_event(namespace, identifier, *, kind=98, window_identifier=None):
+    window = None if window_identifier is None else SimpleNamespace(GetId=lambda: window_identifier)
+    return SimpleNamespace(GetEventType=lambda: kind, GetId=lambda: identifier,
+                           GetWindow=lambda: window)
+
+
+@pytest.mark.parametrize('case', ['host', 'clip', 'wrong-type', 'wrong-event-id',
+                                  'missing-window', 'wrong-window-id'])
+def test_native_loop_destroy_observer_requires_external_event_and_captured_ids(case):
+    namespace = _native_clip_driver_namespace()
+    identifier = 20 if case == 'clip' else 10
+    event = _native_clip_destroy_event(namespace,
+        99 if case == 'wrong-event-id' else identifier,
+        kind=97 if case == 'wrong-type' else 98,
+        window_identifier=None if case == 'missing-window' else
+                          99 if case == 'wrong-window-id' else identifier)
+    assert namespace['observe_destroy'](event) == -1
+    expected = {('host', 101)} if case == 'host' else {('clip', 202)} if case == 'clip' else set()
+    assert namespace['destroyed'] == expected
+
+
+@pytest.mark.parametrize('blocked', ['held-escape', 'disabled-control'])
+def test_native_loop_key_waits_for_prior_release_and_enabled_current_control(blocked):
+    namespace = _native_clip_driver_namespace()
+    control, state = namespace['dialog'], namespace['state']
+    if blocked == 'held-escape':
+        namespace['pressed'].add((27, 0))
+    else:
+        control.enabled = False
+    def ready():
+        assert not any(isinstance(item, tuple) and item[0] == 'down' for item in state['events'])
+        namespace['pressed'].discard((27, 0))
+        control.enabled = True
+        state['events'].append('ready')
+    namespace['wx'].CallLater(25, ready)
+    namespace['press'](control)
+    assert state['events'].index('ready') < state['events'].index(('down', 32, 0))
+    assert state['events'].index(('down', 32, 0)) < state['events'].index(('up', 32, 0))
+    assert not namespace['pressed'] and not state['errors']
+
+
+def test_native_loop_focus_refusal_never_dispatches_a_key():
+    namespace = _native_clip_driver_namespace()
+    namespace['wx'].Window.FindFocus = lambda: None
+    with pytest.raises(TimeoutError, match='foreground keyboard focus'):
+        namespace['press'](namespace['dialog'])
+    assert not any(isinstance(item, tuple) and item[0] == 'down'
+                   for item in namespace['state']['events'])
+    assert not namespace['pressed']
+
+
+@pytest.mark.parametrize('foreign', ['parent', 'pid', 'dead-window', 'modeless'])
+def test_native_loop_modal_discovery_refuses_foreign_or_inactive_windows(foreign):
+    namespace = _native_clip_driver_namespace()
+    modal = namespace['NativeWindow'](parent=namespace['dialog'])
+    if foreign == 'parent':
+        modal.parent = namespace['frame']
+    elif foreign == 'pid':
+        namespace['state']['pid'][303] = namespace['os'].getpid() + 1
+    elif foreign == 'dead-window':
+        namespace['state']['alive'].remove(303)
+    else:
+        modal.modal = False
+    namespace['state']['tops'] = [modal]
+    assert namespace['current_modal']('Owned clip modal') is None
+    assert namespace['modal_loops'] == []
+
+
+@pytest.mark.parametrize('invalid', ['ambiguous', 'stopped-loop', 'main-loop'])
+def test_native_loop_modal_admission_requires_one_actual_running_owned_loop(invalid):
+    namespace = _native_clip_driver_namespace()
+    modal = namespace['NativeWindow'](parent=namespace['dialog'])
+    namespace['state']['tops'] = [modal]
+    if invalid == 'ambiguous':
+        namespace['state']['tops'].append(namespace['NativeWindow'](
+            handle=404, identifier=40, parent=namespace['dialog']))
+    elif invalid == 'stopped-loop':
+        namespace['modal_loop'].running = False
+    else:
+        namespace['state']['active_loop'] = namespace['main_loop']
+    with pytest.raises(AssertionError, match='Ambiguous|actual running child loop'):
+        namespace['current_modal']('Owned clip modal')
+    assert namespace['modal_loops'] == []
+
+
+def test_native_loop_cleanup_waits_for_the_real_shared_worker_before_destroy_and_exit():
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    namespace = _native_clip_driver_namespace()
+    executor, entered, release = DesktopExecutor(), threading.Event(), threading.Event()
+    events = namespace['state']['events']
+    def worker():
+        entered.set()
+        assert release.wait(5), 'Controlled worker was not released.'
+        return 'settled'
+    future = executor.submit(worker)
+    try:
+        assert entered.wait(5)
+        namespace['frame'].working = True
+        def close_dialog():
+            assert future.done()
+            events.append('clip-close')
+            namespace['dialog'].closed = True
+        def destroy_dialog():
+            assert future.done()
+            events.append('clip-destroy')
+            namespace['observe_destroy'](_native_clip_destroy_event(
+                namespace, 20, window_identifier=20))
+            namespace['state']['alive'].remove(202)
+        def close_frame():
+            assert future.done()
+            events.append('host-close')
+            executor.shutdown(wait=False, cancel_futures=True)
+            namespace['observe_destroy'](_native_clip_destroy_event(
+                namespace, 10, window_identifier=10))
+            namespace['state']['alive'].remove(101)
+        namespace['dialog'].close = close_dialog
+        namespace['dialog'].Destroy = destroy_dialog
+        namespace['frame'].Close = close_frame
+        namespace['shutdown_tick']()
+        assert namespace['frame'].cancel_event.is_set() and not future.done()
+        assert 'clip-close' not in events and 'host-close' not in events and 'loop-exit' not in events
+        release.set()
+        assert future.result(timeout=5) == 'settled'
+        namespace['frame'].working = False
+        for _ in range(3):
+            namespace['gui'].Yield()
+        assert namespace['closing']['complete'] and not namespace['closing']['stalled']
+        assert events.index('clip-close') < events.index('clip-destroy') < events.index('host-close')
+        assert events.index('host-close') < events.index('loop-exit')
+    finally:
+        release.set()
+        executor.shutdown(wait=True, cancel_futures=True)
+    assert not executor.cleanup_failures
+
+
+def test_native_loop_failure_cleanup_closes_only_one_captured_modal_per_later_turn():
+    namespace = _native_clip_driver_namespace()
+    modal = namespace['NativeWindow'](parent=namespace['dialog'])
+    namespace['state']['tops'] = [modal]
+    assert namespace['current_modal']('Owned clip modal') is modal
+    namespace['shutdown_tick']()
+    assert [item for item in namespace['state']['events']
+            if isinstance(item, tuple) and item[0] == 'end-modal'] == [('end-modal', 303, 5101)]
+    assert not namespace['closing']['dialog_destroy'] and not namespace['closing']['host_close']
+    assert len(namespace['state']['callbacks']) == 1
+    assert namespace['state']['callbacks'][0][0] == 25
+    assert 'loop-exit' not in namespace['state']['events']
+
+
+@pytest.mark.parametrize('missing', ['host', 'clip'])
+def test_native_loop_missing_destroy_acknowledgement_retains_original_loop(missing):
+    namespace = _native_clip_driver_namespace()
+    namespace['state']['alive'].difference_update((101, 202))
+    namespace['destroyed'].add(('clip', 202) if missing == 'host' else ('host', 101))
+    namespace['shutdown_tick']()
+    assert namespace['closing']['stalled'] and not namespace['closing']['complete']
+    assert 'loop-exit' not in namespace['state']['events']
+    assert len(namespace['errors']) == 1
+    assert 'actual clip and host Destroy events' in namespace['errors'][0]
+
+
+def test_native_loop_passive_fixture_uses_real_pcm_and_player_without_opening_output(tmp_path):
+    from carr_library.speech.player import WavePlayer
+    namespace = _native_clip_driver_namespace()
+    path = tmp_path / 'passive.wav'
+    with wave.open(str(path), 'wb') as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(24000)
+        stream.writeframes(b'\0\0' * 12000)
+    original = path.read_bytes()
+    player = WavePlayer()
+    try:
+        player.set_playlist(WavePlayer.prepare_playlist([path]))
+        player.select_queue(0)
+        player.set_ab_loop(.1, .3)
+        assert player.path == path.resolve() and player.ab_loop == (.1, .3)
+        assert namespace['passive_output'](player)
+        assert player.poll() is None
+        player.clear_ab_loop()
+        assert namespace['passive_output'](player) and player.ab_loop is None
+    finally:
+        player.close()
+    assert namespace['passive_output'](player) and path.read_bytes() == original
+
+
+def test_native_loop_keyup_failure_preserves_original_failure_and_modifier_release():
+    namespace = _native_clip_driver_namespace()
+    failure = RuntimeError('native release was not acknowledged')
+    observed = []
+    def failed_keyup(key, modifiers):
+        observed.append((key, modifiers))
+        raise failure
+    namespace['simulator'].KeyUp = failed_keyup
+    namespace['pressed'].add((65, 2))
+    namespace['release'](65, 2, 'selected text')
+    assert observed == [(65, 2)] and namespace['errors'] == [failure]
+    assert not namespace['pressed']

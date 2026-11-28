@@ -97,14 +97,97 @@ access to an external source path. Original audio and completed outputs remain
 available. A new edit after undo clears the session redo branch; older versions
 remain in the durable project history.
 
+## Repeat part of the current preview
+
+Save the clip settings, then choose **Preview saved clip** or **Preview without
+clip effects**. In **Preview repeat...**, choose **Play A–B repeat...** and enter
+A and B in seconds within that rendered preview. The interval must be at least
+0.05 seconds long. The times refer to the preview, not the whole scene or the
+untrimmed original.
+
+Confirming the two values explicitly plays that interval and repeats it. This
+also works when the short preview finished while the range dialogs were open.
+It reuses the current rendered file; it does not render again or change the
+saved project, trim, fades, gain or original audio.
+
+Choose **Turn preview repeat off** to return to ordinary playback. Clearing
+repeat leaves a stopped preview silent. **Stop playback** ends playback and
+repeat. Choosing another saved project or clip, starting another clip operation,
+changing the active library or closing the editor revokes pending repeats.
+A new preview needs its own explicit repeat choice.
+
+If playback cannot yet confirm Stop, the editor retains its temporary preview
+and asks you to retry Stop before closing. Cancelling either range dialog keeps
+the previous playback choice. These are session controls; saved project history
+and backups do not arm playback or repeat.
+
+## Crossfade two adjacent saved clips
+
+Select the first clip, open **Timeline edits and history...**, then choose
+**Crossfade two adjacent saved clips...**. Select the following clip and enter
+the overlap in seconds. Both clips must belong to the same scene and their saved
+intervals must be exactly contiguous. The time entry rounds to the project's
+output sample grid; the overlap must contain at least one sample and fit both
+retained selections.
+
+The operation adds complementary linear fade-out and fade-in ramps using the
+existing renderer, and moves only the second clip earlier by the overlap.
+It preserves both clip identities, original files, trims, durations, roles,
+gain, pan, titles and effect settings. Other clips and later scenes keep their
+positions. The scene retains at least the pair's previous end. Any shorter
+tail becomes silence where no other scene audio occupies that interval.
+
+Existing fades at the shared boundary, overlapping outer fades, a gap, an
+already overlapping pair or incompatible active processing are refused for
+review. The same restrictions on timeline effects apply as for the existing
+split and cut actions. The operation checks both retained sources and saves
+the paired change as one project revision. Cancelled work, a changed source,
+a concurrent project edit or a BookPlan-bound project cannot silently replace
+the reviewed pair.
+
+Saving the crossfade does not render or start audio. Use the existing render
+action to produce new output. Undo, redo or a selected historical revision can
+restore the whole earlier project while retaining original files and completed
+renders.
+
+## Named scene markers
+
+Open **Timeline edits and history...**, then **Named scene markers...**.
+Choose **Add a named marker...**, enter its position in seconds from the
+current scene's start, and give it a name. The time entry rounds to the
+project's sample grid. A project can retain up to 1,024 markers; each name is
+limited to 256 characters.
+
+Select an existing marker to edit its name and time or remove it. The marker's
+stable identity is retained when it is edited. The chooser shows the name and
+time; saved operations remain bound to the exact selected marker and project.
+
+Markers are saved references to positions. They do not move clips, extend a
+scene, alter original audio or start playback. A real marker change creates one
+current project revision; saving the unchanged name and time creates none.
+Reloading the project, undo/redo
+and explicit history restoration retain the corresponding marker state.
+Restoration creates a new revision and never rolls back the revision counter.
+The existing complete backup carries the typed saved project and history.
+
+A script with markers must keep the same ordered scene structure when edited.
+If marked scenes have repeated titles, remove or review those markers before
+editing the script; unchanged saves and project-title changes remain available.
+This prevents a saved marker from silently following a different scene.
+
+Older projects keep their previous saved representation until this explicit
+marker feature is used. A reviewed BookPlan remains immutable; use a separate
+authored project for marker edits. A changed project or library requires a new
+review instead of applying a choice to another source.
+
 ## Evidence and limits
 
-Three complete new test modules cover pure sample/curve geometry, real history
-and compare-and-swap races, actual PCM split/cut/restoration, and queued native
-controller behavior. Their expected static counts are 59, 29 and 22 respectively.
-Two additional whole suites require 17 real source/history/PCM cases and 10
-queued UI/scope cases for Copy/Cut/Paste. Their fixtures reuse the existing
-project-history and dialog test companions. The required Windows Studio probe
+The required whole test modules cover sample/curve geometry, saved history and
+concurrent writers, actual PCM split/cut/crossfade/restoration, marker persistence,
+and queued native controller behavior. Copy/Cut/Paste keeps its real source and
+history checks. Preview-repeat tests use real PCM files, player state and
+quiet-owner holds with a controlled native transport; they do not establish
+physical playback. All earlier cases remain required alongside the new ones. The required Windows Studio probe
 also traverses the actual keyboard-driven
 timeline menu, split, undo, redo, rejoin, cut, rendered silence and exact history
 restoration and Copy/Cut/Paste/Undo, retaining the existing envelope/effects

@@ -1,0 +1,685 @@
+{
+  "schema": "carr.studio-gate-readonly-audit/1",
+  "recorded_utc": "2026-11-28 06:09:38 UTC",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "baseline": {
+    "commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+    "early_studio_commit": "80b64bac746851830d23e25a38e7a78870760a74",
+    "early_studio_tree": "e9dd083aa9737b7ec72a6fb8d1d409c5601f0312"
+  },
+  "coverage": {
+    "workflows": 33,
+    "ci_helpers": 14,
+    "additional_named_scripts": 2,
+    "read_files": 49,
+    "failures": [],
+    "files": [
+      {
+        "path": ".github/workflows/carr-academic-reconciliation.yml",
+        "sha": "d4fd97c03ff8f7663b2fcd184c1752dc8726915f",
+        "utf8_bytes": 3227
+      },
+      {
+        "path": ".github/workflows/carr-bibliography.yml",
+        "sha": "6d0ee34dfcbc71c8570711e34c81dca65c4eea70",
+        "utf8_bytes": 7212
+      },
+      {
+        "path": ".github/workflows/carr-ci-diagnostics.yml",
+        "sha": "b13c293cf376cbbe56c03d49a98052b22ccdf8fc",
+        "utf8_bytes": 4662
+      },
+      {
+        "path": ".github/workflows/carr-configured-update-native.yml",
+        "sha": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+        "utf8_bytes": 48217
+      },
+      {
+        "path": ".github/workflows/carr-configured-update.yml",
+        "sha": "838ff28ad3baea931b0a99f3071f1d000cb5b42c",
+        "utf8_bytes": 29985
+      },
+      {
+        "path": ".github/workflows/carr-corpus-profile.yml",
+        "sha": "10c3e1ffd175e0941361bfeff612b22bb1ec6b97",
+        "utf8_bytes": 22003
+      },
+      {
+        "path": ".github/workflows/carr-flite.yml",
+        "sha": "2e0191c47c34f8a2e2deb138860d6ee2501a6229",
+        "utf8_bytes": 8704
+      },
+      {
+        "path": ".github/workflows/carr-integrated-source-shard.yml",
+        "sha": "21b7e555900e85a207044c749f1811768467bee7",
+        "utf8_bytes": 11536
+      },
+      {
+        "path": ".github/workflows/carr-managed-backends.yml",
+        "sha": "afefeb1d2b0414708e5aa1be54206d6c448e76af",
+        "utf8_bytes": 20730
+      },
+      {
+        "path": ".github/workflows/carr-managed-update.yml",
+        "sha": "1cb0cc8f68a03e695c874ae942744907d9f83372",
+        "utf8_bytes": 22771
+      },
+      {
+        "path": ".github/workflows/carr-native-launcher.yml",
+        "sha": "f8263b911e1bf209dd61859653cf84b3fb36534d",
+        "utf8_bytes": 5855
+      },
+      {
+        "path": ".github/workflows/carr-native-reading-publication.yml",
+        "sha": "089684bdb4f17e28e1385ceed0a7323d434b5e94",
+        "utf8_bytes": 12578
+      },
+      {
+        "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+        "sha": "e321f06b5dfc6de108b63832e5938e1e238c5266",
+        "utf8_bytes": 13603
+      },
+      {
+        "path": ".github/workflows/carr-next11-capacity-repair.yml",
+        "sha": "ac813e21c651a2dc3b2f156c3ddd6a9d435730c3",
+        "utf8_bytes": 23354
+      },
+      {
+        "path": ".github/workflows/carr-next12-book.yml",
+        "sha": "1febbb5788e0bae4f5e3732c8d9d9a8b5e22c3c2",
+        "utf8_bytes": 11967
+      },
+      {
+        "path": ".github/workflows/carr-next13-partition.yml",
+        "sha": "ed41540248769489f5a01ca9c00771162d3b2a88",
+        "utf8_bytes": 11463
+      },
+      {
+        "path": ".github/workflows/carr-next14-native-dialog.yml",
+        "sha": "830cea1c5f50f9e13c90b7fde3c7bf8dceef44e7",
+        "utf8_bytes": 4114
+      },
+      {
+        "path": ".github/workflows/carr-next15-conversion.yml",
+        "sha": "7f50a1975a00f826874b0fef3c6884ca6aaf3619",
+        "utf8_bytes": 49298
+      },
+      {
+        "path": ".github/workflows/carr-next8-source-verification.yml",
+        "sha": "3a0e4b291acb1627464cfe3474c37715cd09b209",
+        "utf8_bytes": 11401
+      },
+      {
+        "path": ".github/workflows/carr-next9-capacity.yml",
+        "sha": "f7b8e3c5e5386793ceddb8faf821fd5cf21ae472",
+        "utf8_bytes": 35114
+      },
+      {
+        "path": ".github/workflows/carr-next9-edit-docx.yml",
+        "sha": "bce5296f5e70ac6964c8d3346ec30dfe6d503f94",
+        "utf8_bytes": 7823
+      },
+      {
+        "path": ".github/workflows/carr-next9-final-source.yml",
+        "sha": "892cbb449c709322f7cf740ec441a2a8068658d7",
+        "utf8_bytes": 66579
+      },
+      {
+        "path": ".github/workflows/carr-next9-headless.yml",
+        "sha": "3976b13e3d2ce888386fd9d915599d5a3d847a56",
+        "utf8_bytes": 10071
+      },
+      {
+        "path": ".github/workflows/carr-next9-word-refresh.yml",
+        "sha": "a6fce2331c62cfaad0beaf7c4c5268e1311620f8",
+        "utf8_bytes": 16873
+      },
+      {
+        "path": ".github/workflows/carr-owner-voice-api.yml",
+        "sha": "600729a372aac81e9929c08e5c07d24e0eca36a6",
+        "utf8_bytes": 4411
+      },
+      {
+        "path": ".github/workflows/carr-remote-stt.yml",
+        "sha": "1b24a06bbf5e3b2bfd697325fbc6a3bdcf5da01e",
+        "utf8_bytes": 13414
+      },
+      {
+        "path": ".github/workflows/carr-sync.yml",
+        "sha": "b6e588d0d2fe1a3eb051acc9183e2941c5d88c7a",
+        "utf8_bytes": 19811
+      },
+      {
+        "path": ".github/workflows/carr-transcription-bridge.yml",
+        "sha": "28da3567fed054331d003bf02aa35b30fed91f1e",
+        "utf8_bytes": 17826
+      },
+      {
+        "path": ".github/workflows/carr-trusted-client.yml",
+        "sha": "25cd944dc1a9dd9147dbd377a67c22b746d6dca3",
+        "utf8_bytes": 13883
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "sha": "e55f3b427cf49da57b4529c95648d5af3a85ecba",
+        "utf8_bytes": 495116
+      },
+      {
+        "path": ".github/workflows/carr-voice-management.yml",
+        "sha": "18ee5aae1fdd69002d21b254842b1c900f94b3e6",
+        "utf8_bytes": 24819
+      },
+      {
+        "path": ".github/workflows/carr-voice-windows-profile.yml",
+        "sha": "bed3e05d4b82f227410a6526a345b2632bee5b09",
+        "utf8_bytes": 12681
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "476f33c89684036b64f28d9024c0768c2d522eb1",
+        "utf8_bytes": 399136
+      },
+      {
+        "path": "carr-library/scripts/check_installed_bundle.py",
+        "sha": "23885f42a473cd20516b7956d776751dad997635",
+        "utf8_bytes": 202747
+      },
+      {
+        "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+        "sha": "a7cd67986474b15702c630e62ccca62e96c2e4d6",
+        "utf8_bytes": 49372
+      },
+      {
+        "path": "carr-library/scripts/ci_book_measured_contracts.py",
+        "sha": "fe97e02dfd665ed153def02096fe53c5318c2364",
+        "utf8_bytes": 30299
+      },
+      {
+        "path": "carr-library/scripts/ci_capacity_contracts.py",
+        "sha": "d6cad51e9007aa75cfe57d5e7c044b1c100ed5ae",
+        "utf8_bytes": 16847
+      },
+      {
+        "path": "carr-library/scripts/ci_check.py",
+        "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+        "utf8_bytes": 16329
+      },
+      {
+        "path": "carr-library/scripts/ci_configured_update_contracts.py",
+        "sha": "24d4bdb71b25597faffed9e5979c58ef7cc263ff",
+        "utf8_bytes": 20777
+      },
+      {
+        "path": "carr-library/scripts/ci_managed_backend_contracts.py",
+        "sha": "2d36c3ff5e6e71016f903bc70c843ae080edc8dd",
+        "utf8_bytes": 24398
+      },
+      {
+        "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+        "sha": "d2c34b8d193f959a51d0bdbc24746a4e38a23df2",
+        "utf8_bytes": 35910
+      },
+      {
+        "path": "carr-library/scripts/ci_owner_voice_api_smoke.py",
+        "sha": "e22c226ef24cf48957d04c32f25cb472e48c764e",
+        "utf8_bytes": 16992
+      },
+      {
+        "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+        "sha": "02191fd9dd0befae2dd0289d500961e2d534bac4",
+        "utf8_bytes": 31701
+      },
+      {
+        "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+        "sha": "31eaef849aa2836ffd44d7a75090eb5245f1918c",
+        "utf8_bytes": 16874
+      },
+      {
+        "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+        "sha": "6aae175b7036ac056653d2f251d7d7bf8b2ae6a1",
+        "utf8_bytes": 33721
+      },
+      {
+        "path": "carr-library/scripts/ci_update_https_contracts.py",
+        "sha": "8e7c117ae4c8a2fabba46ef8c99eae09f25f40de",
+        "utf8_bytes": 21479
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_management_contracts.py",
+        "sha": "19dd7fc2ae977069ac621e228828f4b56df3f6a5",
+        "utf8_bytes": 59859
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_management_owner_smoke.py",
+        "sha": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+        "utf8_bytes": 32764
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_windows_profile.py",
+        "sha": "de40faf013481f9291b4a3ed617cb5fc9d598646",
+        "utf8_bytes": 15708
+      }
+    ]
+  },
+  "root_startingpoint_updates": {
+    "main": "c7600cb924d37871fc0b3e50580400aa5838d2e4",
+    "source_ps": "a81ec5c2fa1bf1b2b49560246db259b45e9aac47",
+    "reusable": "d0e67f882a72a0077870649a110618f82bce45cf",
+    "review_manifest": "3e5a823d4ede51c2f9879f57dada9fb268fb1812"
+  },
+  "source_ps_peer": {
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "preimage": "a81ec5c2fa1bf1b2b49560246db259b45e9aac47",
+    "blob": "e133ce807f36b223bdc24a04798fe4bcd55a76d7",
+    "whole_selectors": 490,
+    "old_order_preserved": true,
+    "partitions": [
+      123,
+      123,
+      122,
+      122
+    ],
+    "named_studio_contracts": 7,
+    "cases": 320,
+    "changes": 8,
+    "exact_inverse": true,
+    "no_execution_claim": true
+  },
+  "contract_data": {
+    "path": "carr-library/scripts/ci_studio_timeline_cases.json",
+    "blob": "09b75f9c3c7bd2238b8c8c5c64cadf4eee406636",
+    "manifest": "8283f886e6f025f54f67579a30102a16ac3d041b",
+    "native_source": "4d8d9eb52052200d98f4465ab1a99bb766adb866",
+    "whole_suites": 7,
+    "cases": 320,
+    "functions": 119,
+    "native_unique_checks": 92,
+    "native_origins": 15
+  },
+  "selector_changes": {
+    "main_fast": {
+      "before": 180,
+      "after": 182,
+      "append_only": [
+        "tests/studio/test_clip_preview_loop.py",
+        "tests/studio/test_project_markers.py"
+      ],
+      "exclude_consumers_reason": "Actual FFmpeg/ffprobe required by marker consumers; do not introduce codec requirement into fast lane."
+    },
+    "full_source": {
+      "before": 487,
+      "after": 490,
+      "old_order_retained": true,
+      "partition_before": [
+        122,
+        122,
+        122,
+        121
+      ],
+      "partition_after": [
+        123,
+        123,
+        122,
+        122
+      ],
+      "append_only": [
+        "tests/studio/test_clip_preview_loop.py",
+        "tests/studio/test_project_markers.py",
+        "tests/studio/test_marker_consumers.py"
+      ]
+    },
+    "v3_source": {
+      "before": 217,
+      "after": 220
+    },
+    "v3_installed": {
+      "before": 196,
+      "after": 199
+    },
+    "main_installed": {
+      "before_selectors": 336,
+      "after_selectors": 339,
+      "before_whole_files": 333,
+      "after_whole_files": 336,
+      "retained_exact_ocr_nodes": 3,
+      "note": "Do not describe all339 selectors as whole modules or replace the three existing selected OCR nodes."
+    },
+    "v3_publication_completion": {
+      "before": 168,
+      "after": 171,
+      "note": "Use only second publication completion_suites; first recovery list remains unchanged."
+    },
+    "main_installed_completion": {
+      "before": 202,
+      "after": 205
+    }
+  },
+  "locations": {
+    "main_baseline476": {
+      "fast_selector_start": 333,
+      "fast_count_map": 517,
+      "operations_count": 574,
+      "history_count": 576,
+      "full_inventory_literal_lines": [
+        117,
+        119,
+        163,
+        213,
+        240,
+        261,
+        265,
+        270,
+        3810
+      ],
+      "source_ps_blob_pin_lines": [
+        99,
+        195
+      ]
+    },
+    "source_ps_a81": {
+      "whole_selector_start": 9,
+      "completed_feature_count_map": 521,
+      "operations_count": 602,
+      "history_count": 604,
+      "complete_count_lines": [
+        719,
+        764,
+        776,
+        1046
+      ],
+      "partition_line": 758
+    },
+    "v3_baselinee55": {
+      "source_selectors": 874,
+      "source_count_map": 892,
+      "operations_source_count": 953,
+      "history_source_count": 955,
+      "installed_origins": 1110,
+      "publication_installed_selectors": 1291,
+      "fixture_companions": 1468,
+      "fixture_before_hash": 1534,
+      "pytest_call": 1552,
+      "fixture_after_hash": 1561,
+      "second_case_map_only": 1563,
+      "installed_clip_count_map": 1587,
+      "publication_completion_list": 1596,
+      "completed_feature_count_map": 1754
+    },
+    "installed_checker23885": {
+      "origins_start": 27,
+      "selectors": 212,
+      "fixture_companions": 550,
+      "fixture_before_hash": 616,
+      "pytest_call": 634,
+      "fixture_after_hash": 644,
+      "case_map": 646,
+      "completion_list": 655,
+      "completion_count_map": 830,
+      "clip_count_map": 841
+    }
+  },
+  "maps": {
+    "source_ps_and_v3_source": "Update operations90/history50 and add loop49/domain48/consumers31/editing34/controller18 exact counts; preserve every predecessor entry.",
+    "main_fast": "Update operations90/history50 and add only loop49/domain48.",
+    "installed_reviewed_features": "Remove only operations/history inline entries, then merge all seven approved shared-data contracts disjointly. V3 map135→140; installed checker159→164.",
+    "installed_completed_feature_expected": "Update old operations/history and add new three suites; editing34/controller18 remain in separate clip_expected to preserve count partitions.",
+    "all_old_names_paths_selectors_preserved": true
+  },
+  "origins": {
+    "add_to_both_installed": "carr_library.speech.progress_speech",
+    "retain_all_existing": true
+  },
+  "companions": {
+    "append_to_both_reviewed_fixture_paths": [
+      "scripts/ci_studio_timeline_cases.json",
+      "scripts/windows_clip_editor_smoke.py"
+    ],
+    "require_hash_before_after": true,
+    "copy_actual_native_into_isolated_tests": true
+  },
+  "other_diagnostic_count_maps": [
+    {
+      "path": ".github/workflows/carr-next9-edit-docx.yml",
+      "sha": "bce5296f5e70ac6964c8d3346ec30dfe6d503f94",
+      "changes": {
+        "tests/studio/test_clip_operations.py": [
+          59,
+          90
+        ],
+        "tests/studio/test_clip_history_dialog.py": [
+          22,
+          50
+        ]
+      }
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "sha": "a6fce2331c62cfaad0beaf7c4c5268e1311620f8",
+      "changes": {
+        "tests/studio/test_clip_operations.py": [
+          59,
+          90
+        ],
+        "tests/studio/test_clip_history_dialog.py": [
+          22,
+          50
+        ]
+      }
+    },
+    {
+      "path": ".github/workflows/carr-next9-final-source.yml",
+      "sha": "892cbb449c709322f7cf740ec441a2a8068658d7",
+      "changes": {
+        "tests/studio/test_clip_operations.py": [
+          59,
+          90
+        ],
+        "tests/studio/test_clip_history_dialog.py": [
+          22,
+          50
+        ],
+        "tests/studio/test_clip_editing.py": [
+          20,
+          34
+        ]
+      },
+      "note": "Existing41 selected suites remain; renderer pin changes separately listed."
+    }
+  ],
+  "product_changes": [
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "preimage": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+      "sha": "0fb5e91a440ded8b62b806b944bdd4722f288e65"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "preimage": "7027e3f07f967403d6e523aa23c8233176a43222",
+      "sha": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clip_operations.py",
+      "preimage": "82676db10f6da0cfa2e04294f7337b82295baa13",
+      "sha": "a9b2856c445f6d9f67105b754c23deb23fe3e60d"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "preimage": "f77512fc1f0f242a6202ffa247e5ce9049debefc",
+      "sha": "598d0c450e3697c699a03c74d806783173fc3ab5"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+      "preimage": "6688213b891b2a3d1bf91a015918280ccc3eaeb6",
+      "sha": "fdc163215c53240dd6058e8f4235d2e8aa03db10"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "preimage": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "sha": "63a20c64909db77b9958e9c16627b78f08050d95"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "preimage": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "sha": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "preimage": "d926e06b20694c0e586a102bd0ec25747faea444",
+      "sha": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+      "preimage": "0dc5f88af5b71a6679c48f50b60dd05da3f6ce8c",
+      "sha": "ce11e96477841cebe30702001a1b5f4d6107178b"
+    }
+  ],
+  "direct_source_pin_occurrences": [
+    {
+      "gate": ".github/workflows/carr-next9-final-source.yml",
+      "gate_sha": "892cbb449c709322f7cf740ec441a2a8068658d7",
+      "source": "carr-library/src/carr_library/studio/render.py",
+      "old_sha": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "new_sha": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab",
+      "occurrences": 2
+    },
+    {
+      "gate": "carr-library/scripts/ci_book_measured_contracts.py",
+      "gate_sha": "fe97e02dfd665ed153def02096fe53c5318c2364",
+      "source": "carr-library/src/carr_library/backup_producers.py",
+      "old_sha": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+      "new_sha": "0fb5e91a440ded8b62b806b944bdd4722f288e65",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_book_measured_contracts.py",
+      "gate_sha": "fe97e02dfd665ed153def02096fe53c5318c2364",
+      "source": "carr-library/src/carr_library/studio/project.py",
+      "old_sha": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "new_sha": "63a20c64909db77b9958e9c16627b78f08050d95",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_book_measured_contracts.py",
+      "gate_sha": "fe97e02dfd665ed153def02096fe53c5318c2364",
+      "source": "carr-library/src/carr_library/studio/render.py",
+      "old_sha": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "new_sha": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_managed_backend_contracts.py",
+      "gate_sha": "2d36c3ff5e6e71016f903bc70c843ae080edc8dd",
+      "source": "carr-library/src/carr_library/state_backup.py",
+      "old_sha": "7027e3f07f967403d6e523aa23c8233176a43222",
+      "new_sha": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "gate_sha": "d2c34b8d193f959a51d0bdbc24746a4e38a23df2",
+      "source": "carr-library/src/carr_library/studio/clips.py",
+      "old_sha": "f77512fc1f0f242a6202ffa247e5ce9049debefc",
+      "new_sha": "598d0c450e3697c699a03c74d806783173fc3ab5",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "gate_sha": "02191fd9dd0befae2dd0289d500961e2d534bac4",
+      "source": "carr-library/src/carr_library/studio/project.py",
+      "old_sha": "72b3260421afbfcfa912481798967e59ce9d13de",
+      "new_sha": "63a20c64909db77b9958e9c16627b78f08050d95",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "gate_sha": "02191fd9dd0befae2dd0289d500961e2d534bac4",
+      "source": "carr-library/src/carr_library/studio/render.py",
+      "old_sha": "11925e2f60742a3193d2ae50238ab56ae8889534",
+      "new_sha": "3fafc206b592fedd3cf5c836c1b1bc7a0387e5ab",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "gate_sha": "6aae175b7036ac056653d2f251d7d7bf8b2ae6a1",
+      "source": "carr-library/src/carr_library/backup_producers.py",
+      "old_sha": "c8596f4cb9792a89d3f76d08347b9ebbc963439e",
+      "new_sha": "0fb5e91a440ded8b62b806b944bdd4722f288e65",
+      "occurrences": 1
+    },
+    {
+      "gate": "carr-library/scripts/ci_voice_management_contracts.py",
+      "gate_sha": "19dd7fc2ae977069ac621e228828f4b56df3f6a5",
+      "source": "carr-library/src/carr_library/state_backup.py",
+      "old_sha": "7027e3f07f967403d6e523aa23c8233176a43222",
+      "new_sha": "73e2450f8a912d0fcf70b547fe2cfe4d4750c219",
+      "occurrences": 1
+    }
+  ],
+  "helper_dependency_edges": [
+    {
+      "caller": ".github/workflows/carr-managed-backends.yml",
+      "dependency": "carr-library/scripts/ci_managed_backend_contracts.py",
+      "old_sha": "2d36c3ff5e6e71016f903bc70c843ae080edc8dd",
+      "occurrences": 2
+    },
+    {
+      "caller": ".github/workflows/carr-native-reading-publication.yml",
+      "dependency": "carr-library/scripts/ci_reading_publication_contracts.py",
+      "old_sha": "02191fd9dd0befae2dd0289d500961e2d534bac4",
+      "occurrences": 1
+    },
+    {
+      "caller": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "dependency": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "old_sha": "d2c34b8d193f959a51d0bdbc24746a4e38a23df2",
+      "occurrences": 1
+    },
+    {
+      "caller": ".github/workflows/carr-next12-book.yml",
+      "dependency": "carr-library/scripts/ci_book_measured_contracts.py",
+      "old_sha": "fe97e02dfd665ed153def02096fe53c5318c2364",
+      "occurrences": 1
+    },
+    {
+      "caller": ".github/workflows/carr-remote-stt.yml",
+      "dependency": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "old_sha": "6aae175b7036ac056653d2f251d7d7bf8b2ae6a1",
+      "occurrences": 1
+    },
+    {
+      "caller": ".github/workflows/carr-voice-management.yml",
+      "dependency": "carr-library/scripts/ci_voice_management_contracts.py",
+      "old_sha": "19dd7fc2ae977069ac621e228828f4b56df3f6a5",
+      "occurrences": 2
+    },
+    {
+      "caller": ".github/workflows/carr-voice-windows-profile.yml",
+      "dependency": "carr-library/scripts/ci_voice_management_contracts.py",
+      "old_sha": "19dd7fc2ae977069ac621e228828f4b56df3f6a5",
+      "occurrences": 1
+    },
+    {
+      "caller": "carr-library/scripts/ci_voice_windows_profile.py",
+      "dependency": "carr-library/scripts/ci_voice_management_contracts.py",
+      "old_sha": "19dd7fc2ae977069ac621e228828f4b56df3f6a5",
+      "occurrences": 1
+    }
+  ],
+  "additional_transitive_dependency": {
+    "caller": ".github/workflows/carr-voice-windows-profile.yml",
+    "old_helper": "de40faf013481f9291b4a3ed617cb5fc9d598646",
+    "dependency": "carr-library/scripts/ci_voice_windows_profile.py",
+    "reason": "After its voice CONTRACT_SHA refresh, repin this profiler helper as well as the direct voice helper."
+  },
+  "size_and_loader": {
+    "current_v3_utf8": 495116,
+    "limit_unchanged": 500000,
+    "remove_old_two_entry_bytes": 2031,
+    "data_loader_manifest": "8283f886e6f025f54f67579a30102a16ac3d041b",
+    "native_helper": "Root elected a new narrow fixed check_studio_timeline_native.py to avoid inline92-check growth; concrete helper and caller still await independent peer.",
+    "no_gate_authorship": true
+  },
+  "qualification": "This is a read-only inventory and dependency audit plus an immutable data handoff. It does not claim parser, runtime, native, performance, or installed execution. Root owns all gate/PINS and ref changes."
+}
