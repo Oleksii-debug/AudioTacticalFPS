@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "status": "ACTUAL_FAILURE_CHILD_TRACE_PENDING",
+  "task": "Required configured native A2-to-B Apply and checked restart",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_a": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "source_b": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "run": {
+    "id": 46110647047,
+    "job_id": 140873303994,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110647047",
+    "job_status": "completed",
+    "job_conclusion": "failure",
+    "started_at": "2026-11-28T05:37:18Z",
+    "completed_at": "2026-11-28T05:44:16Z"
+  },
+  "sources": {
+    "native": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91",
+    "workflow": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "main_workflow": "476f33c89684036b64f28d9024c0768c2d522eb1"
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:37:19Z",
+      "completed_at": "2026-11-28T05:37:20Z"
+    },
+    {
+      "number": 2,
+      "name": "Check out exact B source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:37:20Z",
+      "completed_at": "2026-11-28T05:37:29Z"
+    },
+    {
+      "number": 3,
+      "name": "Check out immutable reviewed A source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:37:29Z",
+      "completed_at": "2026-11-28T05:37:34Z"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 build host",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:37:34Z",
+      "completed_at": "2026-11-28T05:37:34Z"
+    },
+    {
+      "number": 5,
+      "name": "Pin the host profile and record both actual source identities",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:37:34Z",
+      "completed_at": "2026-11-28T05:37:58Z"
+    },
+    {
+      "number": 6,
+      "name": "Acquire the existing pinned compilers and original Python/native runtime",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:37:58Z",
+      "completed_at": "2026-11-28T05:38:28Z"
+    },
+    {
+      "number": 7,
+      "name": "Build two exact trusted-client distributions and actual standard setups",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:38:28Z",
+      "completed_at": "2026-11-28T05:42:12Z"
+    },
+    {
+      "number": 8,
+      "name": "Require real configured native Apply, full A retention and checked B restart",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T05:42:12Z",
+      "completed_at": "2026-11-28T05:44:06Z"
+    },
+    {
+      "number": 9,
+      "name": "Require unchanged exact source and installed host payload after native work",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:44:06Z",
+      "completed_at": "2026-11-28T05:44:08Z"
+    },
+    {
+      "number": 10,
+      "name": "Retain only the bounded public diagnostic contract",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:44:08Z",
+      "completed_at": "2026-11-28T05:44:08Z"
+    },
+    {
+      "number": 11,
+      "name": "Preserve bounded configured-update text evidence",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:44:08Z",
+      "completed_at": "2026-11-28T05:44:09Z"
+    },
+    {
+      "number": 20,
+      "name": "Post Set up native x64 build host",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T05:44:09Z",
+      "completed_at": "2026-11-28T05:44:09Z"
+    },
+    {
+      "number": 21,
+      "name": "Post Check out immutable reviewed A source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:44:09Z",
+      "completed_at": "2026-11-28T05:44:11Z"
+    },
+    {
+      "number": 22,
+      "name": "Post Check out exact B source",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:44:11Z",
+      "completed_at": "2026-11-28T05:44:13Z"
+    },
+    {
+      "number": 23,
+      "name": "Complete job",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:44:13Z",
+      "completed_at": "2026-11-28T05:44:13Z"
+    }
+  ],
+  "actual": {
+    "exact_a_b_distributions_and_standard_setups": "PASS",
+    "actual_a_install_full_owned_payload_and_source_receipts": "PASS",
+    "actual_temporary_windows_vault_anchor_starts_at_a": "PASS",
+    "shortcut_report_bom_boundary": "PASSED",
+    "actual_a_desktop_process": "STARTED_THEN_NONZERO",
+    "ui_controls": "NOT_ESTABLISHED_FROM_PARENT_LOG",
+    "external_host_preparation": "NOT_ESTABLISHED_FROM_PARENT_LOG",
+    "apply_transaction": "NOT_ESTABLISHED_FROM_PARENT_LOG",
+    "checked_restart": "NOT_ESTABLISHED_FROM_PARENT_LOG",
+    "native_owner_cleanup": "NOT_ESTABLISHED_FROM_PARENT_LOG",
+    "post_native_exact_source_and_installed_payload": "PASS",
+    "bounded_public_retention": "PASS"
+  },
+  "failure": {
+    "path": "carr-library/scripts/windows_configured_update_smoke.py",
+    "line": 877,
+    "function": "run_family",
+    "type": "RuntimeError",
+    "message": "The actual configured A desktop failed; retain its bounded diagnostic.",
+    "trace": "2026-11-28T05:42:23.3078976Z CONFIGURED_STAGE install-exact-A\r\n2026-11-28T05:43:47.8251312Z CHECK: both compiled source receipts and full owned A payload are exact\r\n2026-11-28T05:43:48.3069517Z CHECK: temporary actual Windows vault anchor begins at A\r\n2026-11-28T05:43:48.3082537Z CONFIGURED_STAGE actual-A-main-prepare-review-cancel-apply-restart\r\n2026-11-28T05:44:03.7884940Z Traceback (most recent call last):\r\n2026-11-28T05:44:03.7916337Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1177, in <module>\r\n2026-11-28T05:44:03.7930558Z     raise SystemExit(main())\r\n2026-11-28T05:44:03.7935661Z                      ^^^^^^\r\n2026-11-28T05:44:03.7940959Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1171, in main\r\n2026-11-28T05:44:03.7945504Z     result = probe(args)\r\n2026-11-28T05:44:03.7950185Z              ^^^^^^^^^^^\r\n2026-11-28T05:44:03.7957201Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 1083, in probe\r\n2026-11-28T05:44:03.7961479Z     ui, host, restart = run_family(standard, command, root=root, work=work,\r\n2026-11-28T05:44:03.7965850Z                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\r\n2026-11-28T05:44:03.7970723Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\source-b\\carr-library\\scripts\\windows_configured_update_smoke.py\", line 877, in run_family\r\n2026-11-28T05:44:03.7975250Z     raise RuntimeError('The actual configured A desktop failed; retain its bounded diagnostic.')\r\n2026-11-28T05:44:03.7980081Z RuntimeError: The actual configured A desktop failed; retain its bounded diagnostic.\r\n2026-11-28T05:44:06.6245652Z Exception: D:\\a\\_temp\\06a1d447-9fca-41a2-b058-067f5f884500.ps1:59\r\n2026-11-28T05:44:06.6246170Z Line |\r\n2026-11-28T05:44:06.6246782Z   59 |  … DE -ne 0) { throw ('Actual configured native updater failed with exit …\r\n2026-11-28T05:44:06.6248802Z      |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n2026-11-28T05:44:06.6249745Z      | Actual configured native updater failed with exit 1\r\n2026-11-28T05:44:06.6474169Z ##[error]Process completed with exit code 1.\r",
+    "underlying_cause": "Pending inspection of the retained native/configured-native-child.txt; no cause inferred from the parent wrapper."
+  },
+  "artifact": {
+    "id": 15250412975,
+    "name": "configured-update-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "size_in_bytes": 562650,
+    "digest": "sha256:14eb7707422a203ad8a31cccdb0969f06fd007ea506b2fe513637dbe1eb13316",
+    "created_at": "2026-11-28T05:44:09Z",
+    "expires_at": "2026-12-05T05:44:08Z",
+    "metadata_matches_upload_log": true,
+    "closed_retention_file_count": 37,
+    "closed_retention_expanded_bytes": 2350711,
+    "uploaded_file_count": 38,
+    "archive_contents_independently_inspected": false,
+    "requested_minimal_members": [
+      "native/configured-native-child.txt",
+      "native/configured-update.json",
+      "retention.json",
+      "source-identities.json"
+    ]
+  },
+  "qualification": {
+    "production_publisher": "NOT_CONFIGURED",
+    "production_rollout": "NOT_RUN",
+    "real_user_installation": "NOT_RUN",
+    "authenticode": "NOT_CLAIMED",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  },
+  "refs_mutated": false
+}
