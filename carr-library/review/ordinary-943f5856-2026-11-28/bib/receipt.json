@@ -1,0 +1,448 @@
+{
+  "schema": "carr-scoped-terminal-receiving/1",
+  "scope": "bib",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "run_id": 46119978377,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119978377",
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_conclusion": "success",
+  "workflow": {
+    "path": ".github/workflows/carr-bibliography.yml",
+    "git_blob": "53d7e3142f94dbab7e67273550b9809189c94b81",
+    "sha256": "fbc3ffa7b529250eabca3f490e711874732505641710a4079c5682133a8f39be",
+    "bytes": 7315
+  },
+  "jobs": [
+    {
+      "id": 140902138813,
+      "name": "Windows x64 / CPython 3.11 / installed bibliography",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119978377/job/140902138813",
+      "conclusion": "success",
+      "started_at": "2026-11-28T07:15:54Z",
+      "completed_at": "2026-11-28T07:22:55Z",
+      "log": {
+        "sha256": "46b147f2156f97073f141019328a0da1db7d51aecc0486ec04a9d75423ff4f45",
+        "bytes": 139859
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15253552852,
+      "name": "bibliography-windows-943f585659c55481046266338f428e4a1043a9bd",
+      "size_in_bytes": 6630,
+      "github_digest": "sha256:fc89a434e519df4f2de12739700ad3a46ed6c166fb5a375ad7877007d48e4434",
+      "expired": false,
+      "scope": "artifact metadata verified; archive bytes were not downloaded by this receiver"
+    }
+  ],
+  "observations": {
+    "strict_source": {
+      "modules": 29,
+      "passed": 1092,
+      "failed": 0,
+      "skipped": 0,
+      "selectors": [
+        "tests/research/test_bibtex_import.py",
+        "tests/research/test_academic_library.py",
+        "tests/research/test_csl_author_boundaries.py",
+        "tests/citations/test_csl.py",
+        "tests/citations/test_custom_csl.py",
+        "tests/citations/test_bibliography_workbench.py",
+        "tests/citations/test_custom_workbench.py",
+        "tests/ui/test_citation_styles_jobs.py",
+        "tests/ui/test_academic_library_dialog.py",
+        "tests/ui/test_academic_actions.py",
+        "tests/ui/test_academic_export_handler.py",
+        "tests/catalog/test_bibliography.py",
+        "tests/catalog/test_archive_portability.py",
+        "tests/catalog/test_intake_portability.py",
+        "tests/catalog/test_reference_exchange.py",
+        "tests/ingest/test_import_replay_identity.py",
+        "tests/ingest/test_txt_replay_registration.py",
+        "tests/reader/test_export_no_clobber.py",
+        "tests/reader/test_export_reconciliation.py",
+        "tests/reader/test_file_export.py",
+        "tests/reader/test_binary_file_export.py",
+        "tests/reader/test_academic_documents.py",
+        "tests/reader/test_bibliographic_locators.py",
+        "tests/reader/test_evidence_export.py",
+        "tests/storage/test_academic_migration.py",
+        "tests/e2e/test_academic_workflow.py",
+        "tests/e2e/test_academic_workflows.py",
+        "tests/e2e/test_academic_document_export.py",
+        "tests/e2e/test_export_destination.py"
+      ],
+      "verdicts": [
+        {
+          "status": "PASS",
+          "path": "tests/research/test_bibtex_import.py",
+          "passed": 68,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/research/test_academic_library.py",
+          "passed": 94,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/research/test_csl_author_boundaries.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/citations/test_csl.py",
+          "passed": 79,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/citations/test_custom_csl.py",
+          "passed": 132,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/citations/test_bibliography_workbench.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/citations/test_custom_workbench.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_citation_styles_jobs.py",
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_academic_library_dialog.py",
+          "passed": 63,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_academic_actions.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_academic_export_handler.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/catalog/test_bibliography.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/catalog/test_archive_portability.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/catalog/test_intake_portability.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/catalog/test_reference_exchange.py",
+          "passed": 64,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ingest/test_import_replay_identity.py",
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ingest/test_txt_replay_registration.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_export_no_clobber.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_export_reconciliation.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_file_export.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_binary_file_export.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_academic_documents.py",
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_bibliographic_locators.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_evidence_export.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_academic_migration.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_academic_workflow.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_academic_workflows.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_academic_document_export.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_export_destination.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ],
+      "execution": "ci_check.py source overrides, using the freshly installed environment"
+    },
+    "wheel_source_proof": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+      "wheel_sha256": "3ac2a6b7b77c76f78e84fd9279a264462517e67c78cbfd8adab77b420d1b64b9"
+    },
+    "installed_native": {
+      "checks": 69,
+      "report": {
+        "checks": 69,
+        "custom_style_file_choice": "controlled path only",
+        "installed_modules": {
+          "carr_library.citations.bibliography_workbench": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+          "carr_library.citations.csl": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+          "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+          "carr_library.ui.academic_library_dialog": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+          "carr_library.ui.citation_styles_dialog": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"
+        },
+        "installer": "NOT_RUN",
+        "manual_keyboard": "NOT_RUN",
+        "native_clipboard": "PASS",
+        "native_custom_style": "PASS",
+        "native_file_pickers": "NOT_RUN",
+        "native_keyboard": "PASS",
+        "nvda": "NOT_RUN",
+        "platform": "Windows-10-10.0.20348-SP0",
+        "python": "3.11.9",
+        "result": "PASS",
+        "service_exports": [
+          "text",
+          "html",
+          "docx"
+        ],
+        "style": "harvard",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      },
+      "loaded_module_identity": [
+        {
+          "module": "carr_library.citations.bibliography_workbench",
+          "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+          "git_blob": "835de13c80ff28dc1d548e5a4a9c9c18617c21b5",
+          "sha256": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+          "actual_loaded_sha256": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+          "matches": true
+        },
+        {
+          "module": "carr_library.citations.csl",
+          "path": "carr-library/src/carr_library/citations/csl.py",
+          "git_blob": "fe77a11a0d99fba0348263198b2feb3379dfa3aa",
+          "sha256": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+          "actual_loaded_sha256": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+          "matches": true
+        },
+        {
+          "module": "carr_library.research.bibtex_import",
+          "path": "carr-library/src/carr_library/research/bibtex_import.py",
+          "git_blob": "48d656d3fe5a7d2a6f56483413252e0ad8e3459f",
+          "sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+          "actual_loaded_sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+          "matches": true
+        },
+        {
+          "module": "carr_library.ui.academic_library_dialog",
+          "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+          "git_blob": "86dbd1f45c194abc2824f27ac4e92d44ac86e256",
+          "sha256": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+          "actual_loaded_sha256": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+          "matches": true
+        },
+        {
+          "module": "carr_library.ui.citation_styles_dialog",
+          "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+          "git_blob": "71da214062593f566fb8a4106f948f459f18a8eb",
+          "sha256": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c",
+          "actual_loaded_sha256": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c",
+          "matches": true
+        }
+      ]
+    },
+    "identity_scope": "5 native loaded module hashes plus source-bound wheel; this gate does not emit a full383-module installed inventory",
+    "checkout_head_verified": true
+  },
+  "boundaries": {
+    "full383_installed_inventory": "NOT_CLAIMED_BY_THIS_GATE; only the explicitly recorded identity checks above",
+    "private_executable_archive": "NOT_RETAINED",
+    "manual_nvda": "NOT_RUN",
+    "private_model_inference": "NOT_RUN",
+    "human_audio_quality": "NOT_RUN",
+    "historical_or_successor_pass_transfer": false
+  },
+  "files": [
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/run.json",
+      "git_blob": "e15edff9aaa3d34d66994c555365dafe45d6c5aa",
+      "sha256": "7f4a044c9b39357ace1ab6b112265c0606d700ad2e83dd92da587e5e4cbef10b",
+      "bytes": 13565
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/jobs.json",
+      "git_blob": "e91bc1670c832bf120fd0866d272786a2f2b59a7",
+      "sha256": "8b3dbc67de9487bbc3434bee7acf002bf4293c587911891d474b30111ebb1e23",
+      "bytes": 2995
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/artifacts.json",
+      "git_blob": "657174d233a64487a80862277af1b1c549635c9e",
+      "sha256": "9188115a34d5c3eaf93fdfc4225d6a415310d31a22741c7c35b4f2343e9b8ac9",
+      "bytes": 811
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/scope-and-observed-results.json",
+      "git_blob": "a6a3a3e5b81378bb275a079f1cffe301c2bd68ca",
+      "sha256": "c2b8a1164bfebdc80df4f64008f2c3ad35da054bb020060baa6910ac911e4983",
+      "bytes": 12330
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/job-140902138813.log",
+      "git_blob": "cbfa7e3083e3b8ff16770c8fd57955950900a74b",
+      "sha256": "46b147f2156f97073f141019328a0da1db7d51aecc0486ec04a9d75423ff4f45",
+      "bytes": 139859
+    }
+  ],
+  "validation": {
+    "metadata_checked_before_logs": true,
+    "checkout_head_observed_in_each_log": true,
+    "actual_selector_multisets_checked": true,
+    "all_files_full_readback_exact": true,
+    "application_source_changes": 0,
+    "ref_mutations": 0
+  }
+}

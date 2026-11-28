@@ -1,0 +1,97 @@
+{
+  "schema": "carr-evidence-file-manifest/1",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "run_id": 46119982340,
+  "jobs": [
+    140902150245,
+    140902150256
+  ],
+  "status": "BOTH_LINUX_COMPONENT_MODES_TERMINAL_SUCCESS",
+  "files": [
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/qualification.json",
+      "sha": "8b918b9ea25562270012378b7fe800e7b545fb1d",
+      "bytes": 8655,
+      "sha256": "1589e21bada5e02f19da7d8a0784d44869a1c3ed868b0b5fcd064b1f4c53096b"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/full-decoded-log.txt",
+      "sha": "0a0a6fdd5d1f40674bdfc89f83b85d21b1063472",
+      "bytes": 229386,
+      "sha256": "5432547ba544a30f2bc65d759676d3a8dd75292ea41141ff4ac25bf11466897d"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/terminal-job.json",
+      "sha": "3b9af131ad418364fc8b41ef7a7ea6d4c26e2f03",
+      "bytes": 6251,
+      "sha256": "0d6b0cc4e52b7b8a2f69be66063d8cc2a4a89477a47e79e290a23f6c3d4b8ad0"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/artifact-metadata.json",
+      "sha": "f8ac748a86eac3aacbdbe60cf7ad7d30d1ce8b7d",
+      "bytes": 894,
+      "sha256": "e74c27211229b5cc21833527f5a241ed71668a4c7398587637090aefb887612f"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/source-installed-inventory-log-extract.json",
+      "sha": "25c47878f7d06126e18fca293e93d2f88da6fd5e",
+      "bytes": 249,
+      "sha256": "015870cfd9f496a59d470449d3804107b006dbc1a99f7b44e753c9fcf2400185"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/module-verdicts.json",
+      "sha": "14ec7392316cffccbbe7509763e6bdd1b4b59001",
+      "bytes": 12235,
+      "sha256": "be805744012158bf97d4f782c2aa8b016303b266c9414d640787489e9d4b33af"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/bounded-log-excerpts.txt",
+      "sha": "f82329d8ffddcb68ce11c1cca352950d7819118b",
+      "bytes": 9071,
+      "sha256": "8b6d1cfd732632cbe0001a7af00acad84af38e6c4cc1162e33006d745b94c3e5"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/qualification.json",
+      "sha": "fbad1fc39afa4c7d6a3d12028e5d17d2311ba4e2",
+      "bytes": 8698,
+      "sha256": "7cb95932c04bb6444b0a4358c6123e19a27d757f8e627b4a4e56d88b77a5d2bc"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/full-decoded-log.txt",
+      "sha": "19f457e231bd7a1112c9477aec72c998408d6bda",
+      "bytes": 148720,
+      "sha256": "cbef775d50436000cd85d708bf3c0ba1cb10af8646757b47ef6ecf82b1db07cc"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/terminal-job.json",
+      "sha": "cb8734b1e6f2ea6e5861f3d39e563f9d9f44e552",
+      "bytes": 6254,
+      "sha256": "af597629e8ed03d70fdb75637917f08e8436e3309e5d97d4aa54f2ccaad6b140"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/artifact-metadata.json",
+      "sha": "ba1a8eddb233a08355fa5004f1cb9969c75ea380",
+      "bytes": 898,
+      "sha256": "009cb556d614bd8e01fe56321d2be5548b495f2bd3560f31319b684575b58cd7"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/source-installed-inventory-log-extract.json",
+      "sha": "25c47878f7d06126e18fca293e93d2f88da6fd5e",
+      "bytes": 249,
+      "sha256": "015870cfd9f496a59d470449d3804107b006dbc1a99f7b44e753c9fcf2400185"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/module-verdicts.json",
+      "sha": "7b6102db44e79ec30931fb73ab371b4a6a0f4980",
+      "bytes": 205,
+      "sha256": "e368f8ea30f59b42611b1d496655d75263e345657aa643aad3179d92aeda1ddc"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/bounded-log-excerpts.txt",
+      "sha": "cfccf29ff308929824c28c1f5f89ecd3fa04262b",
+      "bytes": 182,
+      "sha256": "95174e8a8e0466bf0cede7af646f2745533bc39f5f2662c24f9b10caa45f6b70"
+    }
+  ],
+  "provenance": "Full connector-decoded terminal logs and labeled serialized derivatives; no artifact archives/member bytes downloaded; all listed blobs fully read back."
+}

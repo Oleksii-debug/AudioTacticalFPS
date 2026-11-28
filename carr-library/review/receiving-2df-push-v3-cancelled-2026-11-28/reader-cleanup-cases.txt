@@ -1,0 +1,143 @@
+REQUIRED_CASE_FAILURE tests/audio/test_process_deadline.py::test_pending_reader_completion_retains_stage_after_native_family_stops [call]
+observed = namespace(children=[<WindowsJobProcess: returncode: 0 args: ['C:\\hostedtoolcache\\windows\\Pyth...>], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228D92FF090>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_pending_reader_completion0')
+
+    def test_pending_reader_completion_retains_stage_after_native_family_stops(
+            observed, monkeypatch, tmp_path):
+        from carr_library.audio.cleanup import AudioCleanupPending, retained_temporary_directory
+    
+        observed.wait_before_return = False
+        release_reader = threading.Event()
+        native_stops = []
+        actual_stop = process._stop_owned
+        owner = None
+        stage = None
+    
+        def stop(child):
+            native_stops.append(child.pid)
+            return actual_stop(child)
+    
+        def after_read():
+            release_reader.wait()
+    
+        tracked = tracked_readers(monkeypatch, observed, after_read=after_read)
+        monkeypatch.setattr(process, '_stop_owned', stop)
+        try:
+            with pytest.raises(AudioCleanupPending) as failure:
+                with retained_temporary_directory(prefix='reader-owned-', dir=tmp_path) as directory:
+                    stage = Path(directory)
+                    (stage / 'retained').write_bytes(b'owned until both readers end')
+                    run('print("completed before reader acknowledgement")')
+            owner = failure.value.cleanup_owner
+>           assert len(native_stops) == 1 and len(tracked.completed) == 2
+E           assert (33 == 1)
+E            +  where 33 = len([1868, 1868, 1868, 1868, 1868, 1868, ...])
+
+tests\audio\test_process_deadline.py:541: AssertionError
+F
+REQUIRED_CASE_FAILURE tests/audio/test_process_deadline.py::test_failed_reader_pipe_close_remains_retryable_before_stage_release [call]
+observed = namespace(children=[<WindowsJobProcess: returncode: 0 args: ['C:\\hostedtoolcache\\windows\\Pyth...>], offset=0.0, wait_before_return=False)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228D8EA9E90>
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_failed_reader_pipe_close_0')
+
+    def test_failed_reader_pipe_close_remains_retryable_before_stage_release(
+            observed, monkeypatch, tmp_path):
+        from carr_library.audio.cleanup import AudioCleanupPending, retained_temporary_directory
+    
+        observed.wait_before_return = False
+        allow_close = threading.Event()
+        actual_start, actual_stop = process._start_process, process._stop_owned
+        native_stops, close_attempts = [], []
+        owner = None
+    
+        class RetainedPipe:
+            def __init__(self, stream):
+                self.stream = stream
+    
+            def read1(self, size):
+                return self.stream.read1(size)
+    
+            @property
+            def closed(self):
+                return self.stream.closed
+    
+            def close(self):
+                close_attempts.append(allow_close.is_set())
+                if not allow_close.is_set():
+                    raise OSError('synthetic reader pipe close failure')
+                return self.stream.close()
+    
+        def start(arguments, **options):
+            child = actual_start(arguments, **options)
+            child.stdout = RetainedPipe(child.stdout)
+            return child
+    
+        def stop(child):
+            native_stops.append(child.pid)
+            return actual_stop(child)
+    
+        monkeypatch.setattr(process, '_start_process', start)
+        monkeypatch.setattr(process, '_stop_owned', stop)
+        try:
+            with pytest.raises(AudioCleanupPending) as failure:
+                with retained_temporary_directory(prefix='pipe-owned-', dir=tmp_path) as directory:
+                    stage = Path(directory)
+                    (stage / 'retained').write_bytes(b'close must finish before deletion')
+                    run('print("actual completed bytes")')
+            owner = failure.value.cleanup_owner
+            assert close_attempts and len(native_stops) == 1
+            assert not observed.children[0].stdout.closed
+            assert stage.is_dir() and not owner.quiescent
+            released = threading.Event()
+            owner.add_quiescent_callback(released.set)
+            allow_close.set()
+            assert released.wait(10)
+            assert owner.quiescent and owner.close() is True
+>           assert len(native_stops) == 1 and not stage.exists()
+E           assert (2 == 1)
+E            +  where 2 = len([5164, 1868])
+
+tests\audio\test_process_deadline.py:615: AssertionError
+.................... [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 16%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 26%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 36%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 43%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 46%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 49%]
+..................................................F

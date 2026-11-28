@@ -1,0 +1,432 @@
+{
+  "source": "job.log",
+  "records": [
+    {
+      "source": "decoded completed job log",
+      "first_line": 971,
+      "last_line": 1013,
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "descendant alive after its original leader exited",
+          "owned cancellation waits for the actual descendant exit",
+          "owned job and native pipes are closed after cancellation",
+          "native assignment failure remains explicit",
+          "unassigned suspended child is killed and waited before return",
+          "concurrent owned launch reaches suspended assignment",
+          "concurrent owned cancellation completes",
+          "unrelated concurrent native process remains outside capture ownership",
+          "native short-worker venv is created without acquiring dependencies",
+          "short venv worker preserves the explicitly selected environment",
+          "short venv uses the real base interpreter behind its redirector",
+          "short venv lifetime members and native streams finish before return",
+          "nested-short venv worker preserves the explicitly selected environment",
+          "nested-short venv uses the real base interpreter behind its redirector",
+          "nested-short venv lifetime members and native streams finish before return"
+        ],
+        "scope": "actual Windows owned process lifecycle",
+        "physical_microphone": "NOT_RUN",
+        "human_listening": "NOT_RUN",
+        "short_venv_workers": [
+          {
+            "prefix": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-nakxdai7\\short-worker-venv",
+            "base_prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+            "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-nakxdai7\\short-worker-venv\\Scripts\\python.exe",
+            "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+            "native_image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+            "case": "short",
+            "lifetime_processes": 3
+          },
+          {
+            "prefix": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-nakxdai7\\short-worker-venv",
+            "base_prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+            "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-nakxdai7\\short-worker-venv\\Scripts\\python.exe",
+            "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+            "native_image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+            "case": "nested-short",
+            "lifetime_processes": 5
+          }
+        ]
+      }
+    },
+    {
+      "source": "decoded completed job log",
+      "first_line": 1395,
+      "last_line": 1513,
+      "value": {
+        "status": "PASS",
+        "platform": "win32",
+        "manual_nvda": "NOT_RUN",
+        "checks": [
+          "actual installed SAPI voice to measured PCM",
+          "actual local three-role production with score and pause",
+          "WAV/FLAC, chapter and stem publication",
+          "completed-job restart and checksum verification",
+          "native menu integration and unique global shortcuts",
+          "actual installed CSL processor and native DOCX provenance",
+          "actual isolated document conversion and atomic Windows publication",
+          "native studio/assistant/provider/engine dialogs with named keyboard controls"
+        ],
+        "voices": [
+          {
+            "id": "sapi5-64:8ceac258515d5a474e76deba",
+            "name": "Microsoft David Desktop - English (United States)",
+            "language": "en-US"
+          },
+          {
+            "id": "sapi5-64:745a26bc99ef3c4c944377b9",
+            "name": "Microsoft Zira Desktop - English (United States)",
+            "language": "en-US"
+          }
+        ],
+        "speech_peak_pcm16": 10989,
+        "audio": {
+          "duration": 10.691958,
+          "artifacts": 13,
+          "loudness": {
+            "integrated_lufs": -24.89,
+            "true_peak_dbfs": -6.29,
+            "loudness_range_lu": 4.5,
+            "threshold_lufs": -38.02,
+            "silent": false
+          },
+          "distinct_voice_tokens": 2
+        },
+        "silence_inspection": {
+          "status": "PASS",
+          "checks": [
+            "explicit saved-job selection enables the named inspection action",
+            "named criteria require explicit valid finite values before work",
+            "existing F8 action names inspection cancellation while work is active",
+            "read-only native result preserves exact frames and original source hash",
+            "completed audio and job remain unchanged with no playback and restored Pause label"
+          ],
+          "measurement": {
+            "schema": "carr-silence-inspection/1",
+            "status": "complete",
+            "source": {
+              "artifact": "master.wav",
+              "sha256": "901c119cb7a94ab8252c1ed2ef877e297a0f4f90b59b28771110f692593d97a8",
+              "size": 1026542
+            },
+            "audio": {
+              "sample_rate": 24000,
+              "channels": 2,
+              "frames": 256607,
+              "source_codec": "pcm_s16le"
+            },
+            "criteria": {
+              "threshold_dbfs": 0,
+              "minimum_seconds": 0.25,
+              "minimum_frames": 6000,
+              "amplitude_limit_s32": 2147483648,
+              "channel_policy": "every-channel",
+              "comparison": "absolute-sample-at-or-below"
+            },
+            "intervals": [
+              {
+                "start_frame": 0,
+                "end_frame": 256607,
+                "start_seconds": 0,
+                "end_seconds": 10.691958333333334,
+                "duration_seconds": 10.691958333333334
+              }
+            ],
+            "interval_count": 1,
+            "omitted_count": 0,
+            "pcm_sha256": "1d0aa9910faca48dc12e85c08f877bbabc34b021e2fb78862b5331350ce982ca",
+            "notice": "Intervals at or below the selected amplitude threshold are warnings for review. They may be intentional pauses; this is not speech detection or a claim about intelligibility, word accuracy, clipping or listening quality.",
+            "job_id": "ff1b353ec8c4447b85918b8307b94e24",
+            "project_fingerprint": "4d3f34563a64f41020cb9ab38879c2abbb4057772c62c3121db39be5034f3989",
+            "operation_sha256": "910e536f0e0c2c4e15940e1545001e1f47484b01f7bf261c26ba851573303c31"
+          },
+          "module_origins": [
+            {
+              "module": "carr_library.audio.silence",
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\silence.py",
+              "sha256": "b6afdeb4fd0dcb3e5575c60fbe333af1c88d7c4d556ca18dc0e582313459c280"
+            },
+            {
+              "module": "carr_library.studio.render",
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\render.py",
+              "sha256": "66bbe35025a68ab780860bd5d4831d1b28e9dd40173f5fed7b5dd640abd50075"
+            },
+            {
+              "module": "carr_library.studio.silence_inspection",
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\studio\\silence_inspection.py",
+              "sha256": "1c56da9de5c2c1349b01cde13cbfabc378a948f4d1738ffb653adf8119e210d8"
+            },
+            {
+              "module": "carr_library.ui.studio_dialog",
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\studio_dialog.py",
+              "sha256": "c92254c17a6e43dd4391ce7e0db2bc2fc6c30e6344782c9d179c99692d54de4e"
+            },
+            {
+              "module": "carr_library.ui.studio_silence_inspection",
+              "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\studio_silence_inspection.py",
+              "sha256": "1aacc15b7b81a8bcf6da66359f371f3b3af269d6af7aa9d2010378f196151934"
+            }
+          ],
+          "audible_playback": "NOT_STARTED",
+          "perceptual_quality": "NOT_CLAIMED",
+          "manual_nvda": "NOT_RUN"
+        }
+      }
+    },
+    {
+      "source": "decoded completed job log",
+      "first_line": 1634,
+      "last_line": 1634,
+      "value": {
+        "result": "PASS",
+        "checks": [
+          "real wx Windows controls",
+          "installed module: carr_library.ui.studio_clips",
+          "installed module: carr_library.studio.clips",
+          "real native main loop is active",
+          "keyboard focus: Reload projects",
+          "Space key down: Reload projects",
+          "Space key up: Reload projects",
+          "native project choice binds saved identity",
+          "all timing controls have readable names",
+          "native loop controls are named and require an explicit preview",
+          "opening the clip editor does not start a preview loop",
+          "keyboard focus: Add audio file",
+          "Space key down: Add audio file",
+          "Space key up: Add audio file",
+          "original selection requires an existing file",
+          "native Add retains an actual clip",
+          "keyboard focus: Save clip settings",
+          "Space key down: Save clip settings",
+          "Space key up: Save clip settings",
+          "native Save persists reviewed numeric controls",
+          "real edited project rendered",
+          "actual left-only timeline and one-second duration",
+          "keyboard focus: Copy clip instructions",
+          "Space key down: Copy clip instructions",
+          "Space key up: Copy clip instructions",
+          "native copy preserves the saved project",
+          "keyboard focus: Split selected clip...",
+          "Space key down: Split selected clip...",
+          "Space key up: Split selected clip...",
+          "actual native clip review button: Split at an output sample",
+          "keyboard focus: button",
+          "Space key down: button",
+          "Space key up: button",
+          "native split preserves retained source and measured cuts",
+          "keyboard focus: Join adjacent clips...",
+          "Space key down: Join adjacent clips...",
+          "Space key up: Join adjacent clips...",
+          "actual native clip review button: Join adjacent clips",
+          "keyboard focus: button",
+          "Space key down: button",
+          "Space key up: button",
+          "native join restores the original instructions",
+          "keyboard focus: Undo clip edit",
+          "Space key down: Undo clip edit",
+          "Space key up: Undo clip edit",
+          "native undo restores both cuts",
+          "keyboard focus: Redo clip edit",
+          "Space key down: Redo clip edit",
+          "Space key up: Redo clip edit",
+          "native redo restores the joined clip",
+          "keyboard focus: Paste copied clip...",
+          "Space key down: Paste copied clip...",
+          "Space key up: Paste copied clip...",
+          "actual native clip review button: Paste copied clip",
+          "keyboard focus: button",
+          "Space key down: button",
+          "Space key up: button",
+          "native paste creates a distinct clip at the reviewed position",
+          "keyboard focus: Cut clip",
+          "Space key down: Cut clip",
+          "Space key up: Cut clip",
+          "native cut keeps original bytes and the remaining clip",
+          "keyboard focus: Clip effects...",
+          "Space key down: Clip effects...",
+          "Space key up: Clip effects...",
+          "actual supported effect choice",
+          "keyboard focus: Add effect",
+          "Space key down: Add effect",
+          "Space key up: Add effect",
+          "keyboard focus: Edit selected effect",
+          "Space key down: Edit selected effect",
+          "Space key up: Edit selected effect",
+          "actual numeric clip effect control",
+          "keyboard focus: Apply effect",
+          "Space key down: Apply effect",
+          "Space key up: Apply effect",
+          "keyboard focus: Apply effect chain",
+          "Space key down: Apply effect chain",
+          "Space key up: Apply effect chain",
+          "native clip effects persist in schema three",
+          "keyboard focus: Master effects...",
+          "Space key down: Master effects...",
+          "Space key up: Master effects...",
+          "actual supported effect choice",
+          "keyboard focus: Add effect",
+          "Space key down: Add effect",
+          "Space key up: Add effect",
+          "keyboard focus: Edit selected effect",
+          "Space key down: Edit selected effect",
+          "Space key up: Edit selected effect",
+          "actual numeric clip effect control",
+          "keyboard focus: Apply effect",
+          "Space key down: Apply effect",
+          "Space key up: Apply effect",
+          "keyboard focus: Apply effect chain",
+          "Space key down: Apply effect chain",
+          "Space key up: Apply effect chain",
+          "native master effects persist independently",
+          "native effect project completes actual rendering",
+          "actual native clip and master effects both apply",
+          "delivered chapter matches the mastered audio",
+          "keyboard focus: Set master sample rate",
+          "Space key down: Set master sample rate",
+          "Space key up: Set master sample rate",
+          "native master sample rate preserves effect chains",
+          "keyboard focus: Save clip settings",
+          "Space key down: Save clip settings",
+          "Space key up: Save clip settings",
+          "stale native edit cannot replace a newer revision",
+          "keyboard focus: Reload projects",
+          "Space key down: Reload projects",
+          "Space key up: Reload projects",
+          "keyboard focus: Remove clip",
+          "Space key down: Remove clip",
+          "Space key up: Remove clip",
+          "remove changes project but retains original bytes",
+          "keyboard focus: Close",
+          "Space key down: Close",
+          "Space key up: Close",
+          "native keyboard close finishes cleanly"
+        ],
+        "native_keyboard": "PASS",
+        "fixture": "synthetic PCM rendered by actual FFmpeg",
+        "audio_runtime": {
+          "ffmpeg": {
+            "path": "D:\\a\\_temp\\carr-v3-audio\\bin\\ffmpeg.exe",
+            "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"
+          },
+          "ffprobe": {
+            "path": "D:\\a\\_temp\\carr-v3-audio\\bin\\ffprobe.exe",
+            "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+          }
+        },
+        "nvda": "NOT_RUN",
+        "native_file_pickers": "NOT_RUN",
+        "physical_microphone": "NOT_RUN",
+        "loop_preview": {
+          "status": "NOT_RUN",
+          "reason": "No exact reviewed output endpoint was supplied for loop playback.",
+          "acoustic_listening": "NOT_RUN",
+          "physical_output_device": "NOT_RUN"
+        }
+      }
+    },
+    {
+      "source": "decoded completed job log",
+      "first_line": 1677,
+      "last_line": 1752,
+      "value": {
+        "status": "PASS",
+        "platform": "win32",
+        "checks": [
+          "native ASR profile refresh uses the shared job host",
+          "ASR accessible native control: Registered transcription runtime",
+          "ASR accessible native control: Source language code or auto",
+          "ASR accessible native control: Selected local audio or video",
+          "ASR accessible native control: Saved transcription jobs",
+          "ASR accessible native control: Transcription source result",
+          "ASR accessible native control: Transcript reading copy",
+          "ASR accessible native control: Transcription progress and result",
+          "native ASR pages and Escape route are present",
+          "runtime inspection completes without inference",
+          "unchecked trust blocks runtime registration",
+          "explicit inspected fingerprint trust registers one profile",
+          "native Start enters the isolated service boundary",
+          "help retains focus during coalesced progress",
+          "native Pause preserves a real paused UI outcome",
+          "native Resume reuses the stored job",
+          "native transcript reader opens an independent reading copy",
+          "explicit load focuses the transcript editor",
+          "native Tab leaves the multiline editor for another dialog control",
+          "native edit save preserves original recognition text",
+          "native Undo restores the independent source copy",
+          "native Redo restores the saved correction",
+          "native export delegates into a new folder",
+          "native Escape closes an idle ASR dialog and stops its timer",
+          "dashboard accessible native control: Saved platform operations",
+          "dashboard accessible native control: Operation details and resource status",
+          "dashboard accessible native control: Allowed CPU slots",
+          "dashboard accessible native control: Declared memory allowance in MiB",
+          "dashboard accessible native control: Declared temporary disk allowance in GiB",
+          "dashboard accessible native control: Keep free disk space in MiB",
+          "dashboard submission failure restores usable controls",
+          "dashboard asynchronous refresh preserves details focus",
+          "native resource policy saves through the shared broker",
+          "dashboard Escape routes to explicit close",
+          "dashboard native Escape requests close and hides its window",
+          "dashboard native Escape ends its modal lifecycle",
+          "native progress fixture explicitly selects an installed English SAPI voice",
+          "native progress speech queues without blocking the GUI",
+          "actual native SAPI progress synthesis produces measured non-silent PCM",
+          "the first owned progress notification drains before quiet review",
+          "quiet progress speech rejects queued playback",
+          "progress speech worker stops and removes temporary PCM"
+        ],
+        "asr_service": "SYNTHETIC_UI_FIXTURE",
+        "model_inference": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "physical_playback": "NOT_RUN",
+        "protocol": "local-file-job/1",
+        "origins": {
+          "carr_library.ui.transcription_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\transcription_dialog.py",
+          "carr_library.ui.operations_dialog": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\operations_dialog.py",
+          "carr_library.transcription": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription\\__init__.py",
+          "carr_library.transcription.service": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription\\service.py"
+        },
+        "source_override": null,
+        "module_sha256": {
+          "carr_library.ui.transcription_dialog": "73846cb764d3cb61e73e726f823e13751de342f72962b71ecbfa532ddfdc69a1",
+          "carr_library.ui.operations_dialog": "99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b",
+          "carr_library.transcription": "4eeed849a4057871429135576fd964cf93bbe8eb568a3a1c6262ea6ff2f2db5f",
+          "carr_library.transcription.service": "ed8dbb1142b751a07e66ab764a412325cf4bd5f8c1b2070864fb8a3e85e31234"
+        },
+        "native_sapi_progress_pcm": {
+          "frames": 146164,
+          "rate": 22050,
+          "width": 2,
+          "peak": 4868
+        },
+        "native_sapi_progress_voice": {
+          "id": "sapi5-64:8ceac258515d5a474e76deba",
+          "language": "en-US"
+        }
+      }
+    },
+    {
+      "source": "decoded completed job log",
+      "first_line": 2092,
+      "last_line": 2109,
+      "value": {
+        "result": "PASS",
+        "checks": [
+          "assistant UI imports from installed package",
+          "real Windows widgets",
+          "named native planner selector defaults to guided commands",
+          "request is pending with run disabled",
+          "proposal remains unexecuted until separate review action",
+          "exact selected model reached the loopback gateway",
+          "review receives native keyboard focus",
+          "edited instructions cancel the pending native proposal",
+          "separate run uses existing durable assistant service",
+          "completion returns focus to readable result"
+        ],
+        "actual_llm_model": "NOT_RUN — synthetic protocol fixture",
+        "manual_keyboard": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      }
+    }
+  ]
+}

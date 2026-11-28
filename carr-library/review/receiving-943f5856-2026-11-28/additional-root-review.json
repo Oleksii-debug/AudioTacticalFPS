@@ -1,0 +1,478 @@
+{
+  "schema": "carr-943-additional-receiving-root-review/1",
+  "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+  "historical_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "status": "ACTUAL_SCOPED_RESULTS_AND_FAILURES_RETAINED",
+  "decoded_log_verification": [
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/full-decoded-log.txt",
+      "sha": "078c52273e5bb8a00ee895879789f6c6c853bbdf",
+      "k": "standard_windows",
+      "sha256": "8f420ee5cd24c255dc302894f7596d77485a2adc4a66f7e329a1981a9c4f64a8",
+      "bytes": 322733,
+      "pinMatches": [
+        {
+          "sha256": "8f420ee5cd24c255dc302894f7596d77485a2adc4a66f7e329a1981a9c4f64a8",
+          "bytes": 322733
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-log.txt",
+      "sha": "70fc33e018813e96c474bf914b039cd3a3db61a7",
+      "k": "reader_linux_source",
+      "sha256": "7e99aa880b538605f74565ba5d9ae9c54013a5580f4670c7eb588d49a7e74ea3",
+      "bytes": 342082,
+      "pinMatches": [
+        {
+          "sha256": "7e99aa880b538605f74565ba5d9ae9c54013a5580f4670c7eb588d49a7e74ea3",
+          "bytes": 342082
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-installed-log.txt",
+      "sha": "76e16bcc7061aac06a131479e3b7ec7bafc91c11",
+      "k": "reader_linux_installed",
+      "sha256": "d38397c863854d2084f2d182852b8f77fc4c1cc37fbe3b0deb5cc70d70a5b0c6",
+      "bytes": 324218,
+      "pinMatches": [
+        {
+          "sha256": "d38397c863854d2084f2d182852b8f77fc4c1cc37fbe3b0deb5cc70d70a5b0c6",
+          "bytes": 324218
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-source-log.txt",
+      "sha": "79f9b6147c3ad92bb046a26e3eebe27ffb59f2a4",
+      "k": "reader_windows_source",
+      "sha256": "749f84825c2e6aca6fcf6a52fec7b7c57a8da8c80cf4f6d467b9c37ecb09385c",
+      "bytes": 299696,
+      "pinMatches": [
+        {
+          "sha256": "749f84825c2e6aca6fcf6a52fec7b7c57a8da8c80cf4f6d467b9c37ecb09385c",
+          "bytes": 299696
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-log.txt",
+      "sha": "b894a4390808201fddda4a2f7d8e2a36d891d305",
+      "k": "reader_windows_installed",
+      "sha256": "ffd14cb8aa3174acc1e5fdaff1d98e15c8d7d784a069f2481573ca3da920655d",
+      "bytes": 280146,
+      "pinMatches": [
+        {
+          "sha256": "ffd14cb8aa3174acc1e5fdaff1d98e15c8d7d784a069f2481573ca3da920655d",
+          "bytes": 280146
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/full-decoded-log.txt",
+      "sha": "19f457e231bd7a1112c9477aec72c998408d6bda",
+      "k": "components_linux",
+      "sha256": "cbef775d50436000cd85d708bf3c0ba1cb10af8646757b47ef6ecf82b1db07cc",
+      "bytes": 148720,
+      "pinMatches": [
+        {
+          "sha256": "cbef775d50436000cd85d708bf3c0ba1cb10af8646757b47ef6ecf82b1db07cc",
+          "bytes": 148720
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/full-decoded-log.txt",
+      "sha": "0a0a6fdd5d1f40674bdfc89f83b85d21b1063472",
+      "k": "components_linux",
+      "sha256": "5432547ba544a30f2bc65d759676d3a8dd75292ea41141ff4ac25bf11466897d",
+      "bytes": 229386,
+      "pinMatches": [
+        {
+          "sha256": "5432547ba544a30f2bc65d759676d3a8dd75292ea41141ff4ac25bf11466897d",
+          "bytes": 229386
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/full-decoded-log.txt",
+      "sha": "2fcc512c6a665f2e445ccedbffad5ce784767f94",
+      "k": "components_windows",
+      "sha256": "fc42785e816df2aa67d486d58178491bd77fc0b194c03fb4e4b22ee8024037c6",
+      "bytes": 128298,
+      "pinMatches": [
+        {
+          "sha256": "fc42785e816df2aa67d486d58178491bd77fc0b194c03fb4e4b22ee8024037c6",
+          "bytes": 128298
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/full-decoded-log.txt",
+      "sha": "d5b0ce3edbd16f1aff543f8dbfb6e038f8f6290c",
+      "k": "components_windows",
+      "sha256": "69733eb853c6e205a1337b42f1658c332d87543620dee648ddb532b3281b7174",
+      "bytes": 186364,
+      "pinMatches": [
+        {
+          "sha256": "69733eb853c6e205a1337b42f1658c332d87543620dee648ddb532b3281b7174",
+          "bytes": 186364
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/native/job-140902138871.log",
+      "sha": "dd4b0ec2853fb728295e444752008b02a6a29532",
+      "k": "ordinary_native",
+      "sha256": "ed744e6b123318681d8a091d116847f326f623f55bafb774ea80a88308b5e0eb",
+      "bytes": 30909,
+      "pinMatches": [
+        {
+          "sha256": "ed744e6b123318681d8a091d116847f326f623f55bafb774ea80a88308b5e0eb",
+          "bytes": 30909
+        },
+        {
+          "sha256": "ed744e6b123318681d8a091d116847f326f623f55bafb774ea80a88308b5e0eb",
+          "bytes": 30909
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/native/job-140902139051.log",
+      "sha": "3cb8db81e5fed3a4c47228b6ff3f8bc0f39fa11c",
+      "k": "ordinary_native",
+      "sha256": "9429525e8cd2fcb8cfafd0e6a21003de8ba6033a31f031d5512d534888fd8026",
+      "bytes": 34205,
+      "pinMatches": [
+        {
+          "sha256": "9429525e8cd2fcb8cfafd0e6a21003de8ba6033a31f031d5512d534888fd8026",
+          "bytes": 34205
+        },
+        {
+          "sha256": "9429525e8cd2fcb8cfafd0e6a21003de8ba6033a31f031d5512d534888fd8026",
+          "bytes": 34205
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/job-140902138813.log",
+      "sha": "cbfa7e3083e3b8ff16770c8fd57955950900a74b",
+      "k": "ordinary_bibliography",
+      "sha256": "46b147f2156f97073f141019328a0da1db7d51aecc0486ec04a9d75423ff4f45",
+      "bytes": 139859,
+      "pinMatches": [
+        {
+          "sha256": "46b147f2156f97073f141019328a0da1db7d51aecc0486ec04a9d75423ff4f45",
+          "bytes": 139859
+        },
+        {
+          "sha256": "46b147f2156f97073f141019328a0da1db7d51aecc0486ec04a9d75423ff4f45",
+          "bytes": 139859
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/canonical/job-140902138721.log",
+      "sha": "e8835f7326f62737ecf7146ee400520f01fd0db4",
+      "k": "ordinary_canonical",
+      "sha256": "8971248017cb73bb5f2e1763ecb660b659381c8cc8160924bc4ac7b3edd9fc8c",
+      "bytes": 146255,
+      "pinMatches": [
+        {
+          "sha256": "8971248017cb73bb5f2e1763ecb660b659381c8cc8160924bc4ac7b3edd9fc8c",
+          "bytes": 146255
+        },
+        {
+          "sha256": "8971248017cb73bb5f2e1763ecb660b659381c8cc8160924bc4ac7b3edd9fc8c",
+          "bytes": 146255
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/job-140902138961.log",
+      "sha": "8484e4002605e81ab1bcb18ffac465d658b15ba6",
+      "k": "ordinary_bridge",
+      "sha256": "5a5bec16d8cfe096581ff4b780d15016b47d2e22c009e160ea2bcfb6922785f2",
+      "bytes": 94174,
+      "pinMatches": [
+        {
+          "sha256": "5a5bec16d8cfe096581ff4b780d15016b47d2e22c009e160ea2bcfb6922785f2",
+          "bytes": 94174
+        },
+        {
+          "sha256": "5a5bec16d8cfe096581ff4b780d15016b47d2e22c009e160ea2bcfb6922785f2",
+          "bytes": 94174
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/job-140902139186.log",
+      "sha": "482f064871d60d6baa573985fe8f53c1d400ff35",
+      "k": "ordinary_bridge",
+      "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+      "bytes": 101633,
+      "pinMatches": [
+        {
+          "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+          "bytes": 101633
+        },
+        {
+          "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+          "bytes": 101633
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/receiving-2df-push-v3-cancelled-2026-11-28/job.log",
+      "sha": "06e3d7867a23ff7a1232fd95f892c443b644e315",
+      "k": "old_v3_cancelled",
+      "sha256": "fd365725e021d0fec7211b29cb75477c88035373f8ad782d86e2c39977c0a3f7",
+      "bytes": 354107,
+      "pinMatches": [
+        {
+          "sha256": "fd365725e021d0fec7211b29cb75477c88035373f8ad782d86e2c39977c0a3f7"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/review/receiving-2df-guarded-bundle-2026-11-28/helper-job.log",
+      "sha": "f0b480e64d8a3610967b0cbd5053821fe353cd47",
+      "k": "old_bundle_original",
+      "sha256": "ccb7064526a1632550c737cf29a94f1efba5b7d6a597ce06b10260f3e9ffb3e7",
+      "bytes": 1026583,
+      "pinMatches": [
+        {
+          "sha256": "ccb7064526a1632550c737cf29a94f1efba5b7d6a597ce06b10260f3e9ffb3e7"
+        }
+      ]
+    }
+  ],
+  "source_scope_checks": [
+    {
+      "kind": "reader_linux_source",
+      "log_blob": "70fc33e018813e96c474bf914b039cd3a3db61a7",
+      "verdicts": 21,
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [
+        {
+          "modules": 383,
+          "exact": true,
+          "digest": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869"
+        }
+      ],
+      "objects": 3
+    },
+    {
+      "kind": "reader_linux_installed",
+      "log_blob": "76e16bcc7061aac06a131479e3b7ec7bafc91c11",
+      "verdicts": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [
+        {
+          "modules": 383,
+          "exact": true,
+          "digest": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869"
+        }
+      ],
+      "objects": 3
+    },
+    {
+      "kind": "reader_windows_source",
+      "log_blob": "79f9b6147c3ad92bb046a26e3eebe27ffb59f2a4",
+      "verdicts": 21,
+      "passed": 746,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [
+        {
+          "modules": 383,
+          "exact": true,
+          "digest": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869"
+        }
+      ],
+      "objects": 4
+    },
+    {
+      "kind": "reader_windows_installed",
+      "log_blob": "b894a4390808201fddda4a2f7d8e2a36d891d305",
+      "verdicts": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [
+        {
+          "modules": 383,
+          "exact": true,
+          "digest": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869"
+        }
+      ],
+      "objects": 4
+    },
+    {
+      "kind": "components_linux",
+      "log_blob": "19f457e231bd7a1112c9477aec72c998408d6bda",
+      "verdicts": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 2
+    },
+    {
+      "kind": "components_linux",
+      "log_blob": "0a0a6fdd5d1f40674bdfc89f83b85d21b1063472",
+      "verdicts": 89,
+      "passed": 3222,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 2
+    },
+    {
+      "kind": "components_windows",
+      "log_blob": "2fcc512c6a665f2e445ccedbffad5ce784767f94",
+      "verdicts": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 7
+    },
+    {
+      "kind": "components_windows",
+      "log_blob": "d5b0ce3edbd16f1aff543f8dbfb6e038f8f6290c",
+      "verdicts": 88,
+      "passed": 3219,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 6
+    },
+    {
+      "kind": "ordinary_native",
+      "log_blob": "dd4b0ec2853fb728295e444752008b02a6a29532",
+      "verdicts": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 4
+    },
+    {
+      "kind": "ordinary_native",
+      "log_blob": "3cb8db81e5fed3a4c47228b6ff3f8bc0f39fa11c",
+      "verdicts": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 4
+    },
+    {
+      "kind": "ordinary_bibliography",
+      "log_blob": "cbfa7e3083e3b8ff16770c8fd57955950900a74b",
+      "verdicts": 29,
+      "passed": 1092,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 41
+    },
+    {
+      "kind": "ordinary_canonical",
+      "log_blob": "e8835f7326f62737ecf7146ee400520f01fd0db4",
+      "verdicts": 39,
+      "passed": 1186,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 8
+    },
+    {
+      "kind": "ordinary_bridge",
+      "log_blob": "8484e4002605e81ab1bcb18ffac465d658b15ba6",
+      "verdicts": 27,
+      "passed": 838,
+      "failed": 0,
+      "skipped": 0,
+      "failedModules": [],
+      "pythonInventories": [],
+      "objects": 0
+    },
+    {
+      "kind": "ordinary_bridge",
+      "log_blob": "482f064871d60d6baa573985fe8f53c1d400ff35",
+      "verdicts": 26,
+      "passed": 836,
+      "failed": 1,
+      "skipped": 0,
+      "failedModules": [
+        {
+          "status": "FAIL",
+          "path": "tests/transcription/test_supplied_worker_bridge.py",
+          "passed": 90,
+          "failed": 1,
+          "skipped": 0,
+          "exit": 1
+        }
+      ],
+      "pythonInventories": [],
+      "objects": 0
+    }
+  ],
+  "reader_python_identity": {
+    "modules": 383,
+    "all_four_rows_exact": true,
+    "runtime_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869"
+  },
+  "installed_text_counts": {
+    "reader_linux": 746,
+    "reader_windows": 746,
+    "component_linux": 3222,
+    "component_windows": 3219,
+    "component_subtests_each": 12
+  },
+  "earlier_root_standard_verification": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "log": {
+      "sha256": "8f420ee5cd24c255dc302894f7596d77485a2adc4a66f7e329a1981a9c4f64a8",
+      "bytes": 322733
+    },
+    "source_selectors": 11,
+    "source_passed": 353,
+    "installed_passed": 353,
+    "installed_subtests": 22,
+    "all_383_rows_match": true,
+    "all_12_native_checks_passed": true,
+    "source_installer_module_passed": 151,
+    "setup_sha256": "caa810ca906b8f6f2f86fe908e9967604e41daaed50c5dc214fd5a1e5dd6b64a",
+    "bundle_manifest_sha256": "0d591aa19ba3ad5dc9425cf9d2a6f8b443b7a9f624167c01db148f83546c7f8f",
+    "human_nvda": "NOT_RUN",
+    "signing": "NOT_RUN",
+    "qualification_transfer": false
+  },
+  "limits": [
+    "Per-module verdicts are distinguished from installed aggregate counts; repeated modes are not unique-case totals.",
+    "Raw decoded log UTF8 hashes are distinct from artifact ZIP digests and original member byte hashes.",
+    "Historical source failures remain independently recorded despite other successful executions.",
+    "No result transfers to the native ownership successor or to physical capture, NVDA, listening, private runtime authority or signing."
+  ],
+  "application_changes": false
+}

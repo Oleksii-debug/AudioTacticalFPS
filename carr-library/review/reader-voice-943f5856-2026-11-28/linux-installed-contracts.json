@@ -1,0 +1,38 @@
+{
+  "schema": "carr-observed-reader-contracts/1",
+  "head": "943f585659c55481046266338f428e4a1043a9bd",
+  "job_id": 140902142414,
+  "mode": "installed",
+  "selection": [
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_progress_voice_actions.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/speech/test_synthesis_admission.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/speech/test_progress_speech.py",
+    "tests/ui/test_operation_progress.py",
+    "tests/ui/test_progress_media_quiet.py",
+    "tests/ui/test_studio_progress_isolation.py",
+    "tests/speech/test_registered_studio_voices.py",
+    "tests/audio/test_model_voices.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/speech/test_session.py",
+    "tests/speech/test_reading_tabs.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/storage/test_reading_tabs_backup.py",
+    "tests/ui/test_save_all_access.py",
+    "tests/speech/test_source.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/storage/test_voice_preferences_backup.py"
+  ],
+  "selected_modules": 21,
+  "passed": 746,
+  "failed": 0,
+  "skipped": 0,
+  "actual_strict_marker": "INSTALLED_CASES_PASS 746",
+  "actual_pytest_summary": [
+    "746 passed in 23.16s"
+  ],
+  "per_module_counts_inferred": false
+}

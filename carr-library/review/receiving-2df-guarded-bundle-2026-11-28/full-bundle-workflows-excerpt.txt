@@ -1,0 +1,619 @@
+ERROR CONTEXT (bounded)
+LINES 444..469
+tests\operations\test_resources.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x00000210EC263150>, block = True
+timeout = 5.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+LINES 493..518
+              ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x000002109E257B10>, block = True
+timeout = 10.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+LINES 571..596
+tests\operations\test_resources.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x00000210EC263150>, block = True
+timeout = 5.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+LINES 590..615
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+---------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+    _fixup_main_from_path(data['init_main_from_path'])
+
+LINES 618..643
+    main_content = runpy.run_path(main_path,
+
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+_________ test_actual_process_contention_has_no_overlapping_admission _________
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-1/test_actual_process_contention0')
+spawn_targets = (<module 'carr_resource_process_fixture' from 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\operati...ected_package': 'D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py'})
+
+    def test_actual_process_contention_has_no_overlapping_admission(tmp_path, spawn_targets):
+        targets, expected = spawn_targets
+        broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
+        ctx = multiprocessing.get_context('spawn')
+        queue, start = ctx.Queue(), ctx.Event()
+        workers = [ctx.Process(target=targets._contend, args=(broker.root, label, queue, start),
+                               kwargs=expected) for label in ('one', 'two')]
+        for process in workers:
+            process.start()
+        try:
+            start.set()
+LINES 651..676
+              ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x000002109E257B10>, block = True
+timeout = 10.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+LINES 670..695
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+---------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+    _fixup_main_from_path(data['init_main_from_path'])
+
+LINES 698..723
+    main_content = runpy.run_path(main_path,
+
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+LINES 700..725
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+    _fixup_main_from_path(data['init_main_from_path'])
+
+LINES 728..742
+    main_content = runpy.run_path(main_path,
+
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+- generated xml file: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-results\full-bundle-workflows.xml -
+=========================== short test summary info ===========================
+FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty
+FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty
+================= 2 failed, 9312 passed in 4794.60s (1:19:54) =================
+LINES 732..742
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+- generated xml file: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-results\full-bundle-workflows.xml -
+=========================== short test summary info ===========================
+FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty
+FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty
+================= 2 failed, 9312 passed in 4794.60s (1:19:54) =================
+LINES 733..742
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+- generated xml file: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-results\full-bundle-workflows.xml -
+=========================== short test summary info ===========================
+FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty
+FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty
+================= 2 failed, 9312 passed in 4794.60s (1:19:54) =================
+LINES 734..742
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+- generated xml file: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-results\full-bundle-workflows.xml -
+=========================== short test summary info ===========================
+FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty
+FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty
+================= 2 failed, 9312 passed in 4794.60s (1:19:54) =================
+FINAL TEXT (bounded)
+...................... [ 90%]
+....................                                                     [ 90%]
+tests\audio\test_recording_monitor.py ...............................    [ 91%]
+tests\audio\test_recording_monitor_capture.py ......................     [ 91%]
+tests\speech\test_clipboard_reader.py .................................. [ 91%]
+...........                                                              [ 91%]
+tests\speech\test_reading_tabs.py .............................          [ 92%]
+tests\speech\test_reading_focus.py .......................               [ 92%]
+tests\ui\test_reader_tabs.py ....................................        [ 92%]
+tests\ui\test_reading_focus.py ...........                               [ 93%]
+tests\operations\test_resources.py ..........F
+INSTALLED_CASE_FAILURE tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping
+broker = <carr_library.operations.broker.ResourceBroker object at 0x000002109E262AD0>
+spawn_targets = (<module 'carr_resource_process_fixture' from 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\operati...ected_package': 'D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py'})
+
+    def test_actual_spawned_process_crash_releases_without_pid_reaping(broker, spawn_targets):
+        targets, expected = spawn_targets
+        ctx = multiprocessing.get_context('spawn')
+        queue, stop = ctx.Queue(), ctx.Event()
+        process = ctx.Process(target=targets._hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
+                              kwargs={'crash': True, **expected})
+        process.start()
+        try:
+>           state, identity = queue.get(timeout=5)
+                              ^^^^^^^^^^^^^^^^^^^^
+
+tests\operations\test_resources.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x00000210EC263150>, block = True
+timeout = 5.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+F
+INSTALLED_CASE_FAILURE tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-1/test_actual_process_contention0')
+spawn_targets = (<module 'carr_resource_process_fixture' from 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\operati...ected_package': 'D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py'})
+
+    def test_actual_process_contention_has_no_overlapping_admission(tmp_path, spawn_targets):
+        targets, expected = spawn_targets
+        broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
+        ctx = multiprocessing.get_context('spawn')
+        queue, start = ctx.Queue(), ctx.Event()
+        workers = [ctx.Process(target=targets._contend, args=(broker.root, label, queue, start),
+                               kwargs=expected) for label in ('one', 'two')]
+        for process in workers:
+            process.start()
+        try:
+            start.set()
+>           events = [queue.get(timeout=10) for _ in range(4)]
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\operations\test_resources.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\operations\test_resources.py:251: in <listcomp>
+    events = [queue.get(timeout=10) for _ in range(4)]
+              ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x000002109E257B10>, block = True
+timeout = 10.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+......................... [ 93%]
+.........                                                                [ 93%]
+tests\operations\test_facade.py .......................                  [ 93%]
+tests\operations\test_production_admission.py ........                   [ 93%]
+tests\operations\test_worker_start_cleanup.py ......                     [ 93%]
+tests\e2e\test_operations_cli.py ....                                    [ 93%]
+tests\e2e\test_transcription_cli.py ...                                  [ 94%]
+tests\ui\test_operations_policy.py ...............                       [ 94%]
+tests\ui\test_platform_modal_lifecycle.py .......                        [ 94%]
+tests\ui\test_transcription_dialog.py .............................      [ 94%]
+tests\transcription\test_admission_boundaries.py ..............          [ 94%]
+tests\transcription\test_protocol_fixture.py .........                   [ 94%]
+tests\transcription_windows\test_protocol_fixture_handles.py ..          [ 94%]
+tests\operations_windows\test_native_lock_release.py ..                  [ 94%]
+tests\transcription\test_restore.py .                                    [ 94%]
+tests\transcription\test_runtime_admission.py .............              [ 95%]
+tests\transcription\test_control_reads.py .............................. [ 95%]
+...                                                                      [ 95%]
+tests\transcription\test_service.py ............................         [ 95%]
+tests\assistant\test_local_planning.py ................................. [ 96%]
+.............................................................            [ 96%]
+tests\assistant\test_planning_handlers.py ................               [ 96%]
+tests\assistant\test_translation_v3.py ................................. [ 97%]
+.........................                                                [ 97%]
+tests\storage\test_atomic_state_publication.py .......                   [ 97%]
+tests\storage\test_transcription_backup.py ............................. [ 97%]
+........................................................................ [ 98%]
+..........................................                               [ 99%]
+tests\reader\test_export_reconciliation.py ....................          [ 99%]
+tests\operations\test_transcription_views.py ...                         [ 99%]
+tests\storage\test_transcription_composite_backup.py ..........          [ 99%]
+tests\transcription\test_owned_admission.py ....                         [ 99%]
+tests\transcription\test_protocol_routing.py ....................        [ 99%]
+tests\reader\test_export_change_time.py .............................    [100%]
+
+================================== FAILURES ===================================
+_______ test_actual_spawned_process_crash_releases_without_pid_reaping ________
+
+broker = <carr_library.operations.broker.ResourceBroker object at 0x000002109E262AD0>
+spawn_targets = (<module 'carr_resource_process_fixture' from 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\operati...ected_package': 'D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py'})
+
+    def test_actual_spawned_process_crash_releases_without_pid_reaping(broker, spawn_targets):
+        targets, expected = spawn_targets
+        ctx = multiprocessing.get_context('spawn')
+        queue, stop = ctx.Queue(), ctx.Event()
+        process = ctx.Process(target=targets._hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
+                              kwargs={'crash': True, **expected})
+        process.start()
+        try:
+>           state, identity = queue.get(timeout=5)
+                              ^^^^^^^^^^^^^^^^^^^^
+
+tests\operations\test_resources.py:215: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x00000210EC263150>, block = True
+timeout = 5.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+---------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+    _fixup_main_from_path(data['init_main_from_path'])
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 297, in _fixup_main_from_path
+
+    main_content = runpy.run_path(main_path,
+
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+_________ test_actual_process_contention_has_no_overlapping_admission _________
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-1/test_actual_process_contention0')
+spawn_targets = (<module 'carr_resource_process_fixture' from 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\tests\\operati...ected_package': 'D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py'})
+
+    def test_actual_process_contention_has_no_overlapping_admission(tmp_path, spawn_targets):
+        targets, expected = spawn_targets
+        broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
+        ctx = multiprocessing.get_context('spawn')
+        queue, start = ctx.Queue(), ctx.Event()
+        workers = [ctx.Process(target=targets._contend, args=(broker.root, label, queue, start),
+                               kwargs=expected) for label in ('one', 'two')]
+        for process in workers:
+            process.start()
+        try:
+            start.set()
+>           events = [queue.get(timeout=10) for _ in range(4)]
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\operations\test_resources.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\operations\test_resources.py:251: in <listcomp>
+    events = [queue.get(timeout=10) for _ in range(4)]
+              ^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <multiprocessing.queues.Queue object at 0x000002109E257B10>, block = True
+timeout = 10.0
+
+    def get(self, block=True, timeout=None):
+        if self._closed:
+            raise ValueError(f"Queue {self!r} is closed")
+        if block and timeout is None:
+            with self._rlock:
+                res = self._recv_bytes()
+            self._sem.release()
+        else:
+            if block:
+                deadline = time.monotonic() + timeout
+            if not self._rlock.acquire(block, timeout):
+                raise Empty
+            try:
+                if block:
+                    timeout = deadline - time.monotonic()
+                    if not self._poll(timeout):
+>                       raise Empty
+E                       _queue.Empty
+
+D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\queues.py:114: Empty
+---------------------------- Captured stderr call -----------------------------
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+    _fixup_main_from_path(data['init_main_from_path'])
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 297, in _fixup_main_from_path
+
+    main_content = runpy.run_path(main_path,
+
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+Traceback (most recent call last):
+
+  File "<string>", line 1, in <module>
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 122, in spawn_main
+
+    exitcode = _main(fd, parent_sentinel)
+
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 131, in _main
+
+    prepare(preparation_data)
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 246, in prepare
+
+    _fixup_main_from_path(data['init_main_from_path'])
+
+  File "D:\a\_temp\carr-bundle-ci\complete bundle\runtime\Lib\multiprocessing\spawn.py", line 297, in _fixup_main_from_path
+
+    main_content = runpy.run_path(main_path,
+
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  File "<frozen runpy>", line 290, in run_path
+
+  File "<frozen runpy>", line 254, in _get_code_from_file
+
+OSError: [Errno 22] Invalid argument: 'D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\<stdin>'
+
+- generated xml file: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library\ci-results\full-bundle-workflows.xml -
+=========================== short test summary info ===========================
+FAILED tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping - _queue.Empty
+FAILED tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission - _queue.Empty
+================= 2 failed, 9312 passed in 4794.60s (1:19:54) =================

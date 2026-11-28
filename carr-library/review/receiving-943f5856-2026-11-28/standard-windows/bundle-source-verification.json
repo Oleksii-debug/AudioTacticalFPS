@@ -1,0 +1,11 @@
+{
+  "bundle_manifest_sha256": "0d591aa19ba3ad5dc9425cf9d2a6f8b443b7a9f624167c01db148f83546c7f8f",
+  "payload_files": 493,
+  "profile": "current-core-19-windows-pins",
+  "project_name": "universal-research-library",
+  "project_version": "0.2.0.dev2",
+  "required_runtime_files": 398,
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "wheel_sha256": "a44a27b11a1203cc30088b545c7ce1a33e477cc51a69a33d3198ab3c4ac177d1"
+}

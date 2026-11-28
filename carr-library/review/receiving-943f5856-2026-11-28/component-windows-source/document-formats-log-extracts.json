@@ -1,0 +1,32 @@
+[
+  {
+    "checks": 27,
+    "input_selection": "synthetic paths supplied to actual Import Center",
+    "native_file_picker_operation": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "origins": {
+      "carr_library.extract.document_formats": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\extract\\document_formats.py",
+      "carr_library.ui.desktop_app": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+      "carr_library.ui.import_center": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\import_center.py"
+    },
+    "platform": "Windows",
+    "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+    "status": "PASS",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  {
+    "checks": 28,
+    "input_selection": "synthetic paths supplied to actual Import Center",
+    "native_file_picker_operation": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "origins": {
+      "carr_library.extract.document_formats": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\document_formats.py",
+      "carr_library.ui.desktop_app": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+      "carr_library.ui.import_center": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\import_center.py"
+    },
+    "platform": "Windows",
+    "source_override": null,
+    "status": "PASS",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  }
+]

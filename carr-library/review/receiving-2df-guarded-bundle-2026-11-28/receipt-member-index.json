@@ -1,0 +1,2143 @@
+{
+  "source": "verified bounded helper output",
+  "members": [
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "54308d638f15f775fec1d63b1c2bf9d24443490024017f1b3537605879d3a4aa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-assistant-domains.json",
+      "bytes": 6391,
+      "sha256": "ce88f34bfbbdb969dd8ef90fddd4605701b2f789db106e39f0e98e32b1671938",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-audio-metadata.json",
+      "bytes": 3885,
+      "sha256": "bef9b2219965ef756ca22e08c403df1f4394975d5bef8f2d61fd4a9b332fc430",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-audio-metadata.txt",
+      "bytes": 11241,
+      "sha256": "3cc99386ca16169e1b0a39667d4bb93f8cc06b4b112d2a9e8d9d8cf8287a9fdf",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-audio-runtime-setup.json",
+      "bytes": 2700,
+      "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-automatic-ocr.json",
+      "bytes": 2379,
+      "sha256": "b4ef8d89fa40c8bdc5627ed4b36709e5a6993947acb86f1f73a1be6e83e9eda6",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-book-audio.json",
+      "bytes": 5761,
+      "sha256": "f814df48b0438ee71452fb4f88da054efe272e75528f0b175191dad1aaa86a9c",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-book-audio.txt",
+      "bytes": 4800,
+      "sha256": "4761dd817fa082398bed6cf023adf4ada1e22fce2d52405d7eec7e2ebfff297a",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-clipboard-reader.json",
+      "bytes": 2286,
+      "sha256": "ca334ab39ac7103bca420086888d30356c67c4585243b488b09b8203de4dcda7",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-conversion-batch.json",
+      "bytes": 7780,
+      "sha256": "3bec76e66916859a85db29b61228dfd81f42b0e3d243edd0016b8b8536d1df3b",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-conversion-batch.txt",
+      "bytes": 16419,
+      "sha256": "cc0ea5b9380ab6be1f1854e7d4a6f32a0926f80c592c068431f25fbf371c4165",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-desktop.txt",
+      "bytes": 4792,
+      "sha256": "62ba8ca24e129f2456595f3c30f2de6282d4226c26eff560e90f9cb3d6c8689c",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-draft-timer.json",
+      "bytes": 1436,
+      "sha256": "007fdb4d859920cad6402d998107fd1824451c83d1b90ade62fd3292dc137efe",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-ebook-daisy.json",
+      "bytes": 6625,
+      "sha256": "181c1c1246565218c3b1d662c2cd0646d11a3ecdbaf461469b1cdba31e879f94",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-incremental-backup.json",
+      "bytes": 1905,
+      "sha256": "1a61ca2e7ca1d1ea990ff1e8fb5ca46483bdcbfc66c4215ac66152365b18bb08",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-incremental-backup.txt",
+      "bytes": 3798,
+      "sha256": "01a47e851df0a66c1b2a6d50da294e505462a9ed6477bafad21787510b8b64ff",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-platform-tools.txt",
+      "bytes": 6953,
+      "sha256": "1fb51b25a0969965a75b2698c4a4a1859330081eee67f3b72ee64c972b52a4b0",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-portable-sync.json",
+      "bytes": 5615,
+      "sha256": "48ab0e54769ba91c63156b30a92f4f12d82ce27f1e059220a2b4fee69e45ad58",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-protected-voice.json",
+      "bytes": 5502,
+      "sha256": "1b68abd7620b4cc239e4983f4c460666a0afd9218d49674d37ad06b031756146",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-appearance.json",
+      "bytes": 3997,
+      "sha256": "00f6d2813dff8e864bdc2817d0507a7b8a34ab66fe95f3ca4e521cf058a723c5",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-controls.json",
+      "bytes": 6692,
+      "sha256": "0144791fb342d952be5ec3f900cc42eb52a3f8858e4bf74105299a00f73f40aa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-keymap.json",
+      "bytes": 3491,
+      "sha256": "1f90185117282c601bd6efa2b181712642820adb203f0d09175cd6478ca3469e",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-navigation.json",
+      "bytes": 6393,
+      "sha256": "9100b42dc74b1b7628922141b01164fa534fc5243012955f0e3fe5244a987636",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-output-inventory.json",
+      "bytes": 276,
+      "sha256": "0671aea26134eee7e51b7a76834cd18a09a1908e5e6b5de28dda645e700be249",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-output.json",
+      "bytes": 3544,
+      "sha256": "8b7dd1b0b7ba2c588e819ec52c9b1afd7db74120e1cf23f122719e95b5ac1754",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-player.json",
+      "bytes": 13973,
+      "sha256": "8ef2fe708a12c92c35c69609dd0d97cbe0eb7e4d707385fa7e7453ab53df6803",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reading-preparation.json",
+      "bytes": 4780,
+      "sha256": "2be38e1f4ae861868112d55c8f6df342bf90ece36a767fa53e99f5729e174389",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reading-tabs.json",
+      "bytes": 4731,
+      "sha256": "650e0b5c6d01102fbc8c1ebaadd5dde8b72c19a61b7c069f1e1d712879c06b67",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reading-tools.json",
+      "bytes": 6379,
+      "sha256": "78ce07a7788037f47b7ee4410954a4214ba6e79f66a7495bcfaba44ffc896631",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-recording-controls.json",
+      "bytes": 4320,
+      "sha256": "de97437fc6ed4de9d87d72313ca6a766ffaaec10f9233f593eda94889648b195",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-recording-monitor.json",
+      "bytes": 1576,
+      "sha256": "7bb72db886c0fc0db2ff92878da880223b86054980aded6ff4ee2df06df1ee8a",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-save-all-recovery.json",
+      "bytes": 3766,
+      "sha256": "202b9d46030f1e5a8ef9d100b740d7f06c430668be6f31646484ccbddebd6fe5",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-scene-clip-editor.txt",
+      "bytes": 10315,
+      "sha256": "d0c01d0bf5496f1e463d5715bec1bcb68808e257f9ad2e8e7ae40ab4007537fc",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-search-pagination.json",
+      "bytes": 2954,
+      "sha256": "1394d021f94842e4e4f70116418aea04437dd7e29cdb92d750594a27f222b483",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-source-pagination.json",
+      "bytes": 3594,
+      "sha256": "c227db44f81f2b595590a5cca7b997cd573274d35c2d211a4f55c92950bf71d7",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-spelling.json",
+      "bytes": 2931,
+      "sha256": "6fd3b862ad1405ce72a6a4a2859c7de8bc028e76932895db2474a107c36abfc1",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-streamed-import.json",
+      "bytes": 4142,
+      "sha256": "e2abf293e6f25f057edf5f0eb27813a16d3fbd9758e02b96f4b7862dfe7a044a",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-translation-v3.json",
+      "bytes": 3884,
+      "sha256": "f70736e76eea294e8303f11b3b382712fcd0a42e399146fdce7b647dcfa227cc",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-voice-preferences.json",
+      "bytes": 6405,
+      "sha256": "31ccaacbbf3013a63840fc9a32cafb4530b3d1915620b4b4ef37fdcf5da0a24d",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-voice-reference.json",
+      "bytes": 3602,
+      "sha256": "c78483d88bccbb5ab332ce1bc6cfa705478b6deb9f615c15d3cd54a31fecd510",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-word-apa.json",
+      "bytes": 4408,
+      "sha256": "98f4c84767176e588ba7e2fcb0e87ba9e4884b6e40452bd4bc499cfebcaba391",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-word-chicago-notes.json",
+      "bytes": 4408,
+      "sha256": "98f4c84767176e588ba7e2fcb0e87ba9e4884b6e40452bd4bc499cfebcaba391",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "core-bundle-install.txt",
+      "bytes": 13143,
+      "sha256": "b196f63a89ebf0738865058b523b04fed22bd69ce190467c544aab43b8dab307",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "core-bundle-native.txt",
+      "bytes": 1396,
+      "sha256": "af5764988d27973199c6ffb50fcad76f5fee5ace2f5326c1f518a14f8d890571",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "core-bundle-self-test.json",
+      "bytes": 272,
+      "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "endpoint-evaluation.json",
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-academic-native.txt",
+      "bytes": 2753,
+      "sha256": "5218194c239eb69b93a9bad4b73c7ac42f0a9b004de419fe93b3c8eb5478e317",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-audio-effects.json",
+      "bytes": 656,
+      "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-audio-runtime-setup.txt",
+      "bytes": 4593,
+      "sha256": "06b83c4b3c5f895b1b31eaa5e17ec8b2fdb46c8ff0730bfc2ebd4ec0bde41efa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-audio-studio.json",
+      "bytes": 561,
+      "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-build.json",
+      "bytes": 1641,
+      "sha256": "720257d123e926913a7aec8d3ba9f92593ae9543c26abe6f411a0cfa16ae5364",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-catalog-tools.txt",
+      "bytes": 7290,
+      "sha256": "09846d6aeac2b5b22b1f9f9600654082320d516fa2746dfc4816e98c0f7b6484",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-citation-styles.txt",
+      "bytes": 62334,
+      "sha256": "bb6875852140d97cd6d94ccd4103533cb5dd8a5c9b6c9a90369d42f28865ab78",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-delivery-lifecycle.txt",
+      "bytes": 2566,
+      "sha256": "b67bc16c454b43a6a4a5e757b5c1f1110954230ee564040e2a300a432e1e5290",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-draft-timer.txt",
+      "bytes": 19544,
+      "sha256": "ec3be54ea7fd5c5da94d6f8792806973059c0193594f6586418525720a715848",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-firewall.json",
+      "bytes": 1063,
+      "sha256": "799845b8a6351aac345224bd494bccd5df8e22919449166c86387ffb2d409e59",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-native-runtime.json",
+      "bytes": 637,
+      "sha256": "367a0905a87c4b0787c1acf71dba22edc04a8306f892427654f079038b2aa05b",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-owner-voice-controls.txt",
+      "bytes": 800,
+      "sha256": "6f62a06cbae2c98b12ca9b83d0c996fb10dc655d357995707037b81ba8a3e328",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-reader-controls.txt",
+      "bytes": 12390,
+      "sha256": "e73d100ed66e2d7289ecb99cc7c24e456ef678bb011ed02c736936aca2dfea5e",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-reader-keymap.txt",
+      "bytes": 2827,
+      "sha256": "6cf4ee3a85dc16098bdf13398f22d1349b7fa2ed8e8ac24581feae0baf494367",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-save-all-recovery.txt",
+      "bytes": 6180,
+      "sha256": "2bfb2b681ffb8eaf71a106ddb0e76044c2b77a69e7a61464d1f1fabd0b887589",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-translation-source.txt",
+      "bytes": 849,
+      "sha256": "a27ad3101ce7acfbb4810ed386a1cb30f5602d1ec4fd80197d8b992e6ad8a62e",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-verified.json",
+      "bytes": 255,
+      "sha256": "6a47d87a778a80abad41571f703f60813c5a71c841dec9a6cce90d7edc714f2b",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-voice-settings.json",
+      "bytes": 279,
+      "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-workflows.txt",
+      "bytes": 49991,
+      "sha256": "b95f1aadacb6c7b80960e121ca638da3c1957ada461bebfa6cd91fa5e048f072",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "installed-reader-navigation.json",
+      "bytes": 6218,
+      "sha256": "131fc8952bc494c42ce10c7487a6140159092861e8173ddec2753051cddc2576",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "installed-scene-clip-editor.txt",
+      "bytes": 16016,
+      "sha256": "df43415e9634228e6ec3512b0a9c66cde79c7c833687dec96a80e99a3ded5280",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-audio-preview.json",
+      "bytes": 198,
+      "sha256": "790881c1bee7424cb111069bf4da18b05fd9a1442054fbad9861c4f2023f162a",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-audio-runtime-setup.json",
+      "bytes": 2700,
+      "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-audio-runtime-setup.txt",
+      "bytes": 4593,
+      "sha256": "06b83c4b3c5f895b1b31eaa5e17ec8b2fdb46c8ff0730bfc2ebd4ec0bde41efa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-delivery-lifecycle.txt",
+      "bytes": 2566,
+      "sha256": "b67bc16c454b43a6a4a5e757b5c1f1110954230ee564040e2a300a432e1e5290",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-draft-timer.json",
+      "bytes": 1398,
+      "sha256": "0517378e5a4f9a9c9014c37ff9fbb55c6bdad9c88ca5caef02f86f11bffade28",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-draft-timer.txt",
+      "bytes": 18937,
+      "sha256": "534dbc457e1ba7c011885df6b1f9b5ff2a19a1745cbc7f015233e976cfb1add9",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-owner-voice-controls.txt",
+      "bytes": 800,
+      "sha256": "6f62a06cbae2c98b12ca9b83d0c996fb10dc655d357995707037b81ba8a3e328",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-reader-controls.json",
+      "bytes": 6692,
+      "sha256": "0144791fb342d952be5ec3f900cc42eb52a3f8858e4bf74105299a00f73f40aa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-reader-controls.txt",
+      "bytes": 12390,
+      "sha256": "e73d100ed66e2d7289ecb99cc7c24e456ef678bb011ed02c736936aca2dfea5e",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-reader-keymap.json",
+      "bytes": 3377,
+      "sha256": "2a8824481da719e65947e75d4b720a1c11ae62a262e17101450a2e9e1b8907bd",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-reader-keymap.txt",
+      "bytes": 2827,
+      "sha256": "6cf4ee3a85dc16098bdf13398f22d1349b7fa2ed8e8ac24581feae0baf494367",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-sapi-speech.json",
+      "bytes": 2747,
+      "sha256": "a9caeb99392c31014159f9c7d67d44694a3c0b08e5218a4dd9a595099e78f514",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-save-all-recovery.json",
+      "bytes": 3671,
+      "sha256": "4f520bbe6b0a3954df450c0ba0fa4e8cf5056881dd055627b8b56ebc3da0e967",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-save-all-recovery.txt",
+      "bytes": 6085,
+      "sha256": "012d87c9130578b4c512fc7e357e5523c89e7a81d6635d848c97ffcf83c34ae5",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-translation-source.txt",
+      "bytes": 849,
+      "sha256": "a27ad3101ce7acfbb4810ed386a1cb30f5602d1ec4fd80197d8b992e6ad8a62e",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-command-palette.txt",
+      "bytes": 3154,
+      "sha256": "b9487d9c438476d8660d0f71f304859b4493abe500f97a65fdf9bc95e652ed18",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-daisy-schema.json",
+      "bytes": 6058,
+      "sha256": "a63758b466629ef01662c7d8a5520e7b0d909b3309a62f0c979dc7066feb4494",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-daisy-schema.txt",
+      "bytes": 6058,
+      "sha256": "a63758b466629ef01662c7d8a5520e7b0d909b3309a62f0c979dc7066feb4494",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-document-formats.json",
+      "bytes": 2400,
+      "sha256": "f2f117bfc5ff92cdbf1947595d9b06ce214866f7adb417af59e4d9110069d827",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-epub-publication.txt",
+      "bytes": 5568,
+      "sha256": "5b07a0d396eaa363514aad45136fbd87db1c95eb70481277af703b7de1e72de5",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-epubcheck.json",
+      "bytes": 3398,
+      "sha256": "034b51b4a45e4aa6796a94f6f6079fb5ec8f1a661d7fcfc6990454a1802c0056",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-epubcheck.txt",
+      "bytes": 3398,
+      "sha256": "034b51b4a45e4aa6796a94f6f6079fb5ec8f1a661d7fcfc6990454a1802c0056",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-keyboard-preferences.json",
+      "bytes": 2024,
+      "sha256": "6d3e65930582bb6e76e48c1017dd72bb0f6b1caeddb8738a9dc02dd64511f73c",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-ocr-catalogue.json",
+      "bytes": 199,
+      "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-ocr-manager.json",
+      "bytes": 12171,
+      "sha256": "578e6d2c22c7fb1e4c9b4c0cdfeab4746403da6dfe042fc58b19da2d9ae749f4",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-ocr-selection.json",
+      "bytes": 1620,
+      "sha256": "b043af184f571d405e6df63e86b1634b1a34774448fdd04f119915db0385f0e8",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-workflow-productivity.txt",
+      "bytes": 4876,
+      "sha256": "981b6d494b3e75f74d1ccc652e1bded55a0f8db40deac6d81b3774523e05e46f",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "c4b4a950d8dc0ecde21e939ff293f3666dd9ef7993dc9c3330f82a2fc1456f95",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "source-reader-navigation.json",
+      "bytes": 6288,
+      "sha256": "3cd32ab68e655bf66007a8eb09e70aa9d3c02f25da3d471f5cbe994056555b0e",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15250432687,
+      "mode": "endpoint",
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15250432687,
+      "mode": "endpoint",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "54308d638f15f775fec1d63b1c2bf9d24443490024017f1b3537605879d3a4aa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15250432687,
+      "mode": "endpoint",
+      "path": "endpoint-evaluation.json",
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "installed-recording-controls.json",
+      "bytes": 4292,
+      "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "installed-recording-controls.txt",
+      "bytes": 8033,
+      "sha256": "7993a89830b246cd5e9c87402e70310d09d4696214bb094473c18f57ab717002",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "a31f5b388341f961109dec07e84124c4fd837e4b1ee0511a23b2993bf0b4832f",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "native-recording-device.txt",
+      "bytes": 4970,
+      "sha256": "960678ae469d7759439cb9f3558e24602a4e0b256ed5c87c7a6ec81581a52faa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "native-recording-process.json",
+      "bytes": 2420,
+      "sha256": "0133d31b1b1c3b1f289a3d9c1168188d225ea32ee3359da55fad6b59fd467206",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "native-recording-process.txt",
+      "bytes": 3799,
+      "sha256": "1c0df5c82c584f61ea98027f3f372309de2be3ea253faea61fad112ae17408b6",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "c4b4a950d8dc0ecde21e939ff293f3666dd9ef7993dc9c3330f82a2fc1456f95",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "recording-access-diagnostic.txt",
+      "bytes": 10216,
+      "sha256": "c4b4a950d8dc0ecde21e939ff293f3666dd9ef7993dc9c3330f82a2fc1456f95",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "recording-device-inventory.json",
+      "bytes": 414,
+      "sha256": "37066d38e40aa0d3ef352ec849dc0fc02f67cc9674ee1ee3692d467127f8bc5c",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "recording-device-inventory.txt",
+      "bytes": 416,
+      "sha256": "f80d7aef772b8d1db2ec0b53ea5f9fd4072e2ca1dc6aaf25513109d04979ba94",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "source-recording-controls.json",
+      "bytes": 4292,
+      "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+      "encoding": "utf-8-sig"
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "source-recording-controls.txt",
+      "bytes": 8033,
+      "sha256": "7993a89830b246cd5e9c87402e70310d09d4696214bb094473c18f57ab717002",
+      "encoding": "utf-8-sig"
+    }
+  ],
+  "json_summaries": [
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "READY"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "54308d638f15f775fec1d63b1c2bf9d24443490024017f1b3537605879d3a4aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "errors": []
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-assistant-domains.json",
+      "bytes": 6391,
+      "sha256": "ce88f34bfbbdb969dd8ef90fddd4605701b2f789db106e39f0e98e32b1671938",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 23,
+        "last_checks": [
+          "native reviewed Pause and Stop retain the same stopped player",
+          "both safe native actions have durable exact dispatch acknowledgements",
+          "the reader copy and retained original remain unchanged",
+          "the nested native assistant returned to its original reader",
+          "closing the assistant withdraws only its queued player authority",
+          "the real reading-copy Save persists its unchanged recovery document",
+          "reader destruction detaches the exact desktop playback authority",
+          "the original source remains unchanged after both modal lifetimes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-audio-metadata.json",
+      "bytes": 3885,
+      "sha256": "bef9b2219965ef756ca22e08c403df1f4394975d5bef8f2d61fd4a9b332fc430",
+      "encoding": "utf-8-sig",
+      "summary": {}
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-audio-runtime-setup.json",
+      "bytes": 2700,
+      "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 35,
+        "last_checks": [
+          "cancelled verification retains exact settings bytes",
+          "cancelled verification retains the previous active owner",
+          "cancellation has a readable native result",
+          "selected FFmpeg remains the same actual executable",
+          "native key dispatch 32",
+          "closing setup keeps the frame-owned runtime active",
+          "actual fixed native version commands passed",
+          "frame close releases its audio binding"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-automatic-ocr.json",
+      "bytes": 2379,
+      "sha256": "b4ef8d89fa40c8bdc5627ed4b36709e5a6993947acb86f1f73a1be6e83e9eda6",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "errors": [],
+        "check_count": 26,
+        "last_checks": [
+          "named native automatic-language checkbox",
+          "explicit automatic option is restored into the next dialog",
+          "keyboard toggle changes the current setting",
+          "keyboard opt-in returns automatic config",
+          "opt-in preserves explicit selected model and limits",
+          "choosing OCR settings does not silently persist a preset",
+          "keyboard manual override preserves exact model choice",
+          "Escape discards an unaccepted automatic choice"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-book-audio.json",
+      "bytes": 5761,
+      "sha256": "f814df48b0438ee71452fb4f88da054efe272e75528f0b175191dad1aaa86a9c",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 72,
+        "last_checks": [
+          "batch Prepare retained ordinary Studio jobs",
+          "batch retained exactly two independently reviewed plans",
+          "real explicit native confirmation: Run reviewed book batch",
+          "ordered batch completed through the same renderer",
+          "all ordered batch items completed",
+          "saved order and literal originals remain unchanged",
+          "native Book voice work never ran on the GUI thread",
+          "borrowed voice registry survives all Book window closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-clipboard-reader.json",
+      "bytes": 2286,
+      "sha256": "ca334ab39ac7103bca420086888d30356c67c4585243b488b09b8203de4dcda7",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "completed",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "installed": true,
+        "check_count": 9,
+        "last_checks": [
+          "installing the native menu starts no reader or audio",
+          "native command retains its window owner",
+          "clipboard ownership ends before reader handoff",
+          "actual native menu dispatch uses the independent recoverable reading slot",
+          "reading leaves actual clipboard bytes unchanged",
+          "later clipboard changes do not start a watcher or another reader",
+          "empty native clipboard text cannot enter the reader",
+          "closing owner rejects native command admission"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-conversion-batch.json",
+      "bytes": 7780,
+      "sha256": "3bec76e66916859a85db29b61228dfd81f42b0e3d243edd0016b8b8536d1df3b",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "check_count": 147,
+        "last_checks": [
+          "native Space up: Convert reviewed files",
+          "actual batch has two durable completed receipts",
+          "batch output uses actual measured sample counts",
+          "batch receipt matches actual output bytes",
+          "batch output uses actual measured sample counts",
+          "batch receipt matches actual output bytes",
+          "batch keeps both selected originals unchanged",
+          "explicit native resume preserves completed output bytes and timestamps"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-draft-timer.json",
+      "bytes": 1436,
+      "sha256": "007fdb4d859920cad6402d998107fd1824451c83d1b90ade62fd3292dc137efe",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 4,
+        "last_checks": [
+          "Both actual draft timers initially target their own DesktopFrame",
+          "Child destruction preserved actual live 3000 ms timer delivery",
+          "Close and direct Destroy stopped their native draft and active progress timers",
+          "MainLoop remained usable without new ticks beyond the original timer period"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-ebook-daisy.json",
+      "bytes": 6625,
+      "sha256": "181c1c1246565218c3b1d662c2cd0646d11a3ecdbaf461469b1cdba31e879f94",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 67,
+        "last_checks": [
+          "native Space up: Where am I in recorded audio?",
+          "recorded position report keeps source timing limitations explicit",
+          "native Space down: Close recorded audio",
+          "native Space up: Close recorded audio",
+          "recorded modal returned without source or quotation mutation",
+          "recorded source and PCM stages are closed",
+          "native Space down: Close reader",
+          "native Space up: Close reader"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-incremental-backup.json",
+      "bytes": 1905,
+      "sha256": "1a61ca2e7ca1d1ea990ff1e8fb5ca46483bdcbfc66c4215ac66152365b18bb08",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 31,
+        "last_checks": [
+          "native action choices stay on UI thread",
+          "native action choices stay on UI thread",
+          "native completion returns to UI thread",
+          "real readable completion text",
+          "real completion focus",
+          "actual independent library restored",
+          "actual reader bookmark and exact missing voice retained",
+          "all heavy operations used existing background worker"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-portable-sync.json",
+      "bytes": 5615,
+      "sha256": "48ab0e54769ba91c63156b30a92f4f12d82ce27f1e059220a2b4fee69e45ad58",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "completed",
+        "check_count": 52,
+        "last_checks": [
+          "parent drops the closed modeless window",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "worker reaches actual forced-destruction boundary",
+          "forced native destruction revokes scope and callbacks",
+          "closed owner acknowledges exact worker completion",
+          "borrowed desktop executor remains usable after dialog destruction"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-protected-voice.json",
+      "bytes": 5502,
+      "sha256": "1b68abd7620b4cc239e4983f4c460666a0afd9218d49674d37ad06b031756146",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "completed",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "installed": true,
+        "check_count": 48,
+        "last_checks": [
+          "native password entry has the explicit requested field count",
+          "native password field is initially empty and masked",
+          "native password field accepts keyboard focus",
+          "native password text keys were delivered",
+          "native Return confirms the password entry",
+          "actual inspection reaches a queued-result destruction boundary",
+          "the original native owner destruction revokes GUI adoption",
+          "the completed worker cannot revive a destroyed review or retain plaintext"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-appearance.json",
+      "bytes": 3997,
+      "sha256": "00f6d2813dff8e864bdc2817d0507a7b8a34ab66fe95f3ca4e521cf058a723c5",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 65,
+        "last_checks": [
+          "all original source bytes and text remain unchanged",
+          "native focus reaches Reading copy (editable; Ctrl+S saves)",
+          "native key dispatch: Reading copy (editable; Ctrl+S saves)",
+          "native Ctrl+S retains the exact reading copy and source",
+          "native focus reaches Reading copy (editable; Ctrl+S saves)",
+          "native key dispatch: Reading copy (editable; Ctrl+S saves)",
+          "reopened reader closes using native Escape",
+          "library source survives both appearance sessions"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-controls.json",
+      "bytes": 6692,
+      "sha256": "0144791fb342d952be5ec3f900cc42eb52a3f8858e4bf74105299a00f73f40aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 108,
+        "last_checks": [
+          "OS key dispatch 32",
+          "native Save marks the reading copy saved",
+          "native Save persists the unchanged reading copy",
+          "OS key dispatch 32",
+          "close: close releases the actual device",
+          "close: native polling timer is closed",
+          "close: player is removed from shared progress",
+          "close: source PCM remains byte-identical"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-keymap.json",
+      "bytes": 3491,
+      "sha256": "1f90185117282c601bd6efa2b181712642820adb203f0d09175cd6478ca3469e",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 35,
+        "last_checks": [
+          "a reopened native Reader restores the measured source location",
+          "the reopened source has native focus",
+          "reopen preserves removal of the old default key",
+          "persisted custom key drives the reopened production dialog",
+          "reopened Reader closes through actual Escape",
+          "all original source pages remain unchanged after remap, clear, reset and reopen",
+          "host accepts native keyboard focus after Reader closes",
+          "same chord invokes the host context only after Reader closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-navigation.json",
+      "bytes": 6393,
+      "sha256": "9100b42dc74b1b7628922141b01164fa534fc5243012955f0e3fe5244a987636",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "check_count": 50,
+        "last_checks": [
+          "existing Save persists reading cursor and exact immutable source",
+          "close fixture owns an actual reader-worker request",
+          "Close cancels this request while retaining the active modal until completion",
+          "Close never begins the cancelled scoped narration",
+          "the returned modal has revoked its reader host after worker completion",
+          "reader shutdown leaves no retained playback or listening owner",
+          "scoped speech preserves exact original bytes and saved quotation records",
+          "existing shared keyboard adapters detach when the reader closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-output.json",
+      "bytes": 3544,
+      "sha256": "8b7dd1b0b7ba2c588e819ec52c9b1afd7db74120e1cf23f122719e95b5ac1754",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 47,
+        "last_checks": [
+          "a separate player retains its independent selection",
+          "actual key 32 to button",
+          "routing retains the exact original and editable text",
+          "actual key 32 to button",
+          "reader close releases the selected MCI endpoint",
+          "output controller is closed before reader destruction",
+          "reader close unregisters its player",
+          "source PCM is byte-identical after all routes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reader-player.json",
+      "bytes": 13973,
+      "sha256": "8ef2fe708a12c92c35c69609dd0d97cbe0eb7e4d707385fa7e7453ab53df6803",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 198,
+        "last_checks": [
+          "native playback Space down",
+          "native playback Space up",
+          "explicit saved review restores cursor silently",
+          "actual direct modal destruction releases its playback owner",
+          "selected original PCM remains byte-identical",
+          "native queue and direct-destruction scenario completed",
+          "native Close confirms all owned output closure",
+          "closed PCM is unchanged and releasable"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reading-preparation.json",
+      "bytes": 4780,
+      "sha256": "2be38e1f4ae861868112d55c8f6df342bf90ece36a767fa53e99f5729e174389",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "errors": [],
+        "check_count": 55,
+        "last_checks": [
+          "custom native shortcut opens preparation with no implicit options",
+          "native Save completes before reader Close",
+          "durable copy retains the exact source and accepted derivative",
+          "actual reader modal completes after its worker cleanup",
+          "reopened reader inventory completes",
+          "saved prepared copy reopens with unchanged original identity",
+          "language and flags remain explicit after reopen",
+          "all original bytes survive both complete native reader sessions"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reading-tabs.json",
+      "bytes": 4731,
+      "sha256": "650e0b5c6d01102fbc8c1ebaadd5dde8b72c19a61b7c069f1e1d712879c06b67",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 47,
+        "last_checks": [
+          "fresh reader retains source bytes, other history and passive voice identity",
+          "first tab undo after restart does not alter the second copy",
+          "recovered dirty histories save through the existing coordinator",
+          "closed reader unregistered its shared save participant",
+          "source-linked reader remains a separately guarded single editor",
+          "actual Ctrl+S completed its guarded reader save",
+          "closed reader unregistered its shared save participant",
+          "immutable original fixture bytes remain unchanged"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-reading-tools.json",
+      "bytes": 6379,
+      "sha256": "78ce07a7788037f47b7ee4410954a4214ba6e79f66a7495bcfaba44ffc896631",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 61,
+        "last_checks": [
+          "native text Undo remains available",
+          "Stop remains available after source revocation",
+          "real Ctrl+S persists the reviewed copy and exact original source",
+          "reopened reader finishes its local inventory",
+          "reopen restores saved pronunciation edits and original source identity",
+          "stored Voice reader binding survives reopen",
+          "remapped default no longer opens a competing tools dialog",
+          "original source bytes are unchanged after both real reader sessions"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-recording-controls.json",
+      "bytes": 4320,
+      "sha256": "de97437fc6ed4de9d87d72313ca6a766ffaaec10f9233f593eda94889648b195",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 65,
+        "last_checks": [
+          "Cancel is announced distinctly",
+          "native focus reaches Start recording",
+          "native key dispatch: Start recording",
+          "native focus reaches Stop and save recording",
+          "native key dispatch: Stop and save recording",
+          "native recording owner window actually destroyed",
+          "Escape closes only after active capture cleanup",
+          "closing preserves exactly the verified originals"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-recording-monitor.json",
+      "bytes": 1576,
+      "sha256": "7bb72db886c0fc0db2ff92878da880223b86054980aded6ff4ee2df06df1ee8a",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 13,
+        "last_checks": [
+          "actual native handle is bound to the chosen output",
+          "native submission and dropped-frame counters cover the actual fixture",
+          "native queued PCM remains within the four-buffer allowance",
+          "actual completed buffers were unprepared before context close",
+          "monitoring leaves the generated recording PCM unchanged",
+          "actual native monitor handle and growing-file reader are closed",
+          "completed capture bytes remain unchanged after monitor cleanup",
+          "private capture is deletable after actual resource cleanup"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-save-all-recovery.json",
+      "bytes": 3766,
+      "sha256": "202b9d46030f1e5a8ef9d100b740d7f06c430668be6f31646484ccbddebd6fe5",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-search-pagination.json",
+      "bytes": 2954,
+      "sha256": "1394d021f94842e4e4f70116418aea04437dd7e29cdb92d750594a27f222b483",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "installed": true,
+        "check_count": 18,
+        "last_checks": [
+          "paged result retains current exact quotation authority",
+          "native result control is enabled: Next search results page",
+          "changed source scope rejects continuation and preserves prior visible results",
+          "editing the query revokes both paging directions and stale hits",
+          "native result control is enabled: button",
+          "fresh query starts at page one using the same worker",
+          "original retained source bytes remain unchanged",
+          "worker controls return after all result page operations"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-source-pagination.json",
+      "bytes": 3594,
+      "sha256": "c227db44f81f2b595590a5cca7b997cd573274d35c2d211a4f55c92950bf71d7",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "installed": true,
+        "check_count": 16,
+        "last_checks": [
+          "source search executes on the existing background worker",
+          "native Next reaches only the five remaining libraries",
+          "previous page source handles are revoked",
+          "current-page quotation uses the native verified clipboard action",
+          "searching another library never replaces the active notebook",
+          "native selected-library dialog closes after its shared worker completes",
+          "every retained original remains byte-identical",
+          "main scope and worker controls are retained after both paging workflows"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-spelling.json",
+      "bytes": 2931,
+      "sha256": "6fd3b862ad1405ce72a6a4a2859c7de8bc028e76932895db2474a107c36abfc1",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "check_count": 7,
+        "last_checks": [
+          "installed inventory has no implicit language selection",
+          "native Check submits to the existing single reader worker",
+          "actual OS error spans map exactly after a non-BMP character",
+          "native Preview selects exact text without editing",
+          "native Apply changes only the reviewed reading-copy span",
+          "existing ReadingDocument undo restores the exact original copy",
+          "native Close invalidates unaccepted spelling work"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-streamed-import.json",
+      "bytes": 4142,
+      "sha256": "e2abf293e6f25f057edf5f0eb27813a16d3fbd9758e02b96f4b7862dfe7a044a",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "completed",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "installed": true,
+        "check_count": 9,
+        "last_checks": [
+          "native focus and Tab to import action",
+          "real existing frame worker and owned import child",
+          "controls disabled until settlement",
+          "captured byte allowance",
+          "canonical request and completed result",
+          "original-byte verified quotation",
+          "unchanged original",
+          "owned native close and destruction"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-translation-v3.json",
+      "bytes": 3884,
+      "sha256": "f70736e76eea294e8303f11b3b382712fcd0a42e399146fdce7b647dcfa227cc",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 54,
+        "last_checks": [
+          "foreground focus: Translate / resume",
+          "native Space down: Translate / resume",
+          "native Space up: Translate / resume",
+          "changed glossary requires fresh review without transfer",
+          "named native control: Close",
+          "foreground focus: Close",
+          "native Space down: Close",
+          "native Space up: Close"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-voice-preferences.json",
+      "bytes": 6405,
+      "sha256": "31ccaacbbf3013a63840fc9a32cafb4530b3d1915620b4b4ef37fdcf5da0a24d",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "completed",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "installed": true,
+        "check_count": 80,
+        "last_checks": [
+          "explicit native default reset makes Apply available",
+          "native control: Apply native voice options",
+          "native Space down",
+          "native Space up",
+          "native reset retains rate and volume without starting another render",
+          "native synthesis options own the current modal",
+          "direct native modal destruction cannot publish pending options",
+          "all native settings operations leave the shared worker idle"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-voice-reference.json",
+      "bytes": 3602,
+      "sha256": "c78483d88bccbb5ab332ce1bc6cfa705478b6deb9f615c15d3cd54a31fecd510",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 20,
+        "last_checks": [
+          "package contains only its data manifest, PCM and transcript",
+          "saved PCM and transcript match the reviewed exact inputs",
+          "creation did not change registration or install references",
+          "the native status clearly labels the unencrypted local result",
+          "parent receives the saved path through its actual inspect worker",
+          "parent inspection does not grant rights or languages",
+          "source stays unchanged after publication and parent inspection",
+          "the isolated synthetic owner actually ran"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-word-apa.json",
+      "bytes": 4408,
+      "sha256": "98f4c84767176e588ba7e2fcb0e87ba9e4884b6e40452bd4bc499cfebcaba391",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "direct native destruction revokes queued inspection and disposes its exact owner",
+        "check_count": 35,
+        "last_checks": [
+          "selective refresh completes without a bridge Save call",
+          "actual native button ready: Inspect open Word and references",
+          "final native fields retain IDs and locator data",
+          "native Word work leaves exact original source and quotation unchanged",
+          "existing GUI loop remains live during worker operations",
+          "actual native button ready: Close Word review",
+          "native proxies close on the existing worker after the dialog",
+          "direct native destruction revokes queued inspection and disposes its exact owner"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "bundle-word-chicago-notes.json",
+      "bytes": 4408,
+      "sha256": "98f4c84767176e588ba7e2fcb0e87ba9e4884b6e40452bd4bc499cfebcaba391",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "direct native destruction revokes queued inspection and disposes its exact owner",
+        "check_count": 35,
+        "last_checks": [
+          "selective refresh completes without a bridge Save call",
+          "actual native button ready: Inspect open Word and references",
+          "final native fields retain IDs and locator data",
+          "native Word work leaves exact original source and quotation unchanged",
+          "existing GUI loop remains live during worker operations",
+          "actual native button ready: Close Word review",
+          "native proxies close on the existing worker after the dialog",
+          "direct native destruction revokes queued inspection and disposes its exact owner"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "core-bundle-self-test.json",
+      "bytes": 272,
+      "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 9,
+        "last_checks": [
+          "scoped search",
+          "exact quotation",
+          "workspace isolation",
+          "saved research",
+          "reopen persistence",
+          "academic reading list",
+          "bibliography export",
+          "backup and restore"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "endpoint-evaluation.json",
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-audio-effects.json",
+      "bytes": 656,
+      "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 11,
+        "last_checks": [
+          "native forward keyboard traversal",
+          "ordered preset and explicit move",
+          "bypass retained",
+          "native numeric parameter dialog and return focus",
+          "asynchronous conversion and cancellable focus",
+          "real verified local FLAC output",
+          "unchanged source bytes and unsaved parent note",
+          "completed status focus"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-audio-studio.json",
+      "bytes": 561,
+      "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 10,
+        "last_checks": [
+          "Ctrl+S handler saves a revision",
+          "three native voice assignments",
+          "background speech and music production",
+          "actual chapter/subtitle/stem files",
+          "original script unchanged",
+          "native source reading copy preserves exact CRLF and treats directives as text",
+          "reviewed assistant plan executes actual selected-library search",
+          "literal quotation and retained source remain unchanged"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-build.json",
+      "bytes": 1641,
+      "sha256": "720257d123e926913a7aec8d3ba9f92593ae9543c26abe6f411a0cfa16ae5364",
+      "encoding": "utf-8-sig",
+      "summary": {}
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-firewall.json",
+      "bytes": 1063,
+      "sha256": "799845b8a6351aac345224bd494bccd5df8e22919449166c86387ffb2d409e59",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "installation, native desktop, multilingual inference and scanned-source research"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-native-runtime.json",
+      "bytes": 637,
+      "sha256": "367a0905a87c4b0787c1acf71dba22edc04a8306f892427654f079038b2aa05b",
+      "encoding": "utf-8-sig",
+      "summary": {}
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-verified.json",
+      "bytes": 255,
+      "sha256": "6a47d87a778a80abad41571f703f60813c5a71c841dec9a6cce90d7edc714f2b",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "full-bundle-voice-settings.json",
+      "bytes": 279,
+      "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 2,
+        "last_checks": [
+          "named native controls save pinned installation metadata and select the declared profile language",
+          "native reset detaches the registration without deleting external assets"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "installed-reader-navigation.json",
+      "bytes": 6218,
+      "sha256": "131fc8952bc494c42ce10c7487a6140159092861e8173ddec2753051cddc2576",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "check_count": 50,
+        "last_checks": [
+          "existing Save persists reading cursor and exact immutable source",
+          "close fixture owns an actual reader-worker request",
+          "Close cancels this request while retaining the active modal until completion",
+          "Close never begins the cancelled scoped narration",
+          "the returned modal has revoked its reader host after worker completion",
+          "reader shutdown leaves no retained playback or listening owner",
+          "scoped speech preserves exact original bytes and saved quotation records",
+          "existing shared keyboard adapters detach when the reader closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-audio-preview.json",
+      "bytes": 198,
+      "sha256": "790881c1bee7424cb111069bf4da18b05fd9a1442054fbad9861c4f2023f162a",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 7,
+        "last_checks": [
+          "open",
+          "play",
+          "pause",
+          "seek",
+          "resume",
+          "stop",
+          "close"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-audio-runtime-setup.json",
+      "bytes": 2700,
+      "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 35,
+        "last_checks": [
+          "cancelled verification retains exact settings bytes",
+          "cancelled verification retains the previous active owner",
+          "cancellation has a readable native result",
+          "selected FFmpeg remains the same actual executable",
+          "native key dispatch 32",
+          "closing setup keeps the frame-owned runtime active",
+          "actual fixed native version commands passed",
+          "frame close releases its audio binding"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-draft-timer.json",
+      "bytes": 1398,
+      "sha256": "0517378e5a4f9a9c9014c37ff9fbb55c6bdad9c88ca5caef02f86f11bffade28",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 4,
+        "last_checks": [
+          "Both actual draft timers initially target their own DesktopFrame",
+          "Child destruction preserved actual live 3000 ms timer delivery",
+          "Close and direct Destroy stopped their native draft and active progress timers",
+          "MainLoop remained usable without new ticks beyond the original timer period"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-reader-controls.json",
+      "bytes": 6692,
+      "sha256": "0144791fb342d952be5ec3f900cc42eb52a3f8858e4bf74105299a00f73f40aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 108,
+        "last_checks": [
+          "OS key dispatch 32",
+          "native Save marks the reading copy saved",
+          "native Save persists the unchanged reading copy",
+          "OS key dispatch 32",
+          "close: close releases the actual device",
+          "close: native polling timer is closed",
+          "close: player is removed from shared progress",
+          "close: source PCM remains byte-identical"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-reader-keymap.json",
+      "bytes": 3377,
+      "sha256": "2a8824481da719e65947e75d4b720a1c11ae62a262e17101450a2e9e1b8907bd",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 35,
+        "last_checks": [
+          "a reopened native Reader restores the measured source location",
+          "the reopened source has native focus",
+          "reopen preserves removal of the old default key",
+          "persisted custom key drives the reopened production dialog",
+          "reopened Reader closes through actual Escape",
+          "all original source pages remain unchanged after remap, clear, reset and reopen",
+          "host accepts native keyboard focus after Reader closes",
+          "same chord invokes the host context only after Reader closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-sapi-speech.json",
+      "bytes": 2747,
+      "sha256": "a9caeb99392c31014159f9c7d67d44694a3c0b08e5218a4dd9a595099e78f514",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "native-save-all-recovery.json",
+      "bytes": 3671,
+      "sha256": "4f520bbe6b0a3954df450c0ba0fa4e8cf5056881dd055627b8b56ebc3da0e967",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-daisy-schema.json",
+      "bytes": 6058,
+      "sha256": "a63758b466629ef01662c7d8a5520e7b0d909b3309a62f0c979dc7066feb4494",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-epubcheck.json",
+      "bytes": 3398,
+      "sha256": "034b51b4a45e4aa6796a94f6f6079fb5ec8f1a661d7fcfc6990454a1802c0056",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "offline-bundle-ocr-catalogue.json",
+      "bytes": 199,
+      "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "c4b4a950d8dc0ecde21e939ff293f3666dd9ef7993dc9c3330f82a2fc1456f95",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "DIAGNOSED",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+      }
+    },
+    {
+      "artifact": 15254290696,
+      "mode": "main",
+      "path": "source-reader-navigation.json",
+      "bytes": 6288,
+      "sha256": "3cd32ab68e655bf66007a8eb09e70aa9d3c02f25da3d471f5cbe994056555b0e",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+        "check_count": 50,
+        "last_checks": [
+          "existing Save persists reading cursor and exact immutable source",
+          "close fixture owns an actual reader-worker request",
+          "Close cancels this request while retaining the active modal until completion",
+          "Close never begins the cancelled scoped narration",
+          "the returned modal has revoked its reader host after worker completion",
+          "reader shutdown leaves no retained playback or listening owner",
+          "scoped speech preserves exact original bytes and saved quotation records",
+          "existing shared keyboard adapters detach when the reader closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15250432687,
+      "mode": "endpoint",
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "READY"
+      }
+    },
+    {
+      "artifact": 15250432687,
+      "mode": "endpoint",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "54308d638f15f775fec1d63b1c2bf9d24443490024017f1b3537605879d3a4aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "errors": []
+      }
+    },
+    {
+      "artifact": 15250432687,
+      "mode": "endpoint",
+      "path": "endpoint-evaluation.json",
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete"
+      }
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "installed-recording-controls.json",
+      "bytes": 4292,
+      "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 65,
+        "last_checks": [
+          "Cancel is announced distinctly",
+          "native focus reaches Start recording",
+          "native key dispatch: Start recording",
+          "native focus reaches Stop and save recording",
+          "native key dispatch: Stop and save recording",
+          "native recording owner window actually destroyed",
+          "Escape closes only after active capture cleanup",
+          "closing preserves exactly the verified originals"
+        ]
+      }
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "a31f5b388341f961109dec07e84124c4fd837e4b1ee0511a23b2993bf0b4832f",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "FAILED",
+        "error": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 160, in main\n    run(args, report)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 114, in run\n    future.result()\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 449, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 401, in __get_result\n    raise self._exception\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 552, in capture\n    return self._capture(device, title, options, stop_requested, checked,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 650, in _capture\n    result = run_process(command, budget=budget, cancelled=cancelled,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 568, in run_process\n    raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')\ncarr_library.audio.models.AudioError: Local audio worker failed (exit 4294967291): [in#0 @ 00000283aebd89c0] Could not find output pin from audio only capture device.\r\n[in#0 @ 00000283aebd89c0] Could not enumerate audio only devices (or none found).\r\n[in#0 @ 00000283aebd8300] Error opening input: I/O error\r\nError opening input file audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{8B11434E-F225-4CB9-B8D9-F607E783BC3D}.\r\nError opening input files: I/O error\n"
+      }
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "native-recording-process.json",
+      "bytes": 2420,
+      "sha256": "0133d31b1b1c3b1f289a3d9c1168188d225ea32ee3359da55fad6b59fd467206",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 15,
+        "last_checks": [
+          "unrelated concurrent native process remains outside capture ownership",
+          "native short-worker venv is created without acquiring dependencies",
+          "short venv worker preserves the explicitly selected environment",
+          "short venv uses the real base interpreter behind its redirector",
+          "short venv lifetime members and native streams finish before return",
+          "nested-short venv worker preserves the explicitly selected environment",
+          "nested-short venv uses the real base interpreter behind its redirector",
+          "nested-short venv lifetime members and native streams finish before return"
+        ]
+      }
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "c4b4a950d8dc0ecde21e939ff293f3666dd9ef7993dc9c3330f82a2fc1456f95",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "DIAGNOSED",
+        "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+      }
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "recording-device-inventory.json",
+      "bytes": 414,
+      "sha256": "37066d38e40aa0d3ef352ec849dc0fc02f67cc9674ee1ee3692d467127f8bc5c",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15251032508,
+      "mode": "recording",
+      "path": "source-recording-controls.json",
+      "bytes": 4292,
+      "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 65,
+        "last_checks": [
+          "Cancel is announced distinctly",
+          "native focus reaches Start recording",
+          "native key dispatch: Start recording",
+          "native focus reaches Stop and save recording",
+          "native key dispatch: Stop and save recording",
+          "native recording owner window actually destroyed",
+          "Escape closes only after active capture cleanup",
+          "closing preserves exactly the verified originals"
+        ]
+      }
+    }
+  ]
+}

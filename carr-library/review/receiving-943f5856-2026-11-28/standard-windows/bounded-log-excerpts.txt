@@ -1,0 +1,19 @@
+PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+...PASS: tests/packaging/test_native_checks.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+.PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_standard_installer.py: junit_passed=151, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_worker_bytecode.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_native_runtime.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+PASS: tests/audio/test_local_runtime_cli.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0
+PASS: tests/test_delivery_cli.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+Required suites complete: 11; passed=11; failed=0
+353 passed, 22 subtests passed in 73.43s (0:01:13)
+INSTALLED_CASES_PASS 353
+Artifact name is valid!
+SHA256 digest of uploaded artifact is 42e12aaab8ba949ee6f833a0c7da49f108d337ebd60092aa4ae72243a8690f73
+Artifact carr-standard-installation-windows-2022-943f585659c55481046266338f428e4a1043a9bd-1 successfully finalized. Artifact ID 15253706947
+Artifact carr-standard-installation-windows-2022-943f585659c55481046266338f428e4a1043a9bd-1 has been successfully uploaded! Final size is 141125 bytes. Artifact ID is 15253706947
+Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118771937/artifacts/15253706947

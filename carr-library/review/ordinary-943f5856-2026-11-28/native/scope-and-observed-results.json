@@ -1,0 +1,268 @@
+{
+  "schema": "carr-exact-head-observed-scope/1",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "workflow": {
+    "path": ".github/workflows/carr-native-launcher.yml",
+    "git_blob": "b3fb988da8ffa9312fdd09d788b25caecef825a8",
+    "sha256": "926fa16bbf2a62e8abd6b48fd4a875904cb0eb186caada104f053e53a2d49050",
+    "bytes": 5804
+  },
+  "analysis": {
+    "zig": {
+      "compiler": "zig",
+      "checks": 9,
+      "build": {
+        "schema": 1,
+        "toolchain": {
+          "version": "0.14.1",
+          "archive_sha256": "554f5378228923ffd558eac35e21af020c73789d87afeabf4bfd16f2e6feed2c",
+          "archive_bytes": 82229343,
+          "binary_sha256": "1ddf230367e07738c4a769eae66c1db7469e37bd520e81c86356453d0db2b9fd",
+          "primary_url": "https://ziglang.org/download/0.14.1/zig-x86_64-windows-0.14.1.zip"
+        },
+        "source_sha256": {
+          "launcher.c": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+          "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+          "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+          "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+          "toolchain.lock.json": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50"
+        },
+        "target": "x86_64-windows-gnu",
+        "pe": {
+          "schema": 1,
+          "file": "ResearchLibrary.exe",
+          "bytes": 15360,
+          "sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+          "machine": "x86_64",
+          "subsystem": "windows-gui",
+          "aslr": true,
+          "high_entropy_aslr": true,
+          "dep": true,
+          "timestamp": 3721080413,
+          "imports": [
+            "KERNEL32.dll",
+            "USER32.dll",
+            "SHELL32.dll"
+          ],
+          "reproducible_build_marker": true,
+          "embedded_as_invoker": true,
+          "certificate_table_present": false,
+          "authenticode_signed": false,
+          "windows_execution_verified": false,
+          "nvda_verified": false
+        },
+        "release_status": "unsigned-private-candidate"
+      },
+      "probe": {
+        "schema": 1,
+        "status": "passed",
+        "checks": [
+          "unicode-spaces-fixed-argv-offline-optional-runtimes",
+          "read-only-ready-probe",
+          "fixed-installation-check",
+          "child-exit-status-propagated",
+          "extra-arguments-rejected",
+          "incomplete-state-preserved-without-reinstall",
+          "missing-runtime-does-not-search-path",
+          "fresh-package-reuses-fixed-offline-installer",
+          "research-data-sentinel-preserved"
+        ],
+        "check_count": 9,
+        "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+        "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+        "native_launcher_execution_verified": true,
+        "actual_python_installation_verified": false,
+        "nvda_verified": false,
+        "authenticode_verified": false
+      },
+      "source_binding": [
+        {
+          "path": "carr-library/packaging/native-launcher/launcher.c",
+          "git_blob": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+          "sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+          "bytes": 12761,
+          "actual_build_source_sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/launcher_core.h",
+          "git_blob": "456ff2695b5b5749290e054d1f8031e483999374",
+          "sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+          "bytes": 2359,
+          "actual_build_source_sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/launcher.rc",
+          "git_blob": "7cf42ebb63320940ad33bda24747a292bd67ed63",
+          "sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+          "bytes": 25,
+          "actual_build_source_sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/launcher.manifest",
+          "git_blob": "cfaea634d9705ae75f23b9423350e051cce7b732",
+          "sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+          "bytes": 929,
+          "actual_build_source_sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/toolchain.lock.json",
+          "git_blob": "75e7cc434ef2a50ab3f08fd1d0ab1a5b9eaedf91",
+          "sha256": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50",
+          "bytes": 591,
+          "actual_build_source_sha256": "8b54b661859effc9a0a4447da2636dbe5b4bf68918ac5d3ec1e2c163bb79bd50",
+          "matches": true
+        }
+      ],
+      "checkout_head_verified": true,
+      "private_binary_archived": false,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false
+    },
+    "msvc": {
+      "compiler": "msvc",
+      "checks": 9,
+      "build": {
+        "source_sha256": {
+          "launcher.c": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+          "probe_pe.py": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+          "windows_child_probe.c": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+          "launcher_core.h": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+          "launcher.manifest": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+          "launcher.rc": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+          "build_msvc.ps1": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8"
+        },
+        "pe": {
+          "schema": 1,
+          "file": "ResearchLibrary.exe",
+          "bytes": 15360,
+          "sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+          "machine": "x86_64",
+          "subsystem": "windows-gui",
+          "aslr": true,
+          "high_entropy_aslr": true,
+          "dep": true,
+          "timestamp": 1677176572,
+          "imports": [
+            "KERNEL32.dll",
+            "USER32.dll",
+            "SHELL32.dll"
+          ],
+          "reproducible_build_marker": true,
+          "embedded_as_invoker": true,
+          "certificate_table_present": false,
+          "authenticode_signed": false,
+          "windows_execution_verified": false,
+          "nvda_verified": false
+        },
+        "schema": 1,
+        "release_status": "unsigned-private-candidate",
+        "toolchain": {
+          "link.exe": {
+            "version": "14.44.35230.0",
+            "sha256": "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+          },
+          "cl.exe": {
+            "version": "19.44.35230.0",
+            "sha256": "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+          },
+          "rc.exe": {
+            "version": "10.0.26100.9457 (WinBuild.160101.0800)",
+            "sha256": "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+          }
+        },
+        "target": "Windows x64 / MSVC"
+      },
+      "probe": {
+        "schema": 1,
+        "status": "passed",
+        "checks": [
+          "unicode-spaces-fixed-argv-offline-optional-runtimes",
+          "read-only-ready-probe",
+          "fixed-installation-check",
+          "child-exit-status-propagated",
+          "extra-arguments-rejected",
+          "incomplete-state-preserved-without-reinstall",
+          "missing-runtime-does-not-search-path",
+          "fresh-package-reuses-fixed-offline-installer",
+          "research-data-sentinel-preserved"
+        ],
+        "check_count": 9,
+        "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+        "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+        "native_launcher_execution_verified": true,
+        "actual_python_installation_verified": false,
+        "nvda_verified": false,
+        "authenticode_verified": false
+      },
+      "source_binding": [
+        {
+          "path": "carr-library/packaging/native-launcher/launcher.c",
+          "git_blob": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+          "sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+          "bytes": 12761,
+          "actual_build_source_sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/probe_pe.py",
+          "git_blob": "6dc2708791108b9ebf4656e3f8480945e337d10b",
+          "sha256": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+          "bytes": 4236,
+          "actual_build_source_sha256": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/windows_child_probe.c",
+          "git_blob": "0cd3039053be35eb3e9f76960eccc7557d73e46d",
+          "sha256": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+          "bytes": 2526,
+          "actual_build_source_sha256": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/launcher_core.h",
+          "git_blob": "456ff2695b5b5749290e054d1f8031e483999374",
+          "sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+          "bytes": 2359,
+          "actual_build_source_sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/launcher.manifest",
+          "git_blob": "cfaea634d9705ae75f23b9423350e051cce7b732",
+          "sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+          "bytes": 929,
+          "actual_build_source_sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/launcher.rc",
+          "git_blob": "7cf42ebb63320940ad33bda24747a292bd67ed63",
+          "sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+          "bytes": 25,
+          "actual_build_source_sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+          "matches": true
+        },
+        {
+          "path": "carr-library/packaging/native-launcher/build_msvc.ps1",
+          "git_blob": "5e4cb7103b78797fd46c1b0092b3b1c2d71b351d",
+          "sha256": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8",
+          "bytes": 3335,
+          "actual_build_source_sha256": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8",
+          "matches": true
+        }
+      ],
+      "checkout_head_verified": true,
+      "private_binary_archived": false,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false
+    }
+  }
+}

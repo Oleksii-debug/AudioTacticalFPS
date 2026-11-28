@@ -1,0 +1,148 @@
+{
+  "id": 140898401766,
+  "run_id": 46118771937,
+  "workflow_name": "Resonance standard installation verification",
+  "head_branch": "carr/standard-installation-evaluation-20261128",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46118771937",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzjL95g",
+  "head_sha": "943f585659c55481046266338f428e4a1043a9bd",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140898401766",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118771937/job/140898401766",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T06:54:44Z",
+  "started_at": "2026-11-28T07:10:21Z",
+  "completed_at": "2026-11-28T07:19:48Z",
+  "name": "Standard installation / windows-2022 / source and installed",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T07:10:22Z",
+      "completed_at": "2026-11-28T07:10:23Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T07:10:23Z",
+      "completed_at": "2026-11-28T07:10:23Z"
+    },
+    {
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T07:10:23Z",
+      "completed_at": "2026-11-28T07:10:33Z"
+    },
+    {
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T07:10:33Z",
+      "completed_at": "2026-11-28T07:10:33Z"
+    },
+    {
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T07:10:33Z",
+      "completed_at": "2026-11-28T07:11:23Z"
+    },
+    {
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T07:11:23Z",
+      "completed_at": "2026-11-28T07:11:23Z"
+    },
+    {
+      "name": "Require source standard installation and existing launcher contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T07:11:23Z",
+      "completed_at": "2026-11-28T07:12:19Z"
+    },
+    {
+      "name": "Require the same contracts from the installed wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T07:12:19Z",
+      "completed_at": "2026-11-28T07:13:33Z"
+    },
+    {
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T07:13:33Z",
+      "completed_at": "2026-11-28T07:14:08Z"
+    },
+    {
+      "name": "Build one exact current core bundle and its standard setup",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T07:14:08Z",
+      "completed_at": "2026-11-28T07:16:32Z"
+    },
+    {
+      "name": "Require actual native standard Install Repair and Uninstall",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T07:16:32Z",
+      "completed_at": "2026-11-28T07:19:42Z"
+    },
+    {
+      "name": "Preserve public text receipts and exact source evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T07:19:42Z",
+      "completed_at": "2026-11-28T07:19:43Z"
+    },
+    {
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-11-28T07:19:43Z",
+      "completed_at": "2026-11-28T07:19:43Z"
+    },
+    {
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-11-28T07:19:43Z",
+      "completed_at": "2026-11-28T07:19:45Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-11-28T07:19:45Z",
+      "completed_at": "2026-11-28T07:19:45Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140898401766",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490321,
+  "runner_name": "GitHub Actions 1000490321",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

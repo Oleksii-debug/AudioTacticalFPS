@@ -1,0 +1,932 @@
+{
+  "schema": "carr-exact-head-observed-scope/1",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "workflow": {
+    "path": ".github/workflows/carr-reconciliation-checks.yml",
+    "git_blob": "1c698acbfb85594a60c152b4db0a756b2c8cf2f3",
+    "sha256": "7b7a156d09c13f38a01c16fc9be47b42a08ef789f8f24d4832708ebd119d7e27",
+    "bytes": 13385
+  },
+  "analysis": {
+    "source": {
+      "modules": 39,
+      "passed": 1186,
+      "failed": 0,
+      "skipped": 0,
+      "verdicts": [
+        {
+          "status": "PASS",
+          "path": "tests/audio/test_playback.py",
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_evidence_drafts.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_save_all.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_evidence_draft_recovery.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/speech/test_progress_speech.py",
+          "passed": 53,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_recording_backup.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_composite_backup.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_canonical_backup_compat.py",
+          "passed": 68,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_v3_state_backup.py",
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_progress_job_review.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_save_all_access.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_save_actions.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_reader_keymap_context.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_command_palette.py",
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_keyboard_export.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_keyboard_rename.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_keyboard_settings.py",
+          "passed": 63,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/speech/test_reading.py",
+          "passed": 49,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_scope_labels.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/language_qualification/test_inventory_cleanup.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/speech/test_runtime_settings_restore.py",
+          "passed": 44,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_export_confirmation.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_export_approval_budget.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_export_destination.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_academic_actions.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/packaging/test_source_wheel.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_catalog_tools_dialog.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_academic_export_handler.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_file_export.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_binary_file_export.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_export_no_clobber.py",
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_export_publication_boundary.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/probe_catalog_insights_actions.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/reader/test_finish_export_formats.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/assistant/test_transcription_workflow.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/assistant/test_workflows.py",
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/assistant/test_workflow_access.py",
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_assistant_voice_preview.py",
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_supplied_worker_bridge.py",
+          "passed": 91,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ]
+    },
+    "installed": {
+      "modules": 39,
+      "passed": 1186,
+      "failed": 0,
+      "skipped": 0,
+      "subtests_passed": 7,
+      "summary": {
+        "status": "PASS",
+        "passed": 1186,
+        "failed": 0,
+        "skipped": 0,
+        "expected_failures": [],
+        "native_sapi": "required by existing speech case",
+        "human_nvda": "NOT_RUN"
+      },
+      "selectors": [
+        "tests/storage/test_recording_backup.py",
+        "tests/audio/test_playback.py",
+        "tests/storage/test_evidence_drafts.py",
+        "tests/ui/test_save_all.py",
+        "tests/ui/test_evidence_draft_recovery.py",
+        "tests/speech/test_progress_speech.py",
+        "tests/storage/test_canonical_backup_compat.py",
+        "tests/storage/test_composite_backup.py",
+        "tests/storage/test_v3_state_backup.py",
+        "tests/ui/test_save_all_access.py",
+        "tests/ui/test_progress_job_review.py",
+        "tests/ui/test_save_actions.py",
+        "tests/ui/test_reader_keymap_context.py",
+        "tests/ui/test_command_palette.py",
+        "tests/ui/test_keyboard_export.py",
+        "tests/ui/test_keyboard_rename.py",
+        "tests/ui/test_keyboard_settings.py",
+        "tests/speech/test_reading.py",
+        "tests/packaging/test_source_wheel.py",
+        "tests/ui/test_scope_labels.py",
+        "tests/language_qualification/test_inventory_cleanup.py",
+        "tests/speech/test_runtime_settings_restore.py",
+        "tests/ui/test_export_confirmation.py",
+        "tests/reader/test_export_approval_budget.py",
+        "tests/e2e/test_export_destination.py",
+        "tests/ui/test_academic_actions.py",
+        "tests/ui/test_academic_export_handler.py",
+        "tests/ui/test_catalog_tools_dialog.py",
+        "tests/ui/probe_catalog_insights_actions.py",
+        "tests/reader/test_file_export.py",
+        "tests/reader/test_binary_file_export.py",
+        "tests/reader/test_export_no_clobber.py",
+        "tests/reader/test_export_publication_boundary.py",
+        "tests/reader/test_finish_export_formats.py",
+        "tests/assistant/test_transcription_workflow.py",
+        "tests/transcription/test_supplied_worker_bridge.py",
+        "tests/assistant/test_workflows.py",
+        "tests/assistant/test_workflow_access.py",
+        "tests/ui/test_assistant_voice_preview.py"
+      ]
+    },
+    "installed_identity": {
+      "count": 34,
+      "method": "successful isolated installedGate imports these exact34 modules, requires purelib origin outside checkout and exact loaded/check-out byte equality before pytest",
+      "modules": [
+        {
+          "module": "carr_library.recording_backup",
+          "path": "carr-library/src/carr_library/recording_backup.py",
+          "git_blob": "ad9a1484c1331c06bb2d157c55c32eba97ce2950",
+          "sha256": "4a5681bfb157c40ea5bbac64c65bd9f550a510f4af55962d4ab2fbfcce863109"
+        },
+        {
+          "module": "carr_library.audio.playback",
+          "path": "carr-library/src/carr_library/audio/playback.py",
+          "git_blob": "3694eee4b140de38c11538bfd0871ff6e5d7bbc5",
+          "sha256": "d1cc9102d9dcce28ee88977b558632629532674dd5d6fb95da4b3ee4622665da"
+        },
+        {
+          "module": "carr_library.evidence_drafts",
+          "path": "carr-library/src/carr_library/evidence_drafts.py",
+          "git_blob": "345789646032ad8b61f2ec4a7eb601f1d6bf6b39",
+          "sha256": "0e3e7dc501ae97b69bba7092f874458f9db4d784a831723e1cc276273c61361d"
+        },
+        {
+          "module": "carr_library.ui.save_all",
+          "path": "carr-library/src/carr_library/ui/save_all.py",
+          "git_blob": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+          "sha256": "f91c479b5c595621527e2ca11b9dfb32d045fe6104cdac24e51bf5621b2b3b45"
+        },
+        {
+          "module": "carr_library.runtime_settings",
+          "path": "carr-library/src/carr_library/runtime_settings.py",
+          "git_blob": "e3e0f76791aafb36272f2c43f56ba2dc2450ee6f",
+          "sha256": "15776282bf8f1aba5d5d66bcfb0bc5a63e83ba8511e814a2f6d8f58b33f10e53"
+        },
+        {
+          "module": "carr_library.speech.runtime",
+          "path": "carr-library/src/carr_library/speech/runtime.py",
+          "git_blob": "32e04064f9a527ba75b43d242cbc9c4fe9dcb245",
+          "sha256": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd"
+        },
+        {
+          "module": "carr_library.speech.progress_speech",
+          "path": "carr-library/src/carr_library/speech/progress_speech.py",
+          "git_blob": "09f009355d77a2de3a0e071c59058a7b10db0054",
+          "sha256": "20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393"
+        },
+        {
+          "module": "carr_library.backup_compat",
+          "path": "carr-library/src/carr_library/backup_compat.py",
+          "git_blob": "ce1895c11219630cf79c7cfe49868c62dca540e9",
+          "sha256": "b8d6729976b5ffb5a9151a4032e14bbe73792a3985f7a91d920873d81b0c7f93"
+        },
+        {
+          "module": "carr_library.backup_sidecars",
+          "path": "carr-library/src/carr_library/backup_sidecars.py",
+          "git_blob": "2f8068f3b70119c86ad3be532800b36d02b5d149",
+          "sha256": "3fb229ef73f887de84a0002ea774cc9e11206403b24df0d0d4c5ff20b6641af7"
+        },
+        {
+          "module": "carr_library.library_backup",
+          "path": "carr-library/src/carr_library/library_backup.py",
+          "git_blob": "d26c07dd1ecd21cc1c67e925ba10a63c3cd457de",
+          "sha256": "fced0aece33e72c751e8cf3c421a2b312e3f356bbf2a978449ae23997da0357e"
+        },
+        {
+          "module": "carr_library.state_recovery",
+          "path": "carr-library/src/carr_library/state_recovery.py",
+          "git_blob": "42eb946ef09b2b41328a223a0494012a1ba4021e",
+          "sha256": "fcc232458c37f200e360b3ebc406e1f1cff7a0463c5bd1eaade690f1dabc8eb1"
+        },
+        {
+          "module": "carr_library.keybindings",
+          "path": "carr-library/src/carr_library/keybindings.py",
+          "git_blob": "3fed04de80e249121b4ccd2f9102b8551a2ee8f1",
+          "sha256": "deff0fe8fdc77973c025839f599049707ae0fc62f00910d8e1db47cddba28217"
+        },
+        {
+          "module": "carr_library.ui.keyboard_settings",
+          "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+          "git_blob": "6feeb6d8c56a798e07cc4065e33ee4ea7cd5c638",
+          "sha256": "351564c56e36484444c1b789da8133b0145879e0a221ebda83f270dd694b419e"
+        },
+        {
+          "module": "carr_library.ui.productivity",
+          "path": "carr-library/src/carr_library/ui/productivity.py",
+          "git_blob": "adc71444e1a054b3cafcc380b6cd89698cf5dd92",
+          "sha256": "8657d2e3da3f01ca05efd45b08215a1bc50ef49974f186d9b773210f050b4abb"
+        },
+        {
+          "module": "carr_library.ui.reading_desk",
+          "path": "carr-library/src/carr_library/ui/reading_desk.py",
+          "git_blob": "c69f892a683509fafd8abd7ec7198334fe7a87e8",
+          "sha256": "cab8326758d31094416dc29b30da88f18df40129a8f7ccb4d7fc3079926c40ce"
+        },
+        {
+          "module": "carr_library.ui.save_actions",
+          "path": "carr-library/src/carr_library/ui/save_actions.py",
+          "git_blob": "3352320228660c4edc5c206e97b653e4acf7a457",
+          "sha256": "566ba56dffd3602450384bcf45da1216c69c926e7ce3af5caef604f9fc41a747"
+        },
+        {
+          "module": "carr_library.ui.speech_dialog",
+          "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+          "git_blob": "1cb8d68b81161d9b37f90da26a9f174bd57d2261",
+          "sha256": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59"
+        },
+        {
+          "module": "carr_library.ui.studio_dialog",
+          "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+          "git_blob": "2314eacb91e0c8562c8d609faf9e97f9f6d38301",
+          "sha256": "c92254c17a6e43dd4391ce7e0db2bc2fc6c30e6344782c9d179c99692d54de4e"
+        },
+        {
+          "module": "carr_library.ui.audio_studio",
+          "path": "carr-library/src/carr_library/ui/audio_studio.py",
+          "git_blob": "6cbe125e3aecb978711740cffaa7df1d9d3c9174",
+          "sha256": "939f17d71d223a167ac7006b65c1b46d081cb82d65249efc4a5b75821453688c"
+        },
+        {
+          "module": "carr_library.speech.reading",
+          "path": "carr-library/src/carr_library/speech/reading.py",
+          "git_blob": "3ff490ed53a105c0ac71b5a3d96d6ac9bb05614c",
+          "sha256": "9214370ce4f1aeca970a3dec937e0b3cbd672949e243fca2bf78a44d94f46da2"
+        },
+        {
+          "module": "carr_library.ui.scope_bindings",
+          "path": "carr-library/src/carr_library/ui/scope_bindings.py",
+          "git_blob": "f1e270ddcf0199263d3e5d77d6f4b95ab162c765",
+          "sha256": "01d131256be5660b355f73b61d3839a199a80af1d3bc76289edff5cae82eb57e"
+        },
+        {
+          "module": "carr_library.ui.language_matrix",
+          "path": "carr-library/src/carr_library/ui/language_matrix.py",
+          "git_blob": "b92cbfb361c81159af2d60961db2c53fc90aff34",
+          "sha256": "28598fb591a5f20755176e5e7b00facba932a9e25ee2c64674bf53e2fb789006"
+        },
+        {
+          "module": "carr_library.research.export_file",
+          "path": "carr-library/src/carr_library/research/export_file.py",
+          "git_blob": "639fb6905debb5ecfeb5872b0c98a6526f320ebd",
+          "sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391"
+        },
+        {
+          "module": "carr_library.ui.export_destination",
+          "path": "carr-library/src/carr_library/ui/export_destination.py",
+          "git_blob": "91577cd914123f47802a012fade84ba8da924540",
+          "sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73"
+        },
+        {
+          "module": "carr_library.ui.academic_actions",
+          "path": "carr-library/src/carr_library/ui/academic_actions.py",
+          "git_blob": "1ff5a2a21d0274edbad2c5f04eb3def09f32e808",
+          "sha256": "f1bdcc94c52549112a909b4bc13f53235f00c292c49f0c1703a4759a049d87c9"
+        },
+        {
+          "module": "carr_library.ui.catalog_insights_actions",
+          "path": "carr-library/src/carr_library/ui/catalog_insights_actions.py",
+          "git_blob": "176c174b7e1fdda041794456b639cab25b4fab2b",
+          "sha256": "ab538c83ddf92c79357fb2b5e7ada23be0b2bb250796dffd8847647b368b912f"
+        },
+        {
+          "module": "carr_library.ui.catalog_tools_dialog",
+          "path": "carr-library/src/carr_library/ui/catalog_tools_dialog.py",
+          "git_blob": "5cf6db86f5c84ad5fab2ef68ef2d5bc105f54573",
+          "sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e"
+        },
+        {
+          "module": "carr_library.ui.desktop_app",
+          "path": "carr-library/src/carr_library/ui/desktop_app.py",
+          "git_blob": "3aed5a412b8ac3611045f75226d42b20bf1d1d1f",
+          "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+        },
+        {
+          "module": "carr_library.assistant.models",
+          "path": "carr-library/src/carr_library/assistant/models.py",
+          "git_blob": "59a9b8495fbfb35fbf419ecb2b09104b9ec304f0",
+          "sha256": "0cf3d981e6a7df9ba215bf57aca829c522fa4a62caf38d8f574965fc8cdeba57"
+        },
+        {
+          "module": "carr_library.assistant.planner",
+          "path": "carr-library/src/carr_library/assistant/planner.py",
+          "git_blob": "3ba38f45fc488a9e193fc5499d7dc347abe51730",
+          "sha256": "e282d79b4953d7d74160ed8b7e2bb13446dcea00e5cc0b42e71cd04387822319"
+        },
+        {
+          "module": "carr_library.assistant.service",
+          "path": "carr-library/src/carr_library/assistant/service.py",
+          "git_blob": "980e1ef93b001dcc2624c43a0acf2a730202990e",
+          "sha256": "6751142146254fafa1f855b9900bccc164364c9c866d4f9f9ff0aaca0b0b5d30"
+        },
+        {
+          "module": "carr_library.assistant.transcription",
+          "path": "carr-library/src/carr_library/assistant/transcription.py",
+          "git_blob": "2e23015403ef3b87518e6ffbd137e0c7417f76b1",
+          "sha256": "0448dabcfdf67f4c2ea1c2379b130cc53010c22c9e03bf8ee845a6a69438e741"
+        },
+        {
+          "module": "carr_library.transcription",
+          "path": "carr-library/src/carr_library/transcription/__init__.py",
+          "git_blob": "ef3abb5069ad8c2d84362a5e7352c91bf2f356ba",
+          "sha256": "4eeed849a4057871429135576fd964cf93bbe8eb568a3a1c6262ea6ff2f2db5f"
+        },
+        {
+          "module": "carr_library.ui.assistant_dialog",
+          "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+          "git_blob": "064be79aebc5ae89d4aafff9e4b902aa9cef64be",
+          "sha256": "d9b066b500032182e7ba045220611842fd653d6402384c17aeef9fede321d10c"
+        }
+      ],
+      "full383_inventory": "NOT_RUN_IN_THIS_GATE"
+    },
+    "native": {
+      "gates": [
+        {
+          "name": "Require native source Save All and recovery",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:18:49Z",
+          "completed_at": "2026-11-28T07:18:52Z"
+        },
+        {
+          "name": "Require native source Reader keyboard dispatch",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:18:52Z",
+          "completed_at": "2026-11-28T07:19:00Z"
+        },
+        {
+          "name": "Require native installed Save All and recovery",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:19:00Z",
+          "completed_at": "2026-11-28T07:19:01Z"
+        },
+        {
+          "name": "Require native installed Reader keyboard dispatch",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:19:01Z",
+          "completed_at": "2026-11-28T07:19:09Z"
+        },
+        {
+          "name": "Require native source asynchronous catalog exports",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:19:09Z",
+          "completed_at": "2026-11-28T07:19:11Z"
+        },
+        {
+          "name": "Require native installed asynchronous catalog exports",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:19:11Z",
+          "completed_at": "2026-11-28T07:19:13Z"
+        },
+        {
+          "name": "Require native installed asynchronous voice preview",
+          "conclusion": "success",
+          "started_at": "2026-11-28T07:19:13Z",
+          "completed_at": "2026-11-28T07:19:16Z"
+        }
+      ],
+      "stdout_reports": [
+        {
+          "audio_quality": "NOT_RUN",
+          "check_names": [
+            "native evidence asynchronously loads its authorized source",
+            "note is a named native editable text control",
+            "recovery is available as a named native button",
+            "native text event publishes its first recovery checkpoint",
+            "destroy flushes pending native edit to the actual sidecar",
+            "recovery checkpoint does not commit research note",
+            "keyboard recovery restores exact text into reopened native editor",
+            "recovery returns keyboard focus to the note",
+            "restored draft remains unsaved until explicit Save",
+            "Save note receives actual keyboard focus",
+            "native Space key activates Save note",
+            "native save commits note and removes its recovery copy",
+            "actual integrated Studio exposes Save All and cancellation",
+            "native keyboard focus reaches Save all open drafts",
+            "native Space activates Save all open drafts",
+            "Save All waits for actual note completion on its native owner",
+            "real note transaction committed before its deferred UI acknowledgement",
+            "Save All completes both actual participants",
+            "native Studio participant wrote a real validated project",
+            "newer native note is retained and overall success is withheld",
+            "newer note checkpoint matches the newly committed baseline",
+            "native keyboard focus reaches Save all open drafts",
+            "native Space activates Save all open drafts",
+            "second request reaches a committed note before the next participant",
+            "native keyboard focus reaches Cancel Save All",
+            "native Space activates Cancel Save All",
+            "actual modal Cancel signals the shared request",
+            "cancelled Save All releases its request",
+            "late cancellation preserves the committed note and unsaved next project",
+            "native keyboard focus reaches Save project",
+            "native Space activates Save project",
+            "a separate explicit native Save commits the remaining Studio draft",
+            "native keyboard focus reaches Close",
+            "native Space activates Close",
+            "closing Studio unregisters only its own Save All participant",
+            "native Studio Save All assertions completed",
+            "reader voice discovery finishes before its explicit Save All",
+            "native keyboard focus reaches Save all open drafts",
+            "native Space activates Save all open drafts",
+            "native reader participant writes actual reading recovery state",
+            "reader Save All preserves immutable original text",
+            "reader shares the same owner coordinator",
+            "native keyboard focus reaches Close",
+            "native Space activates Close",
+            "closing reader unregisters its participant and keeps the saved file",
+            "no native background or keyboard error occurred"
+          ],
+          "checks": 46,
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.evidence_drafts": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\evidence_drafts.py",
+            "carr_library.ui.audio_studio": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\audio_studio.py",
+            "carr_library.ui.desktop_evidence_panel": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_evidence_panel.py",
+            "carr_library.ui.save_actions": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\save_actions.py",
+            "carr_library.ui.speech_dialog": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\speech_dialog.py"
+          },
+          "platform": "Windows",
+          "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "audio_quality": "NOT_RUN",
+          "check_names": [
+            "recovery code is loaded from the installed package",
+            "native evidence asynchronously loads its authorized source",
+            "note is a named native editable text control",
+            "recovery is available as a named native button",
+            "native text event publishes its first recovery checkpoint",
+            "destroy flushes pending native edit to the actual sidecar",
+            "recovery checkpoint does not commit research note",
+            "keyboard recovery restores exact text into reopened native editor",
+            "recovery returns keyboard focus to the note",
+            "restored draft remains unsaved until explicit Save",
+            "Save note receives actual keyboard focus",
+            "native Space key activates Save note",
+            "native save commits note and removes its recovery copy",
+            "actual integrated Studio exposes Save All and cancellation",
+            "native keyboard focus reaches Save all open drafts",
+            "native Space activates Save all open drafts",
+            "Save All waits for actual note completion on its native owner",
+            "real note transaction committed before its deferred UI acknowledgement",
+            "Save All completes both actual participants",
+            "native Studio participant wrote a real validated project",
+            "newer native note is retained and overall success is withheld",
+            "newer note checkpoint matches the newly committed baseline",
+            "native keyboard focus reaches Save all open drafts",
+            "native Space activates Save all open drafts",
+            "second request reaches a committed note before the next participant",
+            "native keyboard focus reaches Cancel Save All",
+            "native Space activates Cancel Save All",
+            "actual modal Cancel signals the shared request",
+            "cancelled Save All releases its request",
+            "late cancellation preserves the committed note and unsaved next project",
+            "native keyboard focus reaches Save project",
+            "native Space activates Save project",
+            "a separate explicit native Save commits the remaining Studio draft",
+            "native keyboard focus reaches Close",
+            "native Space activates Close",
+            "closing Studio unregisters only its own Save All participant",
+            "native Studio Save All assertions completed",
+            "reader voice discovery finishes before its explicit Save All",
+            "native keyboard focus reaches Save all open drafts",
+            "native Space activates Save all open drafts",
+            "native reader participant writes actual reading recovery state",
+            "reader Save All preserves immutable original text",
+            "reader shares the same owner coordinator",
+            "native keyboard focus reaches Close",
+            "native Space activates Close",
+            "closing reader unregisters its participant and keeps the saved file",
+            "no native background or keyboard error occurred"
+          ],
+          "checks": 47,
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+            "carr_library.ui.audio_studio": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\audio_studio.py",
+            "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py",
+            "carr_library.ui.save_actions": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\save_actions.py",
+            "carr_library.ui.speech_dialog": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py"
+          },
+          "platform": "Windows",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "checks": 52,
+          "file_chooser_interaction": "NOT_RUN; synthetic destination supplied",
+          "module_origins": {
+            "carr_library": {
+              "checkout_sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a",
+              "matches_checkout": true,
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            },
+            "carr_library.application": {
+              "checkout_sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e",
+              "matches_checkout": true,
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\application.py",
+              "sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e"
+            },
+            "carr_library.research.export_file": {
+              "checkout_sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391",
+              "matches_checkout": true,
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\research\\export_file.py",
+              "sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391"
+            },
+            "carr_library.ui.catalog_tools_dialog": {
+              "checkout_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+              "matches_checkout": true,
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\catalog_tools_dialog.py",
+              "sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e"
+            },
+            "carr_library.ui.desktop_app": {
+              "checkout_sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10",
+              "matches_checkout": true,
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\desktop_app.py",
+              "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+            },
+            "carr_library.ui.export_destination": {
+              "checkout_sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73",
+              "matches_checkout": true,
+              "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\ui\\export_destination.py",
+              "sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73"
+            }
+          },
+          "native_platform": "Windows",
+          "nvda": "NOT_RUN",
+          "purelib": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages",
+          "result": "PASS",
+          "source_override": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library",
+          "source_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+          "sqlite": "3.45.1",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "checks": 52,
+          "file_chooser_interaction": "NOT_RUN; synthetic destination supplied",
+          "module_origins": {
+            "carr_library": {
+              "checkout_sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a",
+              "matches_checkout": true,
+              "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\__init__.py",
+              "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+            },
+            "carr_library.application": {
+              "checkout_sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e",
+              "matches_checkout": true,
+              "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\application.py",
+              "sha256": "964fe89b3ec8753d96c2ca88242f717c9b93a2652a1fd498fddeaf6ccccc006e"
+            },
+            "carr_library.research.export_file": {
+              "checkout_sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391",
+              "matches_checkout": true,
+              "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+              "sha256": "7a429a076a8718dffff140ce643891dffe8b7ff33ebb5da049b3490484f68391"
+            },
+            "carr_library.ui.catalog_tools_dialog": {
+              "checkout_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+              "matches_checkout": true,
+              "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\catalog_tools_dialog.py",
+              "sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e"
+            },
+            "carr_library.ui.desktop_app": {
+              "checkout_sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10",
+              "matches_checkout": true,
+              "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+              "sha256": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+            },
+            "carr_library.ui.export_destination": {
+              "checkout_sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73",
+              "matches_checkout": true,
+              "path": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages\\carr_library\\ui\\export_destination.py",
+              "sha256": "4121ab707eeabd9ffaad843813acd8ffe749a1af7793f52c2896ad6e31a30b73"
+            }
+          },
+          "native_platform": "Windows",
+          "nvda": "NOT_RUN",
+          "purelib": "D:\\a\\_temp\\carr-canonical-compatibility-python\\Lib\\site-packages",
+          "result": "PASS",
+          "source_override": null,
+          "source_sha256": "fe63d27824bdcd9614f64bbf0f9c6ee4d03ed6a00c57046e29b1fc5903a1785e",
+          "sqlite": "3.45.1",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "status": "PASS",
+          "count": 44,
+          "checks": [
+            "diagnostics loads from the installed wheel",
+            "native Windows wx is active",
+            "named workflow has a native Escape close binding",
+            "named workflow controls are native and accessible",
+            "native button handler: Reuse saved workflow",
+            "reuse clears old filesystem and full-backup grants",
+            "reuse alone cannot run a plan",
+            "reuse preserves the original saved job",
+            "native button handler: Preview plan",
+            "preview binds typed steps to the newly selected library",
+            "native button handler: Save named workflow",
+            "native Save creates exactly one new pending typed job",
+            "saving runs no operation and uses only the fresh scope",
+            "native button handler: Run / resume",
+            "explicit native Run executes both typed steps in the chosen library",
+            "completed reuse leaves the original job unchanged",
+            "native button handler: Close",
+            "native named workflow completed without a second job store",
+            "native button handler: Preview plan",
+            "voice inventory runs outside the native GUI thread",
+            "native preview stays cancellable before voice review finishes",
+            "the installed voice chooser contains actual local voices",
+            "native preview retains the selected actual voice ID",
+            "native voice preview starts no production or persisted job",
+            "native button handler: Close",
+            "native preview closes its owned registry once after worker completion",
+            "closed or cancelled native preview leaves no authority or output",
+            "native button handler: Preview plan",
+            "voice inventory runs outside the native GUI thread",
+            "native preview stays cancellable before voice review finishes",
+            "native button handler: Pause",
+            "native button handler: Close",
+            "native Close returns while voice inventory is still held",
+            "native preview closes its owned registry once after worker completion",
+            "closed or cancelled native preview leaves no authority or output",
+            "diagnostics is installed in the shared native command inventory",
+            "diagnostics preview is native read-only text with an accessible name",
+            "actual synthetic installation check passed without model or NVDA claims",
+            "private workspace names and paths are absent",
+            "Tab reaches the native diagnostics status",
+            "the reviewed report is exported exactly",
+            "an existing diagnostics export is preserved",
+            "native diagnostics has an Escape close binding",
+            "real diagnostics runs off the native GUI thread"
+          ],
+          "nvda": "NOT_RUN",
+          "manual_keyboard": "NOT_RUN"
+        }
+      ],
+      "report_counts_are_not_aggregated": true
+    },
+    "checkout_head_verified": true
+  }
+}

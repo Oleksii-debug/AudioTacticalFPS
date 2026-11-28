@@ -1,0 +1,20 @@
+{
+  "id": 15253129532,
+  "node_id": "MDg6QXJ0aWZhY3QxNTI1MzEyOTUzMg==",
+  "name": "carr-component-followup-ubuntu-24.04-source-943f585659c55481046266338f428e4a1043a9bd-1",
+  "size_in_bytes": 5507,
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253129532",
+  "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253129532/zip",
+  "expired": false,
+  "digest": "sha256:8ebf1c12b706d6a388429bcafcd664197f4ba8d82a007db6764c434a529fb2ae",
+  "created_at": "2026-11-28T07:23:08Z",
+  "updated_at": "2026-11-28T07:23:08Z",
+  "expires_at": "2026-12-05T07:23:07Z",
+  "workflow_run": {
+    "id": 46119982340,
+    "repository_id": 1341777614,
+    "head_repository_id": 1341777614,
+    "head_branch": "carr/component-followup-evaluation-20261127",
+    "head_sha": "943f585659c55481046266338f428e4a1043a9bd"
+  }
+}

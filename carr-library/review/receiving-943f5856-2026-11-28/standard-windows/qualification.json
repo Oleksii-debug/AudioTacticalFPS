@@ -1,0 +1,245 @@
+{
+  "schema": "carr-exact-head-standard-receiving/1",
+  "status": "PASS_FOR_WINDOWS_SOURCE_INSTALLED_AND_STANDARD_NATIVE_SCOPE",
+  "commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "run_id": 46118771937,
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/standard-installation-evaluation-20261128",
+  "job_id": 140898401766,
+  "job_name": "Standard installation / windows-2022 / source and installed",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T07:10:21Z",
+  "completed_at": "2026-11-28T07:19:48Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118771937/job/140898401766",
+  "workflow": {
+    "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1"
+  },
+  "tests": {
+    "required_selectors": [
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/packaging/test_native_checks.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/packaging/test_install_bytecode.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/packaging/test_native_runtime.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/test_delivery_cli.py"
+    ],
+    "source": {
+      "modules": 11,
+      "passed": 353,
+      "failed": 0,
+      "skipped": 0,
+      "all_pytest_exits": 0,
+      "per_module": "source-module-verdicts.json"
+    },
+    "installed": {
+      "selected_modules": 11,
+      "passed": 353,
+      "subtests_passed": 22,
+      "seconds": 73.43,
+      "junit_case_count": 353,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "strict_marker": "INSTALLED_CASES_PASS 353",
+      "per_module_counts": "Not separately emitted by the installed aggregate; no per-module installed counts are inferred."
+    },
+    "cache_regression": {
+      "selector": "tests/packaging/test_standard_installer.py",
+      "source_module_passed": 151,
+      "source_failed": 0,
+      "source_skipped": 0,
+      "existing_cases": 149,
+      "new_cases": 2,
+      "source_blob": "e5fa35570d33440dc74b110ec255a8ccba6aabf2",
+      "interpretation": "The exact module's complete source run passes all 151 cases, including both actual timestamp-pyc copy/import/forced-rewrite cases. The same unchanged module is selected in the clean installed aggregate."
+    }
+  },
+  "identity": {
+    "application_python_modules": 383,
+    "unique_paths": 383,
+    "all_source_wheel_installed_rows_match": true,
+    "all_emitted_rows_equal_2df_reference": true,
+    "reference_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "reference_evidence_tree": "12437ce701abb716d28834ea10957fe72433a022",
+    "reference_qualification_blob": "b70c0e69b4282ea6a330d7cbd17c1e3349071be2",
+    "runtime_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "row_encoding": "JSON.stringify(python_files), UTF-8 without trailing newline, emitted order",
+    "source_inventory_file": "source-wheel-installed-inventory.json",
+    "historical_execution_transfer": false,
+    "independent_git_namespace_comparison": {
+      "source_modules": 383,
+      "unchanged_reference_git_blobs": 383,
+      "mismatches": 0
+    }
+  },
+  "environment": {
+    "platform": "windows-2022",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "executable": "D:\\a\\_temp\\carr-standard-installation-python\\Scripts\\python.exe",
+    "prefix": "D:\\a\\_temp\\carr-standard-installation-python",
+    "installed_package": "D:\\a\\_temp\\carr-standard-installation-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "dependency_selection": {
+      "build_support": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "zstandard": "0.25.0"
+      },
+      "effective_requirements_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "excluded": [],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "comtypes": "1.5.0",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4"
+      },
+      "platform": "win32",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": true
+    },
+    "installed_gate": "Exact existing ci_check.PYTEST_CHILD offline/XFAIL/XPASS policy under -I -B with empty pytest pythonpath; independent strict JUnit refusal for failures, errors and skips."
+  },
+  "wheel": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "wheel_sha256": "a44a27b11a1203cc30088b545c7ce1a33e477cc51a69a33d3198ab3c4ac177d1"
+  },
+  "native": {
+    "actual_standard_lifecycle_checks": 12,
+    "checks": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "result": {
+      "schema": 1,
+      "status": "PASS",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "setup_sha256": "caa810ca906b8f6f2f86fe908e9967604e41daaed50c5dc214fd5a1e5dd6b64a",
+      "bundle_manifest_sha256": "0d591aa19ba3ad5dc9425cf9d2a6f8b443b7a9f624167c01db148f83546c7f8f",
+      "actual_inno_install": true,
+      "actual_offline_runtime_bootstrap": true,
+      "per_user_start_menu": true,
+      "per_user_repair_uninstall_registration": true,
+      "fresh_shortcut_collision_refused": true,
+      "uninstaller_wrapper_removed": true,
+      "native_launcher_prelaunch_lease": true,
+      "live_job_preserved": true,
+      "repair_retains_modified_and_foreign_files": true,
+      "actual_repair": true,
+      "actual_uninstall": true,
+      "populated_library_bytes_preserved": true,
+      "authenticode_verified": false,
+      "nvda_verified": false,
+      "unprivileged_account_qualification": "NOT_RUN",
+      "native_network_trace": "NOT_RUN",
+      "release_status": "unsigned-private-candidate"
+    },
+    "strict_verdict": {
+      "bundle_manifest_sha256": "0d591aa19ba3ad5dc9425cf9d2a6f8b443b7a9f624167c01db148f83546c7f8f",
+      "native_standard_assertions": [
+        "actual_inno_install",
+        "actual_offline_runtime_bootstrap",
+        "per_user_start_menu",
+        "per_user_repair_uninstall_registration",
+        "fresh_shortcut_collision_refused",
+        "uninstaller_wrapper_removed",
+        "native_launcher_prelaunch_lease",
+        "live_job_preserved",
+        "repair_retains_modified_and_foreign_files",
+        "actual_repair",
+        "actual_uninstall",
+        "populated_library_bytes_preserved"
+      ],
+      "release_status": "unsigned-private-candidate",
+      "setup_sha256": "caa810ca906b8f6f2f86fe908e9967604e41daaed50c5dc214fd5a1e5dd6b64a",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "status": "PASS"
+    },
+    "scope": "Actual unsigned private Windows Inno Install/Repair/Uninstall and retained per-user state/lease checks. Core runtime bundle; the full MAIN media/OCR/model gate remains independent."
+  },
+  "artifact": {
+    "id": 15253706947,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI1MzcwNjk0Nw==",
+    "name": "carr-standard-installation-windows-2022-943f585659c55481046266338f428e4a1043a9bd-1",
+    "size_in_bytes": 141125,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253706947",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253706947/zip",
+    "expired": false,
+    "digest": "sha256:42e12aaab8ba949ee6f833a0c7da49f108d337ebd60092aa4ae72243a8690f73",
+    "created_at": "2026-11-28T07:19:43Z",
+    "updated_at": "2026-11-28T07:19:43Z",
+    "expires_at": "2026-12-05T07:19:42Z",
+    "workflow_run": {
+      "id": 46118771937,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "943f585659c55481046266338f428e4a1043a9bd"
+    }
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "decoded_utf8_bytes": 322733,
+    "decoded_utf8_sha256": "8f420ee5cd24c255dc302894f7596d77485a2adc4a66f7e329a1981a9c4f64a8",
+    "log_type": "Complete terminal GitHub connector-decoded text; original decoded BOM, timestamps and line endings retained.",
+    "metadata": "Completed job metadata was verified before fetching its terminal log. Exact head/attempt/branch are retained.",
+    "derived_json": "Serialized decoded-log extracts only. The setup JSON begins after the literal 'Preprocessing' prefix in the compiler console. No original artifact-member bytes are claimed.",
+    "artifact_zip_downloaded": false,
+    "original_junit_bytes_claimed": false,
+    "counts": "Source ci_check per-module verdicts and actual installed pytest/strict-JUnit log output."
+  },
+  "scope_limits": [
+    "This qualification belongs to exact943 Windows source/installed/native Standard trial. Identical application bytes do not transfer any 2df execution result.",
+    "Core standard installation is separate from full MAIN media/model/OCR gates.",
+    "Authenticode, human NVDA, unprivileged-account qualification and native network trace remain unqualified as explicitly reported; no physical recording, audible listening, model inference or rights qualification."
+  ],
+  "source_changes_by_receiver": false,
+  "ref_changes_by_receiver": false,
+  "private_setup": {
+    "setup_bytes": 82432883,
+    "setup_sha256": "caa810ca906b8f6f2f86fe908e9967604e41daaed50c5dc214fd5a1e5dd6b64a",
+    "bundle_manifest_sha256": "0d591aa19ba3ad5dc9425cf9d2a6f8b443b7a9f624167c01db148f83546c7f8f",
+    "build_receipt": "setup-build-log-extract.json",
+    "profile": "current-core-19-windows-pins",
+    "release_status": "unsigned-private-candidate"
+  }
+}

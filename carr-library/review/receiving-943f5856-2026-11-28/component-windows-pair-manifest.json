@@ -1,0 +1,127 @@
+{
+  "schema": "carr-evidence-file-manifest/1",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "run_id": 46119982340,
+  "jobs": [
+    140902150283,
+    140902150024
+  ],
+  "status": "BOTH_WINDOWS_COMPONENT_MODES_TERMINAL_SUCCESS",
+  "files": [
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/document-formats-log-extracts.json",
+      "sha": "e0fcd5569d0e74e9ce43f7564fd9da5995935159",
+      "bytes": 1583,
+      "sha256": "559e90697aec2d17b0fa79a388f31267e7c8823d536a24c1b747c9203576eb8e"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/qualification.json",
+      "sha": "30b38cddab35267539bc3aea0c1d657da017057d",
+      "bytes": 9130,
+      "sha256": "de257152932238872dba30bd16d061e86948c3c2a7a325be748d26dc7e117471"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/full-decoded-log.txt",
+      "sha": "d5b0ce3edbd16f1aff543f8dbfb6e038f8f6290c",
+      "bytes": 186364,
+      "sha256": "69733eb853c6e205a1337b42f1658c332d87543620dee648ddb532b3281b7174"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/terminal-job.json",
+      "sha": "5f4e83b4b72f28881e41db0daf628220d1f2c8bd",
+      "bytes": 6251,
+      "sha256": "1e9374495df0c8648fb8d1970627c3740dc22e8cd3fb9133aa7beadd5469d995"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/artifact-metadata.json",
+      "sha": "a5d15574301121bf1d3e5f41c7712fa0784e6014",
+      "bytes": 894,
+      "sha256": "30b29e9ea469884f8772a0633a2640ca7118c48a395e0525f0ee21abd0f9c8ea"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/source-installed-inventory-log-extract.json",
+      "sha": "0477eb0ae4df88dbd1c2ebdab04a89c3c12d01f8",
+      "bytes": 251,
+      "sha256": "9b4d228ebed0cd15bf49eb97d770ba7efe373a10b8600d45beb3b4a15f0a4c27"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/module-verdicts.json",
+      "sha": "7a08cd1557ff29d513535c9da1a528c068f7a1a6",
+      "bytes": 12091,
+      "sha256": "798e65d189ff5408fecf27fa1db3db10059bffbf9afa9d99d42bf95434b05d05"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/bounded-log-excerpts.txt",
+      "sha": "b1bc0b99602c66ef8ba82b675b033e9b1844737c",
+      "bytes": 8815,
+      "sha256": "edd24e649eff1a0ba1b1c91b87208ecab72116f22e895f00ef680c1fad80d7cd"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/native-clip-log-extract.json",
+      "sha": "520a308c55e16d9ab7d69c7ad9f703fc76cddf54",
+      "bytes": 5848,
+      "sha256": "151fe3ab37a8fe39d6bc5d84482ddeafca47a5c947e80248d60373db6b85b434"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/native-studio-log-extract.json",
+      "sha": "7d180b4edf05272c56270261f61ead90c3dda750",
+      "bytes": 4781,
+      "sha256": "34de7b4aab139ec52be7499fe6263386e35428a27ca3da0a771c883bd5ce71a6"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/venv-deadline-identity-log-extract.json",
+      "sha": "9ed9d0eea9354f69389fde38b6def6e8d8e7e93f",
+      "bytes": 495,
+      "sha256": "35fda704c08241e2a40630e48e68d55119eb26c4d65ef90735e5404c8a867c43"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/qualification.json",
+      "sha": "faa291ea8d36e65244ace69b6ad01cac4ef769af",
+      "bytes": 10692,
+      "sha256": "78ec9dbe0437696568300b10f9ddb1ee7602cd14262bf84a1f524a697f6afc12"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/full-decoded-log.txt",
+      "sha": "2fcc512c6a665f2e445ccedbffad5ce784767f94",
+      "bytes": 128298,
+      "sha256": "fc42785e816df2aa67d486d58178491bd77fc0b194c03fb4e4b22ee8024037c6"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/terminal-job.json",
+      "sha": "51cee06c2955457b58f10a883667afb495941c43",
+      "bytes": 6254,
+      "sha256": "3e6fe7e26ee25710e025c6df785fea78274792ae0f0dfd2bbac196983a809395"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/artifact-metadata.json",
+      "sha": "1f8342fc9562c0dbd79ca9e7ee624476674c4cd5",
+      "bytes": 898,
+      "sha256": "8f4455a348950ac01df86b8093175afe509d27e337f7ff360f0133dc64093c2f"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/source-installed-inventory-log-extract.json",
+      "sha": "0477eb0ae4df88dbd1c2ebdab04a89c3c12d01f8",
+      "bytes": 251,
+      "sha256": "9b4d228ebed0cd15bf49eb97d770ba7efe373a10b8600d45beb3b4a15f0a4c27"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/module-verdicts.json",
+      "sha": "c8b5c52d8cff7e4dbc910e62a2b721d9343e6943",
+      "bytes": 203,
+      "sha256": "061692764f9130fb878fc2f6ac44b631a4247bd9958432db6d376adbd4ccab81"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/bounded-log-excerpts.txt",
+      "sha": "ab623eed6ef83f9a79118ef2b39bb594663f2209",
+      "bytes": 230,
+      "sha256": "8f212f4b3e58b6c0f388826ceba537e77487e472e1741679f6819c4215b2a42e"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/component-four-mode-summary.json",
+      "sha": "aed0ef7798ed41a21a703a72958ff33f7d52209a",
+      "bytes": 3732,
+      "sha256": "ffd08e6014de65841d59e978dbf78297b915493869ab53d5d0f553aa5461f1ce"
+    }
+  ],
+  "provenance": "Full connector-decoded terminal logs plus labeled serialized derivatives; no artifact archive/member bytes downloaded. Every listed blob was read back exactly."
+}

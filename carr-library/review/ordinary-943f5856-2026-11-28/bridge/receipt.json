@@ -1,0 +1,620 @@
+{
+  "schema": "carr-scoped-terminal-receiving/1",
+  "scope": "bridge",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "run_id": 46119978409,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119978409",
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_conclusion": "failure",
+  "workflow": {
+    "path": ".github/workflows/carr-transcription-bridge.yml",
+    "git_blob": "847b1e36301a5f3185555d727a27bc20363ae23e",
+    "sha256": "723e0f6172c423338782cc679ef206a18c9199b42aa0602fe2d43857055513bd",
+    "bytes": 4286
+  },
+  "jobs": [
+    {
+      "id": 140902138961,
+      "name": "protocol (ubuntu-24.04)",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119978409/job/140902138961",
+      "conclusion": "success",
+      "started_at": "2026-11-28T07:15:21Z",
+      "completed_at": "2026-11-28T07:17:10Z",
+      "log": {
+        "sha256": "5a5bec16d8cfe096581ff4b780d15016b47d2e22c009e160ea2bcfb6922785f2",
+        "bytes": 94174
+      }
+    },
+    {
+      "id": 140902139186,
+      "name": "protocol (windows-2022)",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119978409/job/140902139186",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T07:19:50Z",
+      "completed_at": "2026-11-28T07:35:52Z",
+      "log": {
+        "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+        "bytes": 101633
+      }
+    }
+  ],
+  "artifacts": [],
+  "observations": {
+    "linux": {
+      "modules": 27,
+      "passed": 838,
+      "failed": 0,
+      "skipped": 0,
+      "selectors": [
+        "tests/assistant/test_transcription_workflow.py",
+        "tests/transcription/test_supplied_worker_bridge.py",
+        "tests/storage/test_transcription_recovery.py",
+        "tests/storage/test_import_publication_backup.py",
+        "tests/ui/test_progress_job_review.py",
+        "tests/transcription/test_protocol_routing.py",
+        "tests/transcription/test_owned_admission.py",
+        "tests/transcription/test_protocol_fixture.py",
+        "tests/transcription/test_runtime_admission.py",
+        "tests/transcription/test_runtime_inventory.py",
+        "tests/storage/test_asr_additional_profile.py",
+        "tests/storage/test_state_json_reader.py",
+        "tests/transcription/test_control_reads.py",
+        "tests/transcription/test_service.py",
+        "tests/transcription/test_admission_boundaries.py",
+        "tests/transcription/test_restore.py",
+        "tests/e2e/test_transcription_cli.py",
+        "tests/storage/test_transcription_backup.py",
+        "tests/storage/test_transcription_composite_backup.py",
+        "tests/operations/test_resources.py",
+        "tests/operations/test_facade.py",
+        "tests/operations/test_transcription_views.py",
+        "tests/e2e/test_operations_cli.py",
+        "tests/storage/test_atomic_state_publication.py",
+        "tests/audio/test_audio_process.py",
+        "tests/audio/test_process_deadline.py",
+        "tests/operations_posix/test_fork_ownership.py"
+      ],
+      "verdicts": [
+        {
+          "status": "PASS",
+          "path": "tests/assistant/test_transcription_workflow.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_supplied_worker_bridge.py",
+          "passed": 91,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_recovery.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_import_publication_backup.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_progress_job_review.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_protocol_routing.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_owned_admission.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_protocol_fixture.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_runtime_admission.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_runtime_inventory.py",
+          "passed": 172,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_asr_additional_profile.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_state_json_reader.py",
+          "passed": 63,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_control_reads.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_service.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_admission_boundaries.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_restore.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_transcription_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_backup.py",
+          "passed": 143,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_composite_backup.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations/test_resources.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations/test_facade.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations/test_transcription_views.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_operations_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_atomic_state_publication.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/audio/test_audio_process.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/audio/test_process_deadline.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations_posix/test_fork_ownership.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ],
+      "execution": "source package contracts through unchanged ci_check.py",
+      "full_installed_inventory": "NOT_RUN_IN_THIS_GATE",
+      "explicitly_not_selected": [
+        "tests/audio/test_recording_windows_process.py",
+        "tests/audio_windows/test_membership_fence.py"
+      ],
+      "native_windows_followup": "NOT_APPLICABLE",
+      "checkout_head_verified": true
+    },
+    "windows": {
+      "modules": 26,
+      "passed": 836,
+      "failed": 1,
+      "skipped": 0,
+      "selectors": [
+        "tests/assistant/test_transcription_workflow.py",
+        "tests/transcription/test_supplied_worker_bridge.py",
+        "tests/storage/test_transcription_recovery.py",
+        "tests/storage/test_import_publication_backup.py",
+        "tests/ui/test_progress_job_review.py",
+        "tests/transcription/test_protocol_routing.py",
+        "tests/transcription/test_owned_admission.py",
+        "tests/transcription/test_protocol_fixture.py",
+        "tests/transcription/test_runtime_admission.py",
+        "tests/transcription/test_runtime_inventory.py",
+        "tests/storage/test_asr_additional_profile.py",
+        "tests/storage/test_state_json_reader.py",
+        "tests/transcription/test_control_reads.py",
+        "tests/transcription/test_service.py",
+        "tests/transcription/test_admission_boundaries.py",
+        "tests/transcription/test_restore.py",
+        "tests/e2e/test_transcription_cli.py",
+        "tests/storage/test_transcription_backup.py",
+        "tests/storage/test_transcription_composite_backup.py",
+        "tests/operations/test_resources.py",
+        "tests/operations/test_facade.py",
+        "tests/operations/test_transcription_views.py",
+        "tests/e2e/test_operations_cli.py",
+        "tests/storage/test_atomic_state_publication.py",
+        "tests/audio/test_audio_process.py",
+        "tests/audio/test_process_deadline.py"
+      ],
+      "verdicts": [
+        {
+          "status": "PASS",
+          "path": "tests/assistant/test_transcription_workflow.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "FAIL",
+          "path": "tests/transcription/test_supplied_worker_bridge.py",
+          "passed": 90,
+          "failed": 1,
+          "skipped": 0,
+          "pytest_exit": 1
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_recovery.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_import_publication_backup.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/ui/test_progress_job_review.py",
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_protocol_routing.py",
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_owned_admission.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_protocol_fixture.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_runtime_admission.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_runtime_inventory.py",
+          "passed": 172,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_asr_additional_profile.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_state_json_reader.py",
+          "passed": 63,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_control_reads.py",
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_service.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_admission_boundaries.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/transcription/test_restore.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_transcription_cli.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_backup.py",
+          "passed": 143,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_transcription_composite_backup.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations/test_resources.py",
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations/test_facade.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/operations/test_transcription_views.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/e2e/test_operations_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/storage/test_atomic_state_publication.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/audio/test_audio_process.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "status": "PASS",
+          "path": "tests/audio/test_process_deadline.py",
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ],
+      "execution": "source package contracts through unchanged ci_check.py",
+      "full_installed_inventory": "NOT_RUN_IN_THIS_GATE",
+      "explicitly_not_selected": [
+        "tests/audio/test_recording_windows_process.py",
+        "tests/audio_windows/test_membership_fence.py"
+      ],
+      "native_windows_followup": "NOT_RUN: skipped after source-suite failure",
+      "checkout_head_verified": true
+    }
+  },
+  "boundaries": {
+    "full383_installed_inventory": "NOT_CLAIMED_BY_THIS_GATE; only the explicitly recorded identity checks above",
+    "private_executable_archive": "NOT_RETAINED",
+    "manual_nvda": "NOT_RUN",
+    "private_model_inference": "NOT_RUN",
+    "human_audio_quality": "NOT_RUN",
+    "historical_or_successor_pass_transfer": false
+  },
+  "files": [
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/run.json",
+      "git_blob": "30ff8c757bb66a8055923a758cf2844d50507ff1",
+      "sha256": "68e06ee5a788267cc3d7d5a4a9fc19c835ddc889f3c44718fe65f4b5c064a6e3",
+      "bytes": 13574
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/jobs.json",
+      "git_blob": "9f8751a59dcf86bf68a274fde528458132703b85",
+      "sha256": "72acc9caa93da4d724008c892310718ce17ec11bbbd625e0302e4a5df7b1bebd",
+      "bytes": 6630
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/artifacts.json",
+      "git_blob": "ccd036f15290ec2e42695f742d9edf63354be932",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/scope-and-observed-results.json",
+      "git_blob": "d4d3b24718af2e16921dc392c9ca25256f683531",
+      "sha256": "45c7afe449bb5fd9cc429a29b8f75b63e0cae6676f6bd388fb62f0b874645be3",
+      "bytes": 15504
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/job-140902138961.log",
+      "git_blob": "8484e4002605e81ab1bcb18ffac465d658b15ba6",
+      "sha256": "5a5bec16d8cfe096581ff4b780d15016b47d2e22c009e160ea2bcfb6922785f2",
+      "bytes": 94174
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/job-140902139186.log",
+      "git_blob": "482f064871d60d6baa573985fe8f53c1d400ff35",
+      "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+      "bytes": 101633
+    },
+    {
+      "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/windows-worker-stop-failure.txt",
+      "git_blob": "d317ed1699c05dc638cadea3008913e9ffbb8fac",
+      "sha256": "ca386cfd755e97e42595201b0450327e845e856a42a0f94c087ca3c7ff2b1076",
+      "bytes": 8020
+    }
+  ],
+  "validation": {
+    "metadata_checked_before_logs": true,
+    "checkout_head_observed_in_each_log": true,
+    "actual_selector_multisets_checked": true,
+    "all_files_full_readback_exact": true,
+    "application_source_changes": 0,
+    "ref_mutations": 0
+  }
+}

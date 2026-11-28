@@ -1,0 +1,21 @@
+{
+  "bundle_manifest_sha256": "0d591aa19ba3ad5dc9425cf9d2a6f8b443b7a9f624167c01db148f83546c7f8f",
+  "native_standard_assertions": [
+    "actual_inno_install",
+    "actual_offline_runtime_bootstrap",
+    "per_user_start_menu",
+    "per_user_repair_uninstall_registration",
+    "fresh_shortcut_collision_refused",
+    "uninstaller_wrapper_removed",
+    "native_launcher_prelaunch_lease",
+    "live_job_preserved",
+    "repair_retains_modified_and_foreign_files",
+    "actual_repair",
+    "actual_uninstall",
+    "populated_library_bytes_preserved"
+  ],
+  "release_status": "unsigned-private-candidate",
+  "setup_sha256": "caa810ca906b8f6f2f86fe908e9967604e41daaed50c5dc214fd5a1e5dd6b64a",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "status": "PASS"
+}

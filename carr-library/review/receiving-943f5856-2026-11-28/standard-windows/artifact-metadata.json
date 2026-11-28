@@ -1,0 +1,20 @@
+{
+  "id": 15253706947,
+  "node_id": "MDg6QXJ0aWZhY3QxNTI1MzcwNjk0Nw==",
+  "name": "carr-standard-installation-windows-2022-943f585659c55481046266338f428e4a1043a9bd-1",
+  "size_in_bytes": 141125,
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253706947",
+  "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253706947/zip",
+  "expired": false,
+  "digest": "sha256:42e12aaab8ba949ee6f833a0c7da49f108d337ebd60092aa4ae72243a8690f73",
+  "created_at": "2026-11-28T07:19:43Z",
+  "updated_at": "2026-11-28T07:19:43Z",
+  "expires_at": "2026-12-05T07:19:42Z",
+  "workflow_run": {
+    "id": 46118771937,
+    "repository_id": 1341777614,
+    "head_repository_id": 1341777614,
+    "head_branch": "carr/standard-installation-evaluation-20261128",
+    "head_sha": "943f585659c55481046266338f428e4a1043a9bd"
+  }
+}

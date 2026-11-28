@@ -1,0 +1,82 @@
+{
+  "schema": "carr-evidence-file-manifest/1",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "run_id": 46118771937,
+  "job_id": 140898401766,
+  "status": "TERMINAL_WINDOWS_STANDARD_SCOPE_PASS",
+  "provenance": "Full connector-decoded terminal log plus explicitly labeled derived JSON; no original ZIP or artifact-member bytes downloaded. All listed blobs were read back byte-for-byte.",
+  "files": [
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/qualification.json",
+      "sha": "f54d1a9d71903ea49a936aa6c20780ef43b89bbf",
+      "bytes": 11016,
+      "sha256": "bd08443cb504cae629858f189315a35cdacae5faf9a43280a07f471b1d645d05"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/full-decoded-log.txt",
+      "sha": "078c52273e5bb8a00ee895879789f6c6c853bbdf",
+      "bytes": 322733,
+      "sha256": "8f420ee5cd24c255dc302894f7596d77485a2adc4a66f7e329a1981a9c4f64a8"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/source-wheel-installed-inventory.json",
+      "sha": "4de0ea538c785ce2578e2ab57ec4ffd310fd7cd5",
+      "bytes": 67478,
+      "sha256": "8e6d329cd9680c4cfd48cc7dfb3ee8c9cdc8d1f1a0c775a61838ddd69cda1d5b"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/source-module-verdicts.json",
+      "sha": "062dd876acbd0120674a6e23055bf329d2e9ec67",
+      "bytes": 1518,
+      "sha256": "0eb63dba622ac892f295fe7dd591fde48de01d259e7c1bd375f9371f221bec5d"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/wheel-source-verification.json",
+      "sha": "ee1d8cd70bf93896ba65880062b8ea75e28639b1",
+      "bytes": 353,
+      "sha256": "9d64a3c3c3d9e4c3ac7ec829b63b59bce055705d77b89a910937ed0b3c41e62a"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/bundle-source-verification.json",
+      "sha": "e102aa11e974aaac00c18f08adf7a2cc0edf2043",
+      "bytes": 494,
+      "sha256": "9632293f59a7d0bfe34fd22fc3f22dad4bb87864f82e79a06c0873e8a05c7733"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/setup-build-log-extract.json",
+      "sha": "2471c26057a005f03c3b6cee5c594a4c48f27042",
+      "bytes": 1728,
+      "sha256": "666a229d1490f5ac49116947227fdd44d22eaa10ed7275a99c7a3b9545862577"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/native-result-log-extract.json",
+      "sha": "aa73e95209f56fcda1a32babd0527c7ec7d2d194",
+      "bytes": 944,
+      "sha256": "3371e41a582440928c4c54183257d76f3b1106816eab283c39d1afb0acbef0e0"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/native-strict-verdict-log-extract.json",
+      "sha": "2d1745f5d540b7c120a21f94aa25104a1e75c688",
+      "bytes": 771,
+      "sha256": "5a07075fa14da9712975446e25133cfb99c713f64f69942f749976e70d268c80"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/terminal-job.json",
+      "sha": "728555e5c89c64d83e087d3ff0b0e0741ed5a1e0",
+      "bytes": 4835,
+      "sha256": "5f93d278c9c53e1ad1c00c010a1199d960219a3bde2d0f39d8062a4e83f8245a"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/artifact-metadata.json",
+      "sha": "1b9604560a02dbff6c5b0c71157b72fead1ec999",
+      "bytes": 895,
+      "sha256": "55493bdf5b083ba742d41af10a55b8fc12d35d5f7a6addb9cf9aa94275146cc5"
+    },
+    {
+      "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/bounded-log-excerpts.txt",
+      "sha": "6e0fe2e911296c0bdf46d161a262d2ba7421117c",
+      "bytes": 1782,
+      "sha256": "70afef2db8bbd529be019192d14e28e0afec887e5f74b1f15de109ba8059d916"
+    }
+  ]
+}

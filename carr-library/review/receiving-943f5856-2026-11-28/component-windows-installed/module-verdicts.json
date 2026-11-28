@@ -1,0 +1,11 @@
+{
+  "selected_modules": 88,
+  "passed": 3219,
+  "subtests_passed": 12,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "junit_case_count": 3219,
+  "seconds": 1345,
+  "per_module_counts": "Not emitted"
+}

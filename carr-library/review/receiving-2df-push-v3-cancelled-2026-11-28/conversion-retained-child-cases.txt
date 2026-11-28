@@ -1,0 +1,768 @@
+REQUIRED_CASE_FAILURE tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[shared-direct] [call]
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228E25D34D0>
+admitted = True, wrapper = 'direct'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+>           assert process.poll() is None
+E           AssertionError: assert 1 is None
+E            +  where 1 = poll()
+E            +    where poll = <WindowsJobProcess: returncode: 1 args: ['C:\\hostedtoolcache\\windows\\Pyth...>.poll
+
+tests\conversion\test_conversion_ownership.py:252: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228E25D34D0>
+admitted = True, wrapper = 'direct'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+            assert process.poll() is None
+            assert not cleanup.quiescent and cleanup.close() is False
+            assert not (outputs / 'never-published.txt').exists()
+            assert not (outputs / 'never-published.txt.provenance.json').exists()
+            if broker is not None:
+                leases = broker.snapshot()['leases']
+                assert len(leases) == 1
+                with pytest.raises(ResourceTimeout):
+                    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-document', timeout=0):
+                        pytest.fail('Live native ownership released its shared resource slot.')
+            cleanup.add_quiescent_callback(callbacks_done.set)
+            allowed.set()
+            deadline = time.monotonic() + 15
+            while not callbacks_done.is_set() and time.monotonic() < deadline:
+                cleanup.close()
+                callbacks_done.wait(.02)
+            assert callbacks_done.is_set() and cleanup.quiescent
+            assert process.poll() is not None
+            assert not stage.exists()
+            assert not tuple(outputs.iterdir())
+            if broker is not None:
+                assert broker.snapshot()['leases'] == []
+            assert source.read_bytes() == original
+        finally:
+            # An assertion failure must not leave this test's actual child running.
+            allowed.set()
+            for cleanup in pending:
+                deadline = time.monotonic() + 15
+                while not cleanup.quiescent and time.monotonic() < deadline:
+                    cleanup.close()
+                    cleanup.quiescent_event.wait(.02)
+>               assert cleanup.quiescent, 'Actual owned child cleanup did not complete.'
+E               AssertionError: Actual owned child cleanup did not complete.
+E               assert False
+E                +  where False = <carr_library.audio.cleanup.CleanupOwner object at 0x00000228E25A2610>.quiescent
+
+tests\conversion\test_conversion_ownership.py:283: AssertionError
+.F
+REQUIRED_CASE_FAILURE tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[shared-context] [call]
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228DAA4ECD0>
+admitted = True, wrapper = 'context'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+            assert process.poll() is None
+            assert not cleanup.quiescent and cleanup.close() is False
+            assert not (outputs / 'never-published.txt').exists()
+            assert not (outputs / 'never-published.txt.provenance.json').exists()
+            if broker is not None:
+                leases = broker.snapshot()['leases']
+                assert len(leases) == 1
+                with pytest.raises(ResourceTimeout):
+                    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-document', timeout=0):
+                        pytest.fail('Live native ownership released its shared resource slot.')
+            cleanup.add_quiescent_callback(callbacks_done.set)
+            allowed.set()
+            deadline = time.monotonic() + 15
+            while not callbacks_done.is_set() and time.monotonic() < deadline:
+                cleanup.close()
+                callbacks_done.wait(.02)
+>           assert callbacks_done.is_set() and cleanup.quiescent
+E           assert (False)
+E            +  where False = is_set()
+E            +    where is_set = <threading.Event at 0x228df6f7490: unset>.is_set
+
+tests\conversion\test_conversion_ownership.py:268: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains2')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228DAA4ECD0>
+admitted = True, wrapper = 'context'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+            assert process.poll() is None
+            assert not cleanup.quiescent and cleanup.close() is False
+            assert not (outputs / 'never-published.txt').exists()
+            assert not (outputs / 'never-published.txt.provenance.json').exists()
+            if broker is not None:
+                leases = broker.snapshot()['leases']
+                assert len(leases) == 1
+                with pytest.raises(ResourceTimeout):
+                    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-document', timeout=0):
+                        pytest.fail('Live native ownership released its shared resource slot.')
+            cleanup.add_quiescent_callback(callbacks_done.set)
+            allowed.set()
+            deadline = time.monotonic() + 15
+            while not callbacks_done.is_set() and time.monotonic() < deadline:
+                cleanup.close()
+                callbacks_done.wait(.02)
+            assert callbacks_done.is_set() and cleanup.quiescent
+            assert process.poll() is not None
+            assert not stage.exists()
+            assert not tuple(outputs.iterdir())
+            if broker is not None:
+                assert broker.snapshot()['leases'] == []
+            assert source.read_bytes() == original
+        finally:
+            # An assertion failure must not leave this test's actual child running.
+            allowed.set()
+            for cleanup in pending:
+                deadline = time.monotonic() + 15
+                while not cleanup.quiescent and time.monotonic() < deadline:
+                    cleanup.close()
+                    cleanup.quiescent_event.wait(.02)
+>               assert cleanup.quiescent, 'Actual owned child cleanup did not complete.'
+E               AssertionError: Actual owned child cleanup did not complete.
+E               assert False
+E                +  where False = <carr_library.audio.cleanup.CleanupOwner object at 0x00000228E2561CD0>.quiescent
+
+tests\conversion\test_conversion_ownership.py:283: AssertionError
+F
+REQUIRED_CASE_FAILURE tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[shared-cancel] [call]
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228D8BA4190>
+admitted = True, wrapper = 'cancel'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+            assert process.poll() is None
+            assert not cleanup.quiescent and cleanup.close() is False
+            assert not (outputs / 'never-published.txt').exists()
+            assert not (outputs / 'never-published.txt.provenance.json').exists()
+            if broker is not None:
+                leases = broker.snapshot()['leases']
+                assert len(leases) == 1
+                with pytest.raises(ResourceTimeout):
+                    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-document', timeout=0):
+                        pytest.fail('Live native ownership released its shared resource slot.')
+            cleanup.add_quiescent_callback(callbacks_done.set)
+            allowed.set()
+            deadline = time.monotonic() + 15
+            while not callbacks_done.is_set() and time.monotonic() < deadline:
+                cleanup.close()
+                callbacks_done.wait(.02)
+>           assert callbacks_done.is_set() and cleanup.quiescent
+E           assert (False)
+E            +  where False = is_set()
+E            +    where is_set = <threading.Event at 0x228df4d6dd0: unset>.is_set
+
+tests\conversion\test_conversion_ownership.py:268: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228D8BA4190>
+admitted = True, wrapper = 'cancel'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+            assert process.poll() is None
+            assert not cleanup.quiescent and cleanup.close() is False
+            assert not (outputs / 'never-published.txt').exists()
+            assert not (outputs / 'never-published.txt.provenance.json').exists()
+            if broker is not None:
+                leases = broker.snapshot()['leases']
+                assert len(leases) == 1
+                with pytest.raises(ResourceTimeout):
+                    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-document', timeout=0):
+                        pytest.fail('Live native ownership released its shared resource slot.')
+            cleanup.add_quiescent_callback(callbacks_done.set)
+            allowed.set()
+            deadline = time.monotonic() + 15
+            while not callbacks_done.is_set() and time.monotonic() < deadline:
+                cleanup.close()
+                callbacks_done.wait(.02)
+            assert callbacks_done.is_set() and cleanup.quiescent
+            assert process.poll() is not None
+            assert not stage.exists()
+            assert not tuple(outputs.iterdir())
+            if broker is not None:
+                assert broker.snapshot()['leases'] == []
+            assert source.read_bytes() == original
+        finally:
+            # An assertion failure must not leave this test's actual child running.
+            allowed.set()
+            for cleanup in pending:
+                deadline = time.monotonic() + 15
+                while not cleanup.quiescent and time.monotonic() < deadline:
+                    cleanup.close()
+                    cleanup.quiescent_event.wait(.02)
+>               assert cleanup.quiescent, 'Actual owned child cleanup did not complete.'
+E               AssertionError: Actual owned child cleanup did not complete.
+E               assert False
+E                +  where False = <carr_library.audio.cleanup.CleanupOwner object at 0x00000228E2542FD0>.quiescent
+
+tests\conversion\test_conversion_ownership.py:283: AssertionError
+F
+REQUIRED_CASE_FAILURE tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[standalone-direct] [call]
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228E2562650>
+admitted = False, wrapper = 'direct'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+>           assert process.poll() is None
+E           AssertionError: assert 1 is None
+E            +  where 1 = poll()
+E            +    where poll = <WindowsJobProcess: returncode: 1 args: ['C:\\hostedtoolcache\\windows\\Pyth...>.poll
+
+tests\conversion\test_conversion_ownership.py:252: AssertionError
+
+During handling of the above exception, another exception occurred:
+
+tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-3/test_actual_live_child_retains4')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000228E2562650>
+admitted = False, wrapper = 'direct'
+
+    @pytest.mark.parametrize('admitted,wrapper', [
+        (True, 'direct'), (True, 'cause'), (True, 'context'), (True, 'cancel'), (False, 'direct')],
+        ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
+    def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
+            tmp_path, monkeypatch, admitted, wrapper):
+        converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
+        allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
+        stages, native, pending = [], [], []
+        actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    
+        def temporarily_unconfirmed(process):
+            if not native:
+                native.append(process)
+            assert native[0] is process
+            if not allowed.is_set():
+                raise RuntimeError('This exact child has not yet confirmed exit.')
+            return actual_stop(process)
+    
+        def held_parser(args, **kwargs):
+            assert kwargs['owned_tree'] is True
+            stage = Path(kwargs['cwd'])
+            stages.append(stage)
+            snapshot, ready = stage / 'source.txt', stage / 'child-ready.json'
+            original_cancelled = kwargs['cancelled']
+            startup_deadline = time.monotonic() + 20
+    
+            def stopped():
+                if ready.exists():
+                    cancel.set()
+                elif time.monotonic() >= startup_deadline:
+                    raise AssertionError('The actual child did not acknowledge its open snapshot.')
+                return original_cancelled()
+    
+            kwargs['cancelled'] = stopped
+            try:
+                return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                                   _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            except AudioCleanupPending as error:
+                pending.append(error.cleanup_owner)
+                if wrapper == 'cause':
+                    raise OSError('A later status write masked pending cleanup.') from error
+                if wrapper == 'context':
+                    raise OSError('A later status write masked pending cleanup.')
+                if wrapper == 'cancel':
+                    raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
+                raise
+    
+        monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
+        monkeypatch.setattr(service_module, 'run_process', held_parser)
+        try:
+            expected = (AudioCleanupPending if wrapper == 'direct' else
+                        InterruptedError if wrapper == 'cancel' else OSError)
+            with pytest.raises(expected):
+                converter.extract(source, 'never-published.txt', cancelled=cancel.is_set)
+            assert len(stages) == len(native) == len(pending) == 1
+            stage, process, cleanup = stages[0], native[0], pending[0]
+            ready = json.loads((stage / 'child-ready.json').read_text(encoding='utf-8'))
+            assert type(ready['pid']) is int and ready['pid'] > 0
+            # A Windows venv redirector and its actual Python child may differ.
+            # Native family ownership, not PID equality, is the cleanup authority.
+            assert ready['source_sha256'] == sha256(original).hexdigest()
+            assert (stage / 'source.txt').read_bytes() == original
+            assert process.poll() is None
+            assert not cleanup.quiescent and cleanup.close() is False
+            assert not (outputs / 'never-published.txt').exists()
+            assert not (outputs / 'never-published.txt.provenance.json').exists()
+            if broker is not None:
+                leases = broker.snapshot()['leases']
+                assert len(leases) == 1
+                with pytest.raises(ResourceTimeout):
+                    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-document', timeout=0):
+                        pytest.fail('Live native ownership released its shared resource slot.')
+            cleanup.add_quiescent_callback(callbacks_done.set)
+            allowed.set()
+            deadline = time.monotonic() + 15
+            while not callbacks_done.is_set() and time.monotonic() < deadline:
+                cleanup.close()
+                callbacks_done.wait(.02)
+            assert callbacks_done.is_set() and cleanup.quiescent
+            assert process.poll() is not None
+            assert not stage.exists()
+            assert not tuple(outputs.iterdir())
+            if broker is not None:
+                assert broker.snapshot()['leases'] == []
+            assert source.read_bytes() == original
+        finally:
+            # An assertion failure must not leave this test's actual child running.
+            allowed.set()
+            for cleanup in pending:
+                deadline = time.monotonic() + 15
+                while not cleanup.quiescent and time.monotonic() < deadline:
+                    cleanup.close()
+                    cleanup.quiescent_event.wait(.02)
+>               assert cleanup.quiescent, 'Actual owned child cleanup did not complete.'
+E               AssertionError: Actual owned child cleanup did not complete.
+E               assert False
+E                +  where False = <carr_library.audio.cleanup.CleanupOwner object at 0x00000228DEB86150>.quiescent
+
+tests\conversion\test_conversion_ownership.py:283: AssertionError
+................. [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 53%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 56%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 63%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]

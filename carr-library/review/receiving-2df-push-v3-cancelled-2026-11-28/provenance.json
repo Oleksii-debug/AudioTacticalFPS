@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "scope": "Exact 2df guarded V3 terminal trial; prior completed phases remain scoped PASS, full source phase is incomplete and failed.",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "tested_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "application_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "run_id": 46111569577,
+  "job_id": 140876044023,
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_conclusion": "cancelled",
+  "job_conclusion": "cancelled",
+  "workflow": {
+    "path": ".github/workflows/carr-v3.yml",
+    "git_blob": "f448e7cda39525a08ed10fb71d1ea496e05d8091",
+    "sha256": "6e0c5ab552ba46489cecf42a810280e6d706c7bf73a50d815978f5e308cd2e6f",
+    "timeout_minutes": 110,
+    "cancel_in_progress": false,
+    "concurrency_group": "carr-v3-${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}"
+  },
+  "cancellation": {
+    "source_start_utc": "2026-11-28T05:42:38.1049173Z",
+    "cancelled_utc": "2026-11-28T07:10:28.7020407Z",
+    "last_progress_utc": "2026-11-28T06:31:38.6288564Z",
+    "last_progress_text": "........................................................................ [ 67%]",
+    "source_elapsed_seconds": 5270.598,
+    "silence_after_last_progress_seconds": 2330.074,
+    "job_first_log_utc": "2026-11-28T05:20:29.9903344Z",
+    "elapsed_from_first_job_log_seconds": 6598.712,
+    "job_api_start_utc": "2026-11-28T05:20:28Z",
+    "job_api_completed_utc": "2026-11-28T07:10:34Z",
+    "seconds_from_api_start_to_cancel": 6600.702,
+    "reported_reason": "The operation was canceled.",
+    "inference": "Cancellation at 110 minutes and 0.702 seconds from the API job start matches the configured 110-minute ceiling. The log and API provide no more specific cancellation reason. No manual cancellation or ref-update cancellation is inferred.",
+    "new_head_cancellation": "The workflow uses exact-head concurrency and cancel-in-progress false."
+  },
+  "completed_phases": {
+    "installed_shared": {
+      "status": "PASS",
+      "passed": 2274,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 572.43,
+      "selectors": 72
+    },
+    "installed_integrity": {
+      "status": "PASS",
+      "passed": 641,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 396.06
+    },
+    "strict_modules": {
+      "status": "PASS",
+      "modules": 13,
+      "passed": 449,
+      "failed": 0,
+      "skipped": 0
+    },
+    "actual_loopback": {
+      "status": "PASS",
+      "passed": 12,
+      "seconds": 8.46
+    },
+    "native_recording_process": {
+      "status": "PASS",
+      "checks": 15,
+      "physical_capture": "NOT_TESTED"
+    },
+    "native_studio": {
+      "status": "PASS",
+      "checks": 8,
+      "silence_inspection_checks": 5
+    },
+    "native_scene_clip": {
+      "status": "PASS",
+      "checks": 120,
+      "loop_preview": "NOT_RUN"
+    },
+    "native_platform": {
+      "status": "PASS",
+      "checks": 42
+    },
+    "native_voice_preferences": {
+      "status": "PASS",
+      "source_pass_lines": 80,
+      "installed_pass_lines": 80
+    },
+    "native_reading_tabs_clipboard": {
+      "status": "PASS",
+      "basis": "Required combined step12 completed successfully; no archive-derived check count claimed."
+    }
+  },
+  "full_source": {
+    "status": "INCOMPLETE_WITH_OBSERVED_FAILURES",
+    "declared_selector_arguments": 107,
+    "last_progress_percent": 67,
+    "unique_observed_failed_nodeids": 7,
+    "observed_failure_phase_reports": 8,
+    "final_case_counts": null,
+    "completed_modules": null,
+    "unfinished_modules": null,
+    "per_module_timings": null
+  },
+  "source_pins": [
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "git_blob": "f448e7cda39525a08ed10fb71d1ea496e05d8091"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/cleanup.py",
+      "git_blob": "139d382383083301b21f38da3301ed36e590fbb6"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/process.py",
+      "git_blob": "2287f6a6423229b5a5c476cff4970bbe108bef5e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/windows_process.py",
+      "git_blob": "32c38bdf6b0a343644e86437fe00bf9b5a84da63"
+    },
+    {
+      "path": "carr-library/tests/audio/test_audio_process.py",
+      "git_blob": "3b4b9d648c0e3e31c60c8522a5396042a1c06add"
+    },
+    {
+      "path": "carr-library/tests/audio/test_process_deadline.py",
+      "git_blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_conversion_ownership.py",
+      "git_blob": "c80bb99e24c98088764f045048aa416633b64776"
+    }
+  ],
+  "artifact": {
+    "id": 15253825236,
+    "name": "carr-v3-evidence-46111569577-1",
+    "size_in_bytes": 91687,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253825236",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253825236/zip",
+    "expired": false,
+    "created_at": "2026-11-28T07:10:30Z",
+    "expires_at": "2026-12-05T07:10:29Z",
+    "updated_at": "2026-11-28T07:10:30Z",
+    "digest": "sha256:0b218b8e8b709aaa6273af4b5f65db1129f6288995fd422f9c421e102ff98904",
+    "workflow_run": {
+      "id": 46111569577,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    },
+    "validation": "Metadata and upload-log size/digest agree. Archive bytes/member inventory not downloaded by this receiving task."
+  },
+  "original_log": {
+    "path": "job.log",
+    "git_blob": "06e3d7867a23ff7a1232fd95f892c443b644e315",
+    "characters": 354105,
+    "utf8_bytes": 354107,
+    "sha256": "fd365725e021d0fec7211b29cb75477c88035373f8ad782d86e2c39977c0a3f7",
+    "retrieval": "Terminal job logs only; exact decoded provider text retained with original timestamps/BOM/CRLF."
+  },
+  "trace_derivation": "The three trace files remove timestamps/ANSI for reading and retain the selected failure blocks plus adjacent progress. They are derived from job.log, which is preserved unchanged.",
+  "limits": [
+    "No PASS transfer to 943f or other heads.",
+    "No source/module/case count inferred from progress percentage.",
+    "No timing, assertion, policy, endpoint, ref or product change in this evidence.",
+    "No physical capture, acoustic quality or NVDA qualification."
+  ],
+  "qualification": "Full V3 qualification FAILED/INCOMPLETE; investigate the seven observed failing nodes before any workflow scheduling proposal."
+}

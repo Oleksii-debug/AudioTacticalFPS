@@ -1,0 +1,141 @@
+{
+  "schema": "carr-exact-head-reader-job-receipt/1",
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-28 07:25:48 UTC",
+  "candidate": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c"
+  },
+  "workflow": {
+    "id": 46119979623,
+    "head_sha": "943f585659c55481046266338f428e4a1043a9bd",
+    "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+    "event": "push",
+    "run_attempt": 1,
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119979623",
+    "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+    "git_blob": "b683358bf3325749f852040cef8a9e704c4c414a"
+  },
+  "job": {
+    "id": 140902142360,
+    "name": "Reader voice controls / ubuntu-24.04 / source",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:21:15Z",
+    "completed_at": "2026-11-28T07:22:51Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119979623/job/140902142360",
+    "runner_name": "GitHub Actions 1000490339",
+    "labels": [
+      "ubuntu-24.04"
+    ]
+  },
+  "platform": "ubuntu-24.04",
+  "mode": "source",
+  "tests": {
+    "selected_modules": 21,
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0,
+    "contracts": {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b62c79d59853c1d410fc10308613f1c278cf665"
+    }
+  },
+  "native": {
+    "status": "NOT_RUN",
+    "reason": "Windows-only controls are received in separate Windows jobs."
+  },
+  "identity": {
+    "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+    "executable": "/home/runner/work/_temp/carr-reader-voice-python/bin/python",
+    "prefix": "/home/runner/work/_temp/carr-reader-voice-python",
+    "installed_package": "/home/runner/work/_temp/carr-reader-voice-python/lib/python3.11/site-packages/carr_library",
+    "source_package": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library",
+    "python_modules": 383,
+    "actual_python_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "all_current_source_hashes_match": true,
+    "wheel": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+      "wheel_sha256": "6253872fd180e90a02572d4e7e0a864ee11987ce0cfc2cc926dd19c340512d4f"
+    },
+    "source_reference": {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/source-identity.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e71d820036612e336c4b9c709e05064a6152e53d"
+    }
+  },
+  "artifact": {
+    "id": 15253164229,
+    "name": "carr-reader-voice-controls-ubuntu-24.04-source-943f585659c55481046266338f428e4a1043a9bd-1",
+    "size_in_bytes": 23096,
+    "digest": "sha256:92a1c22ec3d903f67c1e26df3fdf7faa34f0de09986f3c3b99ee6273e5185679",
+    "created_at": "2026-11-28T07:22:48Z",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253164229"
+  },
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "77e366622b3447ee702bdd8f7be884e1ccc5fbbe",
+      "sha256": "4fb3a85def783df500673e07ab29edde23c59f6873c214368ac19df566bc5c7c",
+      "bytes": 4797,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "70fc33e018813e96c474bf914b039cd3a3db61a7",
+      "sha256": "7e99aa880b538605f74565ba5d9ae9c54013a5580f4670c7eb588d49a7e74ea3",
+      "bytes": 342082,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3323845bfbe0e637d7df24c8bccd6151e2c0e701",
+      "sha256": "d78f1608f9e7a9a3a4d958432ffe79f0ac5b7532f4da8fde24d633d1a9782e51",
+      "bytes": 67735,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0b62c79d59853c1d410fc10308613f1c278cf665",
+      "sha256": "cd092e0224aa8643cd2e3692a969fdaecd461f9051628bc15dc555045945fd25",
+      "bytes": 4844,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0546b44341c0ffca5fcaa110e4cbe7d36a4b87b4",
+      "sha256": "8ebe94b2d2443662f9e7df65e15dead01765025f6195d2eaf8e7a0b871ed25a2",
+      "bytes": 901,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "Exact decoded terminal GitHub log re-encoded as UTF-8, retaining BOM and original newlines; separate from the artifact ZIP digest.",
+  "remaining_scope": {
+    "other_modes": "Recorded independently; no test result transfer.",
+    "manual_nvda": "NOT_RUN",
+    "private_models_assets_rights": "NOT_QUALIFIED",
+    "audible_quality": "NOT_CLAIMED",
+    "whole_platform_release": "NOT_CLAIMED",
+    "historical_pass_transfer": false
+  },
+  "no_refs_changed": true
+}

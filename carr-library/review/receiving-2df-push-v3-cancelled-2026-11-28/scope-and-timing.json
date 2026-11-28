@@ -1,0 +1,783 @@
+{
+  "schema": 1,
+  "source_argument_kind": "Exact CLI selector arguments, including directory selectors; not a completed module or case inventory.",
+  "declared_source_selectors": [
+    "tests/audio",
+    "tests/speech",
+    "tests/assistant",
+    "tests/studio",
+    "tests/audio_acceptance/test_primary_publication_budget.py",
+    "tests/academic_integration",
+    "tests/conversion",
+    "tests/ui/test_document_conversion_admission.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/storage/test_voice_preferences_backup.py",
+    "tests/catalog/test_archive_portability.py",
+    "tests/catalog/test_intake_portability.py",
+    "tests/storage/test_production_operation_backup.py",
+    "tests/ui/test_studio_output_settings.py",
+    "tests/ui/test_studio_silence_inspection.py",
+    "tests/ui/test_book_audio_dialog.py",
+    "tests/storage/test_studio_draft_backup.py",
+    "tests/storage/test_backup_scan_bounds.py",
+    "tests/transcription/test_runtime_inventory.py",
+    "tests/storage/test_asr_additional_profile.py",
+    "tests/speech/test_python_helper.py",
+    "tests/storage/test_python_helper_backup.py",
+    "tests/language_qualification",
+    "tests/ui/test_ebook_audio_initialization.py",
+    "tests/ui/test_ebook_dialog.py",
+    "tests/reader/test_ebook_audio.py",
+    "tests/reader/test_ebook_audio_lifecycle.py",
+    "tests/ui/test_engine_settings_review.py",
+    "tests/ui/test_operation_progress.py",
+    "tests/ui/test_progress_job_review.py",
+    "tests/ui/test_keyboard_settings.py",
+    "tests/test_delivery_contract.py",
+    "tests/storage/test_state_json_reader.py",
+    "tests/storage/test_v3_state_backup.py",
+    "tests/storage/test_pending_backup.py",
+    "tests/storage/test_complete_pending_backup.py",
+    "tests/storage/test_backup_v4_review.py",
+    "tests/storage/test_composite_backup.py",
+    "tests/storage/test_canonical_backup_compat.py",
+    "tests/extract/test_language_manager.py",
+    "tests/packaging/test_standard_installer.py",
+    "tests/packaging/test_managed_launch_boundary.py",
+    "tests/packaging/test_prepare_windows_audio.py",
+    "tests/packaging/test_compact_audio_runtime.py",
+    "tests/packaging/test_refresh_private_bundle_review.py",
+    "tests/e2e/test_import_worker_publication.py",
+    "tests/ingest/test_worker_interpreter_ownership.py",
+    "tests/ingest/test_import_replay_identity.py",
+    "tests/packaging/test_worker_bytecode.py",
+    "tests/storage/test_direct_import_pending_backup.py",
+    "tests/storage/test_state_recovery_case_aliases.py",
+    "tests/storage/test_import_registration_migration.py",
+    "tests/ui/test_recording_dialog.py",
+    "tests/storage/test_recording_backup.py",
+    "tests/operations",
+    "tests/transcription",
+    "tests/transcription_windows",
+    "tests/operations_windows",
+    "tests/ui/test_operations_policy.py",
+    "tests/ui/test_platform_modal_lifecycle.py",
+    "tests/ui/test_transcription_dialog.py",
+    "tests/e2e/test_operations_cli.py",
+    "tests/e2e/test_transcription_cli.py",
+    "tests/storage/test_transcription_backup.py",
+    "tests/storage/test_atomic_state_publication.py",
+    "tests/storage/test_reader_presentation_backup.py",
+    "tests/storage/test_reading_tabs_backup.py",
+    "tests/storage/test_studio_timeline_backup.py",
+    "tests/storage/test_studio_clip_inputs_backup.py",
+    "tests/ui/test_worker_lifetime.py",
+    "tests/ui/test_reader_tabs.py",
+    "tests/ui/test_reading_focus.py",
+    "tests/ui/test_reading_tools.py",
+    "tests/ui/test_reader_output.py",
+    "tests/ui/test_reader_spelling.py",
+    "tests/ui/test_reader_presentation.py",
+    "tests/reader/test_export_reconciliation.py",
+    "tests/storage/test_import_publication_backup.py",
+    "tests/storage/test_transcription_composite_backup.py",
+    "tests/reader/test_export_change_time.py",
+    "tests/ui/test_voice_reference.py",
+    "tests/ui/test_word_citations.py",
+    "tests/ui/test_assistant_domain_routes.py",
+    "tests/sync",
+    "tests/ui/test_portable_sync.py",
+    "tests/citations/test_streamed_text_attestation.py",
+    "tests/e2e/test_source_file.py",
+    "tests/e2e/test_streamed_import_cli.py",
+    "tests/e2e/test_streamed_source_import.py",
+    "tests/ingest/test_streamed_admission.py",
+    "tests/ingest/test_streamed_ingest.py",
+    "tests/ingest/test_streamed_text.py",
+    "tests/reader/test_streamed_source_view.py",
+    "tests/storage/test_streamed_source_backup.py",
+    "tests/ui/test_source_launch.py",
+    "tests/ui/test_source_open_handler.py",
+    "tests/ui/test_streamed_import.py",
+    "tests/ui/test_protected_voice_packages.py",
+    "tests/search/test_source_pagination.py",
+    "tests/search/test_source_page_benchmark.py",
+    "tests/search/test_federated_pagination.py",
+    "tests/e2e/test_search_pagination.py",
+    "tests/ui/test_search_pagination.py",
+    "tests/ui/test_federated_search.py"
+  ],
+  "installed_shared_selectors": [
+    "tests/packaging/test_standard_installer.py",
+    "tests/packaging/test_managed_launch_boundary.py",
+    "tests/test_delivery_contract.py",
+    "tests/test_delivery_service.py",
+    "tests/test_delivery_cli.py",
+    "tests/speech/test_player_controls.py",
+    "tests/audio/test_voice_packages.py",
+    "tests/ui/test_reference_voice_controls.py",
+    "tests/assistant/test_library_translation.py",
+    "tests/ui/test_translation_selection.py",
+    "tests/ui/test_library_translation_dialog.py",
+    "tests/storage/test_state_json_reader.py",
+    "tests/transcription/test_control_reads.py",
+    "tests/assistant/test_state_io.py",
+    "tests/ui/test_save_actions.py",
+    "tests/storage/test_evidence_drafts.py",
+    "tests/ui/test_save_all.py",
+    "tests/ui/test_assistant_voice_preview.py",
+    "tests/audio_acceptance/test_primary_publication_budget.py",
+    "tests/assistant/test_transcription_workflow.py",
+    "tests/speech/test_runtime_settings_restore.py",
+    "tests/conversion/test_conversion.py",
+    "tests/conversion/test_conversion_ownership.py",
+    "tests/ui/test_document_conversion_admission.py",
+    "tests/speech/test_voice_preferences.py",
+    "tests/ui/test_voice_preferences_dialog.py",
+    "tests/ui/test_reader_synthesis.py",
+    "tests/ui/test_reader_playback.py",
+    "tests/speech/test_synthesis_admission.py",
+    "tests/speech/test_progress_speech.py",
+    "tests/storage/test_reader_synthesis_backup.py",
+    "tests/storage/test_voice_preferences_backup.py",
+    "tests/catalog/test_archive_portability.py",
+    "tests/catalog/test_intake_portability.py",
+    "tests/storage/test_production_operation_backup.py",
+    "tests/ui/test_studio_output_settings.py",
+    "tests/storage/test_studio_draft_backup.py",
+    "tests/storage/test_backup_scan_bounds.py",
+    "tests/transcription/test_runtime_inventory.py",
+    "tests/storage/test_asr_additional_profile.py",
+    "tests/speech/test_python_helper.py",
+    "tests/storage/test_python_helper_backup.py",
+    "tests/ui/test_export_confirmation.py",
+    "tests/reader/test_export_approval_budget.py",
+    "tests/ui/test_save_all_access.py",
+    "tests/ui/test_reader_keymap_context.py",
+    "tests/ui/test_scope_labels.py",
+    "tests/language_qualification/test_inventory_cleanup.py",
+    "tests/ui/test_evidence_draft_recovery.py",
+    "tests/storage/test_translation_runtime_recovery.py",
+    "tests/audio/test_local_runtime_cli.py",
+    "tests/audio/test_local_runtime_setup.py",
+    "tests/ui/test_audio_runtime_setup.py",
+    "tests/audio/test_audio_process.py",
+    "tests/audio/test_silence_inspection.py",
+    "tests/studio/test_silence_inspection.py",
+    "tests/ui/test_studio_silence_inspection.py",
+    "tests/studio/test_book_silence.py",
+    "tests/studio/test_director_silence.py",
+    "tests/ui/test_book_audio_dialog.py",
+    "tests/studio/test_publishing_handlers.py",
+    "tests/audio/test_process_deadline.py",
+    "tests/audio/test_capture_access_diagnostic.py",
+    "tests/audio/test_publication_fsync.py",
+    "tests/audio/test_recording_probe.py",
+    "tests/audio/test_recording.py",
+    "tests/audio/test_recording_process.py",
+    "tests/audio/test_recording_windows_process.py",
+    "tests/audio/test_recording_monitor.py",
+    "tests/audio/test_recording_monitor_capture.py",
+    "tests/ui/test_recording_dialog.py",
+    "tests/audio/test_playback.py"
+  ],
+  "observed_source_failure_reports": [
+    {
+      "utc": "2026-11-28T05:43:38.7607044Z",
+      "nodeid": "tests/audio/test_audio_process.py::test_reappeared_watched_object_does_not_turn_scan_error_into_absence[directory]",
+      "phase": "call"
+    },
+    {
+      "utc": "2026-11-28T05:43:38.9306145Z",
+      "nodeid": "tests/audio/test_audio_process.py::test_reappeared_watched_object_does_not_turn_scan_error_into_absence[directory]",
+      "phase": "teardown"
+    },
+    {
+      "utc": "2026-11-28T05:49:16.1095590Z",
+      "nodeid": "tests/audio/test_process_deadline.py::test_pending_reader_completion_retains_stage_after_native_family_stops",
+      "phase": "call"
+    },
+    {
+      "utc": "2026-11-28T05:49:16.5731296Z",
+      "nodeid": "tests/audio/test_process_deadline.py::test_failed_reader_pipe_close_remains_retryable_before_stage_release",
+      "phase": "call"
+    },
+    {
+      "utc": "2026-11-28T06:26:20.1772194Z",
+      "nodeid": "tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[shared-direct]",
+      "phase": "call"
+    },
+    {
+      "utc": "2026-11-28T06:26:50.7824771Z",
+      "nodeid": "tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[shared-context]",
+      "phase": "call"
+    },
+    {
+      "utc": "2026-11-28T06:27:21.1034802Z",
+      "nodeid": "tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[shared-cancel]",
+      "phase": "call"
+    },
+    {
+      "utc": "2026-11-28T06:27:36.2802886Z",
+      "nodeid": "tests/conversion/test_conversion_ownership.py::test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit[standalone-direct]",
+      "phase": "call"
+    }
+  ],
+  "completed_strict_modules": [
+    {
+      "status": "PASS",
+      "module": "tests/speech/test_progress_speech.py",
+      "passed": 53,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/studio/test_production_cancellation_outcomes.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_operation_progress.py",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_numeric_limits.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_studio_progress_isolation.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_media_quiet.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/ui/test_progress_voice_actions.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/e2e/test_import_progress.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/storage/test_progress_preferences_backup.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_translation_v3.py",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_local_planning.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "module": "tests/assistant/test_planning_handlers.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "source_progress_observations": [
+    {
+      "utc": "2026-11-28T05:43:47.3226317Z",
+      "progress": "................................................. [  1%]"
+    },
+    {
+      "utc": "2026-11-28T05:44:25.6374190Z",
+      "progress": "........................................................................ [  2%]"
+    },
+    {
+      "utc": "2026-11-28T05:47:46.0184583Z",
+      "progress": "........................................................................ [  3%]"
+    },
+    {
+      "utc": "2026-11-28T05:47:52.6660079Z",
+      "progress": "........................................................................ [  4%]"
+    },
+    {
+      "utc": "2026-11-28T05:48:26.1049535Z",
+      "progress": "........................................................................ [  5%]"
+    },
+    {
+      "utc": "2026-11-28T05:48:49.1924351Z",
+      "progress": "........................................................................ [  6%]"
+    },
+    {
+      "utc": "2026-11-28T05:49:01.0921344Z",
+      "progress": "........................................................................ [  7%]"
+    },
+    {
+      "utc": "2026-11-28T05:49:03.2434898Z",
+      "progress": "........................................................................ [  8%]"
+    },
+    {
+      "utc": "2026-11-28T05:49:18.1777465Z",
+      "progress": ".................... [  9%]"
+    },
+    {
+      "utc": "2026-11-28T05:50:30.0419755Z",
+      "progress": "........................................................................ [ 10%]"
+    },
+    {
+      "utc": "2026-11-28T05:51:42.3222690Z",
+      "progress": "........................................................................ [ 11%]"
+    },
+    {
+      "utc": "2026-11-28T05:51:54.1462330Z",
+      "progress": "........................................................................ [ 12%]"
+    },
+    {
+      "utc": "2026-11-28T05:52:03.2708060Z",
+      "progress": "........................................................................ [ 13%]"
+    },
+    {
+      "utc": "2026-11-28T05:52:26.3529984Z",
+      "progress": "........................................................................ [ 14%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:11.1824365Z",
+      "progress": "........................................................................ [ 15%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:16.6448364Z",
+      "progress": "........................................................................ [ 16%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:25.6620212Z",
+      "progress": "........................................................................ [ 17%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:26.0645702Z",
+      "progress": "........................................................................ [ 18%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:27.0213009Z",
+      "progress": "........................................................................ [ 19%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:35.6495382Z",
+      "progress": "........................................................................ [ 20%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:35.8133197Z",
+      "progress": "........................................................................ [ 21%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:43.0169164Z",
+      "progress": "........................................................................ [ 22%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:49.0933525Z",
+      "progress": "........................................................................ [ 23%]"
+    },
+    {
+      "utc": "2026-11-28T05:56:54.9561947Z",
+      "progress": "........................................................................ [ 24%]"
+    },
+    {
+      "utc": "2026-11-28T05:57:24.5034313Z",
+      "progress": "........................................................................ [ 25%]"
+    },
+    {
+      "utc": "2026-11-28T05:57:35.6755628Z",
+      "progress": "........................................................................ [ 26%]"
+    },
+    {
+      "utc": "2026-11-28T05:57:41.6306343Z",
+      "progress": "........................................................................ [ 27%]"
+    },
+    {
+      "utc": "2026-11-28T05:57:49.1286827Z",
+      "progress": "........................................................................ [ 28%]"
+    },
+    {
+      "utc": "2026-11-28T06:00:20.5001799Z",
+      "progress": "........................................................................ [ 29%]"
+    },
+    {
+      "utc": "2026-11-28T06:00:47.4484761Z",
+      "progress": "........................................................................ [ 30%]"
+    },
+    {
+      "utc": "2026-11-28T06:00:51.9345095Z",
+      "progress": "........................................................................ [ 31%]"
+    },
+    {
+      "utc": "2026-11-28T06:01:33.0807612Z",
+      "progress": "........................................................................ [ 32%]"
+    },
+    {
+      "utc": "2026-11-28T06:02:10.6862375Z",
+      "progress": "........................................................................ [ 33%]"
+    },
+    {
+      "utc": "2026-11-28T06:02:25.9231306Z",
+      "progress": "........................................................................ [ 34%]"
+    },
+    {
+      "utc": "2026-11-28T06:02:44.1495692Z",
+      "progress": "........................................................................ [ 35%]"
+    },
+    {
+      "utc": "2026-11-28T06:02:56.0598434Z",
+      "progress": "........................................................................ [ 36%]"
+    },
+    {
+      "utc": "2026-11-28T06:03:12.7654241Z",
+      "progress": "........................................................................ [ 37%]"
+    },
+    {
+      "utc": "2026-11-28T06:04:21.9403878Z",
+      "progress": "........................................................................ [ 38%]"
+    },
+    {
+      "utc": "2026-11-28T06:09:18.1257644Z",
+      "progress": "........................................................................ [ 39%]"
+    },
+    {
+      "utc": "2026-11-28T06:10:28.9610870Z",
+      "progress": "........................................................................ [ 40%]"
+    },
+    {
+      "utc": "2026-11-28T06:11:31.0197100Z",
+      "progress": "........................................................................ [ 41%]"
+    },
+    {
+      "utc": "2026-11-28T06:12:16.7587090Z",
+      "progress": "........................................................................ [ 42%]"
+    },
+    {
+      "utc": "2026-11-28T06:14:00.5547117Z",
+      "progress": "........................................................................ [ 43%]"
+    },
+    {
+      "utc": "2026-11-28T06:15:21.2658433Z",
+      "progress": "........................................................................ [ 44%]"
+    },
+    {
+      "utc": "2026-11-28T06:15:52.9913332Z",
+      "progress": "........................................................................ [ 45%]"
+    },
+    {
+      "utc": "2026-11-28T06:17:28.6870017Z",
+      "progress": "........................................................................ [ 46%]"
+    },
+    {
+      "utc": "2026-11-28T06:17:39.7129577Z",
+      "progress": "........................................................................ [ 47%]"
+    },
+    {
+      "utc": "2026-11-28T06:19:25.2660221Z",
+      "progress": "........................................................................ [ 48%]"
+    },
+    {
+      "utc": "2026-11-28T06:24:50.8547953Z",
+      "progress": "........................................................................ [ 49%]"
+    },
+    {
+      "utc": "2026-11-28T06:27:36.9887293Z",
+      "progress": "................. [ 50%]"
+    },
+    {
+      "utc": "2026-11-28T06:27:43.8617765Z",
+      "progress": "........................................................................ [ 51%]"
+    },
+    {
+      "utc": "2026-11-28T06:27:44.8812667Z",
+      "progress": "........................................................................ [ 52%]"
+    },
+    {
+      "utc": "2026-11-28T06:28:01.8230079Z",
+      "progress": "........................................................................ [ 53%]"
+    },
+    {
+      "utc": "2026-11-28T06:28:09.7085392Z",
+      "progress": "........................................................................ [ 54%]"
+    },
+    {
+      "utc": "2026-11-28T06:28:16.0563040Z",
+      "progress": "........................................................................ [ 55%]"
+    },
+    {
+      "utc": "2026-11-28T06:28:33.2617434Z",
+      "progress": "........................................................................ [ 56%]"
+    },
+    {
+      "utc": "2026-11-28T06:28:56.7976478Z",
+      "progress": "........................................................................ [ 57%]"
+    },
+    {
+      "utc": "2026-11-28T06:29:10.4560184Z",
+      "progress": "........................................................................ [ 59%]"
+    },
+    {
+      "utc": "2026-11-28T06:29:23.2898362Z",
+      "progress": "........................................................................ [ 60%]"
+    },
+    {
+      "utc": "2026-11-28T06:29:49.5380483Z",
+      "progress": "........................................................................ [ 61%]"
+    },
+    {
+      "utc": "2026-11-28T06:29:51.0079645Z",
+      "progress": "........................................................................ [ 62%]"
+    },
+    {
+      "utc": "2026-11-28T06:29:51.7246799Z",
+      "progress": "........................................................................ [ 63%]"
+    },
+    {
+      "utc": "2026-11-28T06:29:52.6903875Z",
+      "progress": "........................................................................ [ 64%]"
+    },
+    {
+      "utc": "2026-11-28T06:30:17.0860329Z",
+      "progress": "........................................................................ [ 65%]"
+    },
+    {
+      "utc": "2026-11-28T06:31:04.9972598Z",
+      "progress": "........................................................................ [ 66%]"
+    },
+    {
+      "utc": "2026-11-28T06:31:38.6288564Z",
+      "progress": "........................................................................ [ 67%]"
+    }
+  ],
+  "phase_timing": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:20:29Z",
+      "completed_at": "2026-11-28T05:20:31Z"
+    },
+    {
+      "number": 2,
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:20:32Z",
+      "completed_at": "2026-11-28T05:20:41Z"
+    },
+    {
+      "number": 3,
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:20:41Z",
+      "completed_at": "2026-11-28T05:20:41Z"
+    },
+    {
+      "number": 4,
+      "name": "Install exact application and native desktop dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:20:41Z",
+      "completed_at": "2026-11-28T05:21:37Z"
+    },
+    {
+      "number": 5,
+      "name": "Prepare explicitly pinned private test audio runtime",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:21:37Z",
+      "completed_at": "2026-11-28T05:21:49Z"
+    },
+    {
+      "number": 6,
+      "name": "Prepare pinned OCR for required recognition and backup acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:21:49Z",
+      "completed_at": "2026-11-28T05:23:48Z"
+    },
+    {
+      "number": 7,
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:23:48Z",
+      "completed_at": "2026-11-28T05:23:50Z"
+    },
+    {
+      "number": 8,
+      "name": "Verify installed reader, translation, voice and delivery services",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:23:50Z",
+      "completed_at": "2026-11-28T05:33:24Z"
+    },
+    {
+      "number": 9,
+      "name": "Verify installed backup and import publication integrity",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:33:24Z",
+      "completed_at": "2026-11-28T05:40:01Z"
+    },
+    {
+      "number": 10,
+      "name": "Require actual Windows recording process ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:40:01Z",
+      "completed_at": "2026-11-28T05:40:02Z"
+    },
+    {
+      "number": 11,
+      "name": "Require native voice preferences and fresh inventory review",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:40:02Z",
+      "completed_at": "2026-11-28T05:40:05Z"
+    },
+    {
+      "number": 12,
+      "name": "Require source and installed native reading tabs and focus",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:40:05Z",
+      "completed_at": "2026-11-28T05:40:21Z"
+    },
+    {
+      "number": 13,
+      "name": "Real native SAPI, scene production, keyboard controls and restart",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:40:21Z",
+      "completed_at": "2026-11-28T05:41:12Z"
+    },
+    {
+      "number": 14,
+      "name": "Require progress isolation and actual selected-voice rendering regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:41:12Z",
+      "completed_at": "2026-11-28T05:42:00Z"
+    },
+    {
+      "number": 15,
+      "name": "Require Advanced translation permission and checkpoint regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:42:00Z",
+      "completed_at": "2026-11-28T05:42:18Z"
+    },
+    {
+      "number": 16,
+      "name": "Require local proposal scope and review regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:42:18Z",
+      "completed_at": "2026-11-28T05:42:24Z"
+    },
+    {
+      "number": 17,
+      "name": "Native local proposal and actual loopback HTTP with external egress blocked",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T05:42:25Z",
+      "completed_at": "2026-11-28T05:42:38Z"
+    },
+    {
+      "number": 18,
+      "name": "Validate local services, DSP, integrity and provider permission boundaries",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "started_at": "2026-11-28T05:42:38Z",
+      "completed_at": "2026-11-28T07:10:28Z"
+    },
+    {
+      "number": 19,
+      "name": "Keep source and test evidence only",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T07:10:28Z",
+      "completed_at": "2026-11-28T07:10:30Z"
+    },
+    {
+      "number": 37,
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T07:10:30Z",
+      "completed_at": "2026-11-28T07:10:30Z"
+    },
+    {
+      "number": 38,
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T07:10:30Z",
+      "completed_at": "2026-11-28T07:10:32Z"
+    },
+    {
+      "number": 39,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T07:10:32Z",
+      "completed_at": "2026-11-28T07:10:32Z"
+    }
+  ],
+  "source_final_case_count": null,
+  "source_completed_module_inventory": null,
+  "source_unfinished_module_inventory": null,
+  "limitation": "The source phase used quiet pytest output. It emitted named failures but no final summary or per-module timings before cancellation. The artifact member inventory was not downloaded; no claim is made about whether an incomplete source JUnit member exists."
+}

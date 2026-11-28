@@ -1,0 +1,228 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "tested_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "application_run": 46111569593,
+  "application_job": 140876044080,
+  "application_phase": "Completed immutable pre-source/full-bundle receipts; source phase still active when read.",
+  "helper": {
+    "run": 46121967850,
+    "job": 140908227726,
+    "head": "2535823dc9427b325f1b91898b356c2674f4c9fb",
+    "tree": "abad9c7d4da77cb512e3d21b65473f4af4ccf797",
+    "conclusion": "success",
+    "script_blob": "ca3914141fdc6f9ac86e7e754e990b084d0b4572",
+    "workflow_blob": "000d4e554a14bd6cd47e51e6d2e4a2e83c0363a1",
+    "completed_at": "2026-11-28T07:39:47Z",
+    "zip_digests_verified": true,
+    "selected_files": 112,
+    "source_run_status_at_read": "in_progress",
+    "application_acceptance": "NOT_ASSESSED"
+  },
+  "artifacts": [
+    {
+      "id": 15254290696,
+      "name": "carr-windows-pre-source-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "bytes": 478106,
+      "sha256": "329d888bebc41c9905a2143640719604bd47c4e623498f93881f40c0fb736b94",
+      "created_at": "2026-11-28T07:31:02Z",
+      "updated_at": "2026-11-28T07:31:02Z",
+      "run": 46111569593,
+      "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "mode": "main"
+    },
+    {
+      "id": 15250432687,
+      "name": "carr-windows-audio-endpoint-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "bytes": 3944,
+      "sha256": "c42ae7ec97b57a74f8c6898c667be9cd81f36b8bbb4c850fe1a836def90d8514",
+      "created_at": "2026-11-28T05:52:23Z",
+      "updated_at": "2026-11-28T05:52:23Z",
+      "run": 46111569593,
+      "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "mode": "endpoint"
+    },
+    {
+      "id": 15251032508,
+      "name": "carr-windows-recording-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "bytes": 16791,
+      "sha256": "2f97ac31640b02841237a8c1959fa7672208aa1b9e213232da2d194fe5d11a14",
+      "created_at": "2026-11-28T05:54:47Z",
+      "updated_at": "2026-11-28T05:54:47Z",
+      "run": 46111569593,
+      "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "mode": "recording"
+    }
+  ],
+  "full_bundle_suite": {
+    "status": "FAIL",
+    "passed": 9312,
+    "failed": 2,
+    "seconds": 4794.6,
+    "failed_nodeids": [
+      "tests/operations/test_resources.py::test_actual_spawned_process_crash_releases_without_pid_reaping",
+      "tests/operations/test_resources.py::test_actual_process_contention_has_no_overlapping_admission"
+    ],
+    "observed_cause": "Actual child reconstruction enters multiprocessing._fixup_main_from_path/runpy.run_path for carr-library/<stdin> and raises OSError22 before the resource target can execute. Parent waits preserve the original5s/10s and raise queue.Empty.",
+    "relationship_to_existing_fix": "Same observed transport boundary as the previously reviewed MAIN stdin-to--c correction already present on943f. The actual943f CORE two-case success is a separate scoped trial; no full-bundle PASS transfers.",
+    "source_member": {
+      "artifact": 15254290696,
+      "path": "full-bundle-workflows.txt",
+      "bytes": 49991,
+      "sha256": "b95f1aadacb6c7b80960e121ca638da3c1957ada461bebfa6cd91fa5e048f072"
+    },
+    "excerpt": {
+      "path": "full-bundle-workflows-excerpt.txt",
+      "characters": 28376,
+      "sha256": "59ac0dd4301cb49b2544ca1d7480c6a864a201c0ec3796e1f69121a41d002a45",
+      "complete_member": false
+    },
+    "xml": {
+      "path": "full-bundle-workflows.xml",
+      "bytes": 1498914,
+      "read": false,
+      "reason": "Outside unchanged selected public-member scope; no cap increase or XML extraction."
+    }
+  },
+  "scoped_native_receipts": [
+    {
+      "path": "full-bundle-reader-controls.txt",
+      "status": "PASS",
+      "checks": 108,
+      "loop_preview": null
+    },
+    {
+      "path": "source-reader-navigation.json",
+      "status": "PASS",
+      "checks": 50,
+      "loop_preview": null
+    },
+    {
+      "path": "installed-reader-navigation.json",
+      "status": "PASS",
+      "checks": 50,
+      "loop_preview": null
+    },
+    {
+      "path": "installed-scene-clip-editor.txt",
+      "status": "PASS",
+      "checks": 158,
+      "loop_preview": {
+        "status": "PASS",
+        "reason": null,
+        "acoustic_listening": "NOT_RUN",
+        "physical_output_device": "NOT_RUN",
+        "completed_repeats": 2,
+        "output_index": 1,
+        "output_identity": "df04fde6bd1a4bb02232a6ba3a15f93aada1347f1f9a0c0fc8114d3b7bcfe5a0",
+        "preview_sha256": "192579ff15b8f022cb65896c1072987035c8947fd0175af69cb99f17af29a4e0",
+        "module_sha256": {
+          "carr_library.ui.studio_clips": "8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e",
+          "carr_library.studio.clips": "21814cbe3bb6c5b54c5df1a2491c30339c3595dc44ef66a9c8551b5f723cd85e",
+          "carr_library.speech.player": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4",
+          "carr_library.speech.output_devices": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5",
+          "carr_library.speech.progress_speech": "20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393",
+          "carr_library.speech._wave_output": "190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664"
+        },
+        "native_keyboard": "PASS",
+        "fixture": "synthetic retained PCM with saved clip effects"
+      }
+    }
+  ],
+  "capture": {
+    "status": "FAILED",
+    "selected_device": {
+      "id": "553a40e7853f4775e3624e79b954795348ede4922c0523efb34578fe4761ddb5",
+      "name": "CABLE Output (VB-Audio Virtual Cable)",
+      "alternative": "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{8B11434E-F225-4CB9-B8D9-F607E783BC3D}"
+    },
+    "endpoint_id": "{0.0.1.00000000}.{8b11434e-f225-4cb9-b8d9-f607e783bc3d}",
+    "endpoint_unchanged": true,
+    "state_before": 1,
+    "state_after": 1,
+    "wave_in_query_results": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "wave_in_open_without_buffers_results": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "wasapi_initialize": "0x80070005",
+    "current_user_microphone": "Deny",
+    "current_user_desktop": "Allow",
+    "machine": "Allow",
+    "limits": "Observed exact2df endpoint values only; no causal attribution from older environments, consent/policy change, fallback, or capture success."
+  },
+  "original_small_members": [
+    {
+      "artifact": 15254290696,
+      "path": "full-bundle-reader-controls.txt",
+      "bytes": 12390,
+      "sha256": "e73d100ed66e2d7289ecb99cc7c24e456ef678bb011ed02c736936aca2dfea5e",
+      "retained_path": "raw/full-bundle-reader-controls.txt",
+      "base64_chunks_contiguous_and_digest_verified": true
+    },
+    {
+      "artifact": 15254290696,
+      "path": "source-reader-navigation.json",
+      "bytes": 6288,
+      "sha256": "3cd32ab68e655bf66007a8eb09e70aa9d3c02f25da3d471f5cbe994056555b0e",
+      "retained_path": "raw/source-reader-navigation.json",
+      "base64_chunks_contiguous_and_digest_verified": true
+    },
+    {
+      "artifact": 15254290696,
+      "path": "installed-reader-navigation.json",
+      "bytes": 6218,
+      "sha256": "131fc8952bc494c42ce10c7487a6140159092861e8173ddec2753051cddc2576",
+      "retained_path": "raw/installed-reader-navigation.json",
+      "base64_chunks_contiguous_and_digest_verified": true
+    },
+    {
+      "artifact": 15254290696,
+      "path": "installed-scene-clip-editor.txt",
+      "bytes": 16016,
+      "sha256": "df43415e9634228e6ec3512b0a9c66cde79c7c833687dec96a80e99a3ded5280",
+      "retained_path": "raw/installed-scene-clip-editor.txt",
+      "base64_chunks_contiguous_and_digest_verified": true
+    },
+    {
+      "artifact": 15254290696,
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "c4b4a950d8dc0ecde21e939ff293f3666dd9ef7993dc9c3330f82a2fc1456f95",
+      "retained_path": "raw/recording-access-diagnostic.json",
+      "base64_chunks_contiguous_and_digest_verified": true
+    },
+    {
+      "artifact": 15251032508,
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "a31f5b388341f961109dec07e84124c4fd837e4b1ee0511a23b2993bf0b4832f",
+      "retained_path": "raw/native-recording-device.json",
+      "base64_chunks_contiguous_and_digest_verified": true
+    }
+  ],
+  "original_helper_log": {
+    "path": "helper-job.log",
+    "characters": 1026581,
+    "sha256": "ccb7064526a1632550c737cf29a94f1efba5b7d6a597ce06b10260f3e9ffb3e7",
+    "retrieval": "Exact terminal helper job only; application live logs not requested."
+  },
+  "limitations": [
+    "Full bundle aggregate remains FAIL.",
+    "Only six selected small original members are retained separately; all available public helper output is in the exact terminal log.",
+    "Long full-bundle text is a bounded excerpt with full original member digest, not complete file bytes.",
+    "No physical capture, listening/NVDA, private model quality or newer-head qualification claim.",
+    "No product, gate, runtime, OS consent, policy, device, ref or timeout mutation."
+  ]
+}

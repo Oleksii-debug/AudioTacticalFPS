@@ -1,0 +1,267 @@
+Independent native reader deadline: 180 seconds; incomplete execution remains FAILED.
+PASS: installed exact source: carr_library.speech.player
+PASS: installed exact source: carr_library.ui.reader_playback
+PASS: installed exact source: carr_library.ui.speech_dialog
+PASS: real Windows native widgets
+Actual WinMM capability: {"device_count": 2, "devices": [{"index": 0, "caps_result": 0, "name": "Speakers (VB-Audio Virtual Cabl", "channels": 2, "format_mask": 1048575}, {"index": 1, "caps_result": 0, "name": "CABLE In 16 Ch (VB-Audio Virtua", "channels": 2, "format_mask": 1048575}], "inventory_truncated": false, "fixture": {"sample_rate": 16000, "channels": 1, "bits_per_sample": 16}, "format_query_result": 0, "format_query_message": "The specified command was carried out.", "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.", "scope": "Read-only endpoint and format query; actual MCI playback remains required."}
+PASS: native named reader control: Mark A at current position
+PASS: native named reader control: Mark B at current position
+PASS: native named reader control: Set A/B times...
+PASS: native named reader control: Enable A/B repeat
+PASS: native named reader control: Clear A/B
+PASS: native named reader control: Sleep timer...
+PASS: native named reader control: Repeat and sleep status
+PASS: native named reader control: A/B repeat and sleep timer status
+PASS: actual installed Windows MCI transport
+PASS: OS key dispatch 9
+PASS: native Tab reaches next named control
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: A/B points alone do not enable repeat
+PASS: OS key dispatch 32
+PASS: native B endpoint bounds repeated position
+PASS: automatic repeat preserves editor focus
+PASS: one player stays registered with shared progress
+PASS: OS key dispatch 346
+PASS: native pause at completed B keeps repeat armed without playback
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: sleep expired while paused without rearming
+PASS: sleep preserves paused playback position
+PASS: automatic sleep status preserves editor focus
+PASS: OS key dispatch 346
+PASS: explicit resume does not rearm repeat or sleep
+PASS: OS key dispatch 347
+PASS: F8 clears repeat and timer
+PASS: cancelled playback cannot restart from a late poll
+PASS: playback leaves the reading copy unchanged
+PASS: OS key dispatch 32
+PASS: native Save marks the reading copy saved
+PASS: native Save persists the unchanged reading copy
+PASS: OS key dispatch 32
+PASS: sleep: close releases the actual device
+PASS: sleep: native polling timer is closed
+PASS: sleep: player is removed from shared progress
+PASS: sleep: source PCM remains byte-identical
+PASS: native named reader control: Mark A at current position
+PASS: native named reader control: Mark B at current position
+PASS: native named reader control: Set A/B times...
+PASS: native named reader control: Enable A/B repeat
+PASS: native named reader control: Clear A/B
+PASS: native named reader control: Sleep timer...
+PASS: native named reader control: Repeat and sleep status
+PASS: native named reader control: A/B repeat and sleep timer status
+PASS: actual installed Windows MCI transport
+PASS: OS key dispatch 9
+PASS: native Tab reaches next named control
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: A/B points alone do not enable repeat
+PASS: OS key dispatch 32
+PASS: native B endpoint bounds repeated position
+PASS: automatic repeat preserves editor focus
+PASS: one player stays registered with shared progress
+PASS: new explicit audio clears old controls
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: A/B points alone do not enable repeat
+PASS: OS key dispatch 32
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: library change disarms both controls
+PASS: scope failure is visible without focus theft
+PASS: playback leaves the reading copy unchanged
+PASS: OS key dispatch 32
+PASS: native Save marks the reading copy saved
+PASS: native Save persists the unchanged reading copy
+PASS: OS key dispatch 32
+PASS: scope: close releases the actual device
+PASS: scope: native polling timer is closed
+PASS: scope: player is removed from shared progress
+PASS: scope: source PCM remains byte-identical
+PASS: native named reader control: Mark A at current position
+PASS: native named reader control: Mark B at current position
+PASS: native named reader control: Set A/B times...
+PASS: native named reader control: Enable A/B repeat
+PASS: native named reader control: Clear A/B
+PASS: native named reader control: Sleep timer...
+PASS: native named reader control: Repeat and sleep status
+PASS: native named reader control: A/B repeat and sleep timer status
+PASS: actual installed Windows MCI transport
+PASS: OS key dispatch 9
+PASS: native Tab reaches next named control
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: A/B points alone do not enable repeat
+PASS: OS key dispatch 32
+PASS: native B endpoint bounds repeated position
+PASS: automatic repeat preserves editor focus
+PASS: one player stays registered with shared progress
+PASS: OS key dispatch 32
+PASS: OS key dispatch 13
+PASS: playback leaves the reading copy unchanged
+PASS: OS key dispatch 32
+PASS: native Save marks the reading copy saved
+PASS: native Save persists the unchanged reading copy
+PASS: OS key dispatch 32
+PASS: close: close releases the actual device
+PASS: close: native polling timer is closed
+PASS: close: player is removed from shared progress
+PASS: close: source PCM remains byte-identical
+{
+  "status": "PASS",
+  "checks": [
+    "installed exact source: carr_library.speech.player",
+    "installed exact source: carr_library.ui.reader_playback",
+    "installed exact source: carr_library.ui.speech_dialog",
+    "real Windows native widgets",
+    "native named reader control: Mark A at current position",
+    "native named reader control: Mark B at current position",
+    "native named reader control: Set A/B times...",
+    "native named reader control: Enable A/B repeat",
+    "native named reader control: Clear A/B",
+    "native named reader control: Sleep timer...",
+    "native named reader control: Repeat and sleep status",
+    "native named reader control: A/B repeat and sleep timer status",
+    "actual installed Windows MCI transport",
+    "OS key dispatch 9",
+    "native Tab reaches next named control",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "A/B points alone do not enable repeat",
+    "OS key dispatch 32",
+    "native B endpoint bounds repeated position",
+    "automatic repeat preserves editor focus",
+    "one player stays registered with shared progress",
+    "OS key dispatch 346",
+    "native pause at completed B keeps repeat armed without playback",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "sleep expired while paused without rearming",
+    "sleep preserves paused playback position",
+    "automatic sleep status preserves editor focus",
+    "OS key dispatch 346",
+    "explicit resume does not rearm repeat or sleep",
+    "OS key dispatch 347",
+    "F8 clears repeat and timer",
+    "cancelled playback cannot restart from a late poll",
+    "playback leaves the reading copy unchanged",
+    "OS key dispatch 32",
+    "native Save marks the reading copy saved",
+    "native Save persists the unchanged reading copy",
+    "OS key dispatch 32",
+    "sleep: close releases the actual device",
+    "sleep: native polling timer is closed",
+    "sleep: player is removed from shared progress",
+    "sleep: source PCM remains byte-identical",
+    "native named reader control: Mark A at current position",
+    "native named reader control: Mark B at current position",
+    "native named reader control: Set A/B times...",
+    "native named reader control: Enable A/B repeat",
+    "native named reader control: Clear A/B",
+    "native named reader control: Sleep timer...",
+    "native named reader control: Repeat and sleep status",
+    "native named reader control: A/B repeat and sleep timer status",
+    "actual installed Windows MCI transport",
+    "OS key dispatch 9",
+    "native Tab reaches next named control",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "A/B points alone do not enable repeat",
+    "OS key dispatch 32",
+    "native B endpoint bounds repeated position",
+    "automatic repeat preserves editor focus",
+    "one player stays registered with shared progress",
+    "new explicit audio clears old controls",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "A/B points alone do not enable repeat",
+    "OS key dispatch 32",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "library change disarms both controls",
+    "scope failure is visible without focus theft",
+    "playback leaves the reading copy unchanged",
+    "OS key dispatch 32",
+    "native Save marks the reading copy saved",
+    "native Save persists the unchanged reading copy",
+    "OS key dispatch 32",
+    "scope: close releases the actual device",
+    "scope: native polling timer is closed",
+    "scope: player is removed from shared progress",
+    "scope: source PCM remains byte-identical",
+    "native named reader control: Mark A at current position",
+    "native named reader control: Mark B at current position",
+    "native named reader control: Set A/B times...",
+    "native named reader control: Enable A/B repeat",
+    "native named reader control: Clear A/B",
+    "native named reader control: Sleep timer...",
+    "native named reader control: Repeat and sleep status",
+    "native named reader control: A/B repeat and sleep timer status",
+    "actual installed Windows MCI transport",
+    "OS key dispatch 9",
+    "native Tab reaches next named control",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "A/B points alone do not enable repeat",
+    "OS key dispatch 32",
+    "native B endpoint bounds repeated position",
+    "automatic repeat preserves editor focus",
+    "one player stays registered with shared progress",
+    "OS key dispatch 32",
+    "OS key dispatch 13",
+    "playback leaves the reading copy unchanged",
+    "OS key dispatch 32",
+    "native Save marks the reading copy saved",
+    "native Save persists the unchanged reading copy",
+    "OS key dispatch 32",
+    "close: close releases the actual device",
+    "close: native polling timer is closed",
+    "close: player is removed from shared progress",
+    "close: source PCM remains byte-identical"
+  ],
+  "fixture": "synthetic PCM16 tone",
+  "actual_winmm": true,
+  "actual_native_keys": true,
+  "nvda": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "voice_inference": "NOT_RUN",
+  "independent_deadline_seconds": 180,
+  "wave_output": {
+    "device_count": 2,
+    "devices": [
+      {
+        "index": 0,
+        "caps_result": 0,
+        "name": "Speakers (VB-Audio Virtual Cabl",
+        "channels": 2,
+        "format_mask": 1048575
+      },
+      {
+        "index": 1,
+        "caps_result": 0,
+        "name": "CABLE In 16 Ch (VB-Audio Virtua",
+        "channels": 2,
+        "format_mask": 1048575
+      }
+    ],
+    "inventory_truncated": false,
+    "fixture": {
+      "sample_rate": 16000,
+      "channels": 1,
+      "bits_per_sample": 16
+    },
+    "format_query_result": 0,
+    "format_query_message": "The specified command was carried out.",
+    "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+    "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+  },
+  "observed_paused_sleep_seconds": 1.2189999999998236,
+  "source_hashes": {
+    "carr_library.speech.player": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4",
+    "carr_library.ui.reader_playback": "bf2e2ecee13795eff76e34d4c19bc3f25787efc5e1af6dd65a42283792f7c650",
+    "carr_library.ui.speech_dialog": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59"
+  },
+  "fixture_pcm_sha256": "98f65d13585ced510f2196ef5cf91f18546493494773eebc3782dd7a70f57bdf",
+  "count": 108
+}

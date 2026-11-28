@@ -1,0 +1,20 @@
+{
+  "id": 15253138264,
+  "node_id": "MDg6QXJ0aWZhY3QxNTI1MzEzODI2NA==",
+  "name": "carr-reader-voice-controls-windows-2022-installed-943f585659c55481046266338f428e4a1043a9bd-1",
+  "size_in_bytes": 40054,
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253138264",
+  "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253138264/zip",
+  "expired": false,
+  "digest": "sha256:60c42645c89c3bba8c3d5f7b01cb47a74287b9b75b3a9492ae5df3cc421cabea",
+  "created_at": "2026-11-28T07:15:49Z",
+  "updated_at": "2026-11-28T07:15:49Z",
+  "expires_at": "2026-12-05T07:15:48Z",
+  "workflow_run": {
+    "id": 46119979623,
+    "repository_id": 1341777614,
+    "head_repository_id": 1341777614,
+    "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+    "head_sha": "943f585659c55481046266338f428e4a1043a9bd"
+  }
+}

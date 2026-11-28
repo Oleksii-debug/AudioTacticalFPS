@@ -48,6 +48,186 @@
       "job": 140898396534,
       "kind": "Terminal focused Word Windows:22source and22installed passed, zero failures/errors/skips; all383 emitted source/wheel/installed rows match. Original10-second readiness and30-second formatter unchanged. Historical failure exception cause remains unproven.",
       "qualification": "carr-library/review/word-preview-943f5856-2026-11-28/receipt.json"
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "fe70c8362473b20b99b30f525870e23ec5d56626",
+      "kind": "Windows Standard Installation: 11 source/353 cases and installed353+22subtests,151 installer cases,12 native lifecycle checks; full383-module source/wheel/installed bytes. External populated library preserved.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/manifest.json",
+          "blob": "d5868bca7575fef2927f86b65eace49ae34dbb00"
+        },
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/standard-windows/qualification.json",
+          "blob": "f54d1a9d71903ea49a936aa6c20780ef43b89bbf"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "a26e107eea9d066996174326fe37b5b3e8ad219f",
+      "kind": "Reader Linux source:21 selectors/746 passed; full383-module identity.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-source-receipt.json",
+          "blob": "74017c87302410222a4dcd58b43b34fe0ca29b45"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "3a89f4ba3bacc549c77caa64e45cf63a29f14b15",
+      "kind": "Reader Linux installed:746 passed; full383-module identity.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/reader-voice-943f5856-2026-11-28/linux-installed-receipt.json",
+          "blob": "33a592a77c2a6eadee823701e949fa628e8410e9"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "0b3393d90107662b8f1f9c7b38ba412f29291d73",
+      "kind": "Reader Windows source:21 selectors/746 passed plus80 native control checks; full383-module identity.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-source-receipt.json",
+          "blob": "02b6259615ee18b09f07a25a6a27979038b92073"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "140918facfc0f047712574b5315471e1541eb327",
+      "kind": "Reader Windows installed:746 passed plus80 native control checks; full383-module identity.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-receipt.json",
+          "blob": "058b1b7b480b8c89e85fa04dcdc2845a13a94500"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "db620460b755dc7d51a54b838c18b3570fb2bf6f",
+      "kind": "Both Linux component modes:89 selectors/3222 cases each, installed12 additional subtests; full383-module identity.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-installed/qualification.json",
+          "blob": "fbad1fc39afa4c7d6a3d12028e5d17d2311ba4e2"
+        },
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-pair-manifest.json",
+          "blob": "1622205ebc724912fed859a80010813518f6a890"
+        },
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-linux-source/qualification.json",
+          "blob": "8b918b9ea25562270012378b7fe800e7b545fb1d"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "bea3b982aea4efcc5bfe1b792274395e85645fed",
+      "kind": "Both Windows component modes:88 selectors/3219 cases each, installed12 additional subtests, extra actual-venv21; native clip120 with loop NOT_RUN, Studio5 inspection UI checks and bound origins; formats27/28.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-four-mode-summary.json",
+          "blob": "aed0ef7798ed41a21a703a72958ff33f7d52209a"
+        },
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-installed/qualification.json",
+          "blob": "faa291ea8d36e65244ace69b6ad01cac4ef769af"
+        },
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-pair-manifest.json",
+          "blob": "8ff04a270438a9d854790cb89783133c11ebebea"
+        },
+        {
+          "path": "carr-library/review/receiving-943f5856-2026-11-28/component-windows-source/qualification.json",
+          "blob": "30b38cddab35267539bc3aea0c1d657da017057d"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "5b79c0dda902826c58873f042f617259efbfd157",
+      "kind": "Ordinary Zig and MSVC native bootstrap probes:9 checks each. Built PE execution observed; no PE artifact retained and no installed Python/NVDA/signing qualification.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/ordinary-943f5856-2026-11-28/native/receipt.json",
+          "blob": "568e7995710da91f3ee269c427e21986f7505fb9"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "856906740fa9ff2c86c5213419855d9bd91f312a",
+      "kind": "Ordinary bibliography:29 source modules/1092 passed,69 installed native checks and5 loaded module hashes. Scope is narrower than the full383 namespace.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/ordinary-943f5856-2026-11-28/bib/receipt.json",
+          "blob": "f7612d234a8f598ffef7d1cd4649e6f4087b7f71"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "42fc5ba5ba2e0920b32dd8508d7ad452d39b8bf5",
+      "kind": "Ordinary canonical:39 source modules/1186 passed; installed1186 plus7subtests and7 native phases;34-module selected byte gate. No full383 proof claimed.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/ordinary-943f5856-2026-11-28/canonical/receipt.json",
+          "blob": "9443fd5d8027c8a48ad1f1541fb097e10513c891"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "d996c8948e123efd58f23877981aebb9042213b2",
+      "kind": "Ordinary bridge: Linux27 modules/838 passed; Windows26 modules/836 passed and1 failed worker-stop fixture. Later Windows handle-publication and native UI phases SKIPPED. Actual failure retained.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/ordinary-943f5856-2026-11-28/bridge/receipt.json",
+          "blob": "7bf5e9049886e2bef41cc0a27f229b167358c4f5"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "83a8dc2e11764f320d1cb989be212507f151bddf",
+      "kind": "Historical guarded push V3: cancelled with7 unique failed source nodes/8 phase reports and incomplete source inventory. Earlier installed2274/recovery641/strict449 and native scopes recorded separately. No exclusive historical numeric fence subcase is inferred.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/receiving-2df-push-v3-cancelled-2026-11-28/provenance.json",
+          "blob": "ccac68398e179e60f99ccb2f99455fd2200f603a"
+        }
+      ],
+      "qualification_transfer": false
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "ef02cd5fa1f117f65bb3e9495e03e1b48173b087",
+      "kind": "Historical guarded full bundle original text:9312 passed/2 original stdin multiprocessing failures in4794.60s. Bounded helper preserved six exact original small native/capture members; full XML unread and unchanged caps.",
+      "qualifications": [
+        {
+          "path": "carr-library/review/receiving-2df-guarded-bundle-2026-11-28/provenance.json",
+          "blob": "982f55b17b58d7ff26bb15bd9f3f767b6386a598"
+        }
+      ],
+      "qualification_transfer": false
     }
   ],
   "candidate_runs": {
@@ -63,7 +243,7 @@
     "reader": 46119979623,
     "components": 46119982340
   },
-  "execution": "Focused Word and actual CORE bundle spawn are terminal SUCCESS; Linux standard is terminal SUCCESS. Windows standard is building after source and installed gates succeeded; native lifecycle result is pending. Independent ordinary, Reader/component and complete guarded Windows runs are dispatched on this exact head. PR127 remains2df. New historical 2df V3 failures are under diagnosis; no aggregate release or final wheel is qualified.",
+  "execution": "Word, actual CORE spawn, both Standard modes, all4 Reader and all4 component modes are terminal SUCCESS on943. Ordinary native/bibliography/canonical and Linux bridge succeeded; Windows bridge recorded one fixture failure and skipped its later native phases. Complete guarded MAIN/V3 are still receiving. Historical2df failures remain separate. PR127 remains2df while reviewed native owner and isolated fixture corrections are composed; successor is NOT_RUN. No aggregate release or finalwheel is qualified.",
   "latest_source_verification": {
     "python_modules": 383,
     "git_tree_rows_sha256": "0b7b07269abcde4961a02ba1b086d064881fd919996758f9b54b669e9fa69365",
@@ -87,5 +267,6 @@
     "scheduling": "Independent broad receiving proceeded in parallel while Word/WindowsStandard queued; same candidate bytes and all required acceptance conditions retained.",
     "pr_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
   },
-  "root_word_review": "carr-library/review/receiving-943f5856-2026-11-28/word-independent-review.json"
+  "root_word_review": "carr-library/review/receiving-943f5856-2026-11-28/word-independent-review.json",
+  "additional_root_review": "carr-library/review/receiving-943f5856-2026-11-28/additional-root-review.json"
 }

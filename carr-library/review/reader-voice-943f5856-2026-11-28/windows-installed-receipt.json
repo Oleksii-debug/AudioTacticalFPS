@@ -1,0 +1,157 @@
+{
+  "schema": "carr-exact-head-reader-job-receipt/1",
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-28 07:16:23 UTC",
+  "candidate": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c"
+  },
+  "workflow": {
+    "id": 46119979623,
+    "head_sha": "943f585659c55481046266338f428e4a1043a9bd",
+    "head_branch": "carr/reader-voice-controls-evaluation-20261127",
+    "event": "push",
+    "run_attempt": 1,
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119979623",
+    "path": ".github/workflows/carr-reader-voice-controls-evaluation.yml",
+    "git_blob": "b683358bf3325749f852040cef8a9e704c4c414a"
+  },
+  "job": {
+    "id": 140902142152,
+    "name": "Reader voice controls / windows-2022 / installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:12:12Z",
+    "completed_at": "2026-11-28T07:15:53Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119979623/job/140902142152",
+    "runner_name": "GitHub Actions 1000490325",
+    "labels": [
+      "windows-2022"
+    ]
+  },
+  "platform": "windows-2022",
+  "mode": "installed",
+  "tests": {
+    "selected_modules": 21,
+    "passed": 746,
+    "failed": 0,
+    "skipped": 0,
+    "contracts": {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c88664f548ecf65187da7a69a492c667301486e1"
+    }
+  },
+  "native": {
+    "status": "PASS",
+    "checks": 80,
+    "script": "carr-library/scripts/windows_voice_preferences_smoke.py",
+    "proof": {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-native.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03414658981cc5eb7e3658e4e5a89f603223755c"
+    }
+  },
+  "identity": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "executable": "D:\\a\\_temp\\carr-reader-voice-python\\Scripts\\python.exe",
+    "prefix": "D:\\a\\_temp\\carr-reader-voice-python",
+    "installed_package": "D:\\a\\_temp\\carr-reader-voice-python\\Lib\\site-packages\\carr_library",
+    "source_package": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+    "python_modules": 383,
+    "actual_python_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "all_current_source_hashes_match": true,
+    "wheel": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+      "wheel_sha256": "536934fd0ce9e3024c1b5382723b6a7a1abddd0548b8b042b02e0e88817beb92"
+    },
+    "source_reference": {
+      "path": "carr-library/review/word-preview-943f5856-2026-11-28/source-identity.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e71d820036612e336c4b9c709e05064a6152e53d"
+    }
+  },
+  "artifact": {
+    "id": 15253138264,
+    "name": "carr-reader-voice-controls-windows-2022-installed-943f585659c55481046266338f428e4a1043a9bd-1",
+    "size_in_bytes": 40054,
+    "digest": "sha256:60c42645c89c3bba8c3d5f7b01cb47a74287b9b75b3a9492ae5df3cc421cabea",
+    "created_at": "2026-11-28T07:15:49Z",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15253138264"
+  },
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba0df7f22332c4565228d078dc9ac6a5a0b35d36",
+      "sha256": "11c11af1b2e1affc031578ec2d6159abaeaf65d775303339e5b94dbee23718d8",
+      "bytes": 4800,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b894a4390808201fddda4a2f7d8e2a36d891d305",
+      "sha256": "ffd14cb8aa3174acc1e5fdaff1d98e15c8d7d784a069f2481573ca3da920655d",
+      "bytes": 280146,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc079ac6019f6f2200e94706209c14a41992228d",
+      "sha256": "13df9b17e80fba6b70e913a19b8a8ca276eb3b9c5b4a6e524c41a1f2ee5512fa",
+      "bytes": 67746,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c88664f548ecf65187da7a69a492c667301486e1",
+      "sha256": "8cb96963b143a209a2679833cc8dbdae19332561520cbe242d1d75d51ad00f14",
+      "bytes": 1348,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-native.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03414658981cc5eb7e3658e4e5a89f603223755c",
+      "sha256": "cedd63b3d8d11f81ecb6cc9ddac5596dafe2198eb466baa5103462c971a92b4c",
+      "bytes": 4273,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/reader-voice-943f5856-2026-11-28/windows-installed-artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b88dc9c56e73fa1b4e0b84466f860604fe8f9cd4",
+      "sha256": "cea23044b756328c87a46fe5f6bd98389c52e034fc9b154be23d7962f65629e8",
+      "bytes": 904,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "Exact decoded terminal GitHub log re-encoded as UTF-8, retaining BOM and original newlines; separate from the artifact ZIP digest.",
+  "remaining_scope": {
+    "other_modes": "Recorded independently; no test result transfer.",
+    "manual_nvda": "NOT_RUN",
+    "private_models_assets_rights": "NOT_QUALIFIED",
+    "audible_quality": "NOT_CLAIMED",
+    "whole_platform_release": "NOT_CLAIMED",
+    "historical_pass_transfer": false
+  },
+  "no_refs_changed": true
+}

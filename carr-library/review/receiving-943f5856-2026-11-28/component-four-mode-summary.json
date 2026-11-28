@@ -1,0 +1,92 @@
+{
+  "schema": "carr-four-mode-component-receiving/1",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "run_id": 46119982340,
+  "status": "ALL_FOUR_COMPONENT_MODES_TERMINAL_SUCCESS",
+  "modes": [
+    {
+      "mode": "linux-source",
+      "job_id": 140902150245,
+      "conclusion": "success",
+      "modules": 89,
+      "passed": 3222,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests_passed": "Not separately totaled by source ci_check; JUnit parent-case counts are recorded.",
+      "python_modules": 383,
+      "inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+      "qualification_blob": "8b918b9ea25562270012378b7fe800e7b545fb1d",
+      "artifact_id": 15253129532,
+      "artifact_bytes": 5507,
+      "artifact_sha256": "sha256:8ebf1c12b706d6a388429bcafcd664197f4ba8d82a007db6764c434a529fb2ae"
+    },
+    {
+      "mode": "linux-installed",
+      "job_id": 140902150256,
+      "conclusion": "success",
+      "modules": 89,
+      "passed": 3222,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests_passed": 12,
+      "python_modules": 383,
+      "inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+      "qualification_blob": "fbad1fc39afa4c7d6a3d12028e5d17d2311ba4e2",
+      "artifact_id": 15253927536,
+      "artifact_bytes": 56108,
+      "artifact_sha256": "sha256:00f157f7bca4a10846aa25dba75af2ca8ee51a5e6e6267979cc0e593f2291f10"
+    },
+    {
+      "mode": "windows-source",
+      "job_id": 140902150283,
+      "conclusion": "success",
+      "modules": 88,
+      "passed": 3219,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests_passed": "Not separately totaled by source ci_check; JUnit parent-case counts are recorded.",
+      "python_modules": 383,
+      "inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+      "qualification_blob": "30b38cddab35267539bc3aea0c1d657da017057d",
+      "artifact_id": 15254645237,
+      "artifact_bytes": 8830,
+      "artifact_sha256": "sha256:ff8815648baf0b716e4eb1235c29ef0b15d442bb459ecd82018d7d02901bb88b"
+    },
+    {
+      "mode": "windows-installed",
+      "job_id": 140902150024,
+      "conclusion": "success",
+      "modules": 88,
+      "passed": 3219,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "subtests_passed": 12,
+      "python_modules": 383,
+      "inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+      "qualification_blob": "faa291ea8d36e65244ace69b6ad01cac4ef769af",
+      "artifact_id": 15254227871,
+      "artifact_bytes": 65205,
+      "artifact_sha256": "sha256:d8d1b58268564cc45e4e413623fa9f5660ddbd868ed41a73b31646f269721206"
+    }
+  ],
+  "linux_evidence_tree": "db620460b755dc7d51a54b838c18b3570fb2bf6f",
+  "qualification_boundary": "Same exact383 application Python namespace is checked in each receiving mode; source and installed counts are separate repeated executions, not unique-case totals. No current Windows-fence-follow-up execution or historical failure resolution is claimed.",
+  "native": {
+    "document_formats_dynamic_checks": {
+      "source": 27,
+      "installed": 28
+    },
+    "installed_actual_venv_deadline_cases": 21,
+    "installed_clip_dynamic_checks": 120,
+    "loop_playback": "NOT_RUN without exact reviewed output pair",
+    "installed_studio_silence_ui_checks": 5,
+    "installed_studio_silence_module_hashes": 5,
+    "manual_nvda_physical_microphone_acoustic_listening": "NOT_RUN"
+  },
+  "provenance": "Complete terminal decoded logs are retained per job; original artifact archives and member bytes were not downloaded."
+}
