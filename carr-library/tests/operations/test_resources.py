@@ -578,7 +578,7 @@ def test_unowned_leaf_metadata_errors_are_not_absence(tmp_path, monkeypatch, bou
     sentinel = b'Unowned bytes must survive refused native acquisition.'
     path.write_bytes(sentinel)
     lock = _locks.NativeLock(path) if boundary == 'acquisition' else None
-    original_lstat = Path.lstat
+    original_lstat = os.lstat
     denied = error_type('fixture leaf metadata failure')
     observed = []
     try:
@@ -589,11 +589,16 @@ def test_unowned_leaf_metadata_errors_are_not_absence(tmp_path, monkeypatch, bou
 
             def metadata(selected, *args, **kwargs):
                 info = original_lstat(selected, *args, **kwargs)
-                if Path(selected) == path and (phase == 'initial' or changed):
+                if (isinstance(selected, (str, bytes, os.PathLike))
+                        and Path(os.fsdecode(selected)) == path
+                        and (phase == 'initial' or changed)):
                     observed.append(True)
                     raise denied
                 return info
 
+            # lexists uses os.lstat, whereas Path.lstat has its own stat
+            # route. Inject the same real-file denial into both boundaries.
+            fault.setattr(os, 'lstat', metadata)
             fault.setattr(Path, 'lstat', metadata)
             with pytest.raises(error_type) as caught:
                 lock = lock or _locks.NativeLock(path)
