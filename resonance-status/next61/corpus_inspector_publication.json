@@ -1,0 +1,54 @@
+{
+  "schema": "resonance-read-only-artifact-inspection-publication/1",
+  "source_candidate_unchanged": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree_unchanged": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "workflow": {
+    "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+    "blob": "2cee59f6ff6a39fdd07ea7a53b3ac893ecac5d40",
+    "reviewed_rebinding_manifest": "0b44db985ec86b0614814a5a94e2aac0c53b147d",
+    "runner_preimage": "2f8cae0cf830116bb6025f3af6a40c0143f5a4c9",
+    "runner": "ubuntu-24.04",
+    "runner_change": "One runs-on literal only. Exact replacement back to windows-latest reconstructs the independently reviewed rebinding."
+  },
+  "inspected": {
+    "commit": "343efc505230f969ec9519bd04e4340381f07909",
+    "run": 46107711781,
+    "artifacts": [
+      15249470189,
+      15249541093
+    ]
+  },
+  "purpose": "Read the exact completed synthetic corpus reports and expose retained latency/resource measurements; neither rerun the benchmark nor qualify another candidate.",
+  "bounds_unchanged": [
+    "Read-only contents/actions permissions",
+    "Python3.11/x64 and bash heredoc",
+    "Six-minute whole job",
+    "Token only to fixed repository API, never artifact redirect",
+    "Fixed header-free artifact redirect validation",
+    "Exact archive bytes/SHA256 and all member bytes/SHA256",
+    "ZIP/JSON limits, 21 origins and finite measured output"
+  ],
+  "review": [
+    {
+      "agent": "locate_project",
+      "scope": "Six-literal immutable report rebinding and all artifact/member identities",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "agent": "canonical_regression",
+      "scope": "One-literal Ubuntu runner successor, stdlib-only body and absence of platform-native calls",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "agent": "root",
+      "scope": "Independent source/body/platform scan and exact blob readback",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "not_claimed": [
+    "Benchmark success by inspection alone",
+    "Current5b2 latency or50k result",
+    "Native Windows device or updater execution",
+    "Product or release acceptance"
+  ]
+}

@@ -1,0 +1,283 @@
+{
+  "schema": "carr-bounded-artifact-inspector-handoff/1",
+  "recorded_utc": "2026-11-28 05:20:46 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "files": [
+    {
+      "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+      "preimage": "29f261c3b1cc9a94681eae599b82348a3cafc735",
+      "blob_sha": "2f8cae0cf830116bb6025f3af6a40c0143f5a4c9"
+    }
+  ],
+  "inspected_source": {
+    "run_id": 46107711781,
+    "source_commit": "343efc505230f969ec9519bd04e4340381f07909",
+    "source_tree": "917d3d1d4b8f652f596b74b51a58d33f5f576bd9"
+  },
+  "actual_job_evidence": [
+    "d0c5c4269cbadb9fa74fabbd067be496fb4344fc",
+    "ccaa2c9caa42abbac62b453b58f1c063a22679fc"
+  ],
+  "artifacts": [
+    {
+      "artifact": 15249470189,
+      "job": 140866490969,
+      "books": 1000,
+      "segments_per_book": 20,
+      "zip_bytes": 27246,
+      "zip_sha256": "56a6ed2da7276de3abb4566c8b6d4dd71b29d54bc6cc5cd704f837e0fccdb245",
+      "name": "retained-capacity-large-source-v1-1000x20-343efc505230f969ec9519bd04e4340381f07909-1",
+      "status": "PASS",
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "restart",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "operations",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "backup",
+          "reason": null,
+          "status": "PASS"
+        }
+      ],
+      "retained": {
+        "1000/backup.json": {
+          "bytes": 6936,
+          "sha256": "ed046598f79b7f9ce58af348b5c8ecbb30e1730b65e5b17cd24987c53a622a0f"
+        },
+        "1000/backup.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/backup.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/build.json": {
+          "bytes": 5976,
+          "sha256": "933d23e4320d699ca8dec3d558e7da42f121741822fc0ad0b9b12c0f28d5ec7b"
+        },
+        "1000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/measure.json": {
+          "bytes": 6987,
+          "sha256": "97302d26e94f8347bf2ec621a0a7cc9c1f0eae186c0211a9eedb4e3415dcc279"
+        },
+        "1000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/operations.json": {
+          "bytes": 10140,
+          "sha256": "ddc8961457e9a4be614ada0f34083e3476034e437037ed098f6ab313b8f76b2b"
+        },
+        "1000/operations.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/operations.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/restart.json": {
+          "bytes": 6728,
+          "sha256": "f9f0cf9ee55a37271a5128393597a505c6c7d75890647d0a6b5aa5aebe276b0f"
+        },
+        "1000/restart.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "1000/restart.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5460,
+          "sha256": "34b38a1e4ca6746ef47962b050428f5cd6b054d8b74227d63ebeba59c83d970d"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 44656,
+          "sha256": "b1b7985225c1d7a0d5cea8861d535ab3e99e2b503ddbf81baec61bae3e3f1d57"
+        }
+      }
+    },
+    {
+      "artifact": 15249541093,
+      "job": 140866490979,
+      "books": 10000,
+      "segments_per_book": 20,
+      "zip_bytes": 27398,
+      "zip_sha256": "bb9cf6c595b83a240f1408712d9150ce99907ec88e0604e5324eb1be8629201f",
+      "name": "retained-capacity-large-source-v1-10000x20-343efc505230f969ec9519bd04e4340381f07909-1",
+      "status": "PASS",
+      "phases": [
+        {
+          "phase": "build",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "measure",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "restart",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "operations",
+          "reason": null,
+          "status": "PASS"
+        },
+        {
+          "phase": "backup",
+          "reason": null,
+          "status": "PASS"
+        }
+      ],
+      "retained": {
+        "10000/backup.json": {
+          "bytes": 6958,
+          "sha256": "e630f6b240fca5a8a3c62e241084418298abd3e267b47d6e826bbbd274cdb833"
+        },
+        "10000/backup.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/backup.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/build.json": {
+          "bytes": 5981,
+          "sha256": "6e5c5080a1f3ec552bb3e1a3ab99a6c2f207523520c9a10c7d9cbd4da8500a8f"
+        },
+        "10000/build.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/build.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/measure.json": {
+          "bytes": 7013,
+          "sha256": "f05401bceedc442aa3ddd84f54a83ec7b92dba35a9386794822e00d342b49351"
+        },
+        "10000/measure.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/measure.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/operations.json": {
+          "bytes": 10145,
+          "sha256": "3356e69c3066890f581b01bdbdbe40081dd3bb410e6c51b9cf6376bb9e122334"
+        },
+        "10000/operations.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/operations.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/restart.json": {
+          "bytes": 6747,
+          "sha256": "c511feff8ec8543273fff104cdf4005782175e3ec7d6d9377d945abf0eb689c7"
+        },
+        "10000/restart.stderr.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "10000/restart.stdout.txt": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "configuration.json": {
+          "bytes": 5462,
+          "sha256": "48dae34199bf1b7a7b5ba083c0c94d5fd400526144331f16723161066dc36a79"
+        },
+        "library-corpus-scale.json": {
+          "bytes": 44732,
+          "sha256": "80e30a59595b72e47c9d6aa917083c68012500911d6e5fbb1dde64b331463324"
+        }
+      }
+    }
+  ],
+  "scope": [
+    "Read only the two exact completed 1000x20 and 10000x20 public synthetic corpus artifacts. The remaining 50000-book jobs continue independently.",
+    "Recover every actual retained measured phase field, including latency samples and stage durations, without inferring missing timings from job wall time.",
+    "Retain exact21 origin count and finite page37/window100/repeats9/phase3600/public12/large-source-v1 configuration.",
+    "No local execution, source extraction, product mutation, benchmark rerun, budget change, new capacity claim or ref mutation."
+  ],
+  "inverse_proof": {
+    "exact_predecessor_reconstructed": true,
+    "changes": [
+      "RUN constant",
+      "HEAD constant",
+      "TREE constant",
+      "ARTIFACTS literal",
+      "step count wording",
+      "final scope wording"
+    ],
+    "unchanged": [
+      "all network/token/redirect/header isolation",
+      "archive and exact member hashes",
+      "closed ZIP and JSON bounds",
+      "source/configuration/phase verification",
+      "all emit projection bounds",
+      "Windows runner and six-minute job",
+      "heredoc delimiter"
+    ]
+  },
+  "expected_projection": {
+    "artifacts": 2,
+    "phase_records": 10,
+    "context_records": 2,
+    "totals": 2,
+    "source_identity_records": 2,
+    "final_inspection_records": 1
+  },
+  "validation": {
+    "local_execution": "NOT_AVAILABLE_NOT_RETRIED",
+    "yaml_or_python_execution": "NOT_RUN",
+    "independent_peer": {
+      "agent": "locate_project",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact six-literal inverse plus both archive identities and all seventeen retained member maps per artifact independently compared to the two actual job receipts.",
+      "runtime_claim": false
+    }
+  },
+  "publication_owner": "root"
+}
