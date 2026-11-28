@@ -130,7 +130,7 @@ def test_both_phases_keep_common_prerequisites_and_all_required_verdicts():
     assert first.count(condition) == bulk.count(source_condition) == 1
     assert "timeout-minutes: 12" in first
     assert "timeout-minutes: 35" in bulk
-    assert "    timeout-minutes: 120\n" in value
+    assert "    timeout-minutes: 180\n" in value
     assert "scripts/windows_source_suites.py isolated" in first
     assert "scripts/windows_source_suites.py bulk --shard" in bulk
     assert first.index("--jobs 1 $academicSuite") < first.index("--jobs 2 @isolatedSuites $coverageSuite")

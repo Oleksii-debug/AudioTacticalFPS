@@ -936,8 +936,8 @@ def test_bundle_workflow_keeps_all_checks_before_required_verdict_and_publicatio
         "Copy-Item -LiteralPath $testedManifestPath")
     assert verdict_tail.index('if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }') < verdict_tail.index(
         "installed_bundle='PASS'")
-    assert 'timeout-minutes: 35' in block
-    assert '    timeout-minutes: 120\n' in value
+    assert 'timeout-minutes: 120' in block
+    assert '    timeout-minutes: 180\n' in value
     assert 'continue-on-error:' not in block
 
 

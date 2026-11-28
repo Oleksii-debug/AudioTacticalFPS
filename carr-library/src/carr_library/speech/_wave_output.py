@@ -2,7 +2,8 @@
 
 Reuses the reviewed WinMM buffer ABI from audio.recording_monitor. Only the
 WavePlayer owner calls this helper, including poll; no worker, timer or second
-player is created. Live volume is applied to this owned HWAVEOUT only.
+player is created. Levels are applied to this owner's bounded PCM buffers;
+Windows device and shared-session mixer levels are never changed.
 """
 from collections import deque
 import ctypes as C
@@ -68,13 +69,41 @@ def _library():
         'waveOutRestart': ([HANDLE], U32),
         'waveOutGetPosition': ([HANDLE, C.POINTER(_MMTime), U32], U32),
         'waveOutGetDevCapsW': ([C.c_size_t, C.POINTER(_Caps), U32], U32),
-        'waveOutSetVolume': ([HANDLE, U32], U32),
         'waveOutGetVolume': ([HANDLE, C.POINTER(U32)], U32),
     }
     for name, (arguments, result) in signatures.items():
         function = getattr(library, name)
         function.argtypes, function.restype = arguments, result
     return library
+
+
+def _scale_pcm(data, width, channels, levels):
+    """Scale one bounded PCM block without changing retained source bytes."""
+    if (width not in (1, 2, 3, 4) or channels not in (1, 2)
+            or not isinstance(levels, PlaybackLevels)
+            or len(data) % (width * channels)
+            or len(data) > 384000 * _BLOCK_MS // 1000 * 8):
+        raise ValueError('Invalid bounded PCM block or player levels.')
+    if levels.balance and channels != 2:
+        raise RuntimeError('Stereo balance requires a stereo recording.')
+    if not levels.muted and levels.volume == 100 and levels.balance == 0:
+        return data
+    if levels.muted or levels.volume == 0:
+        # WAVE PCM uses unsigned 8-bit samples; wider samples are signed.
+        return b'\x80' * len(data) if width == 1 else bytes(len(data))
+    gain = levels.volume / 100
+    gains = (gain * (1 - max(0, levels.balance)),
+             gain * (1 + min(0, levels.balance)))
+    output = bytearray(len(data))
+    for offset in range(0, len(data), width):
+        sample = (data[offset] - 128 if width == 1 else
+                  int.from_bytes(data[offset:offset + width], 'little', signed=True))
+        scaled = round(sample * gains[(offset // width) % channels])
+        if width == 1:
+            output[offset] = scaled + 128
+        else:
+            output[offset:offset + width] = scaled.to_bytes(width, 'little', signed=True)
+    return bytes(output)
 
 
 class WaveOutput:
@@ -176,20 +205,51 @@ class WaveOutput:
     def set_levels(self, levels):
         if not isinstance(levels, PlaybackLevels) or not self.handle.value:
             raise ValueError('Live controls need a validated setting and an owned playback handle.')
-        if not self._caps & 4:  # WAVECAPS_VOLUME
-            raise RuntimeError('This output does not support per-instance volume controls.')
-        if levels.balance and (self.channels != 2 or not self._caps & 8):  # WAVECAPS_LRVOLUME
-            raise RuntimeError('This output cannot control stereo balance for this recording.')
+        if levels.balance and self.channels != 2:
+            raise RuntimeError('Stereo balance requires a stereo recording.')
         self.check_output()
-        requested = levels.packed
-        # Only a real HWAVEOUT obtained above is passed; never a device ordinal.
-        _check(self.library.waveOutSetVolume(self.handle, requested), 'set this player volume')
-        actual = U32()
-        _check(self.library.waveOutGetVolume(self.handle, C.byref(actual)), 'confirm this player volume')
-        mask = 0xFFFFFFFF if self._caps & 8 else 0xFFFF
-        if actual.value & mask != requested & mask:
-            raise RuntimeError('Windows did not confirm the requested player volume and balance.')
-        self.levels = levels
+        self._check_source()
+        if levels == self.levels:
+            return
+        if not self.pending:
+            # Initial admission and an exhausted queue are passive. The next
+            # bounded block, if any, uses these levels before its native write.
+            self.levels = levels
+            return
+        was_paused = self.paused
+        try:
+            _check(self.library.waveOutPause(self.handle), 'hold playback before changing levels')
+            # The native counter is stable while paused. Reset clears that
+            # counter, so rebase this same transport to the measured frame.
+            frame = min(self.last_frame, max(self.first_frame,
+                        round(self.position_seconds * self.rate)))
+            _check(self.library.waveOutReset(self.handle), 'return queued playback buffers')
+            for token in tuple(self.pending):
+                _check(self.library.waveOutUnprepareHeader(
+                    self.handle, C.byref(token.header), C.sizeof(token.header)),
+                    'release playback memory before changing levels')
+                self.pending.remove(token)
+            # Reset may clear a driver's paused state. Pause again before any
+            # replacement PCM is submitted, including an already paused player.
+            _check(self.library.waveOutPause(self.handle), 'hold the replacement playback queue')
+            self.reader.setpos(frame)
+            self.first_frame = self.next_frame = frame
+            self.paused, self.ended = True, False
+            self.levels = levels
+            self.pump()
+            if not was_paused:
+                _check(self.library.waveOutRestart(self.handle), 'resume this playback instance')
+                self.paused = False
+        except BaseException as exc:
+            # Every buffer lacking native Unprepare acknowledgement stays owned.
+            # A caller must obtain Close acknowledgement before retry/admission.
+            self.stopping = True
+            if self not in _UNRELEASED_OUTPUTS:
+                _UNRELEASED_OUTPUTS.append(self)
+            if not isinstance(exc, Exception):
+                raise
+            raise PlaybackCleanupError(
+                'Playback level change is unconfirmed; native ownership was retained. Close the player.') from exc
 
     def _release_done(self):
         while self.pending and self.pending[0].header.flags & 1:  # WHDR_DONE
@@ -211,6 +271,7 @@ class WaveOutput:
             self._check_source()
             if len(data) != count * self.channels * self.width:
                 raise ValueError('The PCM recording ended before its measured frame boundary.')
+            data = _scale_pcm(data, self.width, self.channels, self.levels)
             raw = C.create_string_buffer(data, len(data))
             header = _WaveHeader(data=C.addressof(raw), length=len(data))
             token = _Buffer(raw, header)
