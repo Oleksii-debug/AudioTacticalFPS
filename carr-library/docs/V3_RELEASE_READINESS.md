@@ -13,6 +13,7 @@ bound to the stated source identities.
 
 | Recent exact checkpoint | Actual result | Evidence and scope |
 | --- | --- | --- |
+| 95ef ordinary gates and bbf focused EPUB/document check | **17 ordinary jobs succeeded; EPUB playback acceptance remains incomplete** | [Exact 28 November checkpoint](acceptance/20261128-95efc7-completed-gates-and-epub-diagnostic.json). Quick/production/reconciled passed 2449/2165/3219 cases; Windows/Linux ASR and the second V3 source partition passed. Broad source passed 3114 with 20 classified skips. Focused bbf passed 160 source and 28 document-native checks; exact Unicode highlighting passed, then the unchanged EPUB deadline expired at stage 2. No overall acceptance or later-head PASS is claimed. |
 | 9f late integrated terminal readback | **103 actual source reports: 2269 passed, 22 failed, zero skipped; 301 selected entries remain unreported** | [Exact terminal follow-through](acceptance/20261127-9f2a83-integrated-terminal.json). The complete 404-entry inventory includes one bootstrap compatibility suite and one pre-existing duplicate. A huge generated test ID also failed Windows environment-variable setup/teardown; no final JUnit report exists for that suite. The job ended cancelled on ordinary supersession at 22:50:44 UTC. |
 | 9f broad source composition | **2432 passed in 102 quick suites; 2113 in 109 production suites; 3218 in 95 reconciled suites; zero failures/skips** | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). The separate direct regression passed 987 cases with one intentional Windows-only deselection. These selections overlap. |
 | 9f completed Windows and Linux components | **15 workflow jobs completed successfully**, including both ASR selections, native reading/templates/bibliography/keyboard/lifetime and both compiled launchers | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). ASR completed 734 Linux and 733 Windows cases, six Windows native handle barriers, 15 native ASR and 31 installed incremental-backup checks. Hosted controls retain their stated qualification limits. |
@@ -300,3 +301,49 @@ Observed earlier work plus the 517.45-second Book run projects an optimistic
 projection, not a future timing guarantee. The new partition and forthcoming
 ordinary composition remain **NOT_RUN** in this record. All qualification
 limits above remain unchanged.
+
+
+## Exact 95ef results and continuing EPUB diagnosis — 2026-11-28
+
+The [compact checkpoint](acceptance/20261128-95efc7-completed-gates-and-epub-diagnostic.json) records 17 successful ordinary jobs on
+95efc7d06a82f19e9d247acadd027894608d7891. Quick passed 2449 cases in 102 suites,
+production 2165 in 109 and reconciliation 3219 in 95, all with zero failures or
+skips. The separate direct production selection passed 987 cases with one
+intentional Windows-only deselection. Linux and Windows ASR passed 734 and 733
+cases in 16 suites each, with the separately recorded native controls. These
+selections overlap and are not a count of unique tests.
+
+V3 source shard 2 completed all 69 selectors with 1671 passes. Shard 1 completed
+69 of 70 with 1312 passes before its unchanged twelve-minute limit; Book batch
+was the sole missing report. The independently approved 69/69/1 partition keeps
+all 139 selectors and isolates that measured long suite. The old broad selection
+passed 3114 cases with 20 skips in 2513.05 seconds, leaving three seconds of the
+45-minute job. Exact raw-JUnit readback classifies 18 skips as unavailable optional
+Flite voices/filter and two as missing exposure of the already prepared OCR
+runtime. Approved 8706 splits the unchanged 20 selectors into required 4/16
+partitions and exposes that same verified OCR runtime to the existing guards.
+V3 consequently requires six jobs: native, three strict source partitions and
+two broad partitions. The new partition execution remains **NOT_RUN** here.
+
+The preserved 95ef full-bundle phase proves 16 native Book groups, a first
+verified result at 65.468 seconds and exact retained-output reuse. Its document
+probe then failed an obsolete immediate-child button lookup. At the checkpoint's
+00:17:54 UTC observation, integrated source phase 56 was still in progress; no
+terminal result or missing coverage is inferred.
+
+Focused bbf26d4 matched all 341 checkout Python files to their installed
+counterparts and passed 160 cases in three source suites plus 28 actual native
+document checks. Its corrected EPUB mapping selected the exact 25-character
+Unicode fragment at native positions 533–559. The subsequent Play step did not
+reach the observed playing state before the original 120-second deadline, so
+that focused job **failed**. Source review cannot distinguish undelivered input
+from a caught preparation/device error without the pending state observation.
+The exact approved b11 observation adds bounded state/status output on that same
+failure path while preserving every native assertion and deadline.
+
+Follow-up f4195b58, based on the complete reviewed ordinary source union, was
+queued at 00:17:54 UTC. Its five prior-failure source files and native probes
+retain their original limits; no result is claimed. The next ordinary candidate
+also requires its own gates and remains unaccepted while EPUB and incomplete
+integrated coverage are unresolved. Optional model, manual accessibility,
+acoustic and distribution qualifications remain as stated above.
