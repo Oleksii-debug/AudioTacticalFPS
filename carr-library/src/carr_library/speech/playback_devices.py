@@ -1,7 +1,9 @@
 """Explicit Windows waveOut identities for the existing MCI WAV player.
 
-Uses installed winmm only. Interface names are opaque device identities, not
-paths to open. They are session choices, never restored hardware authority.
+Uses installed winmm only. Endpoint IDs are opaque identities, not paths to open.
+The historical ``interface`` field is retained in passive saved playlists; its
+value is now the endpoint ID, never an adapter interface or enumeration ordinal.
+An old saved adapter identity remains readable but needs explicit output review.
 """
 import ctypes
 from dataclasses import dataclass
@@ -13,8 +15,10 @@ MAX_DEVICES = 128
 MAX_INTERFACE_BYTES = 64 * 1024
 MAX_ENUMERATION_SECONDS = 2.0
 # Reviewed Microsoft SDK mmddk.h at b07213e28bcc48221c155024f9c5e0e1a92c6497.
-DRV_QUERYDEVICEINTERFACE = 0x0800 + 12
-DRV_QUERYDEVICEINTERFACESIZE = 0x0800 + 13
+# https://learn.microsoft.com/en-us/windows/win32/coreaudio/endpoint-id-strings
+# One adapter interface can expose multiple distinct waveform endpoints.
+DRV_QUERYFUNCTIONINSTANCEID = 0x0800 + 17
+DRV_QUERYFUNCTIONINSTANCEIDSIZE = 0x0800 + 18
 
 
 class _Caps(ctypes.Structure):
@@ -97,20 +101,21 @@ def _inventory(library, *, check=lambda: None):
             raise RuntimeError('A playback device changed or could not be inspected. Reload devices.')
         check()
         name = _text(bytes(value.name), 'playback device name')
-        size = ctypes.c_uint32()
-        if message(ctypes.c_void_p(index), DRV_QUERYDEVICEINTERFACESIZE, ctypes.addressof(size), 0) != 0:
+        # Microsoft's legacy waveform example uses size_t for this byte count.
+        size = ctypes.c_size_t()
+        if message(ctypes.c_void_p(index), DRV_QUERYFUNCTIONINSTANCEIDSIZE, ctypes.addressof(size), 0) != 0:
             raise RuntimeError('Windows could not identify a playback device. Reload devices.')
         check()
         interface = ''
         if size.value:
             if size.value < 2 or size.value > MAX_INTERFACE_BYTES or size.value % 2:
-                raise RuntimeError('Windows returned an invalid playback interface size.')
+                raise RuntimeError('Windows returned an invalid playback endpoint size.')
             buffer = ctypes.create_string_buffer(size.value)
-            if message(ctypes.c_void_p(index), DRV_QUERYDEVICEINTERFACE,
+            if message(ctypes.c_void_p(index), DRV_QUERYFUNCTIONINSTANCEID,
                        ctypes.addressof(buffer), size.value) != 0:
                 raise RuntimeError('A playback device changed during identification. Reload devices.')
             check()
-            interface = _text(buffer.raw, 'playback interface')
+            interface = _text(buffer.raw, 'playback endpoint ID')
         result.append(PlaybackDevice(index, name, interface, value.manufacturer,
                                      value.product, value.driver, value.channels))
     if count() != total:
@@ -148,7 +153,7 @@ def output_devices(*, cancelled=lambda: False, timeout_seconds=MAX_ENUMERATION_S
 
 
 def resolve_output(device, *, cancelled=lambda: False):
-    """Rebind an explicitly selected interface after index changes, never by name."""
+    """Rebind an exact endpoint after index changes, never by adapter or name."""
     if not isinstance(device, PlaybackDevice) or not device.selectable:
         raise ValueError('Choose an enumerated output with a stable device identity.')
     found = [row for row in output_devices(cancelled=cancelled) if row.identity == device.identity]
