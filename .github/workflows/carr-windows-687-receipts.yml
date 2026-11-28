@@ -1,4 +1,4 @@
-name: CARR exact Windows 687 bundle and capture receipts
+name: CARR exact Windows endpoint and capture receipts
 on:
   push:
     branches: [carr/windows-687-receipts-20261127]

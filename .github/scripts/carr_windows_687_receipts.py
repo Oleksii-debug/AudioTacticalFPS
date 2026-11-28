@@ -14,15 +14,15 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46075232185
-HEAD = "68777f9f36b142ed1ce847ee47d82e20d0bdd132"
+RUN = 46088683366
+HEAD = "17c581015fc1ca6f3294f4cce1fe894f33a843cd"
 BRANCH = "carr/ci-endpoint-evaluation-20261127"
 SOURCES = (
-    ("pre-source", 15236066233, 270313,
-     "c4770d5c00d0d7303c92ce1e5c06d9be3ce8c89df923ee6aa3ae065756859750",
-     "carr-windows-pre-source-" + HEAD + "-1"),
-    ("recording", 15235060544, 12328,
-     "72ad943136e318bdc99ba7866e5ac1301d02eabda493aec672ba2d800a179bc2",
+    ("endpoint", 15239898079, 3946,
+     "4d3bc8ecf4bc28d2918ed1c926374c0efb648031162980489fbef952316c9077",
+     "carr-windows-audio-endpoint-" + HEAD + "-1"),
+    ("recording", 15240107836, 16757,
+     "ff0a323ab294ad5d8704fd1f407068cf028c7a2c38d6c72c49e552e364be6caa",
      "carr-windows-recording-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
@@ -30,7 +30,8 @@ MAX_MEMBER_BYTES = 4 * 1024 * 1024
 MAX_EXPANDED_BYTES = 32 * 1024 * 1024
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
 BUNDLE_PREFIXES = ("bundle-", "full-bundle-", "core-bundle-", "offline-bundle-")
-ENDPOINT_RECEIPTS = frozenset(("audio-endpoint.json", "endpoint-evaluation.json", "audio-services.json"))
+ENDPOINT_RECEIPTS = frozenset(("audio-endpoint.json", "endpoint-evaluation.json", "audio-services.json",
+                               "recording-access-diagnostic.json"))
 ERROR_LINE = re.compile(r"Traceback|AssertionError|TimeoutError|RuntimeError|ValueError|"
                         r"PermissionError|OSError|FileNotFoundError|FAIL(?:ED)?\b|"
                         r"\bERROR\b|Exception|access violation", re.I)
