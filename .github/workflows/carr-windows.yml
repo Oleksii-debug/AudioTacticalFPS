@@ -999,6 +999,57 @@ jobs:
           # Test dependencies are installed only after production installation passes.
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Run the five previously failing cases in this unmasked embedded interpreter.
+          $checkEmbeddedFixtures = @'
+          import importlib, json, locale, os, pathlib, sys
+          import xml.etree.ElementTree as ET
+          import carr_library
+          from carr_library.native_runtime import activate_bundled_runtime
+          root = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          runtime_handle = activate_bundled_runtime(bundle_root=root)
+          assert runtime_handle is not None
+          os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          import pytest
+          nodes = [
+              'tests/audio/test_managed_projects.py::test_relocated_project_and_recovery_cannot_write_into_old_library',
+              'tests/audio/test_managed_projects.py::test_managed_save_as_detaches_output_without_touching_original',
+              'tests/audio/test_managed_projects.py::test_project_id_must_match_saved_directory_before_state_changes',
+              'tests/audio/test_media_conversion.py::test_playlist_and_video_without_audio_are_not_silent_audio_defaults',
+              'tests/citations/test_csl.py::test_all_pinned_resources_and_license_notices_match_manifest',
+          ]
+          class ExactCases:
+              collected = None
+              rejected = False
+              def pytest_collection_finish(self, session):
+                  self.collected = [item.nodeid for item in session.items]
+                  if self.collected != nodes:
+                      raise pytest.UsageError('The embedded fixture gate must collect exactly the five reviewed cases.')
+              def pytest_runtest_logreport(self, report):
+                  if report.skipped or hasattr(report, 'wasxfail'):
+                      self.rejected = True
+          policy = ExactCases()
+          report = 'ci-results/full-bundle-embedded-fixtures.xml'
+          status = pytest.main(['-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+                               '--import-mode=importlib', '--junitxml=' + report, *nodes], plugins=[policy])
+          if status:
+              raise SystemExit(status)
+          cases = list(ET.parse(report).iter('testcase'))
+          assert policy.collected == nodes and not policy.rejected and len(cases) == 5
+          assert {case.get('name') for case in cases} == {node.split('::')[1] for node in nodes}
+          assert all(case.find(tag) is None for case in cases for tag in ('failure', 'error', 'skipped'))
+          origins = {}
+          for name in ('carr_library', 'carr_library.ui.audio_studio',
+                       'carr_library.audio.media_conversion', 'carr_library.citations.csl'):
+              path = pathlib.Path(importlib.import_module(name).__file__).resolve(strict=True)
+              assert path.is_relative_to(root / '.venv'), name
+              origins[name] = str(path)
+          print(json.dumps(dict(status='PASS', passed=5, failed=0, skipped=0,
+                                preferred_encoding=locale.getpreferredencoding(False),
+                                utf8_mode=sys.flags.utf8_mode, installed_origins=origins)), flush=True)
+          '@
+          $checkEmbeddedFixtures | & $python -I -B - $bundle 2>&1 | Tee-Object 'ci-results/full-bundle-embedded-fixtures.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/ci_check.py --installed --allow-loopback tests/loopback/test_translation_local_adapter.py 2>&1 | Tee-Object 'ci-results/full-bundle-local-translation-http.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B scripts/installed_sync_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-encrypted-transfer.txt'
