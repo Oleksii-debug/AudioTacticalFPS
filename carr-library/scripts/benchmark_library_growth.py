@@ -25,10 +25,10 @@ import sys
 import threading
 from time import monotonic, perf_counter
 
-BASE_SOURCE_COMMIT = "4d4f5872a99bd7099257a21078555565e017029e"
+BASE_SOURCE_COMMIT = "313596afb39557b6718dfc0688e2e46c9b9fa35b"
 SOURCE_BINDINGS = {
     "application.py": "a5aeac86640cb3221de726b452f9e8e2094a6035cc53f30775fdd173b5f0ee9f",
-    "catalog/intake.py": "9a22419d2fe245806c501f59024d850083648dc7228c1ea92dab642332bf8a28",
+    "catalog/intake.py": "0abda3c6e588ea07aa8b74eae4e2e2ba5f929028ec9620e5ad4969cb06def08c",
     "ingest/pipeline.py": "fd77d10f20ba7a8a712a73cf4c1eae6f8f3903a37c97858901b64cb0a4f36f4e",
     "ingest/batches.py": "2761a2814275c6194157b30ae8a9fbf17e95ff8a327a6bb99051a77a8308cdfe",
     "ingest/worker.py": "d8e9ba1bb965679007481206018ff7aa641ca76d9a52eb0dae0777661f6b64a4",

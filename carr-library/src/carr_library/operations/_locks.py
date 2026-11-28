@@ -39,17 +39,18 @@ def _checked_lock_path(value):
     # race either local_path's leaf check or our regular-file check below.
     # Validate the still-existing parent; never hide invalid types, links,
     # access failures, or removal of the resource directory itself.
+    candidate = Path(value).absolute()
     try:
-        path = local_path(value)
+        local_path(value)
     except (FileNotFoundError, UnlinkedRegularFile) as exc:
-        candidate = Path(value).absolute()
         if isinstance(exc, UnlinkedRegularFile) and exc.path != candidate:
             raise
-        parent = local_path(candidate.parent, exists=True)
-        regular(parent, directory=True)
-        path = parent / candidate.name
-    parent = local_path(path.parent, exists=True)
+    # The leaf can disappear between Windows' two realpath native queries.
+    # Keep the original input validation, but derive the lock name from its
+    # freshly checked existing parent, not that transient leaf spelling.
+    parent = local_path(candidate.parent, exists=True)
     regular(parent, directory=True)
+    path = parent / candidate.name
     try:
         regular(path)
     except (FileNotFoundError, UnlinkedRegularFile) as exc:

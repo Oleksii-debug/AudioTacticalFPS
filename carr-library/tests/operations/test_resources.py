@@ -596,3 +596,150 @@ def test_zero_link_stat_remains_invalid_for_general_state(tmp_path, monkeypatch)
         with pytest.raises(ValueError):
             durable_state.local_path(path)
     assert path.read_bytes() == b'{}'
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+@pytest.mark.parametrize('change', [
+    'released', 'relative-input', 'missing-parent', 'hardlinked-leaf', 'directory-leaf'])
+def test_native_resolution_release_uses_fresh_original_parent(tmp_path, monkeypatch, phase, change):
+    """Release a real lock after resolution's first result, before its verification."""
+    from carr_library.operations import _locks
+    directory = tmp_path / 'native-resolution'
+    directory.mkdir()
+    directory = directory.resolve(strict=True)
+    path = directory / 'shared.lock'
+    retained = tmp_path / 'retained-original'
+    original_bytes = b'Retained bytes must never be opened as a resource lock.'
+    retained.write_bytes(original_bytes)
+    if change == 'relative-input':
+        monkeypatch.chdir(directory.parent)
+        supplied = Path(directory.name) / path.name
+    else:
+        supplied = path
+    holder = _locks.NativeLock(path)
+    assert holder.acquire()
+    waiter = _locks.NativeLock(supplied) if phase == 'acquisition' else None
+    peer = None
+    released, resolved, native_failures = [], [], []
+    real_local_path = _locks.local_path
+
+    def release_after_result(result):
+        if released:
+            return
+        released.append(result)
+        holder.release()
+        assert not holder.held and not os.path.lexists(path)
+        if change == 'missing-parent':
+            directory.rmdir()
+        elif change == 'hardlinked-leaf':
+            os.link(retained, path)
+        elif change == 'directory-leaf':
+            path.mkdir()
+
+    def observe_local_path(value, **kwargs):
+        result = real_local_path(value, **kwargs)
+        if Path(value).absolute() == path:
+            resolved.append(result)
+        return result
+
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'local_path', observe_local_path)
+            if sys.platform == 'win32':
+                import ntpath
+                real_native_path = ntpath._getfinalpathname
+
+                def resolve_native(value):
+                    selected = Path(value) == path
+                    try:
+                        result = real_native_path(value)
+                    except OSError as exc:
+                        if selected and released:
+                            native_failures.append(exc.winerror)
+                        raise
+                    if selected:
+                        release_after_result(result)
+                    return result
+
+                # Both final-path queries still call the real Windows API.
+                # The first succeeds on the held file; release removes it
+                # before CPython checks whether its extended prefix is removable.
+                scoped.setattr(ntpath, '_getfinalpathname', resolve_native)
+            else:
+                real_path = os.path.realpath
+
+                def resolve_portable(value, *, strict=False):
+                    result = real_path(value, strict=strict)
+                    if Path(value) == path:
+                        release_after_result(result)
+                    return result
+
+                # The same real release boundary is useful on other platforms;
+                # only Windows supplies the two-query extended-path observation.
+                scoped.setattr(os.path, 'realpath', resolve_portable)
+
+            def admit():
+                nonlocal waiter
+                if waiter is None:
+                    waiter = _locks.NativeLock(supplied)
+                return waiter.acquire()
+
+            if change == 'missing-parent':
+                with pytest.raises(FileNotFoundError):
+                    admit()
+            elif change in ('hardlinked-leaf', 'directory-leaf'):
+                with pytest.raises(ValueError, match='regular local files'):
+                    admit()
+            else:
+                assert admit()
+
+        assert len(released) == 1 and resolved
+        if sys.platform == 'win32' and change in ('released', 'relative-input', 'missing-parent'):
+            assert str(released[0]).startswith('\\\\?\\')
+            assert str(resolved[0]).startswith('\\\\?\\')
+            assert native_failures and native_failures[0] in (2, 3)
+            # This is the exact prior failure: a native-generated prefix,
+            # not caller-supplied UNC input, reached the next local-path guard.
+            with pytest.raises(ValueError, match='Choose a local path'):
+                real_local_path(resolved[0].parent, exists=True)
+        if change in ('released', 'relative-input'):
+            assert waiter.path == directory.resolve(strict=True) / path.name
+            assert waiter.held and not str(waiter.path).startswith(('//', '\\\\'))
+            named = path.lstat()
+            held = os.fstat(waiter.lock._context.lock_file_fd)
+            assert (named.st_dev, named.st_ino) == (held.st_dev, held.st_ino)
+            peer = _locks.NativeLock(path)
+            assert not peer.acquire() and waiter.held
+            waiter.release()
+            assert peer.acquire() and peer.held
+        else:
+            assert waiter is None or not waiter.held
+            if change == 'missing-parent':
+                assert not directory.exists()
+            elif change == 'hardlinked-leaf':
+                assert path.read_bytes() == original_bytes and path.lstat().st_nlink == 2
+            else:
+                assert path.is_dir() and list(path.iterdir()) == []
+        assert retained.read_bytes() == original_bytes
+    finally:
+        if peer is not None:
+            peer.release()
+        if waiter is not None:
+            waiter.release()
+        holder.release()
+
+
+@pytest.mark.parametrize('value', [
+    '//untrusted-host/share/admission.lock',
+    r'\\untrusted-host\share\admission.lock',
+    r'\\?\C:\untrusted\admission.lock',
+    r'\\.\NUL',
+    'untrusted\x00.lock',
+], ids=['forward-unc', 'backward-unc', 'extended-drive', 'device', 'nul'])
+def test_lock_resolution_does_not_admit_untrusted_path_syntax(tmp_path, monkeypatch, value):
+    from carr_library.operations._locks import NativeLock
+    monkeypatch.chdir(tmp_path)
+    before = tuple(tmp_path.iterdir())
+    with pytest.raises(ValueError, match='Choose a local path'):
+        NativeLock(value)
+    assert tuple(tmp_path.iterdir()) == before

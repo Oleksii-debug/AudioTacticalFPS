@@ -122,10 +122,14 @@ jobs:
               'tests/storage/test_locator_integrity.py',
               'tests/storage/test_durable_state_read.py',
               'tests/operations/test_resources.py',
+              'tests/catalog/test_intake.py',
+              'tests/catalog/test_streaming_intake.py',
+              'tests/catalog/test_intake_portability.py',
           ]
           expected_properties = {
               suites[1]: {'source_sql_0', 'source_sql_1', 'source_sql_4'},
               suites[2]: {'locator_sql_profiles'},
+              suites[5]: {'small_snapshot_python_memory'},
           }
           spec = importlib.util.spec_from_file_location('_carr_growth_ci_check', runner_path)
           runner = importlib.util.module_from_spec(spec)
@@ -183,7 +187,7 @@ jobs:
               if exit_code == 0 and set(captured) != set(suites):
                   errors.append(dict(receipt_error='Missing required control report'))
               receipt = dict(schema='carr-growth-control-evidence/1', tested_commit=os.environ['GITHUB_SHA'],
-                             application_source_commit='4d4f5872a99bd7099257a21078555565e017029e',
+                             application_source_commit='313596afb39557b6718dfc0688e2e46c9b9fa35b',
                              ci_check_sha256=runner_sha, strict_runner_exit=exit_code,
                              suites=suites, junit_reports=captured, query_properties=profiles, errors=errors,
                              scope='Actual strict source controls and SQL plans; no pilot or ordinary acceptance verdict')
@@ -202,7 +206,7 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/benchmark_library_growth.py --output-dir ci-library-growth --source-proof ci-native-audio-diagnostic/installed-source.json --tested-commit $env:GITHUB_SHA --sizes 100 1000 2>&1 | Tee-Object 'ci-native-audio-diagnostic/library-growth-pilot.txt'
           $pilotExit = $LASTEXITCODE
           $finished = [DateTime]::UtcNow
-          @{ tested_commit = $env:GITHUB_SHA; baseline_application_commit = '4d4f5872a99bd7099257a21078555565e017029e'; exit_code = $pilotExit; started_at = $started.ToString('o'); completed_at = $finished.ToString('o'); elapsed_seconds = ($finished - $started).TotalSeconds; child_timeout_seconds = 900; scope = '100/1000 exact real TXT cases with selected current-thread call profiling; timings include instrumentation; incomplete scales remain incomplete; no uninstrumented speed or SQL-only causality claim' } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/library-growth-exit.json'
+          @{ tested_commit = $env:GITHUB_SHA; baseline_application_commit = '313596afb39557b6718dfc0688e2e46c9b9fa35b'; exit_code = $pilotExit; started_at = $started.ToString('o'); completed_at = $finished.ToString('o'); elapsed_seconds = ($finished - $started).TotalSeconds; child_timeout_seconds = 900; scope = '100/1000 exact real TXT cases with selected current-thread call profiling; timings include instrumentation; incomplete scales remain incomplete; no uninstrumented speed or SQL-only causality claim' } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/library-growth-exit.json'
           if ($pilotExit -ne 0) { exit $pilotExit }
 
       - name: Preserve exact measurements and incomplete-case evidence

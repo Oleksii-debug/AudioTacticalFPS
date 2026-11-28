@@ -1483,3 +1483,386 @@ foreach ($entry in $targetsByName) {
             assert Path(observed[wrong_names[fault]]).resolve() != expected[wrong_names[fault]].resolve()
         else:
             assert fault == 'missing-target' and not expected['Resonance'].exists()
+
+
+# This observer adds evidence only. The existing builder remains authoritative.
+inventory_observer = load('standard_installer_inventory_observer_test',
+    ROOT / 'packaging/windows_installer/bundle_difference.py')
+
+
+def inventory_bytes(root):
+    return {path.relative_to(root).as_posix(): path.read_bytes()
+            for path in root.rglob('*') if path.is_file()}
+
+
+def test_inventory_observation_matches_without_touching_the_installed_environment(payload):
+    root, expected = payload
+    synthetic_bootstrap(root)
+    before = inventory_bytes(root)
+    result = inventory_observer.inspect_bundle(root, expected)
+    assert result['status'] == 'MATCH'
+    assert result['counts'] == dict(missing=0, changed=0, undeclared=0)
+    assert result['expected_files'] == result['actual_files'] == len(before) - 3
+    assert result['excluded_top_directories'] == ['.venv']
+    assert result['differences'] == []
+    assert result['all_differences_sha256'] == checksum(b'')
+    assert inventory_bytes(root) == before
+    assert service.bundle(root, expected, allow_installed=True)['source_commit'] == 'a' * 40
+
+    # The exclusion does not authorize similarly named directories elsewhere.
+    nested = root / 'runtime/.venv/unreviewed.txt'
+    nested.parent.mkdir()
+    nested.write_bytes(b'Nested environment names are still payload inventory.')
+    report = inventory_observer.inspect_bundle(root, expected)
+    assert report['status'] == 'DIFFERENT'
+    assert report['counts'] == dict(missing=0, changed=0, undeclared=1)
+    assert report['differences'][0]['path'] == 'runtime/.venv/unreviewed.txt'
+    with pytest.raises(ValueError, match='missing, changed, or undeclared'):
+        service.bundle(root, expected, allow_installed=True)
+
+
+@pytest.mark.parametrize('kind', ['missing', 'changed', 'undeclared'])
+def test_inventory_observation_records_actual_differences_without_repair(payload, kind):
+    root, expected = payload
+    target = root / 'README.txt'
+    old_digest = checksum(target.read_bytes())
+    if kind == 'missing':
+        target.unlink()
+        new_digest = None
+    elif kind == 'changed':
+        target.write_bytes(b'Actual changed payload; the observer must retain it.')
+        new_digest = checksum(target.read_bytes())
+    else:
+        target = root / 'runtime/Lib/__pycache__/observed.cpython-311.pyc'
+        target.parent.mkdir()
+        target.write_bytes(b'Non-executable fixture for an undeclared bytecode file.')
+        old_digest, new_digest = None, checksum(target.read_bytes())
+    before = inventory_bytes(root)
+    result = inventory_observer.inspect_bundle(root, expected)
+    row = dict(kind=kind, path=target.relative_to(root).as_posix(),
+               expected_sha256=old_digest, actual_sha256=new_digest)
+    assert result['status'] == 'DIFFERENT'
+    assert result['counts'] == {name: int(name == kind)
+                                for name in ('missing', 'changed', 'undeclared')}
+    assert result['differences'] == [row]
+    assert result['differences_truncated'] is False
+    canonical = (json.dumps(row, ensure_ascii=True, sort_keys=True,
+                            separators=(',', ':')) + '\n').encode('ascii')
+    assert result['all_differences_sha256'] == checksum(canonical)
+    assert result['expected_bundle_manifest_sha256'] == expected
+    assert result['observed_bundle_manifest_sha256'] == expected
+    assert inventory_bytes(root) == before
+    with pytest.raises(ValueError, match='missing, changed, or undeclared'):
+        service.bundle(root, expected, allow_installed=True)
+    assert inventory_bytes(root) == before
+
+
+def test_inventory_observation_bounds_rows_but_hashes_every_actual_difference(payload):
+    root, expected = payload
+    extra = root / 'extra'
+    extra.mkdir()
+    rows = []
+    for number in range(131):
+        path = extra / (f'{number:03d}-' + 'Ω' * 40 + '.txt')
+        raw = f'Actual additional file {number}'.encode('ascii')
+        path.write_bytes(raw)
+        rows.append(dict(kind='undeclared', path=path.relative_to(root).as_posix(),
+                         expected_sha256=None, actual_sha256=checksum(raw)))
+    before = inventory_bytes(root)
+    result = inventory_observer.inspect_bundle(root, expected)
+    complete = b''.join((json.dumps(row, ensure_ascii=True, sort_keys=True,
+        separators=(',', ':')) + '\n').encode('ascii') for row in rows)
+    assert result['status'] == 'DIFFERENT'
+    assert result['counts'] == dict(missing=0, changed=0, undeclared=131)
+    assert result['differences'] == rows[:128]
+    assert result['differences_truncated'] is True
+    assert result['all_differences_sha256'] == checksum(complete)
+    assert len(json.dumps(result, ensure_ascii=True).encode('ascii')) < 1024 * 1024
+    assert inventory_bytes(root) == before
+
+    # A change beyond the emitted sample must still alter the complete receipt.
+    final = root / rows[-1]['path']
+    final.write_bytes(b'Changed only the unprinted final difference.')
+    changed = inventory_observer.inspect_bundle(root, expected)
+    assert changed['differences'] == result['differences']
+    assert changed['counts'] == result['counts']
+    assert changed['all_differences_sha256'] != result['all_differences_sha256']
+    assert final.read_bytes() == b'Changed only the unprinted final difference.'
+
+
+@pytest.mark.parametrize('fault', [
+    'malformed', 'duplicate', 'unsafe-path', 'invalid-hash', 'wrong-identity',
+])
+def test_inventory_observation_unavailable_for_invalid_manifest(payload, fault):
+    root, expected = payload
+    manifest = root / 'bundle-manifest.json'
+    original = manifest.read_bytes()
+    document = json.loads(original)
+    if fault == 'malformed':
+        raw = b'{"files":'
+    elif fault == 'duplicate':
+        raw = b'{"files":{},"files":{}}'
+    elif fault == 'unsafe-path':
+        document['files']['../outside.txt'] = 'b' * 64
+        raw = json.dumps(document).encode('utf-8')
+    elif fault == 'invalid-hash':
+        document['files']['README.txt'] = 'b' * 63
+        raw = json.dumps(document).encode('utf-8')
+    else:
+        raw = original
+    manifest.write_bytes(raw)
+    expected = 'b' * 64 if fault == 'wrong-identity' else checksum(raw)
+    before = inventory_bytes(root)
+    result = inventory_observer.inspect_bundle(root, expected)
+    assert result['status'] == 'UNAVAILABLE'
+    assert result['counts'] is None and result['actual_files'] is None
+    assert result['differences'] == [] and result['all_differences_sha256'] is None
+    assert result['error_type'] and 0 < len(result['error']) <= 512
+    assert inventory_bytes(root) == before
+    with pytest.raises((ValueError, KeyError)):
+        service.bundle(root, expected, allow_installed=True)
+
+
+@pytest.mark.parametrize('name', ['.venv', 'runtime/linked'])
+def test_inventory_observation_refuses_actual_linked_tree_before_exclusion(payload, tmp_path, name):
+    root, expected = payload
+    outside = tmp_path / 'outside preserved Ω'
+    outside.mkdir()
+    sentinel = outside / 'private.txt'
+    sentinel.write_bytes(b'Unrelated bytes must remain unchanged.')
+    link = root / name
+    if sys.platform == 'win32':
+        command = Path(os.environ['SystemRoot']) / 'System32/cmd.exe'
+        result = subprocess.run([str(command), '/d', '/c', 'mklink', '/J',
+            str(link), str(outside)], capture_output=True, timeout=10, check=False)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert link.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    else:
+        link.symlink_to(outside, target_is_directory=True)
+        assert link.is_symlink()
+    result = inventory_observer.inspect_bundle(root, expected)
+    assert result['status'] == 'UNAVAILABLE'
+    assert result['counts'] is None and result['differences'] == []
+    with pytest.raises(ValueError):
+        service.bundle(root, expected, allow_installed=True)
+    assert sentinel.read_bytes() == b'Unrelated bytes must remain unchanged.'
+    assert (root / 'bundle-manifest.json').read_bytes()
+    # Remove only this fixture's link; never traverse or delete its target.
+    if sys.platform == 'win32':
+        link.rmdir()
+    else:
+        link.unlink()
+    assert sentinel.is_file()
+
+
+@pytest.mark.parametrize('when', ['during-read', 'after-inventory'])
+def test_inventory_observation_refuses_a_manifest_changed_during_observation(payload, monkeypatch, when):
+    root, expected = payload
+    manifest = root / 'bundle-manifest.json'
+    original = manifest.read_bytes()
+    assert original.count(b'a' * 40) == 1
+    changed = original.replace(b'a' * 40, b'b' * 40, 1)
+    before = manifest.stat()
+    changes = []
+    monkeypatch.setattr(inventory_observer, '_maintenance', lambda: service)
+
+    def mutate():
+        assert not changes
+        manifest.write_bytes(changed)
+        os.utime(manifest, ns=(before.st_atime_ns, before.st_mtime_ns))
+        changes.append(True)
+
+    if when == 'during-read':
+        actual_fdopen = os.fdopen
+        identity = (before.st_dev, before.st_ino)
+
+        class ChangedAfterRead:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def fileno(self):
+                return self.stream.fileno()
+            def read(self, *args):
+                raw = self.stream.read(*args)
+                if not changes:
+                    mutate()
+                return raw
+
+        def opened(descriptor, *args, **kwargs):
+            stream = actual_fdopen(descriptor, *args, **kwargs)
+            info = os.fstat(stream.fileno())
+            if (info.st_dev, info.st_ino) == identity and not changes:
+                return ChangedAfterRead(stream)
+            return stream
+        monkeypatch.setattr(os, 'fdopen', opened)
+    else:
+        actual_inventory = service.inventory
+        def scan(*args, **kwargs):
+            result = actual_inventory(*args, **kwargs)
+            mutate()
+            return result
+        monkeypatch.setattr(service, 'inventory', scan)
+    result = inventory_observer.inspect_bundle(root, expected)
+    assert changes == [True]
+    assert result['status'] == 'UNAVAILABLE'
+    assert result['counts'] is None and result['differences'] == []
+    assert result['all_differences_sha256'] is None
+    assert 'changed' in result['error'].lower()
+    assert manifest.read_bytes() == changed
+    with pytest.raises(ValueError, match='installer identity'):
+        service.bundle(root, expected, allow_installed=True)
+
+
+@pytest.mark.parametrize('state', ['match', 'different', 'unavailable'])
+def test_actual_inventory_cli_emits_only_bounded_observation_and_never_repairs(payload, state):
+    root, expected = payload
+    if state == 'different':
+        (root / 'extra Ω.txt').write_bytes(b'Keep the observed extra file.')
+    if state == 'unavailable':
+        expected = 'b' * 64
+    before = inventory_bytes(root)
+    result = subprocess.run([sys.executable, '-I', '-B',
+        str(ROOT / 'packaging/windows_installer/bundle_difference.py'),
+        '--bundle', str(root), '--bundle-manifest-sha256', expected],
+        capture_output=True, timeout=15, check=False)
+    assert result.returncode == 0, result.stderr
+    assert len(result.stdout) < 1024 * 1024
+    assert result.stdout.decode('ascii').count('\n') == 1
+    report = json.loads(result.stdout)
+    assert report['status'] == state.upper()
+    assert report['scope'] == 'standard-installer-file-inventory'
+    assert 'installed_bundle' not in report and report['status'] != 'PASS'
+    assert inventory_bytes(root) == before
+
+
+if sys.platform == 'win32':
+    @pytest.mark.parametrize('fault,build_exit', [
+        ('none', 0), ('observer-exit', 41), ('observer-launch', 41),
+        ('observer-output', 41), ('none', 41),
+    ], ids=['success', 'observer-exit', 'observer-launch', 'observer-output', 'builder-refusal'])
+    def test_actual_inventory_powershell_always_reaches_original_builder(tmp_path, fault, build_exit):
+        import textwrap
+
+        workflow = (ROOT.parent / '.github/workflows/carr-windows.yml').read_text(encoding='utf-8')
+        block = workflow.split(
+            '      - name: Build pinned standard setup and execute actual install, repair and uninstall\n',
+            1)[1].split('\n      - name:', 1)[0]
+        body = textwrap.dedent(block.split('        run: |\n', 1)[1])
+        start = body.index('$inventoryObservation = try {')
+        command = '& $python -I -B -X utf8 packaging/windows_installer/build_setup.py '
+        builder = body.index(command, start)
+        finish = body.index('if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }', builder)
+        finish += len('if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }')
+        actual = body[start:finish]
+        # Only the two external child programs are replaced. The real observer
+        # exception/output handling and the original authoritative exit guard run.
+        assert actual.count('packaging/windows_installer/bundle_difference.py') == 1
+        assert actual.count('packaging/windows_installer/build_setup.py') == 1
+        actual = actual.replace('packaging/windows_installer/bundle_difference.py', 'observer-child.py')
+        actual = actual.replace('packaging/windows_installer/build_setup.py', 'builder-child.py')
+        if fault == 'observer-launch':
+            actual = actual.replace('& $python -I -B -X utf8 observer-child.py',
+                                    "& './missing-observer.exe' -I -B -X utf8 observer-child.py")
+        (tmp_path / 'ci-results').mkdir()
+        receipt = tmp_path / 'ci-results/standard-installer-inventory.json'
+        if fault == 'observer-output':
+            receipt.mkdir()
+        (tmp_path / 'observer-child.py').write_text(
+            "import json,pathlib,sys\n"
+            "with pathlib.Path('invoked.jsonl').open('a',encoding='utf-8') as out:\n"
+            " out.write(json.dumps('observer')+'\\n')\n"
+            "print(json.dumps(dict(schema=1,status='MATCH')),flush=True)\n"
+            f"raise SystemExit({17 if fault == 'observer-exit' else 0})\n", encoding='utf-8')
+        (tmp_path / 'builder-child.py').write_text(
+            "import json,pathlib,sys\n"
+            "with pathlib.Path('invoked.jsonl').open('a',encoding='utf-8') as out:\n"
+            " out.write(json.dumps('builder')+'\\n')\n"
+            "pathlib.Path('builder-arguments.json').write_text(json.dumps(sys.argv[1:]),encoding='utf-8')\n"
+            "print('AUTHORITATIVE BUILDER EXECUTED',flush=True)\n"
+            f"raise SystemExit({build_exit})\n", encoding='utf-8')
+        quoted = sys.executable.replace("'", "''")
+        prefix = ("$ErrorActionPreference = 'Stop'\n"
+                  "$python = '" + quoted + "'\n"
+                  "$bundle = 'fixed-bundle'\n$manifest = '" + 'a' * 64 + "'\n"
+                  "$buildRoot = 'fixed-build'\n$compilerRoot = 'fixed-compiler'\n")
+        target = tmp_path / 'actual-inventory-orchestration.ps1'
+        target.write_text(prefix + actual + "\nexit 0\n", encoding='utf-8')
+        result = subprocess.run(['pwsh', '-NoLogo', '-NoProfile', '-File', str(target)],
+            cwd=tmp_path, capture_output=True, timeout=30, check=False)
+        assert result.returncode == build_exit, result.stdout + result.stderr
+        invoked = [json.loads(line) for line in
+            (tmp_path / 'invoked.jsonl').read_text(encoding='utf-8').splitlines()]
+        assert invoked == (['builder'] if fault == 'observer-launch' else ['observer', 'builder'])
+        arguments = json.loads((tmp_path / 'builder-arguments.json').read_text(encoding='utf-8'))
+        assert arguments[:5] == ['--bundle', 'fixed-bundle', '--bundle-manifest-sha256',
+                                 'a' * 64, '--installed-bundle']
+        assert b'AUTHORITATIVE BUILDER EXECUTED' in result.stdout
+        if fault == 'observer-output':
+            assert receipt.is_dir()
+            assert b'"status":"UNAVAILABLE"' in result.stdout
+        else:
+            report = json.loads(receipt.read_text(encoding='utf-8-sig'))
+            assert report['status'] == ('UNAVAILABLE' if fault.startswith('observer-') else 'MATCH')
+
+
+@pytest.mark.parametrize('log_kind', ['utf8', 'utf16', 'bounded', 'unreadable'])
+def test_shortcut_child_failure_keeps_cause_and_bounded_actual_log(tmp_path, monkeypatch, log_kind):
+    appdata = tmp_path / 'appdata'
+    folder = appdata / 'Microsoft/Windows/Start Menu/Programs/Resonance'
+    folder.mkdir(parents=True)
+    for name in ('Resonance', 'Repair Resonance', 'Uninstall Resonance'):
+        (folder / (name + '.lnk')).write_bytes(b'Owned diagnostic fixture; never followed.')
+    monkeypatch.setenv('APPDATA', str(appdata))
+    monkeypatch.setenv('SystemRoot', str(tmp_path / 'windows'))
+    report = tmp_path / 'inspection'
+    report.mkdir()
+    marker = 'Native acceptance failed at shortcuts-process.log: exit 1'
+    original = RuntimeError(marker)
+    text = 'Actual child diagnostic: \u03a9 \u0423\u043a\u0440\u0430\u0457\u043d\u0430\n'
+    raw = (text.encode('utf-16') if log_kind == 'utf16'
+           else text.encode('utf-8'))
+    if log_kind == 'bounded':
+        raw = b'bounded-head\n' + b'x' * (256 * 1024) + b'UNREAD-TAIL'
+    observed = []
+
+    def failed_child(command, *, cwd, log, timeout):
+        observed.append((cwd, log, timeout))
+        if log_kind == 'unreadable':
+            log.mkdir()
+        else:
+            log.write_bytes(raw)
+        raise original
+
+    monkeypatch.setattr(probe, 'owned_process', failed_child)
+    with pytest.raises(RuntimeError, match=marker) as failure:
+        probe.inspect_shortcuts(tmp_path / 'installation', report)
+    assert failure.value.__cause__ is original
+    assert observed == [(report, report / 'shortcuts-process.log', 30)]
+    message = str(failure.value)
+    assert message.isascii()
+    detail = json.loads(message.split('; child log: ', 1)[1])
+    assert detail['log'] == 'shortcuts-process.log'
+    if log_kind == 'unreadable':
+        assert detail['status'] == 'UNAVAILABLE'
+        assert detail['read_error'] in ('IsADirectoryError', 'PermissionError')
+        assert 'text' not in detail and 'captured_sha256' not in detail
+        assert (report / 'shortcuts-process.log').is_dir()
+    else:
+        captured = raw[:16384]
+        assert detail['status'] == 'READ'
+        assert detail['captured_bytes'] == len(captured)
+        assert detail['captured_sha256'] == checksum(captured)
+        assert detail['truncated'] is (len(raw) > 16384)
+        assert (report / 'shortcuts-process.log').read_bytes() == raw
+        if log_kind == 'bounded':
+            assert detail['text'].startswith('bounded-head\n')
+            assert 'UNREAD-TAIL' not in message
+            assert len(detail['text']) == 16384
+            assert len(message) < 17000
+        else:
+            assert detail['text'] == text
+    assert not (report / 'shortcuts.json').exists()
+    assert not (report / 'shortcut-inspection.json').exists()
