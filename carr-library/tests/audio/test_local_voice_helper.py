@@ -449,3 +449,236 @@ def test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup
     assert fixture.identity(manifest) == before
     second = tmp_path / 'second'
     verify_backup(second, restored.backup(second))
+
+
+def _cleanup_sharing_error(code=32):
+    error = PermissionError('Controlled native sharing violation.')
+    error.winerror = code
+    return error
+
+
+def _hold_private_directory_without_delete_sharing(path):
+    """Use an actual deny-delete Windows directory handle in the Windows gate."""
+    if os.name != 'nt':
+        return lambda: None
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = [wintypes.HANDLE], wintypes.BOOL
+    # FILE_READ_ATTRIBUTES; share read/write, deliberately not delete;
+    # OPEN_EXISTING; directory backup semantics and no reparse following.
+    handle = create(str(path), 0x80, 0x3, None, 3, 0x02000000 | 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    retained = [handle]
+    def release():
+        if retained[0] is not None:
+            if not close(retained[0]):
+                raise ctypes.WinError(ctypes.get_last_error())
+            retained[0] = None
+    return release
+
+
+@pytest.mark.parametrize('cause', ['deadline', 'cancel'])
+def test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement(
+        pack, tmp_path, monkeypatch, cause):
+    from contextlib import contextmanager
+    import shutil
+    import threading
+    from types import SimpleNamespace
+    engine, voice = selected(pack, mode='hang-render')
+    engine.timeout = 2 if cause == 'deadline' else 15
+    real_start, real_temporary = engines._start_process, engines.tempfile.TemporaryFile
+    real_reader, real_rmtree = helper.verified_reader, shutil.rmtree
+    processes, streams, launch_readers, attempts, locks, threads, cleanup_errors = [], [], [], [], [], [], []
+    started, first_refusal, released = Event(), Event(), Event()
+    actual_windows = os.name == 'nt'
+
+    def start(command, **options):
+        process = real_start(command, **options)
+        processes.append(process)
+        if Path(options['cwd']).name.startswith('.speech-'):
+            started.set()
+        return process
+
+    def temporary(*args, **kwargs):
+        stream = real_temporary(*args, **kwargs)
+        streams.append(stream)
+        return stream
+
+    @contextmanager
+    def reader(path, **kwargs):
+        with real_reader(path, **kwargs) as stream:
+            launch_readers.append(stream)
+            yield stream
+
+    def remove(path):
+        path = Path(path)
+        if not path.name.startswith('.speech-'):
+            return real_rmtree(path)
+        assert started.is_set() and processes
+        assert all(process.poll() is not None for process in processes)
+        if actual_windows:
+            assert all(process._carr_job.handle is None for process in processes)
+        assert streams and all(stream.closed for stream in streams)
+        assert launch_readers and all(stream.closed for stream in launch_readers)
+        attempts.append(path)
+        if not locks:
+            close = _hold_private_directory_without_delete_sharing(path)
+            locks.append(close)
+            def release_after_observed_refusal():
+                try:
+                    if not first_refusal.wait(5):
+                        raise AssertionError('No actual post-settlement removal refusal was observed.')
+                    close()
+                except BaseException as error:
+                    cleanup_errors.append(error)
+                finally:
+                    released.set()
+            thread = threading.Thread(target=release_after_observed_refusal)
+            threads.append(thread)
+            thread.start()
+        try:
+            if not actual_windows and not released.is_set():
+                # POSIX does not impose Windows directory sharing. Only this
+                # refusal is synthetic there; all processes/readers stay real.
+                raise _cleanup_sharing_error()
+            return real_rmtree(path)
+        except OSError as error:
+            if getattr(error, 'winerror', None) in (32, 33):
+                first_refusal.set()
+            raise
+
+    monkeypatch.setattr(engines, '_start_process', start)
+    monkeypatch.setattr(engines, 'tempfile', SimpleNamespace(TemporaryFile=temporary))
+    monkeypatch.setattr(helper, 'verified_reader', reader)
+    monkeypatch.setattr(helper, 'shutil', SimpleNamespace(rmtree=remove))
+    if not actual_windows:
+        monkeypatch.setattr(helper, 'os', SimpleNamespace(name='nt'))
+    target, before = tmp_path / 'retained-cleanup.wav', monotonic()
+    try:
+        with pytest.raises(TimeoutError if cause == 'deadline' else InterruptedError) as failed:
+            engine.synthesize('Test.', target, voice=voice, language='uk',
+                cancelled=lambda: cause == 'cancel' and started.is_set())
+        if cause == 'deadline':
+            assert 'selected per-segment time budget' in str(failed.value)
+        assert monotonic() - before < 15
+        assert first_refusal.is_set() and released.is_set() and len(attempts) >= 2
+        assert all(path == attempts[0] for path in attempts)
+        assert not cleanup_errors and not target.exists()
+        assert not list(tmp_path.glob('.speech-*'))
+    finally:
+        first_refusal.set()
+        for thread in threads:
+            thread.join(5)
+            assert not thread.is_alive()
+        for close in locks:
+            close()
+    assert all(process.poll() is not None for process in processes)
+
+
+@pytest.mark.parametrize('code', [32, 33])
+def test_private_helper_directory_retries_only_transient_windows_sharing(tmp_path, monkeypatch, code):
+    import shutil
+    from types import SimpleNamespace
+    actual_remove, attempts, sleeps, clock = shutil.rmtree, [], [], [0.0]
+    def remove(path):
+        attempts.append((Path(path), Path(path).lstat().st_ino))
+        if len(attempts) < 3:
+            raise _cleanup_sharing_error(code)
+        return actual_remove(path)
+    def sleep(seconds):
+        sleeps.append(seconds)
+        clock[0] += seconds
+    monkeypatch.setattr(helper, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(helper, 'shutil', SimpleNamespace(rmtree=remove))
+    monkeypatch.setattr(helper, 'time', SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    with helper._private_directory(prefix='.speech-', dir=tmp_path) as path:
+        (path / 'owned.bin').write_bytes(b'Owned staging only.')
+        identity = path.lstat().st_ino
+    assert len(attempts) == 3 and all(item == (path, identity) for item in attempts)
+    assert len(sleeps) == 2 and all(0 < value <= .02 for value in sleeps)
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('platform,code', [('nt', 5), ('nt', 13), ('posix', 32)])
+def test_private_helper_directory_does_not_retry_other_cleanup_errors(tmp_path, monkeypatch, platform, code):
+    import shutil
+    from types import SimpleNamespace
+    attempts, original = [], _cleanup_sharing_error(code)
+    def remove(path):
+        attempts.append(Path(path))
+        raise original
+    monkeypatch.setattr(helper, 'os', SimpleNamespace(name=platform))
+    monkeypatch.setattr(helper, 'shutil', SimpleNamespace(rmtree=remove))
+    monkeypatch.setattr(helper, 'time', SimpleNamespace(monotonic=lambda: 0,
+        sleep=lambda seconds: pytest.fail('A non-sharing cleanup error was retried.')))
+    path = None
+    try:
+        with pytest.raises(PermissionError) as failed:
+            with helper._private_directory(prefix='.speech-', dir=tmp_path) as path:
+                (path / 'retained.bin').write_bytes(b'Retain this failed cleanup.')
+        assert failed.value is original and attempts == [path]
+        assert (path / 'retained.bin').read_bytes() == b'Retain this failed cleanup.'
+    finally:
+        if path is not None and path.exists():
+            shutil.rmtree(path)
+
+
+@pytest.mark.parametrize('changed', ['stage', 'parent'])
+def test_private_helper_directory_refuses_replaced_ownership(tmp_path, changed):
+    import gc
+    parent = tmp_path / 'selected-parent'
+    parent.mkdir()
+    moved = tmp_path / 'displaced-owned-directory'
+    with pytest.raises(ValueError, match='changed before cleanup'):
+        with helper._private_directory(prefix='.speech-', dir=parent) as path:
+            (path / 'owned.bin').write_bytes(b'Original owned data.')
+            if changed == 'stage':
+                path.rename(moved)
+                path.mkdir()
+                original = moved / 'owned.bin'
+            else:
+                parent.rename(moved)
+                parent.mkdir()
+                path.mkdir()
+                original = moved / path.name / 'owned.bin'
+            (path / 'foreign.bin').write_bytes(b'Foreign replacement must survive.')
+    gc.collect()
+    assert original.read_bytes() == b'Original owned data.'
+    assert (path / 'foreign.bin').read_bytes() == b'Foreign replacement must survive.'
+
+
+def test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible(tmp_path, monkeypatch):
+    import shutil
+    from types import SimpleNamespace
+    attempts, waits, clock = [], [], [0.0]
+    original = TimeoutError('Original selected inference deadline.')
+    def remove(path):
+        attempts.append(Path(path))
+        raise _cleanup_sharing_error(32)
+    def sleep(seconds):
+        assert 0 < seconds <= .02
+        waits.append(seconds)
+        clock[0] += seconds
+    monkeypatch.setattr(helper, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(helper, 'shutil', SimpleNamespace(rmtree=remove))
+    monkeypatch.setattr(helper, 'time', SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    path = None
+    try:
+        with pytest.raises(PermissionError) as failed:
+            with helper._private_directory(prefix='.speech-', dir=tmp_path) as path:
+                (path / 'retained.bin').write_bytes(b'Unconfirmed removal must remain visible.')
+                raise original
+        assert failed.value.winerror == 32 and failed.value.__context__ is original
+        assert 2 <= len(attempts) <= 300 and waits and clock[0] == 5
+        assert all(item == path for item in attempts)
+        assert (path / 'retained.bin').read_bytes() == b'Unconfirmed removal must remain visible.'
+    finally:
+        if path is not None and path.exists():
+            shutil.rmtree(path)

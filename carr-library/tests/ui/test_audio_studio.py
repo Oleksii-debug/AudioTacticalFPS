@@ -867,3 +867,541 @@ def test_live_studio_uses_explicit_speech_and_dsp_cancellation_types(kind):
         _assert_studio_controls_released(dialog)
     finally:
         dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def _completed_inspection_fixture(tmp_path):
+    """Current receipt schema with real synthetic PCM; no model or runtime."""
+    from carr_library.audio.models import digest
+    controller = StudioController(private_root=tmp_path / 'private', registry=Registry())
+    controller.private_root.mkdir()
+    output = tmp_path / 'production'
+    output.mkdir()
+    script = ('[output sample_rate=8000 stems=false]\n# Inspection\n'
+              'Narrator: Prepared synthetic source.\n[pause 3]\nNarrator: End.\n')
+    controller.new(script, input_kind='script')
+    controller.configure(voice='fixture:local', language='en', output_dir=output)
+    controller.save(tmp_path / 'studio.json')
+    plan, key = controller.plan(), 'a' * 64
+    directory = output / 'renders' / key
+    directory.mkdir(parents=True)
+    with wave.open(str(directory / 'master.wav'), 'wb') as stream:
+        stream.setparams((2, 2, 8000, 0, 'NONE', 'not compressed'))
+        stream.writeframes(b'\0\0\0\0' * 32000)
+    (directory / 'subtitles.srt').write_text(
+        '1\n00:00:00,000 --> 00:00:00,500\nSynthetic source.\n', encoding='utf-8')
+    chapters = [{'id': 'synthetic-scene', 'sample_rate': 8000,
+                 'start_frame': 0, 'end_frame': 32000}]
+    timeline = {'schema_version': 1, 'sample_rate': 8000,
+        'source_sha256': plan.source_sha256, 'chapters': chapters,
+        'lines': [], 'scenes': [{'scene_id': 'synthetic-scene',
+            'events': [{'kind': 'line', 'start_frame': 0, 'frames': 4000},
+                       {'kind': 'pause', 'start_frame': 4000, 'frames': 24000},
+                       {'kind': 'line', 'start_frame': 28000, 'frames': 4000}],
+            'clips': []}]}
+    (directory / 'timeline.json').write_text(json.dumps(timeline), encoding='utf-8')
+    completion = {'schema_version': 1, 'status': 'complete', 'run_key': key,
+        'source_sha256': plan.source_sha256, 'plan_sha256': digest(plan.to_dict()),
+        'output_name': 'master.wav', 'stem_names': [], 'sample_rate': 8000,
+        'frames': 32000, 'duration_seconds': 4.0, 'chapters': chapters,
+        'files': [{'name': item.name, 'size': item.stat().st_size,
+                   'sha256': hashlib.sha256(item.read_bytes()).hexdigest()}
+                  for item in sorted(directory.iterdir())]}
+    manifest = directory / 'complete.json'
+    manifest.write_text(json.dumps(completion, sort_keys=True) + '\n', encoding='utf-8')
+    controller.result = {**completion, 'manifest': str(manifest),
+                         'output': str(directory / 'master.wav')}
+    (output / 'render-journal.json').write_text(json.dumps({
+        'schema_version': 1, 'state': 'complete', 'run_key': key,
+        'source_sha256': plan.source_sha256, 'output': 'Z:/old-machine/master.wav'}),
+        encoding='utf-8')
+    return controller, manifest
+
+
+def _inspection_bytes(root):
+    return {item.relative_to(root).as_posix(): item.read_bytes()
+            for item in root.rglob('*') if item.is_file()}
+
+
+def test_completed_audio_inspection_is_real_read_only_and_keeps_render_result(tmp_path, monkeypatch):
+    from carr_library.audio import production
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    def no_new_work(*args, **kwargs):
+        pytest.fail('Read-only inspection attempted rendering, voices or resources.')
+    monkeypatch.setattr(production, 'render_project', no_new_work)
+    monkeypatch.setattr(controller, '_registry', no_new_work)
+    monkeypatch.setattr(controller, '_resource_broker', no_new_work)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    assert report['status'] == 'complete' and report['review_status'] == 'warnings'
+    assert report['interval_count'] == 1 and report['qualifying_frames'] == 32000
+    assert report['intervals'][0]['annotations'] == {
+        'authored_pause_overlap_frames': 24000, 'spoken_line_overlap_frames': 8000,
+        'declared_music_clip_overlap_frames': 0}
+    assert report['context']['background_music'] == 'not-recorded-in-timeline'
+    text = production.completed_silence_report_text(report)
+    assert 'Review warnings only' in text and 'Background scene music is unknown' in text
+    assert report['completion_sha256'] == hashlib.sha256(manifest.read_bytes()).hexdigest()
+    assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+
+
+def test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority(tmp_path, monkeypatch):
+    from carr_library.audio import production
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    reopened = StudioController(private_root=controller.private_root, registry=Registry())
+    reopened.open(controller.project_path)
+    assert reopened.result is None
+    before = _inspection_bytes(tmp_path)
+    monkeypatch.setattr(production, 'render_project',
+                        lambda *a, **k: pytest.fail('Reopening an inspection rendered audio.'))
+    report = reopened.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    assert report['run_key'] == controller.result['run_key']
+    assert report['completion_sha256'] == hashlib.sha256(manifest.read_bytes()).hexdigest()
+    assert reopened.result is None and _inspection_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize('changed', ['source', 'voice', 'title'])
+def test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio(tmp_path, changed):
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    if changed == 'source':
+        controller.edit_script(controller.script + 'Narrator: Later edit.\n')
+    elif changed == 'voice':
+        controller.configure(voice='fixture:other')
+    else:
+        controller.configure(title='Newer title')
+    before, rendered, draft = _inspection_bytes(tmp_path), controller.result, controller.script
+    with pytest.raises(ValueError, match='saved production plan and source'):
+        controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    assert controller.result is rendered and controller.script == draft
+    assert _inspection_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize('changed', ['run-key', 'manifest', 'state', 'journal'])
+def test_completed_inspection_refuses_an_unbound_selection_before_backend_work(tmp_path, monkeypatch, changed):
+    from carr_library.audio import production
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    if changed == 'run-key':
+        controller.result['run_key'] = '../foreign'
+    elif changed == 'manifest':
+        controller.result['manifest'] = str(tmp_path / 'complete.json')
+    elif changed == 'state':
+        controller.result['status'] = 'running'
+    else:
+        controller.result = None
+        (controller.output_dir / 'render-journal.json').write_text('[]', encoding='utf-8')
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    monkeypatch.setattr(production, 'inspect_completed_silence',
+                        lambda *a, **k: pytest.fail('Unbound inspection reached the backend.'))
+    with pytest.raises(ValueError):
+        controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+
+
+def test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result(tmp_path):
+    import threading
+    from carr_library.audio.jobs import RenderCancelled
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    before, rendered, stop, phases = _inspection_bytes(tmp_path), controller.result, threading.Event(), []
+    def status(message):
+        phases.append(message)
+        stop.set()
+    with pytest.raises(RenderCancelled):
+        controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3,
+                                           cancelled=stop.is_set, on_status=status)
+    assert phases and controller.result is rendered and _inspection_bytes(tmp_path) == before
+    assert not controller._render_lock.locked()
+
+
+def test_completed_inspection_never_steals_the_existing_render_lock(tmp_path):
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    controller._render_lock.acquire()
+    try:
+        with pytest.raises(ValueError, match='current Studio operation'):
+            controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+        assert controller._render_lock.locked()
+    finally:
+        controller._render_lock.release()
+    assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize('changed', ['draft', 'result', 'project'])
+def test_real_inspection_stops_when_its_controller_binding_changes(tmp_path, changed):
+    from carr_library.audio.jobs import RenderCancelled
+    from carr_library.reader.narration_text import NarrationDraft
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    before, changes = _inspection_bytes(tmp_path), []
+    def status(message):
+        if changes:
+            return
+        changes.append(message)
+        if changed == 'draft':
+            controller.draft = NarrationDraft('Later independent source.', source_id='other')
+        elif changed == 'result':
+            controller.result = {'status': 'complete', 'run_key': 'b' * 64}
+        else:
+            controller.project_id = 'c' * 32
+    with pytest.raises(RenderCancelled):
+        controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3, on_status=status)
+    assert len(changes) == 1 and _inspection_bytes(tmp_path) == before
+    assert not controller._render_lock.locked()
+
+
+def test_inspection_report_export_retains_create_only_and_bound_approval(tmp_path):
+    from carr_library.audio.production import completed_silence_report_text
+    from carr_library.research.export_file import capture_export_destination
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    target = tmp_path / 'report.txt'
+    before, rendered = _inspection_bytes(controller.output_dir), controller.result
+    receipt = controller.export_inspection_report(report, target)
+    assert receipt.path == target and target.read_text('utf-8') == completed_silence_report_text(report)
+    target.write_text('Foreign later contents.', encoding='utf-8')
+    with pytest.raises(FileExistsError):
+        controller.export_inspection_report(report, target)
+    approval = capture_export_destination(target, private_root=controller.private_root)
+    target.write_text('Another writer after confirmation.', encoding='utf-8')
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_inspection_report(report, target, approval=approval)
+    assert target.read_text('utf-8') == 'Another writer after confirmation.'
+    assert controller.result is rendered and _inspection_bytes(controller.output_dir) == before
+
+
+@pytest.mark.parametrize('destination', ['master', 'manifest', 'output-plan', 'project', 'original', 'private'])
+def test_inspection_report_export_cannot_modify_production_project_or_original(tmp_path, destination):
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    original = tmp_path / 'original.txt'
+    original.write_text('Immutable original.', encoding='utf-8')
+    controller.source_reference = {'kind': 'local-text', 'original_path': str(original),
+        'filename': original.name, 'bytes_sha256': hashlib.sha256(original.read_bytes()).hexdigest()}
+    # The source reference is provenance, not a production-plan change.
+    choices = {'master': manifest.parent / 'master.wav', 'manifest': manifest,
+               'output-plan': controller.output_dir / 'inspection.txt',
+               'project': controller.project_path, 'original': original,
+               'private': controller.private_root / 'inspection.txt'}
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    with pytest.raises(ValueError):
+        controller.export_inspection_report(report, choices[destination])
+    assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize('changed', ['manifest', 'cancel'])
+def test_inspection_export_keeps_previous_destination_after_change_or_cancel(tmp_path, changed):
+    from carr_library.audio.jobs import RenderCancelled
+    from carr_library.research.export_file import capture_export_destination
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    target = tmp_path / 'review.txt'
+    target.write_text('Retain previous report.', encoding='utf-8')
+    approval = capture_export_destination(target, private_root=controller.private_root)
+    if changed == 'manifest':
+        manifest.write_bytes(manifest.read_bytes() + b'\n')
+    before = _inspection_bytes(tmp_path)
+    with pytest.raises(ValueError if changed == 'manifest' else RenderCancelled):
+        controller.export_inspection_report(report, target, approval=approval,
+                                            cancelled=lambda: changed == 'cancel')
+    assert target.read_text('utf-8') == 'Retain previous report.'
+    assert _inspection_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize('threshold,minimum', [('nan', '3'), ('-121', '3'), ('-50', '0'), (True, '3'), (10 ** 400, '3')])
+def test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values(threshold, minimum):
+    from carr_library.ui.audio_studio import _inspection_criteria_values
+    with pytest.raises(ValueError):
+        _inspection_criteria_values(threshold, minimum)
+
+
+def test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries():
+    from carr_library.ui.audio_studio import _inspection_criteria_values
+    assert _inspection_criteria_values('-120', '0.001') == (-120.0, 0.001)
+    assert _inspection_criteria_values('0', '86400') == (0.0, 86400.0)
+
+
+@pytest.mark.parametrize('member', ['master.wav', 'timeline.json'])
+def test_inspection_export_refuses_changed_media_even_with_unchanged_completion(tmp_path, member):
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    completion_bytes = manifest.read_bytes()
+    source = manifest.parent / member
+    original = source.read_bytes()
+    source.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
+    before = _inspection_bytes(tmp_path)
+    target = tmp_path / 'stale-report.txt'
+    with pytest.raises(ValueError, match='changed after inspection'):
+        controller.export_inspection_report(report, target)
+    assert manifest.read_bytes() == completion_bytes
+    assert not target.exists() and _inspection_bytes(tmp_path) == before
+    assert not controller._render_lock.locked()
+
+
+def test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    import carr_library.audio.jobs as jobs
+    import carr_library.ui.audio_studio as studio
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    real_reader, real_write = jobs.verified_reader, studio.write_export
+    active, publication = {}, []
+    @contextmanager
+    def observed_reader(path, **kwargs):
+        with real_reader(path, **kwargs) as stream:
+            name = Path(path).name
+            active[name] = active.get(name, 0) + 1
+            try:
+                yield stream
+            finally:
+                active[name] -= 1
+        if Path(path) == manifest and publication:
+            raise OSError('Synthetic final reader cleanup failure after actual commit')
+    def publish(path, text, **kwargs):
+        assert {name for name, count in active.items() if count} == {
+            'complete.json', 'master.wav', 'timeline.json'}
+        assert controller._render_lock.locked()
+        receipt = real_write(path, text, **kwargs)
+        publication.append(receipt)
+        return receipt
+    monkeypatch.setattr(jobs, 'verified_reader', observed_reader)
+    monkeypatch.setattr(studio, 'write_export', publish)
+    target = tmp_path / 'committed-inspection.txt'
+    before, rendered = _inspection_bytes(controller.output_dir), controller.result
+    receipt = controller.export_inspection_report(report, target)
+    assert len(publication) == 1 and receipt.path == target and target.is_file()
+    assert 'Report saved' in receipt.cleanup_warning
+    assert 'Synthetic final reader cleanup failure' in receipt.cleanup_warning
+    assert not any(active.values()) and not controller._render_lock.locked()
+    assert controller.result is rendered and _inspection_bytes(controller.output_dir) == before
+
+
+def _inspection_dialog_probe(controller):
+    dialog, callbacks, errors = _studio_executor_probe()
+    class Value:
+        def __init__(self, value):
+            self.value = value
+        def GetValue(self):
+            return self.value
+    class Choice:
+        def __init__(self, value):
+            self.value = value
+        def GetSelection(self):
+            return self.value
+    dialog.controller = controller
+    dialog.parent = SimpleNamespace(library=object())
+    dialog.operation_progress.frame = dialog.parent
+    dialog._script_dirty = False
+    dialog.title, dialog.language = Value(controller.title), Value(controller.language)
+    dialog.script, dialog.output = Value(controller.script), Value(str(controller.output_dir))
+    dialog.input_kind, dialog.voice = Choice(1), Choice(0)
+    dialog.voice_rows = [{'id': controller.voice}]
+    dialog._inspection_criteria = (-50, 3)
+    dialog._choose_inspection_criteria = lambda current: (-50, 3) if current() else None
+    messages, reports = [], []
+    dialog._message = lambda message, **kwargs: messages.append(str(message))
+    dialog._show_inspection_report = lambda report, current, owned: reports.append(
+        (report, current(), owned()))
+    return dialog, callbacks, errors, messages, reports
+
+
+def _settle_inspection_dialog(dialog, callbacks):
+    import time
+    from queue import Empty
+    deadline = time.monotonic() + 10
+    while dialog.busy:
+        if time.monotonic() >= deadline:
+            pytest.fail('The actual Studio inspection worker did not settle.')
+        try:
+            callbacks.get(timeout=0.05)()
+        except Empty:
+            pass
+    while not callbacks.empty():
+        callbacks.get_nowait()()
+
+
+def test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report(tmp_path, monkeypatch):
+    import threading
+    import carr_library.audio.production as production
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    real, threads = production.inspect_completed_silence, []
+    def measured(*args, **kwargs):
+        threads.append(threading.get_ident())
+        return real(*args, **kwargs)
+    monkeypatch.setattr(production, 'inspect_completed_silence', measured)
+    before, rendered, owner = _inspection_bytes(tmp_path), controller.result, threading.get_ident()
+    try:
+        dialog.inspect_completed_audio()
+        _settle_inspection_dialog(dialog, callbacks)
+        assert threads and len(threads) == 1 and threads[0] != owner
+        assert len(reports) == 1 and reports[0][1:] == (True, True)
+        assert reports[0][0]['interval_count'] == 1
+        assert errors == [] and any('unchanged' in message for message in messages)
+        assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+        _assert_studio_controls_released(dialog)
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.mark.parametrize('pending', ['script', 'title'])
+def test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering(tmp_path, pending):
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    if pending == 'script':
+        dialog._script_dirty = True
+    else:
+        dialog.title.value = 'Unapplied native edit'
+    dialog._choose_inspection_criteria = lambda current: pytest.fail('Pending edits reached the criteria dialog')
+    try:
+        dialog.inspect_completed_audio()
+        assert len(errors) == 1 and 'Save or revert pending' in str(errors[0])
+        assert not dialog.busy and callbacks.empty() and not reports
+        assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result(tmp_path):
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    dialog._choose_inspection_criteria = lambda current: None
+    dialog.executor.shutdown(wait=True)
+    dialog.inspect_completed_audio()
+    assert errors == [] and callbacks.empty() and not dialog.busy and not reports
+    assert controller.result is rendered and _inspection_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize('boundary', ['cancel', 'library'])
+def test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes(tmp_path, monkeypatch, boundary):
+    import threading
+    from carr_library.audio.jobs import RenderCancelled
+    import carr_library.audio.production as production
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    real, entered, release = production.inspect_completed_silence, threading.Event(), threading.Event()
+    def paused(*args, **kwargs):
+        status = kwargs['on_status']
+        def barrier(message):
+            if not entered.is_set():
+                entered.set()
+                assert release.wait(10)
+            status(message)
+        return real(*args, **{**kwargs, 'on_status': barrier})
+    monkeypatch.setattr(production, 'inspect_completed_silence', paused)
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    try:
+        dialog.inspect_completed_audio()
+        assert entered.wait(10) and dialog.busy
+        if boundary == 'cancel':
+            dialog.cancelled.set()
+        else:
+            dialog.parent.library = object()
+        release.set()
+        _settle_inspection_dialog(dialog, callbacks)
+        assert len(errors) == 1 and isinstance(errors[0], RenderCancelled)
+        assert not reports and controller.result is rendered
+        assert _inspection_bytes(tmp_path) == before and not controller._render_lock.locked()
+        _assert_studio_controls_released(dialog)
+    finally:
+        release.set()
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.mark.parametrize('boundary', ['widgets', 'result', 'library'])
+def test_studio_late_inspection_completion_cannot_replace_a_newer_owner(tmp_path, boundary):
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    before, rendered = _inspection_bytes(tmp_path), controller.result
+    try:
+        dialog.inspect_completed_audio()
+        dialog.executor.submit(lambda: None).result(timeout=10)
+        assert dialog.busy  # The real worker finished; its UI callback is still pending.
+        if boundary == 'widgets':
+            dialog.title.value = 'Later visible edit'
+        elif boundary == 'result':
+            controller.result = {**rendered, 'newer_owner': True}
+        else:
+            dialog.parent.library = object()
+        _settle_inspection_dialog(dialog, callbacks)
+        assert not reports and len(errors) == 1 and 'late inspection' in str(errors[0])
+        assert _inspection_bytes(tmp_path) == before
+        if boundary != 'result':
+            assert controller.result is rendered
+        else:
+            assert controller.result['newer_owner'] is True
+        _assert_studio_controls_released(dialog)
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_studio_inspection_export_runs_verification_and_publication_on_existing_worker(tmp_path, monkeypatch):
+    import threading
+    import carr_library.ui.audio_studio as studio
+    from carr_library.research.export_file import capture_export_destination
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    target, owner, workers = tmp_path / 'native-review.txt', threading.get_ident(), []
+    dialog._inspection_report_path = lambda parent: target
+    approval = capture_export_destination(target, private_root=controller.private_root)
+    monkeypatch.setattr(studio, 'approve_export_destination', lambda *args, **kwargs: approval)
+    real = controller.export_inspection_report
+    def publish(*args, **kwargs):
+        workers.append(threading.get_ident())
+        return real(*args, **kwargs)
+    monkeypatch.setattr(controller, 'export_inspection_report', publish)
+    before, rendered = _inspection_bytes(controller.output_dir), controller.result
+    try:
+        request = dialog._export_inspection_report(report, object(), lambda: True)
+        assert request == (target, approval) and workers == [] and not target.exists()
+        dialog._publish_inspection_report(report, request, lambda: True, lambda: True)
+        _settle_inspection_dialog(dialog, callbacks)
+        assert workers and len(workers) == 1 and workers[0] != owner and target.is_file()
+        assert errors == [] and any('Inspection report saved:' in message for message in messages)
+        assert controller.result is rendered and _inspection_bytes(controller.output_dir) == before
+        _assert_studio_controls_released(dialog)
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.mark.parametrize('boundary', ['picker', 'approval'])
+def test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary(tmp_path, monkeypatch, boundary):
+    import carr_library.ui.audio_studio as studio
+    from carr_library.research.export_file import capture_export_destination
+    controller, _ = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    target, alive, approvals = tmp_path / 'refused-report.txt', [True], []
+    def picker(parent):
+        if boundary == 'picker':
+            alive[0] = False
+        return target
+    def approve(*args, **kwargs):
+        approvals.append(True)
+        alive[0] = False
+        return capture_export_destination(target, private_root=controller.private_root)
+    dialog._inspection_report_path = picker
+    monkeypatch.setattr(studio, 'approve_export_destination', approve)
+    try:
+        with pytest.raises(ValueError, match='changed'):
+            dialog._export_inspection_report(report, object(), lambda: alive[0])
+        assert approvals == ([] if boundary == 'picker' else [True])
+        assert not target.exists() and callbacks.empty() and not dialog.busy
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval(tmp_path, monkeypatch):
+    import carr_library.ui.audio_studio as studio
+    controller, manifest = _completed_inspection_fixture(tmp_path)
+    report = controller.inspect_completed_audio(threshold_dbfs=-50, minimum_seconds=3)
+    dialog, callbacks, errors, messages, reports = _inspection_dialog_probe(controller)
+    dialog._inspection_report_path = lambda parent: manifest
+    monkeypatch.setattr(studio, 'approve_export_destination',
+        lambda *args, **kwargs: pytest.fail('An owned production file reached replacement approval'))
+    before = _inspection_bytes(tmp_path)
+    try:
+        with pytest.raises(ValueError, match='outside the production'):
+            dialog._export_inspection_report(report, object(), lambda: True)
+        assert _inspection_bytes(tmp_path) == before and callbacks.empty()
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)

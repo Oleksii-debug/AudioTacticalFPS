@@ -530,7 +530,19 @@
       "test_mutation_during_real_ffmpeg_processing_is_not_published": 1,
       "test_process_death_after_complete_directory_move_resumes_verified_output": 1,
       "test_stop_after_complete_directory_move_keeps_completed_result": 1,
-      "test_stop_at_final_publication_boundary_retains_chunks_and_resumes": 2
+      "test_stop_at_final_publication_boundary_retains_chunks_and_resumes": 2,
+      "test_silence_scanner_crosses_real_block_boundaries": 2,
+      "test_silence_scanner_applies_all_channel_threshold_and_exact_length": 8,
+      "test_silence_scanner_counts_all_omitted_intervals": 2,
+      "test_silence_inspection_rejects_invalid_explicit_criteria_before_io": 18,
+      "test_completed_silence_inspection_is_source_bound_contextual_and_read_only": 1,
+      "test_completed_silence_rejects_changed_retained_inputs": 3,
+      "test_completed_silence_retains_readers_through_mutation_attempt": 3,
+      "test_completed_silence_cancellation_keeps_completion_and_receipts": 2,
+      "test_completed_silence_requires_expected_run_and_manifest_selection": 2,
+      "test_silence_context_rejects_resealed_out_of_bounds_timeline": 4,
+      "test_silence_inspection_preserves_legacy_completed_replay": 1,
+      "test_silence_report_formatter_rejects_unbounded_or_forged_summary": 4
     },
     "tests.packaging.test_standard_installer": {
       "test_update_probe_rechecks_separately_retained_bundle_after_builder_copy_removed": 4,
@@ -2286,7 +2298,13 @@
       "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
       "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
       "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
-      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1,
+      "test_silence_cli_requires_selected_completion_and_both_explicit_criteria": 6,
+      "test_silence_cli_refuses_unrelated_rendering_or_runtime_authority": 7,
+      "test_silence_cli_cannot_share_a_command_with_another_operation": 4,
+      "test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes": 1,
+      "test_silence_cli_cancel_restores_handler_without_a_partial_complete_report": 2,
+      "test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start": 1
     },
     "tests.ui.test_progress_compatibility": {
       "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
@@ -2482,7 +2500,12 @@
       "test_current_registered_helper_voice_runs_through_same_registry_and_reopens_stably": 1,
       "test_registered_helper_rechecks_current_profile_before_every_render": 3,
       "test_two_registered_helpers_keep_distinct_saved_ids_without_silent_rebinding": 1,
-      "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1
+      "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1,
+      "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+      "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+      "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+      "test_private_helper_directory_refuses_replaced_ownership": 2,
+      "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
     },
     "tests.audio.test_engine_profiles": {
       "test_registration_is_persistent_and_does_not_execute_or_import_assets": 1,
@@ -2923,7 +2946,29 @@
       "test_studio_failure_observer_cannot_replace_the_real_worker_error": 2,
       "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls": 5,
       "test_stale_studio_completion_settles_old_task_without_relabeling_new_work": 1,
-      "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2
+      "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2,
+      "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+      "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+      "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+      "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+      "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+      "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+      "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+      "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+      "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+      "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+      "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+      "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+      "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+      "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+      "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+      "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+      "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+      "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+      "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+      "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+      "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+      "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
     },
     "tests.audio.test_sapi_host_admission": {
       "test_serviced_hardlink_is_allowed_only_at_selected_system_host": 2,
@@ -3769,7 +3814,19 @@
       "test_mutation_during_real_ffmpeg_processing_is_not_published": 1,
       "test_process_death_after_complete_directory_move_resumes_verified_output": 1,
       "test_stop_after_complete_directory_move_keeps_completed_result": 1,
-      "test_stop_at_final_publication_boundary_retains_chunks_and_resumes": 2
+      "test_stop_at_final_publication_boundary_retains_chunks_and_resumes": 2,
+      "test_silence_scanner_crosses_real_block_boundaries": 2,
+      "test_silence_scanner_applies_all_channel_threshold_and_exact_length": 8,
+      "test_silence_scanner_counts_all_omitted_intervals": 2,
+      "test_silence_inspection_rejects_invalid_explicit_criteria_before_io": 18,
+      "test_completed_silence_inspection_is_source_bound_contextual_and_read_only": 1,
+      "test_completed_silence_rejects_changed_retained_inputs": 3,
+      "test_completed_silence_retains_readers_through_mutation_attempt": 3,
+      "test_completed_silence_cancellation_keeps_completion_and_receipts": 2,
+      "test_completed_silence_requires_expected_run_and_manifest_selection": 2,
+      "test_silence_context_rejects_resealed_out_of_bounds_timeline": 4,
+      "test_silence_inspection_preserves_legacy_completed_replay": 1,
+      "test_silence_report_formatter_rejects_unbounded_or_forged_summary": 4
     },
     "tests.search.test_capacity_query_shapes": {
       "test_all_catalogue_filters_preserve_baseline_rows_and_author_order": 46,
@@ -5484,7 +5541,13 @@
       "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
       "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
       "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
-      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+      "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1,
+      "test_silence_cli_requires_selected_completion_and_both_explicit_criteria": 6,
+      "test_silence_cli_refuses_unrelated_rendering_or_runtime_authority": 7,
+      "test_silence_cli_cannot_share_a_command_with_another_operation": 4,
+      "test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes": 1,
+      "test_silence_cli_cancel_restores_handler_without_a_partial_complete_report": 2,
+      "test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start": 1
     },
     "tests.ui.test_progress_compatibility": {
       "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
@@ -5680,7 +5743,12 @@
       "test_current_registered_helper_voice_runs_through_same_registry_and_reopens_stably": 1,
       "test_registered_helper_rechecks_current_profile_before_every_render": 3,
       "test_two_registered_helpers_keep_distinct_saved_ids_without_silent_rebinding": 1,
-      "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1
+      "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1,
+      "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+      "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+      "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+      "test_private_helper_directory_refuses_replaced_ownership": 2,
+      "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
     },
     "tests.audio.test_engine_profiles": {
       "test_registration_is_persistent_and_does_not_execute_or_import_assets": 1,
@@ -6089,7 +6157,29 @@
       "test_studio_failure_observer_cannot_replace_the_real_worker_error": 2,
       "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls": 5,
       "test_stale_studio_completion_settles_old_task_without_relabeling_new_work": 1,
-      "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2
+      "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2,
+      "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+      "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+      "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+      "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+      "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+      "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+      "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+      "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+      "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+      "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+      "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+      "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+      "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+      "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+      "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+      "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+      "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+      "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+      "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+      "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+      "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+      "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
     },
     "tests.audio.test_sapi_host_admission": {
       "test_serviced_hardlink_is_allowed_only_at_selected_system_host": 2,

@@ -37,7 +37,29 @@
       "test_studio_failure_observer_cannot_replace_the_real_worker_error": 2,
       "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls": 5,
       "test_stale_studio_completion_settles_old_task_without_relabeling_new_work": 1,
-      "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2
+      "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2,
+      "test_completed_audio_inspection_is_real_read_only_and_keeps_render_result": 1,
+      "test_reopened_studio_inspects_current_run_without_saved_absolute_output_authority": 1,
+      "test_completed_inspection_refuses_a_newer_source_or_plan_without_replacing_audio": 3,
+      "test_completed_inspection_refuses_an_unbound_selection_before_backend_work": 4,
+      "test_completed_inspection_cancels_the_real_scan_and_preserves_the_old_result": 1,
+      "test_completed_inspection_never_steals_the_existing_render_lock": 1,
+      "test_real_inspection_stops_when_its_controller_binding_changes": 3,
+      "test_inspection_report_export_retains_create_only_and_bound_approval": 1,
+      "test_inspection_report_export_cannot_modify_production_project_or_original": 6,
+      "test_inspection_export_keeps_previous_destination_after_change_or_cancel": 2,
+      "test_native_inspection_criteria_reject_invalid_or_implicit_numeric_values": 5,
+      "test_native_inspection_criteria_use_explicit_units_and_accept_finite_boundaries": 1,
+      "test_inspection_export_refuses_changed_media_even_with_unchanged_completion": 2,
+      "test_inspection_export_holds_all_real_readers_through_commit_and_keeps_late_cleanup_visible": 1,
+      "test_studio_inspection_dispatches_real_worker_and_displays_only_its_retained_report": 1,
+      "test_studio_inspection_refuses_unapplied_native_edits_without_capturing_or_rendering": 2,
+      "test_studio_inspection_cancelled_setup_starts_no_worker_and_keeps_previous_result": 1,
+      "test_running_native_inspection_reaches_real_cancellation_when_current_owner_changes": 2,
+      "test_studio_late_inspection_completion_cannot_replace_a_newer_owner": 3,
+      "test_studio_inspection_export_runs_verification_and_publication_on_existing_worker": 1,
+      "test_studio_inspection_export_rechecks_current_owner_after_each_native_boundary": 2,
+      "test_studio_inspection_export_refuses_owned_audio_before_native_replacement_approval": 1
     },
     "tests/ui/test_audio_effect_editing.py": {
       "test_editing_without_changes_keeps_omitted_legacy_controls_and_bypass": 1,
@@ -102,9 +124,9 @@
       "test_managed_save_restore_rebackup_keeps_source_and_controls_without_voice_activation": 1
     }
   },
-  "total_cases": 211,
+  "total_cases": 256,
   "retained_cases": 113,
-  "new_cases": 98,
+  "new_cases": 143,
   "helpers": [
     "tests/__init__.py"
   ],
@@ -189,5 +211,8 @@
     }
   },
   "physical_audio": "NOT_RUN",
-  "nvda": "NOT_RUN"
+  "nvda": "NOT_RUN",
+  "prior_production_controls_new_cases": 98,
+  "completed_audio_silence_inspection_cases": 45,
+  "new_cases_derivation": "Retain the98 previously declared role/output control cases and append45 completed-audio silence inspection Studio cases; retained_cases113 and the39-case native role/output probe remain unchanged."
 }

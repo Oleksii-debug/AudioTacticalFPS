@@ -16,7 +16,84 @@ remain authoritative. The
 [machine-readable matrix](validation/RESONANCE_REQUIREMENT_STATUS_20261127.json)
 keeps their exact source blobs and separate evidence dimensions.
 
-## 28 November: current concurrency corrections and required successor execution
+## 28 November: completed-audio long-silence inspection
+
+The exact c31 baseline completed **FAILURE** on28 November at03:59:17 UTC.
+Its451 source suites produced450 passes and one failure:11,462 passed case events,
+one failed and zero skipped. The failed helper deadline case received the intended
+timeout, then Windows refused removal of its private speech directory with a
+sharing violation. The raw run does not identify the lock holder. Later protected,
+native, installed, bundle and standard stages were skipped. The prior assistant
+656-case, resource40-case and idle-renewal4-case corrections all passed in this
+run; their results do not turn the failed candidate into a release.
+The [complete observed failure](evidence/C31_MAIN_OBSERVED_FAILURE_20261128.md)
+retains every selector, function-start multiplicity, step and traceback.
+
+The [helper cleanup correction](evidence/local-voice-owned-directory-cleanup-repair-20261128.json)
+keeps the existing process-family, stream, selected-input-reader and inference
+boundaries unchanged. After they settle, it retries only Windows32/33 directory
+sharing errors for at most five seconds under the retained parent and directory
+identities. It has no automatic temporary-directory finalizer that could later
+delete a replacement. Persistent, non-sharing and ownership-change errors remain
+visible; successful cleanup preserves the original timeout or cancellation.
+The ten added cases include an actual Windows deny-delete directory handle and
+strict process/stream/reader settlement before removal. All67 old helper cases
+remain, giving77; its existing dedicated121-case/native31 contract is preserved
+with only those ten case additions.
+
+The final V3-20 reconciliation found one concrete implementation gap: long-silence
+intervals inside otherwise audible completed PCM. The shared production owner now
+scans the selected retained master without rendering it. Studio and the CLI use
+the same bounded service; the [Studio guide](AUDIO_STUDIO_V3.md) describes both
+entry points and their explicit criteria.
+
+The user chooses an amplitude threshold and minimum interval duration. Every
+channel must satisfy the threshold. The report retains exact half-open frame
+boundaries, full-file hashes, the recorded run/source/plan identities, complete
+interval counts and any omitted-list count. Context is limited to aggregate
+overlap with recorded authored pauses, spoken lines and explicit music clips.
+Background scene music remains unknown where the saved timeline has no such
+field. Findings are review warnings; they do not invalidate a completed render.
+
+The native report supports copying and separately approved text export. Export
+revalidates the completion, master and timeline and holds their readers through
+the existing publisher. The same Studio executor performs heavy verification;
+Cancel and changed-owner refusals preserve the previous result. A publication
+that has already committed remains committed, with a visible warning if its
+later verification cleanup cannot settle.
+
+The three inspection modules retain their previous81 cases and add
+50 backend,21 CLI and45 Studio cases:197 cases with exact function Counters.
+The complete helper module retains67 and adds10 cleanup cases. Together the
+focused cohort is **274 source /274 installed**,148 retained plus126 added,
+across four already protected modules. The current protected populations become
+**5,947 source /5,619 installed**, across the same252/239 modules and451 source selectors.
+The existing request-cleanup selection becomes977 and the Studio-controls
+selection256; its previous39 native checks are retained. A separate29-check actual
+installed native inspection probe is required by the new focused workflow.
+All earlier oracle identities and multiplicities remain intact.
+
+This source snapshot records the new execution as **NOT_RUN**. Its own focused
+Windows source/installed/native result and complete successor cohort must supply
+the runtime evidence; the [c31 auxiliary observations](evidence/pr209-c31-auxiliary-observed-results-20261128.md)
+and [77-case concurrency preflight](evidence/windows-concurrency-preflight-c31-observed-20261128.md)
+remain tied to c31. They do not qualify this changed implementation.
+
+Source records: [backend](evidence/completed-audio-silence-inspection-backend-20261128.json),
+[CLI](evidence/completed-silence-cli-source-20261128.json), and
+[Studio](evidence/completed-audio-inspection-studio-source-20261128.json).
+The machine-readable matrix retains the exact added Counters and the distinct
+source, execution, quality and distribution dimensions.
+
+The final scope audit also preserves the specification's distinctions. Optional
+Braille/BRF, tactile output, watched folders and plugins are not silently promoted
+into completed core features. Dictation and ASR-based acoustic QA retain their
+subsequent-stage scope. Pinned EPUBCheck/DAISY integration already has historical
+Windows evidence in [the independent publication record](evidence/r7-publication-independent-windows-20261127.json).
+Real reader interoperability and acoustic, language, hardware and manual NVDA
+qualification still require their actual inputs.
+
+## Earlier 28 November: concurrency corrections and c31 execution
 
 The exact `014b128` main job completed **FAILURE** at02:09:19 UTC.
 The early local-planning fixture passed **14/14**. The source invocation retained
@@ -45,7 +122,7 @@ Three separately reviewed corrections are composed for the next exact candidate:
   scheduling and the90-minute source /360-minute job bounds remain unchanged.
   [Measured deadline](evidence/assistant-suite-measured-deadline-20261128.json).
 
-The exact current protected declarations are **5,821 source / 5,493 installed**
+The c31 protected declarations were **5,821 source / 5,493 installed**
 cases across the same252/239 modules. The resource module is40 cases; the separate
 canonical-boundaries selection is60=retained36+added24. The shared focused911
 selection is unchanged. [Additive gate alignment](evidence/resource-regression-gate-alignment-20261128.json)
@@ -164,7 +241,7 @@ remain visible and are not converted into success by a source-only correction.
 | V3-17 / Q — Rights and attribution | Exact current dependency/runtime provenance, component notices and independent model/voice/asset rights records. [Current contract](ABOUT_COMPONENT_NOTICES.md). | Per-profile distribution clearance, owner-approved legal terms, signing and publisher configuration are required before a distributable release. |
 | V3-18 / R — Standard install and updates | One ordinary Inno installer and signed managed transaction, protected state, generation leases, rollback/recovery and the distinct original→maintenance→candidate proof. [Current contract](STANDARD_SIGNED_UPDATES.md). | Only exact actual installer/managed/restart/library receipts qualify the cohort. Historical direct-original managed failure remains explicit; production authority is not configured. |
 | V3-19 / S — Audible progress | One measured progress contract, native status and explicit optional voice feedback, quiet/media ownership and durable completion boundaries. [Current contract](SHARED_NATIVE_PROGRESS.md). | Real NVDA progress announcements and absence of device/audio contamination require physical/manual evidence. |
-| V3-20 / T — Complementary workflows | Supplied ASR host, synchronized publication/reading, translation scopes, typed workflow templates, diagnostics and declared project interchange. [Current contract](SYNCHRONIZED_PUBLICATION_READING.md). | Actual external readers, EPUBCheck/DAISY/Braille/table packs, optional watchers/plugins, tactile output and ASR-based acoustic QA must retain their own implemented/qualified status; no blanket completion is claimed. |
+| V3-20 / T — Complementary workflows | Supplied ASR host, synchronized publication/reading, translation scopes, typed workflow templates, diagnostics, project interchange and shared completed-PCM long-silence review. [Publication contract](SYNCHRONIZED_PUBLICATION_READING.md); [inspection controls](AUDIO_STUDIO_V3.md). | Real reader interoperability, acoustics/languages and physical/manual acceptance remain independent. Existing pinned EPUBCheck/DAISY integration retains its historical evidence. Braille/BRF, tactile output, watchers and plugins keep optional scope; dictation and ASR-based acoustic QA keep subsequent-stage scope. |
 | V3-21 / U — Owner voice cloning | Current owner-specific adapter and reviewed engine/profile boundary reuse the supplied engine interface; private samples/models remain external. [Current contract](LOCAL_ENGINE_PROFILES.md). | The professional consent/reference/profile and multilingual cloning workflow requires the actual owner-engine contract/assets, authorized samples and real intelligibility/similarity/control evidence; not replaced by a registered SAPI voice. |
 | V3-22 / V — Entitlements and translation | Neutral external contract plus current signed-client/offline-refresh/recovery boundaries, separated from update activation and official Google/local translation adapters. [Current contract](DELIVERY_INTEGRATION_CONTRACT.md). | Real private authority/account endpoints, policies and authorization; actual selected translation models/providers and independent rights/quality. |
 | ASR — Supplied transcription | Reviewed supplied V4.3/V5 worker profiles, real isolated synthetic protocol interoperability, content-bound originals/cache/receipts, TXT/SRT/VTT/JSON, edits, cancellation/resume and recovery. [Current contract](TRANSCRIPTION_INTEGRATION_REVIEW.md). | The supplied source is available and reviewed. Actual installed recognition weights, acoustics/timestamps/language quality, diarization and hardware are separate, not a generic missing-project blocker. |

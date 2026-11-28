@@ -2,7 +2,7 @@
   "schema": 1,
   "feature": "Explicit manifest-pinned local voice helper through current registry",
   "base": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
-  "total_cases": 111,
+  "total_cases": 121,
   "fixture_multipliers": 1,
   "tests": {
     "tests/audio/test_local_voice_helper.py": {
@@ -26,7 +26,12 @@
       "test_current_registered_helper_voice_runs_through_same_registry_and_reopens_stably": 1,
       "test_registered_helper_rechecks_current_profile_before_every_render": 3,
       "test_two_registered_helpers_keep_distinct_saved_ids_without_silent_rebinding": 1,
-      "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1
+      "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1,
+      "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+      "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+      "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+      "test_private_helper_directory_refuses_replaced_ownership": 2,
+      "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
     },
     "tests/audio/test_engine_profiles.py": {
       "test_registration_is_persistent_and_does_not_execute_or_import_assets": 1,
@@ -112,5 +117,7 @@
       "carr_library.library_backup"
     ]
   },
-  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION"
+  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION",
+  "post_settlement_cleanup_cases": 10,
+  "prior_total_cases": 111
 }

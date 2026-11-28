@@ -1,0 +1,431 @@
+{
+  "schema": "carr-targeted-windows-concurrency-observed/1",
+  "status": "PASS_WITHIN_DECLARED_TARGETED_SOURCE_SCOPE",
+  "source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "source_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+  "workflow": {
+    "path": ".github/workflows/carr-regression-preflight.yml",
+    "blob": "a495aced2fbdbbb42ede3a3c2ce6982b64f14da4"
+  },
+  "run_id": 46098640771,
+  "job_id": 140835756807,
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/regression-preflight-c31e-d3a-20261128",
+  "actual_job": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T02:49:07Z",
+    "completed_at": "2026-11-28T02:52:17Z",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:49:08Z",
+        "completed_at": "2026-11-28T02:49:08Z"
+      },
+      {
+        "number": 2,
+        "name": "Check out the exact candidate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:49:08Z",
+        "completed_at": "2026-11-28T02:49:16Z"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:49:16Z",
+        "completed_at": "2026-11-28T02:49:16Z"
+      },
+      {
+        "number": 4,
+        "name": "Record source identity and prepare the unchanged pinned runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:49:16Z",
+        "completed_at": "2026-11-28T02:49:53Z"
+      },
+      {
+        "number": 5,
+        "name": "Execute native ownership, trust renewal and strict local-path regressions",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:49:53Z",
+        "completed_at": "2026-11-28T02:52:13Z"
+      },
+      {
+        "number": 6,
+        "name": "Preserve exact source and failing or passing evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:52:13Z",
+        "completed_at": "2026-11-28T02:52:13Z"
+      },
+      {
+        "number": 11,
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:52:13Z",
+        "completed_at": "2026-11-28T02:52:14Z"
+      },
+      {
+        "number": 12,
+        "name": "Post Check out the exact candidate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:52:14Z",
+        "completed_at": "2026-11-28T02:52:15Z"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T02:52:15Z",
+        "completed_at": "2026-11-28T02:52:15Z"
+      }
+    ]
+  },
+  "runtime": {
+    "python": "CPython3.11.9",
+    "platform": "win32",
+    "pytest": "9.0.2",
+    "pinned_lock": {
+      "path": "carr-library/packaging/windows-integrated-cp311.lock",
+      "blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4",
+      "sha256": "12d587307f4ca4ebfadc881726ee9f0710b2f58af797fdebd5d4a732cc803edd"
+    },
+    "exact_distribution_count": 56,
+    "distribution_versions": {
+      "annotated-doc": "0.0.7",
+      "annotated-types": "0.8.0",
+      "anyio": "4.16.0",
+      "bibtexparser": "2.1.0",
+      "certifi": "2026.11.20",
+      "cffi": "2.1.1",
+      "charset-normalizer": "3.5.3",
+      "colorama": "0.4.6",
+      "cryptography": "50.0.2",
+      "defusedxml": "0.7.1",
+      "fastembed": "0.9.1",
+      "filelock": "3.29.0",
+      "flatbuffers": "25.12.19",
+      "fsspec": "2026.9.0",
+      "h11": "0.16.0",
+      "hf-xet": "1.8.0",
+      "httpcore": "1.0.9",
+      "httpx": "0.28.1",
+      "huggingface-hub": "1.16.1",
+      "idna": "3.20",
+      "loguru": "0.7.3",
+      "lxml": "6.1.3",
+      "markdown-it-py": "4.3.0",
+      "mdurl": "0.1.2",
+      "mmh3": "5.3.1",
+      "numpy": "2.3.5",
+      "onnxruntime": "1.32.0",
+      "packaging": "26.4",
+      "pillow": "13.0.0",
+      "platformdirs": "4.10.0",
+      "protobuf": "7.36.2",
+      "py-rust-stemmers": "0.1.8",
+      "pycparser": "3.12",
+      "pydantic": "2.14.4",
+      "pydantic-core": "2.50.5",
+      "pygments": "2.21.0",
+      "pylatexenc": "2.11",
+      "pypdf": "7.1.1",
+      "pypdfium2": "5.13.0",
+      "python-docx": "1.2.0",
+      "pywin32": "312",
+      "pyyaml": "6.0.4",
+      "quickjs-ng": "0.18.0.2",
+      "requests": "2.34.2",
+      "rich": "15.0.0",
+      "securesystemslib": "1.6.0",
+      "shellingham": "1.5.4",
+      "tokenizers": "0.23.3",
+      "tqdm": "4.70.1",
+      "tuf": "7.0.1",
+      "typer": "0.29.3",
+      "typing-extensions": "4.16.0",
+      "typing-inspection": "0.4.5",
+      "urllib3": "2.8.0",
+      "win32-setctime": "1.2.1",
+      "wxpython": "4.2.4"
+    },
+    "actual_log_inventory_matches_lock": true
+  },
+  "observed_source_populations": [
+    {
+      "verdict": "PASS",
+      "suite": "tests/operations/test_resources.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "verdict": "PASS",
+      "suite": "tests/security/test_idle_renewal.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "verdict": "PASS",
+      "suite": "tests/audio/test_model_manifest.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "observed_function_counts": {
+    "tests.operations.test_resources": {
+      "test_unheld_lock_disappearance_during_preflight_can_be_acquired": 2,
+      "test_unheld_lock_does_not_hide_missing_parent_or_validation_error": 1,
+      "test_owned_lock_still_refuses_a_disappeared_path": 1,
+      "test_declared_cpu_memory_capacity_and_release_on_exception": 1,
+      "test_request_above_policy_never_waits_or_starts": 1,
+      "test_exclusive_configured_gpus_and_device_ids": 1,
+      "test_real_free_disk_and_same_volume_commitments": 1,
+      "test_multiple_output_directories_are_admitted_as_one_atomic_request": 1,
+      "test_waiting_cancellation_is_prompt_and_adds_no_reservation": 1,
+      "test_active_timeout_is_stop_signal_never_forced_reclaim": 1,
+      "test_policy_persistence_cannot_invalidate_live_work": 1,
+      "test_one_runtime_coordinator_cannot_bind_two_policies": 1,
+      "test_capacity_freed_after_deadline_does_not_start_late_worker": 1,
+      "test_actual_spawned_process_crash_releases_without_pid_reaping": 1,
+      "test_actual_process_contention_has_no_overlapping_admission": 1,
+      "test_bad_live_metadata_stops_admission_and_unlock_recovers": 1,
+      "test_failed_publication_releases_native_lock": 1,
+      "test_runtime_leases_outside_backup_state_and_truthful_capabilities": 1,
+      "test_paths_do_not_follow_links_and_invalid_requests_are_rejected": 1,
+      "test_native_release_can_remove_the_file_during_unheld_preflight": 2,
+      "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
+      "test_lock_leaf_disappears_during_local_asset_check": 2,
+      "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
+      "test_unheld_lock_inspection_errors_never_become_absence": 4,
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "tests.security.test_idle_renewal": {
+      "test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt_in": 1,
+      "test_blocked_vault_check_does_not_block_data_save_or_shutdown_and_cannot_launch_late": 1,
+      "test_missing_or_withdrawn_canonical_renewal_capability_never_calls_transport": 1,
+      "test_late_signed_reply_after_time_budget_cannot_advance_protected_state": 1
+    },
+    "tests.audio.test_model_manifest": {
+      "test_exact_manifest_hashes_and_mutated_asset": 1,
+      "test_moving_revision_and_wrong_engine_fail_closed": 1,
+      "test_asset_paths_cannot_escape_manifest_root": 7,
+      "test_manifest_duplicate_keys_and_nonfinite_values_rejected": 1,
+      "test_manifest_changed_between_validation_and_use": 1,
+      "test_license_and_execution_consent_not_inferred": 1,
+      "test_musicgen_requires_both_pinned_checkpoints_and_noncommercial_profile": 1,
+      "test_linked_asset_is_rejected": 1,
+      "test_local_path_checks_each_component_with_one_lstat": 1,
+      "test_local_path_rejects_links_from_the_component_stat": 4,
+      "test_local_path_still_requires_existence_after_component_checks": 1,
+      "test_manifest_byte_budget_and_cancellation": 1,
+      "test_boolean_schema_and_acceptance_strings_are_rejected": 1,
+      "test_complete_runtime_inventory_rejects_unlisted_python_file": 1,
+      "test_worker_environment_excludes_host_credentials": 1,
+      "test_complete_torch_sized_runtime_inventory_and_mutation": 1,
+      "test_model_inventory_file_count_remains_bounded": 1,
+      "test_model_manifest_bytes_remain_bounded_before_json_parse": 1,
+      "test_complete_inventory_directory_budget_remains_enforced": 1,
+      "test_complete_inventory_can_be_cancelled_before_hashing_assets": 1,
+      "test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets": 2,
+      "test_complete_inventory_rejects_nonregular_entry_from_filesystem_metadata": 1,
+      "test_inventory_cancellation_remains_interrupted_and_closes_the_iterator": 1
+    }
+  },
+  "exact_expected_counter_match": true,
+  "passed": 77,
+  "failed": 0,
+  "skipped": 0,
+  "selected_suites": 3,
+  "completed_suites": 3,
+  "source_bindings_from_exact_candidate": {
+    "carr-library/scripts/ci_check.py": {
+      "blob": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+      "sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7"
+    },
+    "carr-library/src/carr_library/operations/_locks.py": {
+      "blob": "2c5dfc67a8c8b5162384f1b785fc74eb0b4f48bd",
+      "sha256": "96801a918c668c9f27c856c6b35b92575d77d0fb2131b58dad016e69504af36f"
+    },
+    "carr-library/src/carr_library/audio/model_manifest.py": {
+      "blob": "2b68b1b01eb2a5ff6e9b53e36e293bfbfb6778f7",
+      "sha256": "28419689f800edea7b0d53b8b9066e203d7eaf7f9e7acf7287d6b2c0aeda0239"
+    },
+    "carr-library/tests/operations/test_resources.py": {
+      "blob": "9dd24a64f10f737551fe2742d094d4291b6ebe4a",
+      "sha256": "24ce1eb615dd4be2fbde07207ff20ee201b6438801e5d20aa997120d16038b67"
+    },
+    "carr-library/tests/security/test_idle_renewal.py": {
+      "blob": "dd20915259458eac119a9384ee5d610daec2275a",
+      "sha256": "e56bf8250c2bda607164c192f717697879942f15d042d0f1ee2d8874587ad8cf"
+    },
+    "carr-library/tests/audio/test_model_manifest.py": {
+      "blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c",
+      "sha256": "c1a048b925c6ee92d60d8b6e031a4c4a70fc1f6d6b3dd99d92cfb0ecbfa6a5db"
+    }
+  },
+  "raw_job_log": {
+    "decoded_utf8_bytes": 77899,
+    "sha256": "1d420651429d2f368e047e126bf664457f7a224f6596f963b2d630d856952963",
+    "complete_log_fetched": true
+  },
+  "artifact": {
+    "id": 15244708300,
+    "name": "carr-regression-preflight-c31e680b15d2334420f6cf19d5587636e948258b-1",
+    "bytes": 4280,
+    "sha256": "3d695ecc7b9e871bb7806e937ee8a6d0c4e1e8f165c6457e4d5ccd3a71556ba0",
+    "created_at": "2026-11-28T02:52:13Z",
+    "expired": false,
+    "api_matches_uploader_log": true,
+    "archive_independently_opened": false,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098640771/artifacts/15244708300",
+    "api_source_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "api_run_id": 46098640771,
+    "uploader_log_sha256": "3d695ecc7b9e871bb7806e937ee8a6d0c4e1e8f165c6457e4d5ccd3a71556ba0",
+    "selection_scope": "The existing workflow uploaded its source/runtime JSON and full source text receipt. This proof has read metadata and the complete job log only, not archived members.",
+    "bound_run_attempt": 1
+  },
+  "specific_boundaries": [
+    "Actual original cross-process resource contention with no overlapping admission",
+    "Both Windows _getfinalpathname leaf-deletion race phases, then real native descriptor/inode match, peer exclusion and successful release/transfer",
+    "All six raw namespace/ADS controls refused before parent admission",
+    "Existing32 resource cases retained",
+    "Real periodic idle-renewal completion and exact signed sequence/call-count observations",
+    "Existing33 local model manifest/alias/inventory/cancellation cases"
+  ],
+  "limitations": [
+    "This is actual targeted Windows SOURCE execution, not an installed-wheel or full integrated acceptance.",
+    "The artifact's recorded metadata/digest and uploader binding were checked; archived source.json/source.txt/runtime-pins.json members were not independently opened.",
+    "Source hashes above were independently computed from exact candidate Git blobs and are not represented as decoded artifact source.json values.",
+    "No model inference, language/acoustic quality, physical audio, manual NVDA, signing or distribution clearance is established.",
+    "Failed014 results remain unchanged; no qualification is transferred from this scope to the complete main job."
+  ],
+  "application_qualification": "FULL_INTEGRATED_GATES_PENDING",
+  "suite_elapsed_seconds": {
+    "tests/operations/test_resources.py": 8.09,
+    "tests/security/test_idle_renewal.py": 1.16,
+    "tests/audio/test_model_manifest.py": 120.71
+  },
+  "nonfatal_warnings": [
+    {
+      "count": 1,
+      "module": "tests/audio/test_model_manifest.py",
+      "test": "test_complete_torch_sized_runtime_inventory_and_mutation",
+      "category": "PytestWarning",
+      "message": "record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')",
+      "actual_log_line": "2026-11-28T02:52:05.2229359Z   tests\\audio\\test_model_manifest.py:194: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')",
+      "effect": "The module still completed33 passed,0failed,0skipped; no warning suppression or qualification expansion."
+    }
+  ],
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098640771",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098640771/job/140835756807",
+  "expected_function_counts": {
+    "tests.operations.test_resources": {
+      "test_unheld_lock_disappearance_during_preflight_can_be_acquired": 2,
+      "test_unheld_lock_does_not_hide_missing_parent_or_validation_error": 1,
+      "test_owned_lock_still_refuses_a_disappeared_path": 1,
+      "test_declared_cpu_memory_capacity_and_release_on_exception": 1,
+      "test_request_above_policy_never_waits_or_starts": 1,
+      "test_exclusive_configured_gpus_and_device_ids": 1,
+      "test_real_free_disk_and_same_volume_commitments": 1,
+      "test_multiple_output_directories_are_admitted_as_one_atomic_request": 1,
+      "test_waiting_cancellation_is_prompt_and_adds_no_reservation": 1,
+      "test_active_timeout_is_stop_signal_never_forced_reclaim": 1,
+      "test_policy_persistence_cannot_invalidate_live_work": 1,
+      "test_one_runtime_coordinator_cannot_bind_two_policies": 1,
+      "test_capacity_freed_after_deadline_does_not_start_late_worker": 1,
+      "test_actual_spawned_process_crash_releases_without_pid_reaping": 1,
+      "test_actual_process_contention_has_no_overlapping_admission": 1,
+      "test_bad_live_metadata_stops_admission_and_unlock_recovers": 1,
+      "test_failed_publication_releases_native_lock": 1,
+      "test_runtime_leases_outside_backup_state_and_truthful_capabilities": 1,
+      "test_paths_do_not_follow_links_and_invalid_requests_are_rejected": 1,
+      "test_native_release_can_remove_the_file_during_unheld_preflight": 2,
+      "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
+      "test_lock_leaf_disappears_during_local_asset_check": 2,
+      "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
+      "test_unheld_lock_inspection_errors_never_become_absence": 4,
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "tests.security.test_idle_renewal": {
+      "test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt_in": 1,
+      "test_blocked_vault_check_does_not_block_data_save_or_shutdown_and_cannot_launch_late": 1,
+      "test_missing_or_withdrawn_canonical_renewal_capability_never_calls_transport": 1,
+      "test_late_signed_reply_after_time_budget_cannot_advance_protected_state": 1
+    },
+    "tests.audio.test_model_manifest": {
+      "test_exact_manifest_hashes_and_mutated_asset": 1,
+      "test_moving_revision_and_wrong_engine_fail_closed": 1,
+      "test_asset_paths_cannot_escape_manifest_root": 7,
+      "test_manifest_duplicate_keys_and_nonfinite_values_rejected": 1,
+      "test_manifest_changed_between_validation_and_use": 1,
+      "test_license_and_execution_consent_not_inferred": 1,
+      "test_musicgen_requires_both_pinned_checkpoints_and_noncommercial_profile": 1,
+      "test_linked_asset_is_rejected": 1,
+      "test_local_path_checks_each_component_with_one_lstat": 1,
+      "test_local_path_rejects_links_from_the_component_stat": 4,
+      "test_local_path_still_requires_existence_after_component_checks": 1,
+      "test_manifest_byte_budget_and_cancellation": 1,
+      "test_boolean_schema_and_acceptance_strings_are_rejected": 1,
+      "test_complete_runtime_inventory_rejects_unlisted_python_file": 1,
+      "test_worker_environment_excludes_host_credentials": 1,
+      "test_complete_torch_sized_runtime_inventory_and_mutation": 1,
+      "test_model_inventory_file_count_remains_bounded": 1,
+      "test_model_manifest_bytes_remain_bounded_before_json_parse": 1,
+      "test_complete_inventory_directory_budget_remains_enforced": 1,
+      "test_complete_inventory_can_be_cancelled_before_hashing_assets": 1,
+      "test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets": 2,
+      "test_complete_inventory_rejects_nonregular_entry_from_filesystem_metadata": 1,
+      "test_inventory_cancellation_remains_interrupted_and_closes_the_iterator": 1
+    }
+  },
+  "actual_suite_receipt_lines": [
+    "2026-11-28T02:50:02.4162281Z PASS: tests/operations/test_resources.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-28T02:50:04.1684606Z PASS: tests/security/test_idle_renewal.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+    "2026-11-28T02:52:13.1173923Z PASS: tests/audio/test_model_manifest.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0"
+  ],
+  "actual_aggregate_receipt_line": "2026-11-28T02:52:13.1174885Z Required suites complete: 3; passed=3; failed=0",
+  "actual_pytest_duration_lines": [
+    "2026-11-28T02:50:02.2958208Z ============================= 40 passed in 8.09s ==============================",
+    "2026-11-28T02:50:04.0728013Z ============================== 4 passed in 1.16s ==============================",
+    "2026-11-28T02:52:05.2253434Z ================== 33 passed, 1 warning in 120.71s (0:02:00) =================="
+  ],
+  "source_binding_interpretation": "The six hashes are independently computed expected bindings from exact candidate Git blobs. The workflow wrote a source.json receipt before execution, but that archived member has not been decoded or independently compared here.",
+  "review": {
+    "method": "Read-only GitHub run/job/API metadata and complete decoded job log; independently compared exact function multiplicities and56 runtime versions with source-bound expectations.",
+    "source_composition": "SOURCE_GO",
+    "execution": "ACTUAL_TARGETED_WINDOWS_SOURCE_PASS",
+    "archive_member_read": "NOT_RUN",
+    "repository_code_executed_by_review": "NO",
+    "new_tests_or_jobs_launched_by_review": false
+  },
+  "assistant_aggregate_budget": "NOT_EXERCISED by this preflight. The900-second tests/assistant allowance remains subject to the separate complete-main run.",
+  "full_main_status": "PENDING_SEPARATE_EXACT_C31_EXECUTION_AND_ARTIFACT_READ",
+  "failed_predecessor": {
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "run_id": 46089514448,
+    "job_id": 140806885393,
+    "outcome": "FAILURE",
+    "scope": "All earlier failures and skipped downstream phases remain unchanged; this targeted result is not transferred to the old source or to unexecuted complete-main phases.",
+    "evidence": "main-014b-source-failure-20261128.json"
+  }
+}

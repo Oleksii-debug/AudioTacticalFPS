@@ -243,3 +243,193 @@ def test_cli_project_manifest_path_cannot_replace_registered_music_authority(tmp
     assert (output / '.render.lock').is_file()
     assert {path.name for path in model_root.iterdir()} == {'project-choice.json'}
     assert (model_root / 'project-choice.json').read_bytes() == selected.read_bytes()
+
+
+# Completed-audio inspection is an explicit read-only CLI operation. These
+# cases append to, and do not replace, the existing renderer/admission tests.
+def silence_cli_arguments(manifest, *extra):
+    return ['--audio-inspect-silence', str(manifest),
+            '--audio-silence-threshold-dbfs', '-50',
+            '--audio-silence-minimum-seconds', '0.1', *extra]
+
+
+def forbid_silence_runtime(monkeypatch):
+    from carr_library import audio_cli, native_runtime
+    from carr_library.audio import runtime
+    def unexpected(*args, **kwargs):
+        pytest.fail('Completed-audio inspection reached rendering or runtime selection.')
+    monkeypatch.setattr(engines, 'default_registry', unexpected)
+    monkeypatch.setattr(runtime, 'resolve_ffmpeg', unexpected)
+    monkeypatch.setattr(production, 'render_project', unexpected)
+    monkeypatch.setattr(ResourceBroker, 'for_app', unexpected)
+    monkeypatch.setattr(EngineProfileStore, '__init__', unexpected)
+    monkeypatch.setattr(audio_cli, '_render_library_root', unexpected)
+    # The public entrypoint permits an absent optional bundle. Inspection must
+    # still work without discovering an inference executable or model.
+    monkeypatch.setattr(native_runtime, 'activate_bundled_runtime', lambda: None)
+    return unexpected
+
+
+def silence_retained_tree(root):
+    result = {}
+    for path in root.rglob('*'):
+        name = path.relative_to(root).as_posix()
+        result[name] = None if path.is_dir() else sha256(path.read_bytes()).hexdigest()
+    return result
+
+
+@pytest.mark.parametrize('arguments', [
+    ['--audio-silence-threshold-dbfs', '-50'],
+    ['--audio-silence-minimum-seconds', '3'],
+    ['--audio-silence-run-key', 'a' * 64],
+    ['--audio-silence-max-intervals', '2'],
+    ['--audio-inspect-silence', 'complete.json',
+     '--audio-silence-threshold-dbfs', '-50'],
+    ['--audio-inspect-silence', 'complete.json',
+     '--audio-silence-minimum-seconds', '3'],
+])
+def test_silence_cli_requires_selected_completion_and_both_explicit_criteria(
+        monkeypatch, arguments):
+    from carr_library.__main__ import main
+    from carr_library import native_runtime
+    unexpected = forbid_silence_runtime(monkeypatch)
+    monkeypatch.setattr(native_runtime, 'activate_bundled_runtime', unexpected)
+    monkeypatch.setattr(production, 'inspect_completed_silence', unexpected)
+    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), pytest.raises(SystemExit) as raised:
+        main(arguments)
+    assert raised.value.code == 2
+
+
+@pytest.mark.parametrize('extra', [
+    ['--audio-preview'],
+    ['--audio-output', 'unused-render-directory'],
+    ['--voice', 'unused:voice'],
+    ['--ffmpeg', 'unused-ffmpeg.exe'],
+    ['--dordiai-manifest', 'unused-runtime.json'],
+    ['--piper-executable', 'unused-piper.exe'],
+    ['--piper-manifest', 'unused-voice.json'],
+])
+def test_silence_cli_refuses_unrelated_rendering_or_runtime_authority(monkeypatch, extra):
+    from carr_library.__main__ import main
+    from carr_library import native_runtime
+    unexpected = forbid_silence_runtime(monkeypatch)
+    monkeypatch.setattr(native_runtime, 'activate_bundled_runtime', unexpected)
+    monkeypatch.setattr(production, 'inspect_completed_silence', unexpected)
+    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), pytest.raises(SystemExit) as raised:
+        main(silence_cli_arguments(Path('complete.json'), *extra))
+    assert raised.value.code == 2
+
+
+@pytest.mark.parametrize('extra', [
+    ['--audio-voices'],
+    ['--audio-plan', 'another-plan.json'],
+    ['--self-test'],
+    ['--backup', 'another-backup.zip'],
+])
+def test_silence_cli_cannot_share_a_command_with_another_operation(monkeypatch, extra):
+    from carr_library.__main__ import main
+    from carr_library import native_runtime
+    unexpected = forbid_silence_runtime(monkeypatch)
+    monkeypatch.setattr(native_runtime, 'activate_bundled_runtime', unexpected)
+    monkeypatch.setattr(production, 'inspect_completed_silence', unexpected)
+    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()), pytest.raises(SystemExit) as raised:
+        main(silence_cli_arguments(Path('complete.json'), *extra))
+    assert raised.value.code == 2
+
+
+def test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes(tmp_path, monkeypatch):
+    from carr_library.__main__ import main
+    args, source = options(tmp_path, script=
+        '[output sample_rate=8000 stems=false]\n# Quiet\n[pause 0.2]\n')
+    silent_registry(monkeypatch)
+    rendered = io.StringIO()
+    with redirect_stdout(rendered), redirect_stderr(io.StringIO()):
+        assert run_audio(args) == 0
+    completed = json.loads(rendered.getvalue())
+    manifest = Path(completed['manifest'])
+    original_manifest = manifest.read_bytes()
+    original_source = source.read_bytes()
+    actual = production.inspect_completed_silence
+    reports, calls = [], []
+    def inspect(selected, **settings):
+        calls.append((selected, settings['threshold_dbfs'], settings['minimum_seconds'],
+                      settings['expected_run_key'], settings['max_intervals']))
+        result = actual(selected, **settings)
+        reports.append(result)
+        return result
+    forbid_silence_runtime(monkeypatch)
+    monkeypatch.setattr(production, 'inspect_completed_silence', inspect)
+    before = silence_retained_tree(tmp_path)
+    previous = signal.getsignal(signal.SIGINT)
+    output, progress = io.StringIO(), io.StringIO()
+    with redirect_stdout(output), redirect_stderr(progress):
+        assert main(silence_cli_arguments(
+            manifest, '--audio-silence-run-key', completed['run_key'],
+            '--audio-silence-max-intervals', '3',
+            '--data-dir', str(tmp_path / 'must-not-create-library'))) == 0
+    report = json.loads(output.getvalue())
+    assert report == reports[0]
+    assert calls == [(manifest, -50.0, 0.1, completed['run_key'], 3)]
+    assert report['schema'] == 'carr-completed-silence-inspection/1'
+    assert report['status'] == 'complete' and report['run_key'] == completed['run_key']
+    assert report['sample_rate'] == 8000 and report['channels'] == 2 and report['frames'] == 1600
+    assert report['interval_count'] == report['retained_interval_count'] == 1
+    assert report['omitted_interval_count'] == 0 and report['qualifying_frames'] == 1600
+    assert len(report['intervals']) == 1
+    assert report['intervals'][0]['start_frame'] == 0
+    assert report['intervals'][0]['end_frame'] == 1600
+    files = {row['name']: row for row in completed['files']}
+    assert report['completion_sha256'] == sha256(original_manifest).hexdigest()
+    assert report['master_sha256'] == files['master.wav']['sha256']
+    assert report['timeline_sha256'] == files['timeline.json']['sha256']
+    assert manifest.read_bytes() == original_manifest and source.read_bytes() == original_source
+    assert silence_retained_tree(tmp_path) == before
+    assert not (tmp_path / 'must-not-create-library').exists()
+    assert signal.getsignal(signal.SIGINT) == previous
+
+
+@pytest.mark.parametrize('phase', ['during-inspection', 'after-service-return'])
+def test_silence_cli_cancel_restores_handler_without_a_partial_complete_report(
+        tmp_path, monkeypatch, phase):
+    from carr_library.__main__ import main
+    from carr_library.audio.jobs import RenderCancelled
+    selected = tmp_path / 'complete.json'
+    selected.write_bytes(b'Explicit retained boundary fixture; never decoded by the stub.')
+    before = silence_retained_tree(tmp_path)
+    observed = []
+    def inspect(path, **settings):
+        assert path == selected and settings['expected_run_key'] is None
+        assert settings['max_intervals'] == 1000 and not settings['cancelled']()
+        settings['on_status']('Inspecting the selected completed audio.')
+        signal.getsignal(signal.SIGINT)(signal.SIGINT, None)
+        assert settings['cancelled']()
+        observed.append(phase)
+        if phase == 'during-inspection':
+            raise RenderCancelled('Completed-audio inspection was cancelled.')
+        return {'status': 'complete', 'must_not_be_emitted': True}
+    forbid_silence_runtime(monkeypatch)
+    monkeypatch.setattr(production, 'inspect_completed_silence', inspect)
+    previous = signal.getsignal(signal.SIGINT)
+    output, progress = io.StringIO(), io.StringIO()
+    with redirect_stdout(output), redirect_stderr(progress):
+        assert main(silence_cli_arguments(selected)) == 130
+    result = json.loads(output.getvalue())
+    assert result['status'] == 'cancelled' and set(result) == {'status', 'message'}
+    assert 'Inspecting the selected completed audio.' in progress.getvalue()
+    assert observed == [phase] and signal.getsignal(signal.SIGINT) == previous
+    assert silence_retained_tree(tmp_path) == before
+
+
+def test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start(tmp_path, monkeypatch):
+    from carr_library.__main__ import main
+    selected = tmp_path / 'complete.json'
+    selected.write_bytes(b'{}\n')
+    before = silence_retained_tree(tmp_path)
+    forbid_silence_runtime(monkeypatch)
+    previous = signal.getsignal(signal.SIGINT)
+    output, errors = io.StringIO(), io.StringIO()
+    with redirect_stdout(output), redirect_stderr(errors):
+        assert main(silence_cli_arguments(selected)) == 1
+    assert output.getvalue() == '' and 'Research Library:' in errors.getvalue()
+    assert signal.getsignal(signal.SIGINT) == previous
+    assert silence_retained_tree(tmp_path) == before
