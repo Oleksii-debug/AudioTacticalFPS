@@ -473,18 +473,54 @@ class Storage:
             self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
             self._check()
 
-    def backup(self, path):
+    def backup(self, path, *, cancelled=lambda: False, max_bytes=None):
         """Publish a checked SQLite snapshot without replacing any existing path.
 
         Requires a local filesystem supporting hard links. Interrupted processes
         may leave a staging directory, never an incomplete final snapshot.
         The caller must own a stable private parent directory and exclude
         concurrent namespace writers; these checks are not a hostile-directory lock.
+        Optional caller limits govern the copy and its unchanged full validation;
+        no limit or cancellation authority is read from the source database.
         """
+        if not callable(cancelled):
+            raise TypeError('A backup cancellation callback is required.')
+        if max_bytes is not None and (type(max_bytes) is not int or not 0 < max_bytes <= 2**63-1):
+            raise ValueError('Choose a positive bounded database snapshot allowance.')
+        failure = None
+
+        def check():
+            if failure is not None:
+                raise failure
+            if cancelled():
+                raise InterruptedError('Database backup cancelled before publication.')
+
+        def size_limit(size):
+            if max_bytes is not None and size > max_bytes:
+                raise ValueError('Database snapshot exceeds the reviewed byte allowance.')
+
+        def progress(status, remaining, total):
+            check()
+            size_limit(total * page_size)
+
+        def validation_progress():
+            nonlocal failure
+            try:
+                check()
+            except BaseException as exc:
+                # SQLite translates callback exceptions into OperationalError.
+                # Keep the original cancellation/deadline for the caller.
+                failure = exc
+                return 1
+            return 0
+
+        check()
         if self.db.in_transaction:
             raise ValueError('backup forbidden inside publication transaction')
         self._require_pragmas()
         self._check_schema()
+        page_size = self.db.execute('PRAGMA page_size').fetchone()[0]
+        size_limit(self.db.execute('PRAGMA page_count').fetchone()[0] * page_size)
         path = Path(path)
         if os.path.lexists(path) or _sidecars(path):
             raise FileExistsError(path)
@@ -492,24 +528,35 @@ class Storage:
             staged = Path(work) / 'snapshot.db'
             dst = sqlite3.connect(staged)
             try:
-                self.db.backup(dst)
+                self.db.backup(dst, pages=256, progress=progress)
+                check()
                 # A backup of a WAL source may retain the WAL file format.
                 # Convert only the private snapshot to a standalone database.
                 if dst.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                     raise ValueError('snapshot journal mode is not DELETE')
             finally:
                 dst.close()
+            size_limit(staged.stat().st_size)
             copy = Storage(staged)
             try:
-                copy.check()
+                copy.db.set_progress_handler(validation_progress, 1000)
+                try:
+                    copy.check()
+                except sqlite3.Error:
+                    check()
+                    raise
+                check()
             finally:
+                copy.db.set_progress_handler(None, 0)
                 copy.close()
+            size_limit(staged.stat().st_size)
             if _sidecars(staged):
                 raise ValueError('snapshot has sidecars')
             with staged.open('r+b') as file:
                 os.fsync(file.fileno())
             # Atomic no-replace publication, including a competing writer.
             # Unsupported filesystems fail closed; no overwrite/copy fallback.
+            check()
             if _sidecars(path):
                 raise FileExistsError(path)
             os.link(staged, path)

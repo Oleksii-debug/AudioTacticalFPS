@@ -7,6 +7,12 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 import http.client
+import io
+import errno
+import ipaddress
+import select
+import socket
+import threading
 import html
 import json
 import math
@@ -32,6 +38,274 @@ MODES = ('LOCAL_ONLY', 'APPROVED_REMOTE', 'HYBRID')
 
 class ProviderError(RuntimeError):
     """User-safe provider failure, without remote response bodies or credentials."""
+
+
+def _check_request(deadline, cancelled):
+    callback = cancelled.is_set if hasattr(cancelled, 'is_set') else cancelled
+    if not callable(callback):
+        raise ValueError('Invalid provider cancellation callback.')
+    if callback():
+        raise InterruptedError('Provider operation cancelled; charge state may be uncertain.')
+    if monotonic() >= deadline:
+        raise TimeoutError('Provider request exceeded its time budget; charge state may be uncertain.')
+
+
+def _addresses(host, port, *, local, deadline, cancelled):
+    """An explicit numeric loopback address needs no DNS or resolver worker."""
+    _check_request(deadline, cancelled)
+    if local is not True:
+        raise ProviderError('This transport is reserved for an explicit loopback translator.')
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        raise ProviderError('Choose a literal loopback translator address.') from None
+    if not address.is_loopback or address.is_multicast or address.is_unspecified:
+        raise ProviderError('The local translator address is outside loopback.')
+    family = socket.AF_INET6 if address.version == 6 else socket.AF_INET
+    target = (str(address), port, 0, 0) if address.version == 6 else (str(address), port)
+    return [(family, socket.SOCK_STREAM, socket.IPPROTO_TCP, target)]
+
+
+class _ConnectionReader(io.RawIOBase):
+    """HTTPResponse input whose native reads remain cancellable on every OS."""
+    def __init__(self, owner):
+        super().__init__()
+        self.owner = owner
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        if self.closed:
+            raise ValueError('The local response stream is closed.')
+        if not len(buffer):
+            return 0
+        chunk = self.owner._receive(len(buffer))
+        buffer[:len(chunk)] = chunk
+        return len(chunk)
+
+
+class _ConnectionSocket:
+    """Borrow the one retained socket for the standard HTTP parser.
+
+    HTTPConnection may close its view after headers while HTTPResponse is still
+    reading a close-delimited body. The outer owner releases the native socket
+    only after those reads finish and its watchdog has joined.
+    """
+    def __init__(self, owner):
+        self.owner = owner
+
+    def sendall(self, data):
+        self.owner._sendall(data)
+
+    def makefile(self, mode):
+        if mode != 'rb':
+            raise ValueError('The local HTTP parser requires a read-only stream.')
+        return io.BufferedReader(_ConnectionReader(self.owner), buffer_size=64 * 1024)
+
+    def close(self):
+        pass  # This borrowed HTTP view cannot release the native owner.
+
+
+class _Connection:
+    """Direct loopback HTTP(S) with a deadline covering reads and TLS handshake.
+
+    Keep the actual socket independently of HTTPConnection: a close-delimited
+    response transfers ownership to HTTPResponse and clears connection.sock.
+    Native reads, writes and TLS handshake poll the same deadline/cancellation;
+    they never depend on cross-thread shutdown waking a blocking Winsock read.
+    """
+    def __init__(self, target, *, local, deadline, cancelled):
+        self.deadline = deadline
+        self.cancelled = cancelled
+        self.connection = None
+        self.response = None
+        self.raw_socket = self.active_socket = None
+        self.watcher = None
+        self.done = threading.Event()
+        self.interrupted = None
+        try:
+            port = target.port if target.port is not None else (443 if target.scheme == 'https' else 80)
+            addresses = _addresses(target.hostname, port, local=local,
+                                   deadline=deadline, cancelled=cancelled)
+            self.check()
+            for index, (family, kind, protocol, address) in enumerate(addresses):
+                self.check()
+                self.raw_socket = self.active_socket = None
+                try:
+                    self.raw_socket = self.active_socket = socket.socket(family, kind, protocol)
+                    self._connect(address)
+                except OSError as exc:
+                    if self.raw_socket is not None:
+                        self.raw_socket.close()
+                    if isinstance(exc, InterruptedError):
+                        raise
+                    self.check()
+                    if index == len(addresses) - 1:
+                        raise
+                    # Match HTTPConnection's address fallback before any TLS
+                    # or HTTP transmission, using only this validated DNS set.
+                else:
+                    break
+            self.check()
+            self.raw_socket.setblocking(False)
+            self.connection = http.client.HTTPConnection(target.hostname, port,
+                timeout=min(30.0, deadline - monotonic()))
+            self.connection.default_port = 443 if target.scheme == 'https' else 80
+            self.connection.auto_open = 0
+            if target.scheme == 'https':
+                self.active_socket = ssl.create_default_context().wrap_socket(self.raw_socket,
+                    server_hostname=target.hostname, do_handshake_on_connect=False)
+            self.connection.sock = _ConnectionSocket(self)
+            self.check()
+            # Start only after the raw-to-TLS ownership transfer. The active
+            # socket remains fixed while the watchdog can access it.
+            watcher = threading.Thread(target=self._interrupt,
+                name='carr-provider-watchdog', daemon=True)
+            self.watcher = watcher
+            watcher.start()
+            if target.scheme == 'https':
+                self._handshake()
+            self.check()
+        except BaseException:
+            try:
+                self.check()
+            finally:
+                self.close()
+            raise
+
+    def check(self):
+        if self.interrupted is not None:
+            raise self.interrupted
+        _check_request(self.deadline, self.cancelled)
+
+    def _connect(self, address):
+        # Poll pending TCP connects so cancellation is not dependent on whether
+        # shutdown interrupts an unconnected socket on the current platform.
+        attempt_deadline = min(self.deadline, monotonic() + 30.0)
+        self.raw_socket.setblocking(False)
+        error = self.raw_socket.connect_ex(address)
+        pending = (errno.EINPROGRESS, errno.EWOULDBLOCK, errno.EALREADY,
+            getattr(errno, 'WSAEWOULDBLOCK', errno.EWOULDBLOCK),
+            getattr(errno, 'WSAEINPROGRESS', errno.EINPROGRESS),
+            getattr(errno, 'WSAEALREADY', errno.EALREADY))
+        while error in pending:
+            self.check()
+            remaining = attempt_deadline - monotonic()
+            if remaining <= 0:
+                raise TimeoutError('Provider address connection timed out.')
+            _, writable, exceptional = select.select([], [self.raw_socket], [self.raw_socket], min(0.05, remaining))
+            if writable or exceptional:
+                error = self.raw_socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        if error:
+            raise OSError(error, 'Provider connection failed.')
+
+    def _wait_io(self, *, reading, deadline):
+        self.check()
+        remaining = min(self.deadline, deadline) - monotonic()
+        if remaining <= 0:
+            raise TimeoutError('The local connection exceeded its operation allowance.')
+        select.select([self.active_socket] if reading else [],
+                      [] if reading else [self.active_socket],
+                      [self.active_socket], min(.05, remaining))
+        self.check()
+
+    def _handshake(self):
+        deadline = min(self.deadline, monotonic() + 30)
+        while True:
+            self.check()
+            try:
+                self.active_socket.do_handshake()
+                self.check()
+                return
+            except ssl.SSLWantReadError:
+                self._wait_io(reading=True, deadline=deadline)
+            except ssl.SSLWantWriteError:
+                self._wait_io(reading=False, deadline=deadline)
+
+    def _receive(self, maximum):
+        deadline = min(self.deadline, monotonic() + 30)
+        while True:
+            self.check()
+            try:
+                chunk = self.active_socket.recv(maximum)
+            except ssl.SSLWantWriteError:
+                self._wait_io(reading=False, deadline=deadline)
+            except (ssl.SSLWantReadError, BlockingIOError):
+                self._wait_io(reading=True, deadline=deadline)
+            except OSError:
+                self.check()
+                raise
+            else:
+                self.check()
+                return chunk
+
+    def _sendall(self, data):
+        deadline = min(self.deadline, monotonic() + 30)
+        view, sent = memoryview(data), 0
+        try:
+            while sent < len(view):
+                self.check()
+                try:
+                    count = self.active_socket.send(view[sent:])
+                except ssl.SSLWantReadError:
+                    self._wait_io(reading=True, deadline=deadline)
+                except (ssl.SSLWantWriteError, BlockingIOError):
+                    self._wait_io(reading=False, deadline=deadline)
+                except OSError:
+                    self.check()
+                    raise
+                else:
+                    if not count:
+                        raise OSError('The local connection closed while sending the approved request.')
+                    sent += count
+            self.check()
+        finally:
+            view.release()
+
+    def _interrupt(self):
+        while not self.done.wait(0.025):
+            try:
+                self.check()
+            except BaseException as exc:
+                self.interrupted = exc
+                try:
+                    # Do not clear SSLSocket._sslobj concurrently with read().
+                    socket.socket.shutdown(self.active_socket, socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                return
+
+    def request(self, *args, **kwargs):
+        self.check()
+        self.connection.request(*args, **kwargs)
+        self.check()
+
+    def getresponse(self):
+        self.response = self.connection.getresponse()
+        self.check()
+        return self.response
+
+    def close(self):
+        self.done.set()
+        if self.watcher is not None and self.watcher.ident is not None:
+            # start() may fail before creating a thread or raise after starting
+            # it. A retained started thread is always joined before socket release.
+            self.watcher.join()
+        try:
+            if self.response is not None:
+                self.response.close()
+        finally:
+            try:
+                if self.connection is not None:
+                    self.connection.close()
+            finally:
+                try:
+                    if self.active_socket is not None:
+                        self.active_socket.close()
+                finally:
+                    if self.raw_socket is not None:
+                        self.raw_socket.close()
 
 
 def translation_receipt_sha256(value, detected_source):
@@ -77,13 +351,43 @@ class Authorization:
             raise ValueError('Approve exact provider profiles and endpoints.')
         for identity, address in self.profiles:
             validate_profile_id(identity)
-            endpoint(address, local=False)
+            endpoint(address, local=type(self) is LocalTranslationAuthorization)
         if not self.operations or any(o not in CAPABILITIES for o in self.operations):
             raise ValueError('Invalid authorized operation.')
         if not self.data_classes or any(x not in ('user-instruction', 'selected-script', 'selected-excerpt', 'synthetic-test') for x in self.data_classes):
             raise ValueError('Approve a bounded selected data class; whole-library uploads are unavailable.')
         if any(not re.fullmatch('[0-9a-f]{64}', h) for h in self.request_hashes):
             raise ValueError('Invalid authorized request checksum.')
+
+
+class LocalTranslationAuthorization(Authorization):
+    """Explicit zero-cost selected-data approval for one loopback translator.
+
+    Uses the unchanged authorization fields/digest and existing usage ledger.
+    It cannot authorize a remote endpoint, chat operation or paid request.
+    """
+    def __post_init__(self):
+        super().__post_init__()
+        if not self.request_hashes:
+            raise ValueError('Local translation approval must bind the exact selected request hashes.')
+        if (money(self.budget) != 0 or tuple(self.operations) not in (
+                ('translation.text',), ('translation.languages',))):
+            raise ValueError('Local translation approval permits one translation purpose and a zero external cost bound.')
+
+
+def translation_authorization_type(profile):
+    return LocalTranslationAuthorization if profile.adapter == 'libretranslate-local' else Authorization
+
+
+def translation_language_approval(profile, *, expires_at):
+    """Build the one language-list envelope after the caller's explicit review."""
+    _, body, _ = _request(profile, 'translation.languages', {'target': 'en'})
+    identity = uuid4().hex
+    hashes = ((sha256(canonical(body).encode('utf-8')).hexdigest(),)
+              if profile.adapter == 'libretranslate-local' else ())
+    return translation_authorization_type(profile)(identity, identity,
+        ((profile.id, profile.endpoint),), ('translation.languages',),
+        ('user-instruction',), '0', 1, expires_at, hashes)
 
 
 class UsageLedger:
@@ -153,6 +457,9 @@ def _request(profile, operation, payload):
         raise ValueError('Provider request must be a typed JSON object.')
     if operation not in profile.capabilities:
         raise PermissionError('The provider profile does not support this operation.')
+    if profile.adapter == 'libretranslate-local':
+        from .translation_local import request
+        return request(operation, payload)
     if profile.adapter in ('google-translation-v2', 'google-translation-v3'):
         def language(value):
             if not isinstance(value, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', value):
@@ -269,7 +576,9 @@ class Gateway:
 
     def request(self, profile, operation, payload, *, task_id, data_class,
                 authorization=None, max_cost=None, operation_id=None, output=None,
-                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024):
+                cancelled=lambda: False, timeout=120.0, max_response_bytes=64 * 1024 * 1024,
+                before_request=lambda: None, before_publish=lambda: None,
+                interrupt_cancelled=None):
         if not isinstance(profile, ProviderProfile) or not profile.enabled:
             raise PermissionError('Enable and explicitly select this provider profile first.')
         if self.mode not in MODES:
@@ -287,11 +596,16 @@ class Gateway:
         target = endpoint(profile.endpoint, local=profile.local)
         reserved = False
         sent = False
-        if not profile.local:
-            if self.mode == 'LOCAL_ONLY':
+        local_translation = profile.adapter == 'libretranslate-local'
+        if local_translation and any(not callable(value) for value in (before_request, before_publish)):
+            raise ValueError('Local translation requires callable scope guards.')
+        if not profile.local or local_translation:
+            if not profile.local and self.mode == 'LOCAL_ONLY':
                 raise PermissionError('LOCAL ONLY blocks external providers before credentials or connections are opened.')
-            if not isinstance(authorization, Authorization) or authorization.expires_at <= time():
-                raise PermissionError('An active, explicit remote production authorization is required.')
+            if (not isinstance(authorization, Authorization) or authorization.expires_at <= time()
+                    or (local_translation and type(authorization) is not LocalTranslationAuthorization)):
+                raise PermissionError('An active, explicit local selected-data approval is required.' if local_translation
+                    else 'An active, explicit remote production authorization is required.')
             if (authorization.task_id != task_id or (profile.id, profile.endpoint) not in tuple(tuple(x) for x in authorization.profiles)
                     or operation not in authorization.operations or data_class not in authorization.data_classes
                     or (authorization.request_hashes and request_hash not in authorization.request_hashes)):
@@ -299,6 +613,8 @@ class Gateway:
             if max_cost is None:
                 raise PermissionError('The cost is unknown; approve an explicit maximum before calling this provider.')
             bound = money(max_cost)
+            if local_translation and bound != 0:
+                raise ValueError('Local translation cannot reserve external charges.')
             self.ledger.reserve(authorization, operation_id, request_hash, bound, profile, operation)
             reserved = True
         elif max_cost not in (None, 0, '0'):
@@ -310,6 +626,7 @@ class Gateway:
                    'User-Agent': 'UniversalResearchLibrary/0.2'}
         secret_bytes = None
         started = monotonic()
+        deadline = started + timeout
         try:
             if output is not None:
                 if expected_type == 'application/json':
@@ -342,15 +659,25 @@ class Gateway:
                 raise ProviderError('Reconnect this remote provider account before generation.')
             if cancelled():
                 raise InterruptedError('Provider operation cancelled before transmission.')
-            cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
-            options = {'timeout': min(timeout, 30.0)}
-            if target.scheme == 'https':
-                options['context'] = ssl.create_default_context()
-            connection = cls(target.hostname, target.port, **options)
+            if local_translation:
+                # Only the fast user-stop callback runs in the I/O watchdog.
+                # Fresh library/profile guards stay on the request's owning thread.
+                interrupt = cancelled if interrupt_cancelled is None else interrupt_cancelled
+                connection = _Connection(target, local=True, deadline=deadline, cancelled=interrupt)
+            else:
+                cls = http.client.HTTPSConnection if target.scheme == 'https' else http.client.HTTPConnection
+                options = {'timeout': min(timeout, 30.0)}
+                if target.scheme == 'https':
+                    options['context'] = ssl.create_default_context()
+                connection = cls(target.hostname, target.port, **options)
             # No proxy environment or redirects are consulted. Host/TLS authority stays fixed.
             prefix = target.path.rstrip('/')
             if profile.adapter == 'elevenlabs' and not prefix:
                 prefix = '/v1'
+            if local_translation:
+                before_request()
+                _check_request(deadline, cancelled)
+                connection.check()
             sent = True
             method = 'GET' if operation == 'translation.languages' else 'POST'
             connection.request(method, prefix + route, body=None if method == 'GET' else raw, headers=headers)
@@ -407,7 +734,16 @@ class Gateway:
                       'local': profile.local, 'actual_cost': None, 'artifacts': []}
             if expected_type == 'application/json':
                 parsed = json.loads(b''.join(chunks))
-                if profile.adapter == 'google-translation-v3':
+                if local_translation:
+                    from .translation_local import response as local_response
+                    decoded = local_response(b''.join(chunks), operation, body, maximum=min(max_response_bytes, 200000))
+                    result.update(decoded)
+                    if operation == 'translation.text':
+                        usage = {'submitted_characters': len(body['q']),
+                                 'translation_sha256': sha256(result['text'].encode('utf-8')).hexdigest(),
+                                 'decoded_translation_sha256': translation_receipt_sha256(
+                                     result['text'], result['detected_source'])}
+                elif profile.adapter == 'google-translation-v3':
                     if type(parsed) is not dict:
                         raise ProviderError('The Advanced v3 response schema is invalid.')
                     if operation == 'translation.languages':
@@ -490,6 +826,10 @@ class Gateway:
                                  if k in ('prompt_tokens', 'completion_tokens', 'total_tokens') and type(v) is int and v >= 0}
                 result['usage'] = usage
                 _reject_decoded_credential(result, secret_bytes)
+            if local_translation:
+                before_publish()
+                _check_request(deadline, cancelled)
+                connection.check()
             if destination:
                 local_path(destination.parent)
                 os.link(temporary, destination)
@@ -500,6 +840,10 @@ class Gateway:
         except BaseException as exc:
             if reserved:
                 self.ledger.finish(authorization.id, operation_id, status='uncertain' if sent else 'not_sent')
+            if local_translation:
+                if connection is not None:
+                    connection.check()
+                _check_request(deadline, cancelled)
             if isinstance(exc, (PermissionError, FileExistsError, ProviderError, InterruptedError)):
                 raise
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):

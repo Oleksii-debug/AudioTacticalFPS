@@ -6,7 +6,7 @@ from time import time
 from uuid import uuid4
 
 from ..assistant.profiles import ProfileStore
-from ..assistant.providers import Authorization, Gateway, money
+from ..assistant.providers import Authorization, Gateway, money, translation_language_approval
 from ..assistant.translation import TranslationService, translation_approval
 
 
@@ -52,7 +52,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     service = TranslationService(root, library=library)
     accounts = ProfileStore(library.root / 'state' / 'providers')
     profiles = tuple(p for p in accounts.list()
-                     if p.adapter in ('google-translation-v2', 'google-translation-v3') and p.enabled)
+                     if p.adapter in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local') and p.enabled)
     alive, busy, current_job, reviewed = True, False, None, None
     visible_job = None
     source_ready = source_loader is None
@@ -92,7 +92,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google API &account and edition', wx.Choice,
+    provider = field('Translation provider &profile' if any(p.local for p in profiles) else
+                     'Google API &account and edition', wx.Choice,
                      choices=[f'{p.name} ({p.id}); {p.adapter}' for p in profiles])
     if profiles:
         provider.SetSelection(0)
@@ -107,7 +108,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     budget = field('Maximum approved &budget in USD; no default price', value='')
     status = field('Preview, supported languages and job status', proportion=1,
         style=wx.TE_MULTILINE | wx.TE_READONLY,
-        value='LOCAL ONLY until explicit approval. Configure a Basic v2 API-key account or Advanced v3 NMT OAuth account '
+        value='LOCAL ONLY until explicit approval. Configure a local LibreTranslate profile, Basic v2 API-key account or Advanced v3 NMT OAuth account '
               'in AI and API connections. Advanced requires your numeric project and region, and an unexpired IAM/ADC '
               'access token in Windows Credential Manager; tokens are never automatically refreshed. '
               'A selected existing glossary must share the project and non-global region; choose an explicit source language. '
@@ -144,7 +145,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     def profile():
         index = provider.GetSelection()
         if not 0 <= index < len(profiles):
-            raise ValueError('Create and enable a Google Basic v2 or Advanced v3 account in AI/API connections, then reopen this window.')
+            raise ValueError('Create and enable a Google Basic v2, Advanced v3 or local LibreTranslate profile in AI/API connections, then reopen this window.')
         return profiles[index]
 
     def visible_scope():
@@ -253,30 +254,33 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         try:
             guard()
             p = profile()
-            if wx.MessageBox('Contact the official Google Translation API to fetch its supported language list? '
-                'No selected text is sent. Your configured account will be used.\n' + p.endpoint + '\nModel: ' + p.model, 'Approve language discovery',
+            prompt = ('Contact the selected local translator for its declared language pairs? No selected text is sent.\n'
+                      if p.adapter == 'libretranslate-local' else
+                      'Contact the official Google Translation API to fetch its supported language list? '
+                      'No selected text is sent. Your configured account will be used.\n')
+            if wx.MessageBox(prompt + p.endpoint + '\nModel: ' + p.model, 'Approve language discovery',
                 wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                 return
             guard()
-            identity = uuid4().hex
-            approval = Authorization(identity, identity, ((p.id, p.endpoint),), ('translation.languages',),
-                                      ('user-instruction',), '0', 1, time() + 600)
+            approval = translation_language_approval(p, expires_at=time() + 600)
             def refresh():
                 guard()
                 require_current_account(p)
-                service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
+                service.gateway = Gateway(root / 'provider', mode='LOCAL_ONLY' if p.local else 'APPROVED_REMOTE')
                 require_current_account(p)
                 def discovery_stopped():
                     if stopped():
                         return True
                     require_current_account(p)
                     return False
-                return service.refresh_languages(p, authorization=approval, cancelled=discovery_stopped)
+                return service.refresh_languages(p, authorization=approval, cancelled=discovery_stopped,
+                                                 interrupt_cancelled=stopped)
             begin('Fetching supported translation languages',
                   refresh,
                   lambda rows: report('Provider-declared NMT languages; no quality or 135-language qualification claim:\n' +
                                       '\n'.join(row['language'] + ' — ' + row['name'] +
-                                          ('; source: ' + str(row['source']) + '; target: ' + str(row['target']) if 'source' in row else '') for row in rows)))
+                                          ('; source: ' + str(row['source']) + '; target: ' + str(row['target']) if 'source' in row else
+                                            '; targets: ' + ', '.join(row['targets']) if 'targets' in row else '') for row in rows)))
         except Exception as exc:
             report(str(exc), True)
 
@@ -292,6 +296,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             result = service.preview(p, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(),
                                      rate_per_million=rate.GetValue().strip() or None, glossary=glossary.GetValue().strip() or None)
             total = money(budget.GetValue())
+            if p.adapter == 'libretranslate-local' and total != 0:
+                raise ValueError('Enter a zero external cost bound for local translation.')
             if result['estimated_cost'] is not None and money(result['estimated_cost']) > total:
                 raise ValueError('The entered price estimate exceeds the chosen total budget.')
             reviewed = (p.to_dict(), selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total),
@@ -319,9 +325,13 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                           glossary.GetValue().strip() or None, rate.GetValue().strip() or None)
                 if not source_ready or reviewed != values:
                     raise ValueError('Preview this exact text, languages and budget before approving translation.')
-                if wx.MessageBox(f'Send exactly {len(values[1])} selected characters to Google Translation?\n'
-                    + _origin(document) + f'\nApproved total reservation: {values[4]} USD. '
-                    'The provider may charge your account under its terms.\n' + p.endpoint + '\nModel: ' + p.model +
+                transfer = (f'Send exactly {len(values[1])} selected characters to the selected local translator?\n'
+                            if p.adapter == 'libretranslate-local' else
+                            f'Send exactly {len(values[1])} selected characters to Google Translation?\n')
+                cost_notice = ('External charge reservation: 0 USD.\n' if p.local else
+                               f'Approved total reservation: {values[4]} USD. '
+                               'The provider may charge your account under its terms.\n')
+                if wx.MessageBox(transfer + _origin(document) + '\n' + cost_notice + p.endpoint + '\nModel: ' + p.model +
                     '\nGlossary: ' + (values[5] or 'none'),
                     'Approve selected text transfer', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                     return
@@ -359,7 +369,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                     guard()
                     require_current_account(account)
                 remote_guard()
-                service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
+                service.gateway = Gateway(root / 'provider', mode='LOCAL_ONLY' if account is not None and account.local else 'APPROVED_REMOTE')
                 from ..progress import current_progress
                 progress = current_progress()
                 def advanced(done, total, phase):
