@@ -32,3 +32,23 @@ SQLite snapshot; old backups restore at their original version before the host
 performs its checked upgrade. Restoring pending requests clears process-bound
 attempts and candidate hints, while immutable historical receipts remain.
 These records report completion only and grant no quotation approval.
+
+The accepted table is `import_publication(revision, request_id, attempt, sha256)`.
+Both current and earlier accepted receipts use the canonical c9 digest contract:
+the fingerprint includes the request's absolute data/source paths, its metadata,
+the registered source identity and exact stored page data. It is not a portable
+proof independent of those paths. Backups preserve the immutable receipt rows;
+restoring requests removes process-bound attempts and candidate hints instead
+of rewriting old receipts or granting a new attempt their ownership. Retained
+sources remain available through the normal checked recovery flow.
+
+A structurally different unreleased version-5 database using
+`publication_receipt` is rejected without changing its schema, version label
+or bytes. It is not silently treated as the accepted canonical version 5.
+Historical V1–V4 schemas and fingerprints remain unchanged.
+
+The migration and compatibility suites require actual process-exit checks,
+authentic old receipt verification, forged-request rejection, and backup/restore
+with retained source bytes. These requirements do not transfer earlier source
+or installed-package counts to a newly composed head. Qualification of the
+current resource/reader followups remains pending until their exact checks run.

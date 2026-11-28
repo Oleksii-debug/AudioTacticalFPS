@@ -105,8 +105,9 @@ The same exact donor's local-model planning slice is selectively adopted in
 `assistant/llm.py`, `assistant/service.py`, the assistant dialog and only
 `assistant_main` in `studio/cli.py`. The canonical production service, broker and
 process handling are retained. Its existing lazy `.voices` property and inventory
-resolve on the dialog worker; donor `discover_voices`/`close` methods are not
-imported or called. Proposal, review and explicit execution stay separate, using
+resolve on the dialog worker. The current canonical discovery/close lifecycle
+retains worker ownership until cleanup completes; older donor method differences
+are not a reason to replace that reviewed ownership contract. Proposal, review and explicit execution stay separate, using
 the existing typed scope/parser and jobs. No model/server download or startup is
 added. The three integrated planning suites passed41 cases with actual local
 HTTP/CLI and synthetic model responses. The donor Windows job's native planning
@@ -130,7 +131,7 @@ establish a particular local model's planning quality, model rights or NVDA.
 | Neural music | Evaluate ACE-Step as an isolated optional runtime through existing music jobs | Original ACE-Step and 1.5 have different code/checkpoint terms; 1.5 model card says MIT. Pin actual checkpoint/submodels and collect full notices; no blanket family clearance. [1.5 code](https://github.com/ace-step/ACE-Step-1.5), [model card](https://huggingface.co/ACE-Step/Ace-Step1.5) |
 | MusicGen | Retain optional adapter for terms-compatible use profiles | AudioCraft code MIT, released MusicGen weights CC-BY-NC4.0. Not the default unrestricted commercial-use pack. Real inference/quality remains separate. [AudioCraft](https://github.com/facebookresearch/audiocraft), [weights license](https://github.com/facebookresearch/audiocraft/blob/main/LICENSE_weights) |
 | MIDI | Review FluidSynth/Pretty MIDI where current MIDI path lacks a required capability | FluidSynth LGPL2.1, Pretty MIDI MIT; SoundFonts/dependencies separately licensed. Do not label the current simple synthesis fallback professional sound-library output. [FluidSynth](https://github.com/FluidSynth/fluidsynth), [Pretty MIDI](https://github.com/craffel/pretty-midi) |
-| Transcription | Adopt the supplied Whisper Transcribe headless worker after targeted corrections | Uses faster-whisper; retain model session and existing file-job protocol through a versioned adapter. Source review is in TRANSCRIPTION_INTEGRATION_REVIEW.md. [faster-whisper MIT](https://github.com/SYSTRAN/faster-whisper), [Whisper code/weights](https://github.com/openai/whisper); supplied wrapper/dependency/model distribution rights still need a complete record. |
+| Transcription | Supplied Whisper Transcribe worker adopted through the existing isolated process and state boundaries | `audio/transcription.py` reuses the reviewed worker protocol and exact-source strict preparation from PR135; it does not import the incompatible alternative ASR store/engine from PR136. Atomic content-bound receipts and file-level recovery are exercised with synthetic recognition. Current workers reload the model per file; persistent sessions, real model quality and native runtime qualification remain open. See [source review](TRANSCRIPTION_INTEGRATION_REVIEW.md) and [adapter contract](TRANSCRIPTION_SUPPLIED_WORKER.md). [faster-whisper MIT](https://github.com/SYSTRAN/faster-whisper), [Whisper code/weights](https://github.com/openai/whisper); supplied wrapper/dependency/model distribution rights still need a complete record. |
 | Local agent | Reuse the typed executor and selected loopback model proposal/review workflow; no runtime/model launch or download | Actual HTTP/native control fixtures use synthetic model responses. The selected installed server, model weights/rights and multilingual planning quality require separate acceptance. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
 | Translation | Reuse Basic v2 and the selectively adopted Advanced v3 NMT extension through the existing gateway; independently qualify local engines | Basic v2 uses API keys; Advanced v3 uses explicitly entered expiring IAM/ADC-derived OAuth tokens and existing glossary resources. Automatic token refresh, document/batch translation and local model inference remain unimplemented. Coverage and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
 | Bibliography | Preserve existing RIS/BibTeX/CSL-JSON and candidate citeproc-js/QuickJS integration | citeproc-js CPAL1.0/AGPL alternative and CSL styles/locales have distinct obligations. Verify accessible attribution/source in the shipped package; do not replace a working adapter solely because it is not MIT. [citeproc-js](https://github.com/Juris-M/citeproc-js) |
@@ -151,8 +152,76 @@ Static inspection of [candidate12e6ce6](https://github.com/Oleksii-debug/AudioTa
 
 Evidence: [audio source-lock](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/12e6ce6a9ac0b7d93952a8a990e22191fe5d54fe/carr-library/packaging/audio-runtime/source-lock.json), [CSL provenance](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/12e6ce6a9ac0b7d93952a8a990e22191fe5d54fe/carr-library/docs/UPSTREAM_CSL.md). Read a newer candidate's own manifest before applying this snapshot to it.
 
-## Historical prototype evidence — preserved, not current readiness
+## Reused synchronized publication and conformance tool
 
+The bounded Studio publishing component is selected from [existing PR112](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/112), reviewed at donor commit [6da794a2ef83c77d160e7f89a1b457a5f375cf6a](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6da794a2ef83c77d160e7f89a1b457a5f375cf6a). Only its publisher, native dialog, CLI/menu additions and relevant schema-1 regressions are composed with the current canonical services. Its competing transcription/source/provider stacks are not adopted. The subsequent bounded recording/clip and reader selection is recorded separately below.
+
+The publisher reuses the current completed-production receipts, FFmpeg adapter, resource broker, destination approval and atomic writer. The adaptation verifies already committed output after late interruption, permits explicit read-only verification of the writer's residual hard link, and preserves publication metadata through the current full backup. No second render engine, catalog, job format or backup producer is introduced.
+
+| Item | Exact source / integration | Qualification boundary |
+| --- | --- | --- |
+| EPUBCheck | [Official v5.3.0 release](https://github.com/w3c/epubcheck/releases/tag/v5.3.0), source commit `029831b8f477e4519e9734c984ee24357547a698`; archive size 33071108 bytes; SHA256 `6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5`; complete machine pin in [packaging/epubcheck.json](../packaging/epubcheck.json) | CI-only validator, excluded from the application and evidence payloads. Upstream BSD-3-Clause license and supplied third-party notices remain recorded separately; this does not clear unrelated application/audio dependencies. |
+| Java | Existing CI runtime, executable path/hash and actual version recorded before the conformance process | Not an application dependency. The actual Java executable is included in the tested outbound-firewall scope. |
+| Native and audio execution | Current CPython 3.11 / wxPython Windows gates, installed source-origin checks and the existing external pinned FFmpeg/ffprobe runtime | Native SAPI production and synthetic production have distinct evidence. No owner recordings, model weights, new audio package or validator JAR is added to the application bundle. |
+| Required acceptance | Actual WAV-to-MP3 publication, byte-preserving existing-MP3 reuse, rejection of deliberately malformed EPUB, real process interruption, complete backup/restore and native controls | Evaluate the exact current commit's reports. Package conformance does not establish synchronized-reader interoperability, word alignment, listening quality, NVDA, DAISY or Braille support. |
+
+## Recording, reader, dordiai, local planning and DAISY composition
+
+Source selection: [PR112 donor6da794a2](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6da794a2ef83c77d160e7f89a1b457a5f375cf6a), reconciled with [shared composition6a28a7e](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/6a28a7ecdcfdf7dab2d5b948608c42803fe3e8a0) and canonical4b6f816 (including OCR predecessor c5323234 and the bounded music inventory). The former selected snapshot042e448 is a review input, not a replacement of later accepted contracts.
+This is selective reuse on the current canonical implementation. It does not
+replace accepted schema1–5 definitions, the supplied ASR stack, translation
+receipts, source reading dialects, the common resource broker or atomic writers.
+
+| Selected component | Integration decision and dependencies | Required evidence / remaining limit |
+| --- | --- | --- |
+| Recording and schema2 clips | Existing FFmpeg DirectShow adapter, scene model, process runner, wave playback and typed backup producers; shared microphone/CPU/RAM/disk admission. Ordinary narration remains schema1. | Actual synthetic capture, trim/fade/preview, child interruption and backup/restore; physical microphone, monitoring latency and listening remain unqualified. No new audio binaries or native libraries. |
+| dordiai public bridge | Public JSONL adapter, the current per-library `speech/dordiai_settings.py` declaration, `speech/dordiai.py` provider and owned voice-registry lifecycle. The competing earlier engines.json declaration is not adopted. Reviewed worker identity and upstream contract remain in [DORDIAI_LOCAL_SPEECH.md](DORDIAI_LOCAL_SPEECH.md). Root asset traversal is bounded, cancellable and fails on unreadable entries. | Real synthetic child processes validate transport/lifetime/cache boundaries. Private worker, model/profile rights, CPU/GPU/VRAM benchmarks, actual acoustic output and 135-language quality remain separate. No private engine bytes are vendored. |
+| Measured M4B and LRC | Selected PR112 adapter slice over the existing FFmpeg/DSP, current Studio cache and shared create-only writer; bounded FFmetadata and actual ffprobe inspection. | No new renderer, model, dependency or backup store. Exact inspected-byte/owned-link proof precedes completion; measured line onsets produce LRC. Actual FFmpeg/Flite, crash/resume and retained-native-owner cases require exact-head execution. |
+| EPUB recorded reading | Existing EPUB parser, exact imported text normalization and fragment offsets; one shared broker around isolated parsing, source writes, extraction and current FFmpeg conversion. | Unsupported SMIL structures, encrypted/remote media and unverified source revisions fail explicitly. Native WavePlayer and lifetime checks require the exact installed build; interoperability/NVDA are not inferred. |
+| Pronunciation and command palette | Existing pronunciation rules and menu command registry; native wx controls, stable action identity and conflict-aware preference migration. | Actual handler and native keyboard/destruction gates; original text, reading formats and saved shortcuts remain covered by regression. |
+| Local LLM proposal | Existing provider profile, gateway, scope and typed Plan executor; explicit local profile, preview, then separate Run. No shell or new general agent framework. | Real loopback HTTP fixture and native controls execute before the outbound runtime firewall. Actual model inference/performance and paid provider quality are unqualified. |
+| DAISY2.02 | Format-only NCC/XHTML/SMIL/MP3 generation over the same Studio publication authority, approvals and receipts; [DAISY2.02 official specification](https://daisy.org/activities/standards/daisy/daisy-2/daisy-format-2-02-specification/). | Exact source/timeline, no-clobber, actual child death, metadata restore and native format choice. DTD validation is only structural evidence; reader devices, full rules and Braille remain separate. |
+| DAISY structural validator | Existing production-locked lxml6.1.3/libxml runtime; [five pinned validation files](../packaging/daisy-validation-schemas.json). W3C XHTML1.0 DTD/entities and SMIL1.0 DTD retained from [DAISY pipeline88d39392](https://github.com/daisy/pipeline-modules/tree/88d39392e9a3e10c1f55f1a82e5e7ea12b0b28b6). | Download only to CI temporary storage before blocking egress, require exact size/SHA256, preserve upstream notices unchanged, resolve only pinned local files. DTDs and generated books are excluded from the application and uploads. The actual validation result belongs to the tested head, not this reuse decision. |
+
+The current live reader, advanced search/acquisition, source-range Google v3 translation,
+archive-v5 extensions, owned native process tree and standard Inno installer from
+PR149/PR165 are preserved. Standard installation reuses the exact sealed bundle
+and existing Python environment installer; it does not create a signed updater
+or entitlement authority. See [the installation contract](STANDARD_WINDOWS_INSTALLER.md).
+
+The source composition requires fresh portable and installed execution. A donor
+result does not qualify new glue or the installed wheel. The dependency/model
+rights and distribution profiles described earlier are unchanged; this selection
+does not authorize publishing private implementations, references, voices or packs.
+
+## Final reader, Studio and public trust composition
+
+The reader and Studio additions selectively reuse reviewed PR112 source
+`40c58b4f631e48b863ef2867d61100ee8445092a` through the current contracts. The
+public trust and snapshot input is PR99 source
+`7f29e861fe8cef42be302e395f109eccccf18e83`. Both selections are reconciled with
+the later canonical implementation. No alternate source reader, DSP renderer,
+settings store or transcription service is introduced.
+
+| Component | Selected reuse and compatibility decision | Verification boundary |
+| --- | --- | --- |
+| Find/Replace and clipboard | Existing reading document, draft store and bounded regex subprocess; explicit native clipboard snapshot | Exact selection and native newline mapping, stale preview rejection, cancellation, owner destruction and actual non-UTF-8 child environment |
+| Keymaps and dictionaries | Current stable command registry, pronunciation schema and selected-file publication receipts | Preview/apply for imported mappings, conflict preservation, explicit overwrite approval and truthful post-commit completion |
+| Studio controls | Current WavePlayer, shared quiet-start lifecycle, FFmpeg/DSP, typed project store and admission broker | Actual conversion and pronunciation rerender; generation-bound master navigation; separate native and acoustic qualification |
+| Portable snapshots | Reviewed PR99 archive/vault integration around current complete backup and new-folder restore | Pinned cryptography AES-GCM/scrypt/HKDF, authenticated byte bounds, competing writer/CAS, interruption, exact committed-output identity and inventory |
+| Trust and signed update clients | Reviewed PR99 public contracts plus compatible protected-anchor fixes; existing credential references and managed-installation refusal | Pinned cryptography and python-tuf, signature/replay/key-rotation/expiry fixtures, source-bound local update packages and data-preserving recovery; private authority remains unconfigured |
+| Last publication and restore checks | Narrow PR176 pre-link cancellation and PR177 pending-root/streamed-restore checks | Preserve current M4B, typed archive-v5 extensions, capture locks, immutable input receipts and the stronger completion-write regression |
+| Transcript export follow-up | PR175 targets an alternate transcription package and is not substituted for the canonical `audio/transcription.py` service | The canonical transcript-reading path already binds the exact bounded bytes to the verified receipt; the native workflow exposes verified result files and a separate reading copy |
+
+The reviewed runtime additions are declared in
+`packaging/trusted-client-dependencies.json` and the hash-pinned
+`packaging/trusted-client.lock`. They remain optional dependencies in the Python
+package. The Windows acceptance bundle composes their reviewed wheel identities
+with the existing lock and SBOM before building and sealing the bundle. No
+dependency is inserted into a sealed application after verification.
+
+
+## Historical prototype evidence — preserved, not current readiness
 
 ## Adopted and executed
 - SQLite FTS5 (https://sqlite.org/fts5.html): tested 3.46.1 with unicode61, BM25, external-content index and insert trigger. Parameterized FTS, post-filter against raw page offsets and scoped collection membership. No separate search server or own inverted index.
@@ -178,3 +247,30 @@ SHA256 code: 005b2944d8e3a61cc49a7c770a9faef0fbb4cc33399ec544a3b1b782c108acfd
 SHA256 tests: 92cd05adca41a0312eaf81a822f2e39d2a6e354577e34a2d2902a31b65ed632d
 Drive roundtrip byte hashes matched original tested files; GitHub readback matched uploaded UTF-8 code. Tests exercise persistent independent workspaces, multiple collections, topic tree and cycle rejection, Unicode, PDF and text import, physical/unknown printed page, source exact quote, note updates, export, cross-workspace rejection and reopening database.
 Limitations: prototype only. No GUI, scanned PDF OCR, full semantic ranking, verified printed page inference, source binary archival/revision migration, robust untrusted file sandbox, complete CRUD or backup/restore. FTS rank can be influenced by global corpus statistics despite result scope filtering; production isolation review needed. PDF extraction is native text only and trusted local input; not verified against scan images. No Windows/NVDA run, no real Carr corpus, no production release. Review candidates and integrate into owned module contracts instead of maintaining parallel production implementation.
+
+## Final source convergence — 2026-11-27
+
+Reconcile canonical `e69ba2403515f21509686d66f4bc8b3673756d81` with
+PR143's retained reader, import and publication history by exact file identity.
+Preserve both existing ASR path/record codecs behind one public service, one
+reviewed isolated runner and the shared resource broker. Profile registration,
+legacy manifest jobs, CLI, native controls and the recovery view use those same
+domain boundaries. Restore never reinstates external runtime trust.
+
+Document batching extends the existing conversion service, typed assistant
+checkpoint store, reading-copy model, export publication authority and Studio.
+It does not replace the catalog or add a competing renderer. Typed effect
+presets extend the existing DSP and complete backup producers. Tray and global
+keys are explicit, temporary controls for one current live reader.
+
+Citation adaptation reuses Dan Stillman's upstream citeproc-js PR276 revision
+`adffcfa3189ed21cbdb5272a74a8edbf817ac326` as exactly three pinned in-memory
+edits. The upstream PR is unmerged; it is not presented as a new upstream release.
+The original processor, styles, locale and historical provenance remain exact.
+New receipts identify the application adaptation separately. The retained
+notice and patch record provide source attribution, rights text and hashes.
+No Node runtime or higher memory/time allowance is introduced.
+
+Counts and donor results in earlier dated sections describe those earlier
+commits. Current acceptance belongs to the exact combined commit and its
+installed artifacts; use `V3_RELEASE_READINESS.md` and the attached CI reports.

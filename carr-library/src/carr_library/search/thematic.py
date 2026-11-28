@@ -4,6 +4,8 @@ The extract_query_terms function below is from cairnsearch, MIT licensed,
 commit eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93, search/snippets.py.
 The original license is retained at the end of this module.
 """
+from .paging import MAX_TIMEOUT_SECONDS
+
 from dataclasses import dataclass
 from hashlib import sha256
 import re
@@ -70,7 +72,7 @@ def _quote(value):
     return '"' + value.replace('"', '""') + '"'
 
 
-def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambda: False):
+def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambda: False, resources=None):
     """Rank active, authorized source spans supplied by the caller.
 
     The caller must resolve active revisions and collection/topic memberships
@@ -82,8 +84,13 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
     """
     if (not isinstance(workspace, str) or not workspace or type(limit) is not int
             or not 1 <= limit <= 100 or type(timeout) not in (int, float)
-            or not 0 < timeout <= 60 or not callable(cancelled)):
+            or not 0 < timeout <= MAX_TIMEOUT_SECONDS or not callable(cancelled)):
         raise ValueError("explicit workspace and bounded search budget required")
+    if resources is not None:
+        from .paging import SearchResources
+        if type(resources) is not SearchResources:
+            raise ValueError('A validated search resource budget is required.')
+    character_limit = resources.source_characters if resources is not None else 10_000_000
     deadline = monotonic() + timeout
 
     def stopped():
@@ -126,7 +133,7 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
             seen.add(identity)
             quote = p.raw_page[p.start:p.end]
             size += len(p.raw_page)
-            if len(refs) >= 20000 or size > 10_000_000:
+            if len(refs) >= 20000 or size > character_limit:
                 raise ValueError("scope exceeds temporary ranking budget")
             refs.append(p)
             db.execute("INSERT INTO scoped(rowid,text) VALUES (?,?)", (len(refs), normalize("NFC", quote)))
@@ -170,7 +177,7 @@ def search(workspace, passages, query, limit=20, *, timeout=5.0, cancelled=lambd
 
 
 def search_active(db, workspace, edition_to_work, query, *, limit=20,
-                  timeout=5.0, cancelled=lambda: False):
+                  timeout=5.0, cancelled=lambda: False, page_ids=None, resources=None):
     """Candidate handoff for the PR21 active_page view and PR23 locator V2.
 
     The caller supplies a catalog-authorized edition-to-work mapping for this
@@ -183,7 +190,7 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
             not isinstance(edition_to_work, dict) or len(edition_to_work) > 500 or
             any(not isinstance(v, str) or not v for pair in edition_to_work.items() for v in pair) or
             type(limit) is not int or not 1 <= limit <= 100 or
-            type(timeout) not in (int, float) or not 0 < timeout <= 60 or
+            type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS or
             not callable(cancelled)):
         raise ValueError('invalid active thematic scope or budget')
     allowed = dict(edition_to_work)
@@ -201,10 +208,14 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
         if not allowed:
             return
         placeholders = ','.join('?' for _ in allowed)
+        from .paging import PAGED_ACTIVE_SOURCE, checked_page_ids
+        source = PAGED_ACTIVE_SOURCE if page_ids is not None else 'active_page'
         sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-               'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
+               'verified,raw,digest FROM ' + source + ' WHERE workspace=? AND edition IN ('
                + placeholders + ') ORDER BY edition,ordinal,id')
-        cursor = db.execute(sql, (workspace, *allowed))
+        page_clause, page_parameters = checked_page_ids(page_ids)
+        sql = sql.replace(' ORDER BY edition,ordinal,id', page_clause + ' ORDER BY edition,ordinal,id')
+        cursor = db.execute(sql, (workspace, *allowed, *page_parameters))
         try:
             for count, row in enumerate(cursor, 1):
                 if count > 20000:
@@ -235,7 +246,8 @@ def search_active(db, workspace, edition_to_work, query, *, limit=20,
 
     source = passages()
     try:
-        hits = search(workspace, source, query, limit=limit, timeout=timeout, cancelled=stopped)
+        hits = search(workspace, source, query, limit=limit, timeout=timeout, cancelled=stopped,
+                      resources=resources)
     except sqlite3.OperationalError as exc:
         if stopped():
             raise TimeoutError('active thematic search cancelled or timed out') from exc
@@ -265,7 +277,7 @@ def search_catalog(db, workspace, query, *, collection=None, limit=20,
 
     if (not db.in_transaction or not isinstance(workspace, str) or not workspace
             or type(limit) is not int or not 1 <= limit <= 100
-            or type(timeout) not in (int, float) or not 0 < timeout <= 60
+            or type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS
             or not callable(cancelled)):
         raise ValueError('explicit read snapshot and bounded search budget required')
     deadline = monotonic() + timeout
@@ -458,7 +470,7 @@ def search_hybrid(workspace, passages, query, *, semantic_ranker=None, limit=20,
                       cancelled=cancelled)
     if (not callable(semantic_ranker) or not isinstance(workspace, str)
             or not workspace or type(limit) is not int or not 1 <= limit <= 100
-            or type(timeout) not in (int, float) or not 0 < timeout <= 60
+            or type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS
             or not callable(cancelled)):
         raise ValueError('invalid hybrid search scope or budget')
     deadline = monotonic() + timeout

@@ -13,7 +13,7 @@ import time
 import wave
 
 from .progress import ProgressSnapshot, ProgressState
-from .progress_preferences import ProgressPreferences
+from .progress_preferences import ProgressPreferences, LegacyProgressPreferences
 
 
 def progress_frequency(percent):
@@ -35,6 +35,14 @@ class Tone:
                 or type(self.volume) is not int or not 0 <= self.volume <= 100
                 or type(self.gap_after_ms) is not int or not 0 <= self.gap_after_ms <= 200):
             raise ValueError('Invalid bounded progress tone.')
+
+
+class _LegacyVolumeTone(Tone):
+    def __post_init__(self):
+        Tone(self.frequency, self.duration_ms, 0, self.gap_after_ms)
+        if (type(self.volume) not in (int, float) or not math.isfinite(self.volume)
+                or not 0 <= self.volume <= 100):
+            raise ValueError('Invalid measured legacy progress volume.')
 
 
 @dataclass(frozen=True)
@@ -87,7 +95,8 @@ class WindowsToneSink:
             # SND_MEMORY cannot safely use SND_ASYNC. The bounded synchronous
             # call runs only in ProgressFeedback's daemon worker, never wx.
             self._backend.PlaySound(payload, self._backend.SND_MEMORY
-                                    | self._backend.SND_NODEFAULT | self._backend.SND_SYNC)
+                                    | self._backend.SND_NODEFAULT | self._backend.SND_SYNC
+                                    | getattr(self._backend, 'SND_NOSTOP', 0))
 
 
 class FeedbackPlanner:
@@ -138,24 +147,25 @@ class FeedbackPlanner:
             if snapshot.state == ProgressState.RUNNING and previous and previous[1] == ProgressState.PAUSED:
                 kind = 'resumed'
             volume = preferences.volume
+            tone = _LegacyVolumeTone if isinstance(preferences, LegacyProgressPreferences) else Tone
             if kind == 'failed':
-                tones = (Tone(220, 140, volume), Tone(160, 180, volume))
+                tones = (tone(220, 140, volume), tone(160, 180, volume))
             elif kind == 'unavailable':
-                tones = (Tone(220, 100, volume),)
+                tones = (tone(220, 100, volume),)
             elif kind == 'cancelled':
-                tones = (Tone(440, 70, volume), Tone(330, 110, volume))
+                tones = (tone(440, 70, volume), tone(330, 110, volume))
             elif kind == 'cancelling':
-                tones = (Tone(330, 70, volume),)
+                tones = (tone(330, 70, volume),)
             elif kind == 'paused':
-                tones = (Tone(330, 70, volume), Tone(330, 70, volume))
+                tones = (tone(330, 70, volume), tone(330, 70, volume))
             elif kind == 'resumed':
-                tones = (Tone(330, 70, volume), Tone(440, 70, volume))
+                tones = (tone(330, 70, volume), tone(440, 70, volume))
             elif kind == 'busy':
-                tones = (Tone(350, 30, volume, 80), Tone(350, 30, volume))
+                tones = (tone(350, 30, volume, 80), tone(350, 30, volume))
             elif kind == 'completed':
-                tones = (Tone(progress_frequency(100), 180, volume),)
+                tones = (tone(progress_frequency(100), 180, volume),)
             else:
-                tones = (Tone(progress_frequency(snapshot.percent), 70, volume),)
+                tones = (tone(progress_frequency(snapshot.percent), 70, volume),)
             if preferences.mode not in ('beep', 'beep_speech'):
                 tones = ()
             speech = snapshot.describe() if preferences.mode in ('speech', 'beep_speech') else None
@@ -171,19 +181,25 @@ class ProgressFeedback:
     cancelled=callback)`` and honor cancellation. It is supplied by the owning
     approved local voice adapter. No provider means no speech capability.
     """
-    def __init__(self, preferences, *, tone_sink=None, speech_provider=None, clock=time.monotonic):
+    def __init__(self, preferences, *, tone_sink=None, speech_provider=None, clock=time.monotonic,
+                 idle_exit=False):
         if not isinstance(preferences, ProgressPreferences):
             raise ValueError('Validated progress preferences are required.')
         self.preferences = preferences
+        if type(idle_exit) is not bool:
+            raise ValueError('Notification worker idle policy must be boolean.')
+        self._idle_exit = idle_exit
         self.tone_sink, self.speech_provider = tone_sink, speech_provider
         self.planner = FeedbackPlanner(clock=clock)
         self._condition = threading.Condition()
         self._pending = None
         self._worker = None
+        self._last_worker = None
         self._closed = False
         self._playing = False
         self._generation = 0
         self._operation_id = None
+        self._announced_state = None
         self._retired_providers = []
         self._last_error = ''
         if preferences.mode not in self.available_modes:
@@ -205,20 +221,23 @@ class ProgressFeedback:
     def quiescent(self):
         """Recorder adapters can check that no notification is still playing."""
         with self._condition:
-            retained = []
-            for provider in self._retired_providers:
-                try:
-                    quiet = bool(getattr(provider, 'quiescent', True))
-                except Exception:
-                    quiet = False
-                if not quiet:
-                    retained.append(provider)
-            self._retired_providers = retained
+            return not self._playing and self._pending is None and self._silence_confirmed()
+
+    def _silence_confirmed(self):
+        retained = []
+        for provider in self._retired_providers:
             try:
-                quiet = bool(getattr(self.speech_provider, 'quiescent', True))
+                quiet = bool(getattr(provider, 'quiescent', True))
             except Exception:
                 quiet = False
-            return not self._playing and self._pending is None and quiet and not retained
+            if not quiet:
+                retained.append(provider)
+        self._retired_providers = retained
+        try:
+            quiet = bool(getattr(self.speech_provider, 'quiescent', True))
+        except Exception:
+            quiet = False
+        return quiet and not retained
 
     def suspend(self, snapshot=None):
         """Drop queued feedback and request cancellation of approved speech.
@@ -264,6 +283,7 @@ class ProgressFeedback:
             if snapshot.operation_id != self._operation_id:
                 # A newer operation supersedes queued and active old notices.
                 self._operation_id = snapshot.operation_id
+                self._announced_state = None
                 self._generation += 1
                 self._pending = None
             cue = self.planner.plan(snapshot, self.preferences, active=active, media_busy=media_busy)
@@ -278,9 +298,16 @@ class ProgressFeedback:
             formatter = getattr(self.speech_provider, 'format_progress', None)
             if cue.speech is not None and callable(formatter):
                 cue = replace(cue, speech=formatter(snapshot, kind=cue.kind))
+            if self._announced_state is not None and snapshot.state != self._announced_state:
+                # A real state change supersedes running speech immediately;
+                # the one latest-cue slot retains its terminal notice until
+                # that cancelled owned call has drained.
+                self._generation += 1
+            self._announced_state = snapshot.state
             self._pending = cue, self._generation, self.preferences.volume, self.speech_provider
             if self._worker is None:
                 self._worker = threading.Thread(target=self._run, name='progress-notifications', daemon=True)
+                self._last_worker = self._worker
                 self._worker.start()
             self._condition.notify_all()
             return cue
@@ -289,17 +316,53 @@ class ProgressFeedback:
         with self._condition:
             return self._closed or generation != self._generation
 
+    def try_play(self, operation, *, provider=None):
+        """Run one already validated legacy cue on this same owned worker.
+
+        Compatibility callers retain their existing PCM/volume vocabulary and
+        backpressure instead of rounding it into a different notification.
+        This entry never starts a parallel thread or replaces a pending cue.
+        """
+        if not callable(operation):
+            raise ValueError('A local cancellable notification callback is required.')
+        with self._condition:
+            if self._closed or self._playing or self._pending is not None:
+                return False
+            self._pending = operation, self._generation, None, provider
+            if self._worker is None or not self._worker.is_alive():
+                self._worker = threading.Thread(target=self._run, name='progress-notifications', daemon=True)
+                self._last_worker = self._worker
+                self._worker.start()
+            self._condition.notify_all()
+            return True
+
     def _run(self):
         while True:
             with self._condition:
+                if self._idle_exit and self._pending is None:
+                    # Relinquish ownership while holding the condition. A new
+                    # update may then start one successor; this consumer exits
+                    # without taking another cue or touching its replacement.
+                    self._worker = None
+                    return
                 self._condition.wait_for(lambda: self._closed or self._pending is not None)
+                while not self._closed and self._pending is not None and not self._silence_confirmed():
+                    # Device state may settle without a callback. Retain only
+                    # the latest cue and poll plain owned state, never wx.
+                    self._condition.wait(timeout=.1)
                 if self._closed:
                     return
+                if self._pending is None:
+                    continue
                 cue, generation, volume, speech_provider = self._pending
                 self._pending = None
                 self._playing = True
             cancelled = lambda version=generation: self._cancelled(version)
             try:
+                if callable(cue):
+                    if not cancelled():
+                        cue(cancelled)
+                    continue
                 for number, tone in enumerate(cue.tones):
                     if cancelled():
                         break
@@ -309,12 +372,24 @@ class ProgressFeedback:
                             self._condition.wait_for(lambda: self._closed or generation != self._generation,
                                                      timeout=tone.gap_after_ms / 1000)
                 if cue.speech is not None and not cancelled():
-                    speech_provider.speak_progress(cue.speech, volume=volume, cancelled=cancelled)
+                    speaker = speech_provider.speak_progress
+                    if type(volume) is float:
+                        speaker = getattr(speech_provider, '_speak_progress_measured', None)
+                        if not callable(speaker):
+                            raise ValueError('This progress voice needs an explicitly selected whole-percent volume.')
+                    speaker(cue.speech, volume=volume, cancelled=cancelled)
             except Exception as exc:
                 with self._condition:
                     self._last_error = 'Progress notification unavailable: ' + str(exc)
             finally:
                 with self._condition:
+                    try:
+                        quiet = bool(getattr(speech_provider, 'quiescent', True))
+                    except Exception:
+                        quiet = False
+                    if not quiet and speech_provider not in self._retired_providers:
+                        self._retired_providers.append(speech_provider)
+                        self._last_error = 'The progress audio device has not confirmed silence.'
                     self._playing = False
                     self._condition.notify_all()
 

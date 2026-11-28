@@ -22,6 +22,7 @@ import tempfile
 from .models import (AudioBudget, AudioCancelled, AudioError, AudioInfo,
                      AudioUnavailable, Effect, LoudnessInfo, Track, finite, integer)
 from .process import publish_file, run_process
+from .cleanup import retained_temporary_directory
 from ..durable_state import local_path
 
 
@@ -224,6 +225,11 @@ class AudioRuntime:
         self.budget = budget or AudioBudget()
         if not isinstance(self.budget, AudioBudget):
             raise ValueError('Audio budget must be an AudioBudget.')
+        if ffmpeg is None or ffprobe is None:
+            from ..bundled_engines import bundled_programs
+            programs = bundled_programs('audio')
+            ffmpeg = programs.get('ffmpeg') if ffmpeg is None else ffmpeg
+            ffprobe = programs.get('ffprobe') if ffprobe is None else ffprobe
         self.ffmpeg = self._executable(ffmpeg, 'ffmpeg')
         self.ffprobe = self._executable(ffprobe, 'ffprobe')
         self._capabilities = None
@@ -237,7 +243,8 @@ class AudioRuntime:
     @staticmethod
     def _executable(value, name):
         if value is None:
-            value = shutil.which(name)
+            from ..bundled_engines import executable_on_path
+            value = executable_on_path(name)
         if value is None:
             raise AudioUnavailable(f'{name} is not installed. Select a trusted local FFmpeg installation.')
         path = Path(value)
@@ -286,13 +293,15 @@ class AudioRuntime:
                 '-filter_threads', str(self.budget.threads),
                 '-filter_complex_threads', str(self.budget.threads)]
 
-    def capabilities(self):
+    def capabilities(self, *, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Audio capability inspection cancelled.')
         if self._capabilities is None:
             budget = replace(self.budget, timeout=min(20, self.budget.timeout))
-            version = run_process([self.ffmpeg, '-version'], budget=budget).stdout.decode('utf-8', 'replace')
-            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget).stdout.decode('utf-8', 'replace')
-            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget).stdout.decode('utf-8', 'replace')
-            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget).stdout.decode('utf-8', 'replace')
+            version = run_process([self.ffmpeg, '-version'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            filters = run_process([self.ffmpeg, '-hide_banner', '-filters'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            encoders = run_process([self.ffmpeg, '-hide_banner', '-encoders'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
+            muxers = run_process([self.ffmpeg, '-hide_banner', '-muxers'], budget=budget, cancelled=cancelled).stdout.decode('utf-8', 'replace')
             # FFmpeg 9 removed the command-support column (three flags -> two).
             filter_names = {match.group(1) for match in re.finditer(r'^\s*[TSC.]{2,3}\s+([a-zA-Z0-9_]+)\s', filters, re.M)}
             encoder_names = {match.group(1) for match in re.finditer(r'^\s*[A-Z.]{6}\s+(\S+)\s', encoders, re.M)}
@@ -310,6 +319,8 @@ class AudioRuntime:
                 'reverb_description': 'Four early reflections; no convolution IR or calibrated RT60.',
                 'delay_description': 'Single echo; recursive feedback is not supported.',
                 'memory_control': 'Streaming pipeline, thread and allocation limits; not an OS memory sandbox.'}
+        if cancelled():
+            raise InterruptedError('Audio capability inspection cancelled.')
         return json.loads(json.dumps(self._capabilities))
 
     def _chain(self, effects, rate):
@@ -399,11 +410,12 @@ class AudioRuntime:
         return estimate
 
     def _render(self, args, target, *, expected_duration, rate, channels,
-                bit_depth=16, bitrate=192, sources=(), cancelled=lambda: False, progress=None):
+                bit_depth=16, bitrate=192, sources=(), cancelled=lambda: False, progress=None,
+                before_publish=None):
         self._space(expected_duration, rate, channels, bit_depth, target.parent)
         encoding = self._encoding(target, rate, channels, bit_depth, bitrate)
         snapshots = [(source, _identity(source)) for source in sources]
-        with tempfile.TemporaryDirectory(prefix='.audio-', dir=target.parent) as temporary:
+        with retained_temporary_directory(prefix='.audio-', dir=target.parent) as temporary:
             staged = Path(temporary) / ('render' + target.suffix)
             command = [*args, '-map_metadata', '-1', '-map_chapters', '-1', '-vn', '-sn', '-dn',
                        *encoding]
@@ -424,16 +436,27 @@ class AudioRuntime:
             for source, snapshot in snapshots:
                 if _identity(source) != snapshot:
                     raise AudioError('A source audio file changed during rendering; output was not published.')
+            staged_identity = (_identity(staged), staged.stat().st_ctime_ns)
             checksum = _digest(staged, cancelled)
             # Resolve the boundary again immediately before no-clobber publish.
             if local_path(target.parent, exists=True) != target.parent or not target.parent.is_relative_to(self.root):
                 raise AudioError('The output directory changed during rendering.')
+            candidate = replace(info, path=target, sha256=checksum)
+            if before_publish is not None:
+                if not callable(before_publish):
+                    raise TypeError('Audio publication review must be callable.')
+                review_sources = [(source, source.stat().st_ctime_ns) for source in sources]
+                before_publish(candidate, staged)
+                if ((_identity(staged), staged.stat().st_ctime_ns) != staged_identity
+                        or any(_identity(source) != snapshot for source, snapshot in snapshots)
+                        or any(source.stat().st_ctime_ns != change for source, change in review_sources)):
+                    raise AudioError('Audio bytes changed during final publication review.')
             publish_file(staged, target, cancelled=cancelled)
-            return replace(info, path=target, sha256=checksum)
+            return candidate
 
     def convert(self, source, output, *, effects=(), sample_rate=24000, channels=2,
                 start=0, duration=None, bit_depth=16, bitrate=192,
-                cancelled=lambda: False, progress=None):
+                cancelled=lambda: False, progress=None, before_publish=None):
         source = self._input(source)
         target = self._output(output)
         info = self.inspect(source, cancelled=cancelled)
@@ -454,7 +477,15 @@ class AudioRuntime:
         return self._render([*self._base_args(), *self._input_args(source), '-map', '0:a:0',
                              '-af', ','.join(filters)], target, expected_duration=output_duration,
                             rate=sample_rate, channels=channels, bit_depth=bit_depth, bitrate=bitrate,
-                            sources=(source,), cancelled=cancelled, progress=progress)
+                            sources=(source,), cancelled=cancelled, progress=progress,
+                            before_publish=before_publish)
+
+    def audiobook(self, source, output, *, chapters, title, sample_rate=24000,
+                  channels=2, bitrate=192, cancelled=lambda: False, progress=None, warning=None):
+        from .audiobook import publish_m4b
+        return publish_m4b(self, source, output, chapters=chapters, title=title,
+                           sample_rate=sample_rate, channels=channels, bitrate=bitrate,
+                           cancelled=cancelled, progress=progress, warning=warning)
 
     def mix(self, tracks, output, *, duration=None, sample_rate=24000, channels=2,
             duck_music=True, effects=(), bit_depth=16, bitrate=192,
@@ -497,8 +528,14 @@ class AudioRuntime:
         labels = {'voice': [], 'music': [], 'other': []}
         for index, (track, path, selected, length, chain) in enumerate(prepared):
             args += self._input_args(path)
-            filters = [f'atrim=start={_n(track.trim_start)}:duration={_n(selected)}', 'asetpts=PTS-STARTPTS',
-                       f'aresample={sample_rate}',
+            # Resample the original stream before taking an output-sample
+            # interval. Trimming first resets the resampler at every cut and
+            # changes boundary samples when adjacent cuts use a different rate.
+            first_sample = round(track.trim_start * sample_rate)
+            selected_samples = round(selected * sample_rate)
+            filters = [f'aresample={sample_rate}',
+                       f'atrim=start_sample={first_sample}:end_sample={first_sample + selected_samples}',
+                       'asetpts=PTS-STARTPTS',
                        'aformat=sample_fmts=fltp:channel_layouts=' + ('stereo' if track.routing == 'stereo' else 'mono'),
                        *chain, f'aresample={sample_rate}', f'volume={_n(track.gain_db)}dB']
             if track.routing == 'stereo':
@@ -582,7 +619,7 @@ class AudioRuntime:
         samples = round(duration * sample_rate)
         total = samples / sample_rate
         self._space(total, sample_rate, channels, bit_depth, target.parent)
-        with tempfile.TemporaryDirectory(prefix='.audio-join-', dir=target.parent) as folder:
+        with retained_temporary_directory(prefix='.audio-join-', dir=target.parent) as folder:
             manifest = Path(folder) / 'scenes.ffconcat'
             with manifest.open('x', encoding='utf-8', newline='\n') as stream:
                 stream.write('ffconcat version 1.0\n')

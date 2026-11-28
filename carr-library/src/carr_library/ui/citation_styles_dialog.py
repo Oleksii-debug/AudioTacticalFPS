@@ -92,6 +92,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
             self.SetMinSize((720, 650))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self._native_id = self.GetId()
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.options = (self.style_choice, self.scope_choice, self.names_choice,
                             self.locale_choice, self.custom_style_button)
@@ -290,7 +291,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.Hide()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_id:
                 self.alive = False
                 self.cancelled.set()
                 if self.pending is not None:

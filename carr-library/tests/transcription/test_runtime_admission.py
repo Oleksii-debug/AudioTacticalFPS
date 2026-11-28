@@ -4,7 +4,7 @@ import shutil
 import pytest
 
 from carr_library.transcription import TranscriptionService, inspect_runtime
-from carr_library.transcription import service as service_module
+from carr_library.audio import transcription as worker_owner
 
 
 def windows_layout(runtime, *, system_site=False):
@@ -52,7 +52,7 @@ def test_changed_windows_base_bytes_revoke_review_before_execution(synthetic_asr
     def must_not_launch(*args, **kwargs):
         launched.append(True)
         raise AssertionError('The synthetic Windows launcher must never execute.')
-    monkeypatch.setattr(service_module, 'run_process', must_not_launch)
+    monkeypatch.setattr(worker_owner, 'run_process', must_not_launch)
     result = service.run(job['id'])
     assert result['status'] == 'failed' and 'changed' in result['error']
     assert launched == []
@@ -133,7 +133,7 @@ def test_selected_windows_executable_alias_is_pinned(synthetic_asr_runtime, tmp_
     def must_not_launch(*args, **kwargs):
         launched.append(True)
         raise AssertionError('An altered selected executable must not execute.')
-    monkeypatch.setattr(service_module, 'run_process', must_not_launch)
+    monkeypatch.setattr(worker_owner, 'run_process', must_not_launch)
     result = service.run(job['id'])
     assert result['status'] == 'failed' and 'changed' in result['error']
     assert launched == []

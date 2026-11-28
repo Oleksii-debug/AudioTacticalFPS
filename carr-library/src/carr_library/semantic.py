@@ -4,6 +4,8 @@ The nine hashes below were sealed by packaging/model_bundle.py against the
 publisher's exact Hugging Face revision. Loading never downloads anything.
 Model scores rank source slices; they do not verify quotations or citations.
 """
+from .search.paging import MAX_TIMEOUT_SECONDS
+
 import hashlib
 import importlib.metadata
 import json
@@ -18,6 +20,7 @@ from time import monotonic
 from .search.semantic_windows import TOKEN_LIMIT, search_windowed
 from .search.thematic import Passage, search_active
 
+_DEFAULT_CACHE = object()
 MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 APPROVED_MANIFEST = {
     'repo': 'Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q',
@@ -112,6 +115,7 @@ class OfflineSemanticRanker:
 
     def bind_cache(self, library_directory, *, budget=None):
         """Bind a cache for a dedicated direct ranker, outside LibraryApp."""
+        self.cache = None
         self.cache = self.cache_for(library_directory, budget=budget)
 
     def cache_for(self, library_directory, *, budget=None):
@@ -120,15 +124,31 @@ class OfflineSemanticRanker:
         Binding creates no files and changes no source authorization. Each rank
         still checks the current token coverage and only returns supplied keys.
         """
-        from .semantic_cache import EmbeddingCache, model_identity
-        return EmbeddingCache(Path(library_directory) / 'semantic-cache',
-                              model_identity(APPROVED_MANIFEST), budget=budget)
+        from .semantic_cache import CacheBudget, EmbeddingCache, model_identity
+        if budget is not None and type(budget) is not CacheBudget:
+            raise ValueError('An explicit validated embedding cache budget is required.')
+        try:
+            return EmbeddingCache(Path(library_directory) / 'semantic-cache',
+                                  model_identity(APPROVED_MANIFEST), budget=budget)
+        except (OSError, ValueError):
+            # A disposable cache must not prevent authorized offline inference.
+            return None
 
     def __call__(self, query, candidates):
         return self.rank(query, candidates)
 
-    def rank(self, query, candidates, *, cancelled=lambda: False, timeout=60.0, cache=None):
-        if not callable(cancelled) or type(timeout) not in (int, float) or not 0 < timeout <= 60:
+    def rank(self, query, candidates, *, cancelled=lambda: False, timeout=60.0, cache=_DEFAULT_CACHE):
+        return [key for key, _ in self.scores(query, candidates, cancelled=cancelled,
+                                             timeout=timeout, cache=cache)]
+
+    def scores(self, query, candidates, *, cancelled=lambda: False, timeout=60.0, cache=_DEFAULT_CACHE):
+        """Score one bounded batch; scores are comparable across source batches.
+
+        Uses the same unit embeddings, tokenizer checks and threshold as rank().
+        The caller still supplies every authorized current source key. This
+        exposes no model-loading or source-authorization capability.
+        """
+        if not callable(cancelled) or type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS:
             raise ValueError('Invalid semantic runtime budget.')
         deadline = monotonic() + timeout
         latched = False
@@ -140,7 +160,8 @@ class OfflineSemanticRanker:
                 raise TimeoutError('Semantic search cancelled or timed out.')
 
         check()
-        candidates = tuple(candidates)
+        from itertools import islice
+        candidates = tuple(islice(candidates, 501))
         if len(candidates) > 500:
             raise ValueError('Semantic candidate budget exceeded.')
         keys = [key for key, _ in candidates]
@@ -166,7 +187,7 @@ class OfflineSemanticRanker:
         # Cache keys include the exact model/preprocessor, current source text
         # and workspace/revision/window. Authorization and complete token checks
         # above are never replaced by cache membership.
-        cache = cache if cache is not None else getattr(self, 'cache', None)
+        cache = getattr(self, 'cache', None) if cache is _DEFAULT_CACHE else cache
         identities = []
         cached = {}
         if cache is not None:
@@ -203,12 +224,12 @@ class OfflineSemanticRanker:
         check()
         # Similarity is a retrieval heuristic, never a probability or source
         # verification. Existing BM25/RRF supplies the lexical fallback.
-        return [key for key, score in sorted(scored, key=lambda pair: (-pair[1], pair[0]))
+        return [(key, score) for key, score in sorted(scored, key=lambda pair: (-pair[1], pair[0]))
                 if score >= self.minimum_similarity]
 
 
 def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
-                    timeout=60.0, cancelled=lambda: False, on_status=None, cache=None):
+                    timeout=60.0, cancelled=lambda: False, on_status=None, cache=_DEFAULT_CACHE, page_ids=None, resources=None):
     """Read active pages and rank windows inside the caller's authorized snapshot."""
     if (not db.in_transaction or db.execute('PRAGMA read_uncommitted').fetchone()[0]
             or not isinstance(workspace, str) or not workspace
@@ -217,7 +238,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
                    for pair in allowed.items() for value in pair)
             or not isinstance(ranker, OfflineSemanticRanker)
             or type(limit) is not int or not 1 <= limit <= 100
-            or type(timeout) not in (int, float) or not 0 < timeout <= 60
+            or type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS
             or not callable(cancelled)
             or (on_status is not None and not callable(on_status))):
         raise ValueError('An authorized snapshot and bounded semantic scope are required.')
@@ -247,7 +268,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
             on_status('The local model\'s text limit was reached. Keyword search used. '
                       'Shorten the query or narrow the source filters to use the local model.')
         hits = search_active(db, workspace, allowed, query, limit=limit,
-                             timeout=remaining(), cancelled=stopped)
+                             timeout=remaining(), cancelled=stopped, page_ids=page_ids, resources=resources)
         for hit in hits:
             hit['reason'] = 'Semantic window limit reached; using lexical thematic search. ' + reason
         return hits
@@ -256,9 +277,13 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
     if not allowed:
         return []
     placeholders = ','.join('?' for _ in allowed)
+    from .search.paging import PAGED_ACTIVE_SOURCE, checked_page_ids
+    page_clause, page_parameters = checked_page_ids(page_ids)
+    source = PAGED_ACTIVE_SOURCE if page_ids is not None else 'active_page'
     cursor = db.execute('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-                        'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
-                        + placeholders + ') ORDER BY edition,ordinal,id', (workspace, *allowed))
+                        'verified,raw,digest FROM ' + source + ' WHERE workspace=? AND edition IN ('
+                        + placeholders + ')' + page_clause + ' ORDER BY edition,ordinal,id',
+                        (workspace, *allowed, *page_parameters))
     passages, metadata = [], {}
     try:
         for row in cursor:
@@ -285,7 +310,7 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
 
     def rank(query, candidates):
         check()
-        options = {'cache': cache} if cache is not None else {}
+        options = {'cache': cache} if cache is not _DEFAULT_CACHE and isinstance(ranker, OfflineSemanticRanker) else {}
         return ranker.rank(query, candidates, cancelled=stopped, timeout=remaining(), **options)
 
     try:

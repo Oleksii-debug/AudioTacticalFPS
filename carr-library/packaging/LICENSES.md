@@ -10,3 +10,10 @@ The current application pins pypdf 7.1.1 (publisher wheel SHA256 `04c5680d4b4cfa
 - PR #17 also vendors MIT cairnsearch at eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93 and has additional dependencies; this preflight does not package them. Its actual vendored paths are `bootstrap/vendor/cairn_extractors/`. Preserve its LICENSE and UPSTREAM.json when adopted; full runtime SBOM remains open.
 
 No third-party source bytes or executable binaries are redistributed by this change.
+
+
+## Speech preparation — pinned Slovak cardinal source
+
+The reading preparation component redistributes the unmodified Slovak runtime closure from num2words 0.5.14, upstream commit `6abe2c64714a38e41de23fe20fa319d0ad2fd845`, under LGPL-2.1-or-later. The exact retained files are `lang_SK.py`, `base.py`, `utils.py`, `compat.py` and `currency.py` in `src/carr_library/reader/_vendor_num2words/`. Complete copyright headers and `COPYING` remain in the source and wheel. `UPSTREAM.json` records each original Git blob and the upstream source URL. The local initializer imports no converters; the application imports the Slovak class explicitly. Upstream's eager all-language initializer and its docopt-based command-line entry point are not shipped or used. The retained closure uses only Python's standard library.
+
+The source is distributed as ordinary, replaceable Python modules, not an embedded binary. Recipients receive the complete corresponding source and LGPL text with the application; this attribution does not replace those terms. The current distribution's component inventory must list this vendored closure in addition to resolved wheel dependencies. Existing English and Ukrainian finite profiles are reused from this repository's PR99 candidate; they are separate from the LGPL upstream code.

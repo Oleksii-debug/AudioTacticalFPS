@@ -62,23 +62,48 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
+        from .academic_integration.doi import _worker_main
+        return _worker_main(arguments[1:])
     if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
         from .speech.sapi_native_worker import main as native_main
         return native_main(arguments[1:])
-    if arguments[:1] == ['translation']:
-        from .assistant.translation_cli import main as translation_main
-        return translation_main(arguments[1:])
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
-    if arguments[:1] == ['transcription']:
+    if arguments[:1] in (['transcribe'], ['transcription']):
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
     if arguments[:1] == ['operations']:
         from .operations_cli import main as operations_main
         return operations_main(arguments[1:])
+    if arguments[:1] in (['translate'], ['translation']):
+        from .assistant.translation_cli import main as translation_main
+        return translation_main(arguments[1:])
+    if arguments[:1] == ['workflows']:
+        from .assistant.templates_cli import main as workflows_main
+        return workflows_main(arguments[1:])
+    if arguments[:1] == ['translate-batch']:
+        from .assistant.translation_batch_cli import main as batch_translation_main
+        return batch_translation_main(arguments[1:])
+    if arguments[:1] == ['backup-incremental']:
+        from .backup_incremental_cli import run as incremental_backup_main
+        return incremental_backup_main(arguments[1:])
+    if arguments[:1] == ['import-batch']:
+        from .ingest.batch_cli import run as import_batch_run
+        return import_batch_run(arguments[1:])
+    if arguments[:1] == ['documents']:
+        from .conversion.cli import main as documents_main
+        return documents_main(arguments[1:])
+    if arguments[:1] == ['sync']:
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
@@ -87,8 +112,12 @@ def main(argv=None):
     parser.add_argument('--model-dir', type=Path, help='Verified local MiniLM model directory')
     parser.add_argument('--model-manifest', type=Path, help='Pinned model manifest outside the model directory')
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')
+    parser.add_argument('--backup-include-generated', action='store_true',
+                        help='Include generated audio stored inside the library in --backup')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    from .backup_options import add_resource_arguments, resources_from_arguments
+    add_resource_arguments(parser)
     ocr = parser.add_mutually_exclusive_group()
     ocr.add_argument('--list-ocr-models', action='store_true',
                      help='List the pinned official OCR catalogue; never downloads models')
@@ -108,16 +137,16 @@ def main(argv=None):
                         help='Filter --list-ocr-models by language, script or model identifier')
     research = parser.add_mutually_exclusive_group()
     research.add_argument('--document-formats', action='store_true',
-                          help='Print supported import formats and fidelity limits without opening a library')
+                          help='Show supported source formats and extraction limits')
     research.add_argument('--list-libraries', action='store_true',
                           help='Print active library names and stable IDs as JSON, without opening the desktop')
     research.add_argument('--search', metavar='TEXT',
                           help='Search explicitly selected libraries and print source excerpts as JSON')
-    from .acquisition.cli import add_arguments, validate_arguments
-    add_arguments(parser, research)
+    from .acquisition.cli import add_arguments as add_acquisition_arguments, validate_arguments as validate_acquisition_arguments
+    add_acquisition_arguments(parser, research)
     parser.add_argument('--workspace', action='append', dest='workspaces',
                         help='Library ID for --search; repeat to include another library')
-    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic'),
+    parser.add_argument('--search-mode', choices=('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'),
                         default='phrase', help='Retrieval method for --search')
     parser.add_argument('--result-mode', choices=('short', 'thematic'), default='short',
                         help='Short quotations or contiguous thematic excerpts')
@@ -127,11 +156,25 @@ def main(argv=None):
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
                         help='Maximum results from each selected library, 1 to 100')
+    parser.add_argument('--offset-per-library', type=int, default=0,
+                        help='Nonnegative result offset for All words or Advanced searches')
     args = parser.parse_args(argv)
-    validate_arguments(parser, args)
+    try:
+        backup_policy = resources_from_arguments(args)
+    except (ValueError, TypeError) as error:
+        parser.error(str(error))
+    if backup_policy is not None and not (args.backup or args.restore):
+        parser.error('Backup resource options require --backup or --restore.')
+    backup_resources = {} if backup_policy is None else {'backup_budget': backup_policy}
+    validate_acquisition_arguments(parser, args)
+    identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
+    if args.backup_include_generated and not args.backup:
+        parser.error('--backup-include-generated requires --backup.')
+    if sum(bool(value) for value in (args.self_test, args.backup, args.restore)) > 1:
+        parser.error('Choose one self-test, backup or restore operation.')
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
+    if ocr_operation and any((identifier_lookup, args.document_formats, args.list_libraries, args.search is not None, args.self_test,
                               args.backup, args.restore)):
         parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
@@ -145,12 +188,14 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, or DOI lookup.')
+    if (identifier_lookup or args.document_formats or args.list_libraries or args.search is not None) and (args.self_test or args.backup or args.restore):
+        parser.error('Choose one operation: desktop, self-test, backup, restore, list libraries, or search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
-    if args.workspaces and args.search is None and args.lookup_doi is None:
-        parser.error('--workspace is used with --search or --lookup-doi.')
+    if args.workspaces and args.search is None and not identifier_lookup:
+        parser.error('--workspace is only used with --search or identifier lookup.')
+    if args.offset_per_library and args.search is None:
+        parser.error('--offset-per-library is only used with --search.')
     native_handle = None
     try:
         if args.document_formats:
@@ -188,8 +233,10 @@ def main(argv=None):
             if not args.data_dir or not args.manifest_sha256:
                 parser.error('--restore requires a new --data-dir and --manifest-sha256')
             from .library_backup import restore_backup
-            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256)
-            print('Backup restored. Open the new data directory to continue.')
+            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256,
+                           **backup_resources)
+            from .backup_report import recovery_summary
+            print(recovery_summary(args.data_dir))
             return 0
         location_notice = ''
         if args.data_dir is None:
@@ -218,9 +265,9 @@ def main(argv=None):
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
         app = LibraryApp(args.data_dir, semantic_ranker=ranker)
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
-        if args.lookup_doi is not None:
-            from .acquisition.cli import run
-            return run(app, args)
+        if identifier_lookup:
+            from .acquisition.cli import run as run_acquisition
+            return run_acquisition(app, args)
         if args.list_libraries:
             print(json.dumps([asdict(row) for row in app.workspaces()], ensure_ascii=False, indent=2))
             return 0
@@ -230,9 +277,12 @@ def main(argv=None):
             session = FederatedSearch(app).search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, offset_per_library=args.offset_per_library,
+                on_status=notices.append)
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
+                'offset_per_library': session.offset_per_library,
+                'has_more': session.has_more,
                 'ordering': 'Selected libraries in selection order; relevance is local to each library.',
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
@@ -240,7 +290,9 @@ def main(argv=None):
                               for group in session.groups]}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
-            checksum = app.backup(args.backup)
+            from .backup_report import backup_scope_text
+            checksum = app.backup(args.backup, include_generated=args.backup_include_generated, **backup_resources)
+            print(backup_scope_text(args.backup_include_generated))
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0
         try:

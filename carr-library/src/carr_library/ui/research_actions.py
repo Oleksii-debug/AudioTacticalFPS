@@ -20,9 +20,17 @@ class NativeDialogs:
         confirmation cannot be bound to a file appearing or changing on return.
         The same captured state is passed through queued work to the publisher.
         """
-        from .export_destination import confirm_export_destination
-        return confirm_export_destination(parent, path, private_root=private_root,
-                                          wx_module=wx_module)
+        from ..research.export_file import capture_export_destination
+        approval = capture_export_destination(path, private_root=private_root)
+        if not approval.require_absent:
+            if wx_module is None:
+                import wx as wx_module
+            wx = wx_module
+            if wx.MessageBox(f'Replace the existing export {approval.target.name}?',
+                             'Replace export', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+                             parent) != wx.YES:
+                return None
+        return approval
 
     def fields(self, parent, title, fields, explanation=''):
         import wx
@@ -51,11 +59,13 @@ class NativeDialogs:
             first = next(iter(controls.values()))
             first.SetFocus()
             first.SetInsertionPoint(0)
-            if dialog.ShowModal() != wx.ID_OK:
+            answer = dialog.ShowModal()
+            if not dialog or (parent is not None and not parent) or answer != wx.ID_OK:
                 return None
             return {key: control.GetValue() for key, control in controls.items()}
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
     def text(self, parent, title, label, value='', *, multiline=False):
         result = self.fields(parent, title, (('value', label, value, multiline),))
@@ -66,14 +76,16 @@ class NativeDialogs:
 
         dialog = wx.SingleChoiceDialog(parent, label, title, list(choices))
         try:
-            if dialog.ShowModal() != wx.ID_OK:
+            answer = dialog.ShowModal()
+            if not dialog or (parent is not None and not parent) or answer != wx.ID_OK:
                 return None
             index = dialog.GetSelection()
             if not 0 <= index < len(choices):
                 raise ValueError('Choose one item from the list.')
             return index
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
     def show(self, parent, title, value):
         import wx
@@ -91,7 +103,8 @@ class NativeDialogs:
             reader.SetFocus()
             dialog.ShowModal()
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
 
 
 def _tag_lines(value):

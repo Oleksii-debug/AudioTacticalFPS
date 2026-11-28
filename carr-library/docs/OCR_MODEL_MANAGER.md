@@ -16,7 +16,7 @@ languages, supported voices or qualified dordiai-voices entries. The separate
 
 ## Choose recognition models when importing
 
-Importing PDF documents opens an OCR selection dialog. Choose the models
+Importing PDF documents or supported PNG/JPEG/TIFF raster originals opens an OCR selection dialog. Choose the models
 installed with the OCR runtime, Managed Fast, or Managed Best. Select only the
 languages or scripts the document needs. English is the initial selection when
 available; the application does not load every installed model by default.
@@ -26,10 +26,15 @@ An installed `osd` model enables the separate optional orientation control.
 `script/Latin` and `script/Cyrillic` are distinct from language models such as
 `lat`, `eng`, `ukr` and `slk`. The exact model identifier and byte identity remain
 in extraction and resume provenance. Script selection and orientation detection
-are **not automatic language identification**. Automatic region-level language
-identification and a per-language accuracy benchmark are not provided by this
-change. OCR remains an unverified candidate until the existing independent
-source-review workflow is completed.
+are distinct from automatic language identification. The separate explicit
+**Automatic language detection and paragraph review (offline)** option uses a
+pinned offline detector after the initial pass and can retain language-specific
+paragraph alternatives from at most eight selected text models. Uncertain or
+unsupported decisions preserve the initial candidate; mixed paragraphs are not
+automatically concatenated. This does not establish per-language accuracy.
+OCR remains unverified until the existing independent source-review workflow
+is completed. See [automatic OCR and raster originals](AUTOMATIC_OCR_UK.md)
+for the finite rules, retained evidence and separate raster limits.
 
 ## Prepare a local model folder
 

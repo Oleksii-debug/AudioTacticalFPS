@@ -13,7 +13,10 @@ from carr_library.ui import assistant_dialog
 
 
 class Widget:
+    _next_id = 100
     def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
+        Widget._next_id += 1
+        self.native_id, self.destroyed = Widget._next_id, False
         self.value, self.label, self.choices = value, label, list(choices)
         self.enabled, self.selection, self.name = True, -1, ''
         self.bindings, self.focused = {}, False
@@ -35,7 +38,9 @@ class Widget:
     def EndModal(self, code): self.modal_result = code
     def IsModal(self): return False
     def Hide(self): self.hidden = True
-    def Destroy(self): self.destroyed = True
+    def GetId(self): return self.native_id
+    def __bool__(self): return not self.destroyed
+    def Destroy(self): self.destroyed = True; return True
 
 
 class Sizer:
@@ -76,7 +81,7 @@ def native_handlers(tmp_path, monkeypatch):
     monkeypatch.setattr(assistant_dialog, 'ThreadPoolExecutor', lambda **kwargs: executor)
     constants = ('DEFAULT_DIALOG_STYLE','RESIZE_BORDER','VERTICAL','HORIZONTAL','LEFT','TOP',
         'ALL','EXPAND','TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_TEXT','EVT_CHOICE',
-        'EVT_CHECKBOX','EVT_CLOSE','ID_OK','ID_CLOSE')
+        'EVT_CHECKBOX','EVT_CLOSE','EVT_WINDOW_DESTROY','ID_OK','ID_CLOSE')
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate(constants)})
     for name in ('Dialog','StaticText','TextCtrl','Button','Choice'):
         setattr(wx, name, Widget)
@@ -201,14 +206,13 @@ def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choi
     output = tmp_path / 'audio-output'; output.mkdir()
     e.controls['output'].SetValue(str(output))
     e.controls['instruction'].SetValue('Produce audio: Explicit synthetic narration.')
-    discoveries, inventories, choices = [], [], []
+    discoveries, choices = [], []
     class Provider:
         name = 'Synthetic inventory only'
-        def voices(self):
-            inventories.append(True)
-            return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
-    def existing_voices(owner):
+        def voices(self): return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
+    def discover(owner, *, cancelled):
         discoveries.append(True)
+        if cancelled(): raise InterruptedError('Voice inventory cancelled')
         owner._voices = VoiceRegistry([Provider()])
         return owner._voices
     class ChoiceDialog(Widget):
@@ -216,42 +220,167 @@ def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choi
             choices.append(True)
             self.selection = 0
             return e.wx.ID_OK
-    monkeypatch.setattr(ProductionService, 'voices', property(existing_voices))
+    monkeypatch.setattr(ProductionService, 'discover_voices', discover)
     e.wx.SingleChoiceDialog = ChoiceDialog
     e.handlers['preview']()
     assert not discoveries and not choices and len(e.executor.pending) == 1
     assert not e.controls['buttons']['run'].IsEnabled()
     if cancelled:
         e.handlers['cancel']()
-    e.executor.complete()
-    assert inventories == ([] if cancelled else [True])
-    assert choices == []
-    e.drain()
+    e.executor.complete(); e.drain()
     assert discoveries == ([] if cancelled else [True])
     assert choices == ([] if cancelled else [True])
     assert e.controls['buttons']['run'].IsEnabled() is not cancelled
     assert e.dialog.assistant_service.jobs() == ()
 
 
-def test_assistant_close_cancels_then_closes_production_after_pending_work(native_handlers, monkeypatch):
+def test_assistant_close_queues_service_cleanup_after_current_worker(native_handlers, monkeypatch):
     from carr_library.studio.render import ProductionService
     e = native_handlers
     closed = []
-    original_close = ProductionService.close
-    def close_production(production):
-        closed.append(production)
-        return original_close(production)
-    monkeypatch.setattr(ProductionService, 'close', close_production)
+    original = ProductionService.close
+    def close(owner):
+        closed.append(True)
+        original(owner)
+    monkeypatch.setattr(ProductionService, 'close', close)
     select_model(e)
     e.handlers['preview']()
+    review = e.controls['review'].GetValue()
     e.handlers['close']()
-    e.handlers['close']()  # Native close and wrapper cleanup remain idempotent.
-    assert len(e.executor.pending) == 2 and not closed
+    e.handlers['close']()
+    assert len(e.executor.pending) == 2 and closed == []
     assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
-    before = e.controls['review'].GetValue()
     e.executor.complete(); e.drain()
-    assert not e.calls and e.controls['review'].GetValue() == before
-    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
-    assert not closed  # Cleanup waits behind the actual pending proposal.
+    assert closed == []
+    assert e.controls['review'].GetValue() == review
+    assert not e.calls and e.dialog.assistant_service.jobs() == ()
+    assert e.app.workspaces() == ()
     e.executor.complete(); e.drain()
-    assert len(closed) == 1 and not e.executor.pending
+    assert closed == [True] and not e.executor.pending
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
+
+
+def test_rewrapped_native_destruction_discards_pending_plan_without_widget_access(
+        native_handlers, monkeypatch):
+    e = native_handlers
+    select_model(e)
+    e.handlers['preview']()
+    native_id = e.dialog.GetId()
+    handler = e.dialog.bindings[e.wx.EVT_WINDOW_DESTROY]
+    skipped = []
+
+    def event(identity):
+        return SimpleNamespace(GetId=lambda: identity,
+            GetEventObject=lambda: SimpleNamespace(GetId=lambda: identity),
+            Skip=lambda: skipped.append(identity))
+
+    handler(event(native_id + 1000))
+    assert len(e.executor.pending) == 1
+    monkeypatch.setattr(e.dialog, 'GetId',
+        lambda: (_ for _ in ()).throw(AssertionError('Deleted original native ID was read.')))
+    handler(event(native_id))
+    assert skipped == [native_id + 1000, native_id]
+    assert len(e.executor.pending) == 2  # Original work, then its owned cleanup.
+
+    def deleted(*args, **kwargs):
+        raise AssertionError('A late callback accessed a deleted native control.')
+
+    for control in (e.dialog, *[value for key, value in e.controls.items() if key != 'buttons'],
+                    *e.controls['buttons'].values()):
+        for name in ('GetValue', 'GetSelection', 'ChangeValue', 'SetSelection',
+                     'Enable', 'Disable', 'SetFocus', 'IsModal', 'Hide', 'EndModal'):
+            monkeypatch.setattr(control, name, deleted, raising=False)
+    e.executor.complete(); e.drain()
+    e.executor.complete(); e.drain()
+    for name in ('preview', 'run', 'invalidate', 'close', 'cancel'):
+        e.handlers[name]()
+    assert not e.calls and e.dialog.assistant_service.jobs() == ()
+    assert e.app.workspaces() == ()
+    assert e.dialog.Destroy() is False
+
+
+def test_direct_destroy_cancels_untransmitted_plan_and_is_idempotent(native_handlers):
+    e = native_handlers
+    select_model(e)
+    e.handlers['preview']()
+    assert e.dialog.Destroy() is True
+    assert not e.dialog and e.dialog.Destroy() is False
+    e.executor.complete(); e.drain()
+    e.executor.complete(); e.drain()
+    assert not e.calls and e.dialog.assistant_service.jobs() == ()
+    assert e.app.workspaces() == ()
+
+
+def test_native_destruction_preserves_the_actual_paused_assistant_job(native_handlers):
+    e = native_handlers
+    e.handlers['preview']()
+    e.handlers['run']()
+    original, = e.dialog.assistant_service.jobs()
+    assert original.status == 'queued'
+    assert e.dialog.Destroy() is True
+    e.executor.complete(); e.drain()
+    e.executor.complete(); e.drain()
+    recovered = e.dialog.assistant_service.get(original.id)
+    assert recovered.status == 'paused' and recovered.completed == 0
+    assert not e.calls and e.app.workspaces() == ()
+
+
+def test_modal_cleanup_does_not_destroy_a_deleted_assistant(monkeypatch):
+    calls = []
+
+    class AlreadyDeleted:
+        assistant_handlers = {'close': lambda: calls.append('detached')}
+        def ShowModal(self): calls.append('modal returned')
+        def __bool__(self): return False
+        def Destroy(self): raise AssertionError('Deleted assistant was destroyed twice.')
+
+    monkeypatch.setattr(assistant_dialog, 'create_assistant_dialog', lambda frame: AlreadyDeleted())
+    assistant_dialog.show_assistant(object())
+    assert calls == ['modal returned', 'detached']
+
+
+def test_parent_destruction_during_voice_chooser_never_reads_deleted_native_peers(
+        native_handlers, tmp_path, monkeypatch):
+    from carr_library.speech import Voice, VoiceRegistry
+    from carr_library.studio.render import ProductionService
+    e = native_handlers
+    output = tmp_path / 'chosen-audio'; output.mkdir()
+    e.controls['output'].SetValue(str(output))
+    e.controls['instruction'].SetValue('Produce audio: Explicit synthetic narration.')
+    deleted_access = []
+
+    class Provider:
+        name = 'Explicit synthetic inventory'
+        def voices(self):
+            return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
+
+    def discover(owner, *, cancelled):
+        assert not cancelled()
+        return VoiceRegistry([Provider()])
+
+    def forbidden(*args, **kwargs):
+        deleted_access.append(True)
+        raise AssertionError('A nested chooser touched a deleted native peer.')
+
+    class RemovedChoice(Widget):
+        def ShowModal(self):
+            e.dialog.Destroy()
+            self.destroyed = True
+            for control in (e.dialog, *[value for key, value in e.controls.items() if key != 'buttons'],
+                            *e.controls['buttons'].values()):
+                for name in ('GetValue', 'GetSelection', 'ChangeValue', 'SetSelection',
+                             'Enable', 'Disable', 'SetFocus', 'IsModal', 'Hide', 'EndModal'):
+                    monkeypatch.setattr(control, name, forbidden, raising=False)
+            return e.wx.ID_OK
+        def GetSelection(self): return forbidden()
+        def Destroy(self): return forbidden()
+
+    monkeypatch.setattr(ProductionService, 'discover_voices', discover)
+    e.wx.SingleChoiceDialog = RemovedChoice
+    e.handlers['preview']()
+    assert len(e.executor.pending) == 1
+    e.executor.complete(); e.drain()
+    e.executor.complete(); e.drain()
+    assert not deleted_access
+    assert not e.calls and e.app.workspaces() == ()
+    assert e.dialog.assistant_service.jobs() == ()

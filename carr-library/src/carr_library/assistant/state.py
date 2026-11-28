@@ -10,6 +10,10 @@ from uuid import uuid4
 
 from filelock import FileLock, Timeout
 from .models import canonical, local_path
+from ..durable_state import _open_json_file, _replace_state
+
+
+MAX_CHECKPOINT_BYTES = 64 * 1024 * 1024
 
 
 def now():
@@ -33,7 +37,7 @@ def atomic_json(path, value):
     local_path(path.parent)
     regular(path, missing=True)
     payload = (canonical(value) + '\n').encode('utf-8')
-    if len(payload) > 64 * 1024 * 1024:
+    if len(payload) > MAX_CHECKPOINT_BYTES:
         raise ValueError('Assistant checkpoint exceeds the storage budget.')
     temporary = path.with_name('.' + path.name + '.' + uuid4().hex + '.tmp')
     try:
@@ -43,7 +47,7 @@ def atomic_json(path, value):
             stream.flush()
             os.fsync(stream.fileno())
         regular(path, missing=True)
-        os.replace(temporary, path)
+        _replace_state(temporary, path)
         if os.name != 'nt':
             fd = os.open(path.parent, os.O_RDONLY)
             try:
@@ -54,17 +58,37 @@ def atomic_json(path, value):
         temporary.unlink(missing_ok=True)
 
 
-def read_json(path, *, maximum=64 * 1024 * 1024):
+def read_json(path, *, maximum=MAX_CHECKPOINT_BYTES):
+    if type(maximum) is not int or not 0 < maximum <= MAX_CHECKPOINT_BYTES:
+        raise ValueError('Invalid assistant checkpoint byte budget.')
     path = Path(path)
-    local_path(path.parent)
-    info = regular(path)
-    if not 0 < info.st_size <= maximum:
-        raise ValueError('Invalid assistant checkpoint size.')
-    with path.open('rb') as stream:
-        raw = stream.read(maximum + 1)
-    if len(raw) > maximum:
-        raise ValueError('Assistant checkpoint exceeds its budget.')
-    return json.loads(raw)
+    # Reuse the shared non-following, delete-sharing descriptor. A native UI
+    # status read must not prevent the worker's atomic checkpoint replacement.
+    for _ in range(8):
+        local_path(path.parent)
+        info = regular(path)
+        if not 0 < info.st_size <= maximum:
+            raise ValueError('Invalid assistant checkpoint size.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            # An already-open snapshot may have zero links after replacement;
+            # hard links, reparse points and special objects remain forbidden.
+            if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink > 1
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400):
+                raise ValueError('Assistant state must use private regular files.')
+            if (opened.st_dev, opened.st_ino) != (info.st_dev, info.st_ino):
+                continue
+            local_path(path.parent)
+            regular(path)
+            if not 0 < opened.st_size <= maximum:
+                raise ValueError('Invalid assistant checkpoint size.')
+            raw = bytearray()
+            while block := stream.read(min(64 * 1024, maximum - len(raw) + 1)):
+                raw.extend(block)
+                if len(raw) > maximum:
+                    raise ValueError('Assistant checkpoint exceeds its budget.')
+        return json.loads(raw)
+    raise ValueError('Assistant state changed repeatedly while opening; retry the operation.')
 
 
 class JobStore:

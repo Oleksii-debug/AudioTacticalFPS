@@ -1,0 +1,152 @@
+{
+  "schema": "carr-final-scope-native/1",
+  "probes": [
+    {
+      "id": "about",
+      "path": "tests/ui/probe_about_native.py",
+      "args": [
+        "--native"
+      ],
+      "owned_deadline_seconds": 120,
+      "timeout_seconds": 240,
+      "required": {
+        "status": "PASS",
+        "check_count": 19,
+        "actual_native_keys": true,
+        "actual_installed_metadata": true,
+        "actual_background_workers": true,
+        "actual_window_destroyed": true
+      },
+      "count_field": "check_count",
+      "oracle": "scripts/about_native_oracle.json"
+    },
+    {
+      "id": "diagnostics",
+      "path": "scripts/windows_diagnostics_smoke.py",
+      "args": [],
+      "owned_deadline_seconds": 270,
+      "timeout_seconds": 390,
+      "required": {
+        "result": "PASS",
+        "native_keyboard": "PASS",
+        "exact_redacted_preview_export": "PASS",
+        "actual_create_only_refusal": "PASS",
+        "same_desktop_executor": "PASS",
+        "actual_cancel_and_three_owner_withdrawals": "PASS"
+      }
+    },
+    {
+      "id": "speech-preparation",
+      "path": "scripts/windows_speech_preparation_smoke.py",
+      "args": [],
+      "owned_deadline_seconds": 360,
+      "timeout_seconds": 480,
+      "required": {
+        "result": "PASS",
+        "native_keyboard_automation": "PASS",
+        "three_explicit_text_locales": [
+          "en-US",
+          "uk-UA",
+          "sk-SK"
+        ],
+        "compound_source_maps": "PASS",
+        "actual_reader_recovery": "PASS",
+        "actual_studio_save_undo": "PASS",
+        "existing_host_workers": "PASS",
+        "held_cancel_direct_deletion_late_callback": "PASS"
+      }
+    },
+    {
+      "id": "live-range",
+      "path": "scripts/windows_live_range_smoke.py",
+      "args": [],
+      "owned_deadline_seconds": 360,
+      "timeout_seconds": 480,
+      "required": {
+        "status": "PASS",
+        "scope": "ACTUAL_NATIVE_SOURCE_AND_COPY_A_B_SLEEP",
+        "player": "CONTROLLED_PCM_TEST_FIXTURE"
+      }
+    },
+    {
+      "id": "studio-silence",
+      "path": "scripts/windows_studio_silence_smoke.py",
+      "args": [
+        "--audio-evidence",
+        "@audio-evidence"
+      ],
+      "owned_deadline_seconds": 360,
+      "timeout_seconds": 480,
+      "required": {
+        "schema": "carr-native-studio-silence/1",
+        "result": "PASS",
+        "scenarios": {
+          "actual_completed_production": "PASS",
+          "native_saved_job_selection": "PASS",
+          "invalid_criteria_no_admission": "PASS",
+          "native_explicit_criteria": "PASS",
+          "actual_readonly_inspection_report": "PASS",
+          "same_studio_worker_and_no_playback": "PASS",
+          "second_criteria_and_complete_scan": "PASS",
+          "unchanged_job_source_and_artifacts": "PASS",
+          "confirmed_native_and_worker_cleanup": "PASS"
+        },
+        "actual_saved_production": "PASS",
+        "actual_native_criteria": "PASS",
+        "actual_readonly_report": "PASS"
+      }
+    },
+    {
+      "id": "word-ui",
+      "path": "scripts/windows_word_controls_smoke.py",
+      "args": [],
+      "owned_deadline_seconds": 360,
+      "timeout_seconds": 480,
+      "required": {
+        "schema": "carr-native-word-controls/1",
+        "status": "PASS",
+        "actual_native_word_controls": "PASS",
+        "actual_office": "NOT_RUN",
+        "external_word": "CONTROLLED_PROTOCOL_BOUNDARY",
+        "picker_answers": "CONTROLLED"
+      }
+    },
+    {
+      "id": "word-office",
+      "path": "scripts/windows_word_citations_smoke.py",
+      "args": [],
+      "owned_deadline_seconds": 240,
+      "timeout_seconds": 600,
+      "required": {
+        "schema": "carr-native-word-citations/2",
+        "status": "PASS",
+        "actual_office": "PASS",
+        "checks": 20,
+        "native_keyboard": "NOT_RUN",
+        "actual_nvda": "NOT_RUN"
+      },
+      "optional_office": true
+    },
+    {
+      "id": "research-merge",
+      "path": "scripts/windows_research_merge_smoke.py",
+      "args": [],
+      "owned_deadline_seconds": 540,
+      "timeout_seconds": 660,
+      "required": {
+        "schema": "carr-native-research-merge/1",
+        "result": "PASS",
+        "native_keyboard": "PASS",
+        "exact_research_graph": "PASS",
+        "whole_workspace_conflicts": "PASS",
+        "reviewed_omissions": "PASS",
+        "current_library_unchanged": "PASS",
+        "actual_cancel_and_owner_withdrawal": "PASS",
+        "unchanged_input_backups": "PASS",
+        "same_desktop_executor": "PASS"
+      },
+      "oracle": "scripts/research_merge_native_oracle.json",
+      "count_field": "checks"
+    }
+  ]
+}

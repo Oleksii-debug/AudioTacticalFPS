@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "package": "py3langid",
+  "version": "0.4.0",
+  "upstream_repository": "https://github.com/adbar/py3langid",
+  "upstream_commit": "3b99caf00d0dcbc9416a9d06f8e5b690e919a74e",
+  "license": "BSD-3-Clause",
+  "wheel": {
+    "filename": "py3langid-0.4.0-py3-none-any.whl",
+    "size": 4600605,
+    "sha256": "c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616",
+    "url": "https://files.pythonhosted.org/packages/69/2d/0eeff2727c970b1d553be70d15ba2d84e3830696c09a79d954c5ae3d5212/py3langid-0.4.0-py3-none-any.whl"
+  },
+  "files": {
+    "py3langid-0.4.0.dist-info/licenses/LICENSE": {
+      "git_blob": "0fe5497e6ec0c31a974783851d8b9d0a97cafd12",
+      "sha256": "1694ffed7731df5c6e3d95ad5aa2398bf64f9377636ead34a23f385dd3598a0c",
+      "size": 1676
+    },
+    "py3langid/__init__.py": {
+      "git_blob": "4e213b01d14c517f556ddecb7ff4af05a5dc8a88",
+      "sha256": "aa5e55604af5a54b69c5a0103ea52dc2c485ab833d91be455a17b7bb06b449a6",
+      "size": 73
+    },
+    "py3langid/data/model.npz.xz": {
+      "git_blob": "2221d7ba925849f78981d97d610fec208a89ed97",
+      "sha256": "f4f4a2c3465ca1f081541037f9cac23021d68151c2f709c55ae5eedfca522963",
+      "size": 4586720
+    },
+    "py3langid/langid.py": {
+      "git_blob": "d711eeeebf9a2f3c929edd39f7a7a596d9625875",
+      "sha256": "87dd47f1253b2adc6f82ed96f53e385a80bbde4f3627741cc516e7d0dd4a55d5",
+      "size": 12687
+    },
+    "py3langid/modelio.py": {
+      "git_blob": "caf680fa6b74894367454b9fa5933b61032e165e",
+      "sha256": "598e46056edfb6507ebcdafbb5c64b57724c0543c19fa8a4de526d3d0513dbd6",
+      "size": 2965
+    }
+  },
+  "identity_evidence": {
+    "run": 46009967990,
+    "job": 140542666264,
+    "package_imported": false
+  },
+  "qualification": "Identity reviewed; OCR/detection accuracy requires fixture and user review, not a count-based quality claim."
+}

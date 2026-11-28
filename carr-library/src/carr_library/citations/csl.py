@@ -760,6 +760,44 @@ _BRIDGE = r'''
 '''
 
 
+def _execute(payload, *, processor, bridge, budget, cancelled=None):
+    """Execute a reviewed resource profile in the single bounded local runtime.
+
+    Callers validate their domain payload and verify the selected processor and
+    style bytes. The interpreter has no host callbacks, filesystem or network.
+    Cancellation is checked around the CPU-bounded interpreter call.
+    """
+    if not isinstance(budget, RenderBudget):
+        raise ValueError('Invalid citation resource budget.')
+    budget.validate()
+    if cancelled and cancelled():
+        raise InterruptedError('Citation formatting was cancelled.')
+    encoded = json.dumps(payload, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
+    try:
+        import quickjs
+    except ImportError as exc:
+        raise RuntimeError('The local citation runtime is missing. Install the application academic runtime; no online fallback is used.') from exc
+    context = quickjs.Context()
+    context.set_memory_limit(budget.memory_bytes)
+    context.set_time_limit(float(budget.cpu_seconds))
+    context.set_max_stack_size(4 * 1024 * 1024)
+    try:
+        # JSON.parse prevents special object-literal keys from acquiring code
+        # semantics. No Python callbacks, network or filesystem are installed.
+        code = ('var module={exports:{}};\n' + processor + ';\n' + bridge
+                + '(JSON.parse(' + json.dumps(encoded, ensure_ascii=True) + '));')
+        raw = context.eval(code)
+    except quickjs.JSException as exc:
+        raise RuntimeError('Citation formatting could not finish within its resource budget or the selected metadata/style is incompatible. Reduce the batch or increase the configured budget.') from exc
+    finally:
+        del context
+    if cancelled and cancelled():
+        raise InterruptedError('Citation formatting was cancelled.')
+    if not isinstance(raw, str) or len(raw.encode('utf-8')) > budget.max_output_bytes:
+        raise RuntimeError('The formatted bibliography exceeds the configured output budget.')
+    return raw
+
+
 def render(records, *, style='apa', citations=None, locale='en-US', output='text', budget=None):
     """Render complete, context-aware citations and a bibliography offline.
 
@@ -806,28 +844,8 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
         user_size += len(custom.source)
     if user_size > budget.max_input_bytes:
         raise ValueError('References and citation clusters exceed the configured formatting byte budget.')
-    encoded = json.dumps(payload, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
-    try:
-        import quickjs
-    except ImportError as exc:
-        raise RuntimeError('The local citation runtime is missing. Install the application academic runtime; no online fallback is used.') from exc
-    context = quickjs.Context()
-    context.set_memory_limit(budget.memory_bytes)
-    context.set_time_limit(float(budget.cpu_seconds))
-    context.set_max_stack_size(4 * 1024 * 1024)
-    processor = _resource('_vendor_citeproc/citeproc.js')
-    try:
-        # JSON.parse prevents special object-literal keys from acquiring code
-        # semantics. No Python callbacks, network or filesystem are installed.
-        code = ('var module={exports:{}};\n' + processor + ';\n' + _BRIDGE
-                + '(JSON.parse(' + json.dumps(encoded, ensure_ascii=True) + '));')
-        raw = context.eval(code)
-    except quickjs.JSException as exc:
-        raise RuntimeError('Citation formatting could not finish within its resource budget or the selected metadata/style is incompatible. Reduce the batch or increase the configured budget.') from exc
-    finally:
-        del context
-    if not isinstance(raw, str) or len(raw.encode('utf-8')) > budget.max_output_bytes:
-        raise RuntimeError('The formatted bibliography exceeds the configured output budget.')
+    raw = _execute(payload, processor=_resource('_vendor_citeproc/citeproc.js'),
+                   bridge=_BRIDGE, budget=budget)
     result = json.loads(raw)
     if result.get('version') != PROCESSOR_REPORTED_VERSION:
         raise RuntimeError('The citation runtime identity changed unexpectedly.')

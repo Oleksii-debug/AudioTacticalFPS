@@ -1,0 +1,17 @@
+{
+  "schema": "carr-native-research-merge-oracle/1",
+  "checks": [
+    "actual_library_menu_and_exact_review",
+    "native_cancel_publishes_nothing",
+    "direct_delete_revokes_queued_confirmation",
+    "exact_choices_and_omissions_are_required",
+    "actual_final_report_matches_committed_result",
+    "right_conflict_preserves_graph_history_and_sources",
+    "completed_restore_is_held_by_the_existing_worker",
+    "late_committed_receipt_survives_dead_native_owner",
+    "left_conflict_preserves_its_complete_original_snapshot",
+    "both_full_input_backups_remain_byte_exact",
+    "one_existing_executor_and_exact_modal_lifetimes",
+    "all_owned_private_resources_are_released"
+  ]
+}

@@ -24,6 +24,9 @@ ReadingDocument. No model or provider SDK is installed automatically.
 5. Pause/resume the same saved job. Accepted chunks are durably recorded before
    cancellation and reused. Uncertain charges are never retried automatically.
    Expired approval stops further calls; renewal requires a new explicit review.
+   Resume also requires the exact account snapshot to remain enabled in AI/API
+   connections. Removing, disabling or changing that account after opening the
+   window or queuing work blocks further requests before credential access.
 6. Export writes a fresh directory with original, translated and bilingual text,
    a reversible reading-copy project, and provenance/file hashes. The translation
    has no source-quotation authority. Existing outputs are never overwritten.
@@ -95,6 +98,7 @@ operations; this feature does not do them implicitly.
 
 The same service is available without wx through
 `python -m carr_library translation --data-dir LIBRARY COMMAND`.
+The historical `translate` alias and direct module entrypoint remain supported.
 The library must already exist. No command accepts a secret on argv.
 
 1. `profiles` lists non-secret configured accounts.
@@ -125,12 +129,52 @@ list establishes declared capability, not translation quality or canonical-135
 coverage. Unknown/absent languages are rejected; similar names are never mapped.
 
 Automatic ADC discovery/token refresh, glossary creation, formatted-document
-preservation, direct chapter or document selection, Cloud Storage batch jobs,
+preservation, inferred chapter selection, Cloud Storage batch jobs,
 local M2M100 inference, canonical-135 translation mapping,
 and independent linguistic quality review remain open. No offline failure causes
 a silent remote fallback or model download. Selected source text and receipts use
 the existing private local state store; this feature does not supply encrypted
 text-at-rest containers. API secrets use the OS vault.
+
+## Retained document and explicit range translation
+
+Tools → Translate selected book or source range reuses the authorized reading
+desk. Select an explicit source position or `first-last` range; the full range
+selects the retained document. Printed page labels and chapter boundaries are
+not guessed. Loading runs on the existing executor, keeps the selected source
+read only, and sends no text. Source and translated reading copies each retain
+the existing two-million-character bound, with checkpoint/serialization space
+reserved before billable calls.
+
+The same Basic v2 and Advanced v3 services handle this range, including the
+explicit Advanced glossary and model. Preview/consent binds the source snapshot,
+account, languages, glossary and budget. Source jobs keep a separate typed job
+identity in the existing JobStore, anchored to the retained asset, edition,
+revision, workspace, topic and source positions. A changed/revoked source cannot
+silently be retargeted, downgraded to a pasted-text job or sent under the old
+approval. Moving/restoring the library preserves completed output; further
+remote requests require fresh review against the new library identity.
+
+Accepted output is saved before later cancellation or scope checks. New source
+jobs require the canonical independent decoded-text/language receipt in the
+usage ledger; the stronger Basic/Advanced receipt is reused, with no parallel
+receipt store. Older unbound pasted-text derivatives remain exportable offline
+with an explicit legacy integrity label rather than invented proof.
+
+Saved jobs restore the exact visible account, source, languages, glossary and
+budget. Reading that list runs in the existing worker. Changing the visible
+scope is rejected against the selected snapshot before queuing work or opening
+an export picker. That fast comparison grants no authority: the saved record and
+current account are checked again in the existing worker. Preview or New
+translation starts a new review. Missing/changed accounts block
+remote resume while preserving completed offline exports. The worker rereads the
+current profile before constructing a gateway and at existing remote-operation
+checks. Language discovery also checks the current account after queuing. Status
+errors focus the named status control. Bound exports retain
+the original source anchor in the reversible reading project and provenance;
+translated edits never acquire source-quotation authority. Publication rechecks
+source authorization and uses the existing writer guard, new output directory
+and private-destination rules.
 
 A failed export may leave a partial newly created directory. Export success
 requires the final provenance manifest and matching output hashes. Original
@@ -138,9 +182,7 @@ library quotations remain attached to their source, not the translated revision.
 
 ## Validation
 
-The integrated existing-provider plus Basic v2 and Advanced v3 translation suite
-passed **122 tests** on Linux (`test_providers.py`, `test_translation.py` and
-`test_translation_v3.py`) after selective adoption of the reviewed PR112 code,
+The focused existing-provider plus translation suite passed **63 tests** on Linux
 with synthetic HTTPS responses. These execute the real Gateway, ledger, JobStore
 and ReadingDocument: exact TLS authority and routes, API-key header, LOCAL_ONLY
 rejection, malformed profiles, request-hash consent, Unicode counts, language
@@ -157,10 +199,7 @@ checks exact project/model/glossary consent, directional language capability,
 expiry and explicit re-entry without duplicate accepted calls, stale CLI/UI
 reviews, disabled controls during queued work and close/cancellation.
 
-The donor commit `8bf411718548809793748ed01f458c79f3692e98` passed its separate
-installed Advanced translation step in Windows run `45929429163`, job
-`140278375920`. Its complete workflow was not green; this component evidence
-does not qualify the integrated build. The required installed Windows probe is
+The required installed Windows probe is
 `python -I -B scripts/windows_translation_v3_smoke.py`. It checks real wx native
 Space/focus, asynchronous completion, temporary Windows Credential Manager
 storage and output bytes. Its REST responses and confirmation/file-picker
@@ -187,3 +226,9 @@ exact installed build; source tests do not establish it.
 
 The Advanced REST/authentication references above were reviewed on 2026-11-27.
 No live provider pricing or account capability was inferred from them.
+
+The current-account catalog checks and saved-job regressions reuse public PR165
+at `5baee73ae94d860909152fb8c8434d5864c0e638`, adapted to retain Advanced v3
+project/glossary scope and the existing durable pasted-text capture. Reconstructed
+source and handler tests require execution on the composed candidate; prior donor
+results do not qualify this build.

@@ -29,8 +29,14 @@ def make_runtime(directory, *, options=None):
         (info / 'RECORD').write_text('\n'.join([module + ',,', info.name + '/METADATA,,', info.name + '/RECORD,,']) + '\n', encoding='utf-8')
         dependencies[name] = payload
     worker = root / 'protocol_worker.py'
-    shutil.copyfile(Path(__file__).with_name('fixtures') / 'protocol_worker.py', worker)
     options_path = worker.with_name('fixture-options.json')
+    source = (Path(__file__).with_name('fixtures') / 'protocol_worker.py').read_text(encoding='utf-8')
+    marker = "options_file = Path(__file__).with_name('fixture-options.json')"
+    assert source.count(marker) == 1
+    # The actual worker source is captured inside its owned workspace. Fixture
+    # decisions remain explicit read-only synthetic data; observations are
+    # written by that real child only inside the allowed workspace logs.
+    worker.write_text(source.replace(marker, 'options_file = Path(' + repr(str(options_path)) + ')'), encoding='utf-8')
     options_path.write_text(json.dumps(options or {}), encoding='utf-8')
     model = root / 'models' / 'synthetic-model'
     model.mkdir(parents=True)
@@ -45,3 +51,20 @@ def register(service, runtime, *, trusted=True):
     return service.register_runtime('Synthetic local protocol fixture', runtime.python,
         runtime.worker, runtime.model, owner_trusted=trusted,
         expected_fingerprint=inspected['fingerprint'] if trusted else None)
+
+
+def observations(runtime, event):
+    """Read actual owned-child observations, never write or simulate results."""
+    values = []
+    for path in sorted(runtime.root.parent.rglob('progress.log')):
+        parts = path.parts
+        if 'transcription' not in parts or 'jobs' not in parts or path.parent.name != 'logs':
+            continue
+        for line in path.read_text(encoding='utf-8').splitlines():
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict) and value.get('fixture_event') == event:
+                values.append(value)
+    return values

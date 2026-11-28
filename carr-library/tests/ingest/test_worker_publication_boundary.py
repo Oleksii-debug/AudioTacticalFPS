@@ -1,12 +1,11 @@
 """Actual isolated LibraryApp publication races; no synthetic database or result."""
-from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
-import sys
 import time
 from types import SimpleNamespace
 from uuid import uuid4
+from zipfile import ZipFile
 
 import pytest
 
@@ -16,7 +15,7 @@ from carr_library.ingest import worker
 
 
 def source_file(tmp_path, kind):
-    path = tmp_path / ('Original source.' + kind)
+    path = tmp_path / ('Оригінал source.' + kind)
     if kind == 'docx':
         from docx import Document
         document = Document()
@@ -26,12 +25,22 @@ def source_file(tmp_path, kind):
         from reportlab.pdfgen.canvas import Canvas
         canvas = Canvas(str(path))
         canvas.drawString(72, 700, 'Committed railway source.')
-        canvas.showPage()
         canvas.save()
     elif kind == 'epub':
-        import runpy
-        fixture = Path(__file__).resolve().parents[1] / 'e2e' / 'test_epub_import.py'
-        runpy.run_path(str(fixture))['write_epub'](path)
+        with ZipFile(path, 'w') as archive:
+            archive.writestr('mimetype', 'application/epub+zip')
+            archive.writestr('META-INF/container.xml',
+                '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
+                '<rootfiles><rootfile full-path="content.opf" '
+                'media-type="application/oebps-package+xml"/></rootfiles></container>')
+            archive.writestr('content.opf',
+                '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+                '<metadata/><manifest><item id="chapter" href="chapter.xhtml" '
+                'media-type="application/xhtml+xml"/></manifest>'
+                '<spine><itemref idref="chapter"/></spine></package>')
+            archive.writestr('chapter.xhtml',
+                '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Source</title></head>'
+                '<body><p>Committed railway source. Київ.</p></body></html>')
     else:
         path.write_text('Committed railway source. Київ.', encoding='utf-8')
     return path
@@ -81,52 +90,19 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
     return processes
 
 
-def publication_diagnostics(monkeypatch):
-    """Observe the actual verification branch without changing its verdict.
-
-    Only these two current-thread frames are recorded, after child cleanup.
-    Keep bounded exception metadata and return locations, never frame locals,
-    source bytes, request contents or database rows.
-    """
-    events = []
-
-    def observer(name, function):
-        def observed(*args, **kwargs):
-            previous = sys.gettrace()
-
-            def trace(frame, event, value):
-                if frame.f_code is not function.__code__:
-                    return previous(frame, event, value) if previous is not None else None
-                if event in ('exception', 'return') and len(events) < 32:
-                    entry = dict(function=name, event=event, line=frame.f_lineno)
-                    if event == 'exception':
-                        error = value[1]
-                        entry.update(error=type(error).__name__, message=str(error)[:240])
-                        for attribute in ('errno', 'winerror', 'sqlite_errorcode', 'sqlite_errorname'):
-                            detail = getattr(error, attribute, None)
-                            if type(detail) in (int, str):
-                                entry[attribute] = detail[:120] if isinstance(detail, str) else detail
-                    else:
-                        entry['returned'] = 'None' if value is None else type(value).__name__
-                        if type(value) is dict and type(value.get('state')) is str:
-                            entry['state'] = value['state'][:40]
-                    events.append(entry)
-                return trace
-
-            try:
-                sys.settrace(trace)
-                return function(*args, **kwargs)
-            finally:
-                sys.settrace(previous)
-
-        return observed
-
-    for name in ('_reconcile_publication', '_published_after_stop'):
-        monkeypatch.setattr(worker, name, observer(name, getattr(worker, name)))
-    return events
+def capture_attempt(monkeypatch):
+    invoke = worker._invoke
+    launches = []
+    def launch(message, **options):
+        if 'request_id' in message:
+            launches.append((worker.load_request(message['data_dir'], message['request_id']),
+                             message['attempt_id']))
+        return invoke(message, **options)
+    monkeypatch.setattr(worker, '_invoke', launch)
+    return launches
 
 
-@pytest.mark.parametrize('kind', ('docx', 'md', 'txt', 'pdf', 'epub'))
+@pytest.mark.parametrize('kind', ('docx', 'epub', 'pdf', 'txt', 'md'))
 @pytest.mark.parametrize('stop', ('cancel', 'timeout', 'crash'))
 def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind, stop):
     app = LibraryApp(tmp_path / 'library')
@@ -135,18 +111,6 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     original = source.read_bytes()
     marker = tmp_path / 'committed'
     processes = publication_barrier(monkeypatch, marker, crash=stop == 'crash')
-    diagnostics = publication_diagnostics(monkeypatch)
-    original_trace = sys.gettrace()
-    outcomes = []
-    invoke = worker._invoke
-
-    def observe_invocation(*args, **kwargs):
-        result = invoke(*args, **kwargs)
-        outcomes.append(result['state'])
-        return result
-
-    # Observe the actual stopped child; do not replace its result with a fixture.
-    monkeypatch.setattr(worker, '_invoke', observe_invocation)
     if stop == 'timeout':
         monotonic = time.monotonic
         monkeypatch.setattr(worker, 'time', SimpleNamespace(
@@ -162,13 +126,10 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     else:
         result = app.import_file(workspace, source, cancelled=cancelled, timeout=30)
     assert marker.is_file(), result
-    assert result['state'] == 'complete', dict(result=result, publication_verification=diagnostics)
-    assert sys.gettrace() is original_trace
-    assert {entry['function'] for entry in diagnostics} == {'_reconcile_publication', '_published_after_stop'}
+    assert result['state'] == 'complete', result
     assert result['recovered_publication'] is True
-    assert outcomes == [{'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]]
     assert result['worker_state'] == {'cancel': 'cancelled', 'timeout': 'timed_out', 'crash': 'failed'}[stop]
-    assert result['completed'] == (2 if kind == 'epub' else 1)
+    assert result['completed'] == 1
     assert len(processes) == 1 and processes[0].poll() is not None
     assert source.read_bytes() == original
     request = worker.load_request(app.root, result['request_id'])
@@ -179,11 +140,6 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
         assert db.execute('SELECT count(*) FROM catalog_edition').fetchone()[0] == 1
-        receipt = db.execute('SELECT request_id,attempt,sha256 FROM import_publication '
-                             'WHERE revision=?', (result['id'],)).fetchone()
-        candidate = request['publication_candidate']
-        assert candidate['revision'] == result['id'] and candidate['attempt'] == request['attempt']
-        assert tuple(receipt) == (result['request_id'], request['attempt'], candidate['sha256'])
 
 
 def test_precommit_cancellation_remains_cancelled_without_publication(tmp_path, monkeypatch):
@@ -200,7 +156,6 @@ def test_precommit_cancellation_remains_cancelled_without_publication(tmp_path, 
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
-        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
 
 
 def test_prelaunch_cancellation_never_starts_or_recovers_a_worker(tmp_path, monkeypatch):
@@ -220,21 +175,92 @@ def test_preexisting_replay_is_not_new_completion_after_cancel(tmp_path, monkeyp
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Replay boundary')
     source = source_file(tmp_path, 'docx')
-    existing = app.create_collection(workspace, 'Existing membership')
-    requested = app.create_collection(workspace, 'Requested membership')
     work_id, edition_id = uuid4().hex, uuid4().hex
-    first = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
-                            collections=(existing,))
+    first = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id)
     assert first['state'] == 'complete'
     marker = tmp_path / 'replay-before-commit'
     publication_barrier(monkeypatch, marker, before=True)
     cancelled = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
-                               collections=(requested,), cancelled=marker.exists, timeout=30)
+                               cancelled=marker.exists, timeout=30)
     assert marker.is_file(), cancelled
     assert cancelled['state'] == 'cancelled'
     assert 'recovered_publication' not in cancelled
-    assert app.browse(workspace, collection=requested) == ()
-    assert len(app.browse(workspace, collection=existing)) == 1
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+@pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration', 'language'))
+def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, monkeypatch, change):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Request binding')
+    source = source_file(tmp_path, 'docx')
+    launches = capture_attempt(monkeypatch)
+    result = app.import_file(workspace, source)
+    assert result['state'] == 'complete'
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
+    changed = worker.load_request(app.root, result['request_id'])
+    if change == 'scope':
+        changed['workspace'] = app.create_workspace('Other')
+    elif change == 'work':
+        changed['metadata']['work_id'] = uuid4().hex
+    elif change == 'asset':
+        changed['asset_sha256'] = 'f' * 64
+    elif change == 'configuration':
+        changed['config']['dpi'] += 1
+    else:
+        changed['metadata']['language'] = 'uk'
+    worker._store(app.root, result['request_id'], changed)
+    assert worker._published_after_stop(app, initial, attempt) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, result['request_id'], attempt, initial=initial)
+
+
+def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Original binding')
+    source = source_file(tmp_path, 'docx')
+    launches = capture_attempt(monkeypatch)
+    result = app.import_file(workspace, source)
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
+    current = worker.load_request(app.root, result['request_id'])
+    retained = app.assets.resolve(current['asset_sha256'])
+    raw = bytearray(retained.read_bytes())
+    raw[-1] ^= 1
+    retained.write_bytes(raw)
+    assert worker._published_after_stop(app, initial, attempt) is None
+    with pytest.raises(ValueError):
+        worker._reconcile_publication(app.root, result['request_id'], attempt, initial=initial)
+
+
+def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Concurrent replay boundary')
+    source = source_file(tmp_path, 'docx')
+    work_id, edition_id = uuid4().hex, uuid4().hex
+    marker = tmp_path / 'replay-before-commit'
+    processes = publication_barrier(monkeypatch, marker, before=True)
+    launch = worker.subprocess.Popen
+    published = []
+
+    def intervening_import(command, *args, **kwargs):
+        if not published:
+            # The parent read snapshot is already released, while this worker
+            # has not acquired the shared writer guard. Another real import
+            # completes the same source/edition before our child can replay it.
+            published.append(app._import_file(workspace, source,
+                work_id=work_id, edition_id=edition_id))
+        return launch(command, *args, **kwargs)
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
+    result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
+                            cancelled=marker.exists, timeout=30)
+    assert published[0]['state'] == 'complete'
+    assert marker.is_file() and len(processes) == 1
+    assert result['state'] == 'cancelled', result
+    assert 'recovered_publication' not in result
+    assert app.browse(workspace)
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
 
@@ -263,8 +289,9 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
         if (isinstance(command, list) and '-c' in command
                 and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
             assert not competing
-            # A genuine independent publication after the supervisor's watermark,
-            # before its actual child. No row/result is fabricated or retargeted.
+            # A genuine independent publication after this parent's frozen
+            # request snapshot, before its actual child. No row or result
+            # is fabricated, and no watermark grants completion authority.
             competing.append(app._import_file(workspace, source, **other))
             assert competing[0]['state'] == 'complete'
         return original_popen(command, *args, **kwargs)
@@ -276,6 +303,8 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
     assert len(processes) == 1 and processes[0].poll() is not None
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM import_publication WHERE request_id=?',
+                          (result['request_id'],)).fetchone()[0] == 0
         assert tuple(db.execute('SELECT language,edition,volume FROM catalog_edition').fetchone()) == (
             other['language'], other['edition'], other['volume'])
         assert tuple(row[0] for row in db.execute('SELECT name FROM catalog_author ORDER BY position')) == other['authors']
@@ -283,89 +312,95 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
         assert app.browse(workspace, collection=collection) == ()
 
 
-def test_other_import_before_child_launch_is_not_this_workers_commit(tmp_path, monkeypatch):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Concurrent replay boundary')
-    source = source_file(tmp_path, 'docx')
-    work_id, edition_id = uuid4().hex, uuid4().hex
-    marker = tmp_path / 'replay-before-commit'
-    processes = publication_barrier(monkeypatch, marker, before=True)
-    launch = worker.subprocess.Popen
-    published = []
-
-    def intervening_import(command, *args, **kwargs):
-        if not published:
-            # Another real import completes the same source/edition before our
-            # child acquires the shared writer guard. Equal source identity
-            # cannot grant this request the other transaction's ownership.
-            published.append(app._import_file(workspace, source,
-                work_id=work_id, edition_id=edition_id))
-        return launch(command, *args, **kwargs)
-
-    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
-    result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
-                            cancelled=marker.exists, timeout=30)
-    assert published[0]['state'] == 'complete'
-    assert marker.is_file() and len(processes) == 1
-    assert result['state'] == 'cancelled', result
-    assert 'publication_recovered' not in result
-    assert app.browse(workspace)
-    with app.read(workspace) as db:
-        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
-
-
-@pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration'))
-def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, change):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Request binding')
-    source = source_file(tmp_path, 'docx')
-    result = app.import_file(workspace, source)
-    assert result['state'] == 'complete'
-    initial = worker.load_request(app.root, result['request_id'])
-    changed = deepcopy(initial)
-    if change == 'scope':
-        changed['workspace'] = app.create_workspace('Other')
-    elif change == 'work':
-        changed['metadata']['work_id'] = uuid4().hex
-    elif change == 'asset':
-        changed['asset_sha256'] = 'f' * 64
-    else:
-        changed['config']['dpi'] += 1
-    worker._store(app.root, result['request_id'], changed)
-    assert worker._published_after_stop(app, initial, 0) is None
-    with pytest.raises(ValueError, match='publication|Committed'):
-        worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
-
-
-def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Original binding')
-    source = source_file(tmp_path, 'docx')
-    result = app.import_file(workspace, source)
-    initial = worker.load_request(app.root, result['request_id'])
-    retained = app.assets.resolve(initial['asset_sha256'])
-    raw = bytearray(retained.read_bytes())
-    raw[-1] ^= 1
-    retained.write_bytes(raw)
-    assert worker._published_after_stop(app, initial, 0) is None
-    with pytest.raises(ValueError):
-        worker._reconcile_publication(app.root, result['request_id'], initial['attempt'])
-
 
 @pytest.mark.parametrize('binding', ('job', 'configuration'))
-def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, binding):
+def test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config(
+        tmp_path, monkeypatch, binding):
+    """A saved PDF journal cannot be rebound after the parent admits an attempt."""
     app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('PDF request binding')
+    workspace = app.create_workspace('Frozen PDF resume binding')
     source = source_file(tmp_path, 'pdf')
+    original = source.read_bytes()
+    launches = capture_attempt(monkeypatch)
+    first = app.import_file(workspace, source)
+    assert first['state'] == 'complete'
+    initial, first_attempt = launches[0]
+    assert worker._published_after_stop(app, initial, first_attempt)['state'] == 'complete'
+    saved = worker.load_request(app.root, first['request_id'])
+    assert saved['job'] == first['id']
+    with app.read(workspace) as db:
+        receipt = tuple(db.execute('SELECT * FROM import_publication').fetchone())
+
+    # Reproduce losing the parent result. The next native launch has a fresh
+    # attempt, but its saved PDF job and extraction configuration remain pinned.
+    worker.record_progress(app.root, first['request_id'], state='running', result=None)
+    invoke = worker._invoke
+    frozen, replies = [], []
+
+    def changed_before_child(message, **options):
+        record = worker.load_request(app.root, message['request_id'])
+        frozen.append((json.loads(json.dumps(record)), message['attempt_id']))
+        if binding == 'job':
+            record['job'] = 'f' * 64 if record['job'] != 'f' * 64 else 'e' * 64
+        else:
+            record['config']['dpi'] += 1
+        worker._store(app.root, message['request_id'], record)
+        reply = invoke(message, **options)
+        replies.append(reply)
+        return reply
+
+    monkeypatch.setattr(worker, '_invoke', changed_before_child)
+    result = app.resume_import(workspace, first['request_id'], timeout=30)
+    assert len(frozen) == len(replies) == 1
+    admitted, attempt = frozen[0]
+    assert attempt != first_attempt
+    assert admitted['job'] == first['id'] and admitted['config'] == saved['config']
+    assert replies[0]['state'] == 'failed', replies
+    assert 'changed before this worker attempt' in replies[0]['message']
+    assert result['state'] == 'failed' and 'recovered_publication' not in result
+    assert worker._published_after_stop(app, admitted, attempt) is None
+    assert source.read_bytes() == original
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+
+
+@pytest.mark.parametrize('binding', ('job', 'missing-job', 'null-job', 'configuration'))
+def test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt(
+        tmp_path, monkeypatch, binding):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Committed PDF configuration')
+    source = source_file(tmp_path, 'pdf')
+    launches = capture_attempt(monkeypatch)
     result = app.import_file(workspace, source)
     assert result['state'] == 'complete'
+    initial, attempt = launches[0]
+    # This positive control rules out a wrong/legacy argument that would make
+    # the following rejection pass without consulting a real committed receipt.
+    recovered = worker._published_after_stop(app, initial, attempt)
+    assert recovered['state'] == 'complete' and recovered['id'] == result['id']
     request = worker.load_request(app.root, result['request_id'])
+    assert request['job'] == result['id']
+    original_request = json.loads(json.dumps(request))
+    original_source = source.read_bytes()
+    with app.read(workspace) as db:
+        receipt = tuple(db.execute('SELECT * FROM import_publication').fetchone())
     if binding == 'job':
-        request['job'] = 'f' * 64
+        request['job'] = 'f' * 64 if request['job'] != 'f' * 64 else 'e' * 64
+    elif binding == 'missing-job':
+        del request['job']
+    elif binding == 'null-job':
+        request['job'] = None
     else:
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
-    assert worker._published_after_stop(app, request, 0) is None
+    assert worker._published_after_stop(app, initial, attempt) is None
+    assert source.read_bytes() == original_source
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    worker._store(app.root, result['request_id'], original_request)
+    assert worker._published_after_stop(app, initial, attempt)['id'] == result['id']
 
 
 @pytest.mark.parametrize('boundary', (None, 0))

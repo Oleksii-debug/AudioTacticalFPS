@@ -277,3 +277,84 @@ def test_reviewed_import_rejects_changed_approval_without_publishing(app, tmp_pa
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
 
+
+def test_stopped_import_owns_interpreter_and_releases_writer_before_reconciliation(
+        app, tmp_path, monkeypatch):
+    """A real commit while the worker still owns its lock, including Windows venvs."""
+    import filelock
+    import json
+    import os
+    from carr_library.extract.page_ocr import Config
+    from carr_library.ingest import worker
+    from carr_library.ingest.writer_guard import exclusive_writer
+
+    source = tmp_path / 'owned-interpreter.txt'
+    source.write_text('Owned interpreter publication.\n', encoding='utf-8')
+    workspace = app.create_workspace('Actual interpreter ownership')
+    marker = tmp_path / 'committed-interpreter.json'
+    popen = subprocess.Popen
+    processes = []
+    injection = f'''
+import json, os, sys, time
+from pathlib import Path
+import filelock
+from carr_library.application import _CatalogPublisher
+from carr_library.ingest import worker as imported_worker
+original_publish = _CatalogPublisher.publish_revision
+def committed_with_lock(self, *args, **kwargs):
+    result = original_publish(self, *args, **kwargs)
+    marker = Path({str(marker)!r})
+    temporary = marker.with_suffix('.pending')
+    with temporary.open('w', encoding='utf-8') as stream:
+        json.dump(dict(pid=os.getpid(), executable=sys.executable, prefix=sys.prefix,
+                       dependency=filelock.__file__, module=imported_worker.__file__,
+                       isolated=sys.flags.isolated, bytecode=sys.dont_write_bytecode), stream)
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(temporary, marker)
+    time.sleep(30)
+    return result
+_CatalogPublisher.publish_revision = committed_with_lock
+'''
+
+    def launch(command, *args, **kwargs):
+        command = list(command)
+        owned = ('-c' in command and "run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1])
+        if owned:
+            index = command.index('-c') + 1
+            command[index] = command[index].replace('runpy.run_module(',
+                'exec(' + repr(injection) + '); runpy.run_module(')
+        process = popen(command, *args, **kwargs)
+        if owned:
+            processes.append(process)
+        return process
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    if os.name == 'nt' and sys.prefix != sys.base_prefix:
+        # CPython's internal executable override must not replace the selected
+        # venv when its redirector is bypassed. No arbitrary child environment.
+        monkeypatch.setenv('PYTHONEXECUTABLE', str(tmp_path / 'different-python.exe'))
+        monkeypatch.setenv('__PYVENV_LAUNCHER__', str(tmp_path / 'different-venv' / 'python.exe'))
+    request = worker.prepare_request(app.root, workspace, source,
+        dict(title=None, authors=(), language=None, edition=None, volume=None,
+             collections=(), work_id=None, edition_id=None), Config())
+    result = app.resume_import(workspace, request['request_id'], cancelled=marker.exists, timeout=20)
+    assert marker.exists(), result
+    runtime = json.loads(marker.read_text(encoding='utf-8'))
+    process, = processes
+    assert runtime['pid'] == process.pid, (runtime, process.pid)
+    assert process.poll() is not None
+    assert os.path.normcase(runtime['executable']) == os.path.normcase(sys.executable)
+    assert os.path.normcase(runtime['prefix']) == os.path.normcase(sys.prefix)
+    assert Path(runtime['dependency']).resolve() == Path(filelock.__file__).resolve()
+    assert Path(runtime['module']).resolve() == Path(worker.__file__).resolve()
+    assert runtime['isolated'] == 1 and runtime['bytecode'] is True
+    assert result['state'] == 'complete' and result['publication_recovered'] is True, result
+    with exclusive_writer(app.root, timeout=0):
+        pass
+    with app.read(workspace) as db:
+        receipt = db.execute('SELECT request_id,attempt FROM import_publication').fetchone()
+        assert receipt[0] == request['request_id']
+        saved = worker.load_request(app.root, request['request_id'])
+        assert receipt[1] == saved['attempt'] and saved['result'] == result
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1

@@ -6,19 +6,38 @@ from pathlib import Path
 import threading
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes
+from ..research.export_file import write_export, export_completion
+from .export_destination import confirm_export_destination
 
 
-def create_assistant_dialog(frame, *, wx_module=None):
+def create_assistant_dialog(frame, *, wx_module=None, initial_instruction=None, reader_controls=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
     from ..studio.render import ProductionService
     production = ProductionService(frame.library.root / 'state' / 'studio')
-    service = AssistantService(frame.library, production=production.assistant_callback)
-    dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    player = None
+    if reader_controls is not None:
+        from ..assistant.player_tools import LivePlayerBridge
+        player = LivePlayerBridge(frame.library, reader_controls)
+    service = (AssistantService(frame.library, production=production.assistant_callback, player=player)
+               if player is not None else
+               AssistantService(frame.library, production=production.assistant_callback))
+    class AssistantDialog(wx.Dialog):
+        def Destroy(self):
+            callback = getattr(self, '_assistant_dispose', None)
+            if callback is not None:
+                callback()
+            if getattr(self, '_assistant_destroy_requested', False) or not self:
+                return False
+            self._assistant_destroy_requested = True
+            return super().Destroy()
+
+    dialog = AssistantDialog(reader_controls.dialog if reader_controls is not None else frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
+                             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    native_id = dialog.GetId()
+    dialog._assistant_destroy_requested = False
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     cancel = threading.Event()
@@ -26,6 +45,44 @@ def create_assistant_dialog(frame, *, wx_module=None):
     revision, approved_inputs = 0, None
     library_root = frame.library.root
     workspaces = frame.library.workspaces()
+
+    def discover_voice_inventory():
+        # Reuse the production's registry. Older services already expose voices;
+        # the lifecycle-aware service also accepts cancellation during discovery.
+        if cancel.is_set():
+            raise InterruptedError('Voice inventory cancelled.')
+        discover = getattr(production, 'discover_voices', None)
+        registry = discover(cancelled=cancel.is_set) if discover is not None else production.voices
+        if cancel.is_set():
+            raise InterruptedError('Voice inventory cancelled.')
+        return registry
+
+    def close_production():
+        closer = getattr(production, 'close', None)
+        if closer is not None:
+            closer()
+
+    def dispose():
+        nonlocal alive
+        if not alive:
+            return
+        alive = False
+        cancel.set()
+        if player is not None:
+            player.close()
+        # The shared cancellation callback makes a running assistant job pause.
+        # Queue registry cleanup after this dialog's already-owned worker.
+        executor.submit(close_production)
+        executor.shutdown(wait=False, cancel_futures=False)
+
+    def on_destroy(event):
+        if event.GetId() == native_id:
+            dialog._assistant_destroy_requested = True
+            dispose()
+        event.Skip()
+
+    dialog._assistant_dispose = dispose
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, on_destroy)
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 5)
@@ -36,7 +93,8 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     scope_choice = field('&Library scope', wx.Choice,
         choices=['Create a new library / list libraries only'] + [row.name for row in workspaces])
-    current = frame.active[0] if frame.active else None
+    current = (reader_controls.source.desk.workspace if reader_controls is not None else
+               frame.active[0] if frame.active else None)
     scope_choice.SetSelection(next((i + 1 for i, row in enumerate(workspaces) if row.id == current), 0))
     input_folder = field('Allowed &input folder (optional; no other folders are readable)')
     output_folder = field('Chosen &output folder (required for audio, extraction or backup)')
@@ -46,12 +104,16 @@ def create_assistant_dialog(frame, *, wx_module=None):
         button = wx.Button(dialog, label=label)
         folder_buttons.append(button)
         def choose(event, target=target):
+            if not alive:
+                return
             picker = wx.DirDialog(dialog, 'Choose a local folder')
             try:
-                if picker.ShowModal() == wx.ID_OK:
+                result = picker.ShowModal()
+                if alive and picker and result == wx.ID_OK:
                     target.SetValue(picker.GetPath())
             finally:
-                picker.Destroy()
+                if picker:
+                    picker.Destroy()
         button.Bind(wx.EVT_BUTTON, choose)
         choose_row.Add(button, 0, wx.ALL, 4)
     layout.Add(choose_row)
@@ -76,13 +138,13 @@ def create_assistant_dialog(frame, *, wx_module=None):
     planning_notice.Wrap(850)
     layout.Add(planning_notice, 0, wx.ALL | wx.EXPAND, 5)
     instruction = field('&Goal — guided English/Ukrainian commands or typed JSON plan', proportion=1,
-                        style=wx.TE_MULTILINE, value='Покажи бібліотеки')
+                        style=wx.TE_MULTILINE, value='Покажи бібліотеки' if initial_instruction is None else initial_instruction)
     review = field('Plan &preview and actual results', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
     for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+                             ('jobs', 'Saved &jobs'), ('template', 'Save as &template'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
@@ -102,6 +164,10 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def invalidate(event=None):
         nonlocal plan, job_id, revision, approved_inputs
+        if not alive:
+            if event is not None:
+                event.Skip()
+            return
         revision += 1
         approved_inputs = None
         plan, job_id = None, None
@@ -113,10 +179,12 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def accept_candidate(candidate, selected_inputs, source_label, *, voice_inventory=None):
         nonlocal plan, job_id, approved_inputs, busy
+        if not alive:
+            return
         try:
             if selected_inputs != input_identity():
                 raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
-            if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
+            if any(step.tool in ('audio.produce', 'audio.render') and not step.arguments.get('voice_ids') and 'script' not in step.arguments
                    for step in candidate.steps):
                 if voice_inventory is None:
                     # Cold private voice discovery can load model metadata.
@@ -129,16 +197,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                     buttons['pause'].SetLabel('Cancel voice &discovery')
                     buttons['pause'].Enable()
                     report('Checking configured local voices before the explicit voice choice. Nothing has been submitted.')
-                    def local_voice_inventory():
-                        if cancel.is_set():
-                            raise InterruptedError('Voice inventory cancelled.')
-                        # Resolve the existing canonical lazy registry on this
-                        # worker; no alternate discovery or service lifecycle.
-                        voices = tuple(production.voices.voices())
-                        if cancel.is_set():
-                            raise InterruptedError('Voice inventory cancelled.')
-                        return voices
-                    future = executor.submit(local_voice_inventory)
+                    future = executor.submit(discover_voice_inventory)
                     def discovered(done):
                         def apply():
                             nonlocal busy
@@ -152,7 +211,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                             try:
                                 if cancel.is_set() or selected_inputs != input_identity():
                                     raise InterruptedError('Voice discovery cancelled or the reviewed inputs changed. Preview again.')
-                                found = tuple(done.result())
+                                found = tuple(done.result().voices())
                             except Exception as exc:
                                 invalidate()
                                 report(str(exc))
@@ -165,11 +224,15 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
                                                 'Production voice', [v.name + '; ' + v.language for v in voices])
                 try:
-                    if choice.ShowModal() != wx.ID_OK:
+                    result = choice.ShowModal()
+                    if not alive or not choice or result != wx.ID_OK:
                         return
                     selected = choice.GetSelection()
                 finally:
-                    choice.Destroy()
+                    if choice:
+                        choice.Destroy()
+                if not alive:
+                    return
                 if not 0 <= selected < len(voices):
                     raise ValueError('Install and choose a local voice before narration.')
                 steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
@@ -188,11 +251,12 @@ def create_assistant_dialog(frame, *, wx_module=None):
         except Exception as exc:
             invalidate()
             report(str(exc))
-            review.SetFocus()
+            if alive:
+                review.SetFocus()
 
     def preview(event=None):
         nonlocal busy
-        if busy:
+        if not alive or busy:
             return
         invalidate()
         try:
@@ -265,7 +329,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def run(event=None):
         nonlocal busy, job_id
-        if busy or (plan is None and job_id is None):
+        if not alive or busy or (plan is None and job_id is None):
             return
         try:
             if frame.library.root != library_root:
@@ -315,40 +379,61 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def jobs(event=None):
         nonlocal job_id, plan, approved_inputs
+        if not alive:
+            return
         rows = service.jobs()
         choice = wx.SingleChoiceDialog(dialog, 'Choose a saved local plan.', 'Assistant jobs',
             [f'{row.id}; {row.status}; {row.completed}/{row.total}' for row in rows])
         try:
-            if choice.ShowModal() == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
+            result = choice.ShowModal()
+            if alive and choice and result == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
                 row = rows[choice.GetSelection()]
                 job_id, plan = row.id, None
                 approved_inputs = None
                 report(f'{row.status}: {row.completed}/{row.total}. {row.message}\nResume uses the original reviewed scope.')
                 buttons['run'].Enable()
         finally:
-            choice.Destroy()
+            if choice:
+                choice.Destroy()
+
+    def save_template(event=None):
+        if not alive or busy:
+            return
+        try:
+            if frame.library.root != library_root:
+                raise ValueError('The library changed. Reopen the assistant.')
+            selected_plan = plan
+            if selected_plan is not None and approved_inputs != input_identity():
+                raise ValueError('Preview the current typed plan before saving its reusable operations.')
+            if selected_plan is None and job_id is not None:
+                _record, selected_plan = service._load(job_id)
+            if selected_plan is None:
+                raise ValueError('Preview a typed plan or select a saved job first.')
+            from ..assistant.templates import definition_from_plan
+            from .workflow_templates import show_workflow_templates
+            definition = definition_from_plan(selected_plan)
+            show_workflow_templates(frame, initial=('assistant', definition))
+        except Exception as exc:
+            report(exc)
 
     def close(event=None):
-        nonlocal alive
         if not alive:
             return
-        cancel.set()
-        if busy == 'run' and job_id:
-            service.pause(job_id)
-        alive = False
-        from .worker_cleanup import close_after_worker
-        close_after_worker(executor, production)
-        if dialog.IsModal():
-            dialog.EndModal(wx.ID_CLOSE)
-        else:
-            dialog.Hide()
+        dispose()
+        if dialog:
+            if dialog.IsModal():
+                dialog.EndModal(wx.ID_CLOSE)
+            else:
+                dialog.Hide()
 
     def help_text(event):
+        if not alive:
+            return
         from .desktop_app import show_text
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'template': save_template, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -365,13 +450,19 @@ def create_assistant_dialog(frame, *, wx_module=None):
     return dialog
 
 
-def show_assistant(frame):
-    dialog = create_assistant_dialog(frame)
+def show_assistant(frame, *, initial_instruction=None, reader_controls=None):
+    options = {}
+    if initial_instruction is not None:
+        options['initial_instruction'] = initial_instruction
+    if reader_controls is not None:
+        options['reader_controls'] = reader_controls
+    dialog = create_assistant_dialog(frame, **options)
     try:
         dialog.ShowModal()
     finally:
         dialog.assistant_handlers['close']()
-        dialog.Destroy()
+        if dialog:
+            dialog.Destroy()
 
 
 def show_provider_settings(frame):
@@ -440,9 +531,18 @@ def show_provider_settings(frame):
                 capability.ChangeValue('translation.text,translation.languages')
                 voice.ChangeValue('')
                 local.SetValue(False)
+            elif adapter.GetStringSelection() == 'libretranslate-local':
+                endpoint.ChangeValue('http://127.0.0.1:5000')
+                model.ChangeValue('explicit-local-models')
+                capability.ChangeValue('translation.text,translation.languages')
+                voice.ChangeValue('')
+                local.SetValue(True)
+                secret.ChangeValue('')
+            secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
             token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
             event.Skip()
         adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
+        secret.Enable(adapter.GetStringSelection() != 'libretranslate-local')
         token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
         box.Add(local, 0, wx.ALL, 4)
         box.Add(enabled, 0, wx.ALL, 4)
@@ -452,9 +552,13 @@ def show_provider_settings(frame):
             if form.ShowModal() != wx.ID_OK:
                 return
             identity = current.id if current else uuid4().hex
-            profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
+            selected_adapter = adapter.GetStringSelection()
+            if selected_adapter == 'libretranslate-local' and secret.GetValue():
+                raise ValueError('Local LibreTranslate accepts no credential; nothing was stored or sent.')
+            profile = ProviderProfile(identity, name.GetValue(), selected_adapter, endpoint.GetValue(),
                 model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
+                current.credential_ref if current and selected_adapter != 'libretranslate-local' else None,
+                local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
             authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
             if authority_changed:
                 profile = replace(profile, credential_ref=None, enabled=False)
@@ -476,7 +580,9 @@ def show_provider_settings(frame):
                 vault.delete(current.id, current.credential_ref)
             secret.ChangeValue('')
             refresh()
-            status.ChangeValue('Saved. Credentials are held by Windows Credential Manager. No provider was contacted.' +
+            status.ChangeValue(('Saved local translation profile. No server or model was started.'
+                if profile.adapter == 'libretranslate-local' else
+                'Saved. Credentials are held by Windows Credential Manager. No provider was contacted.') +
                 (' OAuth token expiry: ' + token_expiry.GetValue() + '. Re-enter explicitly before expiry; no automatic refresh.' if oauth_saved else ''))
         except Exception as exc:
             status.ChangeValue(str(exc))
@@ -520,9 +626,10 @@ def show_provider_settings(frame):
         status.SetFocus()
 
     def exchange(event, *, importing=False):
+        library = frame.library
         picker = wx.FileDialog(dialog, 'Import non-secret profiles' if importing else 'Export non-secret profiles',
             defaultFile='provider-profiles.json', wildcard='JSON (*.json)|*.json',
-            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else (wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT))
+            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else wx.FD_SAVE)
         try:
             if picker.ShowModal() != wx.ID_OK:
                 return
@@ -534,8 +641,16 @@ def show_provider_settings(frame):
                 refresh()
                 status.ChangeValue('Profiles imported disabled. Reconnect each account to its credential.')
             else:
-                atomic_bytes(path, store.export_json().encode('utf-8'), replace=path.exists())
-                status.ChangeValue('Exported non-secret profiles. No API keys or vault references are included.')
+                if store.directory != (library.root / 'state' / 'providers').resolve():
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                approval = confirm_export_destination(dialog, path, private_root=library.root,
+                                                       title='Replace provider profiles')
+                if approval is None:
+                    return
+                if frame.library is not library:
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                receipt = write_export(path, store.export_json(), private_root=library.root, approval=approval)
+                status.ChangeValue(export_completion('Exported non-secret profiles. No API keys or vault references are included.', receipt))
         except Exception as exc:
             status.ChangeValue(str(exc))
         finally:

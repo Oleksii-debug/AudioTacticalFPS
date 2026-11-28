@@ -11,7 +11,7 @@ import wx
 
 from ..catalog.reference_exchange import preview_references
 from ..research.export_file import write_export, export_completion
-from .export_destination import confirm_export_destination
+from .research_actions import NativeDialogs
 from .catalog_metadata_dialog import MetadataDialog, metadata_values
 
 
@@ -300,7 +300,7 @@ def export_bibliography(frame):
                 raise ValueError('Library selection changed. Open the bibliography command again.')
 
         selected_scope()
-        approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
+        approval = NativeDialogs().approve_export(frame, path, private_root=library.root, wx_module=wx)
         if approval is None:
             return
         selected_scope()
@@ -348,7 +348,7 @@ def export_research_outline(frame):
                 raise ValueError('Topic selection changed. Open the outline command again.')
 
         selected_scope()
-        approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
+        approval = NativeDialogs().approve_export(frame, path, private_root=library.root, wx_module=wx)
         if approval is None:
             return
         selected_scope()

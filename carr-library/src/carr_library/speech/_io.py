@@ -96,11 +96,21 @@ def system_powershell(path, *, architecture=None):
     return local_file(candidate, _allow_hardlinks=True)
 
 
-def digest(path):
+def digest(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
+    before = Path(path).stat()
+    def stamp(value):
+        return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
     h = sha256()
     with open(path, 'rb') as source:
+        if stamp(os.fstat(source.fileno())) != stamp(before):
+            raise ValueError('A speech asset changed while opening it.')
         for block in iter(lambda: source.read(1024 * 1024), b''):
+            check_cancelled(cancelled)
             h.update(block)
+    if stamp(Path(path).stat()) != stamp(before):
+        raise ValueError('A speech asset changed while fingerprinting it.')
+    check_cancelled(cancelled)
     return h.hexdigest()
 
 
@@ -114,11 +124,12 @@ def _sync_directory(parent):
 
 
 @contextmanager
-def new_output(destination, *, cancelled=lambda: False):
+def new_output(destination, *, cancelled=lambda: False, before_publish=None):
     """Stage beside the target and publish with an atomic no-clobber link.
 
     No placeholder is ever published. Filesystems lacking hard-link support
     fail explicitly instead of substituting a race-prone overwrite.
+    An optional validator runs on the flushed staging file before the link.
     """
     check_cancelled(cancelled)
     target = local_file(destination, must_exist=False)
@@ -137,6 +148,9 @@ def new_output(destination, *, cancelled=lambda: False):
         with staged.open('r+b') as stream:
             os.fsync(stream.fileno())
         check_cancelled(cancelled)
+        if before_publish is not None:
+            before_publish(staged)
+            check_cancelled(cancelled)
         os.link(staged, target)
         # Remove the staging name before readers validate the final inode.
         staged.unlink()

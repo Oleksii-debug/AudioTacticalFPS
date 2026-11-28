@@ -78,7 +78,9 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     checksum = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     names = {entry['filename'] for entry in manifest['sidecars']}
-    assert len(names) == 8
+    assert len(names) == 9
+    assert 'state/studio/backup-inputs.json' in names
+    source_names = names - {'state/studio/backup-inputs.json'}
     assert 'state/providers/envelope.usage.json' not in names
     assert 'state/providers/usage/envelope.usage.json' in names
     assert not any(name.endswith('.lock') for name in names)
@@ -98,8 +100,19 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
         checksum = resign(folder, manifest)
     before = {p.relative_to(folder): p.read_bytes() for p in folder.rglob('*') if p.is_file()}
     target = restore_backup(folder, tmp_path / 'restored', checksum)
-    for name in names:
-        assert (target / name).read_bytes() == (app.root / name).read_bytes()
+    for name in source_names:
+        if name.startswith('state/studio/jobs/') and name.endswith('/job.json'):
+            value = json.loads((app.root / name).read_bytes())
+            restored_value = json.loads((target / name).read_bytes())
+            assert restored_value['project'] == value['project']
+            assert restored_value['status'] == 'waiting-input' and restored_value['destination'] == ''
+            assert restored_value['recovery']['requires_output_directory'] is True
+            assert restored_value['recovery']['previous'] == dict(
+                project_fingerprint=value['fingerprint'], status=value['status'],
+                destination=value['destination'], artifacts=value['artifacts'])
+        else:
+            assert (target / name).read_bytes() == (app.root / name).read_bytes()
+    assert not (target / 'state/studio/backup-inputs.json').exists()
     assert {p.relative_to(folder): p.read_bytes() for p in folder.rglob('*') if p.is_file()} == before
     restored = ReaderDraftStore(target).load()
     assert restored.document.text == 'Reading exact words.'
@@ -111,10 +124,11 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     assert record['plan_sha256'] == sha256(models.canonical(record['plan']).encode()).hexdigest()
 
 
+@pytest.mark.parametrize('version', [3, 4])
 @pytest.mark.parametrize('kind', ['reader-source', 'profile-identity', 'profile-secret', 'studio-project',
     'studio-format', 'studio-node', 'studio-control', 'assistant-plan', 'assistant-scope',
     'assistant-control', 'usage-status', 'usage-cost'])
-def test_resigned_tampering_is_rejected_before_destination(produced, tmp_path, kind):
+def test_resigned_tampering_is_rejected_before_destination(produced, tmp_path, kind, version):
     app, reader, profile, studio, job, assistant_job = produced
     folder = tmp_path / 'backup'
     create_backup(app, folder)
@@ -147,6 +161,12 @@ def test_resigned_tampering_is_rejected_before_destination(produced, tmp_path, k
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     entry = next(row for row in manifest['sidecars'] if row['filename'] == name)
     entry.update(sha256=sha256(raw).hexdigest(), size_bytes=len(raw))
+    if version == 3:
+        if manifest.pop('pending', None) is not None:
+            shutil.rmtree(folder / 'pending')
+        manifest['version'] = 3
+        manifest['state'] = [{**row, 'filename': row['filename'].removeprefix('state/')}
+                             for row in manifest.pop('sidecars')]
     with pytest.raises((ValueError, PermissionError)):
         restore_backup(folder, tmp_path / 'rejected', resign(folder, manifest))
     assert not (tmp_path / 'rejected').exists()

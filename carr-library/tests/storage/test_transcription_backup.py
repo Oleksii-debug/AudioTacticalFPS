@@ -264,7 +264,6 @@ def test_asr_paths_and_sizes_are_narrowly_bounded():
         with pytest.raises(ValueError):
             backup_sidecars.sidecar_limit(invalid)
 
-
 @pytest.mark.parametrize('worker', ['worker', 'worker-history/' + '1'*32 + '-' + '2'*32])
 @pytest.mark.parametrize('suffix', ['cache.json', 'receipt.json', 'json', 'txt'])
 @pytest.mark.parametrize('layout', ['', '33/', 'verified-v1/', 'verified-v1/33/'])

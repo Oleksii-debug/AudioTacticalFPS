@@ -12,6 +12,7 @@ from .ui.command_registry import MAX_COMMANDS, ShortcutError, _identifier, norma
 
 
 MAX_BYTES = 64 * 1024
+LEGACY_MAX_BYTES = 128 * 1024
 _UNOBSERVED = object()
 
 
@@ -57,7 +58,9 @@ def _file_state(info):
             info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _read(path):
+def _read(path, *, limit=MAX_BYTES):
+    if type(limit) is not int or not 0 < limit <= LEGACY_MAX_BYTES:
+        raise KeymapError('The keyboard read budget is invalid.')
     _check_path(path, regular=True)
     try:
         before = path.lstat()
@@ -68,15 +71,15 @@ def _read(path):
     with os.fdopen(descriptor, 'rb') as stream:
         metadata = os.fstat(stream.fileno())
         if (not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1
-                or metadata.st_size > MAX_BYTES):
-            raise KeymapError('The keyboard settings file is invalid or exceeds 64 KiB.')
+                or metadata.st_size > limit):
+            raise KeymapError(f'The keyboard settings file is invalid or exceeds {limit // 1024} KiB.')
         if _file_state(before) != _file_state(metadata):
             raise KeymapChangedError('Keyboard settings changed while opening them. Try again.')
-        raw = stream.read(MAX_BYTES + 1)
+        raw = stream.read(limit + 1)
         after = os.fstat(stream.fileno())
     _check_path(path, regular=True)
-    if len(raw) > MAX_BYTES:
-        raise KeymapError('The keyboard settings file exceeds 64 KiB.')
+    if len(raw) > limit:
+        raise KeymapError(f'The keyboard settings file exceeds {limit // 1024} KiB.')
     try:
         current = path.lstat()
     except FileNotFoundError as exc:
@@ -127,10 +130,80 @@ def validate_keymap(raw):
     return _decode(raw)
 
 
+def legacy_keymap_path(root):
+    """Locate, but never create or rewrite, the earlier per-library map."""
+    path = Path(root).absolute() / 'state' / 'ui' / 'shortcuts.json'
+    _check_path(path, regular=True)
+    return path
+
+
+def import_legacy_keymap(path, registry, actions):
+    """Return a review draft using only unambiguous installed native actions.
+
+    Earlier action paths are not current command IDs. The caller supplies an
+    exact current native-menu mapping; missing/ambiguous paths, changed original
+    shortcuts, protected keys and explicit conflicts reject the whole import.
+    Neither this function nor its reader writes either preferences file.
+    """
+    raw = _read(Path(path).absolute(), limit=LEGACY_MAX_BYTES)
+    if raw is None:
+        raise KeymapError('No earlier keyboard map was found for this library.')
+    try:
+        # Preserve the old schema's explicit BOM/UTF-16/UTF-32 read contract.
+        value = json.loads(raw, object_pairs_hook=_no_duplicates,
+            parse_constant=lambda _value: (_ for _ in ()).throw(
+                KeymapError('The earlier keyboard map contains a non-finite value.')))
+    except (UnicodeError, ValueError, RecursionError) as exc:
+        raise KeymapError('The earlier keyboard map is invalid; its original bytes were kept. ' + str(exc)) from exc
+    if (type(value) is not dict or set(value) != {'schema', 'overrides', 'originals'}
+            or type(value['schema']) is not int or value['schema'] != 1
+            or type(value['overrides']) is not dict or type(value['originals']) is not dict
+            or len(value['overrides']) > MAX_COMMANDS
+            or set(value['overrides']) != set(value['originals'])
+            or any(not isinstance(key, str) or not key or len(key) > 1024
+                   or any(ord(character) < 32 or ord(character) == 127
+                          or 0xD800 <= ord(character) <= 0xDFFF for character in key)
+                   for key in value['overrides'])):
+        raise KeymapError('The earlier keyboard map has an unsupported format; its original bytes were kept.')
+    proposed = {}
+    occupied = {}
+    for action, shortcut in value['overrides'].items():
+        candidates = actions.get(action, ())
+        if (not isinstance(candidates, (tuple, list)) or len(candidates) != 1
+                or candidates[0] is None):
+            raise KeymapError('This earlier command has no unambiguous installed identity: ' + action)
+        identity = candidates[0]
+        if identity in proposed:
+            raise KeymapError('Two earlier actions address the same installed command: ' + identity)
+        command = registry.get(identity)
+        if command.context != 'main':
+            raise KeymapError('An earlier main-window action cannot be reassigned to another context.')
+        original = normalize_shortcut(value['originals'][action])
+        if original != command.default_shortcut:
+            raise KeymapError('The original shortcut changed for this command; review it manually: ' + action)
+        normalized = normalize_shortcut(shortcut)
+        if normalized:
+            key = command.context, normalized
+            if key in occupied:
+                raise KeymapError('Two earlier explicit choices use the same shortcut: ' + normalized)
+            occupied[key] = command.command_id
+        proposed[command.command_id] = normalized
+    unassigned = []
+    for command in registry.commands():
+        if (command.command_id not in proposed and command.default_shortcut
+                and (command.context, command.default_shortcut) in occupied):
+            # A new default must not silently take an older explicit choice.
+            # This unassignment is visible in the review draft and is not saved.
+            proposed[command.command_id] = ''
+            unassigned.append(command.label)
+    return registry.validate(proposed), tuple(unassigned)
+
+
 class KeymapStore:
     def __init__(self, path):
         self.path = Path(path).absolute()
         self._observed = _UNOBSERVED
+        self.warning = ''
 
     def load(self):
         """Read without modifying any file; malformed settings remain intact.
@@ -161,6 +234,8 @@ class KeymapStore:
             raise KeymapError('The keyboard settings exceed 64 KiB.')
         temporary = self.path.with_name('.' + self.path.name + '-' + uuid4().hex + '.tmp')
         lock_path = self.path.with_name(self.path.name + '.lock')
+        committed = False
+        self.warning = ''
         try:
             _check_path(self.path, regular=True)
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -181,6 +256,7 @@ class KeymapStore:
                     raise KeymapChangedError('Keyboard settings changed before saving. '
                                              'Reload them before saving your changes.')
                 os.replace(temporary, self.path)
+                committed = True
                 self._observed = _digest(raw)
                 # Directory fsync is not supported by every Windows filesystem.
                 # The file itself was flushed before the atomic replacement.
@@ -198,5 +274,10 @@ class KeymapStore:
         except OSError as exc:
             raise KeymapError(f'Keyboard settings could not be saved: {exc}') from exc
         finally:
-            temporary.unlink(missing_ok=True)
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError as exc:
+                if not committed:
+                    raise
+                self.warning = 'Shortcuts were saved; temporary metadata cleanup is pending: ' + str(exc)
         return normalized

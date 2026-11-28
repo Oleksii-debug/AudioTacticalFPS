@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "version": 3,
+  "version": 5,
   "serialNumber": "urn:uuid:9dfca33e-a415-443a-b6be-61e7df1d2ba5",
   "metadata": {
-    "timestamp": "2026-11-26T22:19:05.622790Z",
+    "timestamp": "2026-11-26T17:54:24.006257631Z",
     "tools": [
       {
         "vendor": "Astral Software Inc.",
@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev2",
+      "bom-ref": "universal-research-library-runtime-1@0.3.0.dev1",
       "name": "universal-research-library-runtime",
-      "version": "0.2.0.dev2",
+      "version": "0.3.0.dev1",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -26,8 +26,16 @@
     },
     "properties": [
       {
-        "name": "carr:academic-additions",
-        "value": "bibtexparser 2.1.0, pylatexenc 2.11, quickjs-ng 0.18.0.2; verified Windows wheel hashes; prior uv inventory retained"
+        "name": "carr:reviewed-bibtex-addition",
+        "value": "bibtexparser 2.1.0 and pylatexenc 2.11; exact inspected wheel identities; 2026-11-27"
+      },
+      {
+        "name": "carr:source-version-reconciliation",
+        "value": "2026-11-27: application component identity matches pyproject.toml 0.3.0.dev1; existing pinned dependency identities retained."
+      },
+      {
+        "name": "carr:citation-runtime-adaptation",
+        "value": "citeproc-js sort-macro patch adffcfa3189ed21cbdb5272a74a8edbf817ac326; patch SHA256 eb383f9b2dcea13af17cb18582f664befbcbfaef02b07649f9188d4dfdf668ff; separate runtime_adapter receipt identity and SORT-MACRO-CACHE-NOTICE.txt; original processor/styles unchanged."
       }
     ]
   },
@@ -190,6 +198,32 @@
     },
     {
       "type": "library",
+      "bom-ref": "comtypes@1.5.0",
+      "name": "comtypes",
+      "version": "1.5.0",
+      "purl": "pkg:pypi/comtypes@1.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "carr-academic-bibtexparser@2.1.0",
       "name": "bibtexparser",
       "version": "2.1.0",
@@ -268,27 +302,72 @@
     },
     {
       "type": "library",
-      "bom-ref": "comtypes@1.5.0",
-      "name": "comtypes",
-      "version": "1.5.0",
-      "purl": "pkg:pypi/comtypes@1.5.0",
+      "bom-ref": "carr-ocr-py3langid@0.4.0",
+      "name": "py3langid",
+      "version": "0.4.0",
+      "purl": "pkg:pypi/py3langid@0.4.0",
       "licenses": [
         {
           "license": {
-            "id": "MIT"
+            "id": "BSD-3-Clause"
           }
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+          "content": "c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/adbar/py3langid/tree/3b99caf00d0dcbc9416a9d06f8e5b690e919a74e"
+        },
+        {
+          "type": "distribution",
+          "url": "https://pypi.org/project/py3langid/0.4.0/"
         }
       ],
       "properties": [
         {
-          "name": "uv:package:marker",
-          "value": "sys_platform == 'win32'"
+          "name": "carr:wheel",
+          "value": "py3langid-0.4.0-py3-none-any.whl; 4600605 bytes; verified without import in run46009967990"
+        },
+        {
+          "name": "carr:model-sha256",
+          "value": "f4f4a2c3465ca1f081541037f9cac23021d68151c2f709c55ae5eedfca522963"
+        },
+        {
+          "name": "carr:model-bytes",
+          "value": "4586720"
+        },
+        {
+          "name": "carr:upstream-model-git-blob",
+          "value": "2221d7ba925849f78981d97d610fec208a89ed97"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "carr-vendored-num2words-sk@0.5.14",
+      "name": "num2words (vendored Slovak runtime closure)",
+      "version": "0.5.14",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1-or-later"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/savoirfairelinux/num2words/tree/6abe2c64714a38e41de23fe20fa319d0ad2fd845"
+        }
+      ],
+      "properties": [
+        {
+          "name": "carr:scope",
+          "value": "Unmodified lang_SK.py/base.py/utils.py/compat.py/currency.py; full COPYING and per-file Git identities in reader/_vendor_num2words/UPSTREAM.json; local inert initializer. No upstream eager initializer, CLI or docopt dependency."
         }
       ]
     }
@@ -329,7 +408,7 @@
       "ref": "typing-extensions-10@4.16.0"
     },
     {
-      "ref": "universal-research-library-runtime-1@0.2.0.dev2",
+      "ref": "universal-research-library-runtime-1@0.3.0.dev1",
       "dependsOn": [
         "defusedxml-12@0.7.1",
         "filelock-2@3.29.0",
@@ -342,10 +421,12 @@
         "python-docx-9@1.2.0",
         "typing-extensions-10@4.16.0",
         "wxpython-11@4.2.4",
+        "comtypes@1.5.0",
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
         "carr-academic-quickjs-ng@0.18.0.2",
-        "comtypes@1.5.0"
+        "carr-ocr-py3langid@0.4.0",
+        "carr-vendored-num2words-sk@0.5.14"
       ]
     },
     {
@@ -353,6 +434,9 @@
       "dependsOn": [
         "numpy-4@2.4.6"
       ]
+    },
+    {
+      "ref": "comtypes@1.5.0"
     },
     {
       "ref": "carr-academic-bibtexparser@2.1.0",
@@ -367,8 +451,13 @@
       "ref": "carr-academic-quickjs-ng@0.18.0.2"
     },
     {
-      "ref": "comtypes@1.5.0",
-      "dependsOn": []
+      "ref": "carr-ocr-py3langid@0.4.0",
+      "dependsOn": [
+        "numpy-4@2.4.6"
+      ]
+    },
+    {
+      "ref": "carr-vendored-num2words-sk@0.5.14"
     }
   ]
 }

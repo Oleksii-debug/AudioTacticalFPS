@@ -6,7 +6,7 @@ another library or topic, and exports never trust the displayed matrix cache.
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..research.export_file import write_export
+from ..research.export_file import write_export, export_completion
 from .export_destination import confirm_export_destination
 from ..research.topic_literature_matrix import build_literature_matrix, export_matrix
 from ..research.outline_export import export_topic_outline as export_outline
@@ -195,12 +195,17 @@ class AcademicActions:
         if destination is None:
             self.frame.report('Export cancelled. No file was written.')
             return
+        self._require_current(scope)
         approval = confirm_export_destination(self.frame, destination, private_root=scope.library.root)
         if approval is None:
             self.frame.report('Export cancelled. No file was written.')
             return
         self._require_current(scope)
         exporter = export_outline if kind == 'outline' else export_matrix
+
+        def export_cancelled():
+            self._require_current(scope)
+            return self.frame.cancel_event.is_set()
 
         def save():
             self._require_current(scope)
@@ -210,13 +215,12 @@ class AcademicActions:
             if self.frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled. No file was written.')
             self._require_current(scope)
-            write_export(destination, text, private_root=scope.library.root,
-                         cancelled=self.frame.cancel_event.is_set, approval=approval)
-            return destination
+            return write_export(destination, text, private_root=scope.library.root,
+                                cancelled=export_cancelled, approval=approval)
 
-        def done(path):
+        def done(receipt):
             if self._current(scope):
-                self.frame.report(f'Export saved: {path}')
+                self.frame.report(export_completion(f'Export saved: {receipt.path}', receipt))
 
         self.frame.run_job('Exporting research outline' if kind == 'outline' else 'Exporting source comparison', save, done)
 
@@ -260,11 +264,17 @@ def install_academic_actions(frame):
     import wx
     from .bibliography_import import open_bibliography_import
     from .catalog_quality import open_catalog_quality
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
 
     actions = AcademicActions(frame)
     academic_index = frame.menu_bar.FindMenu('Academic')
     menu = (frame.menu_bar.GetMenu(academic_index)
             if academic_index >= 0 else wx.Menu())
+    # Preserve existing menus and their handlers, including post-merge fixes.
+    if academic_index < 0:
+        help_index = frame.menu_bar.FindMenu('Help')
+        frame.menu_bar.Insert(help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(), menu, '&Academic')
     commands = (
         ('Compare sources in active topic\tCtrl+Alt+M', actions.compare_sources),
         ('Export research outline with subtopics', actions.outline),
@@ -272,12 +282,12 @@ def install_academic_actions(frame):
         ('Check catalog quality', lambda event: open_catalog_quality(frame,
             edit_edition=lambda workspace, edition: edit_catalog_edition(frame, workspace, edition))),
     )
-    for title, handler in commands:
+    identities = ('academic.compare_sources', 'academic.export_outline',
+                  'academic.import_ris', 'academic.catalog_quality')
+    for identity, (title, handler) in zip(identities, commands):
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
-    # Preserve existing menus and their handlers, including post-merge fixes.
-    if academic_index < 0:
-        help_index = frame.menu_bar.FindMenu('Help')
-        frame.menu_bar.Insert(help_index if help_index >= 0 else frame.menu_bar.GetMenuCount(), menu, '&Academic')
+        label, _, shortcut = title.partition('\t')
+        register_menu_command(frame, CommandSpec(identity, label.replace('&', ''), 'main', shortcut), item)
     frame.academic_actions = actions
     return actions

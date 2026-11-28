@@ -6,12 +6,16 @@ only, so this suite does not claim speech synthesis on a non-Windows host.
 """
 import hashlib
 import importlib.util
+import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 from types import SimpleNamespace
 
 import pytest
 
+from carr_library.academic_integration import doi
 from carr_library.speech import reading, runtime
 
 
@@ -54,6 +58,19 @@ def test_regex_pronunciation_child_preserves_runtime(sealed_runtime, monkeypatch
     verify()
 
 
+def test_doi_metadata_child_preserves_runtime_without_network(sealed_runtime, monkeypatch):
+    _root, worker, verify = sealed_runtime
+    original = Path(doi.__file__).resolve()
+    probe = worker("doi_worker.py", "import runpy\nrunpy.run_path(" + repr(str(original))
+                   + ", run_name='__main__')\n")
+    monkeypatch.setattr(doi, "__file__", str(probe))
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
+    completed = subprocess.run(doi._worker_argv(), input=b"{}", capture_output=True,
+                               check=True, timeout=10, env=dict(os.environ))
+    assert json.loads(completed.stdout) == {"error": "connection"}
+    verify()
+
+
 def test_native_sapi_child_preserves_runtime(sealed_runtime, monkeypatch):
     root, worker, verify = sealed_runtime
     worker("sapi_native_worker.py", """import json, struct
@@ -76,3 +93,4 @@ pathlib.Path(sys.argv[2]).write_text(json.dumps({
     assert reply["status"] == "listed" and reply["voices"] == []
     assert reply["dont_write_bytecode"] is True
     verify()
+

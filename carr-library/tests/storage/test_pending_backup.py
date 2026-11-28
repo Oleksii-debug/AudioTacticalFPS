@@ -62,11 +62,16 @@ def _partial(app, tmp_path):
     metadata = _metadata()
     planned = snapshot(source.parent, source.name).manifest()
     request = prepare_request(app.root, workspace, source, metadata, Config(), expected_manifest=planned)
-    calls = 0
     def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Observe the real committed checkpoint, independent of how many source
+        # or resource cancellation checks run before the first extraction.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as db:
+            return db.execute('SELECT count(*) FROM checkpoint c JOIN job j ON j.id=c.job '
+                              'WHERE j.workspace=? AND j.edition=?',
+                              (workspace, metadata['edition_id'])).fetchone()[0] >= 1
     result = app._import_file(workspace, source, **metadata, cancelled=cancelled,
                               _request_id=request['request_id'], _expected_manifest=planned)
     assert result['state'] == 'cancelled' and result['completed'] == 1
@@ -239,61 +244,6 @@ def test_empty_pending_component_and_no_unreferenced_retained_bytes(app, tmp_pat
     assert list(restored.assets_dir.iterdir()) == []
 
 
-@pytest.mark.parametrize('change', ['source', 'result', 'missing-source'])
-def test_completed_docx_request_cannot_rebind_its_published_source(app, tmp_path, change):
-    """A complete receipt must refer to the same original as its saved request."""
-    from docx import Document
-    from carr_library.ingest import worker
-    from carr_library.library_backup import create_backup, restore_backup
-
-    workspace = app.create_workspace('Complete request source binding')
-    original = tmp_path / 'published.docx'
-    document = Document()
-    document.add_paragraph('Original authorized publication.')
-    document.save(original)
-    completed = app.import_file(workspace, original)
-    assert completed['state'] == 'complete'
-    request = load_request(app.root, completed['request_id'])
-    assert 'job' not in request and 'expected_manifest' not in request
-    original_digest = request['asset_sha256']
-    retained = app.assets.resolve(original_digest)
-    original_bytes = retained.read_bytes()
-    # Old completed DOCX requests legitimately have neither a planned manifest
-    # nor a journal job. Preserve their exact source and cached receipt.
-    valid_backup = tmp_path / 'valid-backup'
-    checksum = create_backup(app, valid_backup)
-    restored = LibraryApp(restore_backup(valid_backup, tmp_path / 'valid-restore', checksum))
-    restored_request = load_request(restored.root, request['request_id'])
-    assert Path(restored_request['source']).read_bytes() == original_bytes
-    assert restored.resume_import(workspace, request['request_id']) == completed
-
-    replacement = tmp_path / 'different.docx'
-    document = Document()
-    document.add_paragraph('Different source must not back the completed publication.')
-    document.save(replacement)
-    changed_bytes = replacement.read_bytes()
-    other_digest = sha256(changed_bytes).hexdigest()
-    assert other_digest != original_digest
-    app.assets.retain(changed_bytes,
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', other_digest)
-    if change == 'source':
-        request['asset_sha256'] = other_digest
-    elif change == 'result':
-        request['result']['asset'] = other_digest
-    else:
-        del request['asset_sha256']
-    worker._store(app.root, request['request_id'], request)
-
-    destination = tmp_path / 'invalid-backup'
-    with pytest.raises(ValueError, match='source|publication'):
-        create_backup(app, destination)
-    assert not destination.exists()
-    assert retained.read_bytes() == original_bytes
-    with app.read(workspace) as db:
-        assert db.execute('SELECT asset FROM revision WHERE id=?',
-                          (completed['id'],)).fetchone()[0] == original_digest
-
-
 @pytest.mark.parametrize('kind', ['schema', 'checkpoint_hash', 'checkpoint_locator', 'checkpoint_text', 'job_identity', 'workspace', 'fake_complete'])
 def test_journal_tampering_rejected_before_restore_publication(app, tmp_path, kind):
     workspace, source, request, result = _partial(app, tmp_path)
@@ -418,7 +368,8 @@ def test_journal_online_backup_includes_committed_wal(app, tmp_path):
         assert journal.execute('SELECT error FROM job').fetchone()[0] == 'committed_wal_evidence'
 
 
-@pytest.mark.skipif(shutil.which('tesseract') is None, reason='Actual local OCR engine required')
+@pytest.mark.skipif(shutil.which('tesseract') is None and not os.environ.get('CARR_OCR_DIR'),
+                    reason='Actual local OCR engine required')
 def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp_path):
     from PIL import Image, ImageDraw, ImageFont
     from reportlab.lib.utils import ImageReader
@@ -448,3 +399,128 @@ def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp
     assert final['state'] == 'complete' and final['id'] == pending['id']
     hit, = restored.search(workspace, 'Railway')
     assert hit.verified
+
+
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_pending_inventory_lookup_errors_are_not_absence(tmp_path, monkeypatch, failure):
+    from carr_library.pending_backup import _inventory, pending_roots
+    root = tmp_path / 'library'
+    root.mkdir()
+    (root / 'imports.sqlite').touch()
+    denied = root / 'import-requests'
+    denied.mkdir()
+    original = Path.lstat
+
+    def probe(path, *args, **kwargs):
+        if path == denied:
+            raise failure('pending root lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == denied else lexists(path))
+    monkeypatch.setattr(Path, 'lstat', probe)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        _inventory(root)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        pending_roots(root)
+
+
+def test_pending_restore_rejects_unreadable_unlisted_subtree(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    blocked = backup / 'pending' / 'import-requests'
+    blocked.mkdir()
+    (blocked / ('a' * 32 + '.json')).write_bytes(b'unlisted')
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    shutil.copyfile(backup / 'library.sqlite', stage / 'library.sqlite')
+    scandir = os.scandir
+
+    def denied(path):
+        if not isinstance(path, int) and Path(path) == blocked:
+            raise PermissionError('pending subtree unreadable')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='pending subtree unreadable'):
+        restore_pending(backup / 'pending', stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+    assert not (tmp_path / 'restored').exists()
+
+
+def test_pending_restore_rejects_unlisted_file_before_descending(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    source = backup / 'pending'
+    (source / 'imports.sqlite').write_bytes(b'unlisted')
+    later = source / 'import-requests'
+    later.mkdir()
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    scandir = os.scandir
+
+    def observe(path):
+        if not isinstance(path, int) and Path(path) == later:
+            raise AssertionError('unlisted file must reject before descending')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', observe)
+    with pytest.raises(ValueError, match='missing or unlisted'):
+        restore_pending(source, stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+
+
+@pytest.mark.parametrize('change', ['source', 'result', 'missing-source'])
+def test_completed_docx_request_cannot_rebind_its_published_source(app, tmp_path, change):
+    """A complete receipt must refer to the same original as its saved request."""
+    from docx import Document
+    from carr_library.ingest import worker
+    from carr_library.library_backup import create_backup, restore_backup
+
+    workspace = app.create_workspace('Complete request source binding')
+    original = tmp_path / 'published.docx'
+    document = Document()
+    document.add_paragraph('Original authorized publication.')
+    document.save(original)
+    completed = app.import_file(workspace, original)
+    assert completed['state'] == 'complete'
+    request = load_request(app.root, completed['request_id'])
+    assert 'job' not in request and 'expected_manifest' not in request
+    original_digest = request['asset_sha256']
+    retained = app.assets.resolve(original_digest)
+    original_bytes = retained.read_bytes()
+    # Old completed DOCX requests legitimately have neither a planned manifest
+    # nor a journal job. Preserve their exact source and cached receipt.
+    valid_backup = tmp_path / 'valid-backup'
+    checksum = create_backup(app, valid_backup)
+    restored = LibraryApp(restore_backup(valid_backup, tmp_path / 'valid-restore', checksum))
+    restored_request = load_request(restored.root, request['request_id'])
+    assert Path(restored_request['source']).read_bytes() == original_bytes
+    assert restored.resume_import(workspace, request['request_id']) == completed
+
+    replacement = tmp_path / 'different.docx'
+    document = Document()
+    document.add_paragraph('Different source must not back the completed publication.')
+    document.save(replacement)
+    changed_bytes = replacement.read_bytes()
+    other_digest = sha256(changed_bytes).hexdigest()
+    assert other_digest != original_digest
+    app.assets.retain(changed_bytes,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', other_digest)
+    if change == 'source':
+        request['asset_sha256'] = other_digest
+    elif change == 'result':
+        request['result']['asset'] = other_digest
+    else:
+        del request['asset_sha256']
+    worker._store(app.root, request['request_id'], request)
+
+    destination = tmp_path / 'invalid-backup'
+    with pytest.raises(ValueError, match='source|publication'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert retained.read_bytes() == original_bytes
+    with app.read(workspace) as db:
+        assert db.execute('SELECT asset FROM revision WHERE id=?',
+                          (completed['id'],)).fetchone()[0] == original_digest
+
+

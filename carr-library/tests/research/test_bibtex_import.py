@@ -71,20 +71,30 @@ def test_protected_punctuation_inside_person_name_is_not_reinterpreted_as_suffix
     ('Doe, Jr., {}', '{Doe, Jr.,}'),
     ('Doe, {}', '{Doe,}'),
 ])
-def test_incomplete_comma_names_preserve_identity_instead_of_shifting_fields(name, expected):
+def test_incomplete_comma_names_preserve_identity_instead_of_shifting_fields(name, expected, tmp_path):
     import json
-    from carr_library.citations.bibliography_workbench import records_for_style
+    from carr_library.application import LibraryApp
+    from carr_library.ui.academic_library_dialog import AcademicController
 
     original = '@book{x,title={Test},author={' + name + '}}'
     values, warnings = one(original)
     assert values['authors'] == (expected,)
     assert original in values['notes']
     assert any('Incomplete comma-separated person name' in warning for warning in warnings)
-    # The explicit personal-name mode must continue treating the preserved
-    # incomplete name as literal, rather than assigning John/Jr. new roles.
-    snapshot = json.dumps([{'id': 'x', 'type': 'book', 'title': 'Test',
-                           'author': [{'literal': expected}]}])
-    records, _ = records_for_style(snapshot, name_mode='family-given')
+    # Reuse the canonical library's literal-name contract through actual
+    # review, import, reopen and CSL export. No extra formatting engine or
+    # personal-name inference is introduced by the BibTeX adapter.
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('BibTeX name review')
+    controller = AcademicController(app, workspace)
+    preview = controller.preview(original.encode('utf-8'), 'bibtex')
+    assert controller.list() == ()
+    imported = controller.import_selected(preview, (0,))
+    reopened = AcademicController(LibraryApp(app.root), workspace)
+    row = reopened.get(imported.imported_ids[0])
+    assert row.authors == (expected[1:-1],)
+    assert original in row.notes
+    records = json.loads(reopened.export(identity=row.id, format='csl-json'))
     assert records[0]['author'] == [{'literal': expected[1:-1]}]
 
 
@@ -101,6 +111,36 @@ def test_complete_comma_and_corporate_names_keep_distinct_semantics():
     assert values['authors'] == ('Doe, Jane', 'Doe, John, Jr.', '{Research, Inc.}',
                                 '{Research, Inc., Alice}')
     assert not any('Incomplete comma-separated' in warning for warning in warnings)
+
+
+@pytest.mark.parametrize(('author', 'expected'), [
+    (r'\{Research Group\}', '{Research Group}'),
+    (r'{\{Research Group\}}', '{Research Group}'),
+    ('{Research Group}', 'Research Group'),
+    (r'Doe, \{Jane\}', 'Doe, {Jane}'),
+    ('{Research, Inc.}', 'Research, Inc.'),
+    (r'{\{Research, Inc.\}}', '{Research, Inc.}'),
+    ('Doe, {John, A.}', 'Doe, John, A.'),
+    (', Jr., John', ', Jr., John'),
+])
+def test_canonical_literal_import_preserves_real_braces_without_guessing_markers(tmp_path, author, expected):
+    import json
+    from carr_library.application import LibraryApp
+    from carr_library.ui.academic_library_dialog import AcademicController
+
+    source = '@book{x,title={Literal name},author={' + author + '}}'
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Literal names')
+    controller = AcademicController(app, workspace)
+    preview = controller.preview(source.encode('utf-8'), 'bibtex')
+    assert preview.entries[0].authors == (expected,)
+    imported = controller.import_selected(preview, (0,))
+    reopened = AcademicController(LibraryApp(app.root), workspace)
+    row = reopened.get(imported.imported_ids[0])
+    assert row.authors == (expected,)
+    assert source in row.notes
+    assert json.loads(reopened.export(identity=row.id, format='csl-json'))[0]['author'] == [
+        {'literal': expected}]
 
 
 @pytest.mark.parametrize('name', ['Doe,', 'Doe, Jr.,', ',,'])
@@ -253,6 +293,59 @@ def test_macro_chain_depth_is_bounded():
     strings.append(f'@string{{s{bib.MAX_MACRO_DEPTH + 1}={{end}}}}')
     with pytest.raises(ValueError, match='nested'):
         bib.parse_bibtex('\n'.join(strings) + '\n@book{x,title=s0}')
+
+
+def _dependency_order(rows, order):
+    if order == 'child-first':
+        return list(reversed(rows))
+    if order == 'interleaved':
+        return rows[::2] + rows[1::2]
+    return rows
+
+
+@pytest.mark.parametrize('order', ['parent-first', 'child-first', 'interleaved'])
+@pytest.mark.parametrize('over_limit', [False, True])
+@pytest.mark.parametrize(('leaf', 'expected'), [('{Synthetic leaf}', 'Synthetic leaf'), ('jan', 'January')])
+def test_macro_depth_boundary_is_independent_of_definition_order(order, over_limit, leaf, expected):
+    depth = bib.MAX_MACRO_DEPTH + int(over_limit)
+    strings = ['@string{s0=' + leaf + '}']
+    strings.extend(f'@string{{s{i}=s{i-1}}}' for i in range(1, depth))
+    source = '\n'.join(_dependency_order(strings, order))
+    source += f'\n@book{{x,title=s{depth - 1}}}'
+    if over_limit:
+        with pytest.raises(ValueError, match='nested BibTeX string'):
+            bib.parse_bibtex(source)
+    else:
+        values, _ = one(source)
+        assert values['title'] == expected
+
+
+@pytest.mark.parametrize('order', ['parent-first', 'child-first', 'interleaved'])
+@pytest.mark.parametrize('over_limit', [False, True])
+def test_crossref_depth_boundary_is_independent_of_entry_order(order, over_limit):
+    depth = bib.MAX_CROSSREF_DEPTH + int(over_limit)
+    entries = ['@book{p0,title={Synthetic parent 0},year=2026}']
+    entries.extend('@inbook{p%d,title={Synthetic parent %d},crossref={p%d}}' % (i, i, i - 1)
+                   for i in range(1, depth))
+    source = '\n'.join(_dependency_order(entries, order))
+    if over_limit:
+        with pytest.raises(ValueError, match='nested BibTeX cross-reference'):
+            bib.parse_bibtex(source)
+    else:
+        rows = bib.parse_bibtex(source)
+        assert len(rows) == depth
+        assert {values['title'] for values, _ in rows} == {
+            f'Synthetic parent {index}' for index in range(depth)}
+        assert all(values['year'] == '2026' for values, _ in rows)
+
+
+def test_macro_depth_counts_the_longest_chain_not_sibling_dependencies(monkeypatch):
+    monkeypatch.setattr(bib, 'MAX_MACRO_DEPTH', 2)
+    strings = [f'@string{{s{i}={{Word{i}}}}}' for i in range(20)]
+    strings.append('@string{joined=' + ' # { } # '.join(f's{i}' for i in range(20)) + '}')
+    source = '\n'.join(strings) + '\n@book{x,title=joined}'
+    values, _ = one(source)
+    assert values['title'] == ' '.join(f'Word{i}' for i in range(20))
 
 
 def test_deeply_nested_input_is_rejected_before_upstream_parser(monkeypatch):

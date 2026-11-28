@@ -16,7 +16,8 @@ from .state import atomic_json, read_json, regular
 
 CAPABILITIES = ('llm.chat', 'speech.synthesize', 'music.compose', 'sfx.generate',
                 'translation.text', 'translation.languages')
-ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2', 'google-translation-v3')
+ADAPTERS = ('openai-compatible', 'elevenlabs', 'google-translation-v2', 'google-translation-v3',
+            'libretranslate-local')
 
 
 def google_v3_parent(address):
@@ -161,6 +162,11 @@ class ProviderProfile:
             google_v3_parent(self.endpoint)
             if self.local or self.model != 'general/nmt' or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities):
                 raise ValueError('Advanced v3 uses an explicit remote NMT model (general/nmt) and an IAM/ADC OAuth token.')
+        if self.adapter == 'libretranslate-local':
+            if (not self.local or target.path not in ('', '/') or self.credential_ref is not None
+                    or self.voice is not None
+                    or any(c not in ('translation.text', 'translation.languages') for c in self.capabilities)):
+                raise ValueError('Local LibreTranslate requires an explicit loopback base URL, no credential, and translation-only capabilities.')
         if self.credential_ref is not None:
             validate_reference(self.credential_ref, self.id)
         if self.voice is not None:

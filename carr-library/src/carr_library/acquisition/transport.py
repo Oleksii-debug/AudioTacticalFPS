@@ -29,6 +29,8 @@ PROVIDER_HOSTS = {
     'crossref': 'api.crossref.org',
     'unpaywall': 'api.unpaywall.org',
     'europe_pmc': 'www.ebi.ac.uk',
+    'openalex': 'api.openalex.org',
+    'openlibrary': 'openlibrary.org',
 }
 MAX_JSON_BYTES = 2 * 1024 * 1024
 MAX_DOWNLOAD_BYTES = 64 * 1024 * 1024
@@ -214,12 +216,18 @@ class SafeTransport:
         return self._transfer(url, fileobj, cancelled=cancelled, metadata=False)
 
     def _transfer(self, url, output, *, cancelled, metadata):
+        initial_host, _ = validate_https_url(url, self.consent.approved_hosts)
+        # Selection of several providers does not authorize one provider to
+        # redirect its contact details to another. Narrow each metadata request
+        # without mutating the reusable consent or its cumulative budgets.
+        request_hosts = (initial_host,) if metadata else self.consent.approved_hosts
         if self.isolated:
-            return self._isolated_transfer(url, output, cancelled=cancelled, metadata=metadata)
+            return self._isolated_transfer(url, output, cancelled=cancelled, metadata=metadata,
+                                           approved_hosts=request_hosts)
         redirects, retries = 0, 0
         while True:
             self._check(cancelled)
-            host, _ = validate_https_url(url, self.consent.approved_hosts)
+            host, _ = validate_https_url(url, request_hosts)
             if self.requests >= 12:
                 raise AcquisitionNetworkError('The approved operation reached its request budget.')
             addresses = _public_addresses(host, self.resolver)
@@ -237,7 +245,7 @@ class SafeTransport:
                         if not isinstance(location, str) or len(location) > 8192:
                             raise AcquisitionNetworkError('The source returned an invalid redirect.')
                         candidate = urljoin(url, location)
-                        validate_https_url(candidate, self.consent.approved_hosts)
+                        validate_https_url(candidate, request_hosts)
                         url = candidate
                         redirects += 1
                         continue
@@ -300,17 +308,17 @@ class SafeTransport:
             except (OSError, http.client.HTTPException, UnicodeError):
                 raise AcquisitionNetworkError('The secure transfer failed. No automatic alternate source was contacted.') from None
 
-    def _isolated_transfer(self, url, output, *, cancelled, metadata):
+    def _isolated_transfer(self, url, output, *, cancelled, metadata, approved_hosts):
         """Parent-enforced deadline also bounds DNS, TLS and a trickling body."""
         self._check(cancelled)
         if self.requests >= 12:
             raise AcquisitionNetworkError('The approved operation reached its request budget.')
-        validate_https_url(url, self.consent.approved_hosts)
+        validate_https_url(url, approved_hosts)
         worker = Path(__file__).with_name('network_worker.py')
         with TemporaryDirectory(prefix='carr-public-acquisition-') as temporary:
             payload_file = Path(temporary) / 'response.bin'
             request = json.dumps(dict(url=url, metadata=metadata,
-                approved_hosts=self.consent.approved_hosts,
+                approved_hosts=approved_hosts,
                 max_bytes=self.consent.max_bytes,
                 spent_requests=self.requests,
                 timeout=min(120.0, self.deadline - self.clock()),
@@ -358,7 +366,7 @@ class SafeTransport:
                 info = result.get('info', {})
                 if not isinstance(info, dict):
                     raise AcquisitionNetworkError('The isolated transfer returned an invalid manifest.')
-                validate_https_url(info.get('url'), self.consent.approved_hosts)
+                validate_https_url(info.get('url'), approved_hosts)
                 file_info = payload_file.lstat()
                 if (not stat.S_ISREG(file_info.st_mode) or file_info.st_nlink != 1
                         or getattr(file_info, 'st_file_attributes', 0) & 0x400

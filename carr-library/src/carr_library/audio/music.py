@@ -20,6 +20,7 @@ import tempfile
 from .models import (AudioCancelled, AudioError, AudioUnavailable, LocalModelConfig,
                      MusicSpec, finite, integer)
 from .process import publish_file, run_process
+from .cleanup import retained_temporary_directory
 from ..durable_state import local_path, regular
 
 
@@ -231,7 +232,7 @@ def _fluidsynth(runtime, spec, output, *, sample_rate, channels, cancelled, prog
         raise AudioError('The configured SoundFont changed; review the installation again.')
     target = runtime._output(output)
     runtime._space(spec.duration, sample_rate, channels, 16, target.parent)
-    with tempfile.TemporaryDirectory(prefix='.midi-render-', dir=target.parent) as temporary:
+    with retained_temporary_directory(prefix='.midi-render-', dir=target.parent) as temporary:
         midi, pcm = Path(temporary) / 'score.mid', Path(temporary) / 'score.wav'
         _write_midi(midi, spec, cancelled=cancelled, max_bytes=runtime.budget.max_output_bytes)
         # -i/-n disable interactive commands and MIDI input; -F is fast file
@@ -486,7 +487,7 @@ def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress
     if spec.duration > config.max_chunk_seconds:
         raise ValueError('This request exceeds the configured neural chunk allowance. Schedule multiple resumable scenes; do not request an unlimited single inference.')
     target = runtime._output(output)
-    with tempfile.TemporaryDirectory(prefix='.music-worker-', dir=target.parent) as temporary:
+    with retained_temporary_directory(prefix='.music-worker-', dir=target.parent) as temporary:
         stage = Path(temporary)
         pcm = stage / 'generated.wav'
         job = {'engine': spec.engine, 'directory': str(config.directory.resolve()),

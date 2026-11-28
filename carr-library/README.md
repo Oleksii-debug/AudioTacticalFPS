@@ -48,8 +48,12 @@ instructions.
   are excluded from bibliography exports unless explicitly requested.
 - Create, rename, describe, archive and reopen independent libraries; organize
   books into multiple collections without duplicating original bytes.
-- Import UTF-8 TXT, PDF, DOCX and text-based EPUB. Retain originals, publish catalog/revision
-  changes atomically, isolate native parsers and resume interrupted imports.
+- Import UTF-8 TXT, PDF, supported static images, DOCX and text-based EPUB. Retain
+  originals, publish catalog/revision changes atomically, isolate native parsers
+  and resume interrupted imports. [Import Center](docs/IMPORT_CENTER.md) exposes
+  bounded folder pages, saved continuations and explicit streaming resource
+  profiles; [automatic OCR](docs/AUTOMATIC_OCR_UK.md) keeps language selection and
+  independent text review separate.
 - Read EPUB books by their declared section order, with keyboard chapter
   selection, previous/next navigation and separate authored image descriptions.
 - Navigate embedded EPUB contents and headings, find exact text within a chapter,
@@ -58,6 +62,8 @@ instructions.
 - Search exact words, phrases or all terms; filter by collection, author, title,
   language and edition. Local thematic BM25 and multilingual MiniLM rank exact
   source slices. Catalog and source lookups share one authorized snapshot.
+  [Search paging](docs/SEARCH_PAGING_AND_RESOURCES.md) covers the complete selected
+  scope through bounded result/source windows and one current cursor owner.
 - Open source context and copy verified quotations and citations. Original text,
   physical PDF pages and unpaginated segments remain distinct. Printed page
   labels require their own independent approval.
@@ -72,8 +78,17 @@ instructions.
   and hear exact location information through native text controls. See
   [the reading desk guide](docs/READING_DESK.md).
 - Export Markdown, text, RIS, BibTeX and CSV with notes separate from quotations.
-  Back up completed libraries with original files and checksums; restore into a
-  new folder without overwriting the existing library.
+  Back up libraries, their declared pending work and retained inputs with exact
+  checksums. Full and explicit-chain incremental copies use the same verified
+  snapshot and restore service; restore publishes into a new folder.
+  See [backup resource controls and recovery](docs/BACKUP_RESOURCES_AND_RECOVERY.md).
+- Use [explicit local translation](docs/LOCAL_TRANSLATION_UK.md) through a selected
+  LibreTranslate-compatible loopback server, or the existing official Google
+  provider routes. Saved derivatives preserve original source identity, current
+  approvals and the provider ledger; completed text remains available offline.
+- Save and review a [playback queue](docs/PLAYBACK_QUEUE.md) in Audio Studio. It
+  reuses the current player and retained audio inputs; reopening or restoring a
+  queue does not start playback.
 - Review RIS or CSL-JSON reference metadata before applying selected fields to
   an existing book. Export a whole library or collection bibliography in
   CSL-JSON, RIS or BibTeX, and export a complete research topic branch with its
@@ -82,6 +97,29 @@ instructions.
   matrix with exact quotations and separate notes through **Library tools**.
   Its bibliography exports use the same catalog service as the Bibliography
   menu. See [catalog tools](docs/CATALOG_TOOLS.md).
+
+- Review [English, Ukrainian and Slovak speech preparation](docs/SPEECH_PREPARATION.md)
+  before applying it to a reading copy or Studio text. Original text and the
+  exact derived mapping remain available; the accepted proposal is one Undo/Redo
+  operation and uses the existing save and recovery routes.
+- Repeat an explicit source-text A–B range and set or cancel a sleep interval
+  in [live reading](docs/LIVE_READING.md), using the current reader and player.
+- Use [native Word citation controls](docs/WORD_DESKTOP_INTEGRATION.md) with the
+  existing CSL format and source-bound references. The optional local Word
+  connection works on a new copy and keeps document Save and Undo explicit.
+- Preview conflicts between two verified backups and
+  [merge their published research content](docs/RESEARCH_CONTENT_MERGE.md)
+  into a fresh destination, with whole-workspace choices and explicit
+  acknowledgement of the operational state this selective profile omits.
+- Inspect [long silent intervals](docs/AUDIO_SILENCE_INSPECTION.md) in a current
+  completed Studio production. The read-only report is shown in the existing
+  status field and does not alter the audio.
+- Export [standard chapter CUE sheets](docs/AUDIO_EDITOR_INTERCHANGE.md) beside
+  the measured WAV master, with explicit frame rounding and retained timeline
+  and source bindings.
+- Read actual installed [component notices in Help/About](docs/ABOUT_COMPONENT_NOTICES.md)
+  and preview a bounded [redacted diagnostic report](docs/REDACTED_DIAGNOSTICS.md)
+  before explicitly saving it to a new local file.
 
 TXT quotation text is independently checked against retained original bytes.
 PDF extraction and OCR require explicit independent review before being treated
@@ -92,12 +130,19 @@ score never approves a quotation.
 
 ## Candidate status and verification
 
-This is an integrated development candidate. The assembled services and installed
-Python package have real end-to-end tests, including offline local model
-inference, citation preservation, workspace isolation and backup recovery.
-The native Windows workflow also exercises installation, desktop controls, local
-model inference and scanned-source review. Manual NVDA acceptance remains a
-separate check; automated native UI tests do not establish its spoken behavior.
+This is an integrated development candidate. Required source and installed-package
+checks, actual Windows controls, offline execution and large-library tiers qualify
+the exact composed commit. See [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143)
+and [release readiness](docs/V3_RELEASE_READINESS.md) for the current result and
+retained evidence. Completed component runs apply to their own recorded commits;
+they do not predeclare the final composition's result.
+
+Manual NVDA acceptance, physical audio output and private model packages have
+separate acceptance evidence. Word desktop automation is optional and reports
+an explicit zero-check NOT_RUN result when Office is unavailable; CARR's native
+citation controls remain required. The current UI uses English; the
+[Ukrainian and Slovak localization plan](docs/UI_LOCALIZATION_PLAN.md) describes
+the remaining catalogue and acceptance work.
 
 The Windows bundle's hashes and dependency inventory are verified during
 assembly. Only local synthetic or lawfully supplied fixtures may be used in

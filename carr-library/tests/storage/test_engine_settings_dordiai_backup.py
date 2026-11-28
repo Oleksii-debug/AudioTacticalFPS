@@ -8,7 +8,13 @@ import pytest
 from carr_library import backup_sidecars, runtime_settings
 from carr_library.application import LibraryApp
 from carr_library.library_backup import create_backup, restore_backup
-from test_engine_settings_backup import NAME, configuration, resign, snapshot_files, write_settings
+from pathlib import Path
+import runpy
+
+
+_fixture = runpy.run_path(str(Path(__file__).with_name('test_engine_settings_backup.py')))
+NAME, configuration, resign, snapshot_files, write_settings = (
+    _fixture[name] for name in ('NAME', 'configuration', 'resign', 'snapshot_files', 'write_settings'))
 
 
 MISSING = object()

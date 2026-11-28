@@ -1,20 +1,52 @@
 """Real native cross-process resource coordination; no model or device inference."""
 from dataclasses import replace
+import importlib.util
 import json
 import multiprocessing
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import threading
 import time
 from types import SimpleNamespace
 
+# A real file entrypoint gives spawn an importable __main__, even when pytest
+# itself runs through isolated stdin and collects tests with importlib. Bind
+# only the package already imported by the parent; never add checkout/src or
+# alter sys.path to make an installed-package check pass.
+if __name__ in ('__main__', '__mp_main__'):
+    if len(sys.argv) != 6 or sys.argv[1] != '--resource-process-scenario':
+        raise SystemExit('Use the explicit resource process fixture entrypoint.')
+    package_file = Path(sys.argv[4]).resolve(strict=True)
+    package_spec = importlib.util.spec_from_file_location('carr_library', package_file,
+        submodule_search_locations=[str(package_file.parent)])
+    package = importlib.util.module_from_spec(package_spec)
+    sys.modules['carr_library'] = package
+    package_spec.loader.exec_module(package)
+
 import pytest
 
+import carr_library
 from carr_library.durable_state import atomic_json
 from carr_library.operations import (ResourceBroker, ResourceLimits, ResourceRequest,
     ResourceCancelled, ResourceConflict, ResourceError, ResourceStateError,
     ResourceTimeout, ResourceUnavailable)
+
+if __name__ in ('__main__', '__mp_main__'):
+    assert Path(carr_library.__file__).resolve() == Path(sys.argv[4]).resolve()
+    assert Path(sys.modules[ResourceBroker.__module__].__file__).resolve() == Path(sys.argv[5]).resolve()
+
+
+def _standalone_process_case(scenario, directory):
+    product = Path(carr_library.__file__).resolve()
+    broker_module = Path(sys.modules[ResourceBroker.__module__].__file__).resolve()
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8',
+        str(Path(__file__).resolve()), '--resource-process-scenario', scenario,
+        str(directory), str(product), str(broker_module)], capture_output=True,
+        text=True, encoding='utf-8', timeout=45)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def _hold(directory, request, queue, stop, *, crash=False):
@@ -211,6 +243,9 @@ def test_capacity_freed_after_deadline_does_not_start_late_worker(broker, monkey
 
 
 def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
+    if __name__ != '__main__':
+        _standalone_process_case('crash', broker.root)
+        return
     ctx = multiprocessing.get_context('spawn')
     queue, stop = ctx.Queue(), ctx.Event()
     process = ctx.Process(target=_hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
@@ -243,6 +278,9 @@ def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
 
 
 def test_actual_process_contention_has_no_overlapping_admission(tmp_path):
+    if __name__ != '__main__':
+        _standalone_process_case('contention', tmp_path)
+        return
     broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
     ctx = multiprocessing.get_context('spawn')
     queue, start = ctx.Queue(), ctx.Event()
@@ -303,21 +341,6 @@ def test_runtime_leases_outside_backup_state_and_truthful_capabilities(tmp_path)
     assert 'no physical RAM/VRAM measurement' in facts['memory_policy']
 
 
-@pytest.mark.skipif(not hasattr(os, 'fork'), reason='Native fork inheritance is POSIX-only.')
-def test_forked_child_cannot_release_parent_reservation(broker):
-    with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='parent', timeout=0) as lease:
-        pid = os.fork()
-        if pid == 0:
-            try:
-                lease.release()
-            except ResourceStateError:
-                os._exit(0)
-            os._exit(1)
-        _, status = os.waitpid(pid, 0)
-        assert os.waitstatus_to_exitcode(status) == 0
-        assert len(broker.snapshot()['leases']) == 1
-
-
 def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
     real = tmp_path / 'real'
     real.mkdir()
@@ -340,3 +363,143 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
                    {'devices': ('microphone:one', 'microphone:one')}, {'cpu_slots': 0}):
         with pytest.raises(ValueError):
             ResourceRequest(**values)
+
+
+def test_released_lease_files_do_not_exhaust_inventory(broker, monkeypatch):
+    import carr_library.operations.broker as module
+    monkeypatch.setattr(module, '_MAX_RECORDS', 6)
+    for index in range(14):
+        with broker.reserve(ResourceRequest(), operation_id=f'completed-{index}', timeout=0):
+            assert len(broker.snapshot()['leases']) == 1
+        assert broker.snapshot()['leases'] == []
+    assert not tuple(broker.leases_root.iterdir())
+
+
+@pytest.mark.parametrize('failure', ['unlink', 'directory-sync'])
+def test_metadata_cleanup_failure_is_reported_after_native_release(broker, monkeypatch, failure):
+    import carr_library.operations.broker as module
+    context = broker.reserve(ResourceRequest(), operation_id='completed', timeout=0)
+    lease = context.__enter__()
+    path = broker.leases_root / (lease.id + '.json')
+    original_unlink, original_sync = Path.unlink, module.sync_directory
+
+    def unlink(candidate, *args, **kwargs):
+        if candidate == path:
+            raise OSError('Synthetic lease metadata unlink failure')
+        return original_unlink(candidate, *args, **kwargs)
+
+    def sync(candidate):
+        if candidate == broker.leases_root:
+            raise OSError('Synthetic lease metadata sync failure')
+        return original_sync(candidate)
+
+    with monkeypatch.context() as scoped:
+        if failure == 'unlink':
+            scoped.setattr(Path, 'unlink', unlink)
+        else:
+            scoped.setattr(module, 'sync_directory', sync)
+        context.__exit__(None, None, None)
+    assert lease.cleanup_pending and not lease._lock.held
+    assert not broker.snapshot()['leases']
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('failure', ['lease', 'coordinator'])
+def test_native_release_failure_is_not_hidden_as_metadata_cleanup(broker, monkeypatch, failure):
+    from carr_library.operations._locks import NativeLock
+    context = broker.reserve(ResourceRequest(), operation_id='completed', timeout=0)
+    lease = context.__enter__()
+    target = lease._lock.path if failure == 'lease' else broker.root / '.admission.lock'
+    original = NativeLock.release
+    failed = []
+
+    def release(lock):
+        original(lock)
+        if lock.path == target and not failed:
+            failed.append(True)
+            raise OSError('Synthetic native release failure')
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(NativeLock, 'release', release)
+        with pytest.raises(OSError, match='native release failure'):
+            context.__exit__(None, None, None)
+    assert failed and not lease.cleanup_pending
+    assert not broker.snapshot()['leases']
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquire'])
+@pytest.mark.parametrize('check', ['leaf', 'local-path'])
+def test_native_lock_accepts_normal_release_between_optional_path_checks(tmp_path, monkeypatch, phase, check):
+    from carr_library import durable_state
+    from carr_library.operations import _locks as module
+    path = tmp_path / '.admission.lock'
+    owner = module.NativeLock(path)
+    assert owner.acquire()
+    contender = module.NativeLock(path) if phase == 'acquire' else None
+    checked_module = module if check == 'leaf' else durable_state
+    original, released = checked_module.regular, []
+
+    def release_before_leaf_check(candidate, **options):
+        if Path(candidate) == path and not released:
+            released.append(True)
+            # Use the pinned backend's actual unlink-on-release behavior. This
+            # is normal contention, with the resource directory still present.
+            owner.release()
+            assert not path.exists() and tmp_path.is_dir()
+        return original(candidate, **options)
+
+    try:
+        monkeypatch.setattr(checked_module, 'regular', release_before_leaf_check)
+        if contender is None:
+            contender = module.NativeLock(path)
+        assert contender.acquire()
+        assert released == [True] and contender.held and not owner.held
+        assert path.is_file()
+    finally:
+        if contender is not None:
+            contender.release()
+        owner.release()
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('kind', ['directory', 'hardlink', 'permission', 'parent-removed'])
+def test_native_lock_optional_path_check_does_not_hide_invalid_paths(tmp_path, monkeypatch, kind):
+    from carr_library.operations import _locks as module
+    parent = tmp_path / 'resource-directory'
+    parent.mkdir()
+    path = parent / '.admission.lock'
+    contender = module.NativeLock(path)
+    if kind == 'directory':
+        path.mkdir()
+    elif kind == 'hardlink':
+        original = tmp_path / 'outside.lock'
+        original.write_bytes(b'retained outside bytes')
+        os.link(original, path)
+    elif kind == 'permission':
+        actual = module.regular
+        def denied(candidate, **options):
+            if Path(candidate) == path:
+                raise PermissionError('Actual path access is unavailable')
+            return actual(candidate, **options)
+        monkeypatch.setattr(module, 'regular', denied)
+        path.write_bytes(b'locked')
+    else:
+        parent.rmdir()
+    expected = (ValueError if kind in ('directory', 'hardlink') else
+                PermissionError if kind == 'permission' else FileNotFoundError)
+    with pytest.raises(expected):
+        contender.acquire()
+    assert not contender.held
+    if kind == 'hardlink':
+        assert original.read_bytes() == b'retained outside bytes'
+    if kind == 'parent-removed':
+        assert not parent.exists()
+
+
+if __name__ == '__main__':
+    if sys.argv[2] == 'crash':
+        test_actual_spawned_process_crash_releases_without_pid_reaping(ResourceBroker(Path(sys.argv[3])))
+    elif sys.argv[2] == 'contention':
+        test_actual_process_contention_has_no_overlapping_admission(Path(sys.argv[3]))
+    else:
+        raise SystemExit('Unknown resource process fixture scenario.')

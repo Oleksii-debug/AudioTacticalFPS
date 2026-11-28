@@ -21,6 +21,16 @@ It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
+If the package contains `ResearchLibrary.exe`, you may open it after extracting
+the complete package. With bundled Python, it runs the existing offline installer
+when needed and then opens the application. It preserves an incomplete environment;
+use a new program folder if installation was interrupted. In the wheel-only
+variant, run `Install.cmd` first. This private native launcher is unsigned.
+
+After installation, `ResearchLibrary.exe --self-test` runs the isolated application
+check and `ResearchLibrary.exe --check-installation` checks the installed runtime.
+Use `CheckInstallation.cmd` for the detailed text diagnostics.
+
 After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
 startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
@@ -32,6 +42,13 @@ The launchers require the installation-complete marker created after all install
 checks succeed. If installation fails or is interrupted, extract the package to
 a fresh program folder and run `Install.cmd` there. Keep research data in its
 existing separate location; the installer does not overwrite an environment.
+
+Every installation attempt creates its own `installation-*.log` text file in
+the program folder. Output is shown in the console and kept as readable UTF-8;
+each log retains the beginning and latest diagnostics within a 256 KiB limit.
+If the first-launch window closes after a failure, open `CheckInstallation.cmd`
+to read the latest log. This also works when installation stopped before the
+application environment became usable. Earlier attempt logs are retained.
 
 A private complete package may include the verified Microsoft C++ runtime
 supplement required by wxPython and ONNX Runtime. Its original licenses and
@@ -426,7 +443,7 @@ x64 and CPython 3.11. A native Windows test is still required before release.
 ```console
 python -m build
 python -m pip download --only-binary=:all: --platform win_amd64 --python-version 3.11 --implementation cp --abi cp311 --require-hashes -r packaging/windows-cp311.lock -d wheelhouse
-python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.2.0.dev2-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
+python packaging/build_windows_bundle.py --wheel dist/universal_research_library-0.3.0.dev1-py3-none-any.whl --wheelhouse wheelhouse --lock packaging/windows-cp311.lock --output dist/windows-offline
 ```
 
 For the complete package add `--python-archive path-to-pinned-python.tar.gz`.

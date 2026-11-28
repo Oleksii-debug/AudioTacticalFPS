@@ -299,3 +299,145 @@ def test_untrusted_lock_is_hash_rejected_before_json_is_parsed(bundle):
     lock_path.write_bytes(b'this is not JSON')
     with pytest.raises(ValueError, match='reviewed package'):
         runtime._source_lock(lock_path)
+
+
+def test_unreadable_extra_directory_is_not_silently_omitted(bundle, monkeypatch):
+    _, output, *_ = bundle
+    hidden = output / 'unreadable-extra'
+    hidden.mkdir()
+    scan = os.scandir
+
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('Synthetic directory enumeration failure')
+        return scan(path)
+
+    monkeypatch.setattr(runtime.os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='enumeration failure'):
+        runtime.verify_audio_runtime(output)
+
+
+def test_inventory_checks_entry_limit_before_consuming_large_directory(bundle, monkeypatch):
+    _, output, *_ = bundle
+    empty = output / 'empty-directory'
+    empty.mkdir()
+    scan = os.scandir
+    consumed = []
+    monkeypatch.setattr(runtime, 'MAX_FILES', 10)
+
+    class Entries:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            consumed.append(True)
+            if len(consumed) > runtime.MAX_FILES * 2 + 1:
+                pytest.fail('Inventory consumed the unbounded directory before checking its limit.')
+            with scan(output) as rows:
+                return next(row for row in rows if row.name == empty.name)
+
+    def many(path):
+        return Entries() if Path(path) == output else scan(path)
+
+    monkeypatch.setattr(runtime.os, 'scandir', many)
+    with pytest.raises(ValueError, match='too many filesystem entries'):
+        runtime.verify_audio_runtime(output)
+    assert len(consumed) == runtime.MAX_FILES * 2 + 1
+
+
+def _legacy_audio_bundle(root):
+    # Reuse the exact historical inert byte fixture; never a native executable.
+    import runpy
+    fixture = runpy.run_path(str(Path(__file__).with_name('test_bundled_engines.py')))
+    return fixture['seal'](root, 'audio')
+
+
+def test_legacy_audio_and_current_discovery_share_one_verified_inventory(tmp_path, monkeypatch):
+    from carr_library import bundled_engines
+    _legacy_audio_bundle(tmp_path)
+    monkeypatch.setattr(runtime.sys, 'prefix', str(tmp_path / '.venv'))
+    monkeypatch.setattr(runtime.sys, 'base_prefix', str(tmp_path / 'runtime'))
+    monkeypatch.setenv('PATH', 'unreviewed-tools-must-not-be-used')
+    report = runtime.inspect_bundled_audio()
+    assert report['layout'] == 'audio' and report['verification'] == 'PASS'
+    assert report['native_execution'] == 'NOT_RUN'
+    expected = {name: str(tmp_path / 'audio/bin' / (name + '.exe')) for name in ('ffmpeg', 'ffprobe')}
+    assert report['tools'] == expected
+    assert runtime.bundled_audio_tools() == expected
+    assert bundled_engines.bundled_programs('audio') == expected
+    assert bundled_engines.bundled_executable('ffmpeg') == expected['ffmpeg']
+    assert os.environ['PATH'] == 'unreviewed-tools-must-not-be-used'
+
+
+@pytest.mark.parametrize('damage', ['undeclared', 'unlisted', 'missing', 'altered',
+                                    'both-layouts', 'case-alias', 'nonboolean'])
+def test_legacy_audio_damage_or_layout_ambiguity_never_falls_back(tmp_path, monkeypatch, damage):
+    from carr_library import bundled_engines
+    manifest = _legacy_audio_bundle(tmp_path)
+    if damage == 'undeclared':
+        manifest['bundled_audio'] = False
+    elif damage == 'unlisted':
+        (tmp_path / 'audio/unlisted.bin').write_bytes(b'Not in the selected seal.')
+    elif damage == 'missing':
+        (tmp_path / 'audio/bin/ffprobe.exe').unlink()
+    elif damage == 'altered':
+        path = tmp_path / 'audio/bin/ffmpeg.exe'
+        path.write_bytes(b'X' * path.stat().st_size)
+    elif damage == 'both-layouts':
+        (tmp_path / runtime.DIRECTORY).mkdir()
+    elif damage == 'case-alias':
+        manifest['files']['Audio/bin/ffmpeg.exe'] = manifest['files'].pop('audio/bin/ffmpeg.exe')
+    else:
+        manifest['bundled_audio'] = 1
+    (tmp_path / 'bundle-manifest.json').write_bytes(encode(manifest))
+    monkeypatch.setattr(runtime.sys, 'prefix', str(tmp_path / '.venv'))
+    monkeypatch.setattr(runtime.sys, 'base_prefix', str(tmp_path / 'runtime'))
+    monkeypatch.setenv('PATH', 'untouched')
+    monkeypatch.setattr(bundled_engines.shutil, 'which',
+        lambda *a, **k: pytest.fail('A damaged sealed audio layout tried an ambient executable.'))
+    with pytest.raises((ValueError, OSError)):
+        bundled_engines.bundled_executable('ffmpeg')
+    assert os.environ['PATH'] == 'untouched'
+
+
+def test_unreadable_extra_legacy_directory_fails_closed(tmp_path, monkeypatch):
+    _legacy_audio_bundle(tmp_path)
+    blocked = tmp_path / 'audio/unreadable-extra'
+    blocked.mkdir()
+    scandir = os.scandir
+    visited = []
+
+    def denied(path):
+        if Path(path) == blocked:
+            visited.append(Path(path))
+            raise PermissionError('Authored legacy audio inventory denial.')
+        return scandir(path)
+
+    monkeypatch.setattr(runtime.os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='inventory denial'):
+        runtime.bundled_audio_tools(tmp_path)
+    assert visited == [blocked]
+
+
+def test_legacy_directory_enumeration_has_a_total_entry_bound(tmp_path):
+    _legacy_audio_bundle(tmp_path)
+    for number in range(17):
+        (tmp_path / 'audio' / ('extra-' + str(number))).mkdir()
+    with pytest.raises(ValueError, match='too many filesystem entries'):
+        runtime.bundled_audio_tools(tmp_path)
+
+
+def test_unsealed_legacy_audio_is_detected_without_changing_path(tmp_path, monkeypatch):
+    (tmp_path / 'audio/bin').mkdir(parents=True)
+    monkeypatch.setattr(runtime.sys, 'prefix', str(tmp_path / '.venv'))
+    monkeypatch.setattr(runtime.sys, 'base_prefix', str(tmp_path / 'runtime'))
+    monkeypatch.setenv('PATH', 'unchanged')
+    with pytest.raises(ValueError, match='no enclosing bundle manifest'):
+        runtime.activate_bundled_audio_runtime()
+    assert os.environ['PATH'] == 'unchanged'

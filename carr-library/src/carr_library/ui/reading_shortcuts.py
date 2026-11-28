@@ -13,9 +13,11 @@ class ReaderKeyboardAdapter:
             self.manager.private_root = reader.controller.desk.library.root
         self._ids = {}
         self._disposed = False
+        self._remaining = set()
         for command in self.manager.registry.commands('reader'):
             identifier = wx.NewIdRef()
             self._ids[command.command_id] = identifier
+            self._remaining.add(int(identifier))
             reader.dialog.Bind(wx.EVT_MENU,
                                lambda event, identity=command.command_id: self.invoke(identity),
                                id=int(identifier))
@@ -23,7 +25,9 @@ class ReaderKeyboardAdapter:
         self.refresh()
 
     def available(self, command_id):
-        if self._disposed or self.reader.closed or self.reader.busy:
+        if self._disposed or self.reader.closed:
+            return False
+        if self.reader.busy and command_id not in ('reader.speech_stop', 'reader.speech_status'):
             return False
         pair = self.reader.command_buttons.get(command_id)
         if pair is None:
@@ -79,10 +83,18 @@ class ReaderKeyboardAdapter:
         return show_keyboard_settings(self.reader.dialog, self.manager, context='reader')
 
     def close(self):
-        if self._disposed:
-            return
         self._disposed = True
         self.manager._adapters.discard(self)
+        if not self.reader.dialog:
+            self._remaining.clear()
+            return
         import wx
-        for identifier in self._ids.values():
-            self.reader.dialog.Unbind(wx.EVT_MENU, id=int(identifier))
+        for identifier in tuple(self._remaining):
+            try:
+                self.reader.dialog.Unbind(wx.EVT_MENU, id=identifier)
+            except RuntimeError:
+                if self.reader.dialog:
+                    raise
+                self._remaining.clear()
+                return
+            self._remaining.discard(identifier)

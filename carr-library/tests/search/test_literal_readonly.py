@@ -98,7 +98,18 @@ def test_precancel_and_invalid_budget(tmp_path):
     path = tmp_path / 'missing.db'
     with pytest.raises(TimeoutError):
         literal.search_file(path, 'A', 'needle', cancelled=lambda: True)
-    for timeout in (0, 61, float('nan'), True):
+    for timeout in (0, 86401, float('nan'), True):
         with pytest.raises(ValueError):
             literal.search_file(path, 'A', 'needle', timeout=timeout)
     assert not path.exists()
+
+
+@pytest.mark.parametrize('timeout', [61, 300, 86400])
+def test_explicit_longer_budget_keeps_readonly_scope_and_native_cancellation(library, timeout):
+    path, writer, _ = library
+    before = path.read_bytes()
+    expected = literal.search(writer, 'A', 'STRASSE')
+    assert literal.search_file(path, 'A', 'STRASSE', timeout=timeout) == expected
+    with pytest.raises(TimeoutError):
+        literal.search_file(path, 'A', 'STRASSE', timeout=timeout, cancelled=lambda: True)
+    assert path.read_bytes() == before

@@ -1,5 +1,6 @@
 """Real database and draft files behind explicit headless native-control doubles."""
 import ast
+from importlib.util import find_spec
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
@@ -47,13 +48,15 @@ def recovery(tmp_path):
     chooser.GetSelection.return_value = 0
     wx = SimpleNamespace(Panel=object, YES=1, ID_OK=1, YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8,
                          MessageBox=Mock(return_value=1), SingleChoiceDialog=Mock(return_value=chooser),
-                         CallAfter=queued.append)
-    env = dict(wx=wx, replace=replace, format_citation=format_citation)
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
-    for name in ('evidence_panel.py', 'desktop_evidence_panel.py'):
-        tree = ast.parse((source / name).read_text(encoding='utf-8'))
+                         CallAfter=queued.append, EVT_TIMER=object())
+    env = dict(__package__='carr_library.ui', wx=wx, replace=replace, format_citation=format_citation)
+    for name in ('evidence_panel', 'desktop_evidence_panel'):
+        spec = find_spec('carr_library.ui.' + name)
+        assert spec is not None and spec.origin, name
+        source = Path(spec.origin).resolve()
+        tree = ast.parse(source.read_text(encoding='utf-8'))
         nodes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
-        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source / name), 'exec'), env)
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), env)
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Recovery native workflow')
     topic = app.create_topic(workspace, 'Research')
@@ -76,6 +79,8 @@ def recovery(tmp_path):
     panel._recovery_seen = set()
     panel._recovery_loading = panel._recovery_disposed = panel._recovery_discarded = False
     panel._recovery_error = ''
+    panel._recovery_native_id = 417
+    panel.Unbind = Mock()
     panel._recovery_timer = SimpleNamespace(IsRunning=lambda: False, StartOnce=Mock(), Stop=Mock())
     panel._review_recovery_copy = Mock()
     return panel, app, chooser, wx, queued
@@ -253,7 +258,8 @@ def test_panel_destruction_flushes_cached_pending_text_without_reading_controls(
     panel._recovery_edited(SimpleNamespace(Skip=Mock()))
     assert panel._recovery_store.get(*first.key).text == 'First edit'
     panel.note.GetValue = Mock(side_effect=RuntimeError('Native control already destroyed'))
-    panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
+    panel._recovery_destroy(SimpleNamespace(GetId=lambda: panel._recovery_native_id,
+        GetEventObject=lambda: panel, Skip=Mock()))
     assert panel._recovery_store.get(*first.key).text == 'Last edit before destruction'
     assert panel._recovery_disposed
 
@@ -262,7 +268,8 @@ def test_explicit_discard_does_not_recreate_draft_during_destruction(recovery):
     panel, _, _, _, _ = recovery
     draft = checkpoint(panel, 'Intentionally discarded')
     assert panel.discard_recovery()
-    panel._recovery_destroy(SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock()))
+    panel._recovery_destroy(SimpleNamespace(GetId=lambda: panel._recovery_native_id,
+        GetEventObject=lambda: panel, Skip=Mock()))
     assert panel._recovery_store.get(*draft.key) is None
 
 
@@ -277,7 +284,9 @@ def test_corrupt_recovery_storage_reports_error_and_keeps_editor(recovery):
 
 def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel, _, _, wx, _ = recovery
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/workspace_shell.py'
+    spec = find_spec('carr_library.ui.workspace_shell')
+    assert spec is not None and spec.origin
+    source = Path(spec.origin).resolve()
     tree = ast.parse(source.read_text(encoding='utf-8'))
     method = next(node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == '_confirm')
     env = dict(wx=wx)
@@ -291,3 +300,85 @@ def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel._recovery_store.discard = Mock(side_effect=OSError('Disk unavailable'))
     assert not env['_confirm'](frame)
     assert panel.note.GetValue() == 'Keep unless explicitly discarded'
+
+
+def _legacy_copy(panel, text):
+    from carr_library.durable_state import atomic_json
+    path = panel.frame.library.root / 'state' / 'recovery' / 'research-note.json'
+    atomic_json(path, dict(schema=1, workspace=panel.workspace, topic=panel.topic,
+                          evidence=panel.displayed.evidence_id, note=text))
+    return path
+
+
+def test_earlier_research_note_is_only_reviewed_without_changing_editor_or_modern_drafts(recovery):
+    panel, app, _, _, _ = recovery
+    path = _legacy_copy(panel, 'Earlier unsaved private thought 🚂')
+    before = path.read_bytes()
+    panel.note.SetValue('Current unsaved edit')
+    assert panel.review_legacy_draft()
+    panel._review_recovery_copy.assert_called_once()
+    reviewed = panel._review_recovery_copy.call_args.args[0]
+    assert reviewed.text == 'Earlier unsaved private thought 🚂'
+    assert not hasattr(reviewed, 'source_sha256') and not hasattr(reviewed, 'baseline_sha256')
+    assert panel.note.GetValue() == 'Current unsaved edit'
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
+    assert not panel._recovery_store.path.exists() and path.read_bytes() == before
+
+
+def test_earlier_research_note_is_discoverable_without_automatic_modal_or_application(recovery):
+    panel, app, _, _, _ = recovery
+    path = _legacy_copy(panel, 'Keep until explicit review')
+    before = path.read_bytes()
+    panel.recover_draft(automatic=True, expected=panel.displayed)
+    panel._review_recovery_copy.assert_not_called()
+    assert 'earlier-format' in panel.status.GetValue() and 'read only' in panel.status.GetValue()
+    assert panel.note.GetValue() == 'Saved note'
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
+    assert not panel._recovery_store.path.exists() and path.read_bytes() == before
+
+
+@pytest.mark.parametrize('change', ['topic_revoked', 'root_changed', 'owner_destroyed'])
+def test_earlier_research_note_requires_current_authorized_owner(recovery, tmp_path, change):
+    panel, app, _, _, _ = recovery
+    path = _legacy_copy(panel, 'Do not disclose this outside its selected context')
+    before = path.read_bytes()
+    if change == 'topic_revoked':
+        with app.topic_transaction(panel.workspace) as tree:
+            tree.archive(panel.topic)
+    elif change == 'root_changed':
+        panel.frame.library = LibraryApp(tmp_path / 'different-library')
+    else:
+        panel._recovery_disposed = True
+    assert panel.review_legacy_draft() is False
+    panel._review_recovery_copy.assert_not_called()
+    assert panel.note.GetValue() == 'Saved note'
+    assert not panel._recovery_store.path.exists() and path.read_bytes() == before
+
+
+def test_rewrapped_destroy_flushes_cached_note_once_and_late_timer_cannot_write(recovery):
+    panel, _, _, wx, _ = recovery
+    first = checkpoint(panel, 'First coalesced checkpoint')
+    panel.note.SetValue('Final cached text')
+    panel._recovery_edited(SimpleNamespace(Skip=Mock()))
+    panel.note.GetValue = Mock(side_effect=RuntimeError('Native text control was deleted'))
+    child = SimpleNamespace(GetId=lambda: panel._recovery_native_id + 1,
+                            GetEventObject=Mock(), Skip=Mock())
+    panel._recovery_destroy(child)
+    assert not panel._recovery_disposed
+    assert panel._recovery_store.get(*first.key).text == 'First coalesced checkpoint'
+    child.GetEventObject.assert_not_called()
+    wrapper = SimpleNamespace(Unbind=Mock())
+    actual = SimpleNamespace(GetId=lambda: panel._recovery_native_id,
+                             GetEventObject=lambda: wrapper, Skip=Mock())
+    panel._recovery_destroy(actual)
+    snapshot = panel._recovery_store.get(*first.key)
+    assert snapshot.text == 'Final cached text' and panel._recovery_disposed
+    panel._recovery_timer.Stop.assert_called_once_with()
+    wrapper.Unbind.assert_called_once_with(wx.EVT_TIMER, handler=panel._flush_recovery,
+                                          source=panel._recovery_timer)
+    panel.note.GetValue.assert_not_called()
+    saved = panel._recovery_store.path.read_bytes()
+    panel._recovery_pending = panel.displayed, 'A queued obsolete timer snapshot'
+    assert panel._flush_recovery(SimpleNamespace()) is False
+    assert panel._recovery_store.path.read_bytes() == saved
+    actual.Skip.assert_called_once_with()

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import array
 import hashlib
+import importlib.util
 import json
 import math
 from pathlib import Path
@@ -42,7 +43,13 @@ def main():
     if sys.platform != 'win32' or struct.calcsize('P') != 8:
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Requires native Windows x64.', 'nvda': 'NOT_RUN'}))
         return 77
+    from carr_library import audio_runtime
     from carr_library.audio_runtime import bundled_audio_tools, verify_audio_runtime
+    helper_path = Path(__file__).resolve().with_name('windows_publishing_smoke.py')
+    spec = importlib.util.spec_from_file_location('reviewed_audio_probe_sources', helper_path)
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    origins = helper.verify_installed_sources(audio_runtime)
     tools = bundled_audio_tools(args.bundle.absolute())
     if tools is None:
         raise RuntimeError('The tested bundle does not include the reviewed audio runtime.')
@@ -102,7 +109,12 @@ def main():
         if file_hash(source) != original_hash:
             raise RuntimeError('Audio processing changed the source file.')
         checks.append('original_bytes_unchanged')
+    if (verify_audio_runtime(args.bundle.absolute() / 'audio-runtime') != integrity
+            or bundled_audio_tools(args.bundle.absolute()) != tools
+            or helper.verify_installed_sources(audio_runtime) != origins):
+        raise RuntimeError('The tested runtime or installed source changed during execution.')
     print(json.dumps({'status': 'PASS', 'windows_execution': 'PASS', 'checks': len(checks),
+                      'installed_sources': origins,
                       'cases': checks, 'source_lock_sha256': integrity['source_lock_sha256'],
                       'runtime_manifest_sha256': integrity['manifest_sha256'],
                       'ffmpeg_version': version.splitlines()[0],

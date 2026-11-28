@@ -187,3 +187,80 @@ def test_actual_semantic_snapshot_survives_concurrent_membership_revocation(rank
     # Removing membership is not deleting the source.
     fresh, = app.search(workspace, query, mode='semantic', title='Railway')
     assert fresh.quote == raw and app.copy(workspace, fresh.ref, fresh.revision, 'quote') == raw
+
+
+def test_actual_full_scope_semantic_search_scores_more_than_500_sources(ranker, tmp_path):
+    """Real pinned MiniLM batches; exact sources/order, not a relevance study."""
+    from hashlib import sha256
+    from carr_library.search.paging import SearchResources
+
+    verify_model_bundle(ranker.directory)
+    app = LibraryApp(tmp_path / "full-scope-library", semantic_ranker=ranker)
+    workspace = app.create_workspace("More than one model candidate batch")
+    foreign = app.create_workspace("Never selected")
+    query = "railway transport"
+    raw_pages = tuple(f"Railway transport linked industrial cities. Exact source {number:04d}."
+                      for number in range(607))
+    raw = "\f".join(raw_pages)
+    saved = app.add_text(workspace, "607 retained source segments", raw, edition_id="selected")
+    app.add_text(foreign, "Excluded original", "Railway transport contains PRIVATE_UNSELECTED_MARKER.")
+    retained = app.assets.resolve(saved["asset"])
+    original_sha = sha256(retained.read_bytes()).hexdigest()
+    batches, scored, native_batches = [], set(), []
+    actual_scores, actual_embed = ranker.scores, ranker.engine.embed
+
+    def observe_scores(text, candidates, **kwargs):
+        assert text == query and 0 < len(candidates) <= 500
+        batches.append(len(candidates))
+        for key, source in candidates:
+            assert key[0] == workspace and key[1] == "selected"
+            assert key not in scored and source in raw_pages
+            assert "PRIVATE_UNSELECTED_MARKER" not in source
+            scored.add(key)
+        return actual_scores(text, candidates, **kwargs)
+
+    def observe_native(texts, *args, **kwargs):
+        native_batches.append(tuple(texts))
+        assert 0 < len(texts) <= 16
+        return actual_embed(texts, *args, **kwargs)
+
+    def traverse(current):
+        cursor, offset, result, pages = None, 0, [], []
+        while True:
+            page = current.search_page(workspace, query, mode="semantic", ranking_scope="all",
+                cursor=cursor, offset=offset, limit=100, resources=SearchResources(timeout=300))
+            assert page.ranking_scope == "all" and page.next_source_cursor is None
+            assert page.total_results == page.source_pages == 607 and page.source_editions == 1
+            assert all(row.workspace == workspace and row.edition_id == "selected"
+                       and row.verified and row.quote in raw_pages for row in page.results)
+            pages.append(page)
+            result.extend(page.results)
+            if not page.has_more_results:
+                break
+            cursor, offset = page.cursor, offset + 100
+        assert len(pages) == 7 and len(result) == len({row.page for row in result}) == 607
+        return result
+
+    reopened = None
+    try:
+        with patch.object(ranker, "scores", side_effect=observe_scores), \
+                patch.object(ranker.engine, "embed", side_effect=observe_native):
+            cold = traverse(app)
+        assert batches == [500, 107] and len(scored) == 607
+        assert native_batches and sum(map(len, native_batches)) >= 608
+        assert any("hybrid RRF" in row.reason for row in cold)
+        assert {row.quote for row in cold} == set(raw_pages)
+        for row in (cold[0], cold[-1]):
+            assert app.copy(workspace, row.ref, row.revision, "quote") == row.quote
+        assert sha256(retained.read_bytes()).hexdigest() == original_sha
+        assert app.close_search()
+        reopened = LibraryApp(app.root, semantic_ranker=ranker)
+        with patch.object(ranker.engine, "embed", side_effect=AssertionError("Warm exact source cache repeated inference.")):
+            warm = traverse(reopened)
+        assert [(row.page, row.quote) for row in warm] == [(row.page, row.quote) for row in cold]
+        assert sha256(retained.read_bytes()).hexdigest() == original_sha
+        verify_model_bundle(ranker.directory)
+    finally:
+        assert app.close_search()
+        if reopened is not None:
+            assert reopened.close_search()

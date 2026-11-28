@@ -39,10 +39,19 @@ def install_save_actions(frame):
         else:
             frame.evidence.recover_draft()
 
+    def review_earlier(event=None):
+        if getattr(frame, '_closing', False):
+            return
+        if frame.evidence is None:
+            frame.report('Open the saved evidence whose earlier research-note copy you want to review.')
+        else:
+            frame.evidence.review_legacy_draft()
+
     for identity, title, shortcut, handler in [
             ('file.save', '&Save', 'Ctrl+S', save),
             ('file.save_all', 'Save &all', 'Ctrl+Shift+S', save_all),
-            ('file.recover_note', 'Recover research-note draft...', '', recover)]:
+            ('file.recover_note', 'Recover research-note draft...', '', recover),
+            ('file.review_legacy_note', 'Review earlier-format research-note draft...', '', review_earlier)]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
         register_menu_command(frame, CommandSpec(identity, title.replace('&', ''), 'main', shortcut), item)
@@ -58,8 +67,13 @@ def install_save_actions(frame):
             method()
         else:
             frame.report('This command is available in an editable text control.')
-    for label, action in [('Undo', 'Undo'), ('Redo', 'Redo'), ('Cut', 'Cut'), ('Copy', 'Copy'),
-                           ('Paste', 'Paste'), ('Select all', 'SelectAll')]:
+    for identity, label, action in [
+            ('edit.undo', 'Undo', 'Undo'), ('edit.redo', 'Redo', 'Redo'),
+            ('edit.cut', 'Cut', 'Cut'), ('edit.copy', 'Copy', 'Copy'),
+            ('edit.paste', 'Paste', 'Paste'), ('edit.select_all', 'Select all', 'SelectAll')]:
         item = edit.Append(wx.ID_ANY, label)
         frame.Bind(wx.EVT_MENU, lambda event, action=action: focused(action), item)
+        # Native text controls keep ownership of their editing shortcuts.
+        # The palette invokes this same menu action after restoring focus.
+        register_menu_command(frame, CommandSpec(identity, label), item)
     frame.menu_bar.Insert(1, edit, '&Edit')

@@ -58,6 +58,11 @@ def main():
     options = json.loads(options_file.read_text(encoding='utf-8')) if options_file.exists() else {}
     if options.get('require_utf8') and not sys.flags.utf8_mode:
         raise RuntimeError('The external protocol process requires explicit UTF-8 mode.')
+    if options.get('attempt_network'):
+        import socket
+        socket.socket()  # The real bootstrap must reject construction before any connection.
+    if options.get('outside_write'):
+        Path(options['outside_write']).write_bytes(b'Forbidden worker output')
     if options.get('import_probe'):
         from importlib.util import module_from_spec, spec_from_file_location
         probe = Path(options['import_probe'])
@@ -69,8 +74,10 @@ def main():
     if options.get('diagnostic'):
         print(options['diagnostic'], flush=True)
         print(options['diagnostic'], file=sys.stderr, flush=True)
-    with Path(__file__).with_name('fixture-starts.log').open('a', encoding='utf-8') as stream:
-        stream.write('started\n')
+    observation = directory / 'logs' / 'progress.log'
+    observation.parent.mkdir(parents=True, exist_ok=True)
+    with observation.open('a', encoding='utf-8') as stream:
+        stream.write(json.dumps({'fixture_event': 'started'}) + '\n')
     sources = [path for folder in config['folders'] for path in sorted(Path(folder).glob('*')) if path.is_file()]
     settings = config['settings']
     model_root = Path(config['models_dir']) / settings['model']
@@ -123,8 +130,8 @@ def main():
         txt.write_text(text + '\n', encoding='utf-8')
         structured.write_bytes(raw(meta))
         write(folder / (key + '.cache.json'), {'identity': bound, 'text': identity(txt), 'meta': identity(structured)})
-        with Path(__file__).with_name('fixture-sources.log').open('a', encoding='utf-8') as stream:
-            stream.write(source.parent.name + '\n')
+        with observation.open('a', encoding='utf-8') as stream:
+            stream.write(json.dumps({'fixture_event': 'source', 'source_id': source.parent.name}) + '\n')
         status('обробка', number + 1)
         deadline = time.monotonic() + options.get('hold_after_checkpoint', 0)
         while time.monotonic() < deadline:

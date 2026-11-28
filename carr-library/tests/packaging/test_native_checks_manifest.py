@@ -13,7 +13,7 @@ def write_manifest(tmp_path, **updates):
         "bundled_python": True,
         "bundled_model": True,
         "bundled_ocr": True,
-        "files": {"ResearchLibrary.exe": "a" * 64},
+        "files": {"README.txt": "a" * 64},
     }
     value.update(updates)
     (tmp_path / "bundle-manifest.json").write_text(json.dumps(value), encoding="utf-8")

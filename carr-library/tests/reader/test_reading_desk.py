@@ -9,7 +9,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.citations.anchors import digest
 from carr_library.reader.reading_desk import ReadingDesk
-from carr_library.storage.revisions import Page, Storage
+from carr_library.storage.revisions import CURRENT_SCHEMA, Page, Storage
 
 
 @pytest.fixture
@@ -286,7 +286,7 @@ def test_noncontiguous_physical_locations_use_reading_order_not_fake_page_number
     app = LibraryApp(tmp_path / 'sparse-library')
     workspace = app.create_workspace('Sparse extracted pages')
     book = app.import_file(workspace, source, title='Sparse source')
-    with closing(Storage(app.database)) as storage:
+    with closing(Storage(app.database, schema_version=CURRENT_SCHEMA)) as storage:
         with storage.transaction():
             rows = storage.db.execute(
                 'SELECT raw,physical FROM page WHERE revision=? AND physical IN (5,9) ORDER BY physical',
@@ -311,3 +311,62 @@ def test_noncontiguous_physical_locations_use_reading_order_not_fake_page_number
     assert desk.validate(second.location) == second
     with pytest.raises(ValueError, match='within this book'):
         desk.page(9)
+
+
+def _independent_native_probe_desk(desk):
+    from pathlib import Path
+    import runpy
+    path = Path(__file__).resolve().parents[2] / 'scripts/windows_live_reading_smoke.py'
+    return runpy.run_path(str(path))['independent_reading_desk'](desk)
+
+
+def test_native_live_probe_reopens_same_source_without_reviving_closed_reader(text_book):
+    from types import SimpleNamespace
+    from carr_library.ui.reading_desk import ReadingDialog
+
+    app, workspace, book, _ = text_book
+    topic = app.create_topic(workspace, 'Native probe reading scope')
+    cancelled = Event()
+    desk = ReadingDesk(app, workspace, book['edition'], topic=topic, cancelled=cancelled.is_set)
+    original = desk.page(1)
+    owner = object.__new__(ReadingDialog)
+    owner.closed, owner.cancelled = False, cancelled
+    owner._audio_dialog, owner.executor = None, None
+    owner.parent = SimpleNamespace()
+    original_cancelled = desk.cancelled
+
+    # Execute the production close boundary; this old owner's cancellation is
+    # deliberately not cleared by the following independent source session.
+    owner.dispose()
+    assert owner.closed and cancelled.is_set() and desk.cancelled()
+    with pytest.raises(TimeoutError, match='cancelled|timed out'):
+        desk.page(1)
+    fresh = _independent_native_probe_desk(desk)
+    assert fresh is not desk and fresh.library is app
+    assert fresh.workspace == workspace and fresh.edition == book['edition']
+    assert fresh.topic == topic and fresh.identity == desk.identity
+    assert fresh.page(1) == original
+    assert desk.cancelled is original_cancelled and cancelled.is_set()
+    with pytest.raises(TimeoutError, match='cancelled|timed out'):
+        desk.page(1)
+
+
+@pytest.mark.parametrize('drift', ['revision', 'topic'])
+def test_native_live_probe_new_owner_cannot_retarget_changed_or_revoked_source(text_book, drift):
+    app, workspace, book, _ = text_book
+    topic = app.create_topic(workspace, 'Native probe reading scope')
+    cancelled = Event()
+    desk = ReadingDesk(app, workspace, book['edition'], topic=topic, cancelled=cancelled.is_set)
+    original = desk.page(1)
+    cancelled.set()
+    if drift == 'revision':
+        changed = app.update_metadata(workspace, book['edition'], title='Changed after reader close')
+        assert changed != original.location.revision
+    else:
+        with app.topic_transaction(workspace) as tree:
+            tree.archive(topic)
+    with pytest.raises(ValueError):
+        _independent_native_probe_desk(desk)
+    assert cancelled.is_set() and desk.cancelled()
+    with pytest.raises(TimeoutError, match='cancelled|timed out'):
+        desk.page(1)

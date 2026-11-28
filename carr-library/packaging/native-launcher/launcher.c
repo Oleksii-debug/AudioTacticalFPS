@@ -9,7 +9,9 @@
 #define CAP 32768
 static wchar_t root[CAP], python[CAP], base_python[CAP], script[CAP], command[CAP];
 static wchar_t environment_path[CAP], marker_path[CAP], scratch[CAP];
+static wchar_t managed_parent[CAP];
 static int quiet = 0;
+static HANDLE managed_lease = INVALID_HANDLE_VALUE;
 
 static void emit(const wchar_t *message, DWORD stream) {
     int bytes = WideCharToMultiByte(CP_UTF8, 0, message, -1, NULL, 0, NULL, NULL);
@@ -43,6 +45,61 @@ static int present(const wchar_t *path, int directory) {
 static int child_path(const wchar_t *relative, int directory) {
     if (!rl_join(scratch, CAP, root, relative)) return -1;
     return present(scratch, directory);
+}
+
+/* The standard installer holds the same file exclusively for its complete
+   transaction. Portable bundles have no parent marker and retain old behavior.
+   Keep the read handle until the Python child exits; no PID lock or polling. */
+static int acquire_managed_lease(void) {
+    size_t length = rl_len(root), i;
+    volatile wchar_t *parent_copy = managed_parent;
+    if (length && root[length - 1] == L'\\') --length;
+    i = length; while (i && root[i - 1] != L'\\') --i;
+    if (length - i != 3 || !((root[i] == L'a' || root[i] == L'A') &&
+        (root[i + 1] == L'p' || root[i + 1] == L'P') &&
+        (root[i + 2] == L'p' || root[i + 2] == L'P'))) return 1;
+    if (!i || i + 1 >= CAP) return 0;
+    /* Volatile stores keep MSVC from lowering this loop to CRT memcpy.
+       The native launcher is intentionally linked with /NODEFAULTLIB. */
+    for (length = 0; length < i; ++length) parent_copy[length] = root[length];
+    parent_copy[i] = 0;
+    if (!rl_join(scratch, CAP, managed_parent, L"managed-install.ini")) return 0;
+    if (present(scratch, 0) == 0) return 1;
+    if (present(scratch, 0) != 1 || !rl_join(scratch, CAP, managed_parent, L"installation.lease") ||
+        present(scratch, 0) != 1) return 0;
+    managed_lease = CreateFileW(scratch, GENERIC_READ, FILE_SHARE_READ, NULL,
+                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+    if (managed_lease == INVALID_HANDLE_VALUE) return 0;
+    /* A crashed or unconfirmed installer keeps this durable veto. Check while
+       the shared lease prevents a new cooperating bootstrap from starting. */
+    if (!rl_join(scratch, CAP, managed_parent, L"bootstrap-owner.json") ||
+        present(scratch, 0) != 0) return 0;
+    return 1;
+}
+
+/* Only bundles whose sealed inventory explicitly opts in use this sibling
+   control directory. It survives application-directory replacement. */
+static int acquire_portable_lease(void) {
+    static const wchar_t suffix[] = L".update-control";
+    volatile wchar_t *copy = managed_parent;
+    size_t length = rl_len(root), i, used;
+    int marker = child_path(L"portable-update.ini", 0), lease_state;
+    if (marker == 0) return 1;
+    if (marker != 1) return 0;
+    if (length && root[length - 1] == L'\\') --length;
+    if (!length || length + rl_len(suffix) + 1 >= CAP) return 0;
+    for (i = 0; i < length; ++i) copy[i] = root[i];
+    used = length;
+    for (i = 0; suffix[i]; ++i) copy[used++] = suffix[i];
+    copy[used] = 0;
+    if (!CreateDirectoryW(managed_parent, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return 0;
+    if (present(managed_parent, 1) != 1 ||
+        !rl_join(scratch, CAP, managed_parent, L"installation.lease")) return 0;
+    lease_state = present(scratch, 0);
+    if (lease_state < 0) return 0;
+    managed_lease = CreateFileW(scratch, GENERIC_READ, FILE_SHARE_READ, NULL,
+                               OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+    return managed_lease != INVALID_HANDLE_VALUE;
 }
 
 static int state(void) {
@@ -135,6 +192,9 @@ static int run(void) {
     index = length; while (index && root[index - 1] != L'\\') --index;
     if (!index) return fail(RL_PATH_ERROR, L"The application folder could not be determined.");
     root[index] = 0; /* Retaining the slash also preserves C:\\ correctly. */
+    if (!acquire_managed_lease() ||
+        (managed_lease == INVALID_HANDLE_VALUE && !acquire_portable_lease()))
+        return fail(RL_PROCESS_ERROR, L"Installation maintenance is in progress or previous installer cleanup was not confirmed. Wait for active setup; preserve this folder and its recovery files if the problem remains.");
     if (!rl_join(python, CAP, root, L".venv\\Scripts\\python.exe") ||
         !rl_join(base_python, CAP, root, L"runtime\\python.exe") ||
         !rl_join(script, CAP, root, L"install_windows.py") ||
@@ -191,4 +251,8 @@ static int run(void) {
 }
 
 /* Explicit Win32 entry avoids a separately linked C runtime or DLL payload. */
-void WINAPI launcher_entry(void) { ExitProcess((UINT)run()); }
+void WINAPI launcher_entry(void) {
+    UINT result = (UINT)run();
+    if (managed_lease != INVALID_HANDLE_VALUE) CloseHandle(managed_lease);
+    ExitProcess(result);
+}

@@ -13,6 +13,7 @@ import wave
 from carr_library.application import LibraryApp
 from carr_library.assistant import AssistantService, Plan, Scope, Step
 from carr_library.durable_state import digest_file, encode
+from carr_library.audio.transcription import _RUNTIME_PACKAGES
 from carr_library.integrations.supplied_transcription import (
     SuppliedTranscriptionAdapter, SuppliedWorkerInstallation, prepare_worker)
 
@@ -54,6 +55,10 @@ def main():
         packages = root / 'packages'
         (packages / 'faster_whisper').mkdir(parents=True)
         (packages / 'faster_whisper/__init__.py').write_text(SDK, encoding='utf-8')
+        for name in _RUNTIME_PACKAGES:
+            if name != 'faster_whisper':
+                (packages / name).mkdir()
+                (packages / name / '__init__.py').write_text('# Authored empty protocol fixture.\n', encoding='utf-8')
         model = root / 'model'
         model.mkdir()
         for name in ('config.json', 'model.bin', 'tokenizer.json'):
@@ -70,7 +75,8 @@ def main():
             'runtime_notice': 'Synthetic protocol fixture, no recognition engine.',
             'model_notice': 'Synthetic empty files, no model or weights rights claim.'}))
         installation = SuppliedWorkerInstallation(python, worker, packages, model,
-                                                 manifest, digest_file(manifest))
+                                                 manifest, digest_file(manifest),
+                                                 runtime_reviewed=True, rights_reviewed=True)
         app = LibraryApp(root / 'data')
         output, inputs = root / 'outputs', root / 'inputs'
         output.mkdir()

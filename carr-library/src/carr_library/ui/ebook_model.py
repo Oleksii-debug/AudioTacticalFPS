@@ -263,28 +263,39 @@ class EbookSession:
 
 
 def native_position(control, raw_text, offset):
-    """Map a source offset only if the native control proves the exact prefix.
+    """Map a source offset only when both native substrings prove its boundary.
 
-    wx.TextCtrl positions differ from Python indices on Windows (CRLF and
-    UTF-16). XYToPosition supplies platform-native candidates; GetRange verifies
-    them against the unmodified source. Unsupported mappings fail explicitly.
+    wxMSW XY coordinates count wrapped display lines, not source newlines.
+    Linear candidates cover native Unicode and newline conventions without
+    depending on layout; exact prefix and suffix reads reject partial UTF-16
+    characters, half a CRLF, or a changed control.
     """
     if type(offset) is not int or not 0 <= offset <= len(raw_text):
         raise ValueError('Invalid extracted-text position.')
     if control.GetValue() != raw_text:
         raise ValueError('The text control changed the extracted text; positioning is unavailable.')
-    prefix = raw_text[:offset]
+    last = control.GetLastPosition()
+    if type(last) is not int or last < 0:
+        raise ValueError('The text control could not locate that exact extracted-text position.')
+    prefix, suffix = raw_text[:offset], raw_text[offset:]
     row = prefix.count('\n')
     line_prefix = prefix.rsplit('\n', 1)[-1]
     columns = (len(line_prefix), len(line_prefix.encode('utf-16-le')) // 2)
-    for column in dict.fromkeys(columns):
-        position = control.XYToPosition(column, row)
-        if position >= 0:
+    candidates = [control.XYToPosition(column, row) for column in dict.fromkeys(columns)]
+    # These are only candidates, never assumed native indices. Plain MSW edit
+    # controls store CRLF; rich/native peers may instead store one newline unit.
+    windows_prefix = prefix.replace('\n', '\r\n')
+    for value in (prefix, windows_prefix):
+        candidates.extend((len(value), len(value.encode('utf-16-le')) // 2))
+    for position in dict.fromkeys(candidates):
+        if type(position) is int and 0 <= position <= last:
             try:
-                if control.GetRange(0, position) == prefix:
+                if (control.GetRange(0, position) == prefix
+                        and control.GetRange(position, last) == suffix
+                        and control.GetValue() == raw_text):
                     return position
             except UnicodeError:
-                # A Windows candidate may end between a surrogate pair.
-                # Try the UTF-16 column only; never accept a partial character.
+                # A candidate may split a surrogate pair. No partial character
+                # or normalized half-newline can prove both source substrings.
                 continue
     raise ValueError('The text control could not locate that exact extracted-text position.')

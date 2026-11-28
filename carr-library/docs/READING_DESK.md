@@ -5,14 +5,15 @@ search phrase. The reader presents one complete source page or logical segment
 in a native, read-only text control. It supports previous/next, direct navigation,
 named page bookmarks, session back/forward, and resuming the last opened page.
 The Where am I action describes the source, its actual location, reading order,
-and current verification status as ordinary text.
+and current verification status as ordinary text. The same window includes the
+shared continuous voice reader; its controls, saved voice position and bounded
+playback behavior are described in [Live reading](LIVE_READING.md).
 
 ## Keyboard commands
 
 Open the Reading menu with **Alt+D**. Select a source in Books and Collections
 and press **Ctrl+R**, or use **Reading,
 Read selected book**. If no source is selected, a named book chooser opens.
-Use **Alt+D** to open the Reading menu from the main window.
 
 - **Ctrl+PageDown / Ctrl+PageUp:** next / previous source location.
 - **Ctrl+G:** jump to a reading-order position.
@@ -22,7 +23,8 @@ Use **Alt+D** to open the Reading menu from the main window.
 - **Ctrl+Shift+L:** focus the textual location and verification status.
 - **F1:** reader keyboard guide. **Escape:** close the reader.
 
-Every shortcut also has a named native button. Ordinary text-navigation keys
+Reading shortcuts can be configured separately from main-window shortcuts in
+the keyboard settings. The values above are defaults. Every shortcut also has a named native button. Ordinary text-navigation keys
 remain available in the source text control. To start a changed source afresh,
 choose **Start at first source location** explicitly; an unavailable old resume
 position is reported rather than silently redirected.
@@ -61,24 +63,23 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-Full-library backups now include this sidecar automatically when it exists.
-Backup format 3 records its exact size and SHA256 alongside the database and
-registered originals. The library writer lock covers both snapshots, and backup
-and restore validate every saved place against the copied source identities.
-Bookmark names, IDs, timestamps and resume locations are preserved exactly.
+Full-library backups include this sidecar when present. The current common
+format 4 records its size and SHA256 alongside the database, registered originals
+and supported typed state. Both snapshots use the same library writer lock;
+saved locations are checked against the copied source identities. Invalid or
+linked reading state stops the backup instead of being silently omitted.
 
-An archived library or an older sealed revision keeps its original reading
-state. Restoring the backup does not reactivate it or move its bookmarks to a
-new revision: the reader reports an unavailable or stale location until you
-explicitly restore the library or start the current revision afresh. Older
-backup formats 1 and 2 remain restorable; they contain no reading sidecar, so use
-the separate per-library export when recovering reading state from those backups.
+Restore creates a new data folder and preserves saved names, IDs and timestamps.
+Archived editions and old revisions remain archived or stale until an explicit
+user action; restore does not reassign bookmarks to another revision. Historical
+formats 1 and 2 contain no reading sidecar, so retain the separate reading-state
+export when recovering those backups. Other supported historical envelopes are
+validated according to their original manifests, without starting restored work.
 
-Restore always creates a new data folder after validation. Keep the reported
-manifest SHA256 separately from the backup. Arbitrary sidecars, credentials,
-audio projects and pending import journals are outside this backup format.
-A different library cannot accept a per-library reading export. No cloud account
-or network retrieval is involved.
+Keep the manifest SHA256 separately from the backup. A different library cannot
+accept a per-library reading export. No cloud account or network retrieval is
+involved. Audio exported outside the data folder and external model installations
+need their own copies; operating-system credential secrets are not included.
 
 ## Implementation and primary references
 

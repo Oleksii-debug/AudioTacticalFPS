@@ -26,6 +26,10 @@ class Control:
         self.bindings = {}
         self.modal_result = None
 
+    def GetId(self):
+        assert not self.destroyed
+        return id(self)
+
     def Bind(self, event, callback): self.bindings[event] = callback
     def SetName(self, value): self.name = value
     def SetValue(self, value): self.value = value
@@ -194,7 +198,9 @@ def test_closed_or_destroyed_dialog_ignores_late_preview_delivery(form, destroy)
     dialog.workbench.preview.return_value = preview('Late preview must stay hidden')
     dialog.on_preview()
     if destroy:
-        event = N(GetEventObject=lambda: dialog, Skip=Mock())
+        identity = dialog._native_id
+        dialog.destroyed = True
+        event = N(GetId=lambda: identity, GetEventObject=lambda: object(), Skip=Mock())
         dialog.on_destroy(event)
         event.Skip.assert_called_once_with()
         form.executor.shutdown.assert_not_called()  # The parent owns this executor.
@@ -453,3 +459,17 @@ def test_native_existing_approval_is_bound_before_confirmation_and_async_work(fo
     assert 'not exported' in form.dialog.status.value
     assert 'changed' in form.dialog.status.value
     assert not list(form.destination.parent.glob('.research-export-*'))
+
+
+def test_child_destroy_does_not_cancel_the_live_styles_dialog(form):
+    dialog = form.dialog
+    dialog.workbench.preview.return_value = preview('Still live')
+    dialog.on_preview()
+    pending = dialog.pending
+    event = N(GetId=lambda: dialog._native_id + 1, GetEventObject=lambda: object(), Skip=Mock())
+    dialog.on_destroy(event)
+    assert dialog.alive and dialog.pending is pending and not dialog.cancelled.is_set()
+    form.executor.finish(0)
+    form.drain()
+    assert dialog.output.value == 'Still live'
+    event.Skip.assert_called_once_with()

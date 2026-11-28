@@ -34,7 +34,19 @@ contains only entries actually enumerated by installed engines.
 | Piper | Explicit local executable and existing model/config, mandatory independent SHA256 and voice-license fields, no download-by-model-name | Hash/manifest boundaries tested; no neural weights downloaded or inference claimed |
 | Local JSON helper | Explicit opt-in, executable SHA256, configurable catalog budget, JSON v1 enumerate/render contract | Contract boundary implemented; no claim of a particular vendor implementation |
 | SAPI 4 | No available verified Windows 11 32-bit engine contract | Unavailable; no simulated voice or promised obsolete-driver compatibility |
-| dordiai-voices | Exact-name integration remains dependent on its actual private/local contract | Not claimed; a reviewed bridge may implement the JSON contract below |
+| dordiai-voices | Explicit default-off provider using the reviewed public pull-PCM bridge, canonical `Voice`/`SpeechSettings`, shared WAV publication and the existing Studio service | Real subprocess protocol and synthetic PCM/FFmpeg integration tests pass; no actual private neural-model or pronunciation acceptance is claimed |
+
+The optional connection is available under **Audio Studio → Local voice and
+music engines → Connect or disable dordiai-voices**. It checks a separately
+installed worker's paths and approved SHA256 without starting it. Reader voice
+reload or opening Studio performs explicit resource discovery. Full details,
+budgets, cache identity and measured acceptance boundaries are in
+[DORDIAI_LOCAL_SPEECH.md](DORDIAI_LOCAL_SPEECH.md).
+
+Desktop callers use `runtime_settings.voice_registry(library_root / 'state')`
+so enabled declarations belong to the selected library. Bare
+`VoiceRegistry.discover()` does not consult ambient dordiai enable flags or
+silently select another library's runtime.
 
 Piper support follows the inspected upstream CLI at
 `OHF-Voice/piper1-gpl` revision `6aacdbc98eda4b1cb81d960bef7c7fae710b13fd`.
@@ -114,6 +126,16 @@ format and retains the original text, lineage, edits and undo/redo position.
 Unknown or mixed formats are rejected. Recovery and format notices remain visible
 even when no local voice is installed.
 
+The earlier origin-only version-2 dialect remains readable through its existing
+validated `source_origin` adapter. Its `text_verified` fields are distinct from
+the pre-release anchor's `text_verified_at_read` fields; neither dialect may mix
+fields or provide both origin and anchor objects. All new portable serialization
+uses the canonical anchor. The stable legacy identity view preserves historical
+source-draft filenames and revision-independent recovery links. On a source
+conflict, the reader asks whether to open the selected saved draft separately or
+read the current source; both choices retain the old file, and cancellation
+does not create a replacement. Equal titles or text never decide this identity.
+
 Whitespace and optional hyphenation cleanup are deterministic derivative edits.
 Pronunciation dictionaries support literal and bounded regex substitutions,
 optional language and voice scoping, import/export, and undo as one change.
@@ -158,12 +180,28 @@ verified timing. Playback uses native Windows MCI or an installed ffplay.
 MCI position is native; ffplay's elapsed position is labeled approximate.
 Device playback/listening quality is not inferred from PCM tests.
 
-`VoiceRegistry.fingerprint(voice_id)` includes visible voice metadata and the
-installed executable digest; Piper additionally hashes its model and config.
+`VoiceRegistry.fingerprint(voice_id, cancelled=...)` includes visible voice
+metadata, the installed executable digest and registry/process-boundary source
+bytes; Piper additionally hashes its model and config.
 On Debian-style layouts, Flite/eSpeak shared voice-library bytes are also
 included. Opaque third-party SAPI model/driver assets are not fully discoverable
 through a token and must not be advertised as a verified model revision.
 Use a reviewed runtime manifest for stricter cross-machine cache equivalence.
+
+Discovery has one overall deadline and forwards cancellation to the installed
+providers. Synthesis also has one deadline covering asset hashes, every
+utterance, PCM inspection and publication. It rechecks the voice fingerprint
+before publishing. Production binds a render to the identity used in its cache
+key and revalidates cached speech before accepting it. The dordiai provider
+additionally hashes its public adapter dependencies, interpreter, worker/model
+tree and bundled private Python tree; a change in same-size model bytes cannot
+reuse previous speech merely because its timestamp was preserved.
+
+The installed sealed FFmpeg component is verified once per `AudioRuntime`
+constructor, before ordinary PATH discovery. Explicit overrides remain
+explicit. A damaged included component fails without switching to another
+binary. Fallback lookup uses only absolute local PATH directories and explicit
+Windows `.exe` names, without an implicit current-directory lookup.
 
 These process boundaries are not an OS sandbox for malicious installed
 executables or voice DLLs. The generic helper must be explicitly reviewed and
@@ -193,62 +231,6 @@ absolute local `output` WAV path and validated `settings`. It returns
 The host independently validates the actual file. A helper cannot claim
 success by returning JSON without valid audio.
 
-## Requested reading and synthesis workflow checklist
-
-This is the bounded acceptance inventory requested by
-[V3-02/03/04](UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md). Reviewed on **2026-11-27**
-against source commit `4e618af`. It supplements the existing
-[input-format matrix](document_formats.md#format-support-in-this-implementation),
-which remains the single per-format inventory; it does not introduce another
-reader, engine or format registry.
-
-The behavioral references are the publisher's [product overview][B1],
-[FAQ and documented menu workflows][B2], [command-line utility][B3],
-[text-extraction utility][B4] and [voice-engine notes][B5]. These public pages
-were inspected, not the application implementation. No Balabolka binary was
-installed, executed or redistributed for this review. Its documented functions
-are comparison targets, not evidence that our application implements them.
-
-**Supported** means the stated bounded path exists with the listed regression
-coverage. **Limited** means only the explicitly described subset is available.
-**Pending** means no usable implementation is claimed. **Unsupported** means
-the current adapter deliberately rejects that path. Test paths below identify
-evidence to run, not a new test result or completed Windows/NVDA/listening sign-off.
-Module paths are relative to `src/carr_library/`; test paths are relative to the
-application root.
-
-| ID and requested workflow | Status | Existing module and exact boundary | Acceptance evidence / remaining check |
-| --- | --- | --- | --- |
-| R01. Read text/selection, pause, resume and stop; synthesis rate/volume ([B1], [B3]) | Supported, within discovered voice capabilities | `ui/speech_dialog.py`, `speech/runtime.py`, `speech/player.py`: manual text, selection/all and from-cursor reading; rate/volume disabled when unsupported. Native MCI position; ffplay position is approximate. | `tests/speech/test_runtime.py`, `tests/speech/test_native_sapi_protocol.py`; physical playback and native keyboard/NVDA acceptance remain separate gates. |
-| R02. Enumerate and select installed voices ([B5]) | Limited | `speech/runtime.py`, `runtime_settings.py`, `ui/engine_settings.py`: actual SAPI5/Flite/eSpeak discovery and explicit local Piper/helper profiles. SAPI4 unsupported; a listed language does not qualify voice quality. | `tests/speech/test_runtime.py`, `tests/speech/test_system_host.py`; optional engine/model and language listening acceptance must use the actual selected installation. |
-| R03. Pitch, per-language voice changes and finer navigation ([B3]) | Limited / pending | `SpeechSettings` admits native pitch only where declared; the reader exposes rate/volume, not a universal pitch/style control. Studio supports explicit role/line choices. Automatic word/sentence language switching, spoken unit navigation, A–B repeat and sleep timer are pending. | `tests/speech/test_runtime.py`, `tests/studio/test_production.py`; no universal phoneme, accent or prosody claim. |
-| R04. Pronunciation substitutions and dictionaries ([B1], [B3]) | Limited | `speech/reading.py`, `speech/regex_worker.py`: literal and bounded regex rules, language/voice scope, dictionary import/export, one reversible derivative edit. A native dictionary management/preview workflow and third-party BXD/REX/DIC compatibility are not implemented. | `tests/speech/test_reading.py`: literal/regex scope, catastrophic-regex deadline and dictionary round-trip. |
-| R05. Spell checking ([B1]) | Pending | No Hunspell adapter or native spelling/suggestion UI is present. `ReadingDocument` supplies the future non-destructive edit boundary; ordinary text editing is not spell checking. | Requires reviewed executable/dictionary rights, explicit language selection, suggestion preview, undo and source-preservation tests. |
-| R06. All requested document inputs ([B1], [B4]) | Mixed; see canonical matrix | `conversion/service.py`, `conversion/formats.py`, existing DOCX/EPUB extractors and OCR: use the linked matrix for every requested extension and raster/TIFF input. AZW/AZW3, CHM, DjVu, DOC, LIT, MOBI, PDB/PRC, PPT, TCR, WPD and XLS are currently unsupported by this conversion reader set; RTF/OCR depend on optional installed tools. | `tests/conversion/test_conversion.py`; format refusal, fidelity warnings and actual optional-engine availability are tested separately. No DRM/password bypass or fabricated pagination. |
-| R07. Batch extraction/conversion ([B4]) | Supported finite batch; limited recovery | `ConversionService.extract_many`, `ui/document_conversion.py`: explicit files, separate UTF-8 copies and provenance, cancellation and retained completed outputs. This conversion path has no persistent restart queue. | `tests/conversion/test_conversion.py`: extraction, input mutation, cancellation, budgets and publication rollback; native multi-file selection still needs its own acceptance. |
-| R08. Combine text and preview configurable split boundaries ([B2], [B4]) | Limited / pending | `speech/runtime.py:split_utterances` bounds synthesis chunks; `studio/project.py:parse_script` provides explicitly authored scenes. These are not a user-facing split preview by blank lines, regex, bookmarks, page, target size or duration. General combine/split text workflow is pending. | `tests/speech/test_runtime.py`, `tests/studio/test_studio_controller.py`; boundary preview and exact-source coverage require new acceptance before being advertised. |
-| R09. Output filename patterns ([B2], [B4]) | Limited | `ui/document_conversion.py` uses numbered sanitized names; `conversion/service.py` supplies checksum-based batch names; `studio/render.py` uses numbered sanitized chapter titles. User-configurable first-line/header/sequence patterns and preview are pending. | `tests/conversion/test_conversion.py`, `tests/studio/test_production.py`; existing files are protected, but pattern compatibility is not claimed. |
-| R10. Single audiobook, chapter files and chapter markers ([B2]) | Limited | `studio/render.py`: master WAV, separate scene/chapter WAVs, optional runtime-supported encoded master and `timeline.json`. Named Reading Desk bookmarks do not automatically create audio chapters. Embedded MP3/M4A/M4B chapter metadata and cover/tag editing are pending. | `tests/studio/test_production.py`: actual multi-scene output and frame/duration checks; selecting an M4B container alone is not embedded-chapter acceptance. |
-| R11. Synchronized text ([B1], [B3]) | Limited | `studio/render.py` exports SRT/VTT and line positions from measured synthesized line durations. `speech/runtime.py` provides measured utterance durations. Word highlighting, LRC export, synchronized MP3 lyric tags and subtitle-to-speech time fitting are pending. | `tests/studio/test_production.py::test_measured_line_subtitles_and_music_stem_alignment`; no word/phoneme alignment inferred from a line duration. |
-| R12. Command-line reading/synthesis ([B3], [B4]) | Limited | `studio/cli.py`, `__main__.py`: `python -m carr_library studio` exposes voices, capabilities, project/script rendering, jobs and resume. The conversion service has a Python API and native UI. Dedicated stdin/stdout speech streaming, clipboard CLI input and a standalone document-conversion CLI are pending. | `tests/studio/`, `scripts/windows_v3_smoke.py`; direct playback and extraction command parity are not claimed. |
-| R13. Clipboard, tray and global keys ([B1], [B3]) | Limited / pending | `ui/speech_dialog.py` accepts explicit native paste; `ui/keyboard_settings.py` configures application shortcuts. There is no clipboard watcher, dedicated read-clipboard action, system-tray player or OS-wide hotkey registration. | `tests/ui/test_keyboard_settings.py` covers saved shortcuts and screen-reader conflicts; future global controls require opt-in, lifecycle and NVDA checks. |
-| R14. Named bookmarks and resume ([B2]) | Supported source navigation; limited audio mapping | `reader/reading_state.py`, `ui/reading_desk.py`, `speech/session.py`: named source-location bookmarks, import/export, source revision checks, reading draft/voice/cursor/audio-position recovery. A bookmark is not an exact spoken-word timestamp or quotation approval. | `tests/reader/test_reading_state.py`, `tests/ui/test_reading_desk_actions.py`, `tests/speech/test_session.py`, `tests/ui/native_reading_desk_smoke.py`. |
-| R15. Editor open/save, undo/redo, comparison and customization ([B1], [B2]) | Limited | `speech/reading.py`, `ui/speech_dialog.py`: single editable reading copy, Open/Save/Save As, selection, undo/redo, original/diff and whitespace cleanup. Multi-tab editor, integrated find/replace including regex, font/background/zoom preferences and speed-reading presentation are pending in this reader. | `tests/speech/test_reading.py`, `tests/speech/test_session.py`: persistence, mapping, conflicts and original preservation; no editor customization parity claimed. |
-
-Completion of this documentation checklist does **not** close its pending
-product workflows. Before changing any row to Supported, attach the exact
-implementation, executable regression, relevant native accessibility result
-and any engine/format-specific limit. The Windows gates
-`scripts/windows_v3_smoke.py` and `scripts/windows_platform_tools_smoke.py`
-provide executable native checks; an unexecuted script or synthetic engine
-fixture is not evidence of listening quality or feature parity.
-
-[B1]: https://www.cross-plus-a.com/balabolka.htm
-[B2]: https://www.cross-plus-a.com/bfaq.htm
-[B3]: https://www.cross-plus-a.com/bconsole.htm
-[B4]: https://www.cross-plus-a.com/btext.htm
-[B5]: https://www.cross-plus-a.com/voice.htm
-
 ## Verification
 
 `python -m pytest -q tests/speech` covers actual three-voice synthesis, RMS gain
@@ -276,3 +258,14 @@ Primary API references inspected for the adapters:
 - [FFmpeg Flite source filter](https://ffmpeg.org/ffmpeg-filters.html#flite)
 - [eSpeak CLI documentation](https://espeak.sourceforge.net/commands.html)
 - [Piper official CLI source](https://github.com/OHF-Voice/piper1-gpl/blob/6aacdbc98eda4b1cb81d960bef7c7fae710b13fd/src/piper/__main__.py)
+
+## Current reading workflow inventory
+
+Use [the finite reading workflow checklist](READING_WORKFLOW_CHECKLIST.md) for
+the current scenario-by-scenario source status. The native session additions are
+documented in [output selection](OUTPUT_DEVICES.md) and
+[tray/session controls](READ12_SESSION_CONTROLS.md); document preparation and
+offline effects use [retained batches](DOCUMENT_BATCHES.md) and
+[ordered effect chains](ORDERED_AUDIO_EFFECTS.md).
+Each page separates source implementation from exact-build native execution,
+physical listening, human NVDA and engine/model qualification.

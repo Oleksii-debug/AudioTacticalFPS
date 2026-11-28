@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 
 from ..progress import ProgressHub
-from ..progress_preferences import ProgressPreferences, ProgressPreferenceStore
+from ..progress_preferences import ProgressPreferences, LegacyProgressPreferences, LibraryProgressPreferenceStore
 from ..progress_feedback import ProgressFeedback, WindowsToneSink
 from .command_registry import CommandSpec
 from .keyboard_settings import register_menu_command
@@ -34,10 +34,13 @@ def _items(menu):
 class NativeProgressPanel:
     """One native observer; querying is explicit and works during a busy job."""
 
-    def __init__(self, frame):
+    def __init__(self, frame, *, accessible_name=None,
+                 details_name='Current operation progress and phase',
+                 query_name='Query current progress'):
         import wx
 
         self.wx, self.frame = wx, frame
+        self._fixed_gauge_name = accessible_name
         self.hub = ProgressHub()
         self.active_task = None
         self.closed = False
@@ -57,29 +60,31 @@ class NativeProgressPanel:
             self.speech_provider = None
         from ..speech.progress_speech import snapshot_speech_provider
         self.speech_provider = snapshot_speech_provider(self.speech_provider)
-        self.store = ProgressPreferenceStore(Path(frame.library.root) / 'progress-preferences.json')
+        self.store = LibraryProgressPreferenceStore(frame.library.root)
         self.preferences = self._read_preferences()
         self.feedback = ProgressFeedback(self._effective_preferences(self.preferences),
                                          tone_sink=self.tone_sink, speech_provider=self.speech_provider)
         from .progress_media import ProgressMedia
         self.media = ProgressMedia(self)
+        frame.live_media_feedback = self.media.live_feedback
 
         self.panel = wx.Panel(frame.host)
+        self._native_id = self.panel.GetId()
         self.panel.SetName('Operation progress')
         layout = wx.BoxSizer(wx.VERTICAL)
         self.gauge = wx.Gauge(self.panel, range=100, style=wx.GA_HORIZONTAL)
-        self.gauge.SetName('Current operation progress')
+        self.gauge.SetName(accessible_name or 'Current operation progress')
         self.gauge.SetValue(0)
         self._gauge_value, self._gauge_indeterminate = 0, False
-        self._gauge_name = 'Current operation progress'
+        self._gauge_name = accessible_name or 'Current operation progress'
         layout.Add(self.gauge, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 4)
         self.text = wx.TextCtrl(self.panel, style=wx.TE_READONLY | wx.TE_MULTILINE)
-        self.text.SetName('Current operation progress and phase')
+        self.text.SetName(details_name)
         self.text.SetMinSize((-1, 64))
         layout.Add(self.text, 0, wx.EXPAND | wx.ALL, 4)
         buttons = wx.WrapSizer(wx.HORIZONTAL)
         self.query_button = wx.Button(self.panel, label='&Query current progress')
-        self.query_button.SetName('Query current progress')
+        self.query_button.SetName(query_name)
         self.query_button.Bind(wx.EVT_BUTTON, self.query)
         buttons.Add(self.query_button, 0, wx.ALL, 3)
         self.settings_button = wx.Button(self.panel, label='Progress feedback settings...')
@@ -98,8 +103,16 @@ class NativeProgressPanel:
         self.panel.Bind(wx.EVT_TIMER, self.refresh, self.timer)
         self.panel.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
         self.timer.Start(200)
+        self._retained_providers = []
         self.refresh()
         frame.host.Layout()
+
+    @property
+    def legacy(self):
+        if not hasattr(self, '_legacy'):
+            from .operation_progress import ProgressCompatibility
+            self._legacy = ProgressCompatibility(self)
+        return self._legacy
 
     def _read_preferences(self):
         try:
@@ -140,12 +153,14 @@ class NativeProgressPanel:
 
     def set_speech_provider(self, provider, *, root=None):
         """Authorize this session's local voice without enabling its sound."""
+        if self.closed:
+            raise ValueError('The progress view is closed.')
         from ..durable_state import local_path
         from ..speech.progress_speech import snapshot_speech_provider
         if provider is not None:
             current = local_path(self.frame.library.root, exists=True)
             selected = root if root is not None else getattr(provider, 'library_root', None)
-            if (current != local_path(self.store.path.parent, exists=True)
+            if (current != local_path(self.store.library_root, exists=True)
                     or selected is not None and local_path(selected, exists=True) != current):
                 raise ValueError('The library folder changed. Select its progress voice again.')
             provider_root = getattr(provider, 'library_root', None)
@@ -157,7 +172,14 @@ class NativeProgressPanel:
         if previous is not None and previous is not provider:
             close = getattr(previous, 'close', None)
             if callable(close):
-                close()
+                try:
+                    closed = close()
+                except (Exception, KeyboardInterrupt):
+                    closed = False
+                if closed is False:
+                    if previous not in self._retained_providers:
+                        self._retained_providers.append(previous)
+                    self.notice = 'The previous progress voice has not confirmed cleanup; its owner is retained for retry.'
         self.feedback.set_preferences(self._effective_preferences(self.preferences))
         self.refresh_audio_state()
 
@@ -173,8 +195,13 @@ class NativeProgressPanel:
     def refresh_audio_state(self):
         self.media.refresh()
 
-    def begin(self, title, *, total=None, unit='units'):
-        task = self.hub.start(title, total=total, unit=unit)
+    def begin(self, title, *, total=None, unit='units', measured=False):
+        if self.closed:
+            raise ValueError('The progress view is closed.')
+        if type(measured) is not bool:
+            raise ValueError('Measured progress selection must be boolean.')
+        start = self.hub.start_measured if measured else self.hub.start
+        task = start(title, total=total, unit=unit)
         self.active_task = task
         self._last_revision = None
         self._reporting_failure = None
@@ -182,6 +209,8 @@ class NativeProgressPanel:
         return task
 
     def request_cancel(self):
+        if self.closed:
+            return
         if self.active_task is not None and _state(self.active_task.snapshot()) not in _TERMINAL:
             self.active_task.request_cancel()
             self.refresh()
@@ -261,7 +290,7 @@ class NativeProgressPanel:
         elif self._gauge_indeterminate or self._gauge_value != percent:
             self.gauge.SetValue(percent)
         self._gauge_indeterminate, self._gauge_value = indeterminate, percent
-        gauge_name = ('Current operation progress: ' +
+        gauge_name = self._fixed_gauge_name or ('Current operation progress: ' +
                       ('indeterminate; ' if indeterminate else '') + state)
         if gauge_name != self._gauge_name:
             self.gauge.SetName(gauge_name)
@@ -284,6 +313,8 @@ class NativeProgressPanel:
 
     def set_busy(self, busy):
         """Preserve native command enablement while keeping progress query live."""
+        if self.closed:
+            return
         bar = self.frame.GetMenuBar()
         if busy:
             if self._busy_menus is not None:
@@ -318,15 +349,19 @@ class NativeProgressPanel:
             self.settings_button.Enable()
 
     def save_preferences(self, preferences):
+        if self.closed:
+            raise ValueError('The progress view is closed.')
         self.store.save(preferences)
         self.preferences = preferences
-        self.notice = ''
+        self.notice = self.store.warning
         self.feedback.set_preferences(self._effective_preferences(preferences))
         self.mute.SetValue(preferences.muted)
         self.refresh()
 
     def toggle_mute(self, event=None):
         """The native mute control remains available during long operations."""
+        if self.closed:
+            return
         requested = replace(self.preferences, muted=self.mute.GetValue())
         if requested.muted:
             # Silence is an immediate user action. A full disk must not make
@@ -364,11 +399,13 @@ class NativeProgressPanel:
                     pass
 
     def change_root(self, root):
+        if self.closed:
+            raise ValueError('The progress view is closed.')
         if getattr(self.frame, 'working', False):
             raise ValueError('Wait for the current operation before changing progress settings folders.')
         self.feedback.suspend(self.active_task.snapshot() if self.active_task is not None else None)
         self.set_speech_provider(None)
-        self.store = ProgressPreferenceStore(Path(root) / 'progress-preferences.json')
+        self.store = LibraryProgressPreferenceStore(root)
         self.notice = ''
         self.preferences = self._read_preferences()
         self.feedback.set_preferences(self._effective_preferences(self.preferences))
@@ -380,20 +417,39 @@ class NativeProgressPanel:
         self.refresh()
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.panel:
-            self.close()
-        event.Skip()
+        try:
+            if event.GetId() == self._native_id:
+                self.close()
+        finally:
+            event.Skip()
 
     def close(self):
-        if self.closed:
-            return
-        self.closed = True
-        self.timer.Stop()
-        self.feedback.close()
-        close = getattr(self.speech_provider, 'close', None)
-        if callable(close):
-            close()
-        self.media.close()
+        if not self.closed:
+            self.closed = True
+            try:
+                self.timer.Stop()
+            except RuntimeError:
+                pass
+            self.feedback.close()
+            self.media.close()
+        retained, seen = [], set()
+        for provider in (*self._retained_providers, self.speech_provider):
+            if provider is None or id(provider) in seen:
+                continue
+            seen.add(id(provider))
+            close = getattr(provider, 'close', None)
+            if not callable(close):
+                continue
+            try:
+                closed = close()
+            except (Exception, KeyboardInterrupt):
+                closed = False
+            if closed is False:
+                retained.append(provider)
+        self._retained_providers = retained
+        if retained:
+            self.notice = 'Progress voice cleanup is pending; its owners are retained for retry.'
+        return not retained
 
 
 class ProgressSettingsDialog:
@@ -403,8 +459,11 @@ class ProgressSettingsDialog:
         import wx
 
         self.wx, self.panel = wx, panel
+        self.closed = False
         self.original_store = panel.store
-        self.dialog = wx.Dialog(parent, title='Progress feedback settings', size=(660, 600))
+        from .keyboard_settings import _owned_keyboard_dialog
+        self.dialog = _owned_keyboard_dialog(parent, title='Progress feedback settings', size=(660, 600),
+                                             detach=self.close)
         layout = wx.BoxSizer(wx.VERTICAL)
         introduction = wx.StaticText(self.dialog, label=(
             'Progress is always available as text and a native bar. Extra sound is off by default. '
@@ -424,11 +483,12 @@ class ProgressSettingsDialog:
                        0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         layout.Add(wx.StaticText(self.dialog, label='Minimum interval between progress sounds, in seconds'),
                    0, wx.LEFT | wx.TOP, 8)
-        self.interval = wx.SpinCtrl(self.dialog, min=1, max=60, initial=int(panel.preferences.interval_seconds))
+        self.interval = wx.SpinCtrl(self.dialog, min=1, max=120 if panel.store.legacy else 60,
+                                    initial=int(panel.preferences.interval_seconds))
         self.interval.SetName('Minimum progress feedback interval in seconds')
         layout.Add(self.interval, 0, wx.ALL | wx.EXPAND, 8)
         layout.Add(wx.StaticText(self.dialog, label='Progress feedback volume, percent'), 0, wx.LEFT | wx.TOP, 8)
-        self.volume = wx.Slider(self.dialog, value=panel.preferences.volume, minValue=0, maxValue=100,
+        self.volume = wx.Slider(self.dialog, value=round(panel.preferences.volume), minValue=0, maxValue=100,
                                 style=wx.SL_HORIZONTAL | wx.SL_LABELS)
         self.volume.SetName('Progress feedback volume percent')
         layout.Add(self.volume, 0, wx.ALL | wx.EXPAND, 8)
@@ -446,7 +506,10 @@ class ProgressSettingsDialog:
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Progress settings status')
         self.status.SetMinSize((-1, 65))
-        self.status.ChangeValue(panel.notice or 'Changes apply only when you choose Save.')
+        precision_notice = (' The earlier volume has fractional percent precision. Saving this dialog applies '
+                            'the displayed whole percent; Cancel keeps the exact saved value.'
+                            if panel.store.legacy and panel.preferences.volume != round(panel.preferences.volume) else '')
+        self.status.ChangeValue((panel.notice or 'Changes apply only when you choose Save.') + precision_notice)
         layout.Add(self.status, 0, wx.ALL | wx.EXPAND, 8)
         footer = wx.BoxSizer(wx.HORIZONTAL)
         save = wx.Button(self.dialog, wx.ID_OK, '&Save')
@@ -458,7 +521,15 @@ class ProgressSettingsDialog:
         self.dialog.SetEscapeId(wx.ID_CANCEL)
         self.mode.SetFocus()
 
+    def close(self):
+        self.closed = True
+
+    def _alive(self):
+        return not self.closed and not self.panel.closed and bool(self.dialog)
+
     def save(self, event=None):
+        if not self._alive():
+            return
         if self.original_store is not self.panel.store:
             self.status.ChangeValue('The library folder changed. Close and reopen progress settings.')
             self.status.SetFocus()
@@ -467,42 +538,50 @@ class ProgressSettingsDialog:
             selection = self.mode.GetSelection()
             if not 0 <= selection < len(self.modes):
                 raise ValueError('Choose an available progress feedback mode.')
-            preferences = ProgressPreferences(
+            policy_type = LegacyProgressPreferences if self.panel.store.legacy else ProgressPreferences
+            preferences = policy_type(
                 mode=self.modes[selection][1],
                 interval_seconds=float(self.interval.GetValue()), volume=self.volume.GetValue(),
                 muted=self.muted.GetValue(), allow_background=self.background.GetValue(),
                 quiet_during_media=self.quiet.GetValue())
             self.panel.save_preferences(preferences)
         except (ValueError, OSError) as error:
+            if not self._alive():
+                return
             self.status.ChangeValue('Progress settings were not saved. ' + str(error))
             self.status.SetFocus()
             return
-        self.dialog.EndModal(self.wx.ID_OK)
+        if self._alive():
+            self.dialog.EndModal(self.wx.ID_OK)
 
     def show(self):
         try:
-            return self.dialog.ShowModal() == self.wx.ID_OK
+            return self.dialog.ShowModal() == self.wx.ID_OK and self._alive()
         finally:
-            self.dialog.Destroy()
+            self.close()
+            if self.dialog:
+                self.dialog.Destroy()
 
 
 def install_progress_panel(frame):
     existing = getattr(frame, 'progress_panel', None)
     if existing is not None:
+        frame.operation_progress = existing.legacy
         return existing
     import wx
     panel = NativeProgressPanel(frame)
     frame.progress_panel = panel
+    frame.operation_progress = panel.legacy
     bar = frame.GetMenuBar()
     options = next((bar.GetMenu(index) for index in range(bar.GetMenuCount())
                     if bar.GetMenuLabel(index).replace('&', '').strip().casefold() == 'options'), None)
     if options is None:
         raise ValueError('Install the shared keyboard Options menu before operation progress.')
+    # The live keyboard manager validates every native leaf at registration.
+    # Finish each new command before appending the next unregistered leaf.
     query = options.Append(wx.ID_ANY, 'Query current &progress\tCtrl+Shift+Q')
-    settings = options.Append(wx.ID_ANY, 'Progress feedback settings...')
     panel.query_item = query
     frame.Bind(wx.EVT_MENU, panel.query, query)
-    frame.Bind(wx.EVT_MENU, panel.settings, settings)
     manager = frame.keyboard_commands
     previous_notice = manager.load_notice
     register_menu_command(frame, CommandSpec('progress.query', 'Query current progress',
@@ -510,6 +589,8 @@ def install_progress_panel(frame):
                           fallback_unassigned=True)
     if manager.load_notice and manager.load_notice != previous_notice:
         panel.notice = panel.notice + '\n' + manager.load_notice if panel.notice else manager.load_notice
+    settings = options.Append(wx.ID_ANY, 'Progress feedback settings...')
+    frame.Bind(wx.EVT_MENU, panel.settings, settings)
     register_menu_command(frame, CommandSpec('options.progress', 'Progress feedback settings'), settings)
     panel.refresh()
     return panel

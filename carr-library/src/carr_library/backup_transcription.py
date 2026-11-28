@@ -111,10 +111,15 @@ def _inventory(value, *, external=False, maximum=100000):
         _identity(identity)
 
 
-def _packages(value):
-    if type(value) is not dict or set(value) != _PACKAGES:
+def _packages(value, *, additional=False):
+    if type(value) is not dict or (not additional and set(value) != _PACKAGES):
         raise ValueError('Invalid reviewed transcription distribution inventory.')
-    for entry in value.values():
+    if additional and (not value or len(value) > 8192 or set(value) & _PACKAGES):
+        raise ValueError('Invalid additional transcription distribution inventory.')
+    for name, entry in value.items():
+        if additional and (not isinstance(name, str) or len(name) > 512
+                           or re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name) is None):
+            raise ValueError('Invalid additional transcription distribution name.')
         fields(entry, {'version', 'file_count', 'installed_files_sha256'})
         text(entry['version'], 1024)
         number(entry['file_count'], 1, 100000, integer=True)
@@ -145,7 +150,7 @@ def _profile(value, identity):
         'python_configuration', 'runtime_distributions', 'runtime_auxiliary', 'runtime_capability',
         'worker_path', 'worker_identity', 'model_directory', 'model_name', 'model_files', 'model_bytes',
         'model_content_fingerprint', 'fingerprint', 'id', 'name', 'trusted', 'qualification',
-        'registered', 'restored'}, {'python_support'})
+        'registered', 'restored'}, {'python_support', 'runtime_additional_distributions'})
     if (value['schema'] != 'resonance-transcription-runtime/1' or value['protocol'] != 'local-file-job/1'
             or value['id'] != identity or identity != value['fingerprint'][:32]
             or value['qualification'] != 'unqualified'
@@ -161,6 +166,8 @@ def _profile(value, identity):
     if not {'model.bin', 'config.json', 'tokenizer.json'} <= value['model_files'].keys():
         raise ValueError('Incomplete reviewed model declaration.')
     _packages(value['runtime_distributions'])
+    if 'runtime_additional_distributions' in value:
+        _packages(value['runtime_additional_distributions'], additional=True)
     for name in ('trusted', 'restored'):
         _bool(value[name])
     for name in ('name', 'model_name'):
@@ -539,29 +546,41 @@ def validate_collection(entries, records):
 
 
 def prepare_restored_inventory(stage, destination, entries, *, cancelled):
-    """Revoke trust only after source-manifest verification, before publication."""
+    """Revoke only this exact path codec after source-manifest verification.
+
+    The current hash64 producer shares the directory and schema label, but its
+    records remain owned by its separate validated recovery pass.
+    """
     from . import backup_sidecars
+    selected = tuple(entry for entry in entries if limit(entry['filename']) is not None)
+    if not selected:
+        return tuple(entries)
     from .transcription.service import prepare_restored_state
     backup_sidecars._check_cancelled(cancelled)
     prepare_restored_state(stage / 'state', destination, cancelled=cancelled)
     output, records = [], {}
     names = {entry['filename'] for entry in entries}
-    names.update(path.relative_to(stage).as_posix()
-                 for path in (stage / PREFIX).glob('jobs/*/control.json'))
+    # The reviewed producer creates one control for each known staged job.
+    # Derive those exact names from the verified inventory, not a fresh glob.
+    for entry in selected:
+        match = JOB.fullmatch(entry['filename'])
+        if match and match[2] == 'job':
+            names.add(PREFIX + 'jobs/' + match[1] + '/control.json')
     original = {entry['filename']: entry for entry in entries}
     for name in sorted(names):
         backup_sidecars._check_cancelled(cancelled)
-        if not name.startswith(PREFIX):
+        maximum = limit(name)
+        if maximum is None:
             output.append(original[name])
-        elif (stage / name).exists():
+        elif backup_sidecars._optional_present(stage / name):
             if is_input(name):
                 output.append(original[name])  # Already copied and byte-verified.
             else:
-                raw = backup_sidecars.read_regular(stage / name, limit(name), allow_empty=allows_empty(name))
+                raw = backup_sidecars.read_regular(stage / name, maximum, empty=allows_empty(name))
                 value = validate(name, raw)
                 if value is not None:
                     records[name] = value
                 output.append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
-    validate_collection(output, records)
+    validate_collection(tuple(entry for entry in output if limit(entry['filename']) is not None), records)
     backup_sidecars._check_cancelled(cancelled)
     return tuple(output)

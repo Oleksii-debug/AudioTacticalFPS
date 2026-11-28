@@ -15,8 +15,9 @@ from uuid import uuid4
 
 from .models import canonical, local_path
 from .profiles import ProfileStore
-from .providers import Authorization, Gateway, money
+from .providers import Authorization, Gateway, money, translation_language_approval
 from .translation import TranslationService, translation_approval
+from ..application import LibraryApp
 
 
 def _input(path):
@@ -37,20 +38,27 @@ def _review(service, profile, args):
     preview = service.preview(profile, value, args.source, args.target,
                               glossary=args.glossary, rate_per_million=args.rate_per_million)
     bound = str(money(args.budget))
+    if profile.adapter == 'libretranslate-local' and money(bound) != 0:
+        raise ValueError('Local translation requires a zero external cost bound.')
     if preview['estimated_cost'] is not None and money(preview['estimated_cost']) > money(bound):
         raise ValueError('The entered rate estimate exceeds the approved total budget.')
     review = {**preview, 'profile': profile.to_dict(), 'budget': bound, 'title': args.title}
     return value, {**review, 'review_sha256': sha256(canonical(review).encode('utf-8')).hexdigest()}
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Reviewed Google Basic v2 / Advanced v3 plain-text translation')
-    parser.add_argument('--data-dir', type=Path, required=True, help='Existing private library folder')
+    parser = argparse.ArgumentParser(description='Reviewed Google Basic v2 / Advanced v3 and explicit local text translation')
+    parser.add_argument('--data-dir', type=Path, required=True, help='Existing private Resonance library folder')
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('profiles', help='List non-secret configured translation accounts')
     languages = sub.add_parser('languages', help='Read the cache, or explicitly fetch current provider declarations')
     languages.add_argument('--profile', required=True)
     languages.add_argument('--approve-remote', action='store_true', help='Approve one official language-list request; no text is sent')
+    languages.add_argument('--approve-local', action='store_true', help='Approve one selected loopback language-list request; no text is sent')
     for name in ('preview', 'submit'):
         action = sub.add_parser(name, help='Review exact text/settings' if name == 'preview' else 'Approve the unchanged preview and save a paused-resumable job')
         action.add_argument('--profile', required=True)
@@ -63,6 +71,7 @@ def main(argv=None):
         action.add_argument('--title', default='Translation')
         if name == 'submit':
             action.add_argument('--approve-remote', action='store_true', help='Approve external transfer of this reviewed text')
+            action.add_argument('--approve-local', action='store_true', help='Approve this reviewed text for the explicitly selected local translator')
             action.add_argument('--review-sha256', required=True, help='Exact value returned by preview for unchanged text/settings')
     sub.add_parser('jobs', help='List saved statuses without source-text disclosure')
     resume = sub.add_parser('resume', help='Run an already approved job; Ctrl+C pauses before the next bounded request')
@@ -76,19 +85,20 @@ def main(argv=None):
     try:
         root = local_path(args.data_dir)
         if not (root / 'library.sqlite').is_file():
-            raise ValueError('Choose an existing library with library.sqlite.')
+            raise ValueError('Choose an existing Resonance library with library.sqlite.')
         store = ProfileStore(root / 'state' / 'providers')
-        service = TranslationService(root / 'state' / 'translation')
+        service = TranslationService(root / 'state' / 'translation', library=LibraryApp(root))
         if args.command == 'profiles':
             result = [{key: p.to_dict()[key] for key in ('id', 'name', 'adapter', 'endpoint', 'model', 'enabled')}
-                      for p in store.list() if p.adapter in ('google-translation-v2', 'google-translation-v3')]
+                      for p in store.list() if p.adapter in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local')]
         elif args.command == 'languages':
             p = store.get(args.profile)
-            if args.approve_remote:
-                identity = uuid4().hex
-                approval = Authorization(identity, identity, ((p.id, p.endpoint),),
-                    ('translation.languages',), ('user-instruction',), '0', 1, time() + 600)
-                service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            if args.approve_remote or args.approve_local:
+                local = p.adapter == 'libretranslate-local'
+                if args.approve_local != local or args.approve_remote == local:
+                    raise PermissionError('Use --approve-local for this local translator or --approve-remote for a remote account.')
+                approval = translation_language_approval(p, expires_at=time() + 600)
+                service.gateway = Gateway(service.directory / 'provider', mode='LOCAL_ONLY' if local else 'APPROVED_REMOTE')
                 previous = signal.signal(signal.SIGINT, lambda *unused: stop.set())
                 result = service.refresh_languages(p, authorization=approval, cancelled=stop.is_set)
             else:
@@ -97,8 +107,10 @@ def main(argv=None):
             p = store.get(args.profile)
             value, result = _review(service, p, args)
             if args.command == 'submit':
-                if not args.approve_remote or args.review_sha256 != result['review_sha256']:
-                    raise PermissionError('Explicitly approve the exact current preview hash before saving a remote job.')
+                local = p.adapter == 'libretranslate-local'
+                if (args.approve_local != local or args.approve_remote == local
+                        or args.review_sha256 != result['review_sha256']):
+                    raise PermissionError('Explicitly approve the exact current preview hash with --approve-local for a local job or --approve-remote for a remote job.')
                 approval, cost = translation_approval(p, value, args.source, args.target, args.budget, glossary=args.glossary)
                 identity = service.submit(p, value, args.source, args.target, title=args.title,
                     glossary=args.glossary, authorization=approval, per_call_cost=cost)
@@ -108,7 +120,9 @@ def main(argv=None):
             result = [{key: job.get(key) for key in ('id', 'title', 'status', 'source_language', 'target_language', 'glossary')}
                       | {'completed': len(job['receipts']), 'total': len(job['chunks'])} for job in service.list()]
         elif args.command == 'resume':
-            service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            saved = service.get(args.job)
+            service.gateway = Gateway(service.directory / 'provider',
+                mode='LOCAL_ONLY' if saved['profile']['local'] else 'APPROVED_REMOTE')
             previous = signal.signal(signal.SIGINT, lambda *unused: stop.set())
             result = service.resume(args.job, cancelled=stop.is_set,
                 progress=lambda done, total, phase: print(f'{done}/{total}: {phase}', file=sys.stderr, flush=True))

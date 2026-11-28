@@ -26,8 +26,6 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
-# Exact unsigned candidate independently built and executed on Windows; no override.
-NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
@@ -44,6 +42,33 @@ def regular(path):
             or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError(f"expected a regular file: {path.name}")
     return path
+
+
+def launcher_bytes(path, expected_sha256):
+    """Capture the explicitly selected unsigned launcher without executing it."""
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise ValueError("native launcher requires its expected lowercase SHA256")
+    path = regular(Path(path))
+    with path.open("rb") as stream:
+        raw = stream.read(2 * 1024 * 1024 + 1)
+    if len(raw) > 2 * 1024 * 1024:
+        raise ValueError("native launcher exceeds its size budget")
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("native launcher checksum mismatch")
+    return raw
+
+
+def inspect_launcher(path):
+    # Parse the copied bytes with the existing trusted PE probe. Never load or
+    # execute the supplied executable during bundle assembly.
+    spec = importlib.util.spec_from_file_location(
+        "carr_bundle_launcher_pe", HERE / "native-launcher" / "probe_pe.py")
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    try:
+        return probe.inspect_pe(path)
+    except (ValueError, probe.struct.error, IndexError, UnicodeDecodeError) as exc:
+        raise ValueError("invalid unsigned native launcher PE: " + str(exc)) from exc
 
 
 def read_lock(path):
@@ -125,20 +150,238 @@ def verify_dependency_closure(selected):
                 raise ValueError(f"unsatisfied Windows dependency: {req}")
 
 
+def verify_portable_entry_sources(wheel):
+    """Bind the opt-in owner contract to the exact wheel and reviewed native build."""
+    import ast
+    package = HERE.parent / "src" / "carr_library"
+    entry = regular(package / "portable_entry.py").read_bytes()
+    syntax = ast.parse(entry)
+    declared = [node.value for node in syntax.body if isinstance(node, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == "OWNED_SOURCES"
+                        for target in node.targets)]
+    if len(declared) != 1:
+        raise ValueError("portable ownership source inventory is ambiguous")
+    sources = ast.literal_eval(declared[0])
+    if (type(sources) is not tuple or not 1 <= len(sources) <= 64
+            or len(sources) != len(set(sources))
+            or any(not isinstance(item, str) or not item.endswith(".py")
+                   or item.startswith("/") or "\\" in item or ".." in item.split("/")
+                   for item in sources)):
+        raise ValueError("invalid portable ownership source inventory")
+    with ZipFile(wheel) as archive:
+        for relative in sources:
+            current = regular(package / relative).read_bytes()
+            name = "carr_library/" + relative
+            names = [info for info in archive.infolist() if info.filename.casefold() == name.casefold()]
+            if (len(names) != 1 or names[0].filename != name
+                    or names[0].file_size != len(current) or archive.read(names[0]) != current):
+                raise ValueError("portable ownership code differs from the exact application wheel")
+    return tuple(sources)
+
+
+def reviewed_portable_launcher(native_launcher, build_evidence, native_probe, source_commit):
+    """Reuse the existing exact source/build/native-process evidence verifier."""
+    spec = importlib.util.spec_from_file_location(
+        "carr_portable_launcher_admission", HERE / "native-launcher" / "verify_launcher.py")
+    if spec is None or spec.loader is None:
+        raise ValueError("reviewed native launcher admission helper is unavailable")
+    verifier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    return verifier.verify_launcher(native_launcher, build_evidence, native_probe, source_commit)
+
+
+VENDORED_NUM2WORDS_COMPONENT = json.loads(r'''{
+  "type": "library",
+  "bom-ref": "carr-vendored-num2words-sk@0.5.14",
+  "name": "num2words (vendored Slovak runtime closure)",
+  "version": "0.5.14",
+  "licenses": [
+    {
+      "expression": "LGPL-2.1-or-later"
+    }
+  ],
+  "externalReferences": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/savoirfairelinux/num2words/tree/6abe2c64714a38e41de23fe20fa319d0ad2fd845"
+    }
+  ],
+  "properties": [
+    {
+      "name": "carr:scope",
+      "value": "Unmodified lang_SK.py/base.py/utils.py/compat.py/currency.py; full COPYING and per-file Git identities in reader/_vendor_num2words/UPSTREAM.json; local inert initializer. No upstream eager initializer, CLI or docopt dependency."
+    }
+  ]
+}''')
+VENDORED_NUM2WORDS_FILES = {
+    "__init__.py": "4b98330587fd681df4bfa61767ba22e12816d2e2",
+    "UPSTREAM.json": "579a9b92808377a671e88d1c1c2f467468283f03",
+    "lang_SK.py": "35ece024f13cf90999d3ca4954229f1d4994a4ba",
+    "base.py": "243045ffc701ce2986f12f02101f2cbca92960a5",
+    "utils.py": "b5e4611be5fafe19324a00594b2648d75bd17bd8",
+    "compat.py": "321cd2e84e11335163afc5902b1b136196fee889",
+    "currency.py": "4982251ec4f8a15c286dab82388154daf26b706d",
+    "COPYING": "a7b7406f02f769167539316e5093cd58f609dce5"
+}
+VENDORED_NUM2WORDS_PREFIX = "carr_library/reader/_vendor_num2words/"
+VENDORED_SOURCE_LIMIT = 512 * 1024
+
+
+def _verify_vendored_sources(files):
+    """Validate the exact reviewed source closure, without importing its code."""
+    if not files:
+        return False
+    if set(files) != set(VENDORED_NUM2WORDS_FILES):
+        raise ValueError("vendored num2words source inventory differs from its reviewed closure")
+    for name, expected in VENDORED_NUM2WORDS_FILES.items():
+        raw = files[name]
+        if not isinstance(raw, bytes) or len(raw) > VENDORED_SOURCE_LIMIT:
+            raise ValueError("vendored num2words source exceeds its byte boundary")
+        identity = hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") + b"\0" + raw,
+                                usedforsecurity=False).hexdigest()
+        if identity != expected:
+            raise ValueError("vendored num2words source identity differs: " + name)
+    return True
+
+
+def vendored_sources_from_wheel(wheel):
+    """Bind reviewed vendor bytes to the same wheel digest later sealed by the caller."""
+    wheel = regular(Path(wheel))
+    digest = sha256(wheel)
+    files = {}
+    with ZipFile(wheel) as archive:
+        for info in archive.infolist():
+            name = info.filename
+            if not name.casefold().startswith(VENDORED_NUM2WORDS_PREFIX.casefold()):
+                continue
+            if info.is_dir():
+                if name != VENDORED_NUM2WORDS_PREFIX:
+                    raise ValueError("unexpected vendored num2words archive directory")
+                continue
+            relative = name[len(VENDORED_NUM2WORDS_PREFIX):]
+            if (name != VENDORED_NUM2WORDS_PREFIX + relative
+                    or relative not in VENDORED_NUM2WORDS_FILES or relative in files
+                    or not 0 <= info.file_size <= VENDORED_SOURCE_LIMIT):
+                raise ValueError("unexpected or duplicate vendored num2words archive member")
+            with archive.open(info) as stream:
+                raw = stream.read(VENDORED_SOURCE_LIMIT + 1)
+            if len(raw) != info.file_size:
+                raise ValueError("vendored num2words archive member size differs")
+            files[relative] = raw
+    _verify_vendored_sources(files)
+    if sha256(wheel) != digest:
+        raise ValueError("application wheel changed during vendored source review")
+    return files, digest
+
+
+def vendored_sources_from_package(package_root):
+    """Read the installed source/notice closure; compiled caches are not source components."""
+    root = Path(package_root) / "reader" / "_vendor_num2words"
+    if not root.exists() and not root.is_symlink():
+        return {}
+    info = root.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or root.is_symlink()
+            or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        raise ValueError("expected the installed vendored num2words directory")
+    files = {}
+    for path in root.iterdir():
+        if path.name == "__pycache__" and path.is_dir() and not path.is_symlink():
+            continue
+        if path.name not in VENDORED_NUM2WORDS_FILES:
+            raise ValueError("unexpected installed vendored num2words source member")
+        regular(path)
+        with path.open("rb") as stream:
+            files[path.name] = stream.read(VENDORED_SOURCE_LIMIT + 1)
+    _verify_vendored_sources(files)
+    return files
+
+
+def runtime_sbom_components(bom, *, vendor_files):
+    """Separate exact wheel distributions from the one reviewed embedded source component."""
+    if (not isinstance(bom, dict) or bom.get("bomFormat") != "CycloneDX"
+            or bom.get("specVersion") != "1.5" or not isinstance(bom.get("components"), list)):
+        raise ValueError("runtime SBOM does not match the dependency lock format")
+    vendor_present = _verify_vendored_sources(vendor_files)
+    distributions, references, vendor_count = {}, set(), 0
+    for component in bom["components"]:
+        if not isinstance(component, dict):
+            raise ValueError("invalid runtime SBOM component")
+        reference = component.get("bom-ref")
+        if "bom-ref" in component:
+            if not isinstance(reference, str) or not reference or reference in references:
+                raise ValueError("duplicate runtime SBOM component or reference")
+            references.add(reference)
+        if reference == VENDORED_NUM2WORDS_COMPONENT["bom-ref"]:
+            if component != VENDORED_NUM2WORDS_COMPONENT:
+                raise ValueError("vendored num2words SBOM identity or notice differs")
+            vendor_count += 1
+            continue
+        name, version = component.get("name"), component.get("version")
+        if (not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", name)
+                or not isinstance(version, str) or not version):
+            raise ValueError("invalid runtime SBOM distribution identity")
+        name = canonicalize_name(name)
+        if name in distributions:
+            raise ValueError("duplicate runtime SBOM component or reference")
+        distributions[name] = component
+    if vendor_count != int(vendor_present):
+        raise ValueError("runtime SBOM omits or invents the reviewed vendored num2words component")
+    if vendor_present:
+        metadata = bom.get("metadata")
+        root = metadata.get("component") if isinstance(metadata, dict) else None
+        root_ref = root.get("bom-ref") if isinstance(root, dict) else None
+        dependencies = bom.get("dependencies")
+        if not isinstance(root_ref, str) or not isinstance(dependencies, list):
+            raise ValueError("vendored num2words SBOM dependency binding is missing")
+        root_edges = [item for item in dependencies if isinstance(item, dict) and item.get("ref") == root_ref]
+        vendor_edges = [item for item in dependencies if isinstance(item, dict)
+                        and item.get("ref") == VENDORED_NUM2WORDS_COMPONENT["bom-ref"]]
+        if (len(root_edges) != 1 or len(vendor_edges) != 1
+                or not isinstance(root_edges[0].get("dependsOn"), list)
+                or root_edges[0]["dependsOn"].count(VENDORED_NUM2WORDS_COMPONENT["bom-ref"]) != 1
+                or vendor_edges[0].get("dependsOn", []) != []):
+            raise ValueError("vendored num2words SBOM dependency binding differs")
+    return distributions
+
+
+def verify_runtime_sbom(bom, pins, *, vendor_files):
+    components = runtime_sbom_components(bom, vendor_files=vendor_files)
+    actual = {(name, item["version"]) for name, item in components.items()}
+    expected = {(name, version) for name, (version, _hashes) in pins.items()}
+    if actual != expected or len(components) != len(pins):
+        raise ValueError("runtime SBOM does not match the dependency lock")
+    return components
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, native_launcher=None):
+                 ocr_source_archive=None, native_launcher=None, native_launcher_sha256=None,
+                 *, portable_updates=False, native_launcher_build=None, native_launcher_probe=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
+    if (native_launcher is None) != (native_launcher_sha256 is None):
+        raise ValueError("supply both native launcher and its expected SHA256")
+    native_bytes = (launcher_bytes(native_launcher, native_launcher_sha256)
+                    if native_launcher is not None else None)
+    if native_bytes is not None and (python_archive is None or source_commit is None):
+        raise ValueError("native launcher requires bundled Python and an exact source commit")
+    if type(portable_updates) is not bool:
+        raise ValueError("portable_updates must be an explicit boolean")
+    if portable_updates:
+        if native_bytes is None or native_launcher_build is None or native_launcher_probe is None:
+            raise ValueError("portable updates require the exact launcher and build/native-process evidence")
+        verify_portable_entry_sources(wheel)
+        reviewed = reviewed_portable_launcher(
+            native_launcher, native_launcher_build, native_launcher_probe, source_commit)
+        if reviewed != native_bytes:
+            raise ValueError("native launcher changed between capture and portable admission")
+    elif native_launcher_build is not None or native_launcher_probe is not None:
+        raise ValueError("portable launcher evidence requires --portable-updates")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
-    if native_launcher is not None:
-        native_launcher = regular(Path(native_launcher))
-        if sha256(native_launcher) != NATIVE_LAUNCHER_SHA256:
-            raise ValueError("Native launcher differs from the exact Windows-tested executable")
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
@@ -146,16 +389,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         # Do not re-open a mutable input later in the build.
         sbom_bytes = sbom.read_bytes()
         bom = json.loads(sbom_bytes.decode("utf-8"))
-        expected = {(name, version) for name, (version, _hashes) in pins.items()}
-        actual = {(canonicalize_name(item["name"]), item["version"])
-                  for item in bom.get("components", [])}
-        if (bom.get("bomFormat") != "CycloneDX" or bom.get("specVersion") != "1.5"
-                or actual != expected):
-            raise ValueError("runtime SBOM does not match the dependency lock")
-        components = bom["components"]
-        refs = [item["bom-ref"] for item in components if "bom-ref" in item]
-        if len(components) != len(expected) or len(refs) != len(set(refs)):
-            raise ValueError("duplicate runtime SBOM component or reference")
+        vendor_files, sbom_wheel_sha256 = vendored_sources_from_wheel(wheel)
+        verify_runtime_sbom(bom, pins, vendor_files=vendor_files)
     selected = {}
     inventory = {}
     for path in sorted(wheelhouse.iterdir()):
@@ -187,6 +422,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     # the existing copy-time comparison must reject that replacement.
     inventory[wheel.name] = (source_evidence["wheel_sha256"]
                             if source_evidence is not None else sha256(wheel))
+    if sbom is not None and inventory[wheel.name] != sbom_wheel_sha256:
+        raise ValueError("application wheel changed after vendored SBOM review")
     if python_archive is not None:
         python_archive = regular(Path(python_archive))
         runtime = json.loads((HERE / "windows-python.json").read_text(encoding="utf-8"))
@@ -236,6 +473,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
         staged = Path(scratch)
+        if native_bytes is not None:
+            launcher = staged / "ResearchLibrary.exe"
+            launcher.write_bytes(native_bytes)
+            if inspect_launcher(launcher)["sha256"] != native_launcher_sha256:
+                raise ValueError("native launcher changed during bundle assembly")
         staged_wheels = staged / "wheelhouse"
         staged_wheels.mkdir()
         install = []
@@ -326,23 +568,25 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
-        if native_launcher is not None:
-            destination = staged / "ResearchLibrary.exe"
-            shutil.copyfile(regular(native_launcher), destination)
-            if sha256(destination) != NATIVE_LAUNCHER_SHA256:
-                raise ValueError("Native launcher changed during bundle assembly")
         if source_evidence is not None:
             # Retain the verifier's exact commit/tree/wheel binding inside the
             # sealed payload, so installed acceptance can attest those same
             # bytes. Use deterministic LF bytes on both build platforms.
             (staged / "application-source.json").write_bytes(
                 (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+        if portable_updates:
+            (staged / "portable-update.ini").write_bytes(
+                b"[Resonance portable updates]\nProtocol=2\nOwner=windows-job-receipt-v1\n")
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
+        if native_bytes is not None and files["ResearchLibrary.exe"] != native_launcher_sha256:
+            raise ValueError("native launcher changed before bundle sealing")
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
                     "files": files}
+        if portable_updates:
+            manifest["bundled_launcher"] = True
         if source_commit is not None:
             manifest["source_commit"] = source_commit
             manifest["source_tree"] = source_evidence["source_tree"]
@@ -374,12 +618,21 @@ def main():
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
     parser.add_argument("--native-launcher", type=Path,
-                        help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
+                        help="Optional explicitly built unsigned ResearchLibrary.exe")
+    parser.add_argument("--native-launcher-sha256",
+                        help="Expected SHA256 from this launcher's build and native process evidence")
+    parser.add_argument("--portable-updates", action="store_true",
+                        help="Seal reviewed portable child ownership; requires matching launcher evidence")
+    parser.add_argument("--native-launcher-build", type=Path)
+    parser.add_argument("--native-launcher-probe", type=Path)
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.native_launcher)))
+                                  args.native_launcher, args.native_launcher_sha256,
+                                  portable_updates=args.portable_updates,
+                                  native_launcher_build=args.native_launcher_build,
+                                  native_launcher_probe=args.native_launcher_probe)))
 
 
 if __name__ == "__main__":

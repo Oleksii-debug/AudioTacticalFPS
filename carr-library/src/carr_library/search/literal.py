@@ -5,6 +5,8 @@ NFD/full casefold and whitespace folding are search-only; returned offsets are
 half-open Python code-point offsets into the original immutable page. No raw
 FTS syntax, stemming, cross-page stitching, or generated quotation.
 """
+from .paging import MAX_TIMEOUT_SECONDS
+
 from array import array
 from bisect import bisect_right
 from hashlib import sha256
@@ -18,6 +20,7 @@ MAX_CHARS = 5_000_000
 MAX_QUERY = 500
 _LONG_ASCII = 64 * 1024
 _SPACE_RUN = re.compile(r'\s{2,}')
+_ASCII_RUN = re.compile(r'[\x00-\x7f]+')
 
 
 def _fold(text):
@@ -62,8 +65,7 @@ def _ascii_mapped(text, check):
 
 
 class _CompactOffsets:
-    """Source boundaries in a compact array; -1 is not a cluster boundary."""
-
+    """Dense source boundaries; -1 marks a position inside a folded cluster."""
     def __init__(self, length):
         self.values = array('i', [-1]) * (length + 1)
 
@@ -106,6 +108,39 @@ def _mapped(text, check=lambda: None):
         if i >= next_check:
             check()
             next_check = i + 1024
+        # A small Unicode fragment must not turn a long ASCII remainder into
+        # millions of Python normalization/map assignments. Limit every bulk run
+        # to the existing cancellation interval and leave a cross-boundary
+        # whitespace run or base-plus-mark cluster to the canonical path below.
+        if ord(text[i]) < 128:
+            match = _ASCII_RUN.match(text, i, min(len(text), next_check))
+            j = match.end()
+            if (j < len(text) and not text[j - 1].isspace()
+                    and ud.category(text[j]).startswith('M')):
+                j -= 1
+            if j < len(text) and text[j].isspace():
+                while j > i and text[j - 1].isspace():
+                    j -= 1
+            if j > i:
+                part, offsets, _ = _ascii_mapped(text[i:j], check)
+                if compact and not folded.startswith(part, pos):
+                    raise ValueError('unsupported normalization mapping')
+                boundaries = array('i')
+                begin = shift = 0
+                for cut, removed in zip(offsets.cuts, offsets.removed):
+                    boundaries.extend(range(i + begin + shift, i + cut + shift))
+                    begin, shift = cut, removed
+                boundaries.extend(range(i + begin + shift, i + len(part) + 1 + shift))
+                if compact:
+                    starts.values[pos:pos + len(part)] = boundaries[:-1]
+                    ends.values[pos + 1:pos + len(part) + 1] = boundaries[1:]
+                else:
+                    starts.update(zip(range(pos, pos + len(part)), boundaries))
+                    ends.update(zip(range(pos + 1, pos + len(part) + 1), boundaries[1:]))
+                    parts.append(part)
+                pos += len(part)
+                i = j
+                continue
         j = i + 1
         if text[i].isspace():
             while j < len(text) and text[j].isspace():
@@ -157,7 +192,7 @@ def _spans(folded, starts, ends, needle, check=lambda: None):
 
 
 def search(db, workspace, query, *, mode='phrase', edition_ids=None,
-           limit=50, offset=0, timeout=5.0, cancelled=lambda: False):
+           limit=50, offset=0, timeout=5.0, cancelled=lambda: False, page_ids=None, resources=None):
     """One active workspace only; edition_ids is the catalog-resolved filter.
 
     phrase: literal punctuation and whitespace-equivalent contiguous phrase;
@@ -167,7 +202,8 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
     Other modes have no wildcard/operator syntax. Exact matches share score 1; tie-break is
     edition, segment ordinal, page id, raw offset. Results never cross pages.
     Only active_page rows from PR #21 are accepted; no persistent second index.
-    Scope/offset caps fail explicitly, not silently with incomplete results.
+    Scope caps fail explicitly, not silently with incomplete results. Offset
+    only skips matches in this bounded scope; it never sizes an allocation.
     """
     if not isinstance(workspace, str) or not workspace:
         raise ValueError('explicit workspace required')
@@ -179,8 +215,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
         raise ValueError('invalid query')
     if not (type(limit) is int and type(offset) is int and type(timeout) in (int, float)
             and 1 <= limit <= 100
-            and 0 <= offset <= 10000 and 0 < timeout <= 60):
+            and offset >= 0 and 0 < timeout <= MAX_TIMEOUT_SECONDS):
         raise ValueError('invalid search budget')
+    if resources is not None:
+        from .paging import SearchResources
+        if type(resources) is not SearchResources or page_ids is None:
+            raise ValueError('A paged search needs a validated resource budget.')
+    character_limit = resources.source_characters if resources is not None else MAX_CHARS
     q = _fold(query).strip()
     if not q:
         return []
@@ -225,8 +266,13 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
             return []
         where += ' AND edition IN (' + ','.join('?' for _ in ids) + ')'
         params.extend(ids)
+    from .paging import PAGED_ACTIVE_SOURCE, checked_page_ids
+    page_clause, page_parameters = checked_page_ids(page_ids)
+    where += page_clause
+    params.extend(page_parameters)
+    source = PAGED_ACTIVE_SOURCE if page_ids is not None else 'active_page'
     sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-           'verified,raw,digest FROM active_page WHERE ' + where +
+           'verified,raw,digest FROM ' + source + ' WHERE ' + where +
            ' ORDER BY edition,ordinal,id')
     index = sqlite3.connect(':memory:')
     rows, result = [], []
@@ -240,7 +286,7 @@ def search(db, workspace, query, *, mode='phrase', edition_ids=None,
                 raise ValueError('foreign workspace row')
             raw = row[9]
             size += len(raw)
-            if len(rows) >= MAX_PAGES or size > MAX_CHARS:
+            if len(rows) >= MAX_PAGES or size > character_limit:
                 raise ValueError('scope exceeds literal search budget')
             # Validate every scoped source before candidate pruning or pagination.
             if sha256(raw.encode('utf-8')).hexdigest() != row[10]:
@@ -334,7 +380,7 @@ def _search_file(path, workspace, query, timeout, cancelled, options, *,
     """
     from pathlib import Path
 
-    if type(timeout) not in (int, float) or not 0 < timeout <= 60:
+    if type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS:
         raise ValueError('invalid search budget')
     deadline = monotonic() + timeout
     latched = False

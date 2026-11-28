@@ -1,924 +1,776 @@
-"""Native local transcription workstation on the isolated, durable service.
+"""Native local transcription through the existing supplied-worker service.
 
-The native selection/progress flow is adapted from the earlier transcription
-dialog. Inference, runtime verification, checkpoints and exports belong to the
-shared transcription service; this module never imports an inference engine.
-wx is imported only when a window is created. Headless action tests are not
-evidence of native Windows or screen-reader acceptance.
+Inventory hashing, retained inputs, inference and verified transcript reads use
+the desktop host's background executor. The view uses named standard wx controls
+and the existing reader for derived edits; it imports no inference engine.
 """
 from pathlib import Path
-from threading import Event, Lock
-from uuid import uuid4
-import json
-import re
+import threading
 
-from ..speech.reading import ReadingDocument
+from ..audio.models import AudioCancelled
+from ..audio.transcription import (AUDIO_EXTENSIONS, FORMATS, SuppliedWhisperRuntime,
+                                   TranscriptionService, TranscriptionSettings)
+from ..audio import transcription_settings as connection_settings
 from ..durable_state import local_path, regular
+from .import_center import readable
+from .transcription_workstation import ProfileTranscriptionController, TranscriptionActions
 
 
-DEVICES = (('cpu', 'int8', 'CPU — int8'), ('cpu', 'float32', 'CPU — float32'),
-           ('cuda', 'float16', 'CUDA GPU — float16'),
-           ('cuda', 'int8_float16', 'CUDA GPU — int8 / float16'))
-FORMATS = ('txt', 'srt', 'vtt', 'json')
-MEDIA_FILTER = ('Audio or video|*.wav;*.mp3;*.m4a;*.m4b;*.flac;*.ogg;*.opus;*.aac;'
-                '*.mp4;*.mkv;*.webm;*.wma;*.3gp;*.amr|All files|*.*')
-HELP = (
-    'Use an existing local Python runtime, the reviewed transcription worker, and a '
-    'concrete local model folder. Inspect checks their identity without running them. '
-    'Registration requires your explicit trust of those exact files. No model is '
-    'downloaded, and no audio is uploaded. Registration does not establish recognition '
-    'accuracy or language coverage.\n\n'
-    'Choose files or a folder in New transcription. Folder recursion is optional. '
-    'Auto asks the selected model to detect the spoken language. An explicit language '
-    'code avoids detection; availability depends on that model. Translate speech means '
-    'English output only. CPU and CUDA are explicit choices; CUDA needs a compatible '
-    'installed runtime.\n\n'
-    'Start creates a durable job before inference. Pause checkpoints and stops the '
-    'worker; Resume uses verified saved work. Cancellation and pause wait for a safe '
-    'boundary. Completed files remain available when a later file fails. Closing during '
-    'work requests a checkpoint and waits. Resume never substitutes newly edited options '
-    'for a saved job. After restoring a backup, explicitly inspect and register a runtime '
-    'again, then use Rebind runtime on the saved job.\n\n'
-    'Saved jobs contains source results. Load transcript opens a ReadingDocument copy. '
-    'Save edits writes a separate derivative; Undo and Redo operate on the reading copy. '
-    'Read aloud opens the existing local voice reader. Recognition and edited text are '
-    'unverified derivatives, not authenticated quotations. Export writes configured '
-    'formats into a new subfolder. Edited text is separate from timed original subtitles.\n\n'
-    'Use Tab and Shift+Tab between native controls, Ctrl+Tab between pages, and the '
-    'labelled buttons to operate the workspace. Escape closes after work is stopped. '
-    'Progress does not move keyboard focus. Screen-reader modifier keys are untouched.'
-)
+def prepare_reading_copy(library_root, service, job_id, source_file, *, cancelled=lambda: False):
+    """Seed one derived reader draft; preserve later edits and undo on reopening."""
+    from ..speech.reading import ReadingDocument
+    from ..speech.session import ReaderDraftStore, ReaderResume
+    detail = service.details(job_id, cancelled=cancelled)
+    if source_file not in {item['file'] for item in detail['record']['request']['inputs']}:
+        raise ValueError('Select an input belonging to this transcription job.')
+    slot = f'transcription:{job_id}:{source_file}'
+    store = ReaderDraftStore(library_root, slot=slot)
+    saved = store.load()
+    if saved is not None:
+        # A missing/corrupt generated receipt must not trap the user's later
+        # edits. Reopening an existing draft does not certify ASR artifacts.
+        return {'slot': slot, 'recovered': True}
+    text, label = service.transcript_text(job_id, source_file, cancelled=cancelled)
+    if cancelled():
+        raise AudioCancelled('Opening the reading copy was cancelled.')
+    title = ('Transcript reading copy: ' + readable(label))[:512]
+    candidate = ReaderResume(ReadingDocument(text, title=title))
+    saved = store.save_if_absent(candidate)
+    return {'slot': slot, 'recovered': saved is not candidate}
 
 
 class TranscriptionController:
-    """One library binding, with service construction deferred to a worker."""
+    """UI-independent legacy actions, using the same public orchestration boundary."""
+    def __new__(cls, frame, *args, **kwargs):
+        if cls is TranscriptionController and not hasattr(frame, 'library'):
+            # Preserve the canonical headless controller/root API without a
+            # second native window or process owner.
+            return ProfileTranscriptionController(frame, *args, **kwargs)
+        return super().__new__(cls)
 
-    def __init__(self, private_root, *, service=None):
-        self.private_root = Path(private_root).absolute()
-        self._service = service
+    def __init__(self, frame, *, changed=lambda focus=False: None,
+                 dispatch=lambda callback: callback(), service_factory=TranscriptionService,
+                 runtime_factory=SuppliedWhisperRuntime):
+        self.frame, self.library = frame, frame.library
+        self.changed, self.dispatch = changed, dispatch
+        self.service_factory, self.runtime_factory = service_factory, runtime_factory
+        self.closed = self.busy = False
+        self.mode = None
+        self.manifest = ''
+        self.dependency = ('Select a reviewed local runtime manifest. No model is installed or downloaded here. '
+                           'Saved jobs and completed results remain available without a runtime.')
+        self.paths, self.jobs, self.outputs = [], [], []
+        self.record = self.job_id = None
+        self.status = 'Choose audio files for a new job, or refresh and select a saved job.'
+        self._token = None
+        self._control_lock = threading.Lock()
+        self._pending_command = self._active_job = self._active_service = None
+        self._requested_command = None
+        saved = connection_settings.load_settings(self.library.root)
+        self._saved_connection = saved['enabled']
+        if saved['enabled']:
+            self.manifest = saved['manifest_path']
+            self.dependency = ('A local connection is saved. Its files will be verified again before use; '
+                               'opening this window does not run a worker or inspect external paths.')
 
-    @property
-    def service(self):
-        if self._service is None:
-            from ..operations import ResourceBroker
-            from ..transcription import TranscriptionService
-            self._service = TranscriptionService(self.private_root / 'state' / 'transcription',
-                broker=ResourceBroker.for_app(self.private_root))
-        return self._service
-
-    def check_root(self, root):
-        if Path(root).absolute() != self.private_root:
-            raise ValueError('The library folder changed. Close and reopen transcription.')
-
-
-class TranscriptionActions:
-    """Testable native actions: immutable job choices and guarded callbacks."""
-
-    def configure(self, frame, controller):
-        self.frame, self.controller = frame, controller
-        self.library = frame.library
-        self.pending = self.closed = self.close_when_idle = False
-        self.cancel_event = Event()
-        self._progress_lock = Lock()
-        self._latest_progress = None
-        self._epoch = 0
-        self._active_job_id = None
-        self._stop_intent = None
-        self._kind = ''
-        self.profiles, self.job_rows, self.sources = (), (), ()
-        self.current_job = self.document = self.transcript_source_id = None
-        self.saved_text = ''
-        self.inspection = None
-        self._enable()
+    def guard(self):
+        if self.closed or getattr(self.frame, '_closing', False) or self.frame.library is not self.library:
+            raise ValueError('The library folder changed or this window closed. Reopen local transcription.')
 
     def report(self, message, *, focus=False):
         if not self.closed:
-            self.status.ChangeValue(str(message))
-            if focus:
-                self.status.SetFocus()
+            self.status = str(message)
+            self.changed(focus)
 
-    def _check_root(self):
-        self.controller.check_root(self.frame.library.root)
-
-    def _enable(self):
-        if self.closed:
-            return
-        for control in self.mutable:
-            control.Enable(not self.pending)
-        editable = not self.pending and self.current_job is None
-        for control in self.new_controls:
-            control.Enable(editable)
-        have_text = not self.pending and self.document is not None
-        self.editor.Enable(have_text)
-        for button in self.read_buttons:
-            button.Enable(have_text)
-        self.start_button.Enable(not self.pending and
-            (self.current_job is None or self.current_job.get('status') != 'complete'))
-        self.pause_button.Enable(self.pending and self._kind == 'transcribe')
-        self.cancel_button.Enable(self.pending)
-
-    def _usable(self):
-        if self.closed or self.pending:
+    def set_manifest(self, path):
+        if self.busy:
             return False
-        try:
-            self._check_root()
-        except ValueError as exc:
-            self.report(str(exc), focus=True)
-            return False
-        if getattr(self.frame, 'working', False) or getattr(self.frame, '_closing', False):
-            self.report('Another operation is active. Finish or cancel it before starting this action.', focus=True)
-            return False
+        self.guard()
+        self.manifest = str(path)
+        self._saved_connection = False
+        self.dependency = 'Selected local manifest; worker, runtime and model inventories have not yet been verified.'
+        self.changed(False)
         return True
+
+    def set_files(self, paths):
+        if self.busy:
+            return False
+        self.guard()
+        self.paths = list(dict.fromkeys(str(path) for path in paths))
+        self.record = self.job_id = None
+        self.outputs = []
+        self.report(f'{len(self.paths)} selected audio files. A new job retains immutable input copies.')
+        return True
+
+    def add_folder(self, folder):
+        existing = tuple(self.paths) if self.job_id is None else ()
+        def done(paths):
+            self.set_files(paths)
+            self.report(f'{len(paths)} selected audio files. Added direct folder contents only; subfolders were not scanned.',
+                        focus=True)
+        return self._job('Finding local audio files in the selected folder',
+                         lambda progress: self._service().folder_inputs(folder, existing=existing,
+                                                                         cancelled=self._cancelled), done)
+
+    def _service(self, runtime=None):
+        return self.service_factory(Path(self.library.root) / 'state', runtime)
 
     def _cancelled(self):
-        return self.cancel_event.is_set() or self.frame.cancel_event.is_set()
+        with self._control_lock:
+            command, service, job = self._pending_command, self._active_service, self._active_job
+            if command and service is not None and job is not None:
+                self._pending_command = None
+        if command and service is not None and job is not None:
+            service.control(job, command)
+            command = None
+        disabled = False
+        if self._saved_connection:
+            saved = connection_settings.load_settings(self.library.root)
+            disabled = not saved['enabled'] or saved['manifest_path'] != self.manifest
+        return (disabled or bool(command) or self.frame.cancel_event.is_set()
+                or self.closed or getattr(self.frame, '_closing', False)
+                or self.frame.library is not self.library)
 
-    def submit(self, title, operation, complete, *, kind='metadata'):
-        if not self._usable():
-            return False
-        self._epoch += 1
-        epoch = self._epoch
-        self.pending, self._kind = True, kind
-        self._active_job_id, self._stop_intent = None, None
-        self.cancel_event.clear()
-        with self._progress_lock:
-            self._latest_progress = None
-        self._enable()
-        self.report(title + '…')
+    def _inspection_cancelled(self):
+        with self._control_lock:
+            requested = self._requested_command is not None
+        return (requested or self.frame.cancel_event.is_set()
+                or self.closed or getattr(self.frame, '_closing', False)
+                or self.frame.library is not self.library)
 
-        def current():
-            if self.closed or epoch != self._epoch:
-                return False
+    def _progress(self, token, text, progress_token, *, progress_task=None):
+        if self.closed or self._token is not token:
+            return
+        if progress_task is not None:
+            from ..progress import ProgressError, ProgressState
             try:
-                self._check_root()
-            except ValueError as exc:
-                self.report(str(exc), focus=True)
-                return False
-            return True
+                progress_task.update(phase=readable(text)[:200])
+            except ProgressError:
+                # A concurrent cancellation/terminal observer transition is
+                # not a failure of the actual ASR operation or its receipt.
+                if progress_task.snapshot().state == ProgressState.RUNNING:
+                    raise
+        else:
+            progress = getattr(self.frame, 'operation_progress', None)
+            if progress is not None:
+                progress.update(phase=readable(text)[:512], token=progress_token)
+        def apply():
+            if not self.closed and self._token is token and self.busy:
+                self.report(text)
+        self.dispatch(apply)
+
+    def _job(self, title, operation, done, *, mode='inspect'):
+        try:
+            self.guard()
+        except Exception as exc:
+            self.report(exc, focus=True)
+            return False
+        if self.busy or self.frame.working:
+            self.report('An operation is already running. Wait for it or cancel it before starting another.', focus=True)
+            return False
+        self.busy, self.mode = True, mode
+        token = self._token = object()
+        with self._control_lock:
+            self._pending_command = self._active_job = self._active_service = None
+            self._requested_command = None
+        self.report(title + '…', focus=True)
 
         def work():
-            self._check_root()
-            # The host binds the current operation in its worker context.
-            # Obtain it here, after run_job starts, rather than retaining an
-            # obsolete frame-level progress object across operation lifetimes.
+            self.guard()
             from ..progress import current_progress
-            progress = current_progress()
+            progress_task = current_progress()
+            progress = getattr(self.frame, 'operation_progress', None) if progress_task is None else None
+            progress_token = progress.event.token if progress is not None else None
+            try:
+                return operation(lambda text: self._progress(
+                    token, text, progress_token, progress_task=progress_task))
+            except AudioCancelled:
+                return {'status': 'cancelled', 'preparation_cancelled': True}
 
-            def update(event):
-                if self.closed or epoch != self._epoch or not isinstance(event, dict):
-                    return
-                phase = str(event.get('phase') or event.get('status') or 'Transcribing')
-                phase = ' '.join(phase.split())[:200] or 'Transcribing'
-                done, total = event.get('done'), event.get('total')
-                measured = (type(done) is int and type(total) is int and 0 <= done <= total and total > 0
-                            and not event.get('indeterminate', False))
-                message = phase + (f': {done} of {total} files' if measured else ' — working; total not yet known')
-                if progress is not None:
-                    # Runtime hashing, source retention and recognition use
-                    # different units. Keep the overall task indeterminate;
-                    # expose the current measured phase in its accessible
-                    # message without inventing a combined percentage.
-                    try:
-                        # Cancellation can change the observer state while
-                        # the worker is still publishing its final checkpoint.
-                        # Observation must not reverse a durable job result.
-                        if not progress.cancellation_requested:
-                            progress.update(total=None, phase=phase, message=message)
-                    except Exception as exc:
-                        message += '\nGlobal progress reporting unavailable: ' + str(exc)[:400]
-                if event.get('current'):
-                    message += '\n' + str(event['current'])[:1000]
-                with self._progress_lock:
-                    self._latest_progress = (epoch, message)
-
-            return operation(self.controller.service, self._cancelled, update)
-
-        def finished(result):
-            if epoch != self._epoch or self.closed:
+        def finish(value=None, error=None):
+            if self.closed or self._token is not token:
                 return
-            self.pending = False
-            with self._progress_lock:
-                self._latest_progress = None
-            self._enable()
-            if current():
-                complete(result)
-            if self.close_when_idle and not self.pending:
-                self.close()
-
-        def failed(error):
-            if epoch != self._epoch or self.closed:
-                return
-            self.pending = False
-            with self._progress_lock:
-                self._latest_progress = None
-            self._enable()
-            if current():
-                message = ('Operation stopped before completion. ' if isinstance(error, InterruptedError)
-                           else 'Operation did not complete. ')
-                self.report(message + str(error) + '\nRefresh saved jobs to inspect retained work.', focus=True)
-            if self.close_when_idle:
-                self.close()
+            self.busy, self.mode = False, None
+            with self._control_lock:
+                self._pending_command = self._active_job = self._active_service = None
+            try:
+                self.guard()
+                if error is not None:
+                    raise error
+                if isinstance(value, dict) and value.get('preparation_cancelled'):
+                    self.report('Preparation cancelled. Refresh saved jobs to review previously retained work.', focus=True)
+                else:
+                    done(value)
+            except Exception as exc:
+                self.report(f'{title}: {exc}', focus=True)
+            self.changed(False)
 
         try:
-            accepted = self.frame.run_job(title, work, done=finished, failed=failed)
+            accepted = self.frame.run_job(title, work, lambda value: finish(value),
+                                          failed=lambda exc: finish(error=exc))
+            if accepted is False:
+                finish(error=RuntimeError('The desktop host could not start this operation.'))
+                return False
         except Exception as exc:
-            failed(exc)
-            return False
-        if accepted is False:
-            failed(RuntimeError('The host did not start this operation.'))
+            finish(error=exc)
             return False
         return True
 
-    def flush_progress(self, event=None):
-        with self._progress_lock:
-            update, self._latest_progress = self._latest_progress, None
-        if not self.closed and self.pending and update is not None and update[0] == self._epoch:
-            self.report(update[1])
+    def verify_runtime(self):
+        manifest = self.manifest
+        if not manifest:
+            self.report('Choose a reviewed local runtime manifest first.', focus=True)
+            return False
+        self.dependency = 'Local runtime verification is pending. Recognition verifies these files again.'
+        def work(progress):
+            runtime = self.runtime_factory(manifest)
+            identity, *_ = runtime.verify(self._cancelled)
+            self.guard()
+            if self._cancelled():
+                raise AudioCancelled('Connecting the local runtime was cancelled.')
+            connection_settings.save_settings(self.library.root,
+                {'version': 1, 'enabled': True, 'manifest_path': manifest})
+            return identity
+        def done(identity):
+            self._saved_connection = True
+            self.dependency = (f'Local worker, runtime and model inventories verified: {identity[:16]}. '
+                               'This check does not run recognition or qualify model quality. No downloads.')
+            self.report(self.dependency, focus=True)
+        return self._job('Checking local transcription dependencies', work, done)
 
-    def refresh(self, event=None):
-        def loaded(value):
-            self.profiles, self.job_rows = tuple(value['profiles']), tuple(value['jobs'])
-            self.runtime.SetItems([f"{row['name']} — {row.get('model_name', 'local model')} — "
-                f"{'trusted' if row.get('trusted') else 'not trusted'}; {row.get('qualification', 'unqualified')}"
-                for row in self.profiles])
-            if self.profiles:
-                self.runtime.SetSelection(0)
-            self._render_jobs()
-            self.report(f'{len(self.profiles)} registered runtimes; {len(self.job_rows)} saved jobs. '
-                        'Select local media to start, or load a saved job. No inference starts automatically.')
-        self.submit('Loading local transcription profiles and jobs',
-            lambda service, cancel, progress: {'profiles': service.list_runtimes(), 'jobs': service.list_jobs()}, loaded)
+    def disable_runtime(self):
+        def work(progress):
+            self.guard()
+            connection_settings.disable(self.library.root)
+            return None
+        def done(value):
+            self._saved_connection = False
+            self.manifest = ''
+            self.dependency = 'Local transcription is disabled. Saved transcripts and reading copies remain available.'
+            self.report(self.dependency, focus=True)
+        return self._job('Disabling the saved transcription connection', work, done)
 
-    def _render_jobs(self):
-        self.jobs.SetItems([f"{row.get('title', 'Transcription')} — {row['status']} — "
-            f"{row.get('done', 0)}/{row.get('total', len(row.get('sources', [])))} files — {row['id']}"
-            for row in self.job_rows])
-        identity = self.current_job['id'] if self.current_job else None
-        index = next((i for i, row in enumerate(self.job_rows) if row['id'] == identity),
-                     0 if self.job_rows else -1)
-        self.jobs.SetSelection(index)
+    def refresh(self):
+        def done(value):
+            rows = value['jobs']
+            self.jobs = rows
+            self.report(f'{len(rows)} saved jobs. Select one to inspect verified results and its original settings.', focus=True)
+        # Listing an old failed job is a successful inspection, not a new failed
+        # operation. Do not feed historical row statuses to the host reducer.
+        return self._job('Checking saved transcription jobs',
+                         lambda progress: {'jobs': self._service().jobs(cancelled=self._cancelled)}, done)
 
-    def _selected_profile(self):
-        index = self.runtime.GetSelection()
-        if not 0 <= index < len(self.profiles):
-            raise ValueError('Register and choose an existing local runtime first.')
-        profile = self.profiles[index]
-        if profile.get('trusted') is not True:
-            raise ValueError('Inspect and explicitly trust this runtime before starting it.')
-        return profile
+    def inspect(self, job_id):
+        return self._job('Opening saved transcription job',
+                         lambda progress: self._service().details(job_id, cancelled=self._cancelled), self._display)
 
-    def _settings(self):
-        language = self.language.GetValue().strip().lower()
-        if not re.fullmatch(r'auto|[a-z]{2,3}', language):
-            raise ValueError('Enter auto or a language code such as uk or en.')
-        selection = self.task.GetSelection()
-        if selection not in (0, 1):
-            raise ValueError('Choose transcription or translation to English.')
-        index = self.device.GetSelection()
-        if not 0 <= index < len(DEVICES):
-            raise ValueError('Choose CPU or CUDA and its compute type.')
-        device, compute, _ = DEVICES[index]
-        formats = {name: bool(control.GetValue()) for name, control in self.formats.items()}
-        if not any(formats.values()):
-            raise ValueError('Select at least one output format.')
-        return dict(language=language, task=('transcribe', 'translate')[selection], device=device,
-            compute_type=compute, beam_size=self.beam.GetValue(), parallel_files=self.parallel.GetValue(),
-            vad_filter=bool(self.vad.GetValue()), condition_on_previous_text=bool(self.context.GetValue()),
-            multilingual=bool(self.multilingual.GetValue()), include_headers=bool(self.headers.GetValue()),
-            output_mode='separate', **{'output_' + key: value for key, value in formats.items()})
+    def _display(self, detail):
+        self.record, self.outputs = detail['record'], detail['outputs']
+        self.job_id, self.paths = self.record['id'], []
+        request = self.record['request']
+        settings = request['settings']
+        summary = (f'Job {self.job_id[:16]}: {self.record["status"]}; '
+                   f'{len(self.record["completed"])} of {len(request["inputs"])} files complete. '
+                   f'Language: {settings["language"]}; task: {settings["task"]}; '
+                   f'device: {settings["device"]}; compute: {settings["compute_type"]}; '
+                   f'formats: {", ".join(request["formats"])}. ')
+        if detail.get('validation_cancelled'):
+            summary += 'Results were not rechecked after stop. Refresh and inspect this job to verify outputs. '
+        if self.record.get('error'):
+            summary += readable(self.record['error']) + ' '
+        summary += ('Resume preserves original settings, runtime identity and input copies. '
+                    'Pause/cancel stops the active file; resume restarts that file and reuses verified completed files.')
+        self.report(summary, focus=True)
 
-    def start(self, event=None):
-        if not self._usable() or not self.confirm_discard():
-            return
-        try:
-            if self.current_job is None:
-                profile = self._selected_profile()
-                sources, settings = tuple(self.sources), self._settings()
-                title, recursive = self.title.GetValue().strip() or 'Transcription', bool(self.recursive.GetValue())
-                if not sources:
-                    raise ValueError('Choose at least one local audio file or folder.')
-                def run(service, cancel, progress):
-                    job = service.create_job(profile['id'], sources, settings=settings,
-                        title=title, recursive=recursive, cancel=cancel, progress=progress)
-                    self._active_job_id = job['id']
-                    if cancel():
-                        (service.pause if self._stop_intent == 'paused' else service.cancel)(job['id'])
-                        return service.get_job(job['id'])
-                    return service.run(job['id'], cancel=cancel, progress=progress)
-            else:
-                identity = self.current_job['id']
-                if self.current_job['status'] == 'complete':
-                    raise ValueError('This job is complete. Choose New job for another transcription.')
-                def run(service, cancel, progress):
-                    self._active_job_id = identity
-                    if cancel():
-                        (service.pause if self._stop_intent == 'paused' else service.cancel)(identity)
-                        return service.get_job(identity)
-                    return service.resume(identity, cancel=cancel, progress=progress)
-            self.submit('Transcribing local audio', run, self.publish_job, kind='transcribe')
-        except Exception as exc:
-            self.report(str(exc), focus=True)
+    def start(self, settings=None, formats=FORMATS):
+        manifest, job_id, paths = self.manifest, self.job_id, tuple(self.paths)
+        if not manifest:
+            self.report('Choose a reviewed local runtime manifest before starting or resuming.', focus=True)
+            return False
+        if job_id is None and not paths:
+            self.report('Choose at least one audio file, or select a saved job to resume.', focus=True)
+            return False
+        settings = settings or TranscriptionSettings()
+        formats = tuple(formats)
+        def work(progress):
+            service = self._service(self.runtime_factory(manifest))
+            active = job_id
+            if active is None:
+                progress('Verifying dependencies and retaining immutable audio input copies.')
+                active = service.create(paths, settings=settings, formats=formats, cancelled=self._cancelled)
+            with self._control_lock:
+                self._active_job, self._active_service = active, service
+            service.control(active, 'run')
+            error, stopped = None, False
+            try:
+                service.run(active, cancelled=self._cancelled, on_status=progress)
+            except AudioCancelled:
+                stopped = True
+            except Exception as exc:
+                error = str(exc)
+            try:
+                if stopped or self._inspection_cancelled():
+                    raise AudioCancelled('Result inspection stopped.')
+                detail = service.details(active, cancelled=self._inspection_cancelled)
+                detail['status'] = detail['record']['status']
+            except AudioCancelled:
+                detail = service.interrupted_details(active)
+                with self._control_lock:
+                    requested = self._requested_command
+                detail['status'] = ('paused' if requested == 'pause' or
+                                    detail['record']['status'] == 'paused' else 'cancelled')
+            if error is not None:
+                detail.update(status='failed', operation_error=error)
+            return detail
+        def done(detail):
+            self._display(detail)
+            if detail.get('operation_error'):
+                self.report(self.status + ' Operation failed: ' + detail['operation_error'], focus=True)
+        return self._job('Running local transcription', work, done, mode='run')
 
-    def publish_job(self, job):
-        self.current_job = job
-        self.job_rows = (job,) + tuple(row for row in self.job_rows if row['id'] != job['id'])
-        self._render_jobs()
-        self.result_source.SetItems([Path(row['original_path']).name + ' — ' + row['id']
-                                    for row in job.get('sources', ())])
-        if job.get('sources'):
-            self.result_source.SetSelection(0)
-        self.document = self.transcript_source_id = None
-        self.saved_text = ''
-        self.editor.ChangeValue('')
-        self.provenance.ChangeValue('Load a completed source result. Recognition text is an unverified derivative.')
-        summary = (f"{job.get('title', 'Transcription')}: {job['status']}; "
-                   f"{job.get('done', 0)} of {job.get('total', len(job.get('sources', [])))} files.\n"
-                   f"Saved job: {job['id']}. Choose a source result and Load transcript.")
-        settings = job.get('settings', {})
-        summary += (f"\nSaved options: {settings.get('language', 'auto')}; {settings.get('task', 'transcribe')}; "
-                    f"{settings.get('device', 'cpu')}/{settings.get('compute_type', 'int8')}. "
-                    'Resume uses these saved options.')
-        if job.get('error'):
-            summary += '\n' + str(job['error'])
-        self.report(summary)
-        self._enable()
+    def request_stop(self, command):
+        if command not in ('pause', 'cancel'):
+            raise ValueError('Choose pause or cancel.')
+        if not self.busy:
+            self.report('No active operation. Select a saved job and press F6 to resume.', focus=True)
+            return False
+        if command == 'pause' and self.mode != 'run':
+            self.report('Preparation can be cancelled; pause is available during transcription.', focus=True)
+            return False
+        with self._control_lock:
+            self._pending_command = command
+            self._requested_command = command
+        self.report(f'{command.capitalize()} requested. Waiting for the worker to stop and save its final state.', focus=True)
+        return True
 
-    def load_job(self, event=None):
-        if not self._usable() or not self.confirm_discard():
-            return
-        index = self.jobs.GetSelection()
-        if not 0 <= index < len(self.job_rows):
-            self.report('Choose a saved job.', focus=True)
-            return
-        identity = self.job_rows[index]['id']
-        self.submit('Opening saved transcription job',
-                    lambda service, cancel, progress: service.get_job(identity), self.publish_job)
+    def edit(self, source_file, open_reader):
+        job_id = self.job_id
+        if job_id is None:
+            self.report('Select a completed TXT transcript first.', focus=True)
+            return False
+        def done(value):
+            self.report('Opening the saved editable reading copy. Transcripts are derived text, not citation evidence.')
+            open_reader(value['slot'])
+        return self._job('Preparing transcript reading copy',
+            lambda progress: prepare_reading_copy(self.library.root, self._service(), job_id,
+                                                   source_file, cancelled=self._cancelled), done)
 
-    def new_job(self, event=None):
-        if not self._usable() or not self.confirm_discard():
-            return
-        self.current_job = self.document = self.transcript_source_id = None
-        self.saved_text = ''
-        self.editor.ChangeValue('')
-        self.result_source.SetItems([])
-        self.provenance.ChangeValue('No transcript is loaded.')
-        self._enable()
-        self.report('New job. Select a registered runtime, local files and options.')
+    def open_folder(self, source_file, launch):
+        job_id = self.job_id
+        def work(progress):
+            detail = self._service().details(job_id, cancelled=self._cancelled)
+            output = next((row for row in detail['outputs'] if row['file'] == source_file), None)
+            if output is None:
+                raise ValueError('Select a completed result folder first.')
+            path = local_path(output['directory'], exists=True)
+            regular(path, directory=True)
+            return str(path)
+        def done(path):
+            # Recheck a directory immediately before the existing wx launcher.
+            # No shell command or arbitrary transcript executable is launched.
+            regular(local_path(path, exists=True), directory=True)
+            if not launch(path):
+                raise ValueError('The system could not open the result folder: ' + path)
+            self.report('Opened the local result folder for review: ' + path, focus=True)
+        return self._job('Checking local transcription result folder', work, done)
 
-    def request_stop(self, *, pause=False):
-        if not self.pending or self.closed:
-            return
-        self._stop_intent = 'paused' if pause else 'cancelled'
-        try:
-            if self._kind == 'transcribe' and self._active_job_id is not None:
-                service = self.controller.service
-                (service.pause if pause else service.cancel)(self._active_job_id)
-        except Exception as exc:
-            self.report('Could not record the stop request: ' + str(exc), focus=True)
-            return
-        self.cancel_event.set()
-        self.frame.cancel_event.set()
-        self.report(('Pause' if pause else 'Cancellation') + ' requested. Waiting for a safe checkpoint; '
-                    'completed files remain saved. Preparation may stop before a new job is created.')
-
-    def pause(self, event=None):
-        self.request_stop(pause=True)
-
-    def cancel(self, event=None):
-        self.request_stop()
-
-    def close(self, event=None):
-        if self.pending:
-            self.close_when_idle = True
-            self.request_stop(pause=self._kind == 'transcribe')
-            if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
-                event.Veto()
-            return
-        if not self.confirm_discard():
-            self.close_when_idle = False
-            if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
-                event.Veto()
-            return
+    def dispose(self):
+        """Idempotently detach without I/O; pending work stops and drops UI callbacks."""
         self.closed = True
-        self.finish_close()
+        self._token = None
 
-    def _paths(self):
-        return tuple(control.GetValue().strip() for control in
-                     (self.python_path, self.worker_path, self.model_path))
+    def close(self):
+        if self.busy:
+            self.report('Pause or cancel the operation and wait for its saved status before closing.', focus=True)
+            return False
+        self.dispose()
+        return True
 
-    def runtime_changed(self, event=None):
-        self.inspection = None
-        self.trust.SetValue(False)
-        self.runtime_details.ChangeValue('Inspect these exact files before trusting and registering this runtime.')
-        if event is not None:
+
+def create_transcription_dialog(frame, *, controller_factory=TranscriptionController, profile_controller=None):
+    """Construct real wx controls separately so native CI can exercise the view."""
+    import wx
+
+    class TranscriptionDialog(wx.Dialog):
+        def __init__(self):
+            super().__init__(frame, title='Local transcription', size=(920, 820),
+                             style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._native_id = self.GetId()
+            self.controller = controller_factory(frame, changed=self.render,
+                                                 dispatch=lambda callback: wx.CallAfter(callback))
+            self._shown_record = None
+            root_layout = wx.BoxSizer(wx.VERTICAL)
+            self.pages = wx.Notebook(self)
+            self.pages.SetName('Transcription pages')
+            input_page, job_page = wx.ScrolledWindow(self.pages), wx.ScrolledWindow(self.pages)
+            for page in (input_page, job_page):
+                page.SetScrollRate(0, 16)
+                page.SetMinSize((640, 320))
+            panel = input_page
+            layout = wx.BoxSizer(wx.VERTICAL)
+
+            def field(label, factory, *, proportion=0, **kwargs):
+                layout.Add(wx.StaticText(panel, label=label), 0, wx.LEFT | wx.TOP, 6)
+                value = factory(panel, **kwargs)
+                value.SetName(label.replace('&', ''))
+                layout.Add(value, proportion, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+                return value
+
+            def buttons(entries):
+                row = wx.WrapSizer(wx.HORIZONTAL)
+                controls = []
+                for label, handler in entries:
+                    button = wx.Button(panel, label=label)
+                    button.SetName(label.replace('&', ''))
+                    button.Bind(wx.EVT_BUTTON, handler)
+                    row.Add(button, 0, wx.ALL, 3)
+                    controls.append(button)
+                layout.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 3)
+                return controls
+
+            self.manifest = field('Local runtime &manifest', wx.TextCtrl, style=wx.TE_READONLY)
+            self.choose_runtime, self.verify, self.disable_runtime = buttons([
+                ('&Browse runtime manifest…', self.choose_manifest),
+                ('&Verify and connect local dependencies', lambda event: self.controller.verify_runtime()),
+                ('&Disable saved connection', lambda event: self.controller.disable_runtime())])
+            self.dependencies = field('Local dependency status', wx.TextCtrl,
+                style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 50))
+            self.files = field('Audio &inputs', wx.ListBox, size=(-1, 65))
+            self.choose_files_button, self.folder_inputs_button, self.new_button = buttons([
+                ('Choose &audio files…', self.choose_files),
+                ('Add &folder (direct files)…', self.choose_folder),
+                ('&New job', lambda event: self.controller.set_files(()))])
+            settings = wx.FlexGridSizer(cols=4, hgap=6, vgap=4)
+            self.settings_controls = []
+            def setting(label, control):
+                settings.Add(wx.StaticText(panel, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                control.SetName(label.replace('&', ''))
+                settings.Add(control, 1, wx.EXPAND)
+                self.settings_controls.append(control)
+                return control
+            self.language = setting('&Language (auto or code)', wx.TextCtrl(panel, value='auto'))
+            self.task = setting('Recognition tas&k', wx.Choice(panel, choices=['Transcribe spoken language', 'Translate to English']))
+            self.device = setting('Processing &device', wx.Choice(panel, choices=['cpu', 'cuda']))
+            self.compute = setting('Compute &type', wx.Choice(panel, choices=['int8', 'int8_float16', 'int8_float32', 'float16', 'float32']))
+            for choice in (self.task, self.device, self.compute):
+                choice.SetSelection(0)
+            settings.AddGrowableCol(1)
+            settings.AddGrowableCol(3)
+            layout.Add(settings, 0, wx.EXPAND | wx.ALL, 6)
+            formats = wx.BoxSizer(wx.HORIZONTAL)
+            formats.Add(wx.StaticText(panel, label='Output formats:'), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            self.formats = {}
+            for name in FORMATS:
+                control = wx.CheckBox(panel, label=name.upper())
+                control.SetName(name.upper() + ' transcript output')
+                control.SetValue(True)
+                formats.Add(control, 0, wx.RIGHT, 12)
+                self.formats[name] = control
+            layout.Add(formats, 0, wx.EXPAND | wx.ALL, 6)
+            input_page.SetSizer(layout)
+            self.pages.AddPage(input_page, 'New transcription and runtime')
+            panel, layout = job_page, wx.BoxSizer(wx.VERTICAL)
+            self.jobs = field('Saved transcription &jobs', wx.ListBox, proportion=1, size=(-1, 100))
+            self.jobs.Bind(wx.EVT_LISTBOX, self.select_job)
+            self.refresh_button, = buttons([('&Refresh jobs', lambda event: self.controller.refresh())])
+            self.results = field('Completed transcription res&ults', wx.ListBox, proportion=1, size=(-1, 100))
+            self.results.Bind(wx.EVT_LISTBOX, lambda event: self.render())
+            self.edit_button, self.folder_button = buttons([
+                ('&Edit TXT reading copy', self.edit), ('Open result f&older', self.open_folder)])
+            job_page.SetSizer(layout)
+            self.pages.AddPage(job_page, 'Saved manifest jobs and results')
+            from .transcription_workstation import build_profile_page
+            self.profile_view = build_profile_page(self.pages, self.controller.frame,
+                controller=profile_controller, close_window=self.close,
+                state_changed=self.refresh_shared_actions)
+            self.pages.AddPage(self.profile_view, 'Registered profiles and transcript edits')
+            root_layout.Add(self.pages, 1, wx.EXPAND | wx.ALL, 6)
+            panel, layout = self, root_layout
+            self.start_button, self.pause_button, self.cancel_button = buttons([
+                ('&Start / resume (F6)', self.start),
+                ('&Pause (F8)', self.pause),
+                ('&Cancel operation', self.cancel)])
+            self.status = field('Transcription status (Ctrl+Alt+G)', wx.TextCtrl,
+                                style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 100))
+            self.query_button, self.close_button = buttons([
+                ('Read pro&gress (Ctrl+Alt+G)', self.query_progress),
+                ('Close (Esc)', self.close)])
+            self.SetSizer(layout)
+            self.SetEscapeId(self.close_button.GetId())
+            self.Bind(wx.EVT_CLOSE, self.close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
+            self.pages.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.page_changed)
+            accelerators = []
+            for flags, key, handler in [
+                    (wx.ACCEL_NORMAL, wx.WXK_F6, self.start),
+                    (wx.ACCEL_NORMAL, wx.WXK_F8, self.pause),
+                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('G'), self.query_progress)]:
+                identifier = wx.NewIdRef()
+                self.Bind(wx.EVT_MENU, handler, id=identifier)
+                accelerators.append((flags, key, identifier))
+            self.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
+            self.Layout()
+            minimum = root_layout.GetMinSize()
+            self.SetMinClientSize((max(720, minimum.width), max(660, minimum.height)))
+            self.render()
+
+        def render(self, focus=False):
+            controller = self.controller
+            if controller.closed:
+                return
+            self.manifest.ChangeValue(controller.manifest)
+            self.dependencies.ChangeValue(controller.dependency)
+            if controller.record is None:
+                self.files.Set([readable(Path(path).name) for path in controller.paths])
+            else:
+                labels = controller.record.get('source_labels', {})
+                labels = labels if isinstance(labels, dict) else {}
+                self.files.Set([readable(labels.get(item['file'], f'Audio {index}'))[:200]
+                                for index, item in enumerate(controller.record['request']['inputs'], 1)])
+            selected_job = next((i for i, row in enumerate(controller.jobs)
+                                 if row['id'] == controller.job_id), -1)
+            self.jobs.Set([f'{row["id"][:16]} — {row["status"]}; '
+                           f'{row["completed"]} of {row["total"] if row["total"] is not None else "unknown"}'
+                           for row in controller.jobs])
+            self.jobs.SetSelection(selected_job)
+            if controller.record is not None and self._shown_record != controller.job_id:
+                request = controller.record['request']
+                settings = request['settings']
+                self.language.ChangeValue(settings['language'])
+                self.task.SetSelection(0 if settings['task'] == 'transcribe' else 1)
+                self.device.SetStringSelection(settings['device'])
+                self.compute.SetStringSelection(settings['compute_type'])
+                for name, control in self.formats.items():
+                    control.SetValue(name in request['formats'])
+                self.pages.SetSelection(1)
+            self._shown_record = controller.job_id
+            selection = self.results.GetSelection()
+            self.results.Set([readable(row['label'])[:200] + ' — ' + ', '.join(row['formats'])
+                              + ('; verified' if row.get('verified', False) else '; needs review')
+                              for row in controller.outputs])
+            if controller.outputs:
+                self.results.SetSelection(min(max(selection, 0), len(controller.outputs) - 1))
+            self.status.ChangeValue(controller.status)
+            mutable = (self.choose_runtime, self.verify, self.disable_runtime, self.files, self.choose_files_button,
+                       self.folder_inputs_button, self.new_button, self.jobs, self.refresh_button, self.results)
+            for control in mutable:
+                control.Enable(not controller.busy)
+            for control in self.settings_controls + list(self.formats.values()):
+                control.Enable(not controller.busy and controller.job_id is None)
+            self.refresh_shared_actions()
+            output = self.selected_output()
+            self.edit_button.Enable(not controller.busy and output is not None and 'txt' in output['formats'])
+            self.folder_button.Enable(not controller.busy and output is not None)
+            if focus and not self._profile_active():
+                self.status.SetFocus()
+
+        def _profile_active(self):
+            # The one pending owner wins even if the operator changes pages.
+            profile = getattr(self, 'profile_view', None)
+            if self.controller.busy or profile is None or profile.closed:
+                return False
+            return profile.pending or self.pages.GetSelection() == 2
+
+        def refresh_shared_actions(self):
+            if self.controller.closed or not self or not hasattr(self, 'start_button'):
+                return
+            if self._profile_active():
+                profile = self.profile_view
+                self.start_button.Enable(not profile.pending and
+                    (profile.current_job is None or profile.current_job.get('status') != 'complete'))
+                self.pause_button.Enable(profile.pending and profile._kind == 'transcribe')
+                self.cancel_button.Enable(profile.pending)
+            else:
+                controller = self.controller
+                self.start_button.Enable(not controller.busy and bool(controller.manifest)
+                                         and bool(controller.paths or controller.job_id))
+                self.pause_button.Enable(controller.busy and controller.mode == 'run')
+                self.cancel_button.Enable(controller.busy)
+
+        def page_changed(self, event):
+            self.refresh_shared_actions()
             event.Skip()
 
-    def inspect_runtime(self, event=None):
-        if not self._usable():
-            return
-        paths = self._paths()
-        self.inspection = None
-        self.trust.SetValue(False)
-        def inspected(result):
-            if paths != self._paths():
-                self.runtime_changed()
+        def pause(self, event=None):
+            if self.controller.closed or not self:
                 return
-            self.inspection = (paths, result)
-            summary = {key: result[key] for key in ('python_executable', 'python_resolved',
-                'python_identity', 'worker_path', 'worker_identity', 'model_directory', 'model_name',
-                'model_bytes', 'model_content_fingerprint', 'fingerprint') if key in result}
-            summary['model_file_count'] = len(result.get('model_files', {}))
-            self.runtime_details.ChangeValue(json.dumps(summary, ensure_ascii=False, indent=2))
-            self.report('Files inspected without execution. Review their origin and licence, then explicitly '
-                        'trust and register them. Recognition quality remains unqualified.')
-        self.submit('Inspecting existing local transcription files',
-            lambda service, cancel, progress: service.inspect_runtime(*paths, cancel=cancel, progress=progress), inspected)
+            if self._profile_active():
+                self.profile_view.pause(event)
+            else:
+                self.controller.request_stop('pause')
 
-    def register_runtime(self, event=None):
-        if not self._usable():
-            return
-        paths = self._paths()
-        if self.inspection is None or self.inspection[0] != paths or self.trust.GetValue() is not True:
-            self.report('Inspect these exact files, then check the explicit trust confirmation.', focus=True)
-            return
-        name, fingerprint = self.runtime_name.GetValue().strip(), self.inspection[1]['fingerprint']
-        def registered(profile):
-            self.profiles = tuple(row for row in self.profiles if row['id'] != profile['id']) + (profile,)
-            self.runtime.SetItems([f"{row['name']} — {row.get('model_name', 'local model')} — "
-                f"{'trusted' if row.get('trusted') else 'not trusted'}; {row.get('qualification', 'unqualified')}"
-                for row in self.profiles])
-            self.runtime.SetSelection(len(self.profiles) - 1)
-            self.report('Runtime registered using the verified local files. No inference has run. '
-                        'Choose media in New transcription to start.')
-        self.submit('Registering the reviewed local runtime',
-            lambda service, cancel, progress: service.register_runtime(name, *paths, owner_trusted=True,
-                expected_fingerprint=fingerprint, cancel=cancel, progress=progress), registered)
-
-    def rebind_runtime(self, event=None):
-        if not self._usable() or not self.current_job or not self.confirm_discard():
-            return
-        try:
-            profile, identity = self._selected_profile(), self.current_job['id']
-            if not self.confirm_rebind(profile):
+        def cancel(self, event=None):
+            if self.controller.closed or not self:
                 return
-            self.submit('Binding reviewed runtime to saved job',
-                lambda service, cancel, progress: service.rebind_runtime(identity, profile['id']), self.publish_job)
-        except Exception as exc:
-            self.report(str(exc), focus=True)
+            if self._profile_active():
+                self.profile_view.cancel(event)
+            else:
+                self.controller.request_stop('cancel')
 
-    def review_interruption(self, event=None):
-        if not self._usable() or not self.current_job or not self.confirm_discard():
-            return
-        if (self.current_job.get('status') == 'complete'
-                or not self.current_job.get('recovery_review_required')):
-            self.report('This job does not require an interrupted-worker review.')
-            return
-        if not self.confirm_worker_stopped():
-            return
-        identity = self.current_job['id']
-        self.submit('Recording interrupted worker review',
-            lambda service, cancel, progress: service.acknowledge_interruption(identity, worker_stopped=True),
-            self.publish_job)
+        def query_progress(self, event=None):
+            if self.controller.closed or not self:
+                return
+            (self.profile_view.status if self._profile_active() else self.status).SetFocus()
 
-    def load_transcript(self, event=None):
-        if not self._usable() or not self.confirm_discard():
-            return
-        index = self.result_source.GetSelection()
-        sources = self.current_job.get('sources', ()) if self.current_job else ()
-        if not 0 <= index < len(sources):
-            self.report('Load a saved job and choose a completed source result.', focus=True)
-            return
-        identity, source = self.current_job['id'], sources[index]['id']
-        edited = bool(self.latest_edit.GetValue())
-        def read(service, cancel, progress):
-            original = service.read_transcript(identity, source)
-            latest = original
-            if edited:
-                try:
-                    latest = service.read_transcript(identity, source, edited=True)
-                except FileNotFoundError:
-                    pass
-            return {'original': original, 'latest': latest}
-        def loaded(value):
-            original, latest = value['original'], value['latest']
-            document = ReadingDocument(original['text'], title='Transcription reading copy')
-            document.set_text(latest['text'], label='Loaded saved transcript derivative')
-            self.document, self.transcript_source_id = document, source
-            self.saved_text = latest['text']
-            self.editor.ChangeValue(document.text)
-            self.provenance.ChangeValue('Unverified recognition derivative. Edits never overwrite the original.\n' +
-                json.dumps(latest.get('provenance', {}), ensure_ascii=False, indent=2))
-            self.report('Transcript loaded. Edit the reading copy or open the local voice reader.')
-            self._enable()
-            self.editor.SetFocus()
-        self.submit('Loading transcript reading copy', read, loaded)
+        def choose_manifest(self, event=None):
+            with wx.FileDialog(self, 'Choose a reviewed local transcription runtime manifest',
+                               wildcard='Runtime manifest (*.json)|*.json',
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
+                if chooser.ShowModal() == wx.ID_OK:
+                    self.controller.set_manifest(chooser.GetPath())
 
-    def is_dirty(self):
-        return self.document is not None and self.editor.GetValue() != self.saved_text
+        def choose_files(self, event=None):
+            extensions = ';'.join('*' + value for value in sorted(AUDIO_EXTENSIONS))
+            with wx.FileDialog(self, 'Choose local audio or video files',
+                               wildcard=f'Audio and video|{extensions}',
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as chooser:
+                if chooser.ShowModal() == wx.ID_OK:
+                    self.controller.set_files(chooser.GetPaths())
 
-    def _capture_edit(self):
-        if self.document is None:
-            raise ValueError('Load a transcript first.')
-        self.document.set_text(self.editor.GetValue(), label='Edit transcript reading copy')
-        return self.document.text
+        def choose_folder(self, event=None):
+            with wx.DirDialog(self, 'Add audio from this folder only; subfolders are not scanned',
+                              style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST) as chooser:
+                if chooser.ShowModal() == wx.ID_OK:
+                    self.controller.add_folder(chooser.GetPath())
 
-    def save_edits(self, event=None):
-        if not self._usable() or self.document is None:
-            return
-        try:
-            text = self._capture_edit()
-            identity, source = self.current_job['id'], self.transcript_source_id
-            def saved(receipt):
-                self.saved_text = text
-                self.provenance.ChangeValue('Saved separate edited derivative. Original recognition text unchanged.\n' +
-                    json.dumps(receipt.get('provenance', {}), ensure_ascii=False, indent=2))
-                self.report('Edited reading copy saved as a separate derivative.')
-            self.submit('Saving transcript derivative',
-                lambda service, cancel, progress: service.save_edit(identity, source, text), saved)
-        except Exception as exc:
-            self.report(str(exc), focus=True)
+        def select_job(self, event=None):
+            index = self.jobs.GetSelection()
+            if 0 <= index < len(self.controller.jobs):
+                self.controller.inspect(self.controller.jobs[index]['id'])
 
-    def undo(self, event=None):
-        if not self._usable() or self.document is None:
-            return
-        try:
-            self._capture_edit()
-            self.document.undo()
-            self.editor.ChangeValue(self.document.text)
-        except Exception as exc:
-            self.report(str(exc), focus=True)
+        def start(self, event=None):
+            if self.controller.closed or not self:
+                return
+            if self._profile_active():
+                self.profile_view.start(event)
+                return
+            try:
+                settings = TranscriptionSettings(language=self.language.GetValue().strip(),
+                    task='translate' if self.task.GetSelection() == 1 else 'transcribe',
+                    device=self.device.GetStringSelection(), compute_type=self.compute.GetStringSelection())
+                self.controller.start(settings, [name for name, control in self.formats.items() if control.GetValue()])
+            except Exception as exc:
+                self.controller.report(exc, focus=True)
 
-    def redo(self, event=None):
-        if not self._usable() or self.document is None:
-            return
-        try:
-            self._capture_edit()
-            self.document.redo()
-            self.editor.ChangeValue(self.document.text)
-        except Exception as exc:
-            self.report(str(exc), focus=True)
+        def selected_output(self):
+            index = self.results.GetSelection()
+            return self.controller.outputs[index] if 0 <= index < len(self.controller.outputs) else None
 
-    def export_to(self, directory):
-        if not self._usable() or self.current_job is None:
-            return
-        if self.is_dirty():
-            self.report('Save the edited reading copy before exporting, or undo the unsaved edit.', focus=True)
-            return
-        identity = self.current_job['id']
-        settings = self.current_job['settings']
-        formats = tuple(name for name in FORMATS if settings.get('output_' + name))
-        library_root = self.controller.private_root
-        def export(service, cancel, progress):
-            if cancel():
-                raise InterruptedError('Export cancelled before publication.')
-            destination = local_path(directory)
-            root = local_path(library_root, exists=True)
-            regular(destination.parent, directory=True)
-            if destination.is_relative_to(root) or root.is_relative_to(destination):
-                raise ValueError('Choose an export folder outside the private library.')
-            destination.mkdir()  # exclusive new folder; never reuse an existing export
-            return service.export(identity, destination, formats=formats, include_edits=True, cancel=cancel)
-        self.submit('Exporting verified transcription results',
-            export,
-            lambda receipt: self.report('Export saved.\n' + json.dumps(receipt, ensure_ascii=False, indent=2)))
+        def edit(self, event=None):
+            output = self.selected_output()
+            if output is None:
+                return
+            def open_reader(slot):
+                from .speech_dialog import show_speech_reader
+                show_speech_reader(frame, text='', title='Transcript reading copy',
+                                   source_guard=self.controller.guard, recovery_slot=slot)
+            self.controller.edit(output['file'], open_reader)
+
+        def open_folder(self, event=None):
+            output = self.selected_output()
+            if output is not None:
+                self.controller.open_folder(output['file'], wx.LaunchDefaultApplication)
+
+        def Destroy(self):
+            """Detach callbacks before wx schedules deferred native deletion."""
+            controller = getattr(self, 'controller', None)
+            if controller is not None:
+                controller.dispose()
+            profile = getattr(self, 'profile_view', None)
+            if profile is not None:
+                profile.dispose()
+            return super().Destroy() if self else False
+
+        def on_destroy(self, event):
+            # The original Python wrapper can already be invalid here.
+            if event.GetId() == self._native_id:
+                self.controller.dispose()
+                profile = getattr(self, 'profile_view', None)
+                if profile is not None:
+                    profile.dispose()
+            event.Skip()
+
+        def close(self, event=None):
+            profile = getattr(self, 'profile_view', None)
+            if not self.controller.busy and profile is not None and not profile.closed:
+                profile.close(event)
+                return
+            if not self.controller.close():
+                if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
+                    event.Veto()
+                return
+            self.EndModal(wx.ID_CANCEL)
+
+    return TranscriptionDialog()
+
+
+def show_transcription(frame, *, job_id=None, profile_controller=None, profiles=False):
+    import wx
+    dialog = (create_transcription_dialog(frame) if profile_controller is None else
+              create_transcription_dialog(frame, profile_controller=profile_controller))
+    try:
+        dialog.CentreOnParent()
+        if job_id is not None and len(job_id) == 32:
+            dialog.pages.SetSelection(2)
+            dialog.profile_view.submit('Opening saved profile transcription job',
+                lambda service, cancel, progress: service.get_job(job_id), dialog.profile_view.publish_job)
+        elif job_id is not None:
+            dialog.pages.SetSelection(1)
+            wx.CallAfter(dialog.controller.inspect, job_id)
+        elif profiles:
+            dialog.pages.SetSelection(2)
+            wx.CallAfter(dialog.profile_view.refresh)
+        dialog.ShowModal()
+    finally:
+        dialog.controller.dispose()
+        profile = getattr(dialog, 'profile_view', None)
+        if profile is not None:
+            profile.dispose()
+        if dialog:
+            dialog.Destroy()
+
+
+def install_transcription_actions(frame):
+    import wx
+    bar = frame.menu_bar
+    menu = next((bar.GetMenu(index) for index in range(bar.GetMenuCount())
+                 if bar.GetMenuLabel(index).replace('&', '').casefold() == 'tools'), None)
+    if menu is None:
+        raise RuntimeError('Install the shared Tools menu before transcription actions.')
+    identity = wx.NewIdRef()
+    item = menu.Append(identity, 'Local audio and video &transcription...')
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('audio.transcription_panel',
+                                            'Local audio and video transcription'), item)
+    frame.Bind(wx.EVT_MENU, lambda event: show_transcription(frame), id=int(identity))
+    install_transcription_menu(frame, menu)
 
 
 def build_transcription_dialog(frame, controller=None):
-    """Create native controls; callers own ShowModal/Destroy and may inject a service."""
-    import wx
-    controller = controller or TranscriptionController(frame.library.root)
-
-    class Dialog(wx.Dialog, TranscriptionActions):
-        def __init__(self):
-            wx.Dialog.__init__(self, frame, title='Local transcription workstation', size=(980, 860),
-                               style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-            self.SetName('Local transcription workstation')
-            self.mutable, self.new_controls, self.read_buttons = [], [], []
-            layout = wx.BoxSizer(wx.VERTICAL)
-            note = wx.StaticText(self, label='Local media and installed models. No uploads or model downloads. '
-                'Recognition text and edits are separate, unverified derivatives.')
-            note.Wrap(900)
-            layout.Add(note, 0, wx.ALL | wx.EXPAND, 8)
-            self.pages = wx.Notebook(self)
-            self.pages.SetName('Transcription workstation pages')
-            new = wx.ScrolledWindow(self.pages)
-            new.SetScrollRate(0, 16)
-            runtimes = wx.ScrolledWindow(self.pages)
-            runtimes.SetScrollRate(0, 16)
-            results = wx.Panel(self.pages)
-            self.pages.AddPage(new, 'New transcription')
-            self.pages.AddPage(runtimes, 'Local runtime')
-            self.pages.AddPage(results, 'Saved jobs and results')
-            layout.Add(self.pages, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
-
-            def field(parent, box, label, factory=wx.TextCtrl, *, proportion=0, new_option=False, **kwargs):
-                box.Add(wx.StaticText(parent, label=label), 0, wx.TOP | wx.LEFT | wx.RIGHT, 5)
-                control = factory(parent, **kwargs)
-                control.SetName(label.replace('&', ''))
-                box.Add(control, proportion, wx.EXPAND | wx.ALL, 5)
-                self.mutable.append(control)
-                if new_option:
-                    self.new_controls.append(control)
-                return control
-
-            def button(parent, row, label, action, *, new_option=False, reading=False):
-                control = wx.Button(parent, label=label)
-                control.SetName(label.replace('&', ''))
-                control.Bind(wx.EVT_BUTTON, action)
-                row.Add(control, 0, wx.ALL, 4)
-                self.mutable.append(control)
-                if new_option:
-                    self.new_controls.append(control)
-                if reading:
-                    self.read_buttons.append(control)
-                return control
-
-            box = wx.BoxSizer(wx.VERTICAL)
-            self.runtime = field(new, box, 'Registered transcription &runtime', wx.Choice)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            button(new, row, 'Manage local runtime', lambda event: self.pages.SetSelection(1))
-            button(new, row, 'Refresh profiles and jobs', self.refresh)
-            box.Add(row)
-            self.title = field(new, box, 'Job &title', value='Transcription', new_option=True)
-            self.source_paths = field(new, box, 'Selected local audio or video',
-                style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 80), new_option=True)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            button(new, row, 'Add &files…', self.choose_files, new_option=True)
-            button(new, row, 'Add f&older…', self.choose_folder, new_option=True)
-            button(new, row, 'Clear files', self.clear_sources, new_option=True)
-            box.Add(row)
-            self.recursive = wx.CheckBox(new, label='Include subfolders of selected folders')
-            self.recursive.SetName('Include subfolders of selected folders')
-            box.Add(self.recursive, 0, wx.ALL, 5)
-            self.mutable.append(self.recursive)
-            self.new_controls.append(self.recursive)
-            self.language = field(new, box, 'Source lan&guage code or auto', value='auto', new_option=True)
-            self.task = field(new, box, 'Transcription task', wx.Choice, new_option=True,
-                choices=['Transcribe in the source language', 'Translate speech to English'])
-            self.task.SetSelection(0)
-            self.device = field(new, box, 'Processing &device and compute type', wx.Choice,
-                choices=[row[2] for row in DEVICES], new_option=True)
-            self.device.SetSelection(0)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            row.Add(wx.StaticText(new, label='Beam size'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
-            self.beam = wx.SpinCtrl(new, min=1, max=20, initial=5)
-            self.beam.SetName('Beam size, one to twenty')
-            row.Add(self.beam, 0, wx.ALL, 5)
-            row.Add(wx.StaticText(new, label='Parallel files'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
-            self.parallel = wx.SpinCtrl(new, min=1, max=4, initial=1)
-            self.parallel.SetName('Parallel files, one to four')
-            row.Add(self.parallel, 0, wx.ALL, 5)
-            box.Add(row)
-            self.mutable.extend((self.beam, self.parallel))
-            self.new_controls.extend((self.beam, self.parallel))
-            row = wx.WrapSizer(wx.HORIZONTAL)
-            for attr, label, default in (('vad', 'Voice activity detection', True),
-                    ('context', 'Use previous text as context', True),
-                    ('multilingual', 'Allow multilingual segments', False),
-                    ('headers', 'Include text headers', False)):
-                control = wx.CheckBox(new, label=label)
-                control.SetName(label)
-                control.SetValue(default)
-                setattr(self, attr, control)
-                row.Add(control, 0, wx.ALL, 5)
-                self.mutable.append(control)
-                self.new_controls.append(control)
-            box.Add(row, 0, wx.EXPAND)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            row.Add(wx.StaticText(new, label='Output formats'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
-            self.formats = {}
-            for name in FORMATS:
-                control = wx.CheckBox(new, label=name.upper())
-                control.SetName('Output ' + name.upper())
-                control.SetValue(name in ('txt', 'json'))
-                row.Add(control, 0, wx.ALL, 5)
-                self.formats[name] = control
-                self.mutable.append(control)
-                self.new_controls.append(control)
-            box.Add(row)
-            new.SetSizer(box)
-
-            box = wx.BoxSizer(wx.VERTICAL)
-            text = wx.StaticText(runtimes, label='Point to existing, reviewed files. Inspection does not execute them. '
-                'Registration records their exact identity and your trust; quality remains unqualified.')
-            text.Wrap(880)
-            box.Add(text, 0, wx.ALL | wx.EXPAND, 6)
-            self.runtime_name = field(runtimes, box, 'Runtime profile name', value='My local Whisper runtime')
-            for attr, label, directory in (('python_path', 'Python executable', False),
-                    ('worker_path', 'Reviewed transcription worker', False),
-                    ('model_path', 'Existing local model directory', True)):
-                control = field(runtimes, box, label)
-                setattr(self, attr, control)
-                row = wx.BoxSizer(wx.HORIZONTAL)
-                button(runtimes, row, 'Browse ' + label.lower() + '…',
-                    lambda event, target=control, is_directory=directory: self.choose_runtime_path(target, is_directory))
-                box.Add(row)
-            self.runtime_details = field(runtimes, box, 'Runtime inspection and fingerprint',
-                style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 130))
-            self.trust = wx.CheckBox(runtimes, label='I trust these inspected runtime, worker and model files and have reviewed their licence')
-            self.trust.SetName('Explicit trust of inspected runtime, worker and model files')
-            box.Add(self.trust, 0, wx.ALL, 5)
-            self.mutable.append(self.trust)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            button(runtimes, row, '&Inspect files', self.inspect_runtime)
-            button(runtimes, row, '&Register trusted runtime', self.register_runtime)
-            box.Add(row)
-            runtimes.SetSizer(box)
-
-            box = wx.BoxSizer(wx.VERTICAL)
-            self.jobs = field(results, box, 'Saved transcription &jobs', wx.Choice)
-            row = wx.WrapSizer(wx.HORIZONTAL)
-            button(results, row, 'Load selected job', self.load_job)
-            button(results, row, 'Refresh saved jobs', self.refresh)
-            button(results, row, 'New job', self.new_job)
-            button(results, row, 'Rebind runtime…', self.rebind_runtime)
-            button(results, row, 'Review interrupted worker…', self.review_interruption)
-            box.Add(row, 0, wx.EXPAND)
-            self.result_source = field(results, box, 'Transcription source &result', wx.Choice)
-            self.latest_edit = wx.CheckBox(results, label='Load the latest saved edit when available')
-            self.latest_edit.SetName('Load the latest saved edit when available')
-            self.latest_edit.SetValue(True)
-            self.mutable.append(self.latest_edit)
-            box.Add(self.latest_edit, 0, wx.ALL, 5)
-            row = wx.BoxSizer(wx.HORIZONTAL)
-            button(results, row, 'L&oad transcript', self.load_transcript)
-            button(results, row, '&Export results…', self.choose_export)
-            box.Add(row)
-            self.provenance = field(results, box, 'Transcript provenance', value='No transcript is loaded.',
-                style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
-            self.editor = field(results, box, 'Transcript reading cop&y', proportion=1,
-                style=wx.TE_MULTILINE | wx.TE_DONTWRAP)
-            row = wx.WrapSizer(wx.HORIZONTAL)
-            button(results, row, 'Sa&ve edits', self.save_edits, reading=True)
-            button(results, row, '&Undo reading edit', self.undo, reading=True)
-            button(results, row, 'Redo reading edit', self.redo, reading=True)
-            button(results, row, 'Read &aloud…', self.read_aloud, reading=True)
-            box.Add(row, 0, wx.EXPAND)
-            results.SetSizer(box)
-
-            layout.Add(wx.StaticText(self, label='Transcription progress and result'), 0, wx.LEFT | wx.TOP, 8)
-            self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 90))
-            self.status.SetName('Transcription progress and result')
-            layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
-            row = wx.WrapSizer(wx.HORIZONTAL)
-            self.start_button = wx.Button(self, label='&Start / resume')
-            self.pause_button = wx.Button(self, label='&Pause at checkpoint')
-            self.cancel_button = wx.Button(self, label='&Cancel operation')
-            self.help_button = wx.Button(self, label='&Help')
-            self.close_button = wx.Button(self, wx.ID_CLOSE, 'C&lose')
-            for control, action in ((self.start_button, self.start), (self.pause_button, self.pause),
-                    (self.cancel_button, self.cancel), (self.help_button, self.help), (self.close_button, self.close)):
-                control.SetName(control.GetLabel().replace('&', ''))
-                control.Bind(wx.EVT_BUTTON, action)
-                row.Add(control, 0, wx.ALL, 5)
-            layout.Add(row, 0, wx.ALIGN_RIGHT)
-            self.SetSizer(layout)
-            self.SetMinSize((700, 620))
-            self.SetEscapeId(wx.ID_CLOSE)
-            self.Bind(wx.EVT_CLOSE, self.close)
-            self.configure(frame, controller)
-            for control in (self.python_path, self.worker_path, self.model_path):
-                control.Bind(wx.EVT_TEXT, self.runtime_changed)
-            self.timer = wx.Timer(self)
-            self.Bind(wx.EVT_TIMER, self.flush_progress, self.timer)
-            self.timer.Start(250)
-            self.runtime.SetFocus()
-
-        def confirm_discard(self):
-            return not self.is_dirty() or wx.MessageBox(
-                'Discard the unsaved reading-copy edits? The original transcript and saved edits remain available.',
-                'Unsaved transcript edits', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
-
-        def confirm_rebind(self, profile):
-            return wx.MessageBox('Bind this saved job to the selected reviewed runtime: ' + profile['name'] +
-                '? The service will verify model compatibility before resuming.', 'Rebind saved job',
-                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
-
-        def confirm_worker_stopped(self):
-            return wx.MessageBox('Confirm that the previous external transcription worker has stopped. '
-                'Check its process on this computer before allowing another worker for the same job. '
-                'Have you confirmed that it is stopped?', 'Review interrupted worker',
-                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES
-
-        def finish_close(self):
-            self.timer.Stop()
-            self.EndModal(wx.ID_CLOSE)
-
-        def _show_sources(self):
-            self.source_paths.ChangeValue('\n'.join(str(path) for path in self.sources))
-
-        def choose_files(self, event=None):
-            if not self._usable() or self.current_job is not None:
-                return
-            with wx.FileDialog(self, 'Choose local audio or video files', wildcard=MEDIA_FILTER,
-                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as picker:
-                if picker.ShowModal() == wx.ID_OK:
-                    self.sources = tuple(dict.fromkeys((*self.sources, *(Path(path) for path in picker.GetPaths()))))
-                    self._show_sources()
-
-        def choose_folder(self, event=None):
-            if not self._usable() or self.current_job is not None:
-                return
-            with wx.DirDialog(self, 'Choose a folder containing local audio or video',
-                    style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST) as picker:
-                if picker.ShowModal() == wx.ID_OK:
-                    self.sources = tuple(dict.fromkeys((*self.sources, Path(picker.GetPath()))))
-                    self._show_sources()
-
-        def clear_sources(self, event=None):
-            if self._usable() and self.current_job is None:
-                self.sources = ()
-                self._show_sources()
-
-        def choose_runtime_path(self, control, directory):
-            if not self._usable():
-                return
-            picker = (wx.DirDialog(self, 'Choose the existing local model directory',
-                        style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST) if directory else
-                      wx.FileDialog(self, 'Choose the reviewed local executable or worker file',
-                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
-            try:
-                if picker.ShowModal() == wx.ID_OK:
-                    control.SetValue(picker.GetPath())
-            finally:
-                picker.Destroy()
-
-        def choose_export(self, event=None):
-            if not self._usable() or self.current_job is None:
-                self.report('Load a saved job before exporting.', focus=True)
-                return
-            with wx.DirDialog(self, 'Choose where to create a new transcription export folder',
-                    style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST) as picker:
-                if picker.ShowModal() == wx.ID_OK:
-                    target = Path(picker.GetPath()) / ('transcription-' + uuid4().hex[:12])
-                    self.export_to(target)
-
-        def read_aloud(self, event=None):
-            if not self._usable() or self.document is None:
-                return
-            from .speech_dialog import show_speech_reader
-            show_speech_reader(self, text=self.editor.GetValue(), title='Unverified transcription reading copy',
-                source_guard=self._check_root, recovery_slot='transcription-' + self.current_job['id'])
-
-        def help(self, event=None):
-            with wx.Dialog(self, title='Transcription help', size=(750, 620),
-                    style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER) as dialog:
-                box = wx.BoxSizer(wx.VERTICAL)
-                text = wx.TextCtrl(dialog, value=HELP, style=wx.TE_MULTILINE | wx.TE_READONLY)
-                text.SetName('Local transcription help')
-                box.Add(text, 1, wx.EXPAND | wx.ALL, 10)
-                box.Add(dialog.CreateButtonSizer(wx.OK), 0, wx.ALIGN_RIGHT | wx.ALL, 8)
-                dialog.SetSizer(box)
-                text.SetFocus()
-                dialog.ShowModal()
-
-    return Dialog()
+    """Canonical entry point: the same native notebook, with profile actions."""
+    dialog = create_transcription_dialog(frame, profile_controller=controller)
+    dialog.pages.SetSelection(2)
+    return dialog
 
 
 def show_transcription_dialog(frame, controller=None):
-    import wx
-    dialog = build_transcription_dialog(frame, controller)
-    try:
-        wx.CallAfter(dialog.refresh)
-        dialog.ShowModal()
-    finally:
-        dialog.closed = True
-        dialog.cancel_event.set()
-        dialog.timer.Stop()
-        dialog.Destroy()
+    return show_transcription(frame, profile_controller=controller, profiles=True)
 
 
 def install_transcription_menu(frame, menu):
-    """Install into the host-owned menu before its shared shortcut capture."""
+    """Stable canonical action opens the profile page of the existing window."""
     import wx
-    def open_dialog(event=None):
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    def open_profiles(event=None):
         if getattr(frame, '_closing', False):
             return
         if getattr(frame, 'working', False) or getattr(frame, 'busy', False):
             frame.report('Wait for the current operation or cancel it before opening transcription.')
             return
-        try:
-            controller = getattr(frame, 'transcription_controller', None)
-            if controller is None or controller.private_root != Path(frame.library.root).absolute():
-                controller = TranscriptionController(frame.library.root)
-                frame.transcription_controller = controller
-            show_transcription_dialog(frame, controller)
-        except Exception as exc:
-            frame.report('Transcription could not open: ' + str(exc))
-    item = menu.Append(wx.ID_ANY, 'Local &transcription…')
-    frame.Bind(wx.EVT_MENU, open_dialog, item)
-    from .command_registry import CommandSpec
-    from .keyboard_settings import register_menu_command
+        show_transcription_dialog(frame)
+    item = menu.Append(wx.ID_ANY, 'Registered transcription &profiles...')
+    frame.Bind(wx.EVT_MENU, open_profiles, item)
     register_menu_command(frame, CommandSpec('tools.transcription', 'Local transcription'), item)
-    return open_dialog
-
-
-def install_transcription_actions(frame):
-    """Use the same native installer convention as the other workstations."""
-    import wx
-    menu = next((frame.menu_bar.GetMenu(i) for i in range(frame.menu_bar.GetMenuCount())
-                 if frame.menu_bar.GetMenuLabel(i).replace('&', '') == 'Tools'), None)
-    if menu is None:
-        menu = wx.Menu()
-        frame.menu_bar.Append(menu, '&Tools')
-    install_transcription_menu(frame, menu)
+    return open_profiles

@@ -368,6 +368,7 @@ def native_handlers(monkeypatch):
         window = cls.__new__(cls)
         _Window.__init__(window)
         window._window_alive, window.pending = True, False
+        window._native_id = id(window)
         window.status = _Control()
         window.executor = _DeferredExecutor()
         if kind == 'editor':
@@ -388,7 +389,8 @@ def native_handlers(monkeypatch):
         return window
 
     def destroy(window):
-        event = SimpleNamespace(GetEventObject=lambda: window, Skip=Mock())
+        event = SimpleNamespace(GetId=lambda: window._native_id,
+                                GetEventObject=lambda: object(), Skip=Mock())
         window.on_destroy(event)
         event.Skip.assert_called_once()
         for control in window.all_controls:
@@ -485,6 +487,7 @@ def test_academic_late_completion_never_runs_ui_callback_after_destroy(controlle
     assert [control.calls for control in window.all_controls] == before
     forbidden = Mock(side_effect=AssertionError('Destroyed dialog started another operation'))
     window._run('Late operation', forbidden, done)
+    window.on_styles()
     window.on_cancel()
     window.on_close(Mock())
     forbidden.assert_not_called()
@@ -503,7 +506,8 @@ def test_live_completion_and_child_destroy_keep_normal_callbacks(controller, nat
         window.on_save()
     else:
         window._run('Loading overview', controller.statistics if outcome == 'success' else Mock(side_effect=error), done)
-    window.on_destroy(SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock()))
+    window.on_destroy(SimpleNamespace(GetId=lambda: window._native_id + 1,
+                                      GetEventObject=lambda: object(), Skip=Mock()))
     assert window._window_alive and window.pending
     if kind == 'academic':
         assert not window.cancel_event.is_set()
@@ -590,3 +594,76 @@ def test_native_export_handler_retains_text_return_and_cleanup_notice(
     assert result.encode('utf-8') == destination.read_bytes()
     assert len(controller.preview(result.encode('utf-8'), 'ris').entries) == 1
     assert 'Completed; temporary cleanup needs attention.' in window.status.value
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_to_preserves_a_competing_save_during_real_render(
+        controller, tmp_path, monkeypatch, existing):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'competing-bibliography.txt'
+    if existing:
+        target.write_bytes(b'Previously approved bibliography')
+    original_export = controller.export
+    competing = b'Newer bibliography saved during rendering'
+
+    def render_with_competing_save(**kwargs):
+        content = original_export(**kwargs)
+        target.write_bytes(competing)
+        return content
+
+    monkeypatch.setattr(controller, 'export', render_with_competing_save)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == competing
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize(('answer', 'competing'), [('no', False), ('yes', False), ('yes', True)])
+def test_export_handler_binds_actual_controller_publication_to_confirmation(
+        controller, native_handlers, tmp_path, monkeypatch, answer, competing):
+    from carr_library.ui.academic_library_dialog import FORMATS
+
+    controller.create(form_values(draft()))
+    target = tmp_path / 'confirmed-bibliography.txt'
+    original_bytes = b'Existing bibliography selected for replacement'
+    competing_bytes = b'Newer bibliography saved while the question is open'
+    target.write_bytes(original_bytes)
+    ui = native_handlers
+    ui.wx.FD_SAVE, ui.wx.FD_OVERWRITE_PROMPT = 4, 8
+    ui.wx.YES, ui.wx.NO = 10, 11
+    ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 16, 32, 64
+    chooser = Mock()
+    chooser.ShowModal.return_value = ui.wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=chooser)
+
+    def answer_question(*args, **kwargs):
+        if competing:
+            target.write_bytes(competing_bytes)
+        return ui.wx.YES if answer == 'yes' else ui.wx.NO
+
+    ui.wx.MessageBox = Mock(side_effect=answer_question)
+    window = ui.make('academic', controller)
+    window.controller = controller
+    window._export_options = Mock(return_value=(FORMATS[0], None, False))
+    actual_render = Mock(wraps=controller.export)
+    monkeypatch.setattr(controller, 'export', actual_render)
+    window.on_export()
+
+    assert ui.wx.FileDialog.call_args.kwargs['style'] == ui.wx.FD_SAVE
+    message, caption, style, parent = ui.wx.MessageBox.call_args.args
+    assert parent is window and target.name in message and caption == 'Replace export'
+    assert style == ui.wx.YES_NO | ui.wx.NO_DEFAULT | ui.wx.ICON_QUESTION
+    chooser.Destroy.assert_called_once()
+    if answer == 'no':
+        actual_render.assert_not_called()
+        assert target.read_bytes() == original_bytes
+    elif competing:
+        actual_render.assert_called_once()
+        assert target.read_bytes() == competing_bytes
+        assert 'Bibliography not exported:' in window.status.value
+        assert 'destination changed' in window.status.value
+    else:
+        actual_render.assert_called_once()
+        assert target.read_text(encoding='utf-8') == controller.export()
+        assert window.status.value == f'Bibliography exported to {target}. Personal notes were not included.'
+    assert not list(tmp_path.glob('.research-export-*'))

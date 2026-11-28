@@ -3,7 +3,7 @@ setlocal
 chcp 65001 >nul
 if not exist "%~dp0.venv\Scripts\python.exe" goto not_installed
 if not exist "%~dp0.venv\.installation-complete" goto not_installed
-"%~dp0.venv\Scripts\python.exe" -I -B -X utf8 "%~dp0tools\audio-setup\setup_local_audio.py" --interactive
+"%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library.local_audio_setup --interactive
 set "audio_setup_status=%ERRORLEVEL%"
 echo.
 echo Натисніть будь-яку клавішу, щоб закрити це вікно.

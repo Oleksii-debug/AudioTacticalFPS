@@ -18,6 +18,29 @@ def data_directory(selected):
     return selected_directory() or user_data_path('Universal Research Library', appauthor=False, roaming=False)
 
 
+def _close_production(service):
+    """Report lifecycle cleanup separately from the completed command outcome."""
+    if service is None:
+        return
+    try:
+        close = getattr(service, 'close', None)
+        if not callable(close) or close() is not False:
+            return
+        detail = 'the owned voice worker has not confirmed shutdown'
+    except (Exception, KeyboardInterrupt) as exc:
+        detail = type(exc).__name__ + ': ' + str(exc)[:1000]
+    try:
+        print('Local voice cleanup was not confirmed: ' + detail + '.',
+              file=sys.stderr, flush=True)
+    except (OSError, ValueError):
+        # A closed diagnostics stream must not replace the command's exit code.
+        pass
+
+
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
@@ -27,6 +50,24 @@ def main(argv=None):
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
     operations.add_parser('capabilities', help='Inspect the actual installed audio runtime')
+    operations.add_parser('publications', help='List saved publication receipts; use verify-publication to check actual bytes')
+    for operation, extension, description in (
+            ('publish-epub', '.epub', 'Local EPUB3 with measured line overlays'),
+            ('publish-daisy', '.zip', 'DAISY 2.02 file-set ZIP with measured line synchronization')):
+        publish = operations.add_parser(operation, help=description + ' from a completed Studio job')
+        publish.add_argument('job_id')
+        publish.add_argument('--output', type=Path, required=True, help=f'New {extension} file in an existing directory; never overwritten')
+        publish.add_argument('--language', default='und', help='Publication language, such as uk, en or und')
+        publish.add_argument('--creator', default='')
+        publish.add_argument('--max-bytes', type=int, default=32 * 1024**3, help='Source graph and publication staging byte limit')
+        publish.add_argument('--timeout', type=float, default=3600, help='Total export time budget in seconds')
+        if operation == 'publish-daisy':
+            publish.add_argument('--publisher', required=True, help='Publisher metadata explicitly supplied for this publication')
+    verify = operations.add_parser('verify-publication', help='Verify a saved receipt or recover completed publication after interruption')
+    verify.add_argument('publication_id')
+    verify.add_argument('--file', type=Path, help='Explicit existing publication after relocation; must match the exact saved receipt')
+    verify.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+    verify.add_argument('--timeout', type=float, default=3600)
     render = operations.add_parser('render', help='Produce actual WAV master, chapters, stems and subtitles')
     source = render.add_mutually_exclusive_group(required=True)
     source.add_argument('--script', type=Path, help='UTF-8 script file')
@@ -39,6 +80,7 @@ def main(argv=None):
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
     args = parser.parse_args(argv)
+    service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
@@ -53,6 +95,23 @@ def main(argv=None):
         elif args.operation == 'capabilities':
             runtime = service._runtime()
             result = {'audio': runtime.capabilities(), 'music': runtime.music_capabilities()}
+        elif args.operation in ('publish-epub', 'publish-daisy', 'publications', 'verify-publication'):
+            from ..audio.models import AudioBudget
+            from .publishing import PublicationService
+            budget = (AudioBudget(timeout=args.timeout, max_output_bytes=args.max_bytes)
+                      if args.operation != 'publications' else None)
+            publisher = PublicationService(service, budget=budget)
+            if args.operation == 'publications':
+                result = publisher.publications()
+            elif args.operation == 'verify-publication':
+                result = publisher.verify(args.publication_id, output=args.file)
+            elif args.operation == 'publish-daisy':
+                result = publisher.export_daisy(args.job_id, args.output, language=args.language,
+                    creator=args.creator, publisher=args.publisher,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
+            else:
+                result = publisher.export_epub(args.job_id, args.output, language=args.language, creator=args.creator,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
         else:
             if args.operation == 'render':
                 if args.project:
@@ -72,13 +131,20 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
+        if args.operation in ('publish-epub', 'publish-daisy', 'verify-publication'):
+            print('Publication interrupted. A saved receipt may refer to a completed file; '
+                  'verify that existing publication before another export.', file=sys.stderr)
+        else:
+            print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
         return 130
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        _close_production(service)
 
 
+@installed_entrypoint
 def assistant_main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
     parser.add_argument('--data-dir', type=Path)
@@ -101,6 +167,7 @@ def assistant_main(argv=None):
                      'Save and review the proposed JSON, then use it as --instructions in a separate invocation.')
     if args.list_local_profiles and args.run:
         parser.error('--list-local-profiles does not execute a plan.')
+    production = None
     try:
         from ..application import LibraryApp
         from ..assistant import AssistantService, Scope
@@ -151,7 +218,8 @@ def assistant_main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Local assistant: ' + str(exc), file=sys.stderr)
         return 1
-
+    finally:
+        _close_production(production)
 
 
 if __name__ == '__main__':

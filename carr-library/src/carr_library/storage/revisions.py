@@ -133,6 +133,8 @@ BEGIN SELECT RAISE(ABORT,'import publication already exists'); END;
 '''
 SCHEMA_V5 = SCHEMA_V4.replace('PRAGMA user_version=4;', '') + IMPORT_PUBLICATION_SCHEMA + '\nPRAGMA user_version=5;\n'
 CURRENT_SCHEMA_VERSION = 5
+# Compatibility for callers of the pre-merge application API; the DDL is canonical.
+CURRENT_SCHEMA = CURRENT_SCHEMA_VERSION
 SCHEMAS = {1: SCHEMA, 2: SCHEMA_V2, 3: SCHEMA_V3, 4: SCHEMA_V4, 5: SCHEMA_V5}
 
 
@@ -204,6 +206,8 @@ class Storage:
                             raise ValueError('incomplete storage schema migration')
                         version += 1
                         self.db.execute(f'PRAGMA user_version={version}')
+                    self.schema_version = version
+                    self._check()
                 elif version not in SCHEMAS or (schema_version is not None and version != schema_version):
                     raise ValueError('unsupported or mismatched schema version; no live upgrade')
                 self.schema_version = version
@@ -240,6 +244,20 @@ class Storage:
                 _schema_signature(self.db) != _expected_signature(self.schema_version)):
             raise ValueError('revision storage schema mismatch')
 
+    def incremental_publications(self):
+        from .publication import PublicationSession
+        return PublicationSession(self)
+
+    def publication_transaction(self, workspace, edition, revision, asset, config):
+        from .publication import PublicationTransaction
+        return PublicationTransaction(self, workspace, edition, revision, asset, config).run()
+
+    def check_publication_snapshot(self):
+        session = getattr(self, '_publication_session', None)
+        if session is None:
+            return self.check()
+        return session.check_current()
+
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
         with self.transaction():
             self.stage_revision(workspace, edition, revision, asset, config, pages)
@@ -249,14 +267,19 @@ class Storage:
         if not self.db.in_transaction:
             raise ValueError('caller transaction required')
         self._require_pragmas()
+        publication = getattr(self, '_publication_write', None)
+        if (publication is not None
+                and publication.identity != (workspace, edition, revision, asset, config)):
+            raise ValueError('A publication session cannot stage another identity.')
+        db = publication.db if publication is not None else self.db
         if not all(isinstance(v,str) and v for v in (workspace,edition,revision,config)):
             raise ValueError('missing identity or extraction config')
         if len(asset) != 64 or any(c not in '0123456789abcdef' for c in asset):
             raise ValueError('invalid SHA256')
         self._check_schema()
-        self.db.execute('SAVEPOINT stage_revision')
+        db.execute('SAVEPOINT stage_revision')
         try:
-            self.db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',(revision,workspace,edition,asset,config))
+            db.execute('INSERT INTO revision VALUES(?,?,?,?,?)',(revision,workspace,edition,asset,config))
             count = 0
             for count,p in enumerate(pages,1):
                 if not isinstance(p,Page) or not isinstance(p.raw,str) or '\x00' in p.raw:
@@ -269,21 +292,31 @@ class Storage:
                             p.printed, p.verified)
                 except ValueError as exc:
                     raise sqlite3.IntegrityError('invalid source locator') from exc
-                self.db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) VALUES(?,?,?,?,?,?,?)',
+                db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) VALUES(?,?,?,?,?,?,?)',
                     (revision,count,p.physical,p.printed,int(p.verified),p.raw,sha256(p.raw.encode()).hexdigest()))
             if not count:
                 raise ValueError('empty revision')
             self._check_locators(revision)
-            self.db.execute('INSERT INTO sealed VALUES(?)',(revision,))
-            self.db.execute('DELETE FROM indexed WHERE id IN (SELECT id FROM active_page WHERE workspace=? AND edition=?)',(workspace,edition))
-            self.db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
-            self.db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
+            db.execute('INSERT INTO sealed VALUES(?)',(revision,))
+            db.execute(
+                'DELETE FROM indexed WHERE id IN (SELECT p.id FROM active a '
+                'JOIN revision r ON r.id=a.revision AND r.workspace=a.workspace '
+                'AND r.edition=a.edition JOIN page p ON p.revision=r.id '
+                'WHERE a.workspace=? AND a.edition=?)', (workspace, edition))
+            db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
+            # Keep only IDs in the source cursor; each triggered write obtains
+            # one exact raw value by its unique page key inside the same savepoint.
+            with closing(db.execute('SELECT id FROM page WHERE revision=?', (revision,))) as selected:
+                for (page_id,) in selected:
+                    db.execute(
+                        'INSERT INTO indexed(id,raw) VALUES(?,(SELECT raw FROM page WHERE id=?))',
+                        (page_id, page_id))
         except BaseException:
             if self.db.in_transaction:
-                self.db.execute('ROLLBACK TO stage_revision')
-                self.db.execute('RELEASE stage_revision')
+                db.execute('ROLLBACK TO stage_revision')
+                db.execute('RELEASE stage_revision')
             raise
-        self.db.execute('RELEASE stage_revision')
+        db.execute('RELEASE stage_revision')
 
     def get_page(self, workspace, revision, ordinal):
         # Only sealed, workspace-scoped pages can serve as historical evidence.
@@ -295,13 +328,15 @@ class Storage:
     def _check_locators(self, revision=None):
         # Native SQLite window functions validate sequence and locator kind.
         # Existing schema derives kind from physical IS NULL; no migration here.
-        invalid = self.db.execute("""
+        scope = ' WHERE revision=?' if revision is not None else ''
+        parameters = (revision,) if revision is not None else ()
+        invalid = self.db.execute(f"""
             WITH ordered AS (
                 SELECT ordinal, physical, printed, verified,
                     row_number() OVER w AS expected,
                     lag(physical) OVER w AS previous_physical,
                     lag(physical IS NULL) OVER w AS previous_logical
-                FROM page WHERE (? IS NULL OR revision=?)
+                FROM page{scope}
                 WINDOW w AS (PARTITION BY revision ORDER BY ordinal)
             )
             SELECT 1 FROM ordered WHERE ordinal != expected
@@ -312,14 +347,14 @@ class Storage:
                 OR (expected>1 AND previous_logical != (physical IS NULL))
                 OR (physical IS NOT NULL AND physical <= previous_physical)
             LIMIT 1
-        """, (revision, revision)).fetchone()
+        """, parameters).fetchone()
         if invalid:
             raise sqlite3.IntegrityError('invalid source locator sequence or label')
         # Apply the citation boundary to every authoritative label, including
         # inactive historical revisions checked before backup or recovery.
         for physical, printed in self.db.execute(
-                'SELECT physical,printed FROM page WHERE verified=1 AND (? IS NULL OR revision=?)',
-                (revision, revision)):
+                'SELECT physical,printed FROM page WHERE verified=1' +
+                (' AND revision=?' if revision is not None else ''), parameters):
             try:
                 Locator('physical_page', physical, printed, True)
             except ValueError as exc:
@@ -348,7 +383,32 @@ class Storage:
         for row in self.db.execute('SELECT raw,digest FROM page'):
             if sha256(row[0].encode()).hexdigest()!=row[1]:
                 raise ValueError('raw digest mismatch')
-        if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
+        # Probe unique IDs without materializing a second raw-text index.
+        # Unary + preserves EXCEPT's no-affinity comparison; IS handles NULL.
+        if self.db.execute("""
+            SELECT 1 FROM active a
+            CROSS JOIN revision r
+            CROSS JOIN page p
+            WHERE r.id=a.revision
+              AND r.workspace=a.workspace AND r.edition=a.edition
+              AND p.revision=r.id
+              AND NOT EXISTS (
+                  SELECT 1 FROM indexed i WHERE i.id=p.id
+                    AND (+i.raw COLLATE BINARY) IS (+p.raw COLLATE BINARY)
+              )
+            LIMIT 1
+        """).fetchone() or self.db.execute("""
+            SELECT 1 FROM indexed i WHERE NOT EXISTS (
+                SELECT 1 FROM page p
+                CROSS JOIN revision r
+                CROSS JOIN active a
+                WHERE p.id=i.id AND r.id=p.revision
+                  AND a.workspace=r.workspace AND a.edition=r.edition
+                  AND a.revision=r.id
+                  AND (+p.raw COLLATE BINARY) IS (+i.raw COLLATE BINARY)
+            )
+            LIMIT 1
+        """).fetchone():
             raise ValueError('active index content mismatch')
         self.db.execute("INSERT INTO page_fts(page_fts,rank) VALUES('integrity-check',1)")
         if self.schema_version >= 3:
@@ -445,21 +505,62 @@ class Storage:
             self._check_schema()
             self.db.execute("INSERT INTO page_fts(page_fts) VALUES('rebuild')")
             self.db.execute('DELETE FROM indexed')
-            self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
+            # The source view does not read indexed or its FTS trigger tables.
+            with closing(self.db.execute('SELECT id FROM active_page')) as selected:
+                for (page_id,) in selected:
+                    self.db.execute(
+                        'INSERT INTO indexed(id,raw) VALUES(?,(SELECT raw FROM page WHERE id=?))',
+                        (page_id, page_id))
             self._check()
 
-    def backup(self, path):
+    def backup(self, path, *, cancelled=lambda: False, max_bytes=None):
         """Publish a checked SQLite snapshot without replacing any existing path.
 
         Requires a local filesystem supporting hard links. Interrupted processes
         may leave a staging directory, never an incomplete final snapshot.
         The caller must own a stable private parent directory and exclude
         concurrent namespace writers; these checks are not a hostile-directory lock.
+        Optional caller limits govern the copy and its unchanged full validation;
+        no limit or cancellation authority is read from the source database.
         """
+        if not callable(cancelled):
+            raise TypeError('A backup cancellation callback is required.')
+        if max_bytes is not None and (type(max_bytes) is not int or not 0 < max_bytes <= 2**63-1):
+            raise ValueError('Choose a positive bounded database snapshot allowance.')
+        failure = None
+
+        def check():
+            if failure is not None:
+                raise failure
+            if cancelled():
+                raise InterruptedError('Database backup cancelled before publication.')
+
+        def size_limit(size):
+            if max_bytes is not None and size > max_bytes:
+                raise ValueError('Database snapshot exceeds the reviewed byte allowance.')
+
+        def progress(status, remaining, total):
+            check()
+            size_limit(total * page_size)
+
+        def validation_progress():
+            nonlocal failure
+            try:
+                check()
+            except BaseException as exc:
+                # SQLite translates callback exceptions into OperationalError.
+                # Keep the original cancellation/deadline for the caller.
+                failure = exc
+                return 1
+            return 0
+
+        check()
         if self.db.in_transaction:
             raise ValueError('backup forbidden inside publication transaction')
         self._require_pragmas()
         self._check_schema()
+        page_size = self.db.execute('PRAGMA page_size').fetchone()[0]
+        size_limit(self.db.execute('PRAGMA page_count').fetchone()[0] * page_size)
         path = Path(path)
         if os.path.lexists(path) or _sidecars(path):
             raise FileExistsError(path)
@@ -467,24 +568,39 @@ class Storage:
             staged = Path(work) / 'snapshot.db'
             dst = sqlite3.connect(staged)
             try:
-                self.db.backup(dst)
+                self.db.backup(dst, pages=256, progress=progress)
+                check()
                 # A backup of a WAL source may retain the WAL file format.
                 # Convert only the private snapshot to a standalone database.
                 if dst.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                     raise ValueError('snapshot journal mode is not DELETE')
             finally:
                 dst.close()
+            size_limit(staged.stat().st_size)
             copy = Storage(staged)
             try:
-                copy.check()
+                copy.db.set_progress_handler(validation_progress, 1000)
+                try:
+                    copy.check()
+                except BaseException:
+                    # An interrupted PRAGMA may return an integrity-detail row,
+                    # which the unchanged checker translates to ValueError.
+                    # Only the exact captured callback failure supersedes it.
+                    if failure is not None:
+                        raise failure
+                    raise
+                check()
             finally:
+                copy.db.set_progress_handler(None, 0)
                 copy.close()
+            size_limit(staged.stat().st_size)
             if _sidecars(staged):
                 raise ValueError('snapshot has sidecars')
             with staged.open('r+b') as file:
                 os.fsync(file.fileno())
             # Atomic no-replace publication, including a competing writer.
             # Unsupported filesystems fail closed; no overwrite/copy fallback.
+            check()
             if _sidecars(path):
                 raise FileExistsError(path)
             os.link(staged, path)

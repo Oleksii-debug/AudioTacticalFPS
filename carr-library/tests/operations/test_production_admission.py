@@ -93,6 +93,96 @@ def test_gpu_policy_checked_before_model_execution_and_failed_probe_releases(tmp
 
 
 @pytest.mark.skipif(not shutil.which('ffmpeg') or not shutil.which('ffprobe'),
+                    reason='Actual default rendering requires installed FFmpeg and ffprobe.')
+def test_default_render_on_two_logical_cpus_uses_its_explicit_default_allowance(tmp_path, monkeypatch):
+    import carr_library.operations.models as model
+    with monkeypatch.context() as patched:
+        patched.setattr(model.os, 'cpu_count', lambda: 2)
+        broker = ResourceBroker.for_app(tmp_path)
+    assert broker.limits.cpu_slots == 1
+    outputs = tmp_path / 'out'
+    outputs.mkdir()
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=VoiceRegistry([]), broker=broker)
+    identity = service.submit(service.create('[Pause: 0.2]', title='Default CPU selection'), outputs, stems=False)
+    result = service.run(identity)
+    assert result['status'] == 'complete'
+    assert result['resource_plan']['request']['cpu_slots'] == 1
+    assert Path(result['destination'], 'master.wav').stat().st_size > 44
+    assert broker.snapshot()['leases'] == []
+
+
+def test_explicit_runtime_threads_are_not_silently_rewritten_to_policy(tmp_path):
+    outputs = tmp_path / 'out'
+    outputs.mkdir()
+    broker = ResourceBroker.for_app(tmp_path, limits=ResourceLimits(cpu_slots=1))
+    budget = AudioBudget(threads=2)
+    runtime = SimpleNamespace(budget=budget, music_models={})
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=VoiceRegistry([]), broker=broker,
+                                runtime_factory=lambda *_args, **_kwargs: runtime)
+    identity = service.submit(service.create('[Pause: 0.2]'), outputs)
+    with pytest.raises(ResourceUnavailable, match='cpu_slots'):
+        service.run(identity)
+    assert runtime.budget is budget and budget.threads == 2
+    assert service.get(identity)['status'] == 'attention'
+    assert broker.snapshot()['leases'] == []
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg') or not shutil.which('ffprobe'),
+                    reason='Actual canonical studio output requires installed FFmpeg and ffprobe.')
+def test_completed_studio_is_not_failed_by_resource_metadata_cleanup(tmp_path, monkeypatch):
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    broker = ResourceBroker.for_app(tmp_path, limits=ResourceLimits(cpu_slots=1, min_free_disk_bytes=0))
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=VoiceRegistry([]),
+        runtime_factory=lambda root, **options: AudioRuntime(root, budget=AudioBudget(threads=1), **options),
+        broker=broker)
+    identity = service.submit(service.create('[Pause: 0.2]'), outputs, stems=False)
+    original_unlink = Path.unlink
+
+    def unlink(path, *args, **kwargs):
+        if path.parent == broker.leases_root and path.suffix == '.json':
+            raise OSError('Synthetic resource metadata cleanup failure')
+        return original_unlink(path, *args, **kwargs)
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(Path, 'unlink', unlink)
+        result = service.run(identity)
+    assert result['status'] == 'complete'
+    assert 'Resource reservation metadata cleanup' in result['progress']
+    reopened = service.get(identity)
+    assert reopened['status'] == 'complete' and reopened['progress'] == result['progress']
+    service._verify_artifacts(reopened)
+    assert not broker.snapshot()['leases']
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg') or not shutil.which('ffprobe'),
+                    reason='Actual canonical studio output requires installed FFmpeg and ffprobe.')
+def test_explicit_policy_recovery_preserves_actual_studio_thread_request(tmp_path):
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    broker = ResourceBroker.for_app(tmp_path, limits=ResourceLimits(cpu_slots=1, min_free_disk_bytes=0))
+    runtimes = []
+
+    def factory(root, **options):
+        runtime = AudioRuntime(root, budget=AudioBudget(threads=2), **options)
+        runtimes.append(runtime)
+        return runtime
+
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=VoiceRegistry([]),
+                                runtime_factory=factory, broker=broker)
+    identity = service.submit(service.create('[Pause: 0.2]'), outputs, stems=False)
+    with pytest.raises(ResourceUnavailable, match='cpu_slots'):
+        service.run(identity)
+    assert service.get(identity)['status'] == 'attention'
+    assert broker.limits.cpu_slots == 1 and not list(outputs.iterdir())
+    assert not broker.snapshot()['leases']
+    broker.configure(replace(broker.limits, cpu_slots=2))
+    assert service.run(identity)['status'] == 'complete'
+    assert all(runtime.budget.threads == 2 for runtime in runtimes)
+    assert service.get(identity)['resource_plan']['request']['cpu_slots'] == 2
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg') or not shutil.which('ffprobe'),
                     reason='Actual total-budget recovery requires FFmpeg and ffprobe.')
 def test_total_disk_budget_failure_releases_lease_and_resume_preserves_accepted_audio(tmp_path):
     outputs = tmp_path / 'outputs'

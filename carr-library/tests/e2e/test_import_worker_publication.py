@@ -11,13 +11,13 @@ import sqlite3
 import subprocess
 import sys
 import time
-from types import SimpleNamespace
 
 import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
+from carr_library.operations import ResourceBroker
 
 
 def _source(root, kind):
@@ -86,8 +86,8 @@ LibraryApp._import_file = _replay
 
     def launch(command, **options):
         command = list(command)
-        # Popen is shared with subprocess.run: Windows cancellation invokes
-        # taskkill here as well. Only instrument the real import bootstrap.
+        # Only instrument the real import bootstrap. Other subprocess helpers
+        # retain the original implementation, including Windows taskkill.
         if '-c' not in command:
             return popen(command, **options)
         index = command.index('-c') + 1
@@ -98,11 +98,19 @@ LibraryApp._import_file = _replay
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
         return popen(command, **options)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    class WorkerSubprocess:
+        Popen = staticmethod(launch)
+
+        def __getattr__(self, name):
+            return getattr(subprocess, name)
+
+    # Keep the instrumentation local to the supervisor: replacing the shared
+    # stdlib Popen class also changes unrelated parsers and Windows helpers.
+    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess())
 
 
-def _observe_termination(monkeypatch, marker, termination):
-    """Reach the real commit barrier before expiring only the parent deadline."""
+def _observe_worker_stop(monkeypatch):
+    """Record the actual supervisor result before receipt reconciliation."""
     outcomes = []
     invoke = worker._invoke
 
@@ -112,12 +120,56 @@ def _observe_termination(monkeypatch, marker, termination):
         return result
 
     monkeypatch.setattr(worker, '_invoke', observe)
-    if termination == 'timeout':
-        monotonic = time.monotonic
-        monkeypatch.setattr(worker, 'time', SimpleNamespace(
-            monotonic=lambda: monotonic() + (100 if marker.is_file() else 0),
-            sleep=time.sleep))
     return outcomes
+
+
+def _expire_at_barrier(monkeypatch, marker, *, timeout):
+    """Advance only the supervisor's clock after the real child reaches its barrier.
+
+    Cold native PDF imports can need more than three seconds on Windows. The
+    unchanged real deadline still bounds startup; the injected clock advances
+    only once the exact before/after-commit boundary has actually been reached.
+    Child parsing, process termination and publication recovery remain real.
+    """
+    clock = worker.time
+
+    class BarrierClock:
+        armed = False
+        expired = False
+
+        def monotonic(self):
+            now = clock.monotonic()
+            if self.armed and marker.exists():
+                self.expired = True
+            self.armed = True
+            return now + (timeout + 1 if self.expired else 0)
+
+        def __getattr__(self, name):
+            return getattr(clock, name)
+
+    monkeypatch.setattr(worker, 'time', BarrierClock())
+
+
+@pytest.mark.parametrize('marker_preexists', (False, True))
+def test_timeout_fixture_arms_deadline_before_expiring_at_barrier(tmp_path, monkeypatch,
+                                                               marker_preexists):
+    from types import SimpleNamespace
+
+    marker = tmp_path / 'observed-boundary'
+    if marker_preexists:
+        marker.write_text('observed', encoding='utf-8')
+    original_sleep = worker.time.sleep
+    clock = SimpleNamespace(monotonic=lambda: 100.0, sleep=original_sleep)
+    monkeypatch.setattr(worker, 'time', clock)
+    _expire_at_barrier(monkeypatch, marker, timeout=15.0)
+    assert worker.time.monotonic() == 100.0
+    assert worker.time.sleep is original_sleep
+    if not marker_preexists:
+        assert worker.time.monotonic() == 100.0
+        marker.write_text('observed', encoding='utf-8')
+    assert worker.time.monotonic() == 116.0
+    marker.unlink()
+    assert worker.time.monotonic() == 116.0
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -127,7 +179,8 @@ def _observe_termination(monkeypatch, marker, termination):
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
-    result = subprocess.run([sys.executable, *arguments], capture_output=True,
+    assert worker.subprocess.Popen is not subprocess.Popen
+    result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
     assert not marker.exists()
@@ -145,17 +198,21 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
     _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
              startup_delay=startup_delay)
-    outcomes = _observe_termination(monkeypatch, marker, termination)
+    if termination == 'timeout':
+        _expire_at_barrier(monkeypatch, marker, timeout=30.0)
+    outcomes = _observe_worker_stop(monkeypatch)
     started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=30.0)
     if startup_delay:
-        assert time.monotonic() - started > 3.0  # Actual startup exceeds the old deadline.
+        assert time.monotonic() - started > 3.0  # Real startup exceeds the old deadline.
     assert marker.exists(), result
     assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
+    if termination == 'timeout':
+        assert result['worker_state'] == 'timed_out'
     assert result['verified'] is (kind == 'txt')
     record = worker.load_request(app.root, result['request_id'])
     assert record['state'] == 'complete' and record['result'] == result
@@ -187,13 +244,15 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
     _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
              startup_delay=startup_delay)
-    outcomes = _observe_termination(monkeypatch, marker, termination)
+    if termination == 'timeout':
+        _expire_at_barrier(monkeypatch, marker, timeout=30.0)
+    outcomes = _observe_worker_stop(monkeypatch)
     started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=30.0)
     if startup_delay:
-        assert time.monotonic() - started > 3.0
+        assert time.monotonic() - started > 3.0  # Real startup exceeds the old deadline.
     assert marker.exists(), result
     assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
@@ -217,14 +276,21 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
     planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())
     marker = tmp_path / 'before-commit'
     real_popen, real_stop = worker.subprocess.Popen, worker._stop
+    real_reconcile = worker._reconcile_publication
     _barrier(monkeypatch, marker, boundary='before')
-    competing = []
+    competing, stopped = [], []
 
-    def stop_then_publish(process):
+    def observed_stop(process):
         real_stop(process)
-        if marker.exists() and not competing:
-            # The cancelled child has released the writer lock. Complete a
-            # different import before its parent can reconcile the hint.
+        stopped.append(process)
+
+    def publish_before_reconciliation(root, request_id, attempt, **options):
+        if request_id == planned['request_id'] and marker.exists() and not competing:
+            # Preserve resource ownership through native cleanup. Only after
+            # release, interleave the same competing publication before the
+            # original canonical receipt reconciliation.
+            assert stopped and all(process.poll() is not None for process in stopped)
+            assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
             competing.append(None)
             with monkeypatch.context() as clean_launch:
                 clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
@@ -234,15 +300,17 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
                 else:
                     competing[0] = app._import_file(workspace, source, config=Config(), **_metadata())
             if competitor_kind == 'forged-sidecar':
-                stopped = worker.load_request(app.root, planned['request_id'])
+                stopped_record = worker.load_request(app.root, planned['request_id'])
                 other = worker.load_request(app.root, competing[0]['request_id'])
                 # A copied completion hint cannot transfer the ownership of a
                 # committed database receipt, even with the current attempt ID.
-                stopped['publication_candidate'] = dict(other['publication_candidate'],
-                                                       attempt=stopped['attempt'])
-                worker._store(app.root, planned['request_id'], stopped)
+                stopped_record['publication_candidate'] = dict(other['publication_candidate'],
+                                                              attempt=stopped_record['attempt'])
+                worker._store(app.root, planned['request_id'], stopped_record)
+        return real_reconcile(root, request_id, attempt, **options)
 
-    monkeypatch.setattr(worker, '_stop', stop_then_publish)
+    monkeypatch.setattr(worker, '_stop', observed_stop)
+    monkeypatch.setattr(worker, '_reconcile_publication', publish_before_reconciliation)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
                                 cancelled=marker.exists, timeout=15.0,
                                 request_id=planned['request_id'])
@@ -365,6 +433,35 @@ def test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch
     assert current['attempt'] != old_attempt and current['publication_candidate'] is None
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+def test_cancelled_resume_preserves_attempt_while_same_operation_still_owns_resources(tmp_path, monkeypatch):
+    from carr_library.operations import ResourceBroker, ResourceRequest
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Pending attempt identity')
+    source = _source(tmp_path, 'pdf')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    record = worker.load_request(app.root, first['request_id'])
+    assert record['publication_candidate'] is not None
+    record['state'] = 'running'
+    record.pop('result')
+    worker._store(app.root, first['request_id'], record)
+    before = worker._path(app.root, first['request_id']).read_bytes()
+    broker = ResourceBroker.for_app(app.root)
+    monkeypatch.setattr(worker, '_invoke',
+        lambda *args, **kwargs: pytest.fail('Cancelled resume must not launch a new parser.'))
+    with broker.reserve(ResourceRequest(cpu_slots=1),
+                        operation_id='import:' + first['request_id']):
+        result = worker.run_request(app.root, workspace, source, {}, Config(),
+            request_id=first['request_id'], cancelled=lambda: True)
+        assert result['state'] == 'cancelled'
+        assert worker._path(app.root, first['request_id']).read_bytes() == before
+        live, = broker.snapshot()['leases']
+        assert live['operation_id'] == 'import:' + first['request_id']
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
 
 
 def test_docx_publication_keeps_existing_logical_record_capacity(tmp_path, monkeypatch):

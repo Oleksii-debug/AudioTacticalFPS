@@ -1,8 +1,8 @@
 """Focused persistence/safety regressions for the integrated production service.
 
-Speech integration uses the actual installed FFmpeg Flite provider. Boundary
-wrappers only arrange cancellation or count calls; they do not synthesize fake
-speech and do not stand in for native Windows SAPI acceptance.
+Speech integration uses actual installed FFmpeg Flite on POSIX and native SAPI
+on Windows, matching the current production acceptance fixture. Boundary wrappers
+only arrange cancellation or count completed calls; they never synthesize fixture speech.
 """
 from pathlib import Path
 import os
@@ -10,21 +10,27 @@ import shutil
 
 import pytest
 
-from carr_library.speech import FliteProvider, VoiceRegistry
+from carr_library.speech import FliteProvider, NativeSapiProvider, VoiceRegistry
 from carr_library.speech.runtime import SapiProvider
 from carr_library.speech import _io
 from carr_library.studio.render import ProductionService
 
 
 @pytest.fixture
-def registry():
+def registry(record_testsuite_property):
     binary = shutil.which('ffmpeg')
-    if not binary or not shutil.which('ffprobe'):
-        pytest.skip('Actual production requires installed FFmpeg and ffprobe.')
-    value = VoiceRegistry([FliteProvider(binary)])
-    if 'flite:slt' not in {voice.id for voice in value.voices()}:
-        pytest.skip('Actual speech requires the installed Flite slt voice.')
-    return value
+    assert binary and shutil.which('ffprobe'), 'Actual production requires installed FFmpeg and ffprobe.'
+    value = VoiceRegistry([NativeSapiProvider()] if os.name == 'nt' else [FliteProvider(binary)])
+    try:
+        available = tuple(voice.id for voice in value.voices())
+        assert available, 'The selected actual local speech provider must expose an installed voice.'
+        if os.name != 'nt':
+            assert 'flite:slt' in available, 'The POSIX gate requires the installed Flite slt voice.'
+        record_testsuite_property('receipt_voice_provider', 'native SAPI' if os.name == 'nt' else 'FFmpeg Flite')
+        record_testsuite_property('receipt_available_voice_ids', repr(available))
+        yield value
+    finally:
+        assert value.close() is not False
 
 
 class CountSpeech:
@@ -51,7 +57,8 @@ def test_completed_actual_speech_is_receipted_before_cancellation(tmp_path, regi
     service = ProductionService(tmp_path / 'state', voices=voices)
     outputs = tmp_path / 'outputs'
     outputs.mkdir()
-    project = service.create('One durable speech segment.', voice_ids=('flite:slt',))
+    selected = registry.voices()[0].id if os.name == 'nt' else 'flite:slt'
+    project = service.create('One durable speech segment.', voice_ids=(selected,))
     job = service.submit(project, outputs, stems=False)
     with pytest.raises(InterruptedError):
         service.run(job, cancelled=lambda: stopped[0])

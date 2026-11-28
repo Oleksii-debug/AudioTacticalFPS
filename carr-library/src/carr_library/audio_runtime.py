@@ -89,27 +89,35 @@ def _inspect_audio_runtime(runtime_dir):
             or manifest['files'] != expected):
         raise ValueError('Audio runtime manifest differs from its reviewed source inventory.')
     actual, total, visited = set(), 0, 0
-    for directory, dirs, files in os.walk(root, followlinks=False):
-        visited += len(dirs) + len(files)
-        if visited > MAX_FILES * 2:
-            raise ValueError('Audio runtime contains too many filesystem entries.')
-        for name in dirs:
-            _plain(Path(directory) / name, directory=True)
-        for name in files:
-            path = Path(directory) / name
-            info = _plain(path)
-            relative = path.relative_to(root).as_posix()
-            if relative == MANIFEST:
-                continue
-            record = entries.get(relative)
-            if record is None or info.st_size != record['size']:
-                raise ValueError('Unexpected audio runtime file or size: ' + relative)
-            if _sha(path) != record['sha256']:
-                raise ValueError('Audio runtime checksum failed: ' + relative)
-            if relative.startswith('bin/') and path.suffix.lower() in {'.dll', '.exe'}:
-                _pe_x64(path)
-            actual.add(relative)
-            total += info.st_size
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        _plain(directory, directory=True)
+        # Count before consuming another entry and propagate enumeration errors.
+        # An unreadable extra directory must not disappear from a sealed inventory.
+        with os.scandir(directory) as children:
+            for child in children:
+                visited += 1
+                if visited > MAX_FILES * 2:
+                    raise ValueError('Audio runtime contains too many filesystem entries.')
+                path = Path(child.path)
+                if child.is_dir(follow_symlinks=False):
+                    _plain(path, directory=True)
+                    pending.append(path)
+                    continue
+                info = _plain(path)
+                relative = path.relative_to(root).as_posix()
+                if relative == MANIFEST:
+                    continue
+                record = entries.get(relative)
+                if record is None or info.st_size != record['size']:
+                    raise ValueError('Unexpected audio runtime file or size: ' + relative)
+                if _sha(path) != record['sha256']:
+                    raise ValueError('Audio runtime checksum failed: ' + relative)
+                if relative.startswith('bin/') and path.suffix.lower() in {'.dll', '.exe'}:
+                    _pe_x64(path)
+                actual.add(relative)
+                total += info.st_size
     if actual != entries.keys():
         raise ValueError('Required audio runtime files are missing.')
     if _sha(root / MANIFEST) != manifest_hash:
@@ -138,6 +146,9 @@ def _discover():
             # layout identifies an implicit bundle; explicit roots stay strict.
             marked = any(os.path.lexists(runtime / name) for name in
                          (MANIFEST, 'bin', 'provenance/source-lock.json'))
+            legacy = root / 'audio'
+            marked = marked or any(os.path.lexists(legacy / name)
+                                   for name in ('provenance.json', 'bin'))
             if os.path.lexists(root / 'bundle-manifest.json') or marked:
                 if root not in candidates:
                     candidates.append(root)
@@ -147,8 +158,8 @@ def _discover():
     return candidates[0] if candidates else None
 
 
-def bundled_audio_tools(bundle_root=None):
-    """Return verified absolute paths, or None for an installation without audio.
+def inspect_bundled_audio(bundle_root=None):
+    """Return one verified layout/report, or None for an installation without audio.
 
     A declared, altered or unannounced runtime fails closed. Discovery ignores
     CWD, PATH and environment overrides. This function also supports a packaging
@@ -160,8 +171,10 @@ def bundled_audio_tools(bundle_root=None):
     _directory(root)
     runtime = root / DIRECTORY
     has_runtime = os.path.lexists(runtime)
+    legacy_root = root / 'audio'
+    has_legacy = os.path.lexists(legacy_root)
     if not os.path.lexists(root / 'bundle-manifest.json'):
-        if has_runtime:
+        if has_runtime or has_legacy:
             raise ValueError('Audio runtime has no enclosing bundle manifest.')
         return None
     outer = _read(root / 'bundle-manifest.json')
@@ -179,6 +192,49 @@ def bundled_audio_tools(bundle_root=None):
             if not name.startswith(DIRECTORY + '/'):
                 raise ValueError('Ambiguous audio runtime installation path.')
             inventory[name[len(DIRECTORY) + 1:]] = digest
+    legacy_included = outer.get('bundled_audio', False)
+    if type(legacy_included) is not bool:
+        raise ValueError('Invalid legacy bundled audio flag.')
+    legacy_inventory = {}
+    for name, digest in outer['files'].items():
+        if name.casefold().startswith('audio/'):
+            if not name.startswith('audio/'):
+                raise ValueError('Ambiguous legacy audio installation path.')
+            legacy_inventory[name[len('audio/'):]] = digest
+    if legacy_included or has_legacy or legacy_inventory:
+        if included or has_runtime or inventory:
+            raise ValueError('Both canonical and legacy bundled audio layouts are present; choose one reviewed installation.')
+        if not legacy_included:
+            raise ValueError('Unannounced legacy audio runtime is present in the installation.')
+        _directory(legacy_root)
+        from .bundled_engines import verify_optional_runtime
+        report = verify_optional_runtime(root, outer, 'audio')
+        # The historical verifier authenticates all declared programs and
+        # provenance. Also reject physical files absent from that exact seal.
+        actual, visited, total = set(), 0, 0
+        pending = [legacy_root]
+        while pending:
+            directory = pending.pop()
+            _plain(directory, directory=True)
+            with os.scandir(directory) as children:
+                for child in children:
+                    visited += 1
+                    if visited > 16:
+                        raise ValueError('Legacy audio runtime contains too many filesystem entries.')
+                    selected = Path(child.path)
+                    if child.is_dir(follow_symlinks=False):
+                        _plain(selected, directory=True)
+                        pending.append(selected)
+                        continue
+                    total += _plain(selected).st_size
+                    actual.add(selected.relative_to(legacy_root).as_posix())
+        if actual != set(legacy_inventory):
+            raise ValueError('Legacy audio runtime differs from its sealed file inventory.')
+        return {'layout': 'audio', 'target': 'Windows x64', 'version': report['version'],
+                'verification': report['status'], 'native_execution': 'NOT_RUN',
+                'provenance_sha256': legacy_inventory['provenance.json'],
+                'provenance_status': 'verified against the enclosing legacy seal',
+                'files': len(actual), 'bytes': total, 'tools': report['programs']}
     if not included:
         if has_runtime or inventory:
             raise ValueError('Unannounced audio runtime is present in the installation.')
@@ -189,7 +245,13 @@ def bundled_audio_tools(bundle_root=None):
     expected = dict(verified_inventory, **{MANIFEST: report['manifest_sha256']})
     if inventory != expected:
         raise ValueError('Audio runtime identity differs from the enclosing bundle.')
-    return report['tools']
+    return {**report, 'layout': DIRECTORY, 'verification': 'PASS'}
+
+
+def bundled_audio_tools(bundle_root=None):
+    """Compatibility API: return only paths from the one verified report."""
+    report = inspect_bundled_audio(bundle_root)
+    return None if report is None else report['tools']
 
 
 def activate_bundled_audio_runtime(bundle_root=None):

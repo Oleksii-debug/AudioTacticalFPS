@@ -164,6 +164,41 @@ def test_language_inventory_uses_oauth_project_and_direction_flags(tmp_path, tra
     assert len(vault.calls) == 1 and len(transport['calls']) == 1
 
 
+@pytest.mark.parametrize('field', ['text', 'detected_source'])
+def test_advanced_decoded_output_cannot_borrow_an_unchanged_usage_receipt(tmp_path, transport, field):
+    service, p, vault = ready(tmp_path, transport)
+    identity, authorization = submit(service, p, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    before = service.gateway.ledger.get(authorization.id)
+    job = service.jobs.load(identity)
+    row = job['receipts'][0]
+    row[field] = 'Forged translated output' if field == 'text' else 'de'
+    row['translation_sha256'] = sha256(row['text'].encode('utf-8')).hexdigest()
+    decoded = json.dumps({'text': row['text'], 'detected_source': row.get('detected_source')},
+                         sort_keys=True, ensure_ascii=False, separators=(',', ':'))
+    row['decoded_translation_sha256'] = sha256(decoded.encode('utf-8')).hexdigest()
+    service.jobs.save(job)
+    destination = tmp_path / 'must-not-publish'
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, destination)
+    assert not destination.exists()
+    assert service.gateway.ledger.get(authorization.id) == before
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials
+
+
+def test_saved_advanced_selection_binds_its_explicit_glossary(tmp_path, transport):
+    from carr_library.ui.translation_dialog import _matches_saved_scope
+    service, p, _ = ready(tmp_path, transport)
+    value = 'Keep this selected source and glossary.'
+    identity, authorization = submit(service, p, value, glossary=GLOSSARY)
+    job = service.get(identity)
+    assert _matches_saved_scope(job, p, value, 'en', 'uk', authorization.budget, glossary=GLOSSARY)
+    for changed in (None, GLOSSARY + '-different'):
+        assert not _matches_saved_scope(job, p, value, 'en', 'uk', authorization.budget, glossary=changed)
+    assert service.jobs.load(identity) == job
+
+
 def test_actual_service_writes_source_preserving_glossary_derivative(tmp_path, transport):
     service, p, _ = ready(tmp_path, transport)
     value = 'Literal &amp; original Україна.'
@@ -416,28 +451,50 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
             self.value, self.name, self.label, self.choices = value, '', label, choices
             self.enabled, self.selection, self.bindings, self.focused = True, -1, {}, False
+            self.parent, self.live, self.modal = parent, True, False
+            self.native_id = len(state['widgets']) + 1000
             state['widgets'].append(self)
+        def __bool__(self): return self.live
+        def GetId(self):
+            assert self.live
+            return self.native_id
         def SetName(self, name): self.name = name
         def SetSelection(self, value): self.selection = value
         def GetSelection(self): return self.selection
         def GetValue(self): return self.value
+        def SetEditable(self, editable): self.editable = editable
         def ChangeValue(self, value): self.value = value
         def Enable(self, value=True): self.enabled = value
         def Disable(self): self.enabled = False
         def SetFocus(self): self.focused = True
         def Bind(self, event, callback): self.bindings[event] = callback
         def SetSizer(self, sizer): pass
-        def EndModal(self, result): pass
-        def Destroy(self): pass
+        def EndModal(self, result): self.modal = False
+        def IsModal(self): return self.modal
+        def Destroy(self):
+            assert self.live
+            for child in state['widgets']:
+                if child.parent is self and child.live:
+                    Widget.Destroy(child)
+            self.live = False
+            event = SimpleNamespace(GetId=lambda: self.native_id, Skip=lambda: None)
+            peer = self
+            while isinstance(peer, Widget):
+                if wx.EVT_WINDOW_DESTROY in peer.bindings:
+                    peer.bindings[wx.EVT_WINDOW_DESTROY](event)
+                peer = peer.parent
+            return True
         def ShowModal(self):
+            self.modal = True
             state['scenario']()
+            self.modal = False
             return 1
     class Sizer:
         def __init__(self, *args, **kwargs): pass
         def Add(self, *args, **kwargs): pass
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate((
         'DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'ALL', 'EXPAND',
-        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE'))})
+        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY'))})
     for name in ('Dialog', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Widget)
     wx.BoxSizer = Sizer
@@ -539,3 +596,140 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
         e.press('Translate / resume')
         assert not e.state['queue'] and len(e.service.list()) == 1
     e.scenario(scenario)
+
+
+def test_advanced_glossary_source_job_retains_anchor_and_independent_decoded_receipt(tmp_path, transport):
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech.source import read_source_range
+    from carr_library.assistant.providers import translation_receipt_sha256
+    from hashlib import sha256
+
+    app = LibraryApp(tmp_path / 'source library')
+    workspace = app.create_workspace('Bound Advanced translation')
+    retained = app.add_text(workspace, 'Retained original', 'First original.\fReviewed second position.')
+    source = read_source_range(ReadingDesk(app, workspace, retained['edition']), 2, 2)
+    original = app.assets.resolve(retained['asset']).read_bytes()
+    unbound, p, vault = ready(app.root / 'state', transport)
+    service = TranslationService(unbound.directory, gateway=unbound.gateway, library=app)
+    approval, cost = translation_approval(p, source.text, 'en', 'uk', '1',
+                                          glossary=GLOSSARY, source_bound=True)
+    identity = service.submit(p, source.text, 'en', 'uk', title=source.title,
+        authorization=approval, per_call_cost=cost, glossary=GLOSSARY,
+        source_document=source.reading_document())
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.get(identity)
+    assert job['kind'] == 'translation/2' and job['authorization']['data_classes'] == ['selected-script']
+    row = job['receipts'][0]
+    usage = service.gateway.ledger.get(approval.id)['operations'][identity + '_0']['usage']
+    assert usage['decoded_translation_sha256'] == row['decoded_translation_sha256']
+    assert row['glossary_config'] == {'glossary': GLOSSARY, 'ignoreCase': False}
+    service.export(identity, tmp_path / 'bound advanced export')
+    reading = ReadingDocument.load(tmp_path / 'bound advanced export/translation.reading.json')
+    assert reading.source_anchor == source.reading_document().source_anchor
+    assert reading.source_text == source.text and reading.text != source.text
+    proof = read_json(tmp_path / 'bound advanced export/translation-provenance.json')
+    assert proof['source_anchor'] == reading.source_anchor and proof['glossary'] == GLOSSARY
+    assert proof['chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert not proof['quotation_authority']
+    assert app.assets.resolve(retained['asset']).read_bytes() == original
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    assert translation_cli.main(['--data-dir', str(app.root), 'export', identity,
+                                 '--output', str(tmp_path / 'bound advanced CLI export')]) == 0
+    reopened = ReadingDocument.load(tmp_path / 'bound advanced CLI export/translation.reading.json')
+    assert reopened.source_anchor == reading.source_anchor and reopened.text == reading.text
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials
+    row['text'] = 'Changed local text with a consistent local hash'
+    row['translation_sha256'] = sha256(row['text'].encode('utf-8')).hexdigest()
+    row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
+    service.jobs.save(job)
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        service.export(identity, tmp_path / 'forged advanced export')
+    assert not (tmp_path / 'forged advanced export').exists()
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials
+
+
+@pytest.mark.parametrize('mode', ['missing', 'disabled', 'changed'])
+def test_advanced_queued_translation_rechecks_current_account_before_credentials(
+        translation_handlers, transport, mode):
+    e = translation_handlers
+    def scenario():
+        prepare_handler(e)
+        e.press('Preview')
+        e.press('Translate / resume')
+        job, = e.service.list()
+        saved = e.service.jobs.load(job['id'])
+        credentials = list(e.vault.calls)
+        store = ProfileStore(e.frame.library.root / 'state' / 'providers')
+        if mode == 'missing':
+            store.remove(e.p.id)
+        elif mode == 'disabled':
+            store.save(replace(e.p, enabled=False))
+        else:
+            store.save(replace(e.p, credential_ref='carr/provider/advanced_test/' + 'b' * 32))
+        e.complete()
+        assert e.service.jobs.load(job['id']) == saved
+        assert len(transport['calls']) == 1 and e.vault.calls == credentials
+        status = e.find('Preview, supported languages and job status')
+        assert 'unavailable, disabled or changed' in status.value and status.focused
+    e.scenario(scenario)
+
+
+@pytest.mark.parametrize('mode', ['missing', 'disabled', 'changed'])
+def test_advanced_queued_language_discovery_rechecks_current_account(
+        translation_handlers, transport, mode):
+    e = translation_handlers
+    def scenario():
+        e.press('Fetch languages')
+        store = ProfileStore(e.frame.library.root / 'state' / 'providers')
+        if mode == 'missing':
+            store.remove(e.p.id)
+        elif mode == 'disabled':
+            store.save(replace(e.p, enabled=False))
+        else:
+            store.save(replace(e.p, name='Changed account'))
+        e.complete()
+        assert not transport['calls'] and not e.vault.calls and not e.service.list()
+        status = e.find('Preview, supported languages and job status')
+        assert 'unavailable, disabled or changed' in status.value and status.focused
+    e.scenario(scenario)
+
+
+def test_advanced_discovery_rechecks_account_after_gateway_construction(
+        translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    gateway = ui.Gateway
+    created = []
+    def changed_gateway(*args, **kwargs):
+        created.append(True)
+        ProfileStore(e.frame.library.root / 'state' / 'providers').save(replace(e.p, enabled=False))
+        return gateway(*args, **kwargs)
+    monkeypatch.setattr(ui, 'Gateway', changed_gateway)
+    def scenario():
+        e.press('Fetch languages')
+        e.complete()
+        assert created == [True] and not transport['calls'] and not e.vault.calls
+        assert not e.service.languages(e.p)
+        status = e.find('Preview, supported languages and job status')
+        assert 'unavailable, disabled or changed' in status.value and status.focused
+    e.scenario(scenario)
+
+
+@pytest.mark.parametrize('damage', ('integer-zero', 'missing-field'))
+def test_saved_glossary_provenance_requires_exact_declared_boolean(tmp_path, transport, damage):
+    service, profile, vault = ready(tmp_path, transport)
+    identity, _authorization = submit(service, profile, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    value = service.jobs.load(identity)
+    if damage == 'integer-zero':
+        value['receipts'][0]['glossary_config']['ignoreCase'] = 0
+    else:
+        del value['receipts'][0]['glossary_config']
+    service.jobs.save(value)
+    before = service.jobs.load(identity)
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    destination = tmp_path / 'unverified-glossary-export'
+    with pytest.raises(ValueError, match='model/glossary provenance'):
+        service.export(identity, destination)
+    assert not destination.exists()
+    assert service.jobs.load(identity) == before
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials

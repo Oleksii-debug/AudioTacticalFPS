@@ -1,7 +1,9 @@
 """Explicit local engine configuration; no installers, remote fallback or secrets."""
 from dataclasses import asdict
+import math
 from pathlib import Path
 import re
+from time import monotonic
 
 from .durable_state import atomic_json, local_path, read_json
 
@@ -28,6 +30,12 @@ def validate_dordiai_configuration(value):
     expected = value.get('expected_worker_sha256')
     if 'expected_worker_sha256' in value and (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)):
         raise ValueError('The reviewed dordiai-voices worker fingerprint must be a lowercase SHA-256.')
+    # Reuse the current passive path contract as well: absolute local paths,
+    # no network/device components, controls or traversal. This performs no I/O.
+    from .speech.dordiai_settings import default_settings, validate_settings
+    declaration = default_settings()
+    declaration.update(value)
+    validate_settings(declaration)
     return dict(value)
 
 
@@ -79,7 +87,18 @@ def save_settings(state_root, value):
                 raise ValueError('Invalid local voice declaration.')
             local_path(item.get('executable', ''), exists=True)
     path = settings_path(state_root)
-    atomic_json(path, value, replace=path.exists())
+    previous = (_normalize_settings(read_json(path))['dordiai'] if path.exists() else None)
+    changed = previous != value['dordiai']
+    if changed:
+        from .speech.dordiai import cancel_active
+        cancel_active(Path(state_root).absolute().parent)
+    try:
+        atomic_json(path, value, replace=path.exists())
+    finally:
+        if changed:
+            # A failed persistence attempt must not silently leave an already
+            # requested Disable/selection change running in this library.
+            cancel_active(Path(state_root).absolute().parent)
 
 
 def _selected_audio_tools(settings):
@@ -94,21 +113,55 @@ def _selected_audio_tools(settings):
                  else bundled[name] for name in ('ffmpeg', 'ffprobe'))
 
 
-def voice_registry(state_root, *, cancelled=lambda: False):
+def voice_registry(state_root, *, cancelled=lambda: False, timeout_seconds=60):
     from .speech import VoiceRegistry, PiperProvider, LocalHelperProvider
+    from .speech._io import check_cancelled
+    from .speech.dordiai import DordiaiProvider, configuration
+    if (type(timeout_seconds) not in (float, int) or not math.isfinite(timeout_seconds)
+            or not 0 < timeout_seconds <= 3600):
+        raise ValueError('Set a positive voice discovery timeout of at most 3600 seconds.')
+    deadline = monotonic() + timeout_seconds
+    def check():
+        check_cancelled(cancelled)
+        if monotonic() >= deadline:
+            raise TimeoutError('Local voice discovery exceeded its overall time budget.')
+        return False
+    check()
     value = load_settings(state_root)
     ffmpeg, _ffprobe = _selected_audio_tools(value)
-    registry = VoiceRegistry.discover(ffmpeg=ffmpeg, cancelled=cancelled)
+    library_root = Path(state_root).absolute().parent
+    legacy = configuration(library_root)
+    selected = value['dordiai']
+    if selected and selected['enabled'] and legacy['enabled']:
+        raise ValueError('Both canonical and legacy dordiai-voices connections are enabled. Explicitly disable the old connection before choosing a new one.')
+    def current_declaration():
+        # A selected provider outlives discovery. Do not retain that earlier
+        # call's deadline/cancellation in later, independently bounded renders.
+        if load_settings(state_root)['dordiai'] != selected or configuration(library_root) != legacy:
+            raise ValueError('Dordiai-voices configuration changed. Reload the installed voices.')
+    check()
+    registry = VoiceRegistry.discover(ffmpeg=ffmpeg, cancelled=check,
+        timeout_seconds=max(.001, deadline - monotonic()))
     try:
         from .integrations.dordiai_speech import install_dordiai_provider
-        install_dordiai_provider(registry, value['dordiai'], cancelled=cancelled)
+        if selected and selected['enabled']:
+            install_dordiai_provider(registry, selected, cancelled=check,
+                configuration_root=library_root, settings_guard=current_declaration)
+        elif legacy['enabled']:
+            registry.add_provider(DordiaiProvider(library_root, settings_guard=current_declaration),
+                                  cancelled=check, timeout_seconds=max(.001, deadline - monotonic()))
         for item in value['piper']:
+            check()
             if set(item) != {'executable', 'models'}:
                 raise ValueError('Invalid Piper configuration fields.')
-            registry.add_provider(PiperProvider(item['executable'], item['models']), cancelled=cancelled)
+            registry.add_provider(PiperProvider(item['executable'], item['models'], cancelled=check),
+                                  cancelled=check, timeout_seconds=max(.001, deadline - monotonic()))
         for item in value['voice_helpers']:
+            check()
             if item.get('enabled') is True:
-                registry.add_provider(LocalHelperProvider(**item), cancelled=cancelled)
+                registry.add_provider(LocalHelperProvider(**item), cancelled=check,
+                                      timeout_seconds=max(.001, deadline - monotonic()))
+        check()
         return registry
     except BaseException:
         registry.close()

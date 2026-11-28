@@ -57,7 +57,8 @@ def _recovery_panel(app, row):
     chooser.ShowModal.return_value = 1
     chooser.GetSelection.return_value = 0
     wx = SimpleNamespace(ID_OK=1, SingleChoiceDialog=Mock(return_value=chooser))
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_evidence_panel.py'
+    from importlib.util import find_spec
+    path = Path(find_spec('carr_library.ui.desktop_evidence_panel').origin)
     tree = ast.parse(path.read_text(encoding='utf-8'))
     nodes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
     env = dict(wx=wx, EvidencePanel=object)

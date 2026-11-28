@@ -18,6 +18,7 @@ from ._io import check_cancelled, digest, local_file, new_output, run_process, t
 
 MAX_HISTORY = 500
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
+MAX_COMPOUND_CHANGES = 5000
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,46 @@ class MappedRun:
     source_start: int | None
     source_end: int | None
     exact: bool
+
+
+@dataclass(frozen=True)
+class ReadingChange:
+    """One nonempty range in the exact pre-edit reading text."""
+    start: int
+    end: int
+    before: str
+    after: str
+
+
+def _compound_runs(runs, changes):
+    """Walk existing mapped runs once; unchanged interior ranges stay exact."""
+    result, index, offset, position = [], 0, 0, 0
+
+    def take(end):
+        nonlocal index, offset, position
+        selected = []
+        while position < end:
+            run = runs[index]
+            count = min(end - position, len(run.text) - offset)
+            start = run.source_start + offset if run.exact else run.source_start
+            finish = start + count if run.exact else run.source_end
+            selected.append(MappedRun(run.text[offset:offset + count], start, finish, run.exact))
+            position += count
+            offset += count
+            if offset == len(run.text):
+                index, offset = index + 1, 0
+        return selected
+
+    for change in changes:
+        result.extend(take(change.start))
+        replaced = take(change.end)
+        known = [run for run in replaced if run.source_start is not None]
+        start = min((run.source_start for run in known), default=None)
+        end = max((run.source_end for run in known), default=None)
+        if change.after:
+            result.append(MappedRun(change.after, start, end, False))
+    result.extend(take(sum(len(run.text) for run in runs)))
+    return tuple(result)
 
 
 @dataclass(frozen=True)
@@ -174,11 +215,17 @@ def _import_pre_release_anchor(value, text):
 
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
-    def __init__(self, source_text, *, title='Reading copy', source_path=None, source_anchor=None):
+    def __init__(self, source_text, *, title='Reading copy', source_path=None,
+                 source_anchor=None, source_origin=None):
         self._source = text_value(source_text, 'source text', empty=True)
         self.title = text_value(title, 'reading-copy title', maximum=512)
         self._source_hash = sha256(self._source.encode('utf-8')).hexdigest()
         self._source_path = Path(source_path).absolute() if source_path is not None else None
+        if source_origin is not None:
+            if source_anchor is not None:
+                raise ValueError('Use one reading-copy source identity format.')
+            from .source import _source_anchor_from_origin
+            source_anchor = _source_anchor_from_origin(source_origin, self._source)
         self._source_anchor = (_validated_source_anchor(source_anchor, self._source)
                                if source_anchor is not None else None)
         self._anchor_signature = json.dumps(self._source_anchor, sort_keys=True, ensure_ascii=False)
@@ -202,6 +249,16 @@ class ReadingDocument:
     def source_anchor(self):
         """A copy of the claimed origin, or None for a legacy/standalone copy."""
         return deepcopy(self._source_anchor)
+
+    @property
+    def source_origin(self):
+        """Stable legacy identity view; never a fresh authorization of the source."""
+        from .source import _source_origin_from_anchor
+        return _source_origin_from_anchor(self._source_anchor)
+
+    @property
+    def source_bound(self):
+        return self._source_anchor is not None
 
     @property
     def format_notice(self):
@@ -231,7 +288,11 @@ class ReadingDocument:
 
     def _signature(self):
         return (self.title, self._source_hash, self._anchor_signature, self._position,
-                tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
+                tuple((e['start'], e['end'], e['replacement'], e['label'])
+                      if 'changes' not in e else
+                      ('compound', e['before_sha256'], e['after_sha256'], e['label'],
+                       tuple((c['start'], c['end'], c['before'], c['after']) for c in e['changes']))
+                      for e in self._edits))
 
     def _range(self, start, end):
         if type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(self.text):
@@ -270,6 +331,61 @@ class ReadingDocument:
         self._edits = self._edits[:self._position]
         self._states.append(before + middle + after)
         self._edits.append({'start': start, 'end': end, 'replacement': replacement, 'label': label})
+        self._position += 1
+        return True
+
+    def changed_spans(self):
+        """Current derivative intervals; a later automatic proposal preserves them."""
+        spans, position = [], 0
+        for run in self._states[self._position]:
+            end = position + len(run.text)
+            if not run.exact and end > position:
+                spans.append((position, end))
+            position = end
+        return tuple(spans)
+
+    def apply_changes(self, changes, *, label='Reviewed speech preparation'):
+        """Apply a bounded ordered proposal atomically as one undo/redo action.
+
+        All coordinates and before slices refer to the current reading text.
+        Source anchors remain passive provenance, never quotation authority.
+        """
+        if type(changes) not in (tuple, list) or len(changes) > MAX_COMPOUND_CHANGES:
+            raise ValueError('Use at most 5000 ordered reading changes.')
+        text_value(label, 'edit label', maximum=256)
+        current, previous = self.text, 0
+        length = len(current)
+        checked = []
+        for change in changes:
+            if (type(change) is not ReadingChange or type(change.start) is not int
+                    or type(change.end) is not int
+                    or not previous <= change.start < change.end <= len(current)
+                    or type(change.before) is not str
+                    or current[change.start:change.end] != change.before):
+                raise ValueError('The reviewed reading ranges no longer match the current text.')
+            text_value(change.after, 'prepared reading text', maximum=1_000_000, empty=True)
+            if change.before == change.after:
+                raise ValueError('A compound reading change must change its selected text.')
+            length += len(change.after) - len(change.before)
+            if length > 2_000_000:
+                raise ValueError('This reading-copy edit exceeds its character budget. Split it into chapters.')
+            previous = change.end
+            checked.append(change)
+        if not checked:
+            return False
+        if self._position >= MAX_HISTORY:
+            raise ValueError('This reading copy has reached its edit-history budget; export a new reading copy.')
+        runs = _compound_runs(self._states[self._position], checked)
+        value = ''.join(run.text for run in runs)
+        if len(value) != length:
+            raise ValueError('The compound reading map does not match its complete output.')
+        entry = {'changes': [asdict(change) for change in checked], 'label': label,
+                 'before_sha256': sha256(current.encode('utf-8')).hexdigest(),
+                 'after_sha256': sha256(value.encode('utf-8')).hexdigest()}
+        # No history or current text is changed before all validation succeeds.
+        states = self._states[:self._position + 1] + [runs]
+        edits = self._edits[:self._position] + [entry]
+        self._states, self._edits = states, edits
         self._position += 1
         return True
 
@@ -348,10 +464,13 @@ class ReadingDocument:
 
     def to_dict(self):
         data = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
-                'source_sha256': self._source_hash, 'edits': [dict(edit) for edit in self._edits],
+                'source_sha256': self._source_hash, 'edits': deepcopy(self._edits),
                 'revision': self._position}
         if self._source_anchor is not None:
             data['schema'] = 'carr.reading-copy.v2'
+            data['source_anchor'] = self.source_anchor
+        if any('changes' in edit for edit in self._edits):
+            data['schema'] = 'carr.reading-copy.v3'
             data['source_anchor'] = self.source_anchor
         return data
 
@@ -414,8 +533,14 @@ class ReadingDocument:
         if not isinstance(data, dict):
             raise ValueError('Invalid reading-project fields.')
         version = data.get('schema')
+        origin = None
         pre_release = False
-        if version == 'carr.reading-copy.v1' and set(data) == fields:
+        if (version == 'carr.reading-copy.v3' and set(data) == fields | {'source_anchor'}
+                and (data['source_anchor'] is None or type(data['source_anchor']) is dict)):
+            anchor = data['source_anchor']
+            if anchor is not None and 'schema' in anchor:
+                raise ValueError('Compound history requires the current source-anchor format.')
+        elif version == 'carr.reading-copy.v1' and set(data) == fields:
             anchor = None
         elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_anchor'}
                 and type(data['source_anchor']) is dict):
@@ -423,18 +548,39 @@ class ReadingDocument:
             if 'schema' in anchor:
                 anchor = _import_pre_release_anchor(anchor, data['source_text'])
                 pre_release = True
+        elif (version == 'carr.reading-copy.v2' and set(data) == fields | {'source_origin'}
+                and type(data['source_origin']) is dict):
+            anchor, origin = None, data['source_origin']
         else:
             raise ValueError('Unsupported reading-project version or fields.')
-        document = cls(data['source_text'], title=data['title'], source_anchor=anchor)
+        document = cls(data['source_text'], title=data['title'],
+                       source_anchor=anchor, source_origin=origin)
         if document.source_sha256 != data['source_sha256']:
             raise ValueError('Reading-project original-source checksum mismatch.')
         if not isinstance(data['edits'], list) or len(data['edits']) > MAX_HISTORY:
             raise ValueError('Invalid reading-project history.')
+        compound = False
         for edit in data['edits']:
-            if not isinstance(edit, dict) or set(edit) != {'start', 'end', 'replacement', 'label'}:
-                raise ValueError('Invalid reading-project edit.')
-            if not document.replace(edit['start'], edit['end'], edit['replacement'], label=edit['label']):
-                raise ValueError('The reading-project history contains an empty edit.')
+            if (version == 'carr.reading-copy.v3' and type(edit) is dict
+                    and set(edit) == {'changes', 'label', 'before_sha256', 'after_sha256'}):
+                if (type(edit['changes']) is not list
+                        or not 1 <= len(edit['changes']) <= MAX_COMPOUND_CHANGES
+                        or any(type(row) is not dict or set(row) != {'start', 'end', 'before', 'after'}
+                               for row in edit['changes'])
+                        or edit['before_sha256'] != sha256(document.text.encode('utf-8')).hexdigest()):
+                    raise ValueError('Invalid compound reading-project history.')
+                document.apply_changes(tuple(ReadingChange(**row) for row in edit['changes']),
+                                       label=edit['label'])
+                if edit['after_sha256'] != sha256(document.text.encode('utf-8')).hexdigest():
+                    raise ValueError('Compound reading-project output checksum mismatch.')
+                compound = True
+            else:
+                if not isinstance(edit, dict) or set(edit) != {'start', 'end', 'replacement', 'label'}:
+                    raise ValueError('Invalid reading-project edit.')
+                if not document.replace(edit['start'], edit['end'], edit['replacement'], label=edit['label']):
+                    raise ValueError('The reading-project history contains an empty edit.')
+        if version == 'carr.reading-copy.v3' and not compound:
+            raise ValueError('Compound reading-project history must contain a compound action.')
         if type(data['revision']) is not int or not 0 <= data['revision'] <= len(data['edits']):
             raise ValueError('Invalid reading-project revision.')
         document._position = data['revision']

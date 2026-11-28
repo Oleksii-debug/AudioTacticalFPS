@@ -9,6 +9,10 @@ from .durable_state import read_json
 from .studio.cli import data_directory
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Resonance saved operations and resource allowances')
     parser.add_argument('--data-dir', type=Path)

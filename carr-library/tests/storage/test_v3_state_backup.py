@@ -96,7 +96,8 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text())
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
-    assert {entry['filename'] for entry in manifest['sidecars']} == {'state/' + name for name in values}
+    assert {entry['filename'] for entry in manifest['sidecars']} == (
+        {'state/' + name for name in values} | {'state/studio/backup-inputs.json'})
     for entry in manifest['sidecars']:
         raw = (folder / entry['filename']).read_bytes()
         assert len(raw) == entry['size_bytes'] and sha256(raw).hexdigest() == entry['sha256']
@@ -113,7 +114,17 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     assert recovered.evidence(first, topic)[0] == before
     assert {p.name: p.read_bytes() for p in recovered.assets_dir.iterdir()} == original_files
     for name, value in values.items():
-        assert read_json(destination / 'state' / name) == value
+        restored_value = read_json(destination / 'state' / name)
+        if name.startswith('studio/jobs/') and name.endswith('/job.json'):
+            assert restored_value['project'] == value['project']
+            assert restored_value['status'] == 'waiting-input' and restored_value['destination'] == ''
+            assert restored_value['recovery']['requires_output_directory'] is True
+            assert restored_value['recovery']['previous'] == dict(
+                project_fingerprint=value['fingerprint'], status=value['status'],
+                destination=value['destination'], artifacts=value['artifacts'])
+        else:
+            assert restored_value == value
+    assert not (destination / 'state/studio/backup-inputs.json').exists()
     assert not (destination / 'state/studio/cache').exists()
     assert not list((destination / 'state').rglob('*.lock'))
     assert not list((destination / 'state').rglob('*.tmp'))
@@ -342,6 +353,65 @@ def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tm
     assert not destination.exists()
 
 
+def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+    from carr_library import state_backup
+    root, target = tmp_path / 'source', tmp_path / 'snapshot'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'a.json'
+    source.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'other file')
+    # Windows can keep creation-time and last-write metadata stable until an
+    # open writer closes. Model that stat behavior while changing real bytes.
+    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
+    changed = False
+    def mutate_after_copy():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            source.write_bytes(b'new')
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed during backup'):
+        snapshot_state(root, target, cancelled=mutate_after_copy)
+    assert changed and (target / 'a.json').read_bytes() == b'old'
+
+
+@pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
+def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkeypatch, failure):
+    app, *_ = populated
+    root = app.root / 'state'
+    destination = tmp_path / 'backup'
+    original = Path.lstat
+    probes = 0
+
+    def denied(path, *args, **kwargs):
+        nonlocal probes
+        if path == root:
+            probes += 1
+            # Permission failure at the caller, or disappearance after its
+            # successful initial presence probe (before the snapshot).
+            if failure is PermissionError or probes >= 2:
+                raise failure('state lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    legacy_probes = 0
+
+    def suppressed(path):
+        nonlocal legacy_probes
+        if Path(path) == root:
+            legacy_probes += 1
+            return failure is FileNotFoundError and legacy_probes == 1
+        return lexists(path)
+
+    monkeypatch.setattr(os.path, 'lexists', suppressed)
+    monkeypatch.setattr(Path, 'lstat', denied)
+    with pytest.raises(failure, match='state lookup failed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert probes >= (1 if failure is PermissionError else 2)
+
+
 @pytest.mark.parametrize('name', ['reading-state.json', 'state'])
 @pytest.mark.parametrize('failure', [PermissionError, NotADirectoryError])
 def test_typed_backup_refuses_inaccessible_optional_root(tmp_path, monkeypatch, name, failure):
@@ -403,3 +473,142 @@ def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_pat
     with pytest.raises(FileNotFoundError, match='disappeared'):
         backup_sidecars._capture(root)
     assert probes == 2
+
+@pytest.mark.parametrize('nested', (False, True))
+def test_namespace_rejects_first_unlisted_entry_without_materializing(tmp_path, monkeypatch, nested):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+    from carr_library.ingest.restore import RestoreError
+
+    root = tmp_path / 'backup'
+    root.mkdir()
+    (root / 'originals').mkdir()
+    (root / 'library.sqlite').touch()
+    (root / 'manifest.json').touch()
+    (root / 'state').mkdir()
+    inventory = SimpleNamespace(entries=(), empty_roots={'state'}, pending=None)
+    target = root / 'state' if nested else root
+    scandir = os.scandir
+
+    @contextmanager
+    def observed(path):
+        if Path(path) != target:
+            with scandir(path) as entries:
+                yield entries
+            return
+
+        def entries():
+            yield SimpleNamespace(name='unlisted')
+            raise AssertionError('namespace must reject before consuming another entry')
+
+        yield entries()
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(RestoreError, match='unexpected files.*unlisted'):
+        backup_sidecars.check_namespace(root, inventory)
+
+
+@pytest.mark.parametrize('restore', (False, True))
+def test_namespace_cancellation_prevents_verification_or_restore(tmp_path, monkeypatch, restore):
+    from contextlib import contextmanager
+    from carr_library.library_backup import verify_backup
+
+    app = LibraryApp(tmp_path / 'source')
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    # create_backup returns the independently retained manifest SHA256.
+    destination = tmp_path / 'restored'
+    scandir = os.scandir
+    scanning = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal scanning
+        with scandir(path) as entries:
+            if Path(path) == backup:
+                scanning = True
+            yield entries
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if restore:
+            restore_backup(backup, destination, digest, cancelled=lambda: scanning)
+        else:
+            verify_backup(backup, digest, cancelled=lambda: scanning)
+    assert scanning
+    assert not destination.exists()
+
+
+
+def test_namespace_cancel_on_final_scan_exit(tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+
+    (tmp_path / 'originals').mkdir()
+    (tmp_path / 'library.sqlite').touch()
+    (tmp_path / 'manifest.json').touch()
+    inventory = SimpleNamespace(entries=(), empty_roots=set(), pending=None)
+    scandir = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with scandir(path) as entries:
+            yield entries
+        cancelled = True
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        backup_sidecars.check_namespace(tmp_path, inventory,
+                                        cancelled=lambda: cancelled)
+
+
+@pytest.mark.parametrize('restore', (False, True))
+def test_manifest_completion_cancellation_prevents_staging(tmp_path, monkeypatch, restore):
+    from carr_library import library_backup
+
+    app = LibraryApp(tmp_path / 'source')
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    destination = tmp_path / 'restored'
+    read_manifest = library_backup._read_manifest
+    cancelled = False
+
+    def observed(*args, **kwargs):
+        nonlocal cancelled
+        manifest = read_manifest(*args, **kwargs)
+        cancelled = True
+        return manifest
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('cancelled verification must not allocate a staging directory')
+
+    monkeypatch.setattr(library_backup, '_read_manifest', observed)
+    monkeypatch.setattr(library_backup, 'TemporaryDirectory', forbidden)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if restore:
+            library_backup.restore_backup(backup, destination, digest,
+                                          cancelled=lambda: cancelled)
+        else:
+            library_backup.verify_backup(backup, digest, cancelled=lambda: cancelled)
+    assert cancelled
+    assert not destination.exists()
+
+
+def test_namespace_preserves_declared_nested_empty_roots(tmp_path):
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+    from carr_library.ingest.restore import RestoreError
+
+    (tmp_path / 'originals').mkdir()
+    (tmp_path / 'library.sqlite').touch()
+    (tmp_path / 'manifest.json').touch()
+    (tmp_path / 'state/studio/empty').mkdir(parents=True)
+    inventory = SimpleNamespace(entries=(), empty_roots={'state/studio/empty'}, pending=None)
+    backup_sidecars.check_namespace(tmp_path, inventory)
+    (tmp_path / 'state/unlisted').touch()
+    with pytest.raises(RestoreError, match='unexpected files.*unlisted'):
+        backup_sidecars.check_namespace(tmp_path, inventory)

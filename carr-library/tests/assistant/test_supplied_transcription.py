@@ -1,5 +1,6 @@
 """Synthetic process/protocol regressions; no recognition/model quality claim."""
 from hashlib import sha256
+from dataclasses import replace
 import json
 import os
 from pathlib import Path
@@ -14,29 +15,34 @@ from carr_library.assistant import AssistantService, Plan, Scope, Step
 from carr_library.assistant.state import atomic_json, read_json
 from carr_library.durable_state import digest_file, encode
 from carr_library.integrations import supplied_transcription as module
+from carr_library.audio import transcription as core
 
 
 FAKE_WORKER = r'''
 import json, pathlib, sys, time
 job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
 config = json.loads((job / 'job_config.json').read_text(encoding='utf-8'))
-settings = json.loads((job / 'settings_live.json').read_text(encoding='utf-8'))
+settings = config['settings']
+assert sys.flags.utf8_mode == 1
 source = next(pathlib.Path(config['folders'][0]).iterdir())
 mode = source.read_text(encoding='utf-8')
 (job / 'worker-started').write_text('started')
 if mode == 'sleep':
     time.sleep(60)
+if mode == 'pause-until-released':
+    while not (job.parent / 'release').exists():
+        time.sleep(.01)
 if mode == 'network':
     import socket
     socket.socket().connect(('127.0.0.1', 1))
 if mode == 'outside-write':
     (job.parent.parent / 'outside.txt').write_text('unauthorized')
-output = pathlib.Path(config['results_root']) / 'inputs'
+output = pathlib.Path(config['results_root']) / source.parent.name
 output.mkdir(parents=True)
 text = mode if mode != 'silence' else ''
 segments = ([{'id': 0, 'seek': 0, 'start': 0.0, 'end': 1.0,
              'text': text, 'words': []}] if text else [])
-meta = {'source': str(source), 'group': 'inputs', 'relative': source.name,
+meta = {'source': str(source), 'group': source.parent.name, 'relative': source.name,
         'settings': settings, 'selected_language': settings['language'],
         'detected_language': 'uk', 'duration': 1.0, 'text': text,
         'segments': segments, 'v43_attempt': 'original', 'v43_attempt_no': 1}
@@ -60,7 +66,7 @@ payloads = {'.txt': text + ('\n' if text else ''),
 for suffix, payload in payloads.items():
     if mode == 'missing-srt' and suffix == '.srt':
         continue
-    (output / ('source' + suffix)).write_text(payload, encoding='utf-8')
+    (output / (source.stem + suffix)).write_text(payload, encoding='utf-8', newline='\n')
 status = {'state': 'завершено', 'done': 1, 'failed': 0, 'total': 1, 'active_count': 0}
 if mode == 'failed':
     status['failed'] = 1
@@ -85,9 +91,11 @@ def environment(tmp_path, monkeypatch):
     worker.write_bytes(raw)
     monkeypatch.setattr(module, 'SOURCE_SHA256', sha256(raw).hexdigest())
     monkeypatch.setattr(module, 'prepare_worker', lambda candidate: candidate)
+    monkeypatch.setattr(core, 'prepare', lambda candidate: candidate)
     packages = tmp_path / 'packages'
-    (packages / 'faster_whisper').mkdir(parents=True)
-    (packages / 'faster_whisper/__init__.py').write_text('# synthetic SDK fixture\n')
+    for package in core._RUNTIME_PACKAGES:
+        (packages / package).mkdir(parents=True)
+        (packages / package / '__init__.py').write_text('# synthetic SDK fixture\n', encoding='utf-8')
     model = tmp_path / 'model'
     model.mkdir()
     for name in ('config.json', 'tokenizer.json', 'model.bin'):
@@ -101,7 +109,8 @@ def environment(tmp_path, monkeypatch):
         'runtime_notice': 'Synthetic test SDK; no engine execution evidence.',
         'model_notice': 'Synthetic bytes; no model or model-rights claim.'}))
     installation = module.SuppliedWorkerInstallation(python, worker, packages, model,
-                                                   manifest, digest_file(manifest))
+                                                   manifest, digest_file(manifest),
+                                                   runtime_reviewed=True, rights_reviewed=True)
     adapter = module.SuppliedTranscriptionAdapter(installation)
     app = LibraryApp(tmp_path / 'data')
     inputs, outputs = tmp_path / 'inputs', tmp_path / 'outputs'
@@ -147,6 +156,7 @@ def test_worker_exit_zero_is_not_success_without_bound_complete_outputs(environm
     assert report.completed == 0
     assert not (outputs / 'транскрипт').exists()
     assert not (outputs / 'outside.txt').exists()
+    assert not (service.app.root / 'state/transcription/outside.txt').exists()
     assert not list(outputs.glob('.transcription-*'))
 
 
@@ -164,18 +174,18 @@ def test_changed_bytes_same_size_and_mtime_do_not_resume_wrong_source(environmen
     service, source, outputs, plan, _ = environment
     identity = service.submit(plan)
     calls = 0
-    original = module.run_process
+    original = core.run_process
     def fail_once(*args, **kwargs):
         nonlocal calls
         calls += 1
-        raise module.AudioError('synthetic interruption before publication')
-    monkeypatch.setattr(module, 'run_process', fail_once)
+        raise core.AudioError('synthetic interruption before publication')
+    monkeypatch.setattr(core, 'run_process', fail_once)
     assert service.run(identity).status == 'failed'
     before = source.stat()
     raw = source.read_bytes()
     source.write_bytes(b'x' * len(raw))
     os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
-    monkeypatch.setattr(module, 'run_process', original)
+    monkeypatch.setattr(core, 'run_process', original)
     resumed = service.resume(identity)
     assert resumed.status == 'failed' and 'changed' in resumed.message
     assert calls == 1
@@ -220,11 +230,11 @@ def test_cancel_after_publication_recovers_without_running_worker_again(environm
         return result
     monkeypatch.setattr(module, 'publish_file', after_commit)
     report = service.run(identity, cancelled=stopped.is_set)
-    assert report.status == 'paused'
+    assert report.status == 'complete' and report.completed == 1
     assert len(list((outputs / 'транскрипт').iterdir())) == 4
     def forbidden(*args, **kwargs):
         raise AssertionError('already committed transcripts must not be transcribed again')
-    monkeypatch.setattr(module, 'run_process', forbidden)
+    monkeypatch.setattr(core, 'run_process', forbidden)
     assert service.resume(identity).status == 'complete'
 
 
@@ -261,7 +271,7 @@ def test_runtime_and_model_identity_fail_before_launch(environment, monkeypatch,
         getattr(installation, component).write_bytes(b'changed')
     def forbidden(*args, **kwargs):
         raise AssertionError('unverified installation must never start')
-    monkeypatch.setattr(module, 'run_process', forbidden)
+    monkeypatch.setattr(core, 'run_process', forbidden)
     report = service.run(service.submit(plan))
     assert report.status == 'failed', report
     assert not (outputs / 'транскрипт').exists()
@@ -278,19 +288,26 @@ def test_mid_file_cancel_terminates_worker_and_keeps_saved_intent(environment):
     thread = Thread(target=run)
     thread.start()
     assert started.wait(5)
-    # Wait until the actual process setup has started; cancel is persisted in
-    # the existing JobStore, not a second worker-specific job database.
+    # The Assistant checkpoint refers to the one shared ASR job. The actual
+    # worker runs under that job's existing private stage and native owner.
+    root = service.app.root / 'state/transcription'
     deadline = time.monotonic() + 5
-    while not list(outputs.glob('.transcription-*/job/worker-started')) and time.monotonic() < deadline:
+    while not list(root.glob('*/.pending-asr-*/worker-started')) and time.monotonic() < deadline:
         time.sleep(.01)
-    assert list(outputs.glob('.transcription-*/job/worker-started'))
+    assert list(root.glob('*/.pending-asr-*/worker-started'))
     began = time.monotonic()
     service.cancel(identity)
     thread.join(5)
     assert not thread.is_alive()
     assert time.monotonic() - began < 5
     assert outcome[0].status == 'cancelled'
-    assert service.store.load(identity)['steps'][0]['intent']['transcription']
+    intent = service.store.load(identity)['steps'][0]['intent']
+    assert intent['transcription']
+    typed = core.TranscriptionService(service.app.root / 'state')
+    assert typed.recorded_status(intent['transcription_job'])['status'] == 'cancelled'
+    assert read_json(typed.root / intent['transcription_job'] / 'control.json')['command'] == 'cancel'
+    assert typed.broker.snapshot()['leases'] == []
+    assert not list(root.glob('*/.pending-asr-*'))
     assert not (outputs / 'транскрипт').exists()
     assert not list(outputs.glob('.transcription-*'))
 
@@ -323,15 +340,437 @@ def test_unreviewed_worker_source_cannot_be_prepared():
         module.prepare_worker(b'print("not the supplied worker")')
 
 
-def test_assistant_backup_retains_inert_transcription_checkpoint(environment, tmp_path):
+def test_assistant_backup_retains_inert_transcription_checkpoint(environment, tmp_path, monkeypatch):
     service, source, outputs, plan, _ = environment
     identity = service.submit(plan)
     assert service.run(identity).status == 'complete'
+    monkeypatch.setattr(core, 'run_process', lambda *a, **k: pytest.fail('Backup/restore activated inference.'))
+    monkeypatch.setattr(module.SuppliedWorkerInstallation, 'verify',
+        lambda *a, **k: pytest.fail('Backup/restore inspected the external installation.'))
     backup = tmp_path / 'backup'
-    service.app.backup(backup)
+    checksum = service.app.backup(backup)
     manifest = read_json(backup / 'manifest.json')
+    assert manifest['version'] == 4
     entry = next(item for item in manifest['sidecars']
-                 if item['filename'].endswith('/' + identity + '.json'))
-    assert entry['filename'] == 'state/assistant/' + identity + '.json'
+                 if item['filename'] == 'state/assistant/' + identity + '.json')
     saved = read_json(backup / entry['filename'])
+    typed_job = saved['steps'][0]['intent']['transcription_job']
+    assert any(item['filename'] == 'state/transcription/' + typed_job + '/job.json'
+               for item in manifest['sidecars'])
     assert saved['steps'][0]['intent']['transcription']['sha256'] == digest_file(source)
+    from carr_library.library_backup import restore_backup
+    restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', checksum))
+    typed = core.TranscriptionService(restored.root / 'state')
+    detail = typed.details(typed_job)
+    assert detail['record']['status'] == 'complete'
+    assert detail['record']['recovery_review_required'] is True
+    assert detail['record']['external_dependencies']['runtime_and_model_included'] is False
+    assert detail['outputs'][0]['verified'] and set(detail['outputs'][0]['formats']) == set(core.FORMATS)
+    assert read_json(typed.root / typed_job / 'control.json')['command'] == 'pause'
+    restored_assistant = AssistantService(restored)
+    with pytest.raises(PermissionError, match='another data directory'):
+        restored_assistant.resume(identity)
+    assert saved['data_dir'] == str(service.app.root)
+    assert not (restored.root / 'outputs').exists()
+
+
+@pytest.mark.parametrize('review', ['runtime_reviewed', 'rights_reviewed'])
+def test_legacy_enrollment_never_manufactures_a_missing_review(environment, monkeypatch, review):
+    service, source, outputs, plan, installation = environment
+    installation = replace(installation, **{review: False})
+    scoped = AssistantService(service.app, transcription=module.SuppliedTranscriptionAdapter(installation))
+    monkeypatch.setattr(core, 'run_process', lambda *a, **k: pytest.fail('Unreviewed runtime was launched.'))
+    result = scoped.run(scoped.submit(plan))
+    assert result.status == 'failed' and 'review' in result.message.lower()
+    assert not (outputs / 'транскрипт').exists()
+    root = service.app.root / 'state/transcription'
+    assert not list(root.glob('*/job.json'))
+
+
+def test_current_manifest_and_assistant_share_the_existing_typed_job(environment, tmp_path):
+    service, source, outputs, plan, installation = environment
+    runtime = installation.runtime()
+    manifest = tmp_path / 'current-reviewed-manifest.json'
+    manifest.write_bytes(encode(runtime.data))
+    selected = core.SuppliedWhisperRuntime(manifest)
+    scoped = AssistantService(service.app, transcription=module.SuppliedTranscriptionAdapter(selected))
+    result = scoped.run(scoped.submit(plan))
+    assert result.status == 'complete', result
+    job_id = result.results[0]['transcription_job']
+    typed = core.TranscriptionService(service.app.root / 'state', selected)
+    detail = typed.details(job_id)
+    assert detail['record']['status'] == 'complete'
+    assert len(detail['outputs']) == 1 and detail['outputs'][0]['verified']
+    assert detail['record']['request']['inputs'][0]['sha256'] == digest_file(source)
+    assert Path(detail['outputs'][0]['directory']).is_relative_to(typed.root)
+    assert typed.broker.snapshot()['leases'] == []
+
+
+def test_second_scoped_export_reuses_one_completed_asr_job_without_inference(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    first = service.run(service.submit(plan))
+    assert first.status == 'complete', first
+    monkeypatch.setattr(core, 'run_process', lambda *a, **k: pytest.fail('Verified shared job relaunched inference.'))
+    second_plan = Plan(plan.scope, (Step('audio.transcribe', {
+        'path': str(source), 'name': 'second transcript', 'language': 'uk'}),))
+    second = service.run(service.submit(second_plan))
+    assert second.status == 'complete', second
+    first_job = first.results[0]['transcription_job']
+    assert second.results[0]['transcription_job'] == first_job
+    typed = core.TranscriptionService(service.app.root / 'state')
+    assert [row['id'] for row in typed.jobs()] == [first_job]
+    assert (outputs / 'second transcript/transcript.txt').read_bytes() == (outputs / 'транскрипт/transcript.txt').read_bytes()
+
+
+def test_generated_receipt_is_rechecked_while_copying_the_export(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    original = core.TranscriptionService.details
+    retained = []
+    def edited_after_verification(typed, identity, **kwargs):
+        result = original(typed, identity, **kwargs)
+        path = Path(result['outputs'][0]['directory']) / 'transcript.txt'
+        path.write_bytes(b'Owner edited the generated transcript after receipt inspection.')
+        retained.append(path)
+        return result
+    monkeypatch.setattr(core.TranscriptionService, 'details', edited_after_verification)
+    result = service.run(service.submit(plan))
+    assert result.status == 'failed' and 'changed after receipt verification' in result.message
+    assert len(retained) == 1
+    assert retained[0].read_bytes() == b'Owner edited the generated transcript after receipt inspection.'
+    assert not (outputs / 'транскрипт').exists()
+    assert not list(outputs.glob('.transcription-*'))
+
+
+def test_old_preparation_intent_is_preserved_until_explicit_new_review(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    identity = service.submit(plan)
+    assert service.run(identity).status == 'complete'
+    destination = outputs / 'транскрипт'
+    before = {path.name: path.read_bytes() for path in destination.iterdir()}
+    record = service.store.load(identity)
+    checkpoint = record['steps'][0]
+    checkpoint['status'] = 'failed'
+    checkpoint['intent']['transcription']['adapter'] = 'supplied-v43-single-file/1'
+    checkpoint['intent'].pop('transcription_job')
+    service.store.save(record)
+    monkeypatch.setattr(core, 'run_process', lambda *a, **k: pytest.fail('An old intent was silently retargeted.'))
+    result = service.resume(identity)
+    assert result.status == 'failed' and 'older adapter intent' in result.message
+    assert {path.name: path.read_bytes() for path in destination.iterdir()} == before
+    saved = service.store.load(identity)['steps'][0]['intent']
+    assert saved['transcription']['adapter'] == 'supplied-v43-single-file/1'
+    assert 'transcription_job' not in saved
+
+
+def test_pause_and_resume_forward_to_the_same_typed_asr_control(environment):
+    service, source, outputs, plan, _ = environment
+    source.write_text('pause-until-released', encoding='utf-8')
+    identity = service.submit(plan)
+    outcomes = []
+    thread = Thread(target=lambda: outcomes.append(service.run(identity)))
+    root = service.app.root / 'state/transcription'
+    release = None
+    thread.start()
+    try:
+        deadline = time.monotonic() + 5
+        while not list(root.glob('*/.pending-asr-*/worker-started')) and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert list(root.glob('*/.pending-asr-*/worker-started'))
+        job_id = service.store.load(identity)['steps'][0]['intent']['transcription_job']
+        typed = core.TranscriptionService(service.app.root / 'state')
+        request = typed.load(job_id)['request']
+        service.pause(identity)
+        thread.join(5)
+        assert not thread.is_alive() and outcomes[0].status == 'paused'
+        assert typed.recorded_status(job_id)['status'] == 'paused'
+        assert read_json(root / job_id / 'control.json')['command'] == 'pause'
+        assert typed.broker.snapshot()['leases'] == []
+        assert not (outputs / 'транскрипт').exists()
+        assert not list(root.glob('*/.pending-asr-*'))
+        # Synthetic actor release is outside the immutable audio and runtime.
+        # It is test synchronization, not a setting accepted by the worker API.
+        release = root / job_id / 'release'
+        release.touch()
+        result = service.resume(identity)
+        assert result.status == 'complete', result
+        assert result.results[0]['transcription_job'] == job_id
+        assert typed.load(job_id)['request'] == request
+        assert typed.recorded_status(job_id)['status'] == 'complete'
+        assert read_json(root / job_id / 'control.json')['command'] == 'run'
+        assert typed.broker.snapshot()['leases'] == []
+        assert (outputs / 'транскрипт/transcript.txt').read_text(encoding='utf-8') == 'pause-until-released\n'
+    finally:
+        if thread.is_alive():
+            service.cancel(identity)
+            thread.join(10)
+        if release is not None:
+            release.unlink(missing_ok=True)
+
+
+@pytest.mark.parametrize('failure_point', ['last-link-sync', 'last-stage-unlink'])
+def test_late_publication_errors_keep_exact_completed_export(environment, monkeypatch, failure_point):
+    service, source, outputs, plan, _ = environment
+    identity = service.submit(plan)
+    publish = module.publish_file
+    unlink = Path.unlink
+    injected = False
+
+    def late_sync(staged, target, **kwargs):
+        nonlocal injected
+        result = publish(staged, target, **kwargs)
+        if target.name == 'transcript.json' and failure_point == 'last-link-sync':
+            injected = True
+            raise OSError('Authored final directory-sync failure after the actual link.')
+        return result
+
+    def late_unlink(path, *args, **kwargs):
+        nonlocal injected
+        if (not injected and failure_point == 'last-stage-unlink'
+                and path.name == 'transcript.json' and path.parent.name.startswith('.transcription-')):
+            injected = True
+            raise OSError('Authored first private-alias unlink failure.')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(module, 'publish_file', late_sync)
+    monkeypatch.setattr(Path, 'unlink', late_unlink)
+    report = service.run(identity)
+    assert injected and report.status == 'complete' and report.completed == 1, report
+    result, = report.results
+    assert result['notices'] and result['status'] == 'complete'
+    expected = service.store.load(identity)['steps'][0]['intent']['transcript_artifacts']
+    assert result['artifacts'] == expected
+    for item in expected:
+        path = Path(item['path'])
+        assert path.stat().st_nlink == 1 and path.stat().st_size == item['size']
+        assert digest_file(path) == item['sha256']
+    assert not list(outputs.glob('.transcription-*'))
+    monkeypatch.setattr(core, 'run_process', lambda *a, **k: pytest.fail('Committed output relaunched recognition.'))
+    assert service.resume(identity).status == 'complete'
+
+
+def test_equal_byte_competing_last_inode_cannot_become_this_attempt(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    publish = module.publish_file
+    captured = {}
+
+    def replaced_after_link(staged, target, **kwargs):
+        result = publish(staged, target, **kwargs)
+        if target.name == 'transcript.json':
+            raw = target.read_bytes()
+            captured['owned'] = (staged.stat().st_dev, staged.stat().st_ino)
+            target.unlink()
+            target.write_bytes(raw)
+            captured['foreign'] = (target.stat().st_dev, target.stat().st_ino)
+            captured['bytes'] = raw
+            raise OSError('Foreign equal-byte output replaced the committed pathname.')
+        return result
+
+    monkeypatch.setattr(module, 'publish_file', replaced_after_link)
+    identity = service.submit(plan)
+    report = service.run(identity)
+    assert captured['foreign'] != captured['owned']
+    assert report.status == 'failed' and report.completed == 0
+    assert (outputs / 'транскрипт/transcript.json').read_bytes() == captured['bytes']
+    assert service.store.load(identity)['steps'][0]['status'] == 'failed'
+
+
+@pytest.mark.parametrize('damage', ['changed', 'missing'])
+def test_host_rechecks_expected_exports_after_adapter_return_even_after_cancel(environment, monkeypatch, damage):
+    service, source, outputs, plan, _ = environment
+    original = service.transcription.transcribe
+    stopped = Event()
+    affected = []
+
+    def damaged_after_return(*args, **kwargs):
+        result = original(*args, **kwargs)
+        path = Path(result['artifacts'][0])
+        affected.append(path)
+        if damage == 'changed':
+            path.write_bytes(b'Changed after the adapter returned its completed receipt.')
+        else:
+            path.unlink()
+        stopped.set()
+        return result
+
+    monkeypatch.setattr(service.transcription, 'transcribe', damaged_after_return)
+    identity = service.submit(plan)
+    report = service.run(identity, cancelled=stopped.is_set)
+    assert len(affected) == 1 and report.status == 'failed' and report.completed == 0, report
+    assert service.store.load(identity)['steps'][0]['status'] == 'failed'
+    if damage == 'changed':
+        assert affected[0].read_bytes() == b'Changed after the adapter returned its completed receipt.'
+        assert 'prepared publication receipt' in report.message
+    else:
+        assert not affected[0].exists()
+
+
+def test_late_cancel_preserves_completed_step_and_stops_before_the_next_one(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    plan = Plan(plan.scope, (*plan.steps, Step('library.list', {})))
+    stopped = Event()
+    publish = module.publish_file
+
+    def stop_after_commit(staged, target, **kwargs):
+        result = publish(staged, target, **kwargs)
+        if target.name == 'transcript.json':
+            stopped.set()
+        return result
+
+    monkeypatch.setattr(module, 'publish_file', stop_after_commit)
+    identity = service.submit(plan)
+    report = service.run(identity, cancelled=stopped.is_set)
+    assert report.status == 'paused' and report.completed == 1, report
+    record = service.store.load(identity)
+    assert [step['status'] for step in record['steps']] == ['complete', 'pending']
+    assert len(record['steps'][0]['result']['artifacts']) == 4
+    monkeypatch.setattr(core, 'run_process', lambda *a, **k: pytest.fail('A completed step reran inference.'))
+    resumed = service.resume(identity)
+    assert resumed.status == 'complete' and resumed.completed == 2
+
+
+def test_stage_cleanup_failure_is_separate_from_verified_export_completion(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    preserved = []
+
+    def fail_cleanup(stage, identity, owned, parent):
+        assert stage.is_dir() and list(stage.iterdir()) == []
+        preserved.append(stage)
+        raise OSError('Authored empty-stage cleanup failure.')
+
+    monkeypatch.setattr(module.SuppliedTranscriptionAdapter, '_cleanup_stage', staticmethod(fail_cleanup))
+    report = service.run(service.submit(plan))
+    assert report.status == 'complete' and report.completed == 1, report
+    assert len(preserved) == 1 and preserved[0].is_dir()
+    assert report.results[0]['notices']
+    assert all(Path(item['path']).stat().st_nlink == 1 for item in report.results[0]['artifacts'])
+    preserved[0].rmdir()
+
+
+def test_unexpected_private_stage_entry_is_preserved_after_complete_export(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    publish = module.publish_file
+    foreign = []
+
+    def retain_owner_note(staged, target, **kwargs):
+        result = publish(staged, target, **kwargs)
+        if target.name == 'transcript.json':
+            note = staged.parent / 'owner-note.txt'
+            note.write_bytes(b'Not an export cleanup target.')
+            foreign.append(note)
+        return result
+
+    monkeypatch.setattr(module, 'publish_file', retain_owner_note)
+    report = service.run(service.submit(plan))
+    assert report.status == 'complete' and report.results[0]['notices']
+    assert len(foreign) == 1 and foreign[0].read_bytes() == b'Not an export cleanup target.'
+    assert set(path.name for path in foreign[0].parent.iterdir()) == {'owner-note.txt'}
+
+
+def test_unreleased_last_alias_is_retained_without_claiming_complete(environment, monkeypatch):
+    service, source, outputs, plan, _ = environment
+    unlink = Path.unlink
+
+    def cannot_remove_owned_alias(path, *args, **kwargs):
+        if path.name == 'transcript.json' and path.parent.name.startswith('.transcription-'):
+            raise PermissionError('Authored persistent private-alias sharing violation.')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'unlink', cannot_remove_owned_alias)
+    identity = service.submit(plan)
+    report = service.run(identity)
+    assert report.status in ('attention', 'failed') and report.completed == 0
+    stage, = outputs.glob('.transcription-*')
+    target = outputs / 'транскрипт/transcript.json'
+    assert target.samefile(stage / 'transcript.json') and target.stat().st_nlink == 2
+    typed_id = service.store.load(identity)['steps'][0]['intent']['transcription_job']
+    typed = core.TranscriptionService(service.app.root / 'state')
+    assert typed.recorded_status(typed_id)['status'] == 'complete'
+    assert typed.broker.snapshot()['leases'] == []
+
+
+def test_current_manifest_selection_uses_owned_nested_snapshot(environment, tmp_path):
+    _service, _source, _outputs, _plan, installation = environment
+    legacy = installation.runtime()
+    data = json.loads(json.dumps(legacy.data))
+    enrolled = core.SuppliedWhisperRuntime.from_reviewed_data(data,
+        source_manifest_sha256=installation.manifest_sha256,
+        python_version='.'.join(map(str, sys.version_info[:3])))
+    original_files = dict(enrolled.data['runtime_files'])
+    data['runtime_files'].clear()
+    assert enrolled.data['runtime_files'] == original_files
+    assert enrolled.verify()[0] == legacy.verify()[0]
+    path = tmp_path / 'current-manifest.json'
+    path.write_bytes(encode(legacy.data))
+    selected = core.SuppliedWhisperRuntime(path)
+    path.write_bytes(encode({**legacy.data, 'rights_notice': 'A different reviewed selection.'}))
+    with pytest.raises(ValueError, match='changed during enrollment'):
+        module.SuppliedTranscriptionAdapter(selected)
+
+
+def test_reviewed_manifest_parses_the_same_bytes_that_were_hashed(environment, monkeypatch):
+    _service, _source, _outputs, _plan, installation = environment
+    original = module._read_bound_bytes
+    expected = read_json(installation.manifest)
+    changed = dict(expected, runtime_notice='A replacement that must not become the selected snapshot.')
+    swapped = []
+
+    def replace_after_snapshot(path, maximum, cancelled=lambda: False):
+        raw = original(path, maximum, cancelled)
+        if Path(path) == installation.manifest and not swapped:
+            installation.manifest.write_bytes(encode(changed))
+            swapped.append(True)
+        return raw
+
+    monkeypatch.setattr(module, '_read_bound_bytes', replace_after_snapshot)
+    selected = module._manifest_value(installation.manifest, installation.manifest_sha256)
+    assert swapped and selected == expected and selected != changed
+    with pytest.raises(ValueError, match='manifest changed'):
+        installation.verify()
+
+
+def test_uncertain_native_cleanup_reaches_host_with_the_same_owner_and_retained_leases(environment, monkeypatch):
+    from filelock import FileLock, Timeout
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.audio.models import AudioCleanupPending
+
+    service, _source, outputs, plan, _installation = environment
+    ready = Event()
+    owner = CleanupOwner(lambda: ready.is_set())
+    pending = AudioCleanupPending('Authored unconfirmed native shutdown.', cleanup_owner=owner)
+    stages = []
+
+    def uncertain_process(*args, **kwargs):
+        stage = Path(kwargs['cwd'])
+        assert (stage / 'worker.py').is_file()
+        stages.append(stage)
+        raise pending
+
+    monkeypatch.setattr(core, 'run_process', uncertain_process)
+    identity = service.submit(plan)
+    try:
+        with pytest.raises(AudioCleanupPending) as raised:
+            service.run(identity)
+        assert raised.value is pending and raised.value.cleanup_owner is owner
+        record = service.store.load(identity)
+        assert record['status'] == 'running' and record['steps'][0]['status'] == 'running'
+        job = record['steps'][0]['intent']['transcription_job']
+        typed = core.TranscriptionService(service.app.root / 'state')
+        runtime_id = typed.load(job)['request']['runtime']
+        assert len(stages) == 1 and stages[0].is_dir()
+        assert [row['operation_id'] for row in typed.broker.snapshot()['leases']] == ['asr:' + job]
+        locks = (FileLock(typed.root / job / '.job.lock', timeout=0),
+                 FileLock(typed.root / ('.runtime-' + runtime_id + '.lock'), timeout=0))
+        for lock in locks:
+            with pytest.raises(Timeout):
+                lock.acquire()
+        assert not (outputs / 'транскрипт').exists()
+    finally:
+        ready.set()
+        release = Thread(target=owner.close)
+        release.start()
+        release.join(5)
+        assert not release.is_alive() and owner.quiescent
+    assert not stages[0].exists() and not typed.broker.snapshot()['leases']
+    for lock in locks:
+        with lock:
+            pass

@@ -112,5 +112,29 @@ workflows and their separate evidence.
 Focused source regressions:
 
 ```text
-python scripts/ci_check.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py tests/packaging/test_audio_bundle.py tests/audio/test_bundled_runtime_settings.py
+python scripts/ci_check.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_acquisition.py tests/packaging/test_audio_bundle.py tests/packaging/test_local_audio_setup.py tests/packaging/test_native_checks_manifest.py tests/audio/test_bundled_runtime_settings.py
 ```
+
+## Composition and transfer boundary
+
+The reconciled package retains the existing standard installer, native launcher,
+sealed dependency inventory, and source-wheel verification. The application
+manifest records the source tree and includes the verifier's exact
+`application-source.json` result before its seal is generated. Local audio
+setup scripts are included as source; their default command only prints a plan.
+The runtime directory scan counts each entry as it is visited, rejects an
+exceeded entry budget, and propagates unreadable-directory errors.
+
+The normal transferable package remains audio-free. The existing delivery
+policy rejects both legacy `audio` and `audio-runtime` payloads while public
+redistribution clearance is absent. Preparing and exercising a separate local
+audio copy does not grant transfer authority or change that policy. CI must
+retain all current installer and audio-free package checks and execute the new
+local-runtime smoke separately with its three programs under the same outbound
+firewall boundary. Its runtime inventory and installed module bytes are checked
+again after execution. Only metadata and public application-wheel evidence may
+be retained by the existing artifact upload.
+
+Source and synthetic-package regressions do not constitute Windows execution
+evidence. The native gates must pass for the newly composed source commit;
+earlier component or canonical results do not qualify that new composition.

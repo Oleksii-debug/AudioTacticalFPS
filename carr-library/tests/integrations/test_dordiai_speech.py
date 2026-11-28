@@ -3,41 +3,30 @@
 import hashlib
 import importlib
 import json
-import os
 from pathlib import Path
 import sys
 import types
+import runpy
 import wave
 
 import pytest
 
 from carr_library.integrations.dordiai_speech import DordiaiSpeechProvider, install_dordiai_provider
 from carr_library.integrations.dordiai_voices import PCMChunk
-from .test_dordiai_voices import ACTOR, runtime  # Same synthetic pipe actor, no second speech fixture engine.
+# Load only the checked-in synthetic fixture; product module resolution is unchanged.
+_fixture = runpy.run_path(str(Path(__file__).with_name('test_dordiai_voices.py')))
+ACTOR, runtime = _fixture['ACTOR'], _fixture['runtime']
 
 
 @pytest.fixture
-def shared_speech(monkeypatch):
-    # Before the parallel speech branch is integrated, use an explicit frozen
-    # copy of its real runtime.py/_io.py. Normal integrated CI imports the real
-    # package directly. No substitute runtime is embedded in this test.
-    staged = os.environ.get("CARR_TEST_SPEECH_RUNTIME_SOURCE")
-    if staged:
-        package = types.ModuleType("carr_library.speech")
-        package.__path__ = [str(Path(staged).resolve(strict=True))]
-        monkeypatch.setitem(sys.modules, "carr_library.speech", package)
-        monkeypatch.delitem(sys.modules, "carr_library.speech.runtime", raising=False)
-        monkeypatch.delitem(sys.modules, "carr_library.speech._io", raising=False)
-    module = importlib.import_module("carr_library.speech.runtime")
-    yield module
-    if staged:
-        sys.modules.pop("carr_library.speech.runtime", None)
-        sys.modules.pop("carr_library.speech._io", None)
+def shared_speech():
+    # Always exercise the selected source or installed product package.
+    return importlib.import_module("carr_library.speech.runtime")
 
 
 @pytest.fixture
 def provider(runtime, shared_speech):
-    item = DordiaiSpeechProvider(runtime, python_executable=sys.executable,
+    item = DordiaiSpeechProvider(runtime, python_executable=str(Path(sys.executable).resolve()),
                                  expected_worker_sha256=hashlib.sha256(ACTOR.encode()).hexdigest())
     try:
         yield item
@@ -152,7 +141,7 @@ def test_disabled_configuration_does_not_probe_and_enabled_registers(shared_spee
     assert install_dordiai_provider(registry, {"enabled": False, "runtime_directory": "/missing"}) is None
     assert not registry.voices()
     provider = install_dordiai_provider(registry, {
-        "enabled": True, "runtime_directory": str(runtime), "python_executable": sys.executable,
+        "enabled": True, "runtime_directory": str(runtime), "python_executable": str(Path(sys.executable).resolve()),
         "expected_worker_sha256": hashlib.sha256(ACTOR.encode()).hexdigest(),
     })
     try:
@@ -169,7 +158,7 @@ def test_discover_opt_in_hook_registers_same_provider(shared_speech, runtime, mo
     original_is_file = Path.is_file
     monkeypatch.setattr(Path, "is_file", lambda path: False if path.name == "powershell.exe" else original_is_file(path))
     registry = shared_speech.VoiceRegistry.discover(include_flite=False, dordiai={
-        "enabled": True, "runtime_directory": str(runtime), "python_executable": sys.executable,
+        "enabled": True, "runtime_directory": str(runtime), "python_executable": str(Path(sys.executable).resolve()),
         "expected_worker_sha256": hashlib.sha256(ACTOR.encode()).hexdigest(),
     })
     try:

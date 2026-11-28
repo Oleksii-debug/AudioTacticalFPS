@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from enum import Enum
+from fractions import Fraction
 import math
 import threading
 import time
@@ -56,10 +57,22 @@ def _total(value):
     return None if value is None else _count(value, 'Total units')
 
 
+def _measurement(value, name):
+    """Retain a legacy producer's actual ratio without inventing integer work."""
+    if (type(value) not in (int, float) or not 0 <= value <= 10 ** 12
+            or not math.isfinite(value)):
+        raise ProgressError(f'{name} must be a finite nonnegative measured value no greater than 1000000000000.')
+    return value
+
+
 def _percent(completed, total):
     if total is None:
         return None
-    return min(99, completed * 100 // total) if total else 0
+    if not total:
+        return 0
+    ratio = (completed * 100 // total if type(completed) is int and type(total) is int
+             else math.floor(Fraction(completed) * 100 / Fraction(total)))
+    return min(99, ratio)
 
 
 @dataclass(frozen=True)
@@ -69,8 +82,8 @@ class ProgressSnapshot:
     state: ProgressState
     phase: str
     message: str
-    completed: int
-    total: int | None
+    completed: int | float
+    total: int | float | None
     unit: str
     percent: int | None
     eta_seconds: float | None
@@ -135,6 +148,20 @@ class ProgressHub:
     def start(self, title, *, total=None, unit='units', parent_id=None):
         title, unit = _text(title, 'Operation title', 200, empty=False), _text(unit, 'Unit name', 40, empty=False)
         total = _total(total)
+        return self._start(title, total, unit, parent_id, measured=False)
+
+    def start_measured(self, title, *, total=None, unit='units', parent_id=None):
+        """Compatibility entry for existing fractional-unit producers.
+
+        The ordinary start/update API still requires integer units. This entry
+        retains the declared numerator and denominator, including fractional
+        units, in the same immutable snapshot and state machine.
+        """
+        title, unit = _text(title, 'Operation title', 512, empty=False), _text(unit, 'Unit name', 40, empty=False)
+        total = None if total is None else _measurement(total, 'Total units')
+        return self._start(title, total, unit, parent_id, measured=True)
+
+    def _start(self, title, total, unit, parent_id, *, measured):
         with self._lock:
             if parent_id is not None:
                 if (not isinstance(parent_id, str) or parent_id not in self._tasks
@@ -151,7 +178,7 @@ class ProgressHub:
             identifier = uuid4().hex
             value = ProgressSnapshot(identifier, title, ProgressState.RUNNING, '', '', 0, total, unit,
                                      _percent(0, total), None, 1, now, now, parent_id)
-            task = ProgressTask(self, value)
+            task = ProgressTask(self, value, measured=measured)
             self._tasks[identifier] = task
             return task
 
@@ -171,8 +198,9 @@ class ProgressHub:
 
 
 class ProgressTask:
-    def __init__(self, hub, value):
+    def __init__(self, hub, value, *, measured=False):
         self._hub, self._value = hub, value
+        self._measured = measured
         self._rate_anchor = value.updated_at, value.completed
 
     @property
@@ -200,11 +228,13 @@ class ProgressTask:
             previous = self._value
             if previous.state != ProgressState.RUNNING:
                 raise ProgressError('Only a running task accepts unit updates.')
-            completed = previous.completed if completed is None else _count(completed, 'Completed units')
-            total = previous.total if total is _UNCHANGED else _total(total)
-            phase = previous.phase if phase is None else _text(phase, 'Phase', 200)
+            validate = _measurement if self._measured else _count
+            completed = previous.completed if completed is None else validate(completed, 'Completed units')
+            total = previous.total if total is _UNCHANGED else (None if total is None else validate(total, 'Total units'))
+            phase = previous.phase if phase is None else _text(phase, 'Phase', 512 if self._measured else 200)
             message = previous.message if message is None else _text(message, 'Progress message', 1000)
-            if completed < previous.completed:
+            if completed < previous.completed and not (
+                    self._measured and total != previous.total and phase != previous.phase):
                 raise ProgressError('Completed units cannot move backwards within an operation.')
             if total is not None and completed > total:
                 raise ProgressError('Completed units cannot exceed the known total.')
@@ -224,14 +254,15 @@ class ProgressTask:
             elapsed, advanced = now - anchor[0], completed - anchor[1]
             eta = None
             if total is not None and completed < total and elapsed >= 1.0 and advanced > 0:
-                eta = (total - completed) * elapsed / advanced
+                estimate = (total - completed) * elapsed / advanced
+                eta = estimate if math.isfinite(estimate) else None
             result = self._publish(completed=completed, total=total, phase=phase, message=message,
                                    percent=_percent(completed, total), eta_seconds=eta)
             self._rate_anchor = anchor
             return result
 
     def advance(self, units=1, *, phase=None, message=None):
-        units = _count(units, 'Advanced units')
+        units = (_measurement if self._measured else _count)(units, 'Advanced units')
         with self._hub._lock:
             return self.update(completed=self._value.completed + units, phase=phase, message=message)
 

@@ -8,7 +8,7 @@ maliciously replace directory entries at the instant of publication.
 from dataclasses import dataclass
 from functools import lru_cache
 import ctypes
-import hashlib
+from hashlib import sha256
 import logging
 from pathlib import Path, PureWindowsPath
 import os
@@ -17,25 +17,27 @@ from tempfile import NamedTemporaryFile
 from time import monotonic
 
 
+# Approval is captured before the native replacement question, so inspection
+# must have a finite byte budget and check cancellation/time between reads.
+MAX_APPROVAL_BYTES = 64 * 1024 * 1024
+APPROVAL_TIMEOUT = 2.0
+# Keep both public and canonical controls; the stricter limit always applies.
+_MAX_OVERWRITE_BYTES = 32 * 1024 * 1024
+_OVERWRITE_CHECK_SECONDS = 0.25
+
+
 @dataclass(frozen=True)
 class ExportReceipt:
-    """A completed publication, with any remaining private-file cleanup notice."""
+    """A completed publication, with any remaining staging cleanup notice."""
     path: Path
     cleanup_warning: str | None = None
 
 
 _logger = logging.getLogger(__name__)
 
-# Destination approval runs before rendering and may run on the UI thread.
-# Large or slow existing files require a new filename instead of unbounded
-# hashing or a weaker, metadata-only overwrite approval.
-_MAX_OVERWRITE_BYTES = 32 * 1024 * 1024
-_OVERWRITE_CHECK_SECONDS = 0.25
-_HASH_BLOCK_BYTES = 128 * 1024
-
 
 def export_completion(message, receipt):
-    """Keep completion text while exposing any saved-file cleanup notice."""
+    """Keep existing completion text while exposing a saved-file cleanup notice."""
     warning = getattr(receipt, 'cleanup_warning', None)
     return message + (' ' + warning if warning else '')
 
@@ -66,42 +68,6 @@ def _identity(info):
 def _file_state(info):
     return (_identity(info), info.st_mode, info.st_nlink, info.st_size,
             info.st_mtime_ns, info.st_ctime_ns)
-
-
-def _content_fingerprint(path, expected, check_cancelled):
-    if expected.st_size > _MAX_OVERWRITE_BYTES:
-        raise ValueError('The existing file is too large to verify for replacement. '
-                         'Choose a new filename.')
-    check_cancelled()
-    deadline = monotonic() + _OVERWRITE_CHECK_SECONDS
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_BINARY', 0)
-                         | getattr(os, 'O_NOFOLLOW', 0)
-                         | getattr(os, 'O_NONBLOCK', 0))
-    try:
-        if _file_state(os.fstat(descriptor)) != _file_state(expected):
-            raise ValueError('The export destination changed. Choose the destination again.')
-        digest = hashlib.sha256()
-        size = 0
-        while True:
-            check_cancelled()
-            if monotonic() >= deadline:
-                raise ValueError('The existing file could not be verified quickly enough. '
-                                 'Choose a new filename.')
-            block = os.read(descriptor, min(_HASH_BLOCK_BYTES, _MAX_OVERWRITE_BYTES - size + 1))
-            check_cancelled()
-            size += len(block)
-            if size > _MAX_OVERWRITE_BYTES:
-                raise ValueError('The export destination changed. Choose the destination again.')
-            if not block:
-                break
-            digest.update(block)
-        if (monotonic() >= deadline or size != expected.st_size
-                or _file_state(os.fstat(descriptor)) != _file_state(expected)):
-            raise ValueError('The export destination changed or could not be verified quickly enough. '
-                             'Choose a new filename.')
-        return digest.digest()
-    finally:
-        os.close(descriptor)
 
 
 class _WindowsFileBasicInfo(ctypes.Structure):
@@ -154,8 +120,7 @@ def _windows_change_time(path):
             raise _windows_api_error('CloseHandle')
 
 
-def _destination(path, private_root, check_cancelled=lambda: None, reject_existing=None,
-                 expected=None):
+def _destination(path, private_root, reject_existing=None, expected=None):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -192,7 +157,7 @@ def _destination(path, private_root, check_cancelled=lambda: None, reject_existi
         if expected is not None and expected[2] is not None:
             raise ValueError('The export destination changed. Choose the destination again.')
     else:
-        # A create-only conflict grants no authority to inspect file contents.
+        # A create-only conflict grants no authority to inspect the file.
         if reject_existing is not None:
             raise reject_existing
         if _linked(info) or not stat.S_ISREG(info.st_mode):
@@ -200,9 +165,8 @@ def _destination(path, private_root, check_cancelled=lambda: None, reject_existi
         if info.st_nlink != 1:
             raise ValueError('Choose an export destination without hard links.')
         state = _file_state(info)
-        # Reject a stale approved file identity before native metadata or byte reads.
-        if expected is not None and (expected[2] is None or
-                                     state != expected[2][:len(state)]):
+        # A stale approval grants no authority to read replacement metadata or bytes.
+        if expected is not None and (expected[2] is None or state != expected[2][:len(state)]):
             raise ValueError('The export destination changed. Choose the destination again.')
         if os.name == 'nt':
             # Python 3.11 exposes Windows creation time as ctime. Native
@@ -211,15 +175,12 @@ def _destination(path, private_root, check_cancelled=lambda: None, reject_existi
             # also detects same-length edits with restored modification time.
             change_time = _windows_change_time(target)
             state = (*state, change_time)
-        # Retain native ChangeTime and the full digest for metadata collisions.
-        if expected is not None and state != expected[2][:-1]:
+        if expected is not None and state != expected[2]:
             raise ValueError('The export destination changed. Choose the destination again.')
-        fingerprint = _content_fingerprint(target, info, check_cancelled)
         after = target.lstat()
         if (_linked(after) or _file_state(after) != _file_state(info)
                 or _identity(parent.stat()) != parent_identity):
             raise ValueError('The export destination changed. Choose the destination again.')
-        state = (*state, fingerprint)
     if _identity(parent.stat()) != parent_identity:
         raise ValueError('The export destination changed. Choose the destination again.')
     return target, parent_identity, state
@@ -233,6 +194,7 @@ class ExportDestination:
     target: Path
     parent_identity: tuple
     state: tuple | None
+    content_sha256: str | None = None
 
     @property
     def require_absent(self):
@@ -249,26 +211,68 @@ def _export_paths(path, private_root):
     return requested, Path(private_root).absolute()
 
 
-def capture_export_destination(path, *, private_root, cancelled=lambda: False):
+def _existing_digest(target, state, cancelled):
+    if state is None:
+        return None
+    if state[3] > min(MAX_APPROVAL_BYTES, _MAX_OVERWRITE_BYTES):
+        raise ValueError('The existing export exceeds the overwrite-check size limit; '
+                         'it is too large to verify. Choose a new filename.')
+    deadline = monotonic() + min(APPROVAL_TIMEOUT, _OVERWRITE_CHECK_SECONDS)
+    digest = sha256()
+
+    def check_read():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+        if monotonic() >= deadline:
+            raise TimeoutError('Checking the existing export took too long. Choose a new filename.')
+
+    flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
+             | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOFOLLOW', 0))
+    descriptor = os.open(target, flags)
+    try:
+        check_read()
+        if _file_state(os.fstat(descriptor)) != state[:6]:
+            raise ValueError('The export destination changed. Choose the destination again.')
+        remaining = state[3]
+        while remaining:
+            check_read()
+            block = os.read(descriptor, min(128 * 1024, remaining))
+            check_read()
+            if not block:
+                raise ValueError('The export destination changed. Choose the destination again.')
+            remaining -= len(block)
+            digest.update(block)
+        check_read()
+        if os.read(descriptor, 1):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        check_read()
+        if _file_state(os.fstat(descriptor)) != state[:6]:
+            raise ValueError('The export destination changed. Choose the destination again.')
+    finally:
+        os.close(descriptor)
+    return digest.hexdigest()
+
+
+def capture_export_destination(path, *, private_root, cancelled=lambda: False,
+                               _reject_existing=None, _expected=None):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
     binds approval to the selected path, parent directory and existing file
-    metadata and bounded content fingerprint across queued work and rendering;
-    it grants no permission itself. Existing files over 32 MiB or exceeding
-    the verification time budget require a new filename.
+    state and bytes across queued work and rendering; it grants no permission
+    itself. Large or slow existing files require choosing a new filename.
     """
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
-
-    def check_cancelled():
-        if cancelled():
-            raise TimeoutError('Export cancelled; the destination was not changed.')
-
-    check_cancelled()
+    if cancelled():
+        raise TimeoutError('Export cancelled; the destination was not changed.')
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, state = _destination(requested, private, check_cancelled)
-    return ExportDestination(requested, private, target, parent_identity, state)
+    target, parent_identity, state = _destination(requested, private, _reject_existing, _expected)
+    content_sha256 = _existing_digest(target, state, cancelled)
+    if state is not None and _destination(requested, private, expected=(target, parent_identity, state)) != (target, parent_identity, state):
+        raise ValueError('The export destination changed. Choose the destination again.')
+    approved_state = None if state is None else (*state, bytes.fromhex(content_sha256))
+    return ExportDestination(requested, private, target, parent_identity, approved_state, content_sha256)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
@@ -279,10 +283,9 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     Library paths, linked ancestors/targets and hard-linked files are rejected.
     Failure or cancellation before publication preserves an existing target
     and removes the temporary file. An optional captured approval also rejects
-    changes since the caller selected and confirmed the destination. A captured
+    changes since the caller selected and confirmed the destination. An
     absent destination always uses atomic no-clobber publication. Once atomic
     replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
-    The receipt distinguishes a saved file from a remaining staging-cleanup warning.
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
@@ -315,9 +318,9 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             raise TimeoutError('Export cancelled; the destination was not changed.')
 
     check_cancelled()
-    requested, private = _export_paths(path, private_root)
     if approval is not None and type(approval) is not ExportDestination:
         raise ValueError('A captured export destination approval is required.')
+    requested, private = _export_paths(path, private_root)
     if approval is not None and (approval.requested != requested or approval.private_root != private):
         raise ValueError('The export destination changed. Choose the destination again.')
     reject_existing = None
@@ -325,16 +328,19 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         reject_existing = ValueError('The export destination changed. Choose the destination again.')
     elif require_absent:
         reject_existing = FileExistsError('The export destination already exists; replacement was not authorized.')
-    expected = ((approval.target, approval.parent_identity, approval.state)
+    expected = ((approval.target, approval.parent_identity,
+                 None if approval.state is None else approval.state[:-1])
                 if approval is not None else None)
-    target, parent_identity, previous = _destination(requested, private, check_cancelled,
-                                                     reject_existing, expected)
-    # No caller can approve replacement of a file that was absent at admission.
+    initial = capture_export_destination(path, private_root=private_root, cancelled=cancelled,
+                                         _reject_existing=reject_existing, _expected=expected)
+    requested, private, target = initial.requested, initial.private_root, initial.target
+    parent_identity = initial.parent_identity
+    previous = None if initial.state is None else initial.state[:-1]
+    # Reuse PR111's policy for legacy callers too: approval cannot cover a file
+    # that did not exist at this snapshot. Publication must never replace one.
     require_absent = require_absent or previous is None
     if approval is not None:
-        if (approval.requested != requested or approval.private_root != private
-                or approval.target != target or approval.parent_identity != parent_identity
-                or approval.state != previous):
+        if approval != initial:
             raise ValueError('The export destination changed. Choose the destination again.')
         require_absent = require_absent or approval.require_absent
     if require_absent and previous is not None:
@@ -351,13 +357,16 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             os.fsync(output.fileno())
 
         check_cancelled()
-        reject_existing = (ValueError('The export destination changed. Choose the destination again.')
-                           if require_absent else None)
+        conflict = (ValueError('The export destination changed. Choose the destination again.')
+                    if previous is None else None)
         checked_target, checked_parent, current = _destination(
-            requested, private, check_cancelled, reject_existing,
-            (target, parent_identity, previous))
+            requested, private, conflict, (target, parent_identity, previous))
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if _existing_digest(checked_target, current, cancelled) != initial.content_sha256:
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if previous is not None and _destination(requested, private, expected=(target, parent_identity, previous)) != (target, parent_identity, previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent and os.name == 'nt':
@@ -377,9 +386,8 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
                 except OSError:
                     cleanup_warning = ('The file is saved. Temporary-file cleanup is still pending; '
                                        'the export does not need to be repeated.')
-                    # Existing callers may ignore the additive receipt return.
-                    # Logging is a fallback, never a reason to report a saved
-                    # file as failed, even if an application log handler raises.
+                    # Publication has succeeded. Logging cannot turn a cleanup
+                    # notice into a false failed export, even if its sink fails.
                     try:
                         _logger.warning('%s Export destination: %s', cleanup_warning, target)
                     except Exception:

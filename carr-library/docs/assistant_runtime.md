@@ -237,3 +237,13 @@ On Windows the credential test creates, reads and deletes only a new synthetic
 credential. On other hosts it verifies the vault refuses storage. Local tests
 do not establish native Windows/NVDA interaction, actual vendor acceptance,
 real local-LLM inference quality or voice/music listening quality.
+
+## Current integrated lifecycle
+
+The current dialog retains one worker, cached native ownership and source/scope
+validation. Closing cancels pending work, suppresses late callbacks and queues
+owned service cleanup after the worker; repeated close does not duplicate it.
+Actual outputs and saved jobs retain their domain status when optional progress
+reporting fails. Model output still requires typed review and a separate
+execution action. Use the exact current commit's gate reports; the donor counts
+above remain evidence for those explicitly named earlier revisions only.

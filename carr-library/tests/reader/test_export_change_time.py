@@ -104,7 +104,7 @@ def test_unverifiable_content_closes_handle_and_keeps_existing_file(tmp_path, mo
     if failure == 'deadline':
         times = iter((0.0, 1.0))
         monkeypatch.setattr(export_file, 'monotonic', lambda: next(times))
-        expected, message = ValueError, 'quickly enough.*Choose a new filename'
+        expected, message = TimeoutError, 'too long.*Choose a new filename'
     else:
         file_os.read = Mock(side_effect=OSError('Read unavailable'))
         expected, message = OSError, 'Read unavailable'
@@ -296,11 +296,12 @@ def test_windows_creation_time_model_requires_native_change_time(tmp_path, monke
     windows_os = SimpleNamespace(**vars(os))
     windows_os.name = 'nt'
     monkeypatch.setattr(export_file, 'os', windows_os)
-    changes = iter((100, 200))
-    monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: next(changes), raising=False)
+    changes = [100]
+    monkeypatch.setattr(export_file, '_windows_change_time', lambda _path: changes[0], raising=False)
     approval = export_file.capture_export_destination(target, private_root=private)
     replacement = b'Modified independent work'
     rewrite_preserving_mtime(target, replacement)
+    changes[0] = 200
     writer = export_file.write_binary_export if binary else export_file.write_export
     with pytest.raises(ValueError, match='destination changed'):
         writer(target, b'new export' if binary else 'new export',

@@ -30,6 +30,10 @@ def run_native(source=None):
     if sys.platform not in ('win32', 'darwin') and not (
             os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY')):
         return not_run('A native display is unavailable.')
+    if source is not None:
+        sys.path[:0] = [str(source / 'src'), str(source)]
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
     try:
         import wx
     except (ImportError, OSError) as exc:
@@ -134,6 +138,34 @@ def run_native(source=None):
             check('native document help menu event is handled', frame.GetEventHandler().ProcessEvent(event))
             if errors:
                 raise AssertionError('\n'.join(errors))
+
+            def inspect_backup_options():
+                dialog = None
+                try:
+                    dialog, = [window for window in wx.GetTopLevelWindows()
+                               if window.GetTitle() == 'Backup options']
+                    audio, = [child for child in dialog.GetChildren() if isinstance(child, wx.CheckBox)]
+                    check('backup audio option has an explicit native accessible name and safe default',
+                        audio.GetName() == 'Include generated audio stored inside this library'
+                        and audio.GetValue() is True)
+                    audio.SetFocus()
+                    check('backup audio option receives native keyboard focus',
+                        pump(lambda: wx.Window.FindFocus() is audio))
+                    audio.SetValue(False)
+                    check('backup audio inclusion is a real optional control', audio.GetValue() is False)
+                    state['backup_options_cancelled'] = True
+                except BaseException:
+                    errors.append(traceback.format_exc())
+                finally:
+                    if dialog is not None:
+                        dialog.EndModal(wx.ID_CANCEL)
+            wx.CallAfter(inspect_backup_options)
+            frame.backup(None)
+            if errors:
+                raise AssertionError('\n'.join(errors))
+            check('cancelling backup options returns without publishing a backup',
+                state.get('backup_options_cancelled') is True
+                and not list(root.glob('ResearchLibrary-backup-*')))
 
             def fail():
                 errors.append(traceback.format_exc())

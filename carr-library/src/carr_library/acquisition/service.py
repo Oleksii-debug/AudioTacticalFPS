@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import sqlite3
 import stat
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryDirectory, gettempdir
 from threading import Lock, RLock
 from time import monotonic
 from urllib.parse import quote, urlsplit
@@ -21,9 +21,11 @@ from uuid import uuid4
 
 from ..catalog.membership import Catalog
 from ..data_paths import guard_data_directory
-from ..research.academic_library import AcademicLibrary, normalize_doi, normalize_isbn
+from ..durable_state import regular, sync_directory as _sync_directory
+from ..operations import ResourceBroker, ResourceRequest
+from ..research.academic_library import AcademicLibrary, normalize_doi, normalize_isbn, _isbn_key
 from . import providers as provider_api
-from .models import MetadataPreview
+from .models import MetadataPreview, DOI_PROVIDERS
 from .transport import (NetworkConsent, SafeTransport, PROVIDER_HOSTS,
                         MAX_DOWNLOAD_BYTES, validate_https_url)
 
@@ -39,6 +41,8 @@ class AcquisitionPreview:
     warnings: tuple[str, ...]
     fetched_utc: str
     cached: bool = False
+    identifier_kind: str = 'doi'
+    identifier: str = ''
 
 
 @dataclass(frozen=True)
@@ -73,34 +77,78 @@ def _write_json(path, value):
         os.fsync(stream.fileno())
 
 
-def _sync_directory(path):
-    if os.name != 'nt':
-        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
-        try:
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+def _identity(path):
+    value = Path(path).lstat()
+    if stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400:
+        raise ValueError('The acquisition destination changed.')
+    return value.st_dev, value.st_ino
+
+
+def _unlink_owned(path, identity):
+    """A failed attempt cannot remove another writer's replacement."""
+    try:
+        if _identity(path) != identity:
+            return False
+        path.unlink()
+        return True
+    except (FileNotFoundError, OSError, ValueError):
+        return False
+
+
+def _attest(path, expected_digest, expected_size, cancelled):
+    """Bounded, cancellable read of the exact newly acquired regular file."""
+    if (type(expected_size) is not int or not 0 < expected_size <= MAX_DOWNLOAD_BYTES
+            or not isinstance(expected_digest, str) or len(expected_digest) != 64):
+        raise ValueError('The downloaded file has an invalid size or digest.')
+    before = regular(path)
+    if before.st_size != expected_size:
+        raise ValueError('The acquired file size changed.')
+    digest = sha256()
+    with path.open('rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+            raise ValueError('The acquired file changed before validation.')
+        remaining = expected_size
+        while remaining:
+            _cancel(cancelled)
+            block = stream.read(min(65536, remaining))
+            if not block:
+                raise ValueError('The acquired file ended before its declared size.')
+            digest.update(block)
+            remaining -= len(block)
+        _cancel(cancelled)
+        if stream.read(1):
+            raise ValueError('The acquired file exceeds its declared size.')
+    after = regular(path)
+    state = lambda value: (value.st_dev, value.st_ino, value.st_size,
+                           value.st_mtime_ns, value.st_ctime_ns)
+    if state(before) != state(after) or digest.hexdigest() != expected_digest:
+        raise ValueError('The acquired file changed or failed its content digest.')
+    return before.st_dev, before.st_ino
 
 
 def _publish_file(source, target, cancelled):
-    """Exclusive publication, also on local filesystems without hard links."""
+    """Existing create-only pair publication, including FAT/exFAT fallback."""
+    source_identity = _identity(source)
     try:
         os.link(source, target)
-        return
+        return source_identity
     except OSError as exc:
-        if isinstance(exc, FileExistsError) or not (
-            exc.errno in {errno.EPERM, errno.EXDEV, errno.ENOSYS,
-                          getattr(errno, 'EOPNOTSUPP', errno.ENOSYS)}
-            or getattr(exc, 'winerror', None) in (1, 50, 1314)
-        ):
+        if isinstance(exc, FileExistsError):
             raise
-    # FAT/exFAT does not provide hard links. The new destination folder remains
-    # marked incomplete until every exclusive file is fully flushed. No rename
-    # or replace can overwrite a pre-existing name in this fallback.
-    created = False
+        # Some filesystem failures arrive after the link was committed. Only
+        # the exact source inode may establish that this is our publication.
+        if os.path.lexists(target) and _identity(target) == source_identity:
+            return source_identity
+        if not (exc.errno in {errno.EPERM, errno.EXDEV, errno.ENOSYS,
+                              getattr(errno, 'EOPNOTSUPP', errno.ENOSYS)}
+                or getattr(exc, 'winerror', None) in (1, 50, 1314)):
+            raise
+    identity = None
     try:
         with target.open('xb') as output:
-            created = True
+            value = os.fstat(output.fileno())
+            identity = value.st_dev, value.st_ino
             with source.open('rb') as stream:
                 while True:
                     _cancel(cancelled)
@@ -111,10 +159,29 @@ def _publish_file(source, target, cancelled):
             _cancel(cancelled)
             output.flush()
             os.fsync(output.fileno())
+        return identity
     except BaseException:
-        if created:
-            target.unlink(missing_ok=True)
+        if identity is not None:
+            _unlink_owned(target, identity)
         raise
+
+
+def _rollback(target, directory_identity, marker, marker_identity, owned):
+    """Keep an incomplete marker if any foreign or uncertain file remains."""
+    try:
+        if _identity(target) != directory_identity:
+            return
+        for path, identity in reversed(owned):
+            _unlink_owned(path, identity)
+        with os.scandir(target) as entries:
+            for entry in entries:
+                if entry.name != marker.name:
+                    return
+        if marker_identity is not None and not _unlink_owned(marker, marker_identity):
+            return
+        target.rmdir()
+    except (OSError, ValueError):
+        pass
 
 
 def _destination(value, library_root):
@@ -140,10 +207,11 @@ def _destination(value, library_root):
 
 class AcquisitionService:
     """An in-memory capability/cache plus durable existing reference/import APIs."""
-    def __init__(self, app, *, transport_factory=SafeTransport, clock=monotonic):
+    def __init__(self, app, *, transport_factory=SafeTransport, clock=monotonic, resource_broker=None):
         self.app = app
         self.transport_factory = transport_factory
         self.clock = clock
+        self._resource_broker = resource_broker
         self._previews = {}
         self._cache = {}
         self._lock = RLock()
@@ -161,28 +229,38 @@ class AcquisitionService:
         with self._lock:
             if (not isinstance(preview, AcquisitionPreview) or preview.workspace != workspace
                     or self._previews.get(preview.token) is not preview):
-                raise ValueError('This DOI preview is stale or belongs to another library. Look up the DOI again.')
+                raise ValueError('This metadata preview is stale or belongs to another library. Look up the identifier again.')
         return preview
 
     def lookup(self, workspace, doi, *, online_allowed=False, providers=('crossref',),
                unpaywall_email='', cancelled=lambda: False):
+        return self._lookup(workspace, doi, identifier_kind='doi', online_allowed=online_allowed,
+            providers=providers, unpaywall_email=unpaywall_email, cancelled=cancelled)
+
+    def lookup_isbn(self, workspace, isbn, *, online_allowed=False, cancelled=lambda: False):
+        return self._lookup(workspace, isbn, identifier_kind='isbn', online_allowed=online_allowed,
+            providers=('openlibrary',), cancelled=cancelled)
+
+    def _lookup(self, workspace, identifier, *, identifier_kind, online_allowed=False,
+                providers=('crossref',), unpaywall_email='', cancelled=lambda: False):
         self._scope(workspace, cancelled)
         if online_allowed is not True:
-            raise PermissionError('Online DOI lookup is disabled. Approve this request explicitly.')
-        doi = normalize_doi(doi)
-        if not doi:
-            raise ValueError('Enter a DOI to look up.')
-        if (not isinstance(providers, (tuple, list)) or not providers or len(providers) > 3
-                or len(set(providers)) != len(providers)
-                or any(provider not in PROVIDER_HOSTS for provider in providers)):
-            raise ValueError('Select Crossref, Europe PMC, or Unpaywall once each.')
+            raise PermissionError('Online metadata lookup is disabled. Approve this request explicitly.')
+        identifier = (normalize_doi if identifier_kind == 'doi' else normalize_isbn)(identifier)
+        if not identifier:
+            raise ValueError('Enter a valid DOI or ISBN to look up.')
+        allowed_providers = ('openlibrary',) if identifier_kind == 'isbn' else DOI_PROVIDERS
+        if (not isinstance(providers, (tuple, list)) or not providers or len(providers) > len(allowed_providers)
+                or any(not isinstance(provider, str) or provider not in allowed_providers for provider in providers)
+                or len(set(providers)) != len(providers)):
+            raise ValueError('Select each supported metadata provider at most once for this identifier type.')
         providers = tuple(providers)
         config = provider_api.ProviderConfig(unpaywall_email=unpaywall_email)
         if not isinstance(unpaywall_email, str):
             raise ValueError('Unpaywall requires a valid contact email.')
-        key = (workspace, doi, providers, sha256(unpaywall_email.encode('utf-8')).hexdigest())
+        key = (workspace, identifier_kind, identifier, providers, sha256(unpaywall_email.encode('utf-8')).hexdigest())
         if not self._lookup_lock.acquire(blocking=False):
-            raise ValueError('A DOI lookup is already running. Cancel it or wait for it to finish.')
+            raise ValueError('A metadata lookup is already running. Cancel it or wait for it to finish.')
         try:
             with self._lock:
                 cached = self._cache.get(key)
@@ -196,8 +274,12 @@ class AcquisitionService:
                 for provider in providers:
                     self._scope(workspace, cancelled)
                     try:
-                        record = provider_api.lookup_doi(provider, doi, transport=transport,
-                            consent=True, config=config, cancelled=cancelled)
+                        if identifier_kind == 'isbn':
+                            record = provider_api.lookup_isbn(identifier, transport=transport,
+                                consent=True, cancelled=cancelled)
+                        else:
+                            record = provider_api.lookup_doi(provider, identifier, transport=transport,
+                                consent=True, config=config, cancelled=cancelled)
                     except (InterruptedError, TimeoutError):
                         raise
                     except (ValueError, OSError):
@@ -208,8 +290,8 @@ class AcquisitionService:
                     records.append(record)
                     warnings.extend(record.warnings)
                 if not records:
-                    raise ValueError('No selected provider returned valid metadata for this exact DOI. '
-                                     'Check the DOI, connection, and Unpaywall contact email, or try another provider.')
+                    raise ValueError('No selected provider returned valid metadata for this exact identifier. '
+                                     'Check the DOI or ISBN, connection, and any required contact email.')
                 # Prefer Crossref for bibliographic metadata but never splice
                 # mismatched fields into a fictitious combined publication.
                 metadata = next((r for r in records if r.provider == 'crossref'), records[0])
@@ -224,8 +306,9 @@ class AcquisitionService:
                 if len({r.title for r in records if r.title}) > 1:
                     warnings.append('Providers returned different titles. Review the edition and author list before using metadata.')
                 warnings.append('Online metadata and access statements are provider claims; they do not verify source text or citation page numbers.')
-                preview = AcquisitionPreview(uuid4().hex, workspace, doi, metadata,
-                    tuple(records), tuple(sources), tuple(dict.fromkeys(warnings)), _utc())
+                preview = AcquisitionPreview(uuid4().hex, workspace, identifier if identifier_kind == 'doi' else '',
+                    metadata, tuple(records), tuple(sources), tuple(dict.fromkeys(warnings)), _utc(),
+                    identifier_kind=identifier_kind, identifier=identifier)
                 self._scope(workspace, cancelled)
                 with self._lock:
                     self._cache[key] = (self.clock(), preview)
@@ -244,6 +327,9 @@ class AcquisitionService:
     @staticmethod
     def _provenance(preview):
         return {'schema': 'research-library-acquisition-v1', 'doi': preview.doi,
+            'identifier_kind': preview.identifier_kind,
+            'identifier': preview.identifier or preview.doi,
+            'isbn': list(preview.metadata.isbn),
             'retrieved_utc': preview.fetched_utc,
             'metadata_provider': preview.metadata.provider,
             'metadata_source_url': preview.metadata.source_url,
@@ -266,7 +352,8 @@ class AcquisitionService:
         return dict(title=meta.title, authors=meta.authors, item_type=meta.item_type,
             year=meta.year, container_title=meta.container_title, publisher=meta.publisher,
             volume=meta.volume, issue=meta.issue, pages=meta.pages, doi=preview.doi,
-            isbn=isbn, url='https://doi.org/' + quote(preview.doi, safe='/'), abstract=meta.abstract,
+            isbn=isbn, url=('https://doi.org/' + quote(preview.doi, safe='/')
+                            if preview.doi else meta.source_url), abstract=meta.abstract,
             notes='Acquisition provenance (metadata only):\n' + json.dumps(
                 AcquisitionService._provenance(preview), ensure_ascii=False, sort_keys=True))
 
@@ -275,10 +362,28 @@ class AcquisitionService:
         with self.app.write(workspace) as db:
             _cancel(cancelled)
             library = AcademicLibrary(db, workspace)
-            rows = tuple(db.execute('SELECT id FROM academic_reference '
-                'WHERE workspace=? AND doi=? AND archived=0 ORDER BY id LIMIT 2', (workspace, preview.doi)))
+            if preview.doi:
+                rows = tuple(db.execute('SELECT id FROM academic_reference '
+                    'WHERE workspace=? AND doi=? AND archived=0 ORDER BY id LIMIT 2', (workspace, preview.doi)))
+            else:
+                isbn = normalize_isbn(preview.identifier)
+                if preview.identifier_kind != 'isbn' or not isbn:
+                    raise ValueError('The metadata preview has no valid bibliographic identifier.')
+                # Reuse the catalogue's ISBN equivalence, but never merge or
+                # overwrite existing references. An ISBN-10 and its 978 form
+                # identify the same edition; a 979 ISBN has no ISBN-10 form.
+                canonical = _isbn_key(isbn)
+                variants = {isbn, canonical}
+                if canonical.startswith('978'):
+                    prefix = canonical[3:12]
+                    check = (-sum((10 - i) * int(c) for i, c in enumerate(prefix))) % 11
+                    variants.add(prefix + ('X' if check == 10 else str(check)))
+                marks = ','.join('?' for _ in variants)
+                rows = tuple(db.execute('SELECT id FROM academic_reference '
+                    f'WHERE workspace=? AND isbn IN ({marks}) AND archived=0 ORDER BY id LIMIT 2',
+                    (workspace, *sorted(variants))))
             if len(rows) > 1:
-                raise ValueError('More than one reference already has this DOI. Resolve its duplicates in the academic library first.')
+                raise ValueError('More than one reference already has this identifier. Resolve its duplicates in the academic library first.')
             if rows:
                 return library.get(rows[0][0])
             reference = library.create(**self._fields(preview))
@@ -290,7 +395,7 @@ class AcquisitionService:
         preview = self._checked(workspace, preview, cancelled)
         meta = preview.metadata
         if expected_metadata is None:
-            raise ValueError('Review the current book metadata before applying a DOI suggestion.')
+            raise ValueError('Review the current book metadata before applying a metadata suggestion.')
         # Preserve fields absent from the remote record. Publication page extent
         # is never applied as a source locator or printed page assertion.
         return self.app.update_metadata(workspace, edition_id, title=meta.title or expected_metadata.title,
@@ -307,66 +412,116 @@ class AcquisitionService:
         if online_allowed is not True or rights_confirmed is not True:
             raise PermissionError('Approve this separate document download and confirm you may obtain this source.')
         if type(source_index) is not int or not 0 <= source_index < len(preview.sources):
-            raise ValueError('Choose a source from this DOI preview.')
+            raise ValueError('Choose a source from this metadata preview.')
         source = preview.sources[source_index]
         if source.reported_open_access is not True or source.format.casefold() != 'pdf':
             raise ValueError('Automatic acquisition requires a provider-reported open-access PDF. Other links remain metadata only.')
         host = urlsplit(source.url).hostname
         validate_https_url(source.url, (host,))
         target = _destination(destination, self.app.root)
-        transport = self.transport_factory(NetworkConsent(True, 'download', (host,),
-            max_bytes=MAX_DOWNLOAD_BYTES, timeout=120.0))
         receipt = self._provenance(preview)
         receipt.update(source_provider=source.provider, source_url=source.url,
             landing_url=source.landing_url, provider_license=source.license,
             provider_version=source.version, provider_reports_open_access=True,
             user_confirmed_right_to_obtain=True, rights_do_not_imply_redistribution=True,
             acquired_utc=_utc(), title=preview.metadata.title, authors=preview.metadata.authors)
+        notices = []
         owned = []
-        with TemporaryDirectory(prefix='.carr-acquire-', dir=target.parent) as temporary:
-            staging = Path(temporary)
-            with (staging / 'document.pdf').open('xb') as stream:
-                info = transport.download(source.url, stream, cancelled=cancelled)
-                stream.flush()
-                os.fsync(stream.fileno())
-            receipt.update(final_url=info.url, sha256=info.sha256, bytes=info.size,
-                           content_type=info.content_type)
-            _write_json(staging / 'provenance.json', receipt)
-            self._scope(workspace, cancelled, collection)
-            _destination(target, self.app.root)
-            target.mkdir(mode=0o700)  # Exclusive reservation; never replace a directory.
+        committed = False
+        marker = target / '.acquisition-incomplete'
+        directory_identity = marker_identity = None
+        broker = self._resource_broker or ResourceBroker.for_app(self.app.root, cancelled=cancelled)
+        request = ResourceRequest(cpu_slots=1, memory_bytes=128 * 1024 * 1024,
+            disk_path=target.parent, disk_bytes=2 * (MAX_DOWNLOAD_BYTES + 4 * 1024 * 1024),
+            additional_disks=((Path(gettempdir()), MAX_DOWNLOAD_BYTES),))
+        # The isolated network worker uses the ordinary temporary filesystem;
+        # staging and the selected destination use the chosen parent filesystem.
+        # This is declared cooperative admission, not a system RAM/network cap.
+        with broker.reserve(request, operation_id='acquisition:download:' + uuid4().hex,
+                cancelled=cancelled, timeout=60, run_timeout=180) as lease:
+            temporary = TemporaryDirectory(prefix='.carr-acquire-', dir=target.parent)
+            staging = Path(temporary.name)
+            failure = None
             try:
-                marker = target / '.acquisition-incomplete'
-                marker.write_text('Incomplete acquisition; do not import.\n', encoding='utf-8')
-                owned.append(marker)
-                for name in ('document.pdf', 'provenance.json'):
-                    _cancel(cancelled)
-                    output = target / name
-                    # Hard-link publication fails if anyone created this name.
-                    _publish_file(staging / name, output, cancelled)
-                    owned.append(output)
-                self._scope(workspace, cancelled, collection)
+                transport = self.transport_factory(NetworkConsent(True, 'download', (host,),
+                    max_bytes=MAX_DOWNLOAD_BYTES, timeout=120.0))
+                with (staging / 'document.pdf').open('xb') as stream:
+                    info = transport.download(source.url, stream, cancelled=lease.cancelled)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                _attest(staging / 'document.pdf', info.sha256, info.size, lease.cancelled)
+                receipt.update(final_url=info.url, sha256=info.sha256, bytes=info.size,
+                               content_type=info.content_type)
+                _write_json(staging / 'provenance.json', receipt)
+                provenance = (staging / 'provenance.json').read_bytes()
+                receipt_digest = sha256(provenance).hexdigest()
+                self._scope(workspace, lease.cancelled, collection)
+                _destination(target, self.app.root)
+                target.mkdir(mode=0o700)
+                directory_identity = _identity(target)
+                with marker.open('x', encoding='utf-8') as stream:
+                    stream.write('Incomplete acquisition; do not import.\n')
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                    value = os.fstat(stream.fileno())
+                    marker_identity = value.st_dev, value.st_ino
                 _sync_directory(target)
-                # Completion must not be published while staging aliases can
-                # still modify the visible files after a crash/restart.
+                for name in ('document.pdf', 'provenance.json'):
+                    lease.checkpoint()
+                    output = target / name
+                    identity = _publish_file(staging / name, output, lease.cancelled)
+                    owned.append((output, identity))
+                self._scope(workspace, lease.cancelled, collection)
+                _sync_directory(target)
                 for name in ('document.pdf', 'provenance.json'):
                     (staging / name).unlink()
                 _sync_directory(staging)
-                marker.unlink()
-                owned.remove(marker)
-                _sync_directory(target)
-                _sync_directory(target.parent)
-            except BaseException:
-                for output in reversed(owned):
-                    try:
-                        output.unlink()
-                    except OSError:
-                        pass
+                expected = ((target / 'document.pdf', info.sha256, info.size),
+                            (target / 'provenance.json', receipt_digest, len(provenance)))
+                for (output, digest, size), (owned_path, identity) in zip(expected, owned):
+                    if output != owned_path or _attest(output, digest, size, lease.cancelled) != identity:
+                        raise ValueError('The acquisition publication changed before completion.')
+                # Native ownership failures are still pre-completion failures.
+                # The metadata-only cleanup flag is truthful after release.
+                lease.release()
+                if lease.cleanup_pending:
+                    notices.append('The shared resource reservation was released; stale lease metadata awaits cleanup.')
+                self._scope(workspace, cancelled, collection)
+                if _identity(target) != directory_identity or _identity(marker) != marker_identity:
+                    raise ValueError('The acquisition destination changed before completion.')
                 try:
-                    target.rmdir()
+                    marker.unlink()
                 except OSError:
-                    pass
+                    # An interrupted unlink can still have removed the marker.
+                    # Adopt only our exact verified pair, never a foreign file.
+                    if os.path.lexists(marker) or any(_identity(path) != identity for path, identity in owned):
+                        raise
+                    committed = True
+                    notices.append('Completion was published, but removing its marker reported a filesystem error.')
+                else:
+                    committed = True
+                for directory in (target, target.parent):
+                    try:
+                        _sync_directory(directory)
+                    except OSError:
+                        notices.append('The PDF and provenance are saved; directory durability confirmation needs attention.')
+            except BaseException as exc:
+                failure = exc
+                if not committed and directory_identity is not None:
+                    _rollback(target, directory_identity, marker, marker_identity, owned)
                 raise
+            finally:
+                try:
+                    temporary.cleanup()
+                except OSError as exc:
+                    if committed:
+                        notices.append('The PDF and provenance are saved; temporary-folder cleanup is pending. Do not download again.')
+                    elif failure is not None:
+                        failure.add_note('Acquisition staging cleanup is also pending: ' + str(exc))
+                    else:
+                        raise
+        def completion(message):
+            return message + (' ' + ' '.join(dict.fromkeys(notices)) if notices else '')
         path, receipt_path = target / 'document.pdf', target / 'provenance.json'
         # Download publication and source import are deliberately separate. A
         # failed/quarantined import retains the verified PDF and its receipt so
@@ -382,7 +537,7 @@ class AcquisitionService:
                 # Matching database hashes are not proof that the retained file
                 # still exists with these exact bytes. Revalidate before linking
                 # a reference or publishing collection membership.
-                self.app.assets.resolve(info.sha256)
+                self.app.assets.resolve(info.sha256, cancelled=cancelled)
                 edition_id, state = existing[0], 'duplicate'
                 message = 'Identical source bytes already exist in this library; linked to the existing edition.'
                 if collection is not None:
@@ -419,11 +574,11 @@ class AcquisitionService:
                 if changes:
                     reference = store.update(current.id, expected=current, **changes)
             return AcquisitionResult(path, receipt_path, reference.id, edition_id,
-                                     state, message, info.sha256)
+                                     state, completion(message), info.sha256)
         except (ValueError, OSError, RuntimeError, sqlite3.Error):
             return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
-                'The PDF and provenance were saved, but import or reference linking did not finish. '
-                'Use Import Center to review or retry this local file; no redownload is needed.', info.sha256)
+                completion('The PDF and provenance were saved, but import or reference linking did not finish. '
+                'Use Import Center to review or retry this local file; no redownload is needed.'), info.sha256)
 
 
 _SERVICE_LOCK = Lock()

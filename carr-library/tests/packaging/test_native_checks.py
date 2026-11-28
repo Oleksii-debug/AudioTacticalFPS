@@ -63,6 +63,140 @@ def test_base_native_extensions_are_loaded_without_optional_engines(tmp_path, mo
     assert report['semantic']['status'] == report['ocr']['status'] == 'NOT_INCLUDED'
 
 
+@pytest.mark.parametrize('declared', [False, True])
+def test_new_audio_layout_cannot_report_success_when_missing_or_unannounced(tmp_path, monkeypatch, declared):
+    manifest = bundle(tmp_path)
+    if declared:
+        manifest['bundled_audio_runtime'] = True
+        (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    else:
+        (tmp_path / 'audio-runtime').mkdir()
+    controlled_imports(monkeypatch, [])
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'sealed local audio runtime inventory'
+    assert ('missing' if declared else 'Unannounced') in report['error']
+
+
+def _native_manifest(tmp_path, monkeypatch):
+    import hashlib
+    from carr_library import native_launcher
+    payload = b'Controlled native identity fixture; never executed.'
+    monkeypatch.setattr(native_launcher, 'LAUNCHER_BYTES', len(payload))
+    monkeypatch.setattr(native_launcher, 'LAUNCHER_SHA256', hashlib.sha256(payload).hexdigest())
+    manifest = bundle(tmp_path)
+    manifest['native_launcher'] = native_launcher.identity_record()
+    manifest['files']['ResearchLibrary.exe'] = native_launcher.LAUNCHER_SHA256
+    (tmp_path / 'ResearchLibrary.exe').write_bytes(payload)
+    return manifest
+
+
+def test_native_entry_hash_is_checked_without_executing_it(tmp_path, monkeypatch):
+    manifest = _native_manifest(tmp_path, monkeypatch)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert report['source_commit'] == 'a' * 40
+    assert report['native_launcher'] == {
+        'status': 'PASS', 'sha256': manifest['files']['ResearchLibrary.exe'],
+        'authenticode_signed': False, 'execution': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
+    assert report['checks'][0] == 'native launch entry identity'
+    (tmp_path / 'ResearchLibrary.exe').unlink()
+    events.clear()
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == report['native_launcher']['status'] == 'FAIL'
+    assert report['failed_component'] == 'native launch entry identity'
+    assert not events
+
+
+def test_current_launcher_seal_never_inherits_historical_execution_acceptance(tmp_path, monkeypatch):
+    import hashlib
+    payload = b'Current separately qualified launcher fixture; never executed.'
+    manifest = bundle(tmp_path)
+    manifest['files']['ResearchLibrary.exe'] = hashlib.sha256(payload).hexdigest()
+    (tmp_path / 'ResearchLibrary.exe').write_bytes(payload)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    identity = report['native_launcher']
+    assert report['status'] == identity['status'] == 'PASS'
+    assert identity['sha256'] == hashlib.sha256(payload).hexdigest()
+    assert identity['source_commit'] == manifest['source_commit']
+    assert identity['identity_scope'] == 'source-bound sealed bytes'
+    assert identity['historical_native_acceptance'] == 'NOT_CLAIMED'
+    assert identity['authenticode_signed'] is False
+    assert identity['execution'] == identity['native_gui'] == identity['windows_nvda'] == 'NOT_RUN'
+    assert 'windows_process_acceptance' not in identity
+    (tmp_path / 'ResearchLibrary.exe').write_bytes(b'X' + payload[1:])
+    events.clear()
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == report['native_launcher']['status'] == 'FAIL'
+    assert report['failed_component'] == 'native launch entry identity'
+    assert not events
+
+
+@pytest.mark.parametrize('damage', ['source_missing', 'source_not_exact', 'hash_missing', 'hash_invalid', 'python_missing'])
+def test_current_launcher_requires_complete_source_and_file_identity(tmp_path, monkeypatch, damage):
+    manifest = bundle(tmp_path)
+    manifest['files']['ResearchLibrary.exe'] = 'b' * 64
+    if damage == 'source_missing':
+        del manifest['source_commit']
+    elif damage == 'source_not_exact':
+        manifest['source_commit'] = 'HEAD'
+    elif damage == 'hash_missing':
+        manifest['files']['ResearchLibrary.exe'] = None
+    elif damage == 'hash_invalid':
+        manifest['files']['ResearchLibrary.exe'] = 'c' * 63
+    else:
+        manifest['bundled_python'] = False
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'installation manifest'
+    assert not events
+
+
+@pytest.mark.parametrize('damage', ['missing_identity_and_source', 'missing_file', 'null_identity',
+                                   'boolean_schema', 'claim_signature', 'claim_gui',
+                                   'different_hash', 'extra_field', 'missing_python', 'missing_source'])
+def test_native_identity_cannot_claim_unverified_acceptance(tmp_path, monkeypatch, damage):
+    manifest = _native_manifest(tmp_path, monkeypatch)
+    identity = manifest['native_launcher']
+    if damage == 'missing_identity_and_source':
+        del manifest['native_launcher']
+        del manifest['source_commit']
+    elif damage == 'missing_file':
+        del manifest['files']['ResearchLibrary.exe']
+    elif damage == 'null_identity':
+        manifest['native_launcher'] = None
+    elif damage == 'boolean_schema':
+        identity['schema'] = True
+    elif damage == 'claim_signature':
+        identity['authenticode_signed'] = True
+    elif damage == 'claim_gui':
+        identity['gui_verified'] = True
+    elif damage == 'different_hash':
+        identity['sha256'] = manifest['files']['ResearchLibrary.exe'] = 'f' * 64
+    elif damage == 'extra_field':
+        identity['approved_by_filename'] = True
+    elif damage == 'missing_python':
+        manifest['bundled_python'] = False
+    elif damage == 'missing_source':
+        del manifest['source_commit']
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'installation manifest'
+    assert not events
+
+
 @pytest.mark.parametrize('failure', [None, 'pypdfium2.raw'])
 def test_loader_handle_survives_imports_and_closes_on_success_or_failure(
         tmp_path, monkeypatch, failure):
@@ -150,7 +284,8 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'string_citation_flag', 'bad_tree',
+    'bad_parent_commit', 'bad_parent_hash', 'bad_private_scope',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +307,18 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio'] = 'false'
+    elif change == 'string_citation_flag':
+        manifest['bundled_citation_runtime'] = 'false'
+    elif change == 'bad_tree':
+        manifest['source_tree'] = 'HEAD^{tree}'
+    elif change == 'bad_parent_commit':
+        manifest['parent_source_commit'] = 'HEAD'
+    elif change == 'bad_parent_hash':
+        manifest['parent_manifest_sha256'] = 'not-a-sha256'
+    elif change == 'bad_private_scope':
+        manifest['use_scope'] = 'public-release'
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]

@@ -2,6 +2,7 @@
 import ast
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
 from pathlib import Path
+from importlib.util import find_spec
 from queue import Queue
 from threading import Event, get_ident
 from types import SimpleNamespace
@@ -15,7 +16,7 @@ from carr_library.ui.progress_panel import NativeProgressPanel
 
 @pytest.fixture
 def host():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(find_spec('carr_library.ui.desktop_app').origin)
     tree = ast.parse(source.read_text(encoding='utf-8'))
     node = next(item for item in tree.body if isinstance(item, ast.ClassDef) and item.name == 'DesktopFrame')
     callbacks = Queue()
@@ -35,6 +36,8 @@ def host():
     frame.executor = ThreadPoolExecutor(max_workers=1)
     panel = object.__new__(NativeProgressPanel)
     panel.hub = ProgressHub()
+    panel.frame, panel.wx = frame, namespace['wx']
+    panel.closed, panel.notice = False, ''
     panel.active_task = None
     panel._last_revision = None
     panel._reporting_failure = None

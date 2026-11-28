@@ -30,11 +30,29 @@ def export_confirmation(monkeypatch):
     from carr_library.ui import academic_tools
     from carr_library.ui.export_destination import confirm_export_destination
 
-    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
+    native = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4,
+                             YES=8, NO=16, ID_YES=8, ID_NO=16)
     native.MessageBox = Mock(return_value=native.YES)
+    native.dialogs = []
+
+    class MessageDialog:
+        def __init__(self, parent, message, title, style):
+            self.args = (message, title, style, parent)
+            self.destroyed = False
+            native.dialogs.append(self)
+
+        def ShowModal(self):
+            # Existing choice and race hooks now exercise the owned modal API.
+            return native.MessageBox(*self.args)
+
+        def Destroy(self):
+            self.destroyed = True
+
+    native.MessageDialog = MessageDialog
     monkeypatch.setattr(academic_tools, 'confirm_export_destination',
         lambda *args, **kwargs: confirm_export_destination(*args, **kwargs, wx_module=native))
-    return native
+    yield native
+    assert all(dialog.destroyed for dialog in native.dialogs)
 
 
 class Frame:
@@ -257,3 +275,46 @@ def test_declined_academic_replacement_never_starts_render(
     assert not frame.jobs
     assert output.read_bytes() == b'Keep existing work'
     assert 'cancelled' in frame.report.call_args.args[0].lower()
+
+
+@pytest.mark.parametrize('kind', ['outline', 'matrix'])
+def test_academic_export_rechecks_scope_inside_the_real_publisher(research, tmp_path, monkeypatch, kind):
+    from carr_library.ui import academic_tools
+    output = tmp_path / 'scope-changed.md'
+    frame, actions, _ = make_actions(research, save_path=output)
+    actual_writer = academic_tools.write_export
+    entered = []
+
+    def changed_owner(*args, **kwargs):
+        entered.append(True)
+        frame.active = research[2], None
+        return actual_writer(*args, **kwargs)
+
+    monkeypatch.setattr(academic_tools, 'write_export', changed_owner)
+    actions._export(AcademicScope(frame.library, *frame.active), kind=kind, format='markdown',
+                    include_descendants=True, tag_filter=None)
+    with pytest.raises(ValueError, match='changed'):
+        frame.complete()
+    assert entered == [True] and not output.exists()
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_academic_export_keeps_committed_receipt_and_cleanup_notice(research, tmp_path, monkeypatch):
+    from carr_library.research.export_file import ExportReceipt
+    from carr_library.ui import academic_tools
+    output = tmp_path / 'committed.md'
+    frame, actions, _ = make_actions(research, save_path=output)
+    actual_writer = academic_tools.write_export
+    warning = 'Committed output; temporary cleanup requires attention.'
+
+    def with_warning(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return ExportReceipt(receipt.path, warning)
+
+    monkeypatch.setattr(academic_tools, 'write_export', with_warning)
+    actions.outline()
+    receipt = frame.complete()
+    assert receipt.path == output and output.is_file()
+    assert 'Exact original quotation.' in output.read_text(encoding='utf-8')
+    assert warning in frame.report.call_args.args[0]
+    assert str(output) in frame.report.call_args.args[0]

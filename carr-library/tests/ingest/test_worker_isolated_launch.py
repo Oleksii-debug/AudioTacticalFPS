@@ -13,12 +13,13 @@ import subprocess
 import sys
 
 import pytest
+import bootstrap
 
 from carr_library.ingest import worker
 
 
 SOURCE_ROOT = Path(worker.__file__).resolve().parents[2]
-PROJECT_ROOT = SOURCE_ROOT.parent
+PROJECT_ROOT = Path(bootstrap.__file__).resolve().parent.parent
 
 
 def _poison_package(root, package, marker):

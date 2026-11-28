@@ -4,8 +4,9 @@ Run from carr-library: python tests/ui/native_catalog_tools_smoke.py --native
 Requires wxPython and an existing authorized desktop. Missing prerequisites
 produce NOT_RUN (77). Real widgets, native events, the desktop asynchronous job
 runner, SQLite application services and the checked file writer are exercised.
-Only the file chooser's selected temporary destination is supplied by this
-probe; native file-chooser interaction and NVDA are explicitly NOT_RUN.
+The file chooser's temporary destination and overwrite answers are supplied by
+this probe. Destination inspection, approval binding and publication are real;
+native chooser/confirmation interaction and NVDA are explicitly NOT_RUN.
 No screenshots, external file launches, real books or network access are used.
 """
 from argparse import ArgumentParser
@@ -38,6 +39,7 @@ def run_native(source, timeout):
     sys.path.insert(0, str(source / 'src'))
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
+    from carr_library.ui import catalog_tools_dialog as catalog_tools
     from carr_library.ui.catalog_tools_dialog import LibraryToolsDialog
 
     try:
@@ -86,6 +88,30 @@ def run_native(source, timeout):
                 'inventory': folder / 'source-inventory.csv',
                 'matrix': folder / 'review-matrix.csv',
             }
+            existing_export = b'An existing export needs explicit replacement approval.\n'
+            changed_export = b'A different, longer destination now needs a new replacement approval.\n'
+            destinations['bibliography'].write_bytes(existing_export)
+            approvals, render_calls, write_calls = [], [], []
+            confirm_destination = catalog_tools.NativeDialogs.approve_export
+            render_catalog = library.export_catalog
+            write_export = catalog_tools.write_export
+
+            def confirm(*args, **kwargs):
+                approval = confirm_destination(*args, **kwargs)
+                approvals.append(approval)
+                return approval
+
+            def render(*args, **kwargs):
+                render_calls.append(True)
+                return render_catalog(*args, **kwargs)
+
+            def write(path, value, **kwargs):
+                approval = kwargs.get('approval')
+                check('writer receives the exact captured destination approval',
+                      approval is not None and approval is approvals[-1]
+                      and approval.requested == Path(path).absolute())
+                write_calls.append(approval)
+                return write_export(path, value, **kwargs)
 
             def command(control, event_type):
                 event = wx.CommandEvent(event_type.typeId, control.GetId())
@@ -95,35 +121,45 @@ def run_native(source, timeout):
                 check('native event handled: ' + control.GetName(),
                       control.GetEventHandler().ProcessEvent(event))
 
-            def export(button, destination):
-                # No native chooser automation or external file launch is
-                # claimed. Destination and confirmation are controlled; all
-                # other widgets and handlers are real wx.
-                previous = b'Previous export selected for replacement.'
-                destination.write_bytes(previous)
-                confirmations = []
-
-                def confirm(message, title, style, parent):
-                    check('confirmation names the final destination', destination.name in message)
-                    check('replacement defaults to No', bool(style & wx.NO_DEFAULT))
-                    check('confirmation belongs to this dialog', parent is dialog)
-                    check('confirmation preserves previous bytes', destination.read_bytes() == previous)
-                    confirmations.append(destination)
-                    return wx.YES
+            def export(button, destination, *, answer=None, change_while_confirming=False):
+                # Supply deterministic dialog answers while retaining the real
+                # destination capture, native button event, worker and writer.
+                before_render, before_write = len(render_calls), len(write_calls)
+                before_bytes = destination.read_bytes() if destination.exists() else None
+                questions = []
 
                 class SelectedDestination:
                     def __init__(self, *args, **kwargs):
-                        check('export uses a save picker before bound replacement approval',
+                        check('save chooser leaves replacement to explicit approval',
                               bool(kwargs['style'] & wx.FD_SAVE)
-                              and not bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
-                        check('save picker preserves the selected existing export',
-                              destination.is_file() and destination.read_bytes() == previous)
+                              and not kwargs['style'] & wx.FD_OVERWRITE_PROMPT)
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
-                with patch.object(wx, 'FileDialog', SelectedDestination), patch.object(wx, 'MessageBox', confirm):
+
+                def replacement_answer(message, title, style, parent):
+                    check('replacement question names the existing destination with default No',
+                          answer is not None and parent is dialog and destination.is_file()
+                          and destination.name in message and title.startswith('Replace ')
+                          and style == wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                    questions.append(True)
+                    if change_while_confirming:
+                        destination.write_bytes(changed_export)
+                    return answer
+
+                with patch.object(wx, 'FileDialog', SelectedDestination), \
+                        patch.object(wx, 'MessageBox', replacement_answer):
                     command(button, wx.EVT_BUTTON)
-                check('one captured-destination confirmation', confirmations == [destination])
+                check('only an existing destination needs a replacement answer',
+                      len(questions) == int(before_bytes is not None))
+                if answer == wx.NO:
+                    check('declined replacement starts no worker, rendering or write',
+                          not dialog.pending and not frame.working
+                          and len(render_calls) == before_render and len(write_calls) == before_write)
+                    check('declined replacement preserves the existing file and readable cancellation',
+                          destination.read_bytes() == before_bytes
+                          and dialog.status.GetValue() == 'Export cancelled. No file was written.')
+                    return
                 check('export started on the desktop worker', dialog.pending and frame.working)
 
             def completed():
@@ -174,7 +210,17 @@ def run_native(source, timeout):
                     elif phase == 'all-report' and completed():
                         check('complete library report rendered', dialog.report.GetValue() == expected_all)
                         dialog.format.SetSelection(2)
-                        export(dialog.bibliography_button, destinations['bibliography'])
+                        export(dialog.bibliography_button, destinations['bibliography'], answer=wx.NO)
+                        export(dialog.bibliography_button, destinations['bibliography'],
+                               answer=wx.YES, change_while_confirming=True)
+                        state['phase'] = 'changed-destination'
+                    elif phase == 'changed-destination' and not dialog.pending and not frame.working:
+                        check('replacement rejects a destination changed during confirmation',
+                              'The export destination changed.' in dialog.status.GetValue()
+                              and destinations['bibliography'].read_bytes() == changed_export)
+                        check('rejected publication leaves no staged export',
+                              not list(folder.glob('.research-export-*')))
+                        export(dialog.bibliography_button, destinations['bibliography'], answer=wx.YES)
                         state['phase'] = 'bibliography'
                     elif phase == 'bibliography' and completed():
                         rows = json.loads(destinations['bibliography'].read_text(encoding='utf-8'))
@@ -209,7 +255,10 @@ def run_native(source, timeout):
                 active_timer = wx.CallLater(10, tick)
 
             wx.CallAfter(tick)
-            result = dialog.ShowModal()
+            with patch.object(catalog_tools.NativeDialogs, 'approve_export', confirm), \
+                    patch.object(library, 'export_catalog', render), \
+                    patch.object(catalog_tools, 'write_export', write):
+                result = dialog.ShowModal()
             if failures:
                 raise AssertionError('; '.join(failures))
             check('native modal closes with no outstanding job',
@@ -218,6 +267,7 @@ def run_native(source, timeout):
                 'sqlite': sqlite3.sqlite_version, 'native_platform': platform.system(),
                 'source_sha256': sha256((source / 'src/carr_library/ui/catalog_tools_dialog.py').read_bytes()).hexdigest(),
                 'file_chooser_interaction': 'NOT_RUN; synthetic destination supplied',
+                'overwrite_dialog_interaction': 'NOT_RUN; deterministic answers supplied',
                 'nvda': 'NOT_RUN'}, sort_keys=True), flush=True)
         except Exception as exc:
             print(json.dumps({'result': 'FAIL', 'error': str(exc), 'checks_passed': len(checks),

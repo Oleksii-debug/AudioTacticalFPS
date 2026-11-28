@@ -19,5 +19,52 @@
     "source": "https://github.com/huggingface/tokenizers/blob/301277072263fb3830eb66eec7e47adadf76f1dc/LICENSE",
     "file": "tokenizers-LICENSE.txt",
     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "component": "comtypes",
+    "version": "1.5.0",
+    "commit": "7732dc3de25797e658d26f375e78310bd7febbda",
+    "source": "https://github.com/enthought/comtypes/blob/7732dc3de25797e658d26f375e78310bd7febbda/LICENSE.txt",
+    "file": "comtypes-LICENSE.txt",
+    "sha256": "3b1767f010980b46926b23bf0afce5d72f3359ee5e2b27baca71b9b4209ab383",
+    "wheel_sha256": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+  },
+  {
+    "component": "bibtexparser",
+    "version": "2.1.0",
+    "commit": "8103b71dad72215d1c64a76cd65ed511c63786bb",
+    "source": "https://github.com/sciunto-org/python-bibtexparser/blob/8103b71dad72215d1c64a76cd65ed511c63786bb/LICENSE",
+    "file": "bibtexparser-LICENSE.txt",
+    "sha256": "1f092a7986b9ac79a4fb08ef0b3a02f1cf2f0a5d9aeab93dc281e3bf7268271c",
+    "wheel_sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+  },
+  {
+    "component": "pylatexenc",
+    "version": "2.11",
+    "commit": "0e936a10f125bc3357b1a9d68de0beec5f835a3f",
+    "source": "https://github.com/phfaist/pylatexenc/blob/0e936a10f125bc3357b1a9d68de0beec5f835a3f/LICENSE.txt",
+    "file": "pylatexenc-LICENSE.txt",
+    "sha256": "90b6f8fc23cb0328a9678562627fb2ebc5f9c871712fad698d781869eb02862c",
+    "wheel_sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+  },
+  {
+    "component": "quickjs-ng",
+    "version": "0.18.0.2",
+    "commit": "354856ccce6262895565a1497e2893a16d0cbd85",
+    "source": "https://pypi.org/project/quickjs-ng/0.18.0.2/#files",
+    "file": "quickjs-ng-LICENSE.txt",
+    "sha256": "eac6e04a1feb150e577c140f4897b23be9e95384292482b4da74f493358c6f4d",
+    "wheel_sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d",
+    "source_archive_sha256": "a1a890300a5c460d7735481bc38e8ab10e6f06b733a517f7fa9887f6d121df40"
+  },
+  {
+    "component": "quickjs-ng",
+    "version": "0.18.0.2",
+    "commit": "354856ccce6262895565a1497e2893a16d0cbd85",
+    "source": "https://pypi.org/project/quickjs-ng/0.18.0.2/#files",
+    "file": "quickjs-ng-SOURCE_NOTICES.txt",
+    "sha256": "d1d13ac7fe4897200af37a93df5a63825a64ebb92993cb09cee9ac6e7f1de364",
+    "wheel_sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d",
+    "source_archive_sha256": "a1a890300a5c460d7735481bc38e8ab10e6f06b733a517f7fa9887f6d121df40"
   }
 ]

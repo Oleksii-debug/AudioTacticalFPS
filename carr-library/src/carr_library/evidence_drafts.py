@@ -264,3 +264,54 @@ class EvidenceDrafts:
             del rows[draft.key]
             self._publish(rows, previous)
             return True
+
+
+@dataclass(frozen=True)
+class LegacyResearchNote:
+    """An earlier-format text copy with no source/baseline authority."""
+    workspace: str
+    topic: str
+    evidence: str
+    text: str
+    snapshot_sha256: str
+
+
+def read_legacy_research_note(root, *, workspace, topic, evidence):
+    """Read one old research-note.json for explicit review, without migrating it.
+
+    The earlier file has no retained-source digest or saved-note baseline. Its
+    identifiers select a review context only; they cannot authorize replacement
+    of current evidence or create a modern recovery checkpoint automatically.
+    """
+    from .durable_state import local_path, regular, _open_json_file
+    root = _private_root(root)
+    path = local_path(root / 'state' / 'recovery' / 'research-note.json', root=root)
+    try:
+        before = regular(path)
+    except FileNotFoundError:
+        return None
+    limit = MAX_NOTE_BYTES + 4096
+    if not 0 < before.st_size <= limit:
+        raise ValueError('Earlier research-note recovery exceeds its review budget; the original file was kept.')
+    with _open_json_file(path) as stream:
+        opened = os.fstat(stream.fileno())
+        if _file_identity(opened) != _file_identity(before):
+            raise ValueError('Earlier research-note recovery changed while opening; retry review.')
+        raw = stream.read(limit + 1)
+        after = os.fstat(stream.fileno())
+    if (len(raw) != before.st_size or _file_identity(after) != _file_identity(before)
+            or _file_identity(regular(path)) != _file_identity(before)):
+        raise ValueError('Earlier research-note recovery changed while reading; retry review.')
+    try:
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
+    except (UnicodeError, ValueError, RecursionError) as exc:
+        raise ValueError('Earlier research-note recovery is invalid; its bytes were kept.') from exc
+    if (type(value) is not dict or set(value) != {'schema', 'workspace', 'topic', 'evidence', 'note'}
+            or type(value['schema']) is not int or value['schema'] != 1):
+        raise ValueError('Earlier research-note recovery has an unsupported format; its bytes were kept.')
+    key = tuple(_identity(value[name]) for name in ('workspace', 'topic', 'evidence'))
+    text = _note(value['note'])
+    expected = tuple(_identity(item) for item in (workspace, topic, evidence))
+    if key != expected:
+        return None
+    return LegacyResearchNote(*key, text, sha256(raw).hexdigest())

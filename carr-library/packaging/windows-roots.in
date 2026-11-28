@@ -7,6 +7,4 @@ filelock==3.29.0
 Pillow==13.0.0
 defusedxml==0.7.1
 comtypes==1.5.0
-bibtexparser==2.1.0
-pylatexenc==2.11
 quickjs-ng==0.18.0.2

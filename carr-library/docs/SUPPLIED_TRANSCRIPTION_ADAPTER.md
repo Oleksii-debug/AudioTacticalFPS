@@ -1,45 +1,30 @@
-# Supplied transcription: opt-in protocol adapter
+# Supplied transcription: Assistant compatibility facade
 
-This is a backend adapter to the owner's existing V4.3 headless worker, using
-the primary assistant's typed plans and JobStore. It is not a second ASR engine,
-an installed-model pack, an enabled desktop transcription screen, or completed
-ASR acceptance. No worker source, audio, transcripts, virtual environment,
-credentials, model bytes or private source-location URL is redistributed.
+The Assistant's `audio.transcribe` tool uses the same
+`audio.transcription.TranscriptionService` as the native transcription panel and
+CLI. It preserves the Assistant's selected input/output permissions and approved
+plan, while recognition, retained inputs, runtime admission, cancellation,
+cleanup and generated transcript receipts stay in the existing typed ASR store.
+There is one supplied-worker preparation and execution path.
 
-## Exact reused boundary
+No private worker source, models, audio, credentials or runtime package is
+redistributed. Merely adding a transcription step to an Assistant plan does not
+enable a runtime.
 
-The reviewed original is 37,974 bytes with SHA256
-`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
-`prepare_worker` reuses the source transform from commit
-`f20f9cb65411ee6b7ebb538ce2eb34ea02cd5aaf`: it removes implicit language/settings
-retries and the unsupported-option TypeError fallback on a private staging copy.
-The resulting exact candidate has SHA256
-`d718866a468f087d5714d7595f7c82921711164c0defebbcedf56afeafcc0992`.
-Both source and prepared hashes must match before launch. The original is kept.
+## Reviewed installation and preparation
 
-The process still receives `worker.py --job-dir <private directory>`. Each
-invocation uses a fresh `job_config.json`, immutable `settings_live.json`, one
-copied audio file, a new cache and new results directory. This makes the supplied
-worker's path/mtime cache and basename-only adoption inapplicable. An absolute
-verified local model path prevents selecting the downloader's model-name path.
-Recognition settings use CPU/int8, one file, one worker, selected language or
-auto detection, beam size, VAD and previous-text conditioning. Translation,
-word alignment, diarization and CUDA are not enabled by this adapter.
+The preferred entry point is an explicitly selected, retained
+`SuppliedWhisperRuntime` manifest. Its complete runtime/model inventories,
+interpreter SHA256 and explicit `runtime_reviewed` / `rights_reviewed` flags are
+checked by the existing service. The local draft-manifest helper leaves both
+flags false; inventory discovery never manufactures approval.
 
-Required TXT, SRT, VTT and JSON must all exist and agree with the source,
-requested settings, actual detected language and finite ordered segment times.
-A zero exit code or the worker's completion string alone is insufficient.
-Silence may yield empty TXT/SRT with empty segments; it does not trigger a
-language change. Published JSON replaces disposable staging paths with original
-source and installation identities. It remains a derived transcript requiring
-human accuracy review.
-
-## Explicit installation, no acquisition
-
-Construct `SuppliedWorkerInstallation` with six explicit values: absolute local
-interpreter, original worker, isolated package directory, model directory,
-manifest path, and separately retained manifest SHA256. The manifest stays
-outside the two inventoried directories and contains exactly:
+The compatibility constructor `SuppliedWorkerInstallation` continues to accept
+the six original explicit selections: interpreter, worker, isolated package
+directory, model directory, legacy manifest path and separately retained
+manifest SHA256. It additionally requires both explicit review flags to be true.
+Provenance notices and matching files are insufficient to infer either review.
+Its legacy manifest retains the original fields:
 
 ```json
 {
@@ -48,90 +33,123 @@ outside the two inventoried directories and contains exactly:
   "python_sha256": "<reviewed interpreter SHA256>",
   "python_version": "<major.minor.patch>",
   "runtime_files": {
-    "faster_whisper/__init__.py": {"size": 0, "sha256": "<reviewed SHA256>"}
+    "<relative installed runtime file>": {"size": 123, "sha256": "<SHA256>"}
   },
   "model_files": {
-    "config.json": {"size": 0, "sha256": "<reviewed SHA256>"},
-    "model.bin": {"size": 0, "sha256": "<reviewed SHA256>"},
-    "tokenizer.json": {"size": 0, "sha256": "<reviewed SHA256>"}
+    "<relative installed model file>": {"size": 123, "sha256": "<SHA256>"}
   },
-  "runtime_notice": "<exact source, dependency/native inventory and rights evidence>",
-  "model_notice": "<exact model revision, source and rights evidence>"
+  "runtime_notice": "<reviewed source, dependency inventory and rights evidence>",
+  "model_notice": "<reviewed model revision, source and rights evidence>"
 }
 ```
 
-The abbreviated example is not a usable manifest. Every actual file and byte
-count in both trees must be inventoried, including SDK/native/transitive files.
-Links, unlisted files, changed hashes and incomplete local model files fail
-before launch. The interpreter bytes and reported Python version are checked.
-Version and license descriptions alone do not certify compatibility or grant
-distribution rights. Operating-system libraries remain part of installation
-qualification; copying a virtual environment is not a portable runtime build.
+This abbreviated example is not a usable runtime. Every actual file in both
+trees must be inventoried, including the required SDK/native dependencies and
+the complete model. Links, unexpected entries, byte/size changes and missing
+required packages are rejected. Compatibility enrollment converts these public
+declarations in memory and passes them through the ordinary runtime validator;
+it does not create another executable configuration or job store. The pinned
+legacy manifest and exact Python version become part of the runtime identity.
 
-Execution uses the existing bounded audio process runner with isolated Python
-startup (`-I -S -B`), only the selected package path, offline cache flags, and
-network/child-command and output-write audit guards. The selected process's
-logs, staging bytes, file count, timeout and free disk reserve are bounded.
-These checks are defense in depth, not an OS sandbox for native extensions.
-Cold offline Windows execution with the real pinned SDK/model remains required.
+Worker preparation delegates to `audio.supplied_whisper.prepare`, including its
+separately pinned supplied V4.3 and hardened protocol revisions. The
+`TRANSCRIPTION_SUPPLIED_WORKER.md` review and preparation module define the exact
+source/prepared hashes. The strict settings, timestamp and newline corrections
+are shared. An old Assistant intent bound to a different preparation or runtime
+is preserved and requires a new reviewed plan; it is not silently reinterpreted.
 
-## Primary assistant integration and recovery
+The actual worker retains its `--job-dir` protocol. The existing service creates
+an immutable input copy, fresh private staging/cache and fixed settings for each
+file. Runtime Python starts isolated with explicit UTF-8 and a private bytecode
+cache prefix. Its selected runtime path is explicit; global site-packages and
+ambient imports are not an alternative dependency source. Offline flags and
+Python audit guards reject network/child-command use outside the reviewed
+protocol and Python file writes outside the private job stage. These are Python
+policy checks, not native network or operating-system isolation.
 
-Pass `SuppliedTranscriptionAdapter(installation)` as the optional `transcription`
-argument to `AssistantService`. The new allowlisted `audio.transcribe` step has
-required `path` and `name` arguments and optional `language`, `vad_filter`,
-`beam_size`, `condition_on_previous_text` arguments. `path` must be inside the
-approved input scope; `name` selects a new directory inside the approved output
-scope. It creates `transcript.txt`, `transcript.srt`, `transcript.vtt` and
-`transcript.json`. A caller may submit several separately authorized steps for
-a batch. No arbitrary worker path, model name, command or remote endpoint can
-come from a plan. Existing GUI constructors do not configure this optional
-adapter, so merely adding an ASR JSON step does not enable an engine.
+## One job, controls and verified results
 
-The existing assistant intent stores input bytes SHA256, settings, adapter and
-installation identities before launch. Before publishing it stores the exact
-four artifact paths, sizes and SHA256 values. Publication never replaces an
-existing file. A saved completed publication is checksum-verified and reused
-after a crash/cancellation. An interrupted publication may finish only if the
-retry reproduces the saved artifacts exactly; externally edited or different
-outputs require review. Cancellation terminates the owned worker with the
-existing runner, discards incomplete staging and preserves completed files.
-Resumption restarts an incomplete file; it does not promise mid-file acoustic
-checkpoints. Within one application store, a per-installation OS file lock prevents
-simultaneous calls using that manifest; different application roots do not share
-that lock and require separate resource admission; the worker itself has `parallel_files=1` and immutable settings.
-An abrupt process kill between hard-link publication and staging unlink can
-leave a linked output and private staging residue. Verification then fails
-closed and requires review; generic crash/power-loss recovery is not qualified.
+The allowlisted Assistant step has required `path` and `name`, with optional
+`language`, `vad_filter`, `beam_size` and `condition_on_previous_text`.
+Its input must remain in the approved input scope; its new export directory
+must remain in the approved output scope. No command, downloader name, runtime
+path or remote endpoint can be supplied by a plan.
 
-Common-v4 backup retains these assistant plans and inert checkpoints. The result
-explicitly lists source audio, exported transcripts, worker, runtime and model
-as external dependencies. This adapter does not add complete ASR migration:
-their bytes are not automatically copied into a library backup, and restoring
-to another data directory still requires explicit input/installation review.
+Before recognition, the Assistant persists the source digest, selected settings,
+runtime/preparation identity and destination. It then records the existing
+64-hex transcription job ID. The job lives in
+`state/transcription/<id>`; the GUI, CLI and Assistant read and control that same
+job. Identical input bytes, settings and runtime can reuse its verified complete
+result for a second independently approved export.
 
-## Observed evidence and remaining acceptance
+Assistant pause/cancel is forwarded to that job's existing control file from
+the operation worker. Shared resource admission and native process cleanup
+remain owned by TranscriptionService. A stopped file resumes through the
+existing per-file checkpoint; this is not a mid-file acoustic checkpoint.
 
-The exact private worker was run through this adapter on Linux using an isolated
-synthetic SDK and synthetic audio. Selected Ukrainian recognition produced all
-four verified exports; a synthetic auto-detection error remained failed and
-produced no exports. A required SRT write failure in the real worker also remained
-failed at the adapter boundary despite the worker's success status. Source and
-prepared hashes above matched. Reproduce locally, with the private source kept
-outside the repository, using
-`PYTHONPATH=src python scripts/verify_supplied_transcription_protocol.py --worker /absolute/private/worker.py`.
-This tests the
-actual supplied worker protocol and correction, without claiming model inference
-or acoustic quality. Public regressions use an explicitly synthetic process and
-cover omitted exports, false success, forced-language/settings mismatch, source
-changes preserving size/mtime, no-overwrite, partial-publication resume,
-cancellation after commit, active-process cancellation, runtime/model tampering,
-path authorization, and common-v4 checkpoint preservation.
+The common service requires TXT, SRT, VTT and JSON to agree with the requested
+source, settings, language and finite ordered segment times. A zero exit code or
+a success string alone is insufficient. Its complete per-file directory and
+receipt are published together. The Assistant verifies that receipt and checks
+every payload against its checksum again while copying the selected external
+export. A changed generated transcript is preserved and rejected.
 
-Real runtime/model installation, measured long-file CPU/memory behavior,
-multilingual audio quality, native Windows offline execution, NVDA/UI selection
-and editing, complete pending-ASR migration, speaker diarization and word
-alignment remain **NOT_RUN / not implemented by this adapter**. The supplied
-project root contained no model directory or immutable dependency/model lock.
-This adapter advances ASR-01 through ASR-06 protocol safeguards; it does not mark
-ASR-07 or ASR-08, or the complete platform, passed.
+The Assistant exports `transcript.txt`, `transcript.srt`,
+`transcript.vtt` and `transcript.json` through the existing create-only
+publication helper. Its saved intent contains their exact paths, sizes and
+digests before publication. Interrupted external publication can finish only
+with the same saved payloads; existing edited files are never replaced.
+Completed generated results are reused without rerunning inference. Completion
+after a late publication interruption requires the captured output inodes, exact
+expected byte lengths and SHA256 values, and unchanged output directories.
+Cleanup removes only this call's captured staging files. Unexpected files and
+unconfirmed aliases remain preserved. A verified export whose empty private
+stage cannot be cleaned up returns a separate cleanup notice; an unresolved
+extra hard link never becomes a completed ordinary artifact.
+
+The Assistant independently rehashes all four returned files inside the approved
+output scope and compares them with the previously saved publication inventory.
+Late cancellation cannot discard that completed step, but still prevents the
+next step from starting. Missing or changed files after the adapter returns
+remain a verification failure. A killed process may leave a partial export or
+a residual staging alias; these remain fail-closed for explicit owner review,
+rather than becoming cleanup instructions derived from mutable receipt paths.
+
+Export JSON records original source and installation identities plus the shared
+job ID, replacing disposable worker paths. The transcript is an editable
+derivative requiring human recognition review; it does not become a quotation
+source. Word alignment and diarization are not asserted.
+
+## Backup and restored scope
+
+The existing typed backup producer retains the Assistant plan/checkpoint and
+the shared ASR job's retained input and verified generated transcripts. Export
+copies outside the library, the private worker, interpreter/runtime packages and
+model remain external dependencies. The result states this split explicitly.
+
+Restore preserves the recorded Assistant input/output permissions and runtime
+identity. It does not authorize a moved library, different installation or new
+remote request. Select and review the external runtime and restored job before
+resuming. Complete exported files remain subject to the saved no-overwrite
+receipts.
+
+## Qualification
+
+Public regression cases use authored synthetic workers and SDKs. They exercise
+the real owned subprocess, UTF-8 protocol, strict language/settings/output
+validation, cancellation, pause/resume on the same typed control file, runtime
+identity, original/edited output preservation, backup declarations and reuse of
+a completed typed ASR result without another inference call.
+
+The protocol helper
+`scripts/verify_supplied_transcription_protocol.py --worker /absolute/private/worker.py`
+accepts an explicitly selected owner-local source and uses a synthetic SDK. It
+does not download or load a real recognition model. Its successful execution
+would qualify that protocol test only.
+
+This canonical compatibility reconciliation is a **source proposal pending
+execution** until its exact composed test/CI evidence is recorded. Earlier
+component results do not establish a pass for this new union. Real model
+inference, offline Windows runtime qualification, microphone/recognition
+accuracy, long-file CPU/RAM measurements and human NVDA use remain separate
+acceptance work. No such result is inferred from the synthetic tests.

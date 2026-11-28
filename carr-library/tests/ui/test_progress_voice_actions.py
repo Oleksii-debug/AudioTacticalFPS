@@ -2,6 +2,8 @@
 
 import ast
 from concurrent.futures import Future
+from contextlib import contextmanager
+from importlib.util import find_spec
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -10,15 +12,31 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.speech.progress_speech import activate_progress_voice, play_when_quiet
+from carr_library.speech.reading import ReadingDocument
 from carr_library.speech.runtime import Voice, VoiceRegistry
+from carr_library.speech.session import ReaderDraftStore, ReaderResume
 
 
 def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=False):
     """Retain the real nested callback bodies and their mutable closure cells."""
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui' / filename
+    source = Path(find_spec('carr_library.ui.' + Path(filename).stem).origin)
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body
                   if isinstance(node, ast.FunctionDef) and node.name == window_name)
+    names = set(names)
+    if filename == 'speech_dialog.py':
+        names.update(('detach_reader', 'transfer_owner', 'release_owner'))
+        values = dict(values)
+        values.setdefault('appearance', None)
+    if filename == 'studio_dialog.py':
+        values = dict(values)
+        values.setdefault('owned_progress_voices', set())
+        values.setdefault('cleanup_retry_registered', False)
+        if names.intersection(('release_service', 'select_progress_voice')):
+            names.update(('retire_progress_voice', 'release_service'))
+            values.setdefault('frame', SimpleNamespace(_closing=True))
+            values.setdefault('wx', SimpleNamespace(CallAfter=lambda callback: None))
+            values.setdefault('service', SimpleNamespace(close=lambda: None))
     definitions = [node for node in window.body
                    if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == set(names)
@@ -58,10 +76,7 @@ class Progress:
         self.name, self.events = name, events if events is not None else []
         self.ready, self.closed = False, False
         self.holds, self.players, self.selections = [], [], []
-        self.preferences = SimpleNamespace(mode='off', muted=False)
-        self.store = SimpleNamespace(load=Mock(return_value=self.preferences))
-        self.feedback = SimpleNamespace(set_preferences=Mock())
-        self.mute = SimpleNamespace(SetValue=Mock())
+        self.preferences = SimpleNamespace(mode='off')
         self.provider = None
         self.reject_selection = False
 
@@ -83,11 +98,11 @@ class Progress:
         self.selections.append((provider.voice.id, Path(root)))
         self.events.append(('select', self.name))
 
-    def settings(self):
+    def settings_dialog(self):
         assert self.provider is not None, 'Settings opened before explicit selection'
         self.events.append(('settings', self.name))
 
-    def _effective_preferences(self, preferences): return preferences
+    def reload_preferences(self): self.events.append(('reload', self.name))
 
 
 class Scheduler:
@@ -104,29 +119,6 @@ class WorkQueue:
     def finish(self):
         work, done, _ = self.pending.pop(0)
         done(work())
-
-
-class CleanupQueue:
-    """Controlled executor boundary; production close_after_worker queues work."""
-
-    def __init__(self):
-        self.pending = []
-        self.submit = Mock(side_effect=self._submit)
-        self.shutdown = Mock()
-
-    def _submit(self, action):
-        future = Future()
-        self.pending.append((action, future))
-        return future
-
-    def finish(self):
-        action, future = self.pending.pop(0)
-        assert future.set_running_or_notify_cancel()
-        try:
-            future.set_result(action())
-        except BaseException as error:
-            future.set_exception(error)
-        return future
 
 
 class Choice:
@@ -151,14 +143,14 @@ def reader(tmp_path, monkeypatch):
     progress, scheduler, work = Progress(), Scheduler(), WorkQueue()
     registry, roots, activations, created = VoiceRegistry([ListedVoices()]), [], [], []
 
-    def registry_factory(state_root, *, cancelled=lambda: False):
-        assert callable(cancelled)
+    def registry_factory(state_root, **_ignored):
         roots.append(Path(state_root))
         return registry
 
-    def activate(root, voice_id):
+    def activate(root, voice_id, *, cancelled):
         activations.append((Path(root), voice_id))
-        provider = activate_progress_voice(root, voice_id, _registry_factory=registry_factory)
+        provider = activate_progress_voice(root, voice_id, cancelled=cancelled,
+                                           _registry_factory=registry_factory)
         created.append(provider)
         return provider
 
@@ -166,18 +158,32 @@ def reader(tmp_path, monkeypatch):
     reports, choice = [], Choice()
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
+    editor = Mock(value='')
+    editor.GetValue.side_effect = lambda: editor.value
+    editor.ChangeValue.side_effect = lambda value: setattr(editor, 'value', value)
+    editor.GetLastPosition.side_effect = lambda: len(editor.value)
+    editor.GetRange.side_effect = lambda start, end: editor.value[start:end]
+    live = SimpleNamespace(voice=choice, _voices=registry.voices(), core=Mock(busy=False),
+                           close=Mock(), stop=Mock(), rate=Mock(), volume=Mock())
     values = dict(parent=parent, progress=progress, voice_choice=choice,
+        owned_registries=set(), ownership_lock=threading.RLock(),
         voices=registry.voices(), registry=registry, run=work, report=report,
-        alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
-        wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
+        alive=True, busy=False, playback_generation=0, cancel=threading.Event(), player=Mock(),
+        wx=SimpleNamespace(CallLater=scheduler, ID_CANCEL=1, NOT_FOUND=-1),
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
-        source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
+        source_guard=lambda: None, recovered=None, recovery_notice='', editor=editor,
+        source_loader=None, draft_store=None, save_path=None, last_audio=None,
+        last_recovery_signature=None, rate=Mock(), volume=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
-        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
+        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock(),
+        live=live, resources_closed=False, displayed={}, source_locations=(), native_id=4100)
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
-        values, globals_={'activate_progress_voice': activate}, cleanup=True)
+        ['select_progress_voice', 'close_resources', 'closing', 'open_project',
+         'recover_saved_draft', 'with_recovery_warning', 'display_document', 'restore_cursor'],
+        values, globals_={'activate_progress_voice': activate, 'ReadingDocument': ReadingDocument,
+                         'ReaderDraftStore': ReaderDraftStore,
+                         'native_cursor_position': __import__('carr_library.ui.live_reading',
+                             fromlist=['native_cursor_position']).native_cursor_position}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
         parent=parent, choice=choice, reports=reports, registry=registry)
@@ -186,9 +192,11 @@ def reader(tmp_path, monkeypatch):
 
 
 def test_reader_discovery_does_not_activate_progress_and_explicit_choice_uses_current_root(reader, tmp_path):
-    reader.handlers.reload()
-    reader.work.finish()
-    assert reader.choice.items and reader.choice.selection == 0
+    from carr_library.ui.live_reading import LiveReadingControls
+    live = reader.values['live']
+    live.closed, live._report = False, Mock()
+    LiveReadingControls.discover(live)
+    live.core.discover_voices.assert_called_once_with()
     assert reader.activations == []
     assert reader.progress.provider is None and reader.progress.events == []
 
@@ -224,29 +232,221 @@ def test_reader_rejected_activation_closes_provider_without_opening_settings(rea
 
 
 @pytest.mark.parametrize('termination', ['stop', 'close'])
-def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(reader, termination):
-    started = Mock()
-    reader.handlers.start_playback(started)
-    assert reader.scheduler.pending and not reader.progress.holds[0].closed
-    if termination == 'stop':
-        reader.handlers.stop_audio()
-        reader.values['player'].stop.assert_called_once()
+def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(tmp_path, termination):
+    import time
+    from carr_library.reader.live_reading import DocumentSequence, LiveReader
+    from carr_library.speech.reading import ReadingDocument
+    voice = Voice('fixture:explicit', 'Explicit fixture', 'fixture', 'en')
+    render, player = Mock(), Mock()
+    player.available.return_value = True
+    sequence = DocumentSequence(tmp_path, ReadingDocument('A deferred source sentence.'))
+    core = LiveReader(sequence, discover=lambda **kwargs: (voice,), render=render,
+                      player_factory=lambda: player, require_display_ack=True)
+    try:
+        core.discover_voices().result(5)
+        future = core.start(1, voice.id)
+        deadline = time.monotonic() + 5
+        while core.status().section is None:
+            assert time.monotonic() < deadline
+            time.sleep(.01)
+        section = core.status().section
+        assert not future.done()
+        (core.stop if termination == 'stop' else core.close)()
+        core.acknowledge(section)  # A late native/display acknowledgement cannot start it.
+        future.result(5)
+        render.assert_not_called()
+        player.play.assert_not_called()
+        assert core.status().state in ('closed', 'stopped') and core.quiescent
+    finally:
+        completion = core.close()
+        if completion is not None:
+            completion.result(5)
+
+
+@contextmanager
+def pending_live(reader, tmp_path):
+    """Real live worker waiting for the exact section's native acknowledgement."""
+    import time
+    from carr_library.reader.live_reading import DocumentSequence, LiveReader
+    tmp_path.mkdir()
+    voice = Voice('fixture:deferred', 'Deferred fixture', 'fixture', 'en')
+    render = Mock(side_effect=RuntimeError('Synthetic render boundary reached.'))
+    player = Mock()
+    player.available.return_value = True
+    player.status.return_value = {'state': 'closed'}
+    core = LiveReader(DocumentSequence(tmp_path, ReadingDocument('Previous pending text.')),
+        discover=lambda **kwargs: (voice,), render=render, player_factory=lambda: player,
+        require_display_ack=True)
+    live = reader.values['live']
+    previous = live.core, live.stop
+    live.core, live.stop = core, Mock(side_effect=core.stop)
+    try:
+        core.discover_voices().result(5)
+        future = core.start(1, voice.id)
+        deadline = time.monotonic() + 5
+        while core.status().section is None:
+            assert not future.done() and time.monotonic() < deadline, core.status()
+            time.sleep(.01)
+        section = core.status().section
+        assert not future.done()
+        render.assert_not_called()
+        player.play.assert_not_called()
+        yield SimpleNamespace(core=core, section=section, future=future,
+                              render=render, player=player)
+    finally:
+        completion = core.close()
+        if completion is not None:
+            completion.result(5)
+        live.core, live.stop = previous
+
+
+@pytest.mark.parametrize('replacement', ['project', 'saved_draft'])
+@pytest.mark.parametrize('accepted', [False, True])
+def test_reader_document_replacement_invalidates_deferred_previous_audio(
+        reader, tmp_path, monkeypatch, replacement, accepted):
+    """Execute real handlers, durable drafts and the pending live-worker boundary."""
+    document = ReadingDocument('Replacement original text.', title='Replacement reading')
+    document.set_text('Saved replacement edits.')
+    original = ReaderDraftStore(tmp_path, slot='saved-replacement')
+    original.save(ReaderResume(document))
+    before = original.path.read_bytes()
+    with pending_live(reader, tmp_path / 'live') as pending:
+        _replace_document(reader, tmp_path, monkeypatch, replacement, accepted, document, original, before, pending)
+
+
+def _replace_document(reader, tmp_path, monkeypatch, replacement, accepted, document, original, before, pending):
+
+    if replacement == 'project':
+        path = tmp_path / 'replacement.reading.json'
+        document.save(path)
+        selected = reader.values['wx']
+        selected.ID_OK, selected.FD_OPEN, selected.FD_FILE_MUST_EXIST = 2, 0, 0
+
+        class SelectedProject:
+            def __init__(self, *args, **kwargs): pass
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def Destroy(self): pass
+            def ShowModal(self): return selected.ID_OK if accepted else selected.ID_CANCEL
+            def GetPath(self): return str(path)
+
+        selected.FileDialog = SelectedProject
+        reader.handlers.open_project()
     else:
-        reader.handlers.closing(None)
-        reader.values['dialog'].EndModal.assert_called_once_with(1)
-        # Execute the real outer finally block when the simulated modal unwinds.
-        reader.handlers.cleanup()
-        reader.values['player'].close.assert_called_once()
-        reader.values['dialog'].Destroy.assert_called_once()
-        reader.values['audio_files'].cleanup.assert_not_called()
-        reader.values['executor'].finish().result()
-        reader.values['audio_files'].cleanup.assert_called_once()
-    reader.progress.ready = True
-    reader.scheduler.tick()
-    started.assert_not_called()
-    assert reader.scheduler.pending == []
-    assert all(hold.closed for hold in reader.progress.holds)
+        from carr_library.ui import research_actions
+        chooser = Mock(return_value=0 if accepted else None)
+        monkeypatch.setattr(research_actions, 'NativeDialogs',
+                            lambda: SimpleNamespace(choose=chooser))
+        reader.handlers.recover_saved_draft()
+        assert len(reader.work.pending) == 1
+        reader.work.finish()  # Real bounded discovery, then the explicit choice.
+        if accepted:
+            assert len(reader.work.pending) == 1
+            reader.work.finish()  # Real independent recovery and replacement.
+        chooser.assert_called_once()
+
+    if accepted:
+        reader.values['live'].stop.assert_called_once()
+        reader.values['editor'].ChangeValue.assert_called_with('Saved replacement edits.')
+    else:
+        reader.values['live'].stop.assert_not_called()
+        reader.values['editor'].ChangeValue.assert_not_called()
+    pending.core.acknowledge(pending.section)
+    pending.future.result(5)
+    if accepted:
+        pending.render.assert_not_called()
+    else:
+        pending.render.assert_called_once()
+    pending.player.play.assert_not_called()
+    assert pending.core.quiescent
+    assert original.path.read_bytes() == before
     assert not any('Playback did not start' in report for report in reader.reports)
+
+
+@pytest.mark.parametrize('binding', ['same', 'legacy_same', 'pre_release_same', 'unbound', 'different', 'pending'])
+def test_source_bound_reader_open_project_preserves_lineage_before_replacing_playback(
+        reader, tmp_path, binding):
+    from carr_library.application import LibraryApp
+    from carr_library.durable_state import encode
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.speech.source import read_source_range
+
+    app = LibraryApp(tmp_path / 'sources')
+    workspace = app.create_workspace('Current retained source')
+    imported = app.add_text(workspace, 'Same title', 'Identical retained source text.')
+    source = read_source_range(ReadingDesk(app, workspace, imported['edition']), 1, 1)
+    current = source.reading_document()
+    current.save(tmp_path / 'current.reading.json')
+    if binding == 'unbound':
+        replacement = ReadingDocument(current.source_text)
+    elif binding == 'different':
+        other_workspace = app.create_workspace('Different retained source')
+        other = app.add_text(other_workspace, 'Same title', current.source_text)
+        replacement = read_source_range(ReadingDesk(app, other_workspace, other['edition']), 1, 1).reading_document()
+    else:
+        replacement = source.reading_document()
+    assert replacement.source_text == current.source_text
+    replacement.set_text('Portable edited narration.')
+    path = tmp_path / 'portable.reading.json'
+    if binding == 'legacy_same':
+        record = replacement.to_dict()
+        record.pop('source_anchor')
+        record['source_origin'] = replacement.source_origin
+        path.write_bytes(encode(record))
+    elif binding == 'pre_release_same':
+        record = replacement.to_dict()
+        anchor = record['source_anchor']
+        anchor['schema'] = 'carr.narration-source.v1'
+        anchor['derived_separators'] = []
+        for position in anchor['positions']:
+            position['text_verified_at_read'] = position.pop('text_verified_at_capture')
+        path.write_bytes(encode(record))
+    else:
+        replacement.save(path)
+    before = path.read_bytes()
+    values = {**reader.values, 'document': current,
+              'source_loader': lambda cancelled: source, 'source_loaded': binding != 'pending'}
+    selected = values['wx']
+    selected.ID_OK, selected.FD_OPEN, selected.FD_FILE_MUST_EXIST = 2, 0, 0
+
+    class SelectedProject:
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def Destroy(self): pass
+        def ShowModal(self): return selected.ID_OK
+        def GetPath(self): return str(path)
+
+    selected.FileDialog = SelectedProject
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader',
+        ['open_project', 'display_document'], values, globals_={'ReadingDocument': ReadingDocument})
+    with pending_live(reader, tmp_path / 'live') as pending:
+        _check_bound_replacement(reader, handlers, values, binding, current, path, before, pending)
+
+
+def _check_bound_replacement(reader, handlers, values, binding, current, path, before, pending):
+    handlers.open_project()
+    accepted = binding in ('same', 'legacy_same', 'pre_release_same')
+    if accepted:
+        values['live'].stop.assert_called_once()
+        values['editor'].ChangeValue.assert_called_with('Portable edited narration.')
+        assert not any('standalone voice reader' in message for message in reader.reports)
+    else:
+        values['live'].stop.assert_not_called()
+        values['editor'].ChangeValue.assert_not_called()
+        assert any('standalone voice reader' in message for message in reader.reports)
+    pending.core.acknowledge(pending.section)
+    pending.future.result(5)
+    if accepted:
+        pending.render.assert_not_called()
+    else:
+        pending.render.assert_called_once()
+    pending.player.play.assert_not_called()
+    assert pending.core.quiescent
+    assert current.text == current.source_text and path.read_bytes() == before
+    if binding == 'pre_release_same':
+        assert any('pre-release reading-project format' in message and 'Save As' in message
+                   for message in reader.reports)
 
 
 def test_studio_explicit_voice_selection_creates_independent_parent_selection(reader):
@@ -254,12 +454,13 @@ def test_studio_explicit_voice_selection_creates_independent_parent_selection(re
     local, parent = Progress('studio', events), Progress('parent', events)
     reader.choice.selection = 1
     values = dict(voice_choice=reader.choice, voices=reader.registry.voices(),
+        alive=True, cancel=threading.Event(),
         dialog=reader.parent, progress=local, parent_progress=parent, run=reader.work,
-        report=lambda message, focus=False: reader.reports.append(message),
-        owned_progress_voices=set())
+        report=lambda message, focus=False: reader.reports.append(message))
     handler = callbacks('studio_dialog.py', 'show_studio', ['select_progress_voice'],
-        values, globals_={'activate_progress_voice': lambda root, voice_id:
-            activate_progress_voice(root, voice_id, _registry_factory=lambda state: reader.registry)})
+        values, globals_={'activate_progress_voice': lambda root, voice_id, **options:
+            activate_progress_voice(root, voice_id, **options,
+                _registry_factory=lambda state, **_ignored: reader.registry)})
     assert events == []
     handler.select_progress_voice()
     assert events == []
@@ -268,10 +469,7 @@ def test_studio_explicit_voice_selection_creates_independent_parent_selection(re
         assert local.provider is not parent.provider
         assert local.selections == parent.selections == [('fixture:selected', reader.parent.library.root)]
         assert events == [('select', 'studio'), ('select', 'parent'),
-                          ('settings', 'studio'), ('refresh', 'parent')]
-        parent.store.load.assert_called_once_with()
-        parent.feedback.set_preferences.assert_called_once_with(parent.preferences)
-        parent.mute.SetValue.assert_called_once_with(False)
+                          ('settings', 'studio'), ('reload', 'parent')]
         assert local.preferences.mode == parent.preferences.mode == 'off'
     finally:
         local.provider.close()
@@ -285,13 +483,15 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     local, parent, player = Progress('studio'), Progress('parent'), Mock()
     dialog = Mock()
     dialog._audio_player = player
+    dialog._playback_generation = 0
+    dialog._playback_navigation = Mock()
     values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+        get=lambda job: {'destination': str(tmp_path)}, close=Mock()), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
-        timer=Mock(), executor=CleanupQueue(), owned_progress_voices=set())
-    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close'], values)
+        timer=Mock(), executor=Mock(), cleanup_started=False, frame=Mock())
+    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close', 'dispose', 'cleanup', 'release_service'], values)
     handlers.preview()
     assert local.players == parent.players == [player]
     player.play.assert_not_called()
@@ -427,66 +627,168 @@ def test_hold_acquisition_failure_preserves_original_error_and_releases_every_pr
 
 
 def test_reader_failed_close_retains_its_pcm_and_still_destroys_dialog(reader):
-    player, temporary = reader.values['player'], reader.values['audio_files']
-    player.close.side_effect = RuntimeError('Native stop and close failed')
+    # PCM/device retention is covered against the real LiveReader in
+    # test_live_reading; this host must still finish after a failed handoff.
+    live = reader.values['live']
+    live.close.side_effect = RuntimeError('Native stop and close failed')
     reader.handlers.cleanup()
-    temporary.cleanup.assert_not_called()
+    live.close.assert_called_once()
     reader.values['dialog'].Destroy.assert_called_once()
-    assert ('unregister', 'main', False) in reader.progress.events
-    assert any(entry[0] is player and entry[1] is temporary
-               for entry in reader.parent._reader_playback_retained)
+    reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     assert any('Native stop and close failed' in message for message in reader.reports)
-    reader.values['executor'].finish().result()
-    temporary.cleanup.assert_not_called()
 
 
-@pytest.mark.parametrize('stage', ['worker_shutdown', 'temporary_cleanup'])
+@pytest.mark.parametrize('stage', ['worker_shutdown', 'live_cleanup'])
 def test_reader_dialog_is_destroyed_even_when_final_cleanup_raises(reader, stage):
-    player, temporary = reader.values['player'], reader.values['audio_files']
     if stage == 'worker_shutdown':
         message = 'Worker shutdown unavailable'
         reader.values['executor'].shutdown.side_effect = RuntimeError(message)
     else:
-        message = 'Temporary file cleanup denied'
-        temporary.cleanup.side_effect = PermissionError(message)
+        message = 'Live worker cleanup unavailable'
+        reader.values['live'].close.side_effect = PermissionError(message)
     reader.handlers.cleanup()
     reader.values['dialog'].Destroy.assert_called_once()
-    if stage == 'temporary_cleanup':
-        temporary.cleanup.assert_not_called()
-        # Real ReaderResources runs after the UI returns, through the actual
-        # close_after_worker helper and a controlled executor boundary.
-        assert reader.values['executor'].finish().done()
-    assert any(entry[0] is player and entry[1] is temporary
-               for entry in reader.parent._reader_playback_retained)
     assert any(message in report for report in reader.reports)
-    if stage == 'worker_shutdown':
-        temporary.cleanup.assert_not_called()
-    else:
-        temporary.cleanup.assert_called_once()
+    reader.values['live'].close.assert_called_once()
 
 
 def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reader):
-    player, temporary = reader.values['player'], reader.values['audio_files']
-    player.close.side_effect = RuntimeError('Native close failed')
+    reader.values['live'].close.side_effect = RuntimeError('Native close failed')
     reader.parent.report = Mock(side_effect=RuntimeError('Parent reporter detached'))
     reader.handlers.cleanup()
     reader.parent.report.assert_called_once()
     reader.values['dialog'].Destroy.assert_called_once()
-    temporary.cleanup.assert_not_called()
-    assert any(entry[0] is player and entry[1] is temporary
-               for entry in reader.parent._reader_playback_retained)
-    reader.values['executor'].finish().result()
-    temporary.cleanup.assert_not_called()
 
 
 def test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup(reader):
     reader.progress.unregister_player = Mock(side_effect=RuntimeError('Progress observer detached'))
     reader.handlers.cleanup()
-    reader.values['player'].close.assert_called_once()
-    reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+    reader.values['live'].close.assert_called_once()
+    reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     reader.values['dialog'].Destroy.assert_called_once()
-    reader.values['audio_files'].cleanup.assert_not_called()
-    reader.values['executor'].finish().result()
-    reader.values['audio_files'].cleanup.assert_called_once()
-    assert any('Progress observer detached' in message for message in reader.reports)
+    reader.progress.unregister_player.assert_not_called()  # Plain worker-completion lease, no late native observer.
     assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+def test_reader_late_progress_voice_activation_is_closed_without_touching_destroyed_ui(reader):
+    future, queued, completed = Future(), [], Mock()
+    reader.values['executor'].submit.return_value = future
+    reader.values['wx'] = SimpleNamespace(CallAfter=queued.append)
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader', ['run', 'close_resources'], reader.values)
+    handlers.run(lambda: None, completed, discard=lambda provider: provider.close())
+    handlers.close_resources()
+    provider = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
+        _registry_factory=lambda state, **_ignored: reader.registry)
+    future.set_result(provider)
+    assert provider._closed.is_set() and queued == []
+    completed.assert_not_called()
+
+
+def test_reader_rewrapped_native_destruction_ignores_children_and_discards_late_activation(reader):
+    future, queued, completed = Future(), [], Mock()
+    reader.values['executor'].submit.return_value = future
+    reader.values['wx'] = SimpleNamespace(CallAfter=queued.append)
+    reader.values['dialog'].GetId.side_effect = AssertionError('The original native wrapper expired.')
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader',
+                         ['run', 'close_resources', 'destroyed'], reader.values)
+    handlers.run(lambda: None, completed, discard=lambda provider: provider.close())
+    child = SimpleNamespace(GetId=lambda: 4101, GetEventObject=lambda: object(), Skip=Mock())
+    handlers.destroyed(child)
+    child.Skip.assert_called_once_with()
+    reader.values['live'].close.assert_not_called()
+    assert not reader.values['cancel'].is_set()
+    owner = SimpleNamespace(GetId=lambda: 4100, GetEventObject=lambda: object(), Skip=Mock())
+    handlers.destroyed(owner)
+    owner.Skip.assert_called_once_with()
+    assert reader.values['cancel'].is_set()
+    reader.values['live'].close.assert_called_once_with()
+    reader.values['autosave_timer'].Stop.assert_called_once_with()
+    reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    reader.values['dialog'].GetId.assert_not_called()
+    provider = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
+        _registry_factory=lambda state, **_ignored: reader.registry)
+    future.set_result(provider)
+    assert provider._closed.is_set() and queued == []
+    completed.assert_not_called()
+
+
+def test_reader_pending_progress_voice_activation_uses_reader_cancellation(reader):
+    reader.choice.selection = 1
+    reader.handlers.select_progress_voice()
+    assert reader.work.pending
+    reader.values['cancel'].set()
+    with pytest.raises(InterruptedError):
+        reader.work.finish()
+    assert not reader.created and reader.progress.provider is None
+    assert not reader.roots
+
+
+def test_reader_final_cleanup_releases_unapplied_progress_selection_even_without_gui_delivery(reader):
+    selection = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
+        _registry_factory=lambda state_root, **options: reader.registry)
+    reader.values['owned_registries'].add(selection)
+    try:
+        reader.handlers.cleanup()
+        assert selection._closed.is_set()
+        assert selection._ownership.finished.wait(5)
+        assert not reader.registry._providers
+        assert not reader.values['owned_registries']
+        assert reader.progress.provider is None
+    finally:
+        selection.close()
+
+
+@pytest.mark.parametrize('cleanup_failure', ['returns-false', 'raises', 'interrupted'])
+def test_reader_rejected_progress_handoff_retains_actual_selection_until_retry(reader, cleanup_failure):
+    reader.progress.reject_selection = True
+    reader.handlers.select_progress_voice()
+    work, accepted, _ = reader.work.pending.pop(0)
+    selection = work()
+    # The real run() completion registers this owned result before UI delivery;
+    # the separate real-future cases exercise that registration boundary.
+    reader.values['owned_registries'].add(selection)
+    actual_close = selection.close
+    attempts = []
+    def failed_close():
+        attempts.append(True)
+        if cleanup_failure == 'raises':
+            raise OSError('Selected progress worker cleanup is unconfirmed.')
+        if cleanup_failure == 'interrupted':
+            raise KeyboardInterrupt('Selected progress cleanup interrupted.')
+        return False
+    selection.close = failed_close
+    try:
+        with pytest.raises(ValueError, match='Library folder changed'):
+            accepted(selection)
+        assert attempts == [True]
+        assert reader.values['owned_registries'] == {selection}
+        assert reader.progress.provider is None and reader.progress.events == []
+        assert not selection._closed.is_set() and reader.registry._providers
+        selection.close = actual_close
+        reader.handlers.cleanup()
+        assert selection._closed.is_set() and selection._ownership.finished.wait(5)
+        assert not reader.values['owned_registries'] and not reader.registry._providers
+    finally:
+        selection.close = actual_close
+        selection.close()
+
+
+def test_reader_accepted_progress_owner_survives_nested_settings_destruction(reader):
+    reader.handlers.select_progress_voice()
+    work, accepted, _ = reader.work.pending.pop(0)
+    selection = work()
+    reader.values['owned_registries'].add(selection)
+    def settings_destroy_reader():
+        reader.handlers.cleanup()
+        raise RuntimeError('The settings modal lost its parent.')
+    reader.progress.settings_dialog = settings_destroy_reader
+    try:
+        with pytest.raises(RuntimeError, match='settings modal'):
+            accepted(selection)
+        assert reader.progress.provider is selection
+        assert not reader.values['owned_registries']
+        assert not selection._closed.is_set()
+        assert reader.registry.get('fixture:selected').id == 'fixture:selected'
+    finally:
+        selection.close()
+        assert selection._ownership.finished.wait(5)

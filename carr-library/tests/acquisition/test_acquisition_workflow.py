@@ -191,6 +191,70 @@ def test_cancelled_reference_save_rolls_back(sample):
     assert references(app, workspace) == ()
 
 
+def test_isbn_book_metadata_and_provenance_survive_existing_backup(sample, tmp_path):
+    app, workspace, transfers = sample
+    isbn = '9780306406157'
+    record = {'title': 'Synthetic ISBN textbook',
+        'authors': [{'name': 'Олена Автор'}], 'publish_date': '2026',
+        'publishers': [{'name': 'Synthetic Academy'}],
+        'identifiers': {'isbn_13': [isbn], 'isbn_10': ['0306406152']},
+        'url': 'https://openlibrary.org/books/OL123M', 'number_of_pages': 400}
+    transfers.payloads['openlibrary'] = json.dumps({'ISBN:' + isbn: record}).encode()
+    preview = app.lookup_isbn(workspace, isbn, online_allowed=True)
+    assert preview.identifier_kind == 'isbn' and preview.identifier == isbn
+    assert preview.doi == '' and preview.metadata.pages == ''
+    saved = app.save_doi_reference(workspace, preview)
+    assert saved.isbn == isbn and saved.doi == ''
+    assert saved.title == record['title'] and saved.authors == ('Олена Автор',)
+    assert not saved.url.startswith('https://doi.org/')
+    assert 'openlibrary' in saved.notes and preview.metadata.raw_sha256 in saved.notes
+    assert 'source_text_verified' in saved.notes and not app.browse(workspace)
+    destination = tmp_path / 'isbn-backup'
+    digest = app.backup(destination)
+    restore_backup(destination, tmp_path / 'isbn-restored', digest)
+    restored = LibraryApp(tmp_path / 'isbn-restored')
+    assert references(restored, workspace) == (saved,)
+
+
+def test_openalex_source_uses_existing_verified_download_and_import(sample, tmp_path):
+    app, workspace, transfers = sample
+    location = {'pdf_url': SOURCE, 'landing_page_url': 'https://open.example.org/article',
+        'is_oa': True, 'version': 'acceptedVersion', 'license': 'cc-by',
+        'source': {'display_name': 'Synthetic Repository', 'type': 'repository'}}
+    record = {'doi': 'https://doi.org/' + DOI, 'title': 'Synthetic OpenAlex record',
+        'type': 'article', 'publication_year': 2026,
+        'authorships': [{'author': {'display_name': 'Олена Автор'}}],
+        'open_access': {'is_oa': True}, 'primary_location': location,
+        'best_oa_location': location, 'locations': [location],
+        'biblio': {'volume': '1', 'issue': '2', 'first_page': '10', 'last_page': '20'}}
+    transfers.payloads['openalex'] = json.dumps(record).encode()
+    preview = app.lookup_doi(workspace, DOI, online_allowed=True, providers=('openalex',))
+    assert preview.metadata.provider == 'openalex' and preview.doi == DOI
+    assert preview.sources and all(s.provider == 'openalex' for s in preview.sources)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'OpenAlex source',
+        online_allowed=True, rights_confirmed=True)
+    assert result.state == 'complete'
+    receipt = json.loads(result.receipt_path.read_text(encoding='utf-8'))
+    assert receipt['source_provider'] == 'openalex' and receipt['provider_license'] == 'cc-by'
+    assert receipt['source_text_verified'] is False
+    assert app.search(workspace, 'source wording')[0].verified is False
+
+
+def test_openalex_metadata_language_never_replaces_source_language(sample):
+    app, workspace, transfers = sample
+    source = app.add_text(workspace, 'Український оригінал', 'Точний український текст.',
+        authors=('Оригінальний Автор',), language='uk')
+    original = app.assets.resolve(source['asset']).read_bytes()
+    transfers.payloads['openalex'] = json.dumps({'doi': 'https://doi.org/' + DOI,
+        'title': 'English metadata title', 'language': 'en', 'authorships': [],
+        'locations': [], 'type': 'article'}).encode()
+    preview = app.lookup_doi(workspace, DOI, online_allowed=True, providers=('openalex',))
+    current = app.edition_metadata(workspace, source['edition'])
+    app.apply_doi_metadata(workspace, source['edition'], preview, expected_metadata=current)
+    assert app.edition_metadata(workspace, source['edition']).language == 'uk'
+    assert app.assets.resolve(source['asset']).read_bytes() == original
+
+
 def test_download_needs_separate_permission_and_new_folder(sample, tmp_path):
     app, workspace, transfers = sample
     preview = lookup(app, workspace, oa=True)
@@ -320,8 +384,14 @@ def test_download_publication_on_filesystem_without_hardlinks(sample, tmp_path, 
     from carr_library.acquisition import service
     app, workspace, transfers = sample
     preview = lookup(app, workspace, oa=True)
-    def unsupported(*args, **kwargs):
-        raise OSError(errno.EOPNOTSUPP, 'Synthetic filesystem has no hard links')
+    actual_link, fallback = service.os.link, []
+    def unsupported(source, destination, *args, **kwargs):
+        # Only the selected download filesystem lacks hard links. The private
+        # library/coordinator retains its existing native filesystem contract.
+        if Path(destination).parent == tmp_path / 'portable-destination':
+            fallback.append(Path(destination).name)
+            raise OSError(errno.EOPNOTSUPP, 'Synthetic download filesystem has no hard links')
+        return actual_link(source, destination, *args, **kwargs)
     monkeypatch.setattr(service.os, 'link', unsupported)
     # RetainedAssets has a separate filesystem contract, so this case verifies
     # completed download publication and its truthful import-recovery result.
@@ -329,6 +399,7 @@ def test_download_publication_on_filesystem_without_hardlinks(sample, tmp_path, 
     result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'portable-destination',
         online_allowed=True, rights_confirmed=True)
     assert result.state == 'quarantined'
+    assert fallback == ['document.pdf', 'provenance.json']
     assert result.sha256 == sha256(result.path.read_bytes()).hexdigest()
     assert result.receipt_path.is_file() and result.path.stat().st_nlink == 1
     assert not (result.path.parent / '.acquisition-incomplete').exists()

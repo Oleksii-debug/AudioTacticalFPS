@@ -16,6 +16,8 @@ from unittest.mock import patch
 
 import pytest
 import carr_library
+from carr_library.application import LibraryApp
+from carr_library.research.topic_tree import TopicTree
 
 
 class Control:
@@ -30,6 +32,12 @@ class Control:
         self.pages = []
         self.modal_result = None
         self.options = kwargs
+    def GetId(self): return id(self)
+    def __bool__(self): return not self.destroyed
+    def IsBeingDeleted(self): return self.destroyed
+    def SetLabel(self, label): self.label = label
+    def GetStringSelection(self):
+        return self.items[self.index] if 0 <= self.index < len(self.items) else ''
     def Bind(self, event, callback): self.bindings[event] = callback
     def SetName(self, name): self.name = name
     def SetValue(self, value): self.value = value
@@ -42,6 +50,7 @@ class Control:
     def SetMaxLength(self, length): self.max_length = length
     def SetMinSize(self, value): self.min_size = value
     def SetSizer(self, value): self.sizer = value
+    def Layout(self): pass
     def SetEscapeId(self, value): self.escape_id = value
     def Add(self, *args): pass
     def AddPage(self, page, label): self.pages.append((page, label))
@@ -68,7 +77,8 @@ def module(tmp_path):
             'LEFT', 'RIGHT', 'TOP', 'BOTTOM', 'ALIGN_RIGHT', 'TE_MULTILINE',
             'TE_READONLY', 'ID_CANCEL', 'ID_OK', 'ID_YES', 'ID_NO', 'YES_NO',
             'NO_DEFAULT', 'ICON_QUESTION', 'EVT_BUTTON', 'EVT_CLOSE',
-            'EVT_CHOICE', 'EVT_TEXT', 'EVT_CHECKBOX', 'DD_DIR_MUST_EXIST')):
+            'EVT_CHOICE', 'EVT_TEXT', 'EVT_CHECKBOX', 'DD_DIR_MUST_EXIST',
+            'EVT_WINDOW_DESTROY')):
         setattr(wx, name, 1 << index)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -122,9 +132,19 @@ def preview_fixture(workspace='a', *, sources=True):
         fetched_utc='2026-11-26T12:00:00Z', cached=False)
 
 
-class Library:
+class Library(LibraryApp):
+    """Real authorized SQLite scopes; external acquisition calls are controlled."""
+
     def __init__(self, root):
-        self.root, self.calls, self.hook = root, [], None
+        super().__init__(root)
+        # Stable fixture identities retain all existing handler assertions while
+        # exercising the actual read transaction and TopicTree visibility gate.
+        with self.write() as db:
+            db.execute('INSERT INTO workspace(id) VALUES(?)', ('a',))
+            db.execute('INSERT INTO workspace_meta(workspace,name,description,archived) '
+                       'VALUES(?,?,?,0)', ('a', 'Synthetic acquisition library', ''))
+            TopicTree(db, 'a').create('topic-a', 'Synthetic research topic')
+        self.calls, self.hook = [], None
         self.preview = preview_fixture()
         self.ignore_cancel = False
         self.error = None
@@ -850,3 +870,20 @@ def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path):
         form.Destroy()
         host.Destroy()
         app.ProcessPendingEvents()
+
+
+@pytest.mark.parametrize('scope', ('workspace', 'topic'))
+def test_archived_database_scope_rejects_lookup_before_submission(setup, scope):
+    form, frame, library = setup
+    form.doi.SetValue('10.1234/reading')
+    form.online.SetValue(True)
+    if scope == 'workspace':
+        library.archive_workspace('a')
+    else:
+        with library.topic_transaction('a') as tree:
+            tree.archive('topic-a')
+    before = list(library.calls)
+    assert form.lookup() is False
+    assert frame.jobs == []
+    assert library.calls == before
+    assert not form.pending

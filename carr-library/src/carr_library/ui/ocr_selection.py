@@ -5,7 +5,7 @@ The trusted runtime's model listing runs off the UI thread with bounded output,
 cancellation and a deadline. wx is imported only when showing a dialog.
 """
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
+from dataclasses import asdict, replace
 import os
 from pathlib import Path
 import re
@@ -14,15 +14,15 @@ from tempfile import TemporaryFile
 from threading import Event
 import time
 
-from ..extract.ocr_languages import model_ids
+from ..extract.ocr_languages import model_ids, AUXILIARY_MODELS
 from ..extract.ocr_process import prepare_ocr_query, normalize_ocr_query_output
-from ..extract.page_ocr import Config
+from ..extract.page_ocr import Config, ExtendedConfig
 from ..extract.pinned_tessdata import MODELS, POLICY
 
 
 PROFILES = (('installed', 'Models installed with the current OCR runtime'),
             ('fast', 'Managed Fast models'), ('best', 'Managed Best models'))
-AUXILIARY = frozenset(('osd', 'equ'))
+AUXILIARY = AUXILIARY_MODELS
 MAX_INVENTORY_BYTES = 128 * 1024
 
 
@@ -144,7 +144,8 @@ def selectable_models(profile, identifiers, *, initial=None):
     return tuple(rows)
 
 
-def selected_config(profile, identifiers, available, *, orientation=False, initial=None):
+def selected_config(profile, identifiers, available, *, orientation=False, initial=None,
+                    automatic_languages=None):
     """Validate final native choices and preserve existing resource budgets."""
     if profile not in dict(PROFILES):
         raise ValueError('Choose an OCR model profile.')
@@ -158,11 +159,18 @@ def selected_config(profile, identifiers, available, *, orientation=False, initi
     if type(orientation) is not bool or orientation and 'osd' not in available:
         raise ValueError('Install the osd model in this profile to enable orientation detection.')
     previous = initial or Config()
+    automatic = previous.automatic_languages if automatic_languages is None else automatic_languages
+    if type(automatic) is not bool:
+        raise ValueError('Automatic language selection must be on or off.')
     policy = previous.model_policy
     if policy == POLICY and (profile == 'best' or not set(chosen) <= set(MODELS)):
         policy = 'default'
-    return replace(previous, languages='+'.join(chosen), model_profile=profile,
-                   orientation=orientation, model_policy=policy)
+    values = asdict(previous)
+    values.update(languages='+'.join(chosen), model_profile=profile,
+                  orientation=orientation, model_policy=policy)
+    if automatic or isinstance(previous, ExtendedConfig):
+        return ExtendedConfig(**{**values, 'automatic_languages': automatic})
+    return Config(**values)
 
 
 def _discover_with_dialog(parent):
@@ -250,9 +258,11 @@ def _choose_languages(parent, profile, available, initial):
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.result = None
             layout = wx.BoxSizer(wx.VERTICAL)
-            hint = wx.StaticText(self, label='Check only the languages or scripts used in these scanned pages. '
-                                 'Space selects or clears a model. Multiple selections enable mixed-language OCR; '
-                                 'they do not automatically identify the document language.')
+            hint = wx.StaticText(self, label='Check the local languages or scripts allowed for this import. '
+                                 'Space selects or clears a model. Manual mode uses this exact selection. '
+                                 'Automatic mode uses at most eight selected bootstrap models, then a pinned offline '
+                                 'text detector chooses language-specific paragraph alternatives from that same pool. '
+                                 'Uncertain or unsupported language results keep the first-pass candidate for review.')
             hint.Wrap(660)
             layout.Add(hint, 0, wx.EXPAND | wx.ALL, 8)
             self.entries = wx.CheckListBox(self, choices=[row[1] for row in rows])
@@ -265,6 +275,10 @@ def _choose_languages(parent, profile, available, initial):
             for index in checked:
                 self.entries.Check(index)
             self.entries.SetSelection(checked[0])
+            self.automatic = wx.CheckBox(self, label='Automatic &language detection and paragraph review (offline)')
+            self.automatic.SetName('Automatic OCR language detection; bounded selected model pool')
+            self.automatic.SetValue(initial.automatic_languages)
+            layout.Add(self.automatic, 0, wx.ALL, 8)
             self.orientation = wx.CheckBox(self, label='Check page &orientation using the installed osd model')
             self.orientation.SetName('Page orientation detection; requires the osd model in this profile')
             self.orientation.SetValue(initial.orientation and 'osd' in available)
@@ -293,7 +307,8 @@ def _choose_languages(parent, profile, available, initial):
             try:
                 checked = tuple(row[0] for index, row in enumerate(rows) if self.entries.IsChecked(index))
                 self.result = selected_config(profile, checked, available,
-                    orientation=self.orientation.GetValue(), initial=initial)
+                    orientation=self.orientation.GetValue(), initial=initial,
+                    automatic_languages=self.automatic.GetValue())
                 self.EndModal(wx.ID_OK)
             except ValueError as exc:
                 self.status.SetValue(str(exc))

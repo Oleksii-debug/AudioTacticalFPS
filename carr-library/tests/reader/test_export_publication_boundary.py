@@ -1,4 +1,6 @@
 """Fault injection at the create-only publication boundary, with real files."""
+import _compression
+from importlib.util import cache_from_source
 import os
 from pathlib import Path
 import subprocess
@@ -38,7 +40,7 @@ def test_create_only_cleanup_after_publication_is_truthful(tmp_path, monkeypatch
 
 
 @pytest.mark.parametrize('binary', [False, True])
-def test_process_exit_immediately_after_create_only_publication(tmp_path, binary):
+def test_process_exit_immediately_after_create_only_publication(tmp_path, monkeypatch, binary):
     target = tmp_path / 'result'
     private = tmp_path / 'private'
     private.mkdir()
@@ -57,12 +59,24 @@ payload = sys.argv[4]
 writer(sys.argv[1], payload.encode() if sys.argv[3] == '1' else payload,
        private_root=sys.argv[2], require_absent=True)
 '''
-    # The child must execute the same source/installed publisher as this test.
+    # The child must execute the same source/installed publisher as this test
+    # without rewriting a pre-existing bytecode cache in the sealed runtime.
+    cache_root = tmp_path / 'sealed-runtime-cache'
+    with monkeypatch.context() as context:
+        context.setattr(sys, 'pycache_prefix', str(cache_root))
+        compression_cache = Path(cache_from_source(_compression.__file__))
+    compression_cache.parent.mkdir(parents=True)
+    sealed_cache = b'Synthetic stale sealed _compression bytecode cache'
+    compression_cache.write_bytes(sealed_cache)
     environment = dict(os.environ, PYTHONPATH=str(Path(export_file.__file__).parents[2]))
+    environment.pop('PYTHONDONTWRITEBYTECODE', None)
+    environment['PYTHONPYCACHEPREFIX'] = str(cache_root)
     child = subprocess.run([sys.executable, '-B', '-c', code, str(target), str(private),
                             str(int(binary)), payload], capture_output=True, timeout=30,
                            env=environment)
     assert child.returncode == 74, child.stderr
+    assert compression_cache.read_bytes() == sealed_cache
+    assert list(cache_root.rglob('*.pyc')) == [compression_cache]
     assert target.read_bytes() == payload.encode()
     residue = list(tmp_path.glob('.research-export-*'))
     if os.name == 'nt':

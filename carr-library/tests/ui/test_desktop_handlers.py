@@ -1,5 +1,6 @@
 """Headless desktop event protocols; these are not native Windows/NVDA tests."""
 import ast
+import importlib.util
 from concurrent.futures import Future
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,6 +13,7 @@ import pytest
 
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 from carr_library.catalog.read_views import active_collections
 from carr_library.reader.context import open_context
 from carr_library.research.topic_tree import TopicTree
@@ -32,7 +34,7 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(importlib.util.find_spec('carr_library.ui.desktop_app').origin).resolve()
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -64,6 +66,7 @@ def frame(classes):
     value.menu_bar.GetMenuCount.return_value = 3
     value.report = Mock()
     value.executor = Mock()
+    value.library = SimpleNamespace(close_search=Mock(return_value=True))
     return value
 
 
@@ -88,6 +91,11 @@ def panel(classes):
     value.model.replace('a',(hit,))
     value.results = {'hit':hit}
     value._context_epoch = 1
+    value._search_page, value._source_history = None, []
+    value.search_navigation = {key: Mock() for key in ('result_previous', 'result_next', 'source_previous', 'source_next')}
+    for name, initial in (('search_timeout', '300'), ('search_memory', '64'), ('search_disk', '2048')):
+        setattr(value, name, Mock())
+        getattr(value, name).GetValue.return_value = initial
     value.query,value.retrieval,value.result_mode,value.collection = Mock(),Mock(),Mock(),Mock()
     value.query.GetValue.return_value = 'Exact'
     value.retrieval.GetSelection.return_value = 0
@@ -132,15 +140,23 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
     new_installers = []
-    for module, installer in [('speech_dialog', 'install_speech_actions'),
+    for module, installer in [('about_dialog', 'install_about_actions'),
+                              ('diagnostics_dialog', 'install_diagnostics_actions'),
+                              ('research_merge_dialog', 'install_research_merge_actions'),
+                              ('speech_dialog', 'install_speech_actions'),
+                              ('language_matrix', 'install_language_actions'),
+                              ('translation_dialog', 'install_translation_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
-                              ('operations_dialog', 'install_operations_actions'),
                               ('studio_dialog', 'install_studio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
-                              ('save_actions', 'install_save_actions'),
+                              ('workflow_templates', 'install_workflow_templates_actions'),
                               ('document_conversion', 'install_conversion_actions'),
-                              ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions')]:
+                              ('citation_formatting', 'install_citation_actions'),
+                              ('operations_dialog', 'install_operations_actions'),
+                              ('save_actions', 'install_save_actions'),
+                              ('backup_incremental_dialog', 'install_incremental_backup_actions'),
+                              ('portable_sync', 'install_portable_sync_actions'),
+                              ('trust_status', 'install_trust_actions')]:
         callback = Mock()
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
@@ -614,7 +630,7 @@ def test_no_pending_review_starts_no_approval(classes):
 
 def test_failed_open_retains_current_library_and_draft(classes,tmp_path):
     f = frame(classes)
-    old = SimpleNamespace(semantic_ranker=None)
+    old = SimpleNamespace(semantic_ranker=None, close_search=Mock(return_value=True))
     f.library = old
     f._confirm = Mock(return_value=True)
     f._drop = Mock()
@@ -630,7 +646,7 @@ def test_failed_open_retains_current_library_and_draft(classes,tmp_path):
 
 def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     f = frame(classes)
-    f.library = SimpleNamespace(semantic_ranker=None)
+    f.library = SimpleNamespace(semantic_ranker=None, close_search=Mock(return_value=True))
     f._confirm = Mock(return_value=True)
     f._drop,f.refresh_scopes = Mock(),Mock()
     f.scopes = []

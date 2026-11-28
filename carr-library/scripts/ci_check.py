@@ -5,22 +5,142 @@ Use only on a trusted synthetic test checkout, never on imported documents.
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from time import sleep
+import ntpath
 import os
 from pathlib import Path
 import signal
 import subprocess
 import sys
 import tempfile
-from time import sleep
+import time
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE_TIMEOUT_SECONDS = 600
+MAX_SUITE_TIMEOUT_SECONDS = 1800
+
+
+def _checked_timeout(seconds: int) -> int:
+    if type(seconds) is not int or not 1 <= seconds <= MAX_SUITE_TIMEOUT_SECONDS:
+        raise ValueError(f'An explicit suite timeout must be an integer from 1 to {MAX_SUITE_TIMEOUT_SECONDS} seconds.')
+    return seconds
+
+
+def _suite_timeout(value: str) -> tuple[str, int]:
+    selector, separator, seconds = value.rpartition('=')
+    if not separator or not selector or not seconds.isascii() or not seconds.isdecimal():
+        raise argparse.ArgumentTypeError('Use an exact selected SUITE=SECONDS timeout.')
+    try:
+        return selector, _checked_timeout(int(seconds))
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+class _WindowsDescendants:
+    """Retain waitable identities from a snapshot taken while the parent lives.
+
+    taskkill /T requests tree termination but does not give us descendant
+    handles to wait on. This snapshot covers the observed descendants; it is
+    not containment for a process that deliberately spawns after the snapshot.
+    """
+
+    def __init__(self, parent_pid: int):
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessEntry(ctypes.Structure):
+            _fields_ = [
+                ('dwSize', wintypes.DWORD), ('cntUsage', wintypes.DWORD),
+                ('th32ProcessID', wintypes.DWORD), ('th32DefaultHeapID', ctypes.c_size_t),
+                ('th32ModuleID', wintypes.DWORD), ('cntThreads', wintypes.DWORD),
+                ('th32ParentProcessID', wintypes.DWORD), ('pcPriClassBase', wintypes.LONG),
+                ('dwFlags', wintypes.DWORD), ('szExeFile', wintypes.WCHAR * 260),
+            ]
+
+        self._ctypes = ctypes
+        self._kernel = kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        self._handles = []
+        kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        for name in ('Process32FirstW', 'Process32NextW'):
+            function = getattr(kernel, name)
+            function.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
+            function.restype = wintypes.BOOL
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.CloseHandle.restype = wintypes.BOOL
+
+        snapshot = kernel.CreateToolhelp32Snapshot(2, 0)  # TH32CS_SNAPPROCESS
+        if snapshot == ctypes.c_void_p(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            try:
+                entry = ProcessEntry()
+                entry.dwSize = ctypes.sizeof(entry)
+                parents = {}
+                found = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
+                while found:
+                    parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+                    found = kernel.Process32NextW(snapshot, ctypes.byref(entry))
+                if ctypes.get_last_error() != 18:  # ERROR_NO_MORE_FILES
+                    raise ctypes.WinError(ctypes.get_last_error())
+                descendants = {parent_pid}
+                while True:
+                    children = {pid for pid, parent in parents.items() if parent in descendants}
+                    expanded = descendants | children
+                    if expanded == descendants:
+                        break
+                    descendants = expanded
+                for pid in sorted(descendants - {parent_pid}):
+                    handle = kernel.OpenProcess(0x100000, False, pid)  # SYNCHRONIZE
+                    if not handle:
+                        error = ctypes.get_last_error()
+                        if error == 87:  # The process disappeared before OpenProcess.
+                            continue
+                        raise ctypes.WinError(error)
+                    self._handles.append(handle)
+            finally:
+                if not kernel.CloseHandle(snapshot):
+                    raise ctypes.WinError(ctypes.get_last_error())
+        except BaseException:
+            self.close()
+            raise
+
+    def wait(self, timeout: float) -> None:
+        deadline = time.monotonic() + timeout
+        for handle in self._handles:
+            remaining = max(0, int((deadline - time.monotonic()) * 1000))
+            result = self._kernel.WaitForSingleObject(handle, remaining)
+            if result == 258:  # WAIT_TIMEOUT; one budget for the entire snapshot.
+                raise TimeoutError('A suite descendant did not terminate before cleanup.')
+            if result != 0:  # WAIT_OBJECT_0
+                raise self._ctypes.WinError(self._ctypes.get_last_error())
+
+    def close(self) -> None:
+        handles, self._handles = self._handles, []
+        error = None
+        for handle in handles:
+            if not self._kernel.CloseHandle(handle) and error is None:
+                error = self._ctypes.WinError(self._ctypes.get_last_error())
+        if error is not None:
+            raise error
 
 
 def _terminate_process_tree(process: subprocess.Popen) -> None:
     """Stop the owned suite tree before removing its temporary library files."""
     cleanup_error = None
+    descendants = None
+    if os.name == 'nt':
+        try:
+            descendants = _WindowsDescendants(process.pid)
+        except OSError as exc:
+            # Still terminate/reap the parent if native enumeration failed;
+            # the missing proof of descendant cleanup remains a hard failure.
+            cleanup_error = exc
     try:
         if os.name == 'nt':
             # Keep the parent alive until taskkill has enumerated descendants.
@@ -39,25 +159,53 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
         pass
     except (OSError, subprocess.TimeoutExpired) as exc:
         cleanup_error = exc
-    if cleanup_error is not None:
-        # Reap our direct child even when tree termination failed; still fail
-        # closed and never report that the complete tree was cleaned up.
-        process.kill()
     try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=5)
+        try:
+            if cleanup_error is not None:
+                # Reap our direct child even when tree termination failed.
+                process.kill()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            cleanup_error = cleanup_error or exc
+        if descendants is not None:
+            try:
+                # Windows termination is asynchronous. Reaping pytest alone
+                # does not prove its children have released library handles.
+                descendants.wait(timeout=10)
+            except OSError as exc:
+                cleanup_error = cleanup_error or exc
+    finally:
+        if descendants is not None:
+            try:
+                descendants.close()
+            except OSError as exc:
+                cleanup_error = cleanup_error or exc
     if cleanup_error is not None:
         raise OSError('Required-suite process-tree cleanup failed.') from cleanup_error
 
 
-def _run_test_process(command, *, env) -> int:
+def _run_test_process(command, *, env, timeout_seconds: int | None = None) -> int:
+    budget = SUITE_TIMEOUT_SECONDS if timeout_seconds is None else _checked_timeout(timeout_seconds)
+    command, env = list(command), dict(env)
+    base_executable = getattr(sys, '_base_executable', None)
+    if (os.name == 'nt' and sys.prefix != sys.base_prefix and base_executable
+            and ntpath.normcase(command[0]) == ntpath.normcase(sys.executable)
+            and ntpath.normcase(base_executable) != ntpath.normcase(sys.executable)):
+        # CPython's Windows venv launcher is a redirector. Own the actual
+        # interpreter PID while preserving the selected venv's import paths,
+        # as multiprocessing.popen_spawn_win32 does for venv children.
+        env.pop('PYTHONEXECUTABLE', None)
+        env['__PYVENV_LAUNCHER__'] = sys.executable
+        command[0] = base_executable
     isolation = ({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP}
                  if os.name == 'nt' else {'start_new_session': True})
     process = subprocess.Popen(command, cwd=ROOT, env=env, **isolation)
     try:
-        return process.wait(timeout=SUITE_TIMEOUT_SECONDS)
+        return process.wait(timeout=budget)
     except BaseException:
         _terminate_process_tree(process)
         raise
@@ -137,9 +285,11 @@ def _report_directory(suite):
                   f'directory={directory.name}', flush=True)
 
 
-def run_suite(suite: str) -> bool:
-    path = (ROOT / suite).resolve()
-    if not path.is_relative_to(ROOT) or not path.exists():
+def run_suite(suite: str, *, diagnostics: bool = False, timeout_seconds: int | None = None) -> bool:
+    relative, separator, node_id = suite.partition('::')
+    path = (ROOT / relative).resolve()
+    if (not relative or not path.is_relative_to(ROOT) or not path.exists()
+            or separator and not node_id):
         print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
         return False
     env = dict(os.environ)
@@ -158,18 +308,18 @@ def run_suite(suite: str) -> bool:
         with _report_directory(suite) as tmp:
             report = Path(tmp) / 'junit.xml'
             returncode = _run_test_process([
-                sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
+                sys.executable, '-B', '-c', PYTEST_CHILD, '-o', 'addopts=',
+                *(['-vv', '-o', 'faulthandler_timeout=60'] if diagnostics else []),
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
-                '--', str(path),
-            ], env=env)
+                '--', str(path) + (separator + node_id if separator else ''),
+            ], env=env, **({} if timeout_seconds is None else {'timeout_seconds': timeout_seconds}))
             cases = list(ET.parse(report).iter('testcase'))
             failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
             skipped = sum(c.find('skipped') is not None for c in cases)
             passed = len(cases) - failed - skipped
             ok = returncode == 0 and passed > 0 and failed == skipped == 0
-        # A passing child is not a completed suite until its temporary report
-        # and test data have also been cleaned up successfully.
+        # A passing child is complete only after its temporary data is removed.
         print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
               f'skipped={skipped}, pytest_exit={returncode}', flush=True)
         return ok
@@ -185,16 +335,34 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--jobs', type=int, choices=range(1, 5), default=1,
                         help='Run up to four isolated required suites concurrently; default: one')
-    parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
+    parser.add_argument('--diagnostics', action='store_true',
+                        help='Print each case and thread stacks after 60 seconds; the same suite deadline and verdict apply')
+    parser.add_argument('--suite-timeout', action='append', default=[], type=_suite_timeout,
+                        metavar='SUITE=SECONDS',
+                        help='Override one exact selected suite deadline (1..1800 seconds); repeat for different suites')
+    parser.add_argument('suites', nargs='+', help='Explicit required test paths or pytest node IDs relative to carr-library')
     args = parser.parse_args()
+    timeouts = {}
+    for selector, seconds in args.suite_timeout:
+        if selector not in args.suites:
+            parser.error(f'A timeout must name an exact selected suite: {selector}')
+        if selector in timeouts:
+            parser.error(f'A suite timeout was supplied more than once: {selector}')
+        timeouts[selector] = seconds
+
+    def runner(suite):
+        options = {'diagnostics': True} if args.diagnostics else {}
+        if suite in timeouts:
+            options['timeout_seconds'] = timeouts[suite]
+        return run_suite(suite, **options)
     if args.jobs == 1:
-        results = [run_suite(suite) for suite in args.suites]
+        results = [runner(suite) for suite in args.suites]
     else:
         # Every suite retains its own interpreter, offline policy, deadline and
         # JUnit verdict. Consume every future: one failing suite cannot hide
         # another missing, skipped or unfinished required suite.
         with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
-            results = list(executor.map(run_suite, args.suites))
+            results = list(executor.map(runner, args.suites))
     print(f'Required suites complete: {len(results)}; passed={sum(results)}; '
           f'failed={len(results) - sum(results)}', flush=True)
     return 0 if all(results) else 1

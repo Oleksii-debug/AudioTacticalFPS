@@ -96,7 +96,7 @@ def runtime(tmp_path):
 @pytest.fixture
 def adapter(api, runtime):
     value = api.DordiaiVoicesAdapter(
-        runtime, python_executable=sys.executable,
+        runtime, python_executable=Path(sys.executable).resolve(strict=True),
         expected_worker_sha256=hashlib.sha256((runtime / "nvda_worker.py").read_bytes()).hexdigest(),
         request_timeout=1.0,
     )

@@ -292,11 +292,7 @@ def test_eml_cp1251_8bit_bytes_preserved_and_bad_bytes_rejected():
     b'Content-Type: multipart/mixed; boundary=abc\r\n\r\n--abc\r\n\r\nbody',
     b'Content-Type: text/plain\r\nContent-Type: text/html\r\n\r\nambiguous',
     b'Content-Transfer-Encoding: base64\r\n\r\nYWJj@',
-    b'Content-Transfer-Encoding: base64\r\n\r\nYWJj=',
-    b'Content-Transfer-Encoding: base64\r\n\r\nYWJj==',
     b'Content-Transfer-Encoding: base64\r\n\r\nYWJj====',
-    b'Content-Transfer-Encoding: base64\r\n\r\nYQ',
-    b'Content-Transfer-Encoding: base64\r\n\r\nY=Q=',
     b'Content-Transfer-Encoding: quoted-printable\r\n\r\nabc=zz',
     b'Content-Transfer-Encoding: x-uuencode\r\n\r\nunsupported',
     b'Content-Type: text/plain; charset=base64_codec\r\n\r\nunsupported',
@@ -307,19 +303,26 @@ def test_eml_malformed_structures_and_decodings_fail_closed(source):
         extract(source, '.eml')
 
 
-@pytest.mark.parametrize(('encoded', 'expected'), [
-    (b'YQ==', 'a'),
-    (b'YWI=', 'ab'),
-    (b'YWJj', 'abc'),
-    (b' \tYQ\r\n==\t \r\n', 'a'),
-    (b'\tYW\r\nI=\t\r\n', 'ab'),
-    (b'\tYW\r\nJj \r\n', 'abc'),
+@pytest.mark.parametrize('payload', [
+    b'YWJj=', b'YWJj==', b'YWJj===', b'YWJj====',
+    b'YQ', b'Y=Q=', b'YQ=', b'YQ===', b'YWI==', b'=YQ==', b'YQ==YWJj',
+    b'YR==', b'YWJ=', b'YWJj\x0b',
 ])
-def test_eml_valid_base64_quartets_preserve_body_with_mime_whitespace(encoded, expected):
-    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + encoded
+def test_eml_base64_requires_canonical_padding_and_zero_pad_bits(payload):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + payload
+    with pytest.raises(ValueError):
+        extract(source, '.eml')
+
+
+@pytest.mark.parametrize('payload,expected', [
+    (b'YQ==', 'a'), (b'YWI=', 'ab'), (b'YWJj', 'abc'),
+    (b' Y\tW\r\nJj\r\n', 'abc'),
+])
+def test_eml_canonical_base64_preserves_body_and_permitted_mime_folding(payload, expected):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + payload
     result = extract(source, '.eml')
     assert texts(result) == [expected]
-    assert result['status'] == 'review_required'
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
 
 
 def test_eml_mail_part_budget_before_unbounded_recursion():
@@ -392,3 +395,19 @@ def test_error_messages_never_include_private_source_values():
     with pytest.raises(ValueError) as caught:
         extract(b'<meta charset="PRIVATE-SECRET"><p>private</p>')
     assert 'PRIVATE' not in str(caught.value)
+
+
+@pytest.mark.parametrize(('encoded', 'expected'), [
+    (b'YQ==', 'a'),
+    (b'YWI=', 'ab'),
+    (b'YWJj', 'abc'),
+    (b' \tYQ\r\n==\t \r\n', 'a'),
+    (b'\tYW\r\nI=\t\r\n', 'ab'),
+    (b'\tYW\r\nJj \r\n', 'abc'),
+])
+def test_eml_valid_base64_quartets_preserve_body_with_mime_whitespace(encoded, expected):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + encoded
+    result = extract(source, '.eml')
+    assert texts(result) == [expected]
+    assert result['status'] == 'review_required'
+

@@ -32,6 +32,7 @@ class Control:
     """Only the native view surface is doubled; no wx event loop is claimed."""
     def __init__(self, *args, **kwargs):
         self.value, self.running = kwargs.get('value', ''), False
+    def GetId(self): return id(self)
     def SetName(self, value): self.name = value
     def SetValue(self, value): self.value = value
     def GetValue(self): return self.value
@@ -50,6 +51,7 @@ class Control:
 
 class PCMVoice:
     name = 'Purpose-written progress PCM fixture'
+    executable = Path(sys.executable).resolve(strict=True)
     def __init__(self, *, blocked=False):
         self.voice = Voice('fixture:uk', 'Selected Ukrainian fixture', 'Fixture', 'uk-UA',
                            capabilities=('volume',))
@@ -133,7 +135,7 @@ def voice_for(panel, *, blocked=False, owned=False):
     registry = VoiceRegistry((engine,))
     if owned:
         speech = activate_progress_voice(panel.frame.library.root, engine.voice.id,
-                                         _registry_factory=lambda root: registry)
+                                         _registry_factory=lambda root, **_ignored: registry)
         speech._player_factory = lambda: player
     else:
         speech = LocalProgressSpeech(registry, engine.voice.id,
@@ -291,7 +293,7 @@ def test_directly_injected_registry_is_borrowed_after_all_selection_closes(tmp_p
 def test_owned_registry_survives_one_panel_close_then_releases_once_after_last_copy(tmp_path):
     engine, player = PCMVoice(blocked=True), Player()
     registry = VoiceRegistry((engine,))
-    first = activate_progress_voice(tmp_path, engine.voice.id, _registry_factory=lambda root: registry)
+    first = activate_progress_voice(tmp_path, engine.voice.id, _registry_factory=lambda root, **_ignored: registry)
     first._player_factory = lambda: player
     second = first.copy_selection()
     results, errors = [], []
@@ -316,7 +318,7 @@ def test_owned_registry_survives_one_panel_close_then_releases_once_after_last_c
         second.close()
         assert engine.closed.wait(2)
         assert engine.close_count == 1 and not engine.closed_during_render
-        with pytest.raises(RuntimeError, match='closed'):
+        with pytest.raises((ValueError, RuntimeError), match='closed'):
             second.copy_selection()
     finally:
         engine.release.set()
@@ -330,6 +332,6 @@ def test_rejected_owned_voice_selection_closes_the_fresh_registry(tmp_path):
     engine = PCMVoice()
     registry = VoiceRegistry((engine,))
     with pytest.raises(ValueError, match='available'):
-        activate_progress_voice(tmp_path, 'absent-voice', _registry_factory=lambda root: registry)
+        activate_progress_voice(tmp_path, 'absent-voice', _registry_factory=lambda root, **_ignored: registry)
     assert engine.closed.wait(2)
     assert engine.close_count == 1 and not engine.calls

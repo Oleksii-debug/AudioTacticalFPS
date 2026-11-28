@@ -118,6 +118,20 @@ class Frame:
     def IsEnabled(self):
         return self.enabled
 
+    @property
+    def menu_bar(self):
+        return self.menu
+
+    def SetAcceleratorTable(self, entries):
+        self.accelerators = entries
+
+
+@pytest.fixture(autouse=True)
+def native_key_parser(monkeypatch):
+    # Native key parsing itself is checked by the installed wx acceptance.
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identity: (0, key, int(identity)))
+
 
 @pytest.fixture
 def registry():
@@ -312,6 +326,8 @@ def test_root_change_loads_the_new_folders_map_without_overwriting_either(manage
 def dialog_double(manager):
     dialog = object.__new__(KeyboardSettingsDialog)
     dialog.manager = manager
+    dialog.closed = False
+    dialog.conversion = None
     dialog.original_store = manager.store
     dialog.draft = dict(manager.overrides)
     dialog.dialog = SimpleNamespace(EndModal=lambda result: None)
@@ -470,7 +486,7 @@ def test_registration_queued_before_installation_preserves_saved_module_profile(
     register_menu_command(frame, spec, item)
     with pytest.raises(ValueError, match='already waiting'):
         register_menu_command(frame, spec, item)
-    fake_wx = SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU=object(),
+    fake_wx = SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU=object(), AcceleratorTable=tuple,
                               CallAfter=lambda callback, *args: callback(*args))
     monkeypatch.setitem(sys.modules, 'wx', fake_wx)
     manager = install_keyboard_settings(frame)
@@ -523,7 +539,7 @@ def test_late_profile_recovery_does_not_announce_a_stale_startup_warning(tmp_pat
     KeymapStore(path).save({'extension.action': 'Ctrl+Shift+J'},
                           CommandRegistry((*builtin_commands(), spec)))
     deferred = []
-    fake_wx = SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU=object(),
+    fake_wx = SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU=object(), AcceleratorTable=tuple,
                               CallAfter=lambda callback, *args: deferred.append(lambda: callback(*args)))
     monkeypatch.setitem(sys.modules, 'wx', fake_wx)
     manager = install_keyboard_settings(frame)
@@ -547,7 +563,18 @@ def export_form(manager, tmp_path):
     native.FD_SAVE, native.FD_OVERWRITE_PROMPT = 8, 16
     native.YES_NO, native.NO_DEFAULT, native.ICON_QUESTION = 32, 64, 128
     native.YES, native.NO = 256, 512
-    native.MessageBox = Mock(return_value=native.YES)
+    native.ID_YES, native.ID_NO = native.YES, native.NO
+    native.confirmation = Mock(return_value=native.ID_YES)
+    class Confirmation:
+        def __init__(self, *args, **kwargs): self.live = True
+        def __bool__(self): return self.live
+        def ShowModal(self):
+            assert self.live
+            return native.confirmation()
+        def Destroy(self):
+            assert self.live
+            self.live = False
+    native.MessageDialog = Confirmation
     dialog.wx = native
     return dialog, destination
 
@@ -571,7 +598,7 @@ def test_keymap_export_preserves_other_work_written_during_validation(
     dialog.export_map()
     assert destination.read_bytes() == independent
     assert 'destination changed' in dialog.messages[-1]
-    assert dialog.wx.MessageBox.call_count == int(existing)
+    assert dialog.wx.confirmation.call_count == int(existing)
     assert snapshot(manager) == before
     assert not list(tmp_path.glob('.research-export-*'))
 
@@ -580,7 +607,7 @@ def test_declined_keymap_replacement_never_validates_or_writes(
         manager, tmp_path, monkeypatch):
     dialog, destination = export_form(manager, tmp_path)
     destination.write_bytes(b'Keep existing keymap')
-    dialog.wx.MessageBox.return_value = dialog.wx.NO
+    dialog.wx.confirmation.return_value = dialog.wx.ID_NO
     validate = Mock(side_effect=AssertionError('Declined export must not validate or write'))
     monkeypatch.setattr(manager, 'validate', validate)
     dialog.export_map()
@@ -600,5 +627,156 @@ def test_confirmed_keymap_export_keeps_the_live_shortcuts_unchanged(manager, tmp
     dialog.export_map()
     assert json.loads(destination.read_text()) == {'version': 1, 'bindings': dialog.draft}
     assert snapshot(manager) == before
-    assert dialog.wx.MessageBox.call_count == int(existing)
+    assert dialog.wx.confirmation.call_count == int(existing)
     assert 'was exported' in dialog.messages[-1]
+
+
+def earlier_keymap(manager, *, overrides=None, originals=None, encoding='utf-8'):
+    import json
+    from carr_library.durable_state import atomic_json
+    manager.frame.library = SimpleNamespace(root=manager.store.path.parent)
+    path = manager.store.path.parent / 'state' / 'ui' / 'shortcuts.json'
+    value = dict(schema=1,
+        overrides={'library/new library': 'F9'} if overrides is None else overrides,
+        originals={'library/new library': 'Ctrl+N'} if originals is None else originals)
+    atomic_json(path, value)
+    if encoding != 'utf-8':
+        path.write_bytes(json.dumps(value, ensure_ascii=False).encode(encoding))
+    return path
+
+
+@pytest.mark.parametrize('encoding', ['utf-8', 'utf-16', 'utf-32'])
+def test_earlier_keymap_is_reviewed_then_saved_only_through_canonical_writer(manager, encoding):
+    import json
+    path = earlier_keymap(manager, encoding=encoding)
+    original = path.read_bytes()
+    before = snapshot(manager)
+    manager._load()
+    assert manager.overrides == {} and 'earlier keyboard map' in manager.load_notice
+    assert not manager.store.path.exists() and path.read_bytes() == original
+    dialog = dialog_double(manager)
+    dialog.rows = []
+    dialog.wx = SimpleNamespace(ID_OK=1)
+    dialog.dialog.EndModal = Mock()
+    dialog.import_earlier_map()
+    assert dialog.draft == {'library.new': 'F9'}
+    assert snapshot(manager) == before
+    assert path.read_bytes() == original and 'review draft only' in dialog.messages[-1]
+    dialog.save()
+    dialog.dialog.EndModal.assert_called_once_with(1)
+    assert manager.overrides == {'library.new': 'F9'}
+    assert json.loads(manager.store.path.read_bytes()) == {'version': 1, 'bindings': {'library.new': 'F9'}}
+    assert path.read_bytes() == original
+
+
+def test_earlier_explicit_choice_keeps_its_key_and_new_default_is_only_unassigned_in_draft(manager):
+    path = earlier_keymap(manager, overrides={'library/new library': 'Ctrl+I'})
+    original = path.read_bytes()
+    before = snapshot(manager)
+    dialog = dialog_double(manager)
+    dialog.import_earlier_map()
+    assert dialog.draft == {'library.new': 'Ctrl+I', 'library.import': ''}
+    assert 'Import books' in dialog.messages[-1] and 'unassigned in this draft' in dialog.messages[-1]
+    assert snapshot(manager) == before and path.read_bytes() == original
+
+
+@pytest.mark.parametrize('case', [
+    'unknown-action', 'ambiguous-action', 'changed-default', 'protected-key',
+    'explicit-conflict', 'duplicate-json', 'hardlink', 'oversized', 'unsupported-old-key',
+    'reused-native-id',
+])
+def test_earlier_map_rejection_preserves_every_draft_live_binding_and_file(manager, case):
+    import json
+    import os
+    path = earlier_keymap(manager)
+    value = json.loads(path.read_bytes())
+    if case == 'unknown-action':
+        value['overrides'], value['originals'] = {'missing/action': 'F9'}, {'missing/action': ''}
+    elif case == 'ambiguous-action':
+        manager.frame.items.append(MenuItem(13, 'New library'))
+    elif case == 'reused-native-id':
+        replacement = MenuItem(manager.frame.items[0].GetId(), 'New library')
+        manager.frame.items[0] = replacement
+    elif case == 'changed-default':
+        value['originals']['library/new library'] = 'Ctrl+P'
+    elif case == 'protected-key':
+        value['overrides']['library/new library'] = 'Ctrl+C'
+    elif case == 'explicit-conflict':
+        value['overrides']['library/import books'] = 'F9'
+        value['originals']['library/import books'] = 'Ctrl+I'
+    elif case == 'unsupported-old-key':
+        value['overrides']['library/new library'] = 'F24'
+    raw = json.dumps(value).encode('utf-8')
+    if case == 'duplicate-json':
+        raw = b'{"schema":1,"schema":1,"overrides":{},"originals":{}}'
+    elif case == 'oversized':
+        raw = b' ' * (128 * 1024 + 1)
+    path.write_bytes(raw)
+    if case == 'hardlink':
+        os.link(path, path.with_name('linked-copy.json'))
+    before = snapshot(manager)
+    dialog = dialog_double(manager)
+    dialog.draft = {'reader.next': 'Ctrl+Shift+J'}
+    previous_draft = dict(dialog.draft)
+    dialog.import_earlier_map()
+    assert dialog.draft == previous_draft
+    assert snapshot(manager) == before and path.read_bytes() == raw
+    assert 'not imported' in dialog.messages[-1]
+
+
+def test_earlier_map_scope_change_does_not_read_or_write_another_library(manager, tmp_path):
+    path = earlier_keymap(manager)
+    raw = path.read_bytes()
+    dialog = dialog_double(manager)
+    dialog.draft = {'library.import': 'Ctrl+K'}
+    manager.change_root(tmp_path / 'another-library')
+    other = snapshot(manager)
+    dialog.import_earlier_map()
+    assert dialog.draft == {'library.import': 'Ctrl+K'}
+    assert 'folder changed' in dialog.messages[-1]
+    assert snapshot(manager) == other and path.read_bytes() == raw
+
+
+def test_earlier_named_action_alias_remains_explicit_under_a_longer_visible_caption(manager):
+    item = MenuItem(71, 'Publish synchronized EPUB3 / DAISY...')
+    item.carr_command_name = 'publish synchronized epub3'
+    manager.frame.items.append(item)
+    manager.register_menu_command(
+        CommandSpec('audio.publish', 'Publish synchronized EPUB3 and DAISY'), item)
+    path = earlier_keymap(manager,
+        overrides={'library/publish synchronized epub3': 'Ctrl+Shift+P'},
+        originals={'library/publish synchronized epub3': ''})
+    raw = path.read_bytes()
+    before = snapshot(manager)
+    dialog = dialog_double(manager)
+    dialog.import_earlier_map()
+    assert dialog.draft == {'audio.publish': 'Ctrl+Shift+P'}
+    assert snapshot(manager) == before and path.read_bytes() == raw
+
+
+def test_two_earlier_actions_cannot_silently_collapse_into_one_installed_command(manager):
+    from carr_library.keyboard_preferences import import_legacy_keymap
+    path = earlier_keymap(manager,
+        overrides={'library/new library': 'F9', 'legacy/alias': 'F12'},
+        originals={'library/new library': 'Ctrl+N', 'legacy/alias': 'Ctrl+N'})
+    raw = path.read_bytes()
+    before = snapshot(manager)
+    with pytest.raises(KeymapError, match='same installed command'):
+        import_legacy_keymap(path, manager.registry,
+            {'library/new library': ['library.new'], 'legacy/alias': ['library.new']})
+    assert snapshot(manager) == before and path.read_bytes() == raw
+
+
+def test_earlier_help_palette_mapping_follows_its_explicit_canonical_identity(manager):
+    item = MenuItem(81, 'Find a command...')
+    manager.frame.items.append(item)
+    manager.register_menu_command(
+        CommandSpec('commands.find', 'Find a command', default_shortcut='Ctrl+Shift+P'), item)
+    path = earlier_keymap(manager, overrides={'help/find a command': 'F9'},
+                          originals={'help/find a command': 'Ctrl+Shift+P'})
+    raw = path.read_bytes()
+    before = snapshot(manager)
+    dialog = dialog_double(manager)
+    dialog.import_earlier_map()
+    assert dialog.draft == {'commands.find': 'F9'}
+    assert snapshot(manager) == before and path.read_bytes() == raw

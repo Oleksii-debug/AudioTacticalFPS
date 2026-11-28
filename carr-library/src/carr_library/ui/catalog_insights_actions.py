@@ -10,7 +10,6 @@ from pathlib import Path
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
 from ..research.export_file import write_export, export_completion
-from .export_destination import confirm_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -234,12 +233,12 @@ class CatalogInsightsActions:
                 self._cancel(scope)
                 return
             path = Path(path)
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
+            self._idle()
+            self._authorize(scope, collection)
+            approval = self.dialogs.approve_export(self.frame, path, private_root=scope.library.root)
             if approval is None:
                 self._cancel(scope)
                 return
-            self._idle()
-            self._authorize(scope, collection)
 
             def operation():
                 from ..research.literature_matrix import render_literature_matrix

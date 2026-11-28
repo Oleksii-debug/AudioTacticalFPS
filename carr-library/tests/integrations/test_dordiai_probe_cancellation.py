@@ -72,7 +72,7 @@ def children(monkeypatch):
 
 def adapter_for(probe_runtime, *, timeout=15):
     runtime, checksum = probe_runtime
-    return api.DordiaiVoicesAdapter(runtime, python_executable=sys.executable,
+    return api.DordiaiVoicesAdapter(runtime, python_executable=str(Path(sys.executable).resolve()),
         expected_worker_sha256=checksum, request_timeout=timeout)
 
 

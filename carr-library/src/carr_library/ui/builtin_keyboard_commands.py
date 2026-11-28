@@ -52,6 +52,8 @@ MAIN_COMMANDS = (
     ('help.installation', 'Help', 'Check this installation', ''),
     ('commands.find', 'Options', 'Find a command', 'Ctrl+Shift+P'),
     ('options.keyboard', 'Options', 'Keyboard shortcuts', 'Ctrl+Alt+K'),
+    ('focus.library', 'Options', 'Focus library and research topic', 'Ctrl+Alt+L'),
+    ('focus.status', 'Options', 'Focus operation status', 'Ctrl+Alt+S'),
 )
 
 READER_COMMANDS = (
@@ -67,6 +69,24 @@ READER_COMMANDS = (
     CommandSpec('reader.help', 'Reader keyboard guide', 'reader', 'F1'),
     CommandSpec('reader.commands', 'Find a reader command', 'reader', 'Ctrl+Shift+P'),
     CommandSpec('reader.settings', 'Reader keyboard shortcuts', 'reader', 'Ctrl+Alt+K'),
+    CommandSpec('reader.speech_all', 'Read current text aloud', 'reader', 'F6'),
+    CommandSpec('reader.speech_cursor', 'Read aloud from text cursor', 'reader', 'F9'),
+    CommandSpec('reader.speech_selection', 'Read selected text aloud', 'reader', 'Ctrl+Shift+F6'),
+    CommandSpec('reader.speech_word', 'Read current word aloud', 'reader', 'Ctrl+F9'),
+    CommandSpec('reader.speech_sentence', 'Read current sentence aloud', 'reader', 'Shift+F9'),
+    CommandSpec('reader.speech_paragraph', 'Read current paragraph aloud', 'reader', 'Ctrl+Shift+F9'),
+    CommandSpec('reader.speech_voices', 'Discover local reading voices', 'reader'),
+    CommandSpec('reader.output_device', 'Choose playback output device', 'reader'),
+    CommandSpec('reader.playback_settings', 'Independent playback speed, pitch and levels', 'reader'),
+    CommandSpec('reader.session_controls', 'Tray and session hotkeys', 'reader'),
+    CommandSpec('reader.assistant_tools', 'Review assistant tools for this source', 'reader'),
+    CommandSpec('reader.speech_seek', 'Seek within current speech chunk', 'reader'),
+    CommandSpec('reader.speech_pause', 'Pause or resume voice reading', 'reader', 'F7'),
+    CommandSpec('reader.speech_stop', 'Stop voice reading', 'reader', 'F8'),
+    CommandSpec('reader.speech_resume', 'Resume saved source chunk', 'reader', 'Ctrl+Shift+F8'),
+    CommandSpec('reader.speech_status', 'Query voice reading status', 'reader', 'Ctrl+Alt+F8'),
+    CommandSpec('reader.recorded_audio', 'EPUB synchronized recorded audio', 'reader'),
+    CommandSpec('reader.appearance', 'Reader appearance', 'reader'),
 )
 
 

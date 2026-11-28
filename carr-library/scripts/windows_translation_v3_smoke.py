@@ -9,6 +9,7 @@ from hashlib import sha256
 import http.client
 import json
 import os
+import runpy
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import threading
@@ -20,17 +21,31 @@ def main():
     if os.name != 'nt':
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows wx and Credential Manager are required.'}))
         return 77
-    import ctypes
-    from ctypes import wintypes
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
+    try:
+        return _run()
+    finally:
+        if native_handle is not None:
+            native_handle.close()
+
+
+def _run():
+    import ctypes
+    from ctypes import wintypes
     import wx
+    from carr_library import application, native_runtime
     from carr_library.application import LibraryApp
+    from carr_library.reader import reading_desk
+    from carr_library.speech import reading, source
     from carr_library.assistant import profiles, translation, providers
     from carr_library.assistant.credentials import WindowsCredentialVault
     from carr_library.speech.reading import ReadingDocument
     from carr_library.ui import translation_dialog as ui
 
+    helper = runpy.run_path(str(Path(__file__).with_name('windows_publishing_smoke.py')))
+    origin_modules = (application, native_runtime, profiles, translation, providers, reading, source, reading_desk, ui)
+    installed_before = helper['verify_installed_sources'](*origin_modules)
     checks, errors, calls = [], [], []
     def check(label, condition):
         if not condition:
@@ -113,6 +128,11 @@ def main():
         root = Path(temporary)
         try:
             library = LibraryApp(root / 'private library')
+            workspace_id = library.create_workspace('Native translation source preservation')
+            retained = library.add_text(workspace_id, 'Retained original', original + '\fRetained second position.')
+            original_path = library.assets.resolve(retained['asset'])
+            original_bytes = original_path.read_bytes()
+            source_desk = reading_desk.ReadingDesk(library, workspace_id, retained['edition'])
             profile = profiles.ProviderProfile('native_translation', 'Synthetic v3 account', 'google-translation-v3',
                 address, 'general/nmt', capabilities=('translation.text', 'translation.languages'), enabled=True)
             store = profiles.ProfileStore(library.root / 'state' / 'providers')
@@ -195,10 +215,148 @@ def main():
                     if dialog is not None and dialog.IsModal():
                         dialog.EndModal(wx.ID_CANCEL)
 
+            def lifetime(kind, operation_kind):
+                """Hold a real read result; replay actual completion after native deletion."""
+                owner = wx.Frame(frame, title='Translation lifetime ' + kind + ' ' + operation_kind)
+                owner_id = owner.GetId()
+                owner.library = library
+                owner.working = owner._closing = False
+                owner.cancel_event = threading.Event()
+                ready, release, delivered = threading.Event(), threading.Event(), threading.Event()
+                pending = {'future': None, 'result': None, 'completion': None}
+                forbidden, destruction, python_destroy = [], [], []
+                calls_before = len(calls)
+                jobs_before = {path.name: path.read_bytes() for path in
+                               (library.root / 'state' / 'translation' / 'jobs').glob('*.json')}
+
+                def run_owned(title, callback, done, failed):
+                    check('one actual held translation operation', pending['future'] is None)
+                    owner.working = True
+                    def invoke():
+                        result = callback()
+                        pending['result'] = result
+                        ready.set()
+                        if not release.wait(20):
+                            raise TimeoutError('Held actual translation result was not released.')
+                        return result
+                    future = pending['future'] = executor.submit(invoke)
+                    def finish():
+                        try:
+                            owner.working = False
+                            try:
+                                result = future.result()
+                            except Exception as error:
+                                failed(error)
+                            else:
+                                done(result)
+                        finally:
+                            delivered.set()
+                    pending['completion'] = finish
+                    future.add_done_callback(lambda unused: wx.CallAfter(finish))
+                    return True
+
+                owner.run_job = run_owned
+                owner.Show()
+
+                def exercise_lifetime():
+                    dialog = None
+                    try:
+                        dialog = next(window for window in wx.GetTopLevelWindows()
+                                      if window.GetName() == 'Translation workspace' and window.GetParent()
+                                      and window.GetParent().GetId() == owner_id)
+                        identity = dialog.GetId()
+                        check('lifetime case runs in the actual modal loop', dialog.IsModal() and app.IsMainLoopRunning())
+                        def observe(event):
+                            if event.GetId() == identity:
+                                destruction.append(identity)
+                            event.Skip()
+                        dialog.Bind(wx.EVT_WINDOW_DESTROY, observe)
+                        actual_destroy = dialog.Destroy
+                        def watched_destroy():
+                            python_destroy.append(True)
+                            return actual_destroy()
+                        dialog.Destroy = watched_destroy
+                        if operation_kind == 'saved-jobs':
+                            press(wx.FindWindowByName('Saved jobs', dialog))
+                        pump(ready.is_set, 'Actual retained translation result')
+                        if operation_kind == 'source':
+                            check('held actual retained source value',
+                                  pending['result'].text == original and
+                                  pending['result'].asset_sha256 == retained['asset'])
+                        else:
+                            check('held actual saved approved job value',
+                                  len(pending['result']) == 1 and
+                                  pending['result'][0]['source_text'] == original and
+                                  pending['result'][0]['status'] == 'complete')
+
+                        def deny(name):
+                            def called(*args, **kwargs):
+                                forbidden.append(name)
+                                raise AssertionError('Late native translation access: ' + name)
+                            return called
+                        for name in ('Selected text; originals remain unchanged',
+                                     'Preview, supported languages and job status',
+                                     'Source selection and limits',
+                                     'Google API account and edition',
+                                     'Source language code; auto detects', 'Target language code',
+                                     'Maximum approved budget in USD; no default price'):
+                            control = wx.FindWindowByName(name, dialog)
+                            check('lifetime control exists: ' + name, control is not None)
+                            for method in ('ChangeValue', 'Enable', 'SetEditable', 'SetFocus', 'SetSelection'):
+                                if hasattr(control, method):
+                                    setattr(control, method, deny(name + '.' + method))
+
+                        if kind == 'direct':
+                            dialog.Destroy()
+                        else:
+                            wx.Frame.DestroyChildren(owner)
+                        pump(lambda: not dialog and len(destruction) == 1,
+                             'Actual translation owner destruction and deleted peer')
+                        check('native parent path bypasses the Python override',
+                              kind == 'direct' or not python_destroy)
+                        check('repeat late Destroy is guarded', dialog.Destroy() is False)
+                        check('translation closure does not cancel the host', not owner.cancel_event.is_set())
+                        release.set()
+                        pump(delivered.is_set, 'Actual late translation completion callback')
+                        check('dead translation controls receive no callback', not forbidden)
+                        check('saved/source read causes no additional transfer', len(calls) == calls_before)
+                        check('retained source bytes survive native destruction',
+                              original_path.read_bytes() == original_bytes)
+                        check('approved job bytes survive native destruction',
+                              {path.name: path.read_bytes() for path in
+                               (library.root / 'state' / 'translation' / 'jobs').glob('*.json')} == jobs_before)
+                        check('exactly one translation native destruction', destruction == [identity])
+                    except Exception:
+                        errors.append(traceback.format_exc())
+                        release.set()
+                        if dialog:
+                            dialog.Destroy()
+
+                wx.CallLater(150, exercise_lifetime)
+                try:
+                    if operation_kind == 'source':
+                        ui.show_translation(owner, source_loader=lambda stopped:
+                            source.read_source_range(source_desk, 1, 1, cancelled=stopped))
+                    else:
+                        ui.show_translation(owner)
+                    if pending['future'] is not None:
+                        release.set()
+                        pending['future'].result(timeout=10)
+                        pump(delivered.is_set, 'Owned translation callback delivery')
+                    check('native translation lifecycle case: ' + kind + ' / ' + operation_kind, not errors)
+                finally:
+                    release.set()
+                    if owner:
+                        owner.Destroy()
+
             def opened():
                 wx.CallLater(200, exercise)
                 try:
                     ui.show_translation(frame)
+                    if not errors:
+                        for kind in ('direct', 'native-parent'):
+                            for operation_kind in ('saved-jobs', 'source'):
+                                lifetime(kind, operation_kind)
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
@@ -210,14 +368,14 @@ def main():
             http.client.HTTPSConnection, wx.MessageBox, wx.DirDialog = actual_connection, actual_message, actual_directory
             if reference:
                 vault.delete('native_translation', reference)
-            if frame is not None:
+            if frame is not None and frame:
                 frame.Destroy()
-            if native_handle is not None:
-                native_handle.close()
     if errors:
         raise RuntimeError('\n'.join(errors))
+    check('installed translation modules remain byte-identical',
+          helper['verify_installed_sources'](*origin_modules) == installed_before)
     print(json.dumps({'status': 'PASS', 'checks': len(checks), 'synthetic_rest_calls': len(calls),
-        'native_keyboard': 'PASS', 'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
+        'native_keyboard': 'PASS', 'native_lifetime_cases': 4, 'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
         'native_approval_and_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
     return 0
 

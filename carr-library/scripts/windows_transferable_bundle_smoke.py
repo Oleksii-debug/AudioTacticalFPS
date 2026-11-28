@@ -56,6 +56,7 @@ def _sha(path):
 def _origins(root):
     import importlib
     base = (root / '.venv' / 'Lib' / 'site-packages').resolve()
+    source = Path(__file__).resolve().parents[1] / 'src'
     origins = {}
     for name in MODULES:
         path = Path(importlib.import_module(name).__file__).resolve()
@@ -66,6 +67,11 @@ def _origins(root):
             expected = expected.with_suffix('.py')
         if path != expected:
             raise AssertionError('Module did not come from the installed package: ' + name)
+        reviewed = source.joinpath(*name.split('.'))
+        reviewed = (reviewed / '__init__.py' if path.name == '__init__.py'
+                    else reviewed.with_suffix('.py'))
+        if path.read_bytes() != reviewed.read_bytes():
+            raise AssertionError('Installed module bytes differ from the reviewed source: ' + name)
         origins[name] = str(path)
     return origins
 
@@ -185,7 +191,8 @@ def run(bundle, evidence):
             'source_tree': manifest['source_tree'], 'bundle_manifest_sha256': _sha(manifest_path),
             'wheel': Path(wheels[0]).name, 'wheel_sha256': proof['wheel_sha256'],
             'passed': len(cases), 'failed': 0, 'skipped': 0, 'expected_failures': False,
-            'suites': list(SUITES), 'origins': origins, 'private_native_dlls': private_dlls,
+            'suites': list(SUITES), 'origins': origins, 'installed_source_bytes_verified': True,
+            'private_native_dlls': private_dlls,
             'manifest_unchanged': True, 'sealed_files_verified': True,
             'audio_payload': False, 'transfer_policy': 'PASS', 'manual_nvda': 'NOT_RUN',
         }

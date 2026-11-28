@@ -17,7 +17,7 @@ from carr_library import application
 from carr_library.application import LibraryApp
 from carr_library.research import export_file
 from carr_library.research.export_file import write_binary_export, write_export
-from carr_library.ui.export_destination import confirm_export_destination
+from carr_library.ui.research_actions import NativeDialogs
 
 
 FORMATS = [(5, 'docx', '.docx'), (6, 'html', '.html')]
@@ -46,7 +46,7 @@ def research(tmp_path):
 
 @pytest.fixture
 def harness(research, monkeypatch):
-    def create(destination, index, *, cancel_dialog=False):
+    def create(destination, index, *, cancel_dialog=False, real_render=False):
         h = SimpleNamespace(library=research.app, active=(research.workspace, research.topic),
                             cancel_event=Event(), reports=[], jobs=[], dialogs=[],
                             after_render=lambda: None, after_dialog=lambda: None)
@@ -84,9 +84,9 @@ def harness(research, monkeypatch):
         actual_export = research.app.export_topic
 
         def authorized_payload(workspace, topic, *, format, cancelled):
-            actual_export(workspace, topic, format='text', cancelled=cancelled)
+            content = actual_export(workspace, topic, format=format if real_render else 'text', cancelled=cancelled)
             h.after_render()
-            return PAYLOADS[format]
+            return content if real_render else PAYLOADS[format]
 
         h.backend = Mock(side_effect=authorized_payload)
         monkeypatch.setattr(research.app, 'export_topic', h.backend)
@@ -98,7 +98,7 @@ def harness(research, monkeypatch):
                       if isinstance(node, ast.FunctionDef) and node.name == 'export_topic')
         namespace = {'Path': Path, 'wx': wx, 'write_export': write_export,
                      'write_binary_export': write_binary_export,
-                     'confirm_export_destination': confirm_export_destination,
+                     'NativeDialogs': NativeDialogs,
                      'export_completion': export_file.export_completion}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
         h.invoke = lambda: namespace['export_topic'](h, None)
@@ -227,7 +227,7 @@ def test_invalid_filter_index_does_not_select_another_format(harness, tmp_path, 
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_existing_uppercase_suffix_is_kept_and_confirmation_is_bound_to_it(
+def test_existing_uppercase_suffix_is_kept_and_confirmed_once_after_capture(
         harness, tmp_path, index, format, suffix):
     target = tmp_path / ('Existing' + suffix.upper())
     target.write_bytes(b'Explicit replacement confirmation applies to this exact path.')
@@ -356,6 +356,62 @@ def test_new_document_cannot_be_written_inside_private_library(
     assert research.app.database.read_bytes() == database
     assert research.original.read_bytes() == original
     assert len(h.reports) == 1 and 'outside the private library folder' in h.reports[0]
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_existing_uppercase_suffix_is_kept_and_explicitly_confirmed(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('Existing' + suffix.upper())
+    target.write_bytes(b'Explicit confirmation approves replacement of this exact path.')
+    h = harness(target, index)
+    h.invoke()
+    h.wx.MessageBox.assert_called_once()
+    h.run()
+    assert target.read_bytes() == payload_bytes(format)
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+@pytest.mark.parametrize('existing', [False, True])
+@pytest.mark.parametrize('phase', ['queued', 'rendering'])
+def test_real_document_export_preserves_competing_file_before_writer(
+        harness, tmp_path, index, format, suffix, existing, phase):
+    target = tmp_path / ('concurrent' + suffix)
+    if existing:
+        target.write_bytes(b'Previously approved document')
+    h = harness(target, index, real_render=True)
+    competing = b'Newer document saved after destination selection'
+    if phase == 'rendering':
+        h.after_render = lambda: target.write_bytes(competing)
+    h.invoke()
+    assert len(h.jobs) == 1
+    if phase == 'queued':
+        target.write_bytes(competing)
+    h.run()
+    assert h.backend.call_count == 1
+    assert target.read_bytes() == competing
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_real_document_export_preserves_file_changed_during_confirmation(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('changed-during-question' + suffix)
+    target.write_bytes(b'File originally offered for replacement')
+    h = harness(target, index, real_render=True)
+    competing = b'File saved while the overwrite question is open'
+
+    def competing_save(*args, **kwargs):
+        target.write_bytes(competing)
+        return h.wx.YES
+
+    h.wx.MessageBox.side_effect = competing_save
+    h.invoke()
+    h.backend.assert_not_called()
+    h.run()
+    assert h.backend.call_count == 1
+    assert target.read_bytes() == competing
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)

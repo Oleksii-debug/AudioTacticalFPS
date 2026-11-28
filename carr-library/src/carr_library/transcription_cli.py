@@ -14,10 +14,18 @@ def _runtime_arguments(parser):
     parser.add_argument('--model', type=Path, required=True, help='Existing local model directory; never downloaded')
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Resonance local transcription with retained sources and verified results')
     parser.add_argument('--data-dir', type=Path)
     commands = parser.add_subparsers(dest='command', required=True)
+    draft = commands.add_parser('draft-runtime', help='Inspect selected local files into an unapproved manifest')
+    for name in ('output', 'python', 'worker', 'runtime-directory', 'models-directory'):
+        draft.add_argument('--' + name, type=Path, required=True)
+    draft.add_argument('--model', required=True)
     inspect = commands.add_parser('inspect-runtime', help='Hash the selected local installation without executing it')
     _runtime_arguments(inspect)
     register = commands.add_parser('register-runtime', help='Register a reviewed existing installation')
@@ -45,7 +53,23 @@ def main(argv=None):
     submit.add_argument('--run', action='store_true', help='Explicitly start the saved job after retaining its inputs')
     for name in ('status', 'run', 'resume', 'pause', 'cancel', 'continue'):
         command = commands.add_parser(name)
-        command.add_argument('job_id')
+        command.add_argument('job_id', nargs='?' if name == 'run' else None)
+        if name in ('run', 'resume'):
+            command.add_argument('--runtime-manifest', type=Path)
+        if name == 'run':
+            legacy = command
+            selected = legacy.add_mutually_exclusive_group()
+            selected.add_argument('--input', action='append', type=Path)
+            selected.add_argument('--resume', dest='legacy_resume')
+            legacy.add_argument('--language', default='auto')
+            legacy.add_argument('--task', default='transcribe', choices=('transcribe', 'translate'))
+            legacy.add_argument('--device', default='cpu', choices=('cpu', 'cuda'))
+            legacy.add_argument('--compute-type', default='int8', choices=('int8','int8_float16','int8_float32','float16','float32'))
+            legacy.add_argument('--beam-size', type=int, default=5)
+            legacy.add_argument('--format', action='append', choices=('txt','srt','vtt','json'))
+            legacy.add_argument('--no-vad', action='store_true')
+            legacy.add_argument('--multilingual', action='store_true')
+            legacy.add_argument('--queue-only', action='store_true')
     rebind = commands.add_parser('rebind-runtime', help='Choose a newly reviewed local installation after restore')
     rebind.add_argument('job_id')
     rebind.add_argument('--profile', required=True)
@@ -70,14 +94,45 @@ def main(argv=None):
         parser.error('--trust-runtime requires the exact --fingerprint printed by inspect-runtime.')
     def progress(value):
         print(json.dumps(value, ensure_ascii=False, allow_nan=False), file=sys.stderr, flush=True)
+    legacy_run = args.command == 'run' and (args.input is not None or args.legacy_resume is not None)
+    if args.command == 'run':
+        if legacy_run and (args.job_id is not None or args.runtime_manifest is None):
+            parser.error('Manifest execution requires --runtime-manifest and exactly one --input or --resume; do not mix a positional job ID.')
+        if not legacy_run and args.job_id is None:
+            parser.error('Choose a saved profile job ID, or an explicit manifest run.')
+        if not legacy_run and args.runtime_manifest is not None and len(args.job_id) != 64:
+            parser.error('Profile jobs use their saved reviewed profile; use rebind-runtime explicitly to change it.')
     job_id = None
     try:
+        if args.command == 'draft-runtime':
+            from .audio.supplied_runtime_manifest import write_draft_manifest
+            result = write_draft_manifest(args.output, python=args.python, worker=args.worker,
+                runtime_directory=args.runtime_directory, models_directory=args.models_directory, model=args.model)
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 0
         from .application import LibraryApp
         from .operations import ResourceBroker
         from .transcription import TranscriptionService
         app = LibraryApp(data_directory(args.data_dir))
-        service = TranscriptionService(app.root / 'state' / 'transcription', broker=ResourceBroker.for_app(app.root))
-        if args.command == 'inspect-runtime':
+        from .audio.transcription import SuppliedWhisperRuntime, TranscriptionSettings
+        manifest = getattr(args, 'runtime_manifest', None)
+        runtime = SuppliedWhisperRuntime(manifest) if manifest is not None else None
+        service = TranscriptionService(app.root / 'state' / 'transcription', runtime,
+            broker=ResourceBroker.for_app(app.root))
+        if legacy_run:
+            if args.legacy_resume:
+                job_id = args.legacy_resume
+                service.control(job_id, 'run')
+            else:
+                options = TranscriptionSettings(language=args.language, task=args.task,
+                    beam_size=args.beam_size, vad_filter=not args.no_vad,
+                    multilingual=args.multilingual, device=args.device, compute_type=args.compute_type)
+                job_id = service.create(args.input, settings=options, formats=args.format or ('txt','srt','vtt','json'))
+            print('Transcription job: ' + job_id, file=sys.stderr, flush=True)
+            result = service.load(job_id) if args.queue_only else service.run(job_id,
+                on_status=lambda message: print(message, file=sys.stderr, flush=True))
+            result = {**result, 'output_directory': str(service.root / job_id / 'outputs')}
+        elif args.command == 'inspect-runtime':
             result = service.inspect_runtime(args.python, args.worker, args.model, progress=progress)
         elif args.command == 'register-runtime':
             result = service.register_runtime(args.name, args.python, args.worker, args.model,
@@ -101,9 +156,13 @@ def main(argv=None):
         else:
             job_id = args.job_id
             if args.command == 'status':
-                result = service.get_job(job_id)
+                result = service.load(job_id)
             elif args.command in ('run','resume'):
                 result = getattr(service, args.command)(job_id, progress=progress)
+            elif args.command in ('pause', 'cancel') and service._legacy_id(job_id):
+                service.control(job_id, args.command)
+                result = {'id': job_id, 'control_requested': args.command,
+                          'status': service.load(job_id)['status']}
             elif args.command in ('pause','cancel','continue'):
                 result = getattr(service, 'continue_job' if args.command == 'continue' else args.command)(job_id)
             elif args.command == 'rebind-runtime':
@@ -113,25 +172,29 @@ def main(argv=None):
             elif args.command == 'read':
                 result = service.read_transcript(job_id, args.source, edited=args.edited)
             elif args.command == 'save-edit':
-                path = local_path(args.text_file, exists=True)
-                if regular(path).st_size > 16 * 1024**2:
-                    raise ValueError('The transcript edit exceeds its 16 MiB text budget.')
-                result = service.save_edit(job_id, args.source, path.read_text(encoding='utf-8-sig'))
+                from .transcription.runtime import read_file_bytes
+                raw = read_file_bytes(args.text_file, maximum=16 * 1024**2)
+                result = service.save_edit(job_id, args.source, raw.decode('utf-8-sig'))
             else:
                 result = service.export(job_id, args.output,
                     formats=tuple(dict.fromkeys(args.formats)) if args.formats else None,
                     include_edits=not args.without_edits)
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
-        executed = args.command in ('run', 'resume') or args.command == 'submit' and args.run
+        executed = (args.command in ('run', 'resume') or args.command == 'submit' and args.run) and not (
+            legacy_run and args.queue_only)
         if executed and result.get('status') != 'complete':
             return 1
         return 0
     except KeyboardInterrupt:
-        print('Transcription interrupted. Retained inputs and accepted results remain available.' +
-              (f' Saved job: {job_id}' if job_id else ''), file=sys.stderr)
+        if args.command == 'draft-runtime':
+            print('Runtime manifest inspection interrupted; any draft remains unapproved. '
+                  'No transcription job was created.', file=sys.stderr)
+        else:
+            print('Transcription interrupted. Retained inputs and accepted results remain available.' +
+                  (f' Saved job: {job_id}' if job_id else ''), file=sys.stderr)
         return 130
-    except (ValueError, OSError, RuntimeError) as exc:
-        print('Resonance transcription: ' + str(exc), file=sys.stderr)
+    except (ValueError, TypeError, OSError, RuntimeError) as exc:
+        print('Transcription: ' + str(exc), file=sys.stderr)
         return 1
 
 

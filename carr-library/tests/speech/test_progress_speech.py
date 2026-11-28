@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import sys
 import threading
 import wave
 
@@ -12,24 +13,15 @@ import pytest
 
 from carr_library.runtime_settings import load_settings, save_settings
 from carr_library.speech import FliteProvider, NativeSapiProvider, Voice, VoiceRegistry
-from carr_library.speech.progress_speech import LocalProgressSpeech, SnapshotProgressSpeech, activate_progress_voice
-from carr_library.progress import ProgressHub
-from carr_library.progress_feedback import ProgressFeedback
-from carr_library.progress_preferences import ProgressPreferences
-
-
-def ProgressEvent(*, state='running', percent=None, phase=''):
-    task = ProgressHub().start('Explicit selected voice', total=100 if percent is not None else None)
-    task.update(completed=percent or 0, phase=phase)
-    if state == 'cancelled':
-        task.cancelled()
-    else:
-        assert state == 'running'
-    return task.snapshot()
+from carr_library.speech.progress_speech import LocalProgressSpeech, activate_progress_voice
+from carr_library.ui.operation_progress import ProgressEvent, WindowsProgressSound
 
 
 class PCMProvider:
     name = 'Purpose-written PCM fixture'
+    # This fixture renders in this interpreter. The strengthened registry binds
+    # every admitted provider to real runtime bytes before and after synthesis.
+    executable = Path(sys.executable)
 
     def __init__(self, *, language='en', capabilities=('volume',), seconds=.1):
         self.voice = Voice('fixture:chosen', 'Selected fixture voice', 'Fixture', language,
@@ -90,7 +82,10 @@ def test_actual_registry_writes_bounded_private_pcm_and_never_touches_user_outpu
     text, identity, part, settings = provider.calls[0]
     assert text == 'Importing files. 50 percent.' and identity == 'fixture:chosen'
     assert settings.volume == 25 and settings.rate == 0
-    assert settings.max_output_bytes == 2 * 1024 * 1024 and settings.timeout_seconds == 20
+    assert settings.max_output_bytes == 2 * 1024 * 1024
+    # Identity verification is part of the one deadline; the provider receives
+    # its remaining budget, never a fresh twenty-second allowance.
+    assert 0 < settings.timeout_seconds <= 20
     assert player.closed == 1 and speech.quiescent
     assert len(player.played) == 1 and player.played[0][1] == 2205
     assert not player.played[0][0].exists() and not part.exists()
@@ -244,7 +239,7 @@ def test_failed_owned_device_cleanup_preserves_uncertainty_and_blocks_new_audio(
 def test_explicit_activation_reauthorizes_current_settings_and_detects_revocation(tmp_path):
     fixture = PCMProvider()
     registry, calls = VoiceRegistry((fixture,)), []
-    def configured(state_root):
+    def configured(state_root, **_ignored):
         calls.append(state_root)
         return registry
     speech = activate_progress_voice(tmp_path, fixture.voice.id, _registry_factory=configured)
@@ -272,6 +267,24 @@ def test_copy_selection_keeps_independent_cancellation_for_two_native_views():
 
 def test_actual_registry_notification_runs_on_existing_feedback_worker():
     speech, provider, player = selected()
+    sound = WindowsProgressSound(backend=None)
+    sound.set_speech_provider(speech)
+    assert sound.speak('Existing worker and registry.', volume=.2)
+    sound._thread.join(3)
+    assert not sound._thread.is_alive()
+    assert sound.last_error is None and sound.quiescent
+    assert len(provider.calls) == len(player.played) == 1
+    sound.close()
+
+
+
+def test_actual_registry_notification_runs_on_canonical_snapshot_feedback_worker():
+    from carr_library.progress import ProgressHub
+    from carr_library.progress_feedback import ProgressFeedback
+    from carr_library.progress_preferences import ProgressPreferences
+    from carr_library.speech.progress_speech import SnapshotProgressSpeech
+
+    speech, provider, player = selected()
     sound = ProgressFeedback(ProgressPreferences(mode='speech', volume=20),
                              speech_provider=SnapshotProgressSpeech(speech))
     try:
@@ -283,5 +296,27 @@ def test_actual_registry_notification_runs_on_existing_feedback_worker():
         assert len(provider.calls) == len(player.played) == 1
     finally:
         sound.close()
-        sound._worker.join(3)
-    assert not sound._worker.is_alive()
+        worker = sound._worker
+        if worker is not None:
+            worker.join(3)
+            assert not worker.is_alive()
+
+
+@pytest.mark.parametrize(('language', 'state', 'expected'), [
+    ('en-US', 'running', 'In progress. 49 percent.'),
+    ('uk-UA', 'running', 'Робота триває. 49 відсотків.'),
+    ('sk-SK', 'cancelled', 'Zrušené. 49 percent.'),
+])
+def test_snapshot_bridge_preserves_selected_notification_language(language, state, expected):
+    from carr_library.progress import ProgressHub
+    from carr_library.speech.progress_speech import SnapshotProgressSpeech
+
+    speech, _, _ = selected(PCMProvider(language=language))
+    task = ProgressHub().start('Explicit selected voice', total=100)
+    task.update(completed=49, phase='A visible English phase')
+    if state == 'cancelled':
+        task.cancelled()
+    message = SnapshotProgressSpeech(speech).format_progress(task.snapshot(), kind=state)
+    assert message.startswith(expected) and len(message) <= 240
+    if language != 'en-US':
+        assert 'A visible English phase' not in message

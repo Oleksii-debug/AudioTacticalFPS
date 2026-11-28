@@ -21,6 +21,7 @@ class DesktopEvidencePanel(EvidencePanel):
         self._recovery_loading = self._recovery_disposed = False
         self._recovery_discarded = False
         self._recovery_error = ''
+        self._recovery_native_id = self.GetId()
         self._recovery_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self._flush_recovery, self._recovery_timer)
         self.Bind(wx.EVT_WINDOW_DESTROY, self._recovery_destroy)
@@ -46,6 +47,8 @@ class DesktopEvidencePanel(EvidencePanel):
             self._recovery_timer.StartOnce(1000)
 
     def _flush_recovery(self, event=None, *, final=False):
+        if not final and getattr(self, '_recovery_disposed', False):
+            return False
         store = getattr(self, '_recovery_store', None)
         pending = getattr(self, '_recovery_pending', None)
         if store is None or pending is None:
@@ -118,14 +121,25 @@ class DesktopEvidencePanel(EvidencePanel):
         return True
 
     def _recovery_destroy(self, event):
-        if event.GetEventObject() is self:
-            self._recovery_timer.Stop()
-            # No access to already destroyed child controls: EVT_TEXT captured
-            # the exact pending note. Preserve it even after scope revocation;
-            # recovery still needs fresh authorization before it is displayed.
-            self._flush_recovery(final=True)
-            self._recovery_disposed = True
-        event.Skip()
+        try:
+            if event.GetId() == self._recovery_native_id:
+                # Native deletion may recreate the SIP wrapper. Invalidate
+                # queued callbacks before stopping its actual owned timer.
+                self._recovery_disposed = True
+                try:
+                    self._recovery_timer.Stop()
+                except RuntimeError:
+                    pass
+                try:
+                    event.GetEventObject().Unbind(wx.EVT_TIMER, handler=self._flush_recovery,
+                                                   source=self._recovery_timer)
+                except RuntimeError:
+                    pass
+                # EVT_TEXT already captured these bytes. Never read dying
+                # controls, and never turn this snapshot into approved evidence.
+                self._flush_recovery(final=True)
+        finally:
+            event.Skip()
 
     def _show(self, row, editable):
         if getattr(self, '_recovery_store', None) is None:
@@ -171,7 +185,42 @@ class DesktopEvidencePanel(EvidencePanel):
         try:
             dialog.ShowModal()
         finally:
-            dialog.Destroy()
+            if dialog:
+                dialog.Destroy()
+
+    def review_legacy_draft(self, event=None, *, automatic=False):
+        """Offer old bytes for review only; never infer a source or baseline."""
+        if getattr(self, '_recovery_disposed', False):
+            return False
+        try:
+            from ..durable_state import local_path
+            from ..evidence_drafts import read_legacy_research_note
+            row = self._authorized_recovery_row()
+            if local_path(self.frame.library.root, exists=True) != self._recovery_store.root:
+                raise ValueError('The library folder changed. Open its research note again.')
+            draft = read_legacy_research_note(self._recovery_store.root,
+                workspace=self.workspace, topic=self.topic, evidence=row.evidence_id)
+            if draft is None:
+                if not automatic:
+                    self.status.SetValue('No earlier-format recovery copy matches this research note. '
+                                         'Other saved copies were kept unchanged.')
+                return False
+            if self._authorized_recovery_row() != row:
+                raise ValueError('The saved note changed before recovery review.')
+            if automatic:
+                self.status.SetValue('An earlier-format research-note draft is preserved. '
+                    'Choose File, Review earlier-format research-note draft. '
+                    'It has no recorded source revision and will open read only.')
+            else:
+                self._review_recovery_copy(draft)
+                if not getattr(self, '_recovery_disposed', False):
+                    self.status.SetValue('Earlier-format recovery copy retained unchanged. '
+                        'No text or source identity was applied to the current note.')
+            return True
+        except Exception as error:
+            if not getattr(self, '_recovery_disposed', False):
+                self.status.SetValue('Earlier recovery needs review; its original file is retained. ' + str(error))
+            return False
 
     def recover_draft(self, event=None, *, automatic=False, expected=None):
         store = getattr(self, '_recovery_store', None)
@@ -183,7 +232,9 @@ class DesktopEvidencePanel(EvidencePanel):
             row = self._authorized_recovery_row()
             draft = store.get(self.workspace, self.topic, row.evidence_id)
             if draft is None:
-                if not automatic:
+                if self.review_legacy_draft(automatic=automatic):
+                    return
+                if not automatic and not self.status.GetValue().startswith('Earlier recovery'):
                     self.status.SetValue('No recovery draft exists for this research note.')
                 return
             if automatic and draft.revision in self._recovery_seen:
@@ -209,7 +260,8 @@ class DesktopEvidencePanel(EvidencePanel):
             try:
                 choice = chooser.GetSelection() if chooser.ShowModal() == wx.ID_OK else 2
             finally:
-                chooser.Destroy()
+                if chooser:
+                    chooser.Destroy()
             # A modal dialog is not authorization. Recheck scope, source, saved
             # baseline and compare-and-save revision after the user's decision.
             current = self._authorized_recovery_row()

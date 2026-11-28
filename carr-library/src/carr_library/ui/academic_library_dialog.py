@@ -8,8 +8,7 @@ from pathlib import Path
 import threading
 
 from ..research.academic_library import AcademicLibrary
-from ..research.export_file import capture_export_destination, write_export, export_completion
-from .export_destination import confirm_export_destination
+from ..research.export_file import write_export, capture_export_destination, export_completion
 
 
 PAGE_SIZE = 200
@@ -335,12 +334,13 @@ def _native_types():
             self.SetMinSize((620, 540))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self._native_id = self.GetId()
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self._initial = self.raw_values()
             self.controls['title'].SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_id:
                 self._window_alive = False
             event.Skip()
 
@@ -637,12 +637,13 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.SetMinSize((740, 680))
             self.SetEscapeId(wx.ID_CANCEL)
             self.Bind(wx.EVT_CLOSE, self.on_close)
+            self._native_id = self.GetId()
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.refresh()
             self.query.SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_id:
                 self._window_alive = False
                 self.cancel_event.set()
             event.Skip()
@@ -940,6 +941,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 report(self.status, f'Bibliography import not completed: {exc}')
 
         def on_styles(self, event=None):
+            if not self._window_alive or self.pending:
+                return
             dialog = None
             try:
                 from .citation_styles_dialog import create_citation_styles_dialog
@@ -950,7 +953,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 dialog = create_citation_styles_dialog(self, self.controller,
                     selected_identity=identity, executor=self.executor)
                 dialog.ShowModal()
-                self.references.SetFocus()
+                if self._window_alive:
+                    self.references.SetFocus()
             except Exception as exc:
                 report(self.status, f'Citation styles could not be opened: {exc}')
             finally:
@@ -1009,14 +1013,14 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     path = Path(dialog.GetPath())
                 finally:
                     dialog.Destroy()
-                approval = confirm_export_destination(self, path,
+                from .research_actions import NativeDialogs
+                approval = NativeDialogs().approve_export(self, path,
                     private_root=self.controller.library.root, wx_module=wx)
-                if approval is None:
-                    return
-                self.export_to(path, format=format, identity=identity,
-                               include_notes=include_notes, approval=approval)
+                if approval is not None:
+                    self.export_to(path, format=format, identity=identity,
+                                   include_notes=include_notes, approval=approval)
             except Exception as exc:
-                report(self.status, f'Bibliography export: {exc}')
+                report(self.status, f'Bibliography not exported: {exc}')
 
     return AcademicDialog()
 
