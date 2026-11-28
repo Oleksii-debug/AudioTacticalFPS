@@ -1,0 +1,108 @@
+{
+  "id": 140876044245,
+  "run_id": 46111569613,
+  "workflow_name": "CARR native Windows launch entry",
+  "head_branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569613",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzN3X1Q",
+  "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140876044245",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569613/job/140876044245",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T05:19:21Z",
+  "started_at": "2026-11-28T06:07:47Z",
+  "completed_at": "2026-11-28T06:08:17Z",
+  "name": "native-launcher",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T06:07:48Z",
+      "completed_at": "2026-11-28T06:07:49Z"
+    },
+    {
+      "name": "Check out exact event source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T06:07:49Z",
+      "completed_at": "2026-11-28T06:07:57Z"
+    },
+    {
+      "name": "Set up Python for stdlib-only probes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T06:07:57Z",
+      "completed_at": "2026-11-28T06:07:57Z"
+    },
+    {
+      "name": "Locate installed Microsoft x64 development tools",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T06:07:57Z",
+      "completed_at": "2026-11-28T06:07:58Z"
+    },
+    {
+      "name": "Compile private native launcher and test child with MSVC",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T06:07:58Z",
+      "completed_at": "2026-11-28T06:08:12Z"
+    },
+    {
+      "name": "Execute exact launcher on native Windows with synthetic child",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T06:08:12Z",
+      "completed_at": "2026-11-28T06:08:13Z"
+    },
+    {
+      "name": "Record exact source commit and private executable hashes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T06:08:13Z",
+      "completed_at": "2026-11-28T06:08:13Z"
+    },
+    {
+      "name": "Post Set up Python for stdlib-only probes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T06:08:13Z",
+      "completed_at": "2026-11-28T06:08:14Z"
+    },
+    {
+      "name": "Post Check out exact event source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T06:08:14Z",
+      "completed_at": "2026-11-28T06:08:16Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T06:08:16Z",
+      "completed_at": "2026-11-28T06:08:16Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140876044245",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490202,
+  "runner_name": "GitHub Actions 1000490202",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

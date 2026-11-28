@@ -1,0 +1,55 @@
+{
+  "provenance": "Log-derived JSON values.",
+  "records": [
+    {
+      "line": 259,
+      "value": {
+        "schema": 1,
+        "status": "passed",
+        "checks": [
+          "unicode-spaces-fixed-argv-offline-optional-runtimes",
+          "read-only-ready-probe",
+          "fixed-installation-check",
+          "child-exit-status-propagated",
+          "extra-arguments-rejected",
+          "incomplete-state-preserved-without-reinstall",
+          "missing-runtime-does-not-search-path",
+          "fresh-package-reuses-fixed-offline-installer",
+          "research-data-sentinel-preserved"
+        ],
+        "check_count": 9,
+        "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+        "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+        "native_launcher_execution_verified": true,
+        "actual_python_installation_verified": false,
+        "nvda_verified": false,
+        "authenticode_verified": false
+      }
+    },
+    {
+      "line": 349,
+      "value": {
+        "schema": 1,
+        "status": "passed",
+        "checks": [
+          "unicode-spaces-fixed-argv-offline-optional-runtimes",
+          "read-only-ready-probe",
+          "fixed-installation-check",
+          "child-exit-status-propagated",
+          "extra-arguments-rejected",
+          "incomplete-state-preserved-without-reinstall",
+          "missing-runtime-does-not-search-path",
+          "fresh-package-reuses-fixed-offline-installer",
+          "research-data-sentinel-preserved"
+        ],
+        "check_count": 9,
+        "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+        "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+        "native_launcher_execution_verified": true,
+        "actual_python_installation_verified": false,
+        "nvda_verified": false,
+        "authenticode_verified": false
+      }
+    }
+  ]
+}

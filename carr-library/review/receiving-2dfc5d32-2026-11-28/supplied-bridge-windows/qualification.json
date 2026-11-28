@@ -1,0 +1,148 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "Exact-source Windows supplied-transcription bridge and isolated native wx protocol",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "event": "push",
+  "run_id": 46111569581,
+  "run_attempt": 1,
+  "job_id": 140876043951,
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:43:04Z",
+  "completed_at": "2026-11-28T06:03:45Z",
+  "workflow": {
+    "path": ".github/workflows/carr-transcription-bridge.yml",
+    "git_blob": "847b1e36301a5f3185555d727a27bc20363ae23e"
+  },
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569581/job/140876043951",
+  "environment": {
+    "runner": "windows-2022",
+    "python": "3.11.9",
+    "pytest": "9.0.2",
+    "application": "universal-research-library 0.2.0.dev2",
+    "pip_check": "No broken requirements found."
+  },
+  "source_binding": {
+    "observed_checkout": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "checkouts_match": true,
+    "suite_execution": "The exact checked-out ci_check harness selects the checkout src and runs isolated per-suite child processes.",
+    "application_python_modules_in_reviewed_tree": 383,
+    "native_command": "python -I -B -X utf8 scripts/windows_transcription_smoke.py",
+    "native_probe_git_blob": "c8b8ba55162670e7e2332944ab11fd0d39150a16",
+    "native_package_origin": "The isolated command imports the installed package. The exact script does not emit a complete module-origin or installed-byte inventory.",
+    "installed_python_inventory": "NOT_CLAIMED: this workflow does not emit a complete installed Python namespace/byte comparison.",
+    "built_wheel": {
+      "file": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "size_bytes": 2614462,
+      "sha256": "af3ec9c28975606853fcfe53e288d7c85091560742a97aacc41901ab82708eb1",
+      "provenance": "Pip build log only; wheel not downloaded or retained by this workflow."
+    }
+  },
+  "tests": {
+    "expected_modules": [
+      "tests/assistant/test_transcription_workflow.py",
+      "tests/transcription/test_supplied_worker_bridge.py",
+      "tests/storage/test_transcription_recovery.py",
+      "tests/storage/test_import_publication_backup.py",
+      "tests/ui/test_progress_job_review.py",
+      "tests/transcription/test_protocol_routing.py",
+      "tests/transcription/test_owned_admission.py",
+      "tests/transcription/test_protocol_fixture.py",
+      "tests/transcription/test_runtime_admission.py",
+      "tests/transcription/test_runtime_inventory.py",
+      "tests/storage/test_asr_additional_profile.py",
+      "tests/storage/test_state_json_reader.py",
+      "tests/transcription/test_control_reads.py",
+      "tests/transcription/test_service.py",
+      "tests/transcription/test_admission_boundaries.py",
+      "tests/transcription/test_restore.py",
+      "tests/e2e/test_transcription_cli.py",
+      "tests/storage/test_transcription_backup.py",
+      "tests/storage/test_transcription_composite_backup.py",
+      "tests/operations/test_resources.py",
+      "tests/operations/test_facade.py",
+      "tests/operations/test_transcription_views.py",
+      "tests/e2e/test_operations_cli.py",
+      "tests/storage/test_atomic_state_publication.py",
+      "tests/audio/test_audio_process.py",
+      "tests/audio/test_process_deadline.py",
+      "tests/transcription_windows/test_protocol_fixture_handles.py",
+      "tests/operations_windows/test_native_lock_release.py"
+    ],
+    "completed_modules": 28,
+    "passed": 841,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit_codes": [
+      0
+    ],
+    "individual_suite_verdicts": "module-results.json",
+    "common_modules": 26,
+    "common_passed": 837,
+    "windows_modules": 2,
+    "windows_passed": 4,
+    "selected_process_module": {
+      "module": "tests/audio/test_audio_process.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    "process_regression_scope": "All 27 current audio_process cases passed, including the 15 added directory-disappearance controls. This is the actual Windows trial.",
+    "deadline_module": {
+      "module": "tests/audio/test_process_deadline.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  },
+  "native": {
+    "status": "PASS",
+    "named_check_categories": 9,
+    "report_file": "native-report.json",
+    "report": {
+      "status": "PASS",
+      "checks": [
+        "actual named wx controls",
+        "shared background operation",
+        "actual named folder action",
+        "background folder intake",
+        "relative source and exclusion count",
+        "actual isolated child protocol",
+        "six verified formats",
+        "separate edit revision",
+        "original unchanged"
+      ],
+      "folder_picker_interaction": "NOT_RUN",
+      "folder_picker_answer": "controlled synthetic directory",
+      "whisper_acoustic_inference": "NOT_RUN",
+      "manual_NVDA": "NOT_RUN"
+    },
+    "scope": "Actual named wx controls and shared background operation with a synthetic ASR protocol. The nine report entries are named coverage categories, not a pytest case count."
+  },
+  "artifacts": {
+    "workflow_uploads_artifacts": false,
+    "api_observation": {
+      "total_count": 0,
+      "artifacts": []
+    },
+    "zip_downloaded": false,
+    "raw_artifact_members_claimed": false
+  },
+  "provenance": {
+    "log_type": "Complete GitHub connector-decoded job text; original timestamps and line endings preserved.",
+    "log_file": "full-decoded-log.txt",
+    "decoded_utf8_bytes": 105105,
+    "decoded_utf8_sha256": "a2180b7a757d8863bb7eac60bb396790e6d9ee4cd03dd0911164268004119200",
+    "analysis": "Derived parsing strips timestamps/line endings only for analysis. No hosted application or tests were executed by this reviewer."
+  },
+  "limits": [
+    "The Linux-only workflow step is conditionally skipped; all selected Windows pytest cases have zero skips.",
+    "The native script controls the folder-picker answer; physical picker interaction, acoustic inference and manual NVDA remain NOT_RUN.",
+    "No private model, recognition quality, physical recording, final sealed bundle, installed full-byte inventory or final-release qualification is claimed.",
+    "This exact Windows receipt is separate from Linux, pull-request duplicates and other source heads."
+  ]
+}

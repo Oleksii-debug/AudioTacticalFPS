@@ -123,6 +123,30 @@
       "job": 140876044090,
       "kind": "Terminal pinned Zig launcher trial: all nine actual native checks passed; source build inputs and private PE digest recorded. MSVC, real Python installation, NVDA and Authenticode remain separate.",
       "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-zig/qualification.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "8a913e155e6aab8eafe6bfa6fe06a2da0fc230ca",
+      "run": 46111569581,
+      "job": 140876043951,
+      "kind": "Terminal Windows supplied bridge: 28 source modules, 841 passed, zero failures/skips; nine actual native wx categories. Linux and Windows ordinary bridge run is complete; no full installed inventory or real acoustic-model claim.",
+      "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/supplied-bridge-windows/qualification.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "5668b3a1bb2fc52551b552cd5dead44bbb729c87",
+      "run": 46111569613,
+      "job": 140876044245,
+      "kind": "Terminal MSVC launcher: nine actual native checks passed; seven source hashes match current candidate. Both compiler jobs succeeded. Actual Python installation, signing and NVDA remain separate.",
+      "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/native-launcher-msvc/qualification.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "a3f94969f1ddf99e763cde6cbd3d6897019f14fd",
+      "run": 46111572572,
+      "job": 140876054132,
+      "kind": "Terminal Windows installed components: 88 modules, 3,217 passed plus 12 subtests; separate real-venv 21 passed; native clip 120 checks; actual Studio inspection five checks and five installed module hashes. Inclusive whole-file positive control with original master unchanged; loop listening and NVDA not qualified.",
+      "qualification": "carr-library/review/component-2dfc5d32-2026-11-28/windows-installed-receipt.json"
     }
   ],
   "candidate_runs": {

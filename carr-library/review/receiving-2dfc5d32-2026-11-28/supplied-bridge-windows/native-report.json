@@ -1,0 +1,24 @@
+{
+  "provenance": "Parsed verbatim-value JSON from the completed job log, not original artifact bytes.",
+  "record": {
+    "line": 1102,
+    "value": {
+      "status": "PASS",
+      "checks": [
+        "actual named wx controls",
+        "shared background operation",
+        "actual named folder action",
+        "background folder intake",
+        "relative source and exclusion count",
+        "actual isolated child protocol",
+        "six verified formats",
+        "separate edit revision",
+        "original unchanged"
+      ],
+      "folder_picker_interaction": "NOT_RUN",
+      "folder_picker_answer": "controlled synthetic directory",
+      "whisper_acoustic_inference": "NOT_RUN",
+      "manual_NVDA": "NOT_RUN"
+    }
+  }
+}

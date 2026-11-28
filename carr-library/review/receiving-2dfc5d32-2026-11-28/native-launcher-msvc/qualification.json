@@ -1,0 +1,119 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "MSVC build and actual Windows synthetic-child launcher execution",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "run_id": 46111569613,
+  "run_attempt": 1,
+  "job_id": 140876044245,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T06:07:47Z",
+  "completed_at": "2026-11-28T06:08:17Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569613/job/140876044245",
+  "workflow": {
+    "path": ".github/workflows/carr-native-launcher.yml",
+    "git_blob": "b3fb988da8ffa9312fdd09d788b25caecef825a8"
+  },
+  "source_identity": {
+    "observed_checkout": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "reported_source_files": 7,
+    "source_hashes_independently_matched": true,
+    "details": "source-identity.json"
+  },
+  "toolchain": {
+    "link.exe": {
+      "version": "14.44.35230.0",
+      "sha256": "49a5df25c3182a22684375b1d62a025016deffccea247894fe5ca2c85610c6a6"
+    },
+    "cl.exe": {
+      "version": "19.44.35230.0",
+      "sha256": "e87e78b3ef6580b75aebda843f8a22e874612d9f766344046551399f898eb226"
+    },
+    "rc.exe": {
+      "version": "10.0.26100.9457 (WinBuild.160101.0800)",
+      "sha256": "9e2ee68da28b3318f50a9f1008d64567a9b402bda384a007a9b71a3f16bd011b"
+    }
+  },
+  "private_executable": {
+    "sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+    "size_bytes": 15360,
+    "target": "Windows x64 / MSVC",
+    "release_status": "unsigned-private-candidate",
+    "static_pe": {
+      "schema": 1,
+      "file": "ResearchLibrary.exe",
+      "bytes": 15360,
+      "sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+      "machine": "x86_64",
+      "subsystem": "windows-gui",
+      "aslr": true,
+      "high_entropy_aslr": true,
+      "dep": true,
+      "timestamp": 1677176572,
+      "imports": [
+        "KERNEL32.dll",
+        "USER32.dll",
+        "SHELL32.dll"
+      ],
+      "reproducible_build_marker": true,
+      "embedded_as_invoker": true,
+      "certificate_table_present": false,
+      "authenticode_signed": false,
+      "windows_execution_verified": false,
+      "nvda_verified": false
+    }
+  },
+  "native": {
+    "schema": 1,
+    "status": "passed",
+    "checks": [
+      "unicode-spaces-fixed-argv-offline-optional-runtimes",
+      "read-only-ready-probe",
+      "fixed-installation-check",
+      "child-exit-status-propagated",
+      "extra-arguments-rejected",
+      "incomplete-state-preserved-without-reinstall",
+      "missing-runtime-does-not-search-path",
+      "fresh-package-reuses-fixed-offline-installer",
+      "research-data-sentinel-preserved"
+    ],
+    "check_count": 9,
+    "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+    "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+    "native_launcher_execution_verified": true,
+    "actual_python_installation_verified": false,
+    "nvda_verified": false,
+    "authenticode_verified": false,
+    "provenance": "The static build record's windows_execution_verified=false precedes execution. The later matching-hash probe explicitly verifies native launcher execution; repeated log records are not additional trials."
+  },
+  "whole_workflow": {
+    "run_conclusion": "success",
+    "other_compiler_job": 140876044090,
+    "other_compiler_receipt_tree": "676e5240e0902e229d4bfc358c194ff56050f6cb",
+    "other_compiler_receipt": "../native-launcher-zig/qualification.json"
+  },
+  "artifacts": {
+    "workflow_uploads_artifacts": false,
+    "api_observation": {
+      "total_count": 0,
+      "artifacts": []
+    },
+    "binary_downloaded": false,
+    "binary_published": false
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "log_type": "Complete connector-decoded terminal text; original timestamps and line endings preserved.",
+    "decoded_utf8_bytes": 34194,
+    "decoded_utf8_sha256": "5a793604b18de98f9e9bc16ede1fda9514cb9080f5fc349812ee43f55290cf17",
+    "extracted_receipts": "Build and probe JSON appear twice identically in the log. Stored copies are log-derived, not original artifact-member bytes."
+  },
+  "limits": [
+    "This receipt qualifies the MSVC synthetic-child launcher trial. The separate Zig receipt retains that compiler's own result.",
+    "Actual Python installation, NVDA and Authenticode remain explicitly unverified.",
+    "No final executable, installer, private runtime or model is uploaded or qualified by this workflow."
+  ]
+}

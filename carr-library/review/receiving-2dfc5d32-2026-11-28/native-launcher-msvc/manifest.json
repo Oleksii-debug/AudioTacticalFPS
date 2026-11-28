@@ -1,0 +1,60 @@
+{
+  "schema": "carr-decoded-receiving-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569613,
+  "job_id": 140876044245,
+  "scope": "MSVC terminal native launcher",
+  "files": [
+    {
+      "path": "full-decoded-log.txt",
+      "git_blob": "bf5f030ba70c717c6c6e5cfc5f205b92ea1594b1",
+      "utf8_bytes": 34194,
+      "sha256": "5a793604b18de98f9e9bc16ede1fda9514cb9080f5fc349812ee43f55290cf17"
+    },
+    {
+      "path": "job-metadata.json",
+      "git_blob": "0f3b22d9b294f02cf1a6fda50a6a1f8f9cfbd805",
+      "utf8_bytes": 3466,
+      "sha256": "379e00ecb8c479ae6efbfdc111118b1b60689f8feb69b76569357350904c73e7"
+    },
+    {
+      "path": "run-metadata.json",
+      "git_blob": "f277c8be46cf17bfbaa9075a2a4b30d10bec6423",
+      "utf8_bytes": 15430,
+      "sha256": "d5c26537d5792d7f50934c7267ca2a9faa53d2a988713b273037e3521ffc1fe3"
+    },
+    {
+      "path": "build-report.json",
+      "git_blob": "8ec0d2c1370665491f6dd63462af492f55b5da69",
+      "utf8_bytes": 4454,
+      "sha256": "e2cf2a2c13031a29060c8739cabd1ff2d56b30a2d6453efe59d23a934ae878ec"
+    },
+    {
+      "path": "native-report.json",
+      "git_blob": "4bcfd0f4c2ce1c30453c8491d029ee1e95305310",
+      "utf8_bytes": 1998,
+      "sha256": "30033c724bb42389dc1583e856d41221770da77eb0d2000b5aed84d308b067f2"
+    },
+    {
+      "path": "source-identity.json",
+      "git_blob": "7541a9bd2da26adcaac07c5e4c4ad52f6764850f",
+      "utf8_bytes": 2040,
+      "sha256": "9e58e0a2ad1e7680ae0cfd140ac768e90ba717ae45350ed6900e00b2e55cdd4e"
+    },
+    {
+      "path": "qualification.json",
+      "git_blob": "9664afd262f4b64834ba496e45f5b61652d5799d",
+      "utf8_bytes": 4663,
+      "sha256": "2f26d5e1bce63754ff4a15488007002d40f0107ea0a702a29385a004b87f0a6d"
+    },
+    {
+      "path": "README.md",
+      "git_blob": "428ccb461a103ce861f44789058c2c4cd8828363",
+      "utf8_bytes": 1369,
+      "sha256": "0a695bd8ca77ab0e4ea90b514723c75cc739a1caa6dce7044c8deb8297be6137"
+    }
+  ],
+  "verification": "Every listed blob fetched back and compared in full. Hashes identify these decoded-log-derived UTF-8 evidence files, not original artifact bytes.",
+  "product_changes": false,
+  "refs_changed": false
+}

@@ -1,0 +1,54 @@
+{
+  "schema": "carr-decoded-receiving-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569581,
+  "job_id": 140876043951,
+  "scope": "Windows terminal supplied-transcription bridge",
+  "files": [
+    {
+      "path": "full-decoded-log.txt",
+      "git_blob": "24dc4ef179c9c8d8d37f030a5743a73aff1c91dc",
+      "utf8_bytes": 105105,
+      "sha256": "a2180b7a757d8863bb7eac60bb396790e6d9ee4cd03dd0911164268004119200"
+    },
+    {
+      "path": "job-metadata.json",
+      "git_blob": "b39989af03839f53ebc98cf0f8d2f9aa7dc350fb",
+      "utf8_bytes": 4102,
+      "sha256": "4fc42d772536c38424a1490f512a19b7e2604daaf125adb582e462612895efa0"
+    },
+    {
+      "path": "run-metadata.json",
+      "git_blob": "edbb2144f4ea7c05e28c84a28ad809db1954a2f8",
+      "utf8_bytes": 15443,
+      "sha256": "6680669ad3ad5a7116076a5ad937fa587809af96f7568617d6521506fd4aea1a"
+    },
+    {
+      "path": "module-results.json",
+      "git_blob": "7eacc87d6bea1e5de42502be738f6924b2bcf542",
+      "utf8_bytes": 5945,
+      "sha256": "f050dae433707e927e85e89c3192c138809d28f3c8a7f959fdc9ff9786ff9294"
+    },
+    {
+      "path": "native-report.json",
+      "git_blob": "2277d02f67015ca30bc29ee84e56ec41be42535c",
+      "utf8_bytes": 736,
+      "sha256": "6381a3114bb3d054622e459f1a0298f5873ae3ed03ec118efe05896942978675"
+    },
+    {
+      "path": "qualification.json",
+      "git_blob": "d039a0c8971382a06b0d213f63933d50529445e3",
+      "utf8_bytes": 6470,
+      "sha256": "df6b891d95e7dd4dbd8365cccec496939f58dddd81a497e9f67fe50f02842f94"
+    },
+    {
+      "path": "README.md",
+      "git_blob": "ad54ff5306065eb42076175bed02a09af2b769bb",
+      "utf8_bytes": 1600,
+      "sha256": "e2f8d4f7415dfcf54459a4a8bc8ce8bf306dfb5a544764c7800d161bd5f6a50a"
+    }
+  ],
+  "verification": "Every listed blob was fetched back and compared in full. Hashes identify these UTF-8 evidence files; they do not assert an original artifact ZIP or member identity.",
+  "product_changes": false,
+  "refs_changed": false
+}

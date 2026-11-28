@@ -1,0 +1,49 @@
+{
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "reported_files": [
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.c",
+      "git_blob": "70e739d47803d5ba00dc7d7a7625bedf34c06b9f",
+      "sha256": "dacfb65a247a4466789c39685e40da6c975f5e3df93564a07d3ea174935e4a26",
+      "matched": true
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/probe_pe.py",
+      "git_blob": "6dc2708791108b9ebf4656e3f8480945e337d10b",
+      "sha256": "149e147197c94c067cb6211c9ecd51d3316b0c978ff830aa040e365d664759e3",
+      "matched": true
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/windows_child_probe.c",
+      "git_blob": "0cd3039053be35eb3e9f76960eccc7557d73e46d",
+      "sha256": "2e7e8b2dae95b2a7a8b89675815a7804644ac4e90c02622290002729d3179b15",
+      "matched": true
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher_core.h",
+      "git_blob": "456ff2695b5b5749290e054d1f8031e483999374",
+      "sha256": "d6dcc488585e38acdc2d11ab014c18b0a38d3b23650b3eab1c3f2aa7310a0a1b",
+      "matched": true
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.manifest",
+      "git_blob": "cfaea634d9705ae75f23b9423350e051cce7b732",
+      "sha256": "a1a68c930e5bd6380727f6fc88c49c4ba9b84dd8e688a48fb32857c58b6b1f1a",
+      "matched": true
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/launcher.rc",
+      "git_blob": "7cf42ebb63320940ad33bda24747a292bd67ed63",
+      "sha256": "1b5c2ee4213d3967649d8f2bb469081bbc910f0614125968e668a79c072a3db2",
+      "matched": true
+    },
+    {
+      "path": "carr-library/packaging/native-launcher/build_msvc.ps1",
+      "git_blob": "5e4cb7103b78797fd46c1b0092b3b1c2d71b351d",
+      "sha256": "3bab5f4319b3f025ecb1aa027befd448bbf1cf567a660441e39744e2570255c8",
+      "matched": true
+    }
+  ],
+  "verification": "SHA-256 computed from independently fetched exact selected Git blobs and compared with the completed build report."
+}

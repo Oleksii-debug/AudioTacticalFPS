@@ -1,0 +1,188 @@
+{
+  "id": 140876054132,
+  "run_id": 46111572572,
+  "workflow_name": "CARR updated project component verification",
+  "head_branch": "carr/component-followup-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzN3-dA",
+  "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140876054132",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054132",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T05:19:24Z",
+  "started_at": "2026-11-28T05:30:40Z",
+  "completed_at": "2026-11-28T06:08:25Z",
+  "name": "Updated components / windows-2022 / installed",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T05:30:40Z",
+      "completed_at": "2026-11-28T05:30:41Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T05:30:41Z",
+      "completed_at": "2026-11-28T05:30:42Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T05:30:42Z",
+      "completed_at": "2026-11-28T05:30:49Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T05:30:49Z",
+      "completed_at": "2026-11-28T05:30:50Z"
+    },
+    {
+      "name": "Require actual portable audio and OCR commands",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 5,
+      "started_at": "2026-11-28T05:30:50Z",
+      "completed_at": "2026-11-28T05:30:50Z"
+    },
+    {
+      "name": "Install exact application and component test prerequisites",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T05:30:50Z",
+      "completed_at": "2026-11-28T05:31:41Z"
+    },
+    {
+      "name": "Prepare pinned audio for actual clip processing and native controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T05:31:41Z",
+      "completed_at": "2026-11-28T05:31:58Z"
+    },
+    {
+      "name": "Prepare the existing verified OCR engine for automatic-language controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T05:31:58Z",
+      "completed_at": "2026-11-28T05:33:18Z"
+    },
+    {
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T05:33:18Z",
+      "completed_at": "2026-11-28T05:33:19Z"
+    },
+    {
+      "name": "Require installed module origin and exact complete Python source inventory",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T05:33:19Z",
+      "completed_at": "2026-11-28T05:33:19Z"
+    },
+    {
+      "name": "Require source and installed native additional-document imports",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-28T05:33:19Z",
+      "completed_at": "2026-11-28T05:33:19Z"
+    },
+    {
+      "name": "Require source updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 12,
+      "started_at": "2026-11-28T05:33:19Z",
+      "completed_at": "2026-11-28T05:33:19Z"
+    },
+    {
+      "name": "Require installed updated components and adjacent contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T05:33:19Z",
+      "completed_at": "2026-11-28T06:07:34Z"
+    },
+    {
+      "name": "Require real Windows virtual-environment EOF and cleanup contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-28T06:07:34Z",
+      "completed_at": "2026-11-28T06:07:45Z"
+    },
+    {
+      "name": "Require installed native clip editing and explicit loop controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T06:07:45Z",
+      "completed_at": "2026-11-28T06:07:58Z"
+    },
+    {
+      "name": "Require installed native completed-audio silence inspection",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T06:07:58Z",
+      "completed_at": "2026-11-28T06:08:21Z"
+    },
+    {
+      "name": "Retain public synthetic source and installed evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T06:08:21Z",
+      "completed_at": "2026-11-28T06:08:22Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33,
+      "started_at": "2026-11-28T06:08:22Z",
+      "completed_at": "2026-11-28T06:08:22Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 34,
+      "started_at": "2026-11-28T06:08:22Z",
+      "completed_at": "2026-11-28T06:08:24Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 35,
+      "started_at": "2026-11-28T06:08:24Z",
+      "completed_at": "2026-11-28T06:08:24Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140876054132",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490155,
+  "runner_name": "GitHub Actions 1000490155",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

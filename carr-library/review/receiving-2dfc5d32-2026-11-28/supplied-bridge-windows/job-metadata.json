@@ -1,0 +1,124 @@
+{
+  "id": 140876043951,
+  "run_id": 46111569581,
+  "workflow_name": "Supplied transcription bridge acceptance",
+  "head_branch": "carr/ci-endpoint-evaluation-20261127",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569581",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAgzN3Wrw",
+  "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140876043951",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111569581/job/140876043951",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-28T05:19:21Z",
+  "started_at": "2026-11-28T05:43:04Z",
+  "completed_at": "2026-11-28T06:03:45Z",
+  "name": "protocol (windows-2022)",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T05:43:05Z",
+      "completed_at": "2026-11-28T05:43:06Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T05:43:06Z",
+      "completed_at": "2026-11-28T05:43:14Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T05:43:14Z",
+      "completed_at": "2026-11-28T05:43:14Z"
+    },
+    {
+      "name": "Install the actual source package and test dependencies",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T05:43:14Z",
+      "completed_at": "2026-11-28T05:43:57Z"
+    },
+    {
+      "name": "Verify retained inputs, actual child protocol, recovery and CLI",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T05:43:57Z",
+      "completed_at": "2026-11-28T06:03:30Z"
+    },
+    {
+      "name": "Require native POSIX inherited-reservation ownership",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 6,
+      "started_at": "2026-11-28T06:03:30Z",
+      "completed_at": "2026-11-28T06:03:30Z"
+    },
+    {
+      "name": "Require actual Windows reader-handle publication",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T06:03:30Z",
+      "completed_at": "2026-11-28T06:03:32Z"
+    },
+    {
+      "name": "Install actual native desktop controls",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T06:03:32Z",
+      "completed_at": "2026-11-28T06:03:39Z"
+    },
+    {
+      "name": "Exercise actual native controls and shared background operation",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T06:03:39Z",
+      "completed_at": "2026-11-28T06:03:41Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T06:03:41Z",
+      "completed_at": "2026-11-28T06:03:41Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-11-28T06:03:41Z",
+      "completed_at": "2026-11-28T06:03:43Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 19,
+      "started_at": "2026-11-28T06:03:43Z",
+      "completed_at": "2026-11-28T06:03:43Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140876043951",
+  "labels": [
+    "windows-2022"
+  ],
+  "runner_id": 1000490174,
+  "runner_name": "GitHub Actions 1000490174",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}
