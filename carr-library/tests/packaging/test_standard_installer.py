@@ -1806,3 +1806,63 @@ if sys.platform == 'win32':
         else:
             report = json.loads(receipt.read_text(encoding='utf-8-sig'))
             assert report['status'] == ('UNAVAILABLE' if fault.startswith('observer-') else 'MATCH')
+
+
+@pytest.mark.parametrize('log_kind', ['utf8', 'utf16', 'bounded', 'unreadable'])
+def test_shortcut_child_failure_keeps_cause_and_bounded_actual_log(tmp_path, monkeypatch, log_kind):
+    appdata = tmp_path / 'appdata'
+    folder = appdata / 'Microsoft/Windows/Start Menu/Programs/Resonance'
+    folder.mkdir(parents=True)
+    for name in ('Resonance', 'Repair Resonance', 'Uninstall Resonance'):
+        (folder / (name + '.lnk')).write_bytes(b'Owned diagnostic fixture; never followed.')
+    monkeypatch.setenv('APPDATA', str(appdata))
+    monkeypatch.setenv('SystemRoot', str(tmp_path / 'windows'))
+    report = tmp_path / 'inspection'
+    report.mkdir()
+    marker = 'Native acceptance failed at shortcuts-process.log: exit 1'
+    original = RuntimeError(marker)
+    text = 'Actual child diagnostic: \u03a9 \u0423\u043a\u0440\u0430\u0457\u043d\u0430\n'
+    raw = (text.encode('utf-16') if log_kind == 'utf16'
+           else text.encode('utf-8'))
+    if log_kind == 'bounded':
+        raw = b'bounded-head\n' + b'x' * (256 * 1024) + b'UNREAD-TAIL'
+    observed = []
+
+    def failed_child(command, *, cwd, log, timeout):
+        observed.append((cwd, log, timeout))
+        if log_kind == 'unreadable':
+            log.mkdir()
+        else:
+            log.write_bytes(raw)
+        raise original
+
+    monkeypatch.setattr(probe, 'owned_process', failed_child)
+    with pytest.raises(RuntimeError, match=marker) as failure:
+        probe.inspect_shortcuts(tmp_path / 'installation', report)
+    assert failure.value.__cause__ is original
+    assert observed == [(report, report / 'shortcuts-process.log', 30)]
+    message = str(failure.value)
+    assert message.isascii()
+    detail = json.loads(message.split('; child log: ', 1)[1])
+    assert detail['log'] == 'shortcuts-process.log'
+    if log_kind == 'unreadable':
+        assert detail['status'] == 'UNAVAILABLE'
+        assert detail['read_error'] in ('IsADirectoryError', 'PermissionError')
+        assert 'text' not in detail and 'captured_sha256' not in detail
+        assert (report / 'shortcuts-process.log').is_dir()
+    else:
+        captured = raw[:16384]
+        assert detail['status'] == 'READ'
+        assert detail['captured_bytes'] == len(captured)
+        assert detail['captured_sha256'] == checksum(captured)
+        assert detail['truncated'] is (len(raw) > 16384)
+        assert (report / 'shortcuts-process.log').read_bytes() == raw
+        if log_kind == 'bounded':
+            assert detail['text'].startswith('bounded-head\n')
+            assert 'UNREAD-TAIL' not in message
+            assert len(detail['text']) == 16384
+            assert len(message) < 17000
+        else:
+            assert detail['text'] == text
+    assert not (report / 'shortcuts.json').exists()
+    assert not (report / 'shortcut-inspection.json').exists()

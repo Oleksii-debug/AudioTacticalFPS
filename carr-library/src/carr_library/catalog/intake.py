@@ -5,9 +5,11 @@ import codecs
 from io import BytesIO
 from hashlib import sha256
 from pathlib import Path
+from operator import index
 import os
 import re
 import stat
+import sys
 
 from ._filetype.archive import Exe, Pdf, Rtf, Zip
 from .office_archive import _reserved, validate_office
@@ -80,6 +82,24 @@ def classify(data, suffix):
     return mime
 
 
+def _snapshot_read_size(requested, size):
+    """Keep the native read argument contract before reducing its allocation."""
+    if requested is None:
+        return None
+    try:
+        value = index(requested)
+    except TypeError:
+        if not hasattr(type(requested), "__index__"):
+            raise TypeError("argument should be integer or None, not "
+                            f"'{type(requested).__name__[:200]}'") from None
+        raise
+    if not -sys.maxsize - 1 <= value <= sys.maxsize:
+        raise OverflowError(f"cannot fit '{type(requested).__name__[:200]}' "
+                            "into an index-sized integer")
+    # Leave native read(-1) and its refusal of values below -1 unchanged.
+    return min(value, size + 1) if value >= 0 else value
+
+
 def snapshot(root, relative, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
     """Read a selected relative file under a trusted local root; return immutable bytes.
 
@@ -114,7 +134,7 @@ def snapshot(root, relative, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
         before = os.fstat(stream.fileno())
         if not stat.S_ISREG(before.st_mode) or (info.st_dev, info.st_ino) != (before.st_dev, before.st_ino):
             raise IntakeError("file replaced")
-        data = stream.read(max_bytes + 1)
+        data = stream.read(_snapshot_read_size(max_bytes + 1, before.st_size))
         after = os.fstat(stream.fileno())
     if cancelled():
         raise InterruptedError('Source intake cancelled.')
