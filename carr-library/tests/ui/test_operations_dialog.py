@@ -394,3 +394,123 @@ def test_native_tasks_completion_requires_event_deleted_wrapper_and_unchanged_jo
         assert len(checks) == 3 and not errors
         assert stopped == [True] and exits == [True] and advanced == ['complete']
     assert asdict(assistant.get(identity)) == original and len(assistant.jobs()) == 1
+
+
+@pytest.mark.parametrize('blocked, changed', [
+    (False, None), (True, None), (False, 'wrong-row'), (False, 'duplicate-row'),
+    (False, 'missing-search'), (False, 'duplicate-search'),
+])
+def test_native_tasks_probe_uses_current_semantic_registry_and_real_launcher_rebuild(
+        blocked, changed):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace
+    import traceback
+
+    from carr_library.ui import keyboard_settings as keyboard
+    from carr_library.ui.command_registry import CommandRegistry, CommandSpec
+
+    manager = keyboard.KeyboardManager(registry=CommandRegistry((
+        CommandSpec('operations.open', 'Tasks and resources'),
+        CommandSpec('unrelated.open', 'Unrelated command'),
+        CommandSpec('reader.same-label', 'Tasks and resources', context='reader'),
+    )))
+    item = SimpleNamespace(GetItemLabel=lambda: 'Tasks and &resources...')
+    manager.bindings['operations.open'] = keyboard._MenuBinding(item, 'Tasks and &resources...', 0)
+    frame = SimpleNamespace(working=False, keyboard_commands=manager, status=object())
+    rows, errors, keys, checks = [], [], [], []
+    phase = ['start', 0.0]
+
+    class Search:
+        value = ''
+        def GetName(self): return 'Search commands by name'
+        def GetValue(self): return self.value
+        def SetValue(self, value):
+            self.value = value
+            launcher['rebuild']()
+
+    class Results:
+        values, index = [], -1
+        def GetName(self): return 'Matching commands and shortcuts'
+        def Set(self, values): self.values = list(values)
+        def SetSelection(self, index): self.index = index
+        def GetSelection(self): return self.index
+        def GetCount(self): return len(self.values)
+        def GetString(self, index): return self.values[index]
+
+    search, results = Search(), Results()
+    enabled_values, status_values = [], []
+    launcher = dict(manager=manager, context='main', rows=rows, search=search,
+        results=results, enabled={'operations.open': True, 'unrelated.open': True},
+        run=SimpleNamespace(Enable=enabled_values.append),
+        status=SimpleNamespace(ChangeValue=status_values.append))
+    source = ast.parse(Path(keyboard.__file__).read_text(encoding='utf-8'))
+    actual_launcher, = [node for node in source.body if isinstance(node, ast.FunctionDef)
+                         and node.name == 'show_command_launcher']
+    methods = [node for node in actual_launcher.body if isinstance(node, ast.FunctionDef)
+               and node.name in {'selected', 'rebuild'}]
+    assert {node.name for node in methods} == {'selected', 'rebuild'}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=methods, type_ignores=[])),
+                 keyboard.__file__, 'exec'), launcher)
+    controls = [search, results]
+    palette = SimpleNamespace(GetChildren=lambda: tuple(controls))
+
+    def check(label, condition):
+        assert condition, label
+        checks.append(label)
+
+    def advance(name):
+        phase[:] = [name, 0.0]
+
+    def key(control, code, next_phase, modifiers=0):
+        keys.append((control, code, modifiers))
+        advance(next_phase)
+        return True
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_operations_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    names = {'named', 'open_palette', 'tick'}
+    methods = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+               and node.name in names]
+    assert {node.name for node in methods} == names
+    tick = next(node for node in methods if node.name == 'tick')
+    factory = ast.parse('def make_tick(gate, detached):\n    return None\n').body[0]
+    factory.body = [tick, ast.Return(value=ast.Name(id='tick', ctx=ast.Load()))]
+    native_module = ast.fix_missing_locations(ast.Module(
+        body=[node for node in methods if node is not tick] + [factory], type_ignores=[]))
+    native = dict(monotonic=lambda: 0.0, deadline=120.0, phase=phase, held=[None],
+        frame=frame, application=SimpleNamespace(GetMainLoop=lambda: object()),
+        wx=SimpleNamespace(WXK_RETURN=13, MOD_CONTROL=2, MOD_SHIFT=4),
+        window=lambda title: palette if title == 'Find a command' else None,
+        check=check, advance=advance, key=key, abort=errors.append, traceback=traceback)
+    exec(compile(native_module, str(script), 'exec'), native)
+    callback = native['make_tick'](None, None)
+    callback()
+    assert not errors and len(checks) == 2 and phase[0] == 'open'
+    if blocked:
+        phase[0] = 'open_blocked'
+    callback()
+    assert keys == [(frame.status, ord('P'), 2 | 4)]
+    assert phase[0] == ('palette_blocked' if blocked else 'palette')
+    callback()
+    assert not errors and search.GetValue() == 'Tasks and resources'
+    assert [row.command_id for row in rows] == ['operations.open']
+    assert enabled_values[-1] is True and status_values[-1] == 'Ready to run.'
+    if changed == 'wrong-row':
+        results.values[0] = 'Unrelated command — Not assigned'
+    elif changed == 'duplicate-row':
+        results.values.append(results.values[0])
+    elif changed == 'missing-search':
+        controls.remove(search)
+    elif changed == 'duplicate-search':
+        controls.append(search)
+    callback()
+    if changed:
+        assert len(errors) == 1 and len(keys) == 1 and len(checks) == 2
+        assert phase[0] == 'select'
+    else:
+        assert not errors and len(checks) == 3
+        assert keys[-1] == (search, 13, 0)
+        assert phase[0] == ('blocked' if blocked else 'loaded')
+    assert not hasattr(frame, 'keyboard_settings')
+    assert not hasattr(palette, 'filter') and not hasattr(palette, 'rows')
