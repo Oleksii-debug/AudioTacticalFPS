@@ -54,7 +54,7 @@ PINS = {
     "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
     "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
     "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
-    "tests/audio/test_live_metadata_retry.py": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+    "tests/audio/test_live_metadata_retry.py": "9d97fca2633815e61a55c16f51a06484944f6fbc",
     "tests/ui/test_native_conversion_diagnostics.py": "dc523d350e151eaa6c6d94a63752abf38a37a497",
     "scripts/windows_document_conversion_smoke.py": "4b67819886d4324a616bce8dff13251fec2370f0",
 }

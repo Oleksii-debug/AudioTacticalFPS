@@ -1,0 +1,58 @@
+{
+  "schema": "resonance-real-delete-observation-composition/1",
+  "status": "PEER_REVIEWED_NOT_RUN",
+  "created_utc": "2026-11-28T00:06:36Z",
+  "base_commit": "db6cce296cc95690bf1036eb9c583df5d7869874",
+  "base_tree": "12df5c487b7c63e631786055ac9b6f950f5557dc",
+  "files": [
+    {
+      "path": "carr-library/tests/audio/test_live_metadata_retry.py",
+      "preimage": "bae4ed3b64c9dbd85776fa189c18d91e1119a009",
+      "sha": "9d97fca2633815e61a55c16f51a06484944f6fbc"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": "cd41df858e39ef0d8397a531a62780f43533e900",
+      "sha": "6906734c565379c8b086f012894de0a7250b6c64"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "28418b5d618cf805c997b4bab467ca52e7758a2a",
+      "sha": "264fcc84bcfeac1b15b5ca30f9ea1d1b6ffd9114"
+    }
+  ],
+  "reports": [
+    {
+      "path": "resonance-status/next22/reviews/live_file_delete_fixture.json",
+      "sha": "1998d1c49016dd30e2e58b4b82fc8f1bc7b6277b"
+    },
+    {
+      "path": "resonance-status/next22/reviews/conversion_fixture_pins.json",
+      "sha": "a82f2d1034944862a524ba5c617d77343632908a"
+    },
+    {
+      "path": "resonance-status/next22/actual/db6_windows_conversion_source_253_1.json",
+      "sha": "bef98c7c518ee2a2788bf7ff5508fec92aa3c4cf"
+    }
+  ],
+  "change": "Align the real open-file deletion fixture with actual fresh-present or absent native metadata and require final lstat after child exit, without demanding a transient access-denied outcome. The complete actual child program and other11 cases are byte-identical.",
+  "preservation": {
+    "production_process": "014c47d5297a937a8bf6061420dd009206863669",
+    "whole_suites": 8,
+    "source_cases": 254,
+    "installed_cases": 254,
+    "origins": 19,
+    "source_pins": 29,
+    "native_phases": 6,
+    "limits": "All source/installed/native/cancel/ownership/deadline and outer envelopes unchanged."
+  },
+  "review": "Progress accepted exact fixture and exact one-helper/two-workflow pin inverse reconstruction; root independently repeated both inverse checks and preserved the real child bytes.",
+  "actual": "At db6 Windows253 source cases passed and the extra native-error occurrence assertion failed. Installed/acquisition/native phases were not reached; there is no converter acceptance success to transfer.",
+  "running_refs": {
+    "converter": "Advance only carr/ci-next15-conversion-final-20261127-5a9e after exact readback.",
+    "book_and_capacity": "Retain db6 focused runs.",
+    "performance": "Retain exact79ef two remaining50k profiles and completed1k/10k evidence.",
+    "main_pr": "Retain e763 desktop/V3/ASR/owner execution."
+  },
+  "release": "No canonical merge, binary release, private payload publication or completed-native claim."
+}

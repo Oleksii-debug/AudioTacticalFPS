@@ -230,7 +230,8 @@ def test_real_open_file_deletion_is_observed_without_cached_fallback(
     output = tmp_path / 'retiring-lock'
     ready, release = tmp_path / 'ready', tmp_path / 'release'
     original = runner._live_file_info
-    observations, native_errors = [], []
+    observations, native_errors, metadata_outcomes, final_observations = [], [], [], []
+    original_lstat = Path.lstat
     code = f'''
 from pathlib import Path
 import ctypes, os, time
@@ -281,19 +282,38 @@ finally:
             time.sleep(.005)
         observations.append(path)
         try:
-            return original(path)
+            info = original(path)
+            assert info.st_size == 0
+            metadata_outcomes.append('present')
+            return info
+        except FileNotFoundError:
+            metadata_outcomes.append('absent')
+            raise
         except PermissionError as error:
+            metadata_outcomes.append('access-denied')
             native_errors.append(getattr(error, 'winerror', None))
             raise
         finally:
             release.write_bytes(b'Parent has completed its actual metadata query.')
 
+    def final(path, *args, **kwargs):
+        if path == output:
+            assert live_children[0].poll() is not None
+            final_observations.append(path)
+        return original_lstat(path, *args, **kwargs)
+
     monkeypatch.setattr(runner, '_live_file_info', observe)
+    monkeypatch.setattr(Path, 'lstat', final)
     result = _run(code, watch=(output,), budget=AudioBudget(timeout=8))
-    assert result.returncode == 0 and observations
+    assert result.returncode == 0 and observations and final_observations
     assert not output.exists() and ready.exists() and release.exists()
+    assert metadata_outcomes and set(metadata_outcomes) <= {'present', 'absent', 'access-denied'}
     if os.name == 'nt':
-        assert native_errors and set(native_errors) == {5}
+        # The real filesystem may still expose fresh attributes or may already
+        # report absence. A transient denial is permitted, never required.
+        # The other eleven cases deterministically enforce every retry/control
+        # boundary; this case proves actual native deletion and final lstat.
+        assert set(native_errors) <= {5}
     else:
-        assert native_errors == []
+        assert native_errors == [] and set(metadata_outcomes) == {'absent'}
     _reaped(live_children)
