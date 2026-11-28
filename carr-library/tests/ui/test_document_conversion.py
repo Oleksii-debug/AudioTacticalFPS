@@ -1,5 +1,5 @@
 """Real host functions with native picker doubles; no wx/native-runtime qualification."""
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -15,7 +15,6 @@ from carr_library.ui import document_conversion as module
 @pytest.fixture
 def owner(tmp_path, monkeypatch):
     app = LibraryApp(tmp_path / 'library')
-    (app.root / 'state').mkdir(exist_ok=True)
     workspace = app.create_workspace('Selected library')
     source = tmp_path / 'source.rtf'
     source.write_bytes(br'{\rtf1\ansi Exact original.}')
@@ -88,6 +87,7 @@ def test_picker_rechecks_owner_before_getting_native_selected_path(owner, stage)
     assert selected.reads == 0 and selected.destroyed
     assert all(dialog.destroyed for dialog in case.dialogs)
     assert case.jobs == [] and list(case.output.iterdir()) == []
+    assert not (case.app.root / 'state').exists()
 
 
 @pytest.mark.parametrize('stage', ['input', 'runtime', 'output'])
@@ -98,6 +98,7 @@ def test_explicit_picker_cancel_never_admits_a_job(owner, stage):
     assert all(dialog.destroyed for dialog in case.dialogs)
     assert next(dialog for dialog in case.dialogs if dialog.stage == stage).reads == 0
     assert case.jobs == [] and list(case.output.iterdir()) == []
+    assert not (case.app.root / 'state').exists()
 
 
 @pytest.mark.parametrize('kind', ['scope', 'runtime', 'source'])
@@ -166,3 +167,67 @@ def test_supported_format_help_does_not_create_an_untyped_state_directory(owner,
     assert set(case.app.root.rglob('*')) == before
     assert shown and 'limited reading conversion' in shown[0][-1]
     assert '.rtf: unavailable' in shown[0][-1]
+
+
+def test_fresh_library_creates_exact_state_then_runs_real_builtin_conversion(owner, monkeypatch):
+    from hashlib import sha256
+    import json
+    case = owner
+    assert not (case.app.root / 'state').exists()
+    source = case.tmp_path / 'fresh.txt'
+    original = 'Fresh library — exact Україна.\n'.encode('utf-8')
+    source.write_bytes(original)
+    monkeypatch.setattr(sys.modules['wx'].FileDialog, 'GetPaths',
+                        lambda self: [str(source)])
+    module.convert_selected_documents(case.frame)
+    assert len(case.jobs) == 1 and (case.app.root / 'state').is_dir()
+    assert [picker.stage for picker in case.dialogs] == ['input', 'output']
+    with ThreadPoolExecutor(max_workers=1) as worker:
+        result, = worker.submit(case.jobs[0][1]).result(timeout=60)
+    assert result.path.read_bytes() == original == source.read_bytes()
+    assert result.report['source_sha256'] == sha256(original).hexdigest()
+    assert result.report['original_modified'] is False
+    assert result.report['verified_for_quotation'] is False
+    assert json.loads(result.report_path.read_text(encoding='utf-8')) == result.report
+    assert not list(case.output.glob('.pending-conversion-*'))
+
+
+def test_fresh_state_admission_rejects_replaced_existing_library_before_mkdir(owner):
+    case = owner
+    root = case.app.root
+    moved = case.tmp_path / 'retired-before-state'
+    identity = root.stat().st_dev, root.stat().st_ino
+    original = case.source.read_bytes()
+    calls = 0
+    def guard():
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            root.rename(moved)
+            root.mkdir()
+            (root / 'canary.txt').write_bytes(b'Unrelated replacement root')
+    try:
+        with pytest.raises(ConversionError, match='changed before state initialization'):
+            module.ConversionService(case.output, input_roots=(case.source,),
+                                     state_root=root / 'state', guard=guard)
+        assert calls == 2
+        assert (moved.stat().st_dev, moved.stat().st_ino) == identity
+        assert set(path.name for path in root.iterdir()) == {'canary.txt'}
+        assert (root / 'canary.txt').read_bytes() == b'Unrelated replacement root'
+        assert not (moved / 'state').exists()
+        assert case.source.read_bytes() == original and not list(case.output.iterdir())
+    finally:
+        if moved.exists():
+            (root / 'canary.txt').unlink()
+            root.rmdir()
+            moved.rename(root)
+
+
+def test_fresh_state_creation_never_replaces_an_existing_regular_file(owner):
+    case = owner
+    state = case.app.root / 'state'
+    state.write_bytes(b'Existing unrelated state file')
+    module.convert_selected_documents(case.frame)
+    assert not case.jobs and not list(case.output.iterdir())
+    assert state.read_bytes() == b'Existing unrelated state file'
+    assert case.messages and case.messages[-1].startswith('Conversion not started: ')

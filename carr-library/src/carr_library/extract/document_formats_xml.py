@@ -253,6 +253,25 @@ def _opc(archive, primary, budget):
 
 
 def _check_odf_visibility(root, budget):
+    # ODF 1.3 19.475 gives these six master-page elements a display switch.
+    # LibreOffice also emits disabled empty elements.  They contain no text
+    # to hide; only this exact, content-free styles.xml shape is exempt.
+    empty_disabled = set()
+    if root.tag == OFFICE + 'document-styles':
+        names = {STYLE + name for name in ('header', 'header-first', 'header-left',
+            'footer', 'footer-first', 'footer-left')}
+        for masters in root.findall(OFFICE + 'master-styles'):
+            budget.check()
+            for page in masters.findall(STYLE + 'master-page'):
+                budget.check()
+                for element in page:
+                    budget.check()
+                    if (element.tag in names
+                            and element.attrib == {STYLE + 'display': 'false'}
+                            and not len(element)
+                            and not (element.text or '').strip()
+                            and not (element.tail or '').strip()):
+                        empty_disabled.add(element)
     blocked = {TEXT + name for name in ('tracked-changes', 'change', 'change-start',
         'change-end', 'hidden-text', 'hidden-paragraph', 'conditional-text',
         'script', 'execute-macro')}
@@ -262,7 +281,7 @@ def _check_odf_visibility(root, budget):
             raise ValueError('Conditional, changed or active document text requires review.')
         if (element.get(TEXT + 'display') in ('none', 'false')
                 or element.get(FO + 'visibility') in ('hidden', 'collapse')
-                or element.get(STYLE + 'display') == 'false'):
+                or element.get(STYLE + 'display') == 'false') and element not in empty_disabled:
             # Fixed diagnostic vocabulary: never include document text, URLs,
             # arbitrary XML names, attribute values or filesystem paths.
             part = {OFFICE + 'document-content': 'content.xml',

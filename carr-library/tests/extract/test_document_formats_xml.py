@@ -476,3 +476,101 @@ def test_record_limit_and_empty_visible_content_rejected(monkeypatch):
         extract_xml_document(fb2('<section><p>A</p><p>B</p><p>C</p></section>'), '.fb2')
     with pytest.raises(ValueError, match='no supported visible text'):
         extract_xml_document(fb2('<section><p> </p></section>'), '.fb2')
+
+
+def _disabled_header_styles(markup, *, placement='master-page'):
+    if placement == 'master-page':
+        body = '<office:master-styles><style:master-page>' + markup + '</style:master-page></office:master-styles>'
+    elif placement == 'master-styles':
+        body = '<office:master-styles>' + markup + '</office:master-styles>'
+    else:
+        body = '<office:styles><style:master-page>' + markup + '</style:master-page></office:styles>'
+    return (f'<office:document-styles xmlns:office="{O}" xmlns:style="{ODF}style:1.0" '
+            f'xmlns:text="{T}" xmlns:fo="{ODF}xsl-fo-compatible:1.0">'
+            + body + '</office:document-styles>')
+
+
+@pytest.mark.parametrize('name', [
+    'header', 'header-first', 'header-left', 'footer', 'footer-first', 'footer-left',
+])
+def test_empty_disabled_odf_master_header_footer_preserves_exact_visible_sheet(name):
+    # The pinned LibreOffice exporter emits the same child-free shape when
+    # left, center and right content are all empty; no runtime is simulated.
+    plain = odf('.ods')
+    styles = _disabled_header_styles(f'<style:{name} style:display="false"> \n </style:{name}>\n')
+    source = odf('.ods', styles=styles)
+    before = sha256(source).hexdigest()
+    expected = extract_xml_document(plain, '.ods')
+    actual = extract_xml_document(source, '.ods')
+    assert actual['records'] == expected['records']
+    assert texts(actual) == ['First', 'Second']
+    assert actual['warnings'] == expected['warnings']
+    assert 'headers_footers_styles_not_rendered' in actual['warnings']
+    assert sha256(source).hexdigest() == before
+
+
+@pytest.mark.parametrize('case', [
+    'text', 'paragraph', 'empty-child', 'region', 'extra-attribute', 'tail',
+    'text-display', 'fo-visibility', 'master-styles', 'named-style',
+    'content-body', 'active-child',
+])
+def test_disabled_odf_header_exception_never_admits_hidden_or_misplaced_content(case):
+    attrs, content, tail, placement = 'style:display="false"', '', '', 'master-page'
+    if case == 'text':
+        content = 'PRIVATE_HEADER_TEXT'
+    elif case == 'paragraph':
+        content = '<text:p>PRIVATE_HEADER_TEXT</text:p>'
+    elif case == 'empty-child':
+        content = '<text:p/>'
+    elif case == 'region':
+        content = '<style:region-center><text:p>PRIVATE_HEADER_TEXT</text:p></style:region-center>'
+    elif case == 'extra-attribute':
+        attrs += ' style:name="PRIVATE_ATTRIBUTE_VALUE"'
+    elif case == 'tail':
+        tail = 'PRIVATE_HEADER_TEXT'
+    elif case == 'text-display':
+        attrs += ' text:display="none"'
+    elif case == 'fo-visibility':
+        attrs += ' fo:visibility="hidden"'
+    elif case == 'master-styles':
+        placement = 'master-styles'
+    elif case == 'named-style':
+        placement = 'named-style'
+    elif case == 'active-child':
+        content = '<office:scripts><office:event-listeners/></office:scripts>'
+    markup = f'<style:header-left {attrs}>{content}</style:header-left>' + tail
+    if case == 'content-body':
+        markup = markup.replace('<style:header-left ',
+            f'<style:header-left xmlns:style="{ODF}style:1.0" ')
+        source = odf('.odt', markup + '<text:p>Visible</text:p>')
+        suffix = '.odt'
+    else:
+        source = odf('.ods', styles=_disabled_header_styles(markup, placement=placement))
+        suffix = '.ods'
+    before = sha256(source).hexdigest()
+    with pytest.raises(ValueError, match='Hidden document text requires review') as failure:
+        extract_xml_document(source, suffix)
+    assert 'PRIVATE_HEADER_TEXT' not in str(failure.value)
+    assert 'PRIVATE_ATTRIBUTE_VALUE' not in str(failure.value)
+    assert sha256(source).hexdigest() == before
+
+
+def test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_scan():
+    from xml.etree import ElementTree
+    root = ElementTree.fromstring(_disabled_header_styles(
+        '<style:header-left style:display="false"/>' * 4))
+    calls = 0
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls == 4
+    budget = module._Budget(max_chars=100, cancelled=cancelled)
+    with pytest.raises(InterruptedError):
+        module._check_odf_visibility(root, budget)
+    assert calls == 4
+    # Earlier empty placeholders cannot authorize a later hidden style.
+    hidden = ElementTree.SubElement(root, module.STYLE + 'text-properties',
+                                   {module.TEXT + 'display': 'none'})
+    with pytest.raises(ValueError, match='Hidden'):
+        module._check_odf_visibility(root, module._Budget(max_chars=100))
+    assert hidden.get(module.TEXT + 'display') == 'none'

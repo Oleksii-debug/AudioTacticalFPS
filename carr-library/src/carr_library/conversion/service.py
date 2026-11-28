@@ -87,12 +87,24 @@ class ConversionService:
             state = Path(state_root).absolute()
             if state.name != 'state':
                 raise ValueError('Choose the current library state directory for document conversion.')
-            self.state_root = local_path(state, exists=True)
-            regular(self.state_root, directory=True)
-            library = local_path(self.state_root.parent, exists=True)
-            regular(library, directory=True)
+            # A fresh LibraryApp has no state directory until a feature needs it.
+            # Create only this child of the already captured existing library.
+            library = local_path(state.parent, exists=True)
+            info = regular(library, directory=True)
+            library_identity = info.st_dev, info.st_ino
+            self.state_root = local_path(library / 'state')
             if self.root.is_relative_to(library):
                 raise PermissionError('Choose a reading-copy folder outside the research library.')
+            self.guard()
+            info = regular(local_path(library, exists=True), directory=True)
+            if (info.st_dev, info.st_ino) != library_identity:
+                raise ConversionError('The selected library directory changed before state initialization.')
+            self.state_root.mkdir(mode=0o700, exist_ok=True)
+            self.guard()
+            info = regular(local_path(library, exists=True), directory=True)
+            if (info.st_dev, info.st_ino) != library_identity:
+                raise ConversionError('The selected library directory changed during state initialization.')
+            regular(self.state_root, directory=True)
             directories.update((library, self.state_root))
         if any(value is not None for value in (pandoc, office, calibre)) and self.state_root is None:
             raise ConversionUnavailable('Select the current library before using an optional document converter.')

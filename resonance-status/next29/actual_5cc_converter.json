@@ -1,0 +1,310 @@
+{
+  "schema": "carr-actual-ci-evidence/1",
+  "created_utc": "2026-11-28 00:43:03 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+  "tree": "1a9cf51a75e3e5e860ded1bca2b041cb52f399e4",
+  "run_id": 46086376652,
+  "jobs": [
+    {
+      "id": 140796798261,
+      "platform": "ubuntu-24.04",
+      "conclusion": "success",
+      "source_rows": [
+        "2026-11-28T00:31:49.6704004Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6704870Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6705665Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6706486Z PASS: tests/ui/test_document_conversion.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6707263Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=95, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6708009Z PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6708798Z PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0",
+        "2026-11-28T00:31:49.6709664Z PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 254,
+        "source_commit": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+        "source_passed": 254,
+        "source_tree": "1a9cf51a75e3e5e860ded1bca2b041cb52f399e4",
+        "status": "PASS"
+      }
+    },
+    {
+      "id": 140796798500,
+      "platform": "windows-2022",
+      "conclusion": "failure",
+      "source_rows": [
+        "2026-11-28T00:33:44.7181504Z PASS: tests/conversion/test_selected_conversion.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7182050Z PASS: tests/conversion/test_calibre_admission.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7182412Z PASS: tests/conversion/test_office_admission.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7182763Z PASS: tests/ui/test_document_conversion.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7183115Z PASS: tests/extract/test_document_formats_xml.py: junit_passed=95, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7183519Z PASS: tests/audio/test_audio_process.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7183884Z PASS: tests/audio/test_live_metadata_retry.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0\r",
+        "2026-11-28T00:33:44.7184399Z PASS: tests/ui/test_native_conversion_diagnostics.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0\r"
+      ],
+      "receipt": {
+        "all_children_reaped": true,
+        "inputs_unchanged": true,
+        "installed_passed": 254,
+        "source_commit": "5cc339cbe9cb02a37a6e64711905e29e765481bd",
+        "source_passed": 254,
+        "source_tree": "1a9cf51a75e3e5e860ded1bca2b041cb52f399e4",
+        "status": "PASS"
+      }
+    }
+  ],
+  "native_required_phases": {
+    "passed": [
+      "old-suite-source",
+      "old-suite-installed"
+    ],
+    "failed": [
+      "formats-source",
+      "formats-installed",
+      "gui-source",
+      "gui-installed"
+    ],
+    "reports": [
+      {
+        "line": 1551,
+        "timestamp": "2026-11-28T00:36:13.4861285Z",
+        "status": "FAIL",
+        "phase": "formats",
+        "mode": "source",
+        "actual_versions": {
+          "calibre": "ebook-convert.exe (calibre 9.19.0)",
+          "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+          "pandoc": "pandoc 3.14"
+        },
+        "actual_owned_jobs": 13,
+        "all_owned_jobs_closed": "PASS",
+        "error_type": "AudioError",
+        "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]",
+        "actual_format_quality": "NOT_RUN",
+        "native_catalog_fidelity": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins_before_count": 22,
+        "origins_after_count": 0
+      },
+      {
+        "line": 1720,
+        "timestamp": "2026-11-28T00:36:25.9923286Z",
+        "status": "PASS",
+        "phase": "old-suite",
+        "mode": "source",
+        "actual_owned_jobs": 1,
+        "all_owned_jobs_closed": "PASS",
+        "old_whole_conversion_suite": "PASS",
+        "old_cases": 34,
+        "old_test_sha256": {
+          "tests/conversion/test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+          "tests/conversion/fixtures/ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+        },
+        "old_junit_sha256": "636d8f1afbd673e6b9129338ab40d7379a0c0b2a6684aa6ee7ec63e205001262",
+        "old_child_receipt_sha256": "c19d8c14227b1e16a4bedcee69bf4d5f9e380821a699a2fe4f39a19994ed295a",
+        "actual_loopback_denial": "PASS",
+        "owned_temporary_cleanup": "PASS",
+        "fixture_companion_sha256": "bd444758c96e2a82a69baf186c81d46ac5983fcaa830f937868dd2ac73410615",
+        "actual_format_quality": "NOT_RUN",
+        "native_catalog_fidelity": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins_before_count": 22,
+        "origins_after_count": 22,
+        "old_child_origin_maps": {
+          "after": 22,
+          "before": 22,
+          "helper_sha256": "bd444758c96e2a82a69baf186c81d46ac5983fcaa830f937868dd2ac73410615",
+          "mode": "source",
+          "status": "PASS"
+        }
+      },
+      {
+        "line": 1738,
+        "timestamp": "2026-11-28T00:37:34.2990255Z",
+        "status": "FAIL",
+        "phase": "formats",
+        "mode": "installed",
+        "actual_versions": {
+          "calibre": "ebook-convert.exe (calibre 9.19.0)",
+          "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+          "pandoc": "pandoc 3.14"
+        },
+        "actual_owned_jobs": 13,
+        "all_owned_jobs_closed": "PASS",
+        "error_type": "AudioError",
+        "error": "Local audio worker failed (exit 1): ValueError: Hidden document text requires review. [part=styles.xml; element=style:header-left; condition=style:display]",
+        "actual_format_quality": "NOT_RUN",
+        "native_catalog_fidelity": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins_before_count": 22,
+        "origins_after_count": 0
+      },
+      {
+        "line": 1907,
+        "timestamp": "2026-11-28T00:37:46.8721083Z",
+        "status": "PASS",
+        "phase": "old-suite",
+        "mode": "installed",
+        "actual_owned_jobs": 1,
+        "all_owned_jobs_closed": "PASS",
+        "old_whole_conversion_suite": "PASS",
+        "old_cases": 34,
+        "old_test_sha256": {
+          "tests/conversion/test_conversion.py": "04784cb293dbbd966365fb1be7142263d95ab9b25874380e8b7b2300e8cac21f",
+          "tests/conversion/fixtures/ordered_slides.pptx": "305eb17f2df8f4b572ff78bb548f28a950518292e836651b0ca0d76f97c4370f"
+        },
+        "old_junit_sha256": "2632cba543330c816e4a415f6627d86dff50576b4d668dd0270dc54b40dd5abb",
+        "old_child_receipt_sha256": "38328274890b3d437e1bbc863d0434c540d1456897283dc12005b9a61f47d969",
+        "actual_loopback_denial": "PASS",
+        "owned_temporary_cleanup": "PASS",
+        "fixture_companion_sha256": "bd444758c96e2a82a69baf186c81d46ac5983fcaa830f937868dd2ac73410615",
+        "actual_format_quality": "NOT_RUN",
+        "native_catalog_fidelity": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "origins_before_count": 22,
+        "origins_after_count": 22,
+        "old_child_origin_maps": {
+          "after": 22,
+          "before": 22,
+          "helper_sha256": "bd444758c96e2a82a69baf186c81d46ac5983fcaa830f937868dd2ac73410615",
+          "mode": "installed",
+          "status": "PASS"
+        }
+      }
+    ],
+    "observed_partial_formats": [
+      "2026-11-28T00:35:50.1251825Z PASS actual selected format .doc\r",
+      "2026-11-28T00:36:01.9175134Z PASS actual selected format .ppt\r",
+      "2026-11-28T00:37:08.0316705Z PASS actual selected format .doc\r",
+      "2026-11-28T00:37:19.4851956Z PASS actual selected format .ppt\r"
+    ],
+    "gui_diagnostics": [
+      {
+        "timestamp": "2026-11-28T00:37:51.3245854Z",
+        "event": "explicit-conversion-dispatched",
+        "pickers": [
+          "Choose documents to convert for reading",
+          "Choose the installed Pandoc executable for RTF",
+          "destination"
+        ],
+        "state": {
+          "working": false,
+          "status": "Conversion not started: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-native-selected-conversion-w55z1poc\\\\library\\\\state'",
+          "extract": {
+            "started": 0,
+            "returned": 0,
+            "error": null
+          },
+          "worker_admissions": [],
+          "completed_conversions": 0,
+          "native_children": 0
+        }
+      },
+      {
+        "timestamp": "2026-11-28T00:38:41.3108338Z",
+        "event": "result-window-wait-failed",
+        "state": {
+          "working": false,
+          "status": "Conversion not started: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-native-selected-conversion-w55z1poc\\\\library\\\\state'",
+          "extract": {
+            "started": 0,
+            "returned": 0,
+            "error": null
+          },
+          "worker_admissions": [],
+          "completed_conversions": 0,
+          "native_children": 0
+        }
+      },
+      {
+        "timestamp": "2026-11-28T00:38:43.4838742Z",
+        "event": "explicit-conversion-dispatched",
+        "pickers": [
+          "Choose documents to convert for reading",
+          "Choose the installed Pandoc executable for RTF",
+          "destination"
+        ],
+        "state": {
+          "working": false,
+          "status": "Conversion not started: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-native-selected-conversion-cqzu08fo\\\\library\\\\state'",
+          "extract": {
+            "started": 0,
+            "returned": 0,
+            "error": null
+          },
+          "worker_admissions": [],
+          "completed_conversions": 0,
+          "native_children": 0
+        }
+      },
+      {
+        "timestamp": "2026-11-28T00:39:33.4746370Z",
+        "event": "result-window-wait-failed",
+        "state": {
+          "working": false,
+          "status": "Conversion not started: [WinError 2] The system cannot find the file specified: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-native-selected-conversion-cqzu08fo\\\\library\\\\state'",
+          "extract": {
+            "started": 0,
+            "returned": 0,
+            "error": null
+          },
+          "worker_admissions": [],
+          "completed_conversions": 0,
+          "native_children": 0
+        }
+      }
+    ],
+    "gui_primary_failure": "Each real GUI invocation waited the unchanged50 seconds and raised TimeoutError because state admission failed before any extract/worker/native child. The original error was preserved through separately reported unmet success-cleanup assertions."
+  },
+  "artifacts": [
+    {
+      "id": 15240400780,
+      "name": "selected-conversion-ubuntu-24.04-5cc339cbe9cb02a37a6e64711905e29e765481bd-1",
+      "size_in_bytes": 47868,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240400780",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240400780/zip",
+      "expired": false,
+      "created_at": "2026-11-28T00:32:06Z",
+      "expires_at": "2027-02-26T00:09:33Z",
+      "updated_at": "2026-11-28T00:32:06Z",
+      "digest": "sha256:5d1897f015735ee72e2c42e7ad4f2840f71b197de171afa4cd556d1156cf1f7e",
+      "workflow_run": {
+        "id": 46086376652,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next15-conversion-final-20261127-5a9e",
+        "head_sha": "5cc339cbe9cb02a37a6e64711905e29e765481bd"
+      }
+    },
+    {
+      "id": 15240362650,
+      "name": "selected-conversion-windows-2022-5cc339cbe9cb02a37a6e64711905e29e765481bd-1",
+      "size_in_bytes": 102244,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240362650",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15240362650/zip",
+      "expired": false,
+      "created_at": "2026-11-28T00:39:44Z",
+      "expires_at": "2027-02-26T00:09:33Z",
+      "updated_at": "2026-11-28T00:39:44Z",
+      "digest": "sha256:d517df3fca7f789434928e9305d139c12ad286743020575564bac86c5a3936c9",
+      "workflow_run": {
+        "id": 46086376652,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-next15-conversion-final-20261127-5a9e",
+        "head_sha": "5cc339cbe9cb02a37a6e64711905e29e765481bd"
+      }
+    }
+  ],
+  "qualification": [
+    "254 source and254 isolated installed passed on each platform at this exact head.",
+    "Both actual old34 full suites and inside-child22-origin receipts passed; actual bounded loopback denial passed.",
+    "DOC and PPT partial per-format checks passed in both modes; full14-format success remains unqualified because XLS failed next.",
+    "GUI30 remains unqualified. No reading-copy import/reader path was reached after the missing-state failure.",
+    "Corrected eight-output closed retention and upload passed on both jobs.",
+    "The pending276 ODF/fresh-state successors remain NOT_RUN."
+  ],
+  "no_ref_changes": true
+}

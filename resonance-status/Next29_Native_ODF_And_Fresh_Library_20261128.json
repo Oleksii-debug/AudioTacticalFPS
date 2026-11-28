@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "title": "Native ODF and fresh-library conversion corrections",
+  "status": "PREPARED_NOT_RUN",
+  "created_utc": "2026-11-28 00:44:19 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent": "c037d9721e92ef390932c63c7be9225e903872c0",
+  "base_tree": "2f5bbc785870fe8e197605bd19705811d4be8516",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "old": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab",
+      "new": "85fab268d21295106f3f05794cb68768167f3cd9",
+      "owner": "locate_project"
+    },
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "old": "a92b5e20180462812634dda50266a61df8b9d4e3",
+      "new": "b6b6519c83bc07653dfd88d61fd4bb61b610f0dd",
+      "owner": "locate_project"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "old": "238207043c10273984fe2244153f5cf965bc9ade",
+      "new": "f2f712af05cdf154bd4633ba818661b926a954a7",
+      "owner": "canonical_regression"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "old": "b0f7d6b4d4a190da18c96f08e71f8400f3a2cdc4",
+      "new": "fbf155467e7217eb1870167849241756690d01cb",
+      "owner": "canonical_regression"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "old": "6906734c565379c8b086f012894de0a7250b6c64",
+      "new": "1af25e62f74c7e7aed8415b693efeb072be1b985",
+      "owner": "canonical_regression"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "old": "cc4013e9ecfb76c5454f850eaba2f25285d370b1",
+      "new": "a77117519744b111f57e9235e1793b0093afb337",
+      "owner": "canonical_regression"
+    }
+  ],
+  "component": "b42ac97c29d709973e565207814afdd08e50fa17",
+  "evidence": [
+    {
+      "kind": "current converter predecessor",
+      "blob": "afb8cb6a963ff9d45c4a553c143ee948d0600c26",
+      "head": "5cc339cbe9cb02a37a6e64711905e29e765481bd"
+    },
+    {
+      "kind": "capacity Windows",
+      "blob": "44313f19337c50baff55462da6f9cac8f3c6c0fc",
+      "head": "c037d9721e92ef390932c63c7be9225e903872c0"
+    }
+  ],
+  "review": {
+    "odf": "Root independently reviewed source/test diff, exact LibreOffice export source and final OASIS schema. Only content-free documented disabled master elements admitted; old95 cases exact prefix.",
+    "fresh_state": "Canonical independently reviewed exact existing-library guard around child-only initialization; three real regressions added.",
+    "helper_workflow": "Root exact inverse audits reconstruct690673 andcc401 byte for byte, all29 pins match candidate."
+  },
+  "strict_contract": {
+    "whole_suites": 8,
+    "source_cases": 276,
+    "installed_cases": 276,
+    "counts": [
+      29,
+      49,
+      19,
+      20,
+      114,
+      23,
+      12,
+      10
+    ],
+    "source_pins": 29,
+    "origins": 19,
+    "companions": [
+      "scripts/windows_document_conversion_smoke.py"
+    ],
+    "source_outer_seconds": 2700,
+    "per_suite_seconds": 600,
+    "installed_child_literal": "BYTE_IDENTICAL",
+    "runtime_native_phases": 6,
+    "native_formats_each_mode": 14,
+    "old_full_suite_each_mode": 34,
+    "gui_checks_each_mode": 30,
+    "gui_origins_each_mode": 30,
+    "gui_result_wait_seconds": 50,
+    "gui_hard_watchdog_seconds": 180,
+    "firewall": "UNCHANGED",
+    "retention": "UNCHANGED closed eight-suite inventory"
+  },
+  "execution": "All276 source and276 installed cases plus all6 actual native phases are required on this new head. Previous results are not transferred.",
+  "publication": "Only our focused conversion branch will move. PR173, canonical carr-library, owner artifacts and other agents' refs remain unchanged."
+}

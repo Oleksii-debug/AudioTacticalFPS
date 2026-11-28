@@ -54,7 +54,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           from pathlib import Path
-          pins = {"scripts/ci_selected_conversion_contracts.py":"6906734c565379c8b086f012894de0a7250b6c64","scripts/prepare_selected_conversion_runtime.py":"de90870ad234b0a3e329b9748d05485a231f0bfd","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"b4c60707e1554df514cd954afa89c0c7dc099713","scripts/windows_document_conversion_smoke.py":"4b67819886d4324a616bce8dff13251fec2370f0","scripts/translation_loopback_check.py":"6859d406a595e806b78de12969ad681757e34f71","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_selected_conversion_contracts.py":"1af25e62f74c7e7aed8415b693efeb072be1b985","scripts/prepare_selected_conversion_runtime.py":"de90870ad234b0a3e329b9748d05485a231f0bfd","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"b4c60707e1554df514cd954afa89c0c7dc099713","scripts/windows_document_conversion_smoke.py":"4b67819886d4324a616bce8dff13251fec2370f0","scripts/translation_loopback_check.py":"6859d406a595e806b78de12969ad681757e34f71","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for relative, wanted in pins.items():
               path = Path(relative)
               assert path.is_file() and not path.is_symlink()
@@ -62,7 +62,7 @@ jobs:
               assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == wanted, relative
               if path.suffix == '.py':
                   compile(raw,str(path),'exec')
-          print('Exact254 portable contracts and selected-native script/lock identities admitted.')
+          print('Exact276 portable contracts and selected-native script/lock identities admitted.')
           '@
           $verify | & python -I -B -X utf8 -
           if ($LASTEXITCODE -ne 0) { throw 'Conversion script/lock source or syntax differs.' }
@@ -79,14 +79,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Actual fixture APIs or versions differ.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Conversion dependency closure is inconsistent.' }
-      - name: Require254 source and254 isolated installed whole cases
+      - name: Require276 source and276 isolated installed whole cases
         id: portable
         timeout-minutes: 150
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_selected_conversion_contracts.py --evidence ci-conversion-contracts --expected-head $env:EXPECTED_SOURCE_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'All254 source and254 isolated installed conversion cases are required.' }
+          if ($LASTEXITCODE -ne 0) { throw 'All276 source and276 isolated installed conversion cases are required.' }
 
       - name: Retain closed JSON text and JUnit evidence only
         id: retain
@@ -202,7 +202,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           from pathlib import Path
-          pins = {"scripts/ci_selected_conversion_contracts.py":"6906734c565379c8b086f012894de0a7250b6c64","scripts/prepare_selected_conversion_runtime.py":"de90870ad234b0a3e329b9748d05485a231f0bfd","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"b4c60707e1554df514cd954afa89c0c7dc099713","scripts/windows_document_conversion_smoke.py":"4b67819886d4324a616bce8dff13251fec2370f0","scripts/translation_loopback_check.py":"6859d406a595e806b78de12969ad681757e34f71","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_selected_conversion_contracts.py":"1af25e62f74c7e7aed8415b693efeb072be1b985","scripts/prepare_selected_conversion_runtime.py":"de90870ad234b0a3e329b9748d05485a231f0bfd","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"b4c60707e1554df514cd954afa89c0c7dc099713","scripts/windows_document_conversion_smoke.py":"4b67819886d4324a616bce8dff13251fec2370f0","scripts/translation_loopback_check.py":"6859d406a595e806b78de12969ad681757e34f71","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for relative, wanted in pins.items():
               path = Path(relative)
               assert path.is_file() and not path.is_symlink()
@@ -210,7 +210,7 @@ jobs:
               assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == wanted, relative
               if path.suffix == '.py':
                   compile(raw,str(path),'exec')
-          print('Exact254 portable contracts and selected-native script/lock identities admitted.')
+          print('Exact276 portable contracts and selected-native script/lock identities admitted.')
           '@
           $verify | & python -I -B -X utf8 -
           if ($LASTEXITCODE -ne 0) { throw 'Conversion script/lock source or syntax differs.' }
@@ -227,14 +227,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Actual fixture APIs or versions differ.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Conversion dependency closure is inconsistent.' }
-      - name: Require254 source and254 isolated installed whole cases
+      - name: Require276 source and276 isolated installed whole cases
         id: portable
         timeout-minutes: 150
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_selected_conversion_contracts.py --evidence ci-conversion-contracts --expected-head $env:EXPECTED_SOURCE_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'All254 source and254 isolated installed conversion cases are required.' }
+          if ($LASTEXITCODE -ne 0) { throw 'All276 source and276 isolated installed conversion cases are required.' }
       - name: Acquire only exact public runtime archives and fixture notices
         id: acquisition
         if: ${{ !cancelled() && steps.portable.outcome == 'success' }}
