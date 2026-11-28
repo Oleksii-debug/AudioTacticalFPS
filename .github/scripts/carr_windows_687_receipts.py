@@ -14,13 +14,16 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46092676035
+RUN = 46093366008
 HEAD = "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
-BRANCH = "carr/standard-installation-evaluation-20261128"
+BRANCH = "carr/v3-integrated-final-dbbb-20261126"
 SOURCES = (
-    ("standard", 15242545000, 140200,
-     "784c9a861f000426658d67b5f70d329e1611e6450c1eaff1362a7140d4180b2d",
-     "carr-standard-installation-windows-2022-" + HEAD + "-1"),
+    ("bundle", 15242339416, 181346,
+     "924dde88988090e7f7137c2c54a94fde232197c252da4eb17a8c5bd6f6fabe63",
+     "carr-windows-pre-source-" + HEAD + "-1"),
+    ("endpoint", 15241719856, 1002,
+     "d87984ddd5f310e380140a529e583c18c3497f7a3e028bfeac6e03e879bff6ff",
+     "carr-windows-audio-endpoint-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
 MAX_MEMBER_BYTES = 4 * 1024 * 1024
@@ -47,6 +50,23 @@ STANDARD_RECEIPTS = frozenset((
     "setup-build.json",
     "native-standard-installation.txt",
     "native-standard-verdict.json",
+))
+MAIN_RECEIPTS = frozenset((
+    "native-delivery-lifecycle.txt",
+    "native-reader-controls.json",
+    "native-reader-controls.txt",
+    "native-owner-voice-controls.txt",
+    "native-translation-source.txt",
+    "native-draft-timer.json",
+    "native-draft-timer.txt",
+    "native-save-all-recovery.json",
+    "native-save-all-recovery.txt",
+    "native-reader-keymap.json",
+    "native-reader-keymap.txt",
+    "native-audio-runtime-setup.json",
+    "native-audio-runtime-setup.txt",
+    "native-sapi-speech.json",
+    "native-audio-preview.json",
 ))
 ERROR_LINE = re.compile(r"Traceback|AssertionError|TimeoutError|RuntimeError|ValueError|"
                         r"PermissionError|OSError|FileNotFoundError|FAIL(?:ED)?\b|"
@@ -114,7 +134,8 @@ def wanted(name, mode):
         return False
     if mode == "recording":
         return "recording" in path.name
-    return path.name.startswith(BUNDLE_PREFIXES) or path.name in ENDPOINT_RECEIPTS
+    return (path.name.startswith(BUNDLE_PREFIXES) or path.name in ENDPOINT_RECEIPTS
+            or path.name in MAIN_RECEIPTS)
 
 
 def text_content(raw):
@@ -144,7 +165,7 @@ def main():
     if (run["id"] != RUN or run["head_sha"] != HEAD or run["head_branch"] != BRANCH
             or run["run_attempt"] != 1 or run["status"] not in ("in_progress", "completed")
             or run["repository"]["full_name"] != REPOSITORY
-            or run["path"] != ".github/workflows/carr-standard-installation-evaluation.yml"):
+            or run["path"] != ".github/workflows/carr-windows.yml"):
         raise ValueError("Source run identity changed")
     # The application job may still run. Only already-uploaded immutable
     # artifacts are read; no live job log or unfinished stream is requested.
@@ -235,7 +256,8 @@ def main():
                     emit(line("CARR_WINDOWS_JSON_SUMMARY", {**info, "summary": summary}))
                     failed = (str(parsed.get("status", "")).upper() in ("FAIL", "FAILED", "ERROR")
                               or bool(parsed.get("failure") or parsed.get("error") or parsed.get("errors")))
-                    if not failed and name not in ENDPOINT_RECEIPTS and name not in STANDARD_RECEIPTS:
+                    if (not failed and name not in ENDPOINT_RECEIPTS and name not in STANDARD_RECEIPTS
+                            and name not in MAIN_RECEIPTS):
                         continue
                 snippet, complete = excerpt(text)
                 emit(line("CARR_WINDOWS_TEXT", {
